@@ -11,7 +11,7 @@ configs:
   Release: release
 settings:
   base:
-    # TODO(Task 20): set DEVELOPMENT_TEAM before archive for TestFlight
+    DEVELOPMENT_TEAM: Y393H99F54
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     ENABLE_USER_SCRIPT_SANDBOXING: YES
