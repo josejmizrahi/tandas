@@ -808,6 +808,28 @@ export type Database = {
         Args: { p_arrived_at: string; p_event_id: string; p_user_id: string }
         Returns: undefined
       }
+      close_event: {
+        Args: { p_event_id: string }
+        Returns: {
+          auto_no_show_at: string | null
+          created_at: string
+          created_by: string | null
+          cycle_number: number | null
+          ends_at: string | null
+          group_id: string
+          host_id: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          parent_event_id: string | null
+          rsvp_deadline: string | null
+          rules_evaluated_at: string | null
+          starts_at: string
+          status: string
+          title: string | null
+          updated_at: string
+        }
+      }
       close_pot: {
         Args: { p_pot_id: string; p_winner_id: string }
         Returns: {
@@ -1045,6 +1067,23 @@ export type Database = {
           title: string
           trigger: Json
           updated_at: string
+        }
+      }
+      roll_event_series: { Args: { p_event_id: string }; Returns: string }
+      set_rsvp: {
+        Args: { p_event_id: string; p_status: string }
+        Returns: {
+          arrived_at: string | null
+          cancelled_reason: string | null
+          cancelled_same_day: boolean
+          event_id: string
+          id: string
+          marked_by: string | null
+          no_show: boolean
+          notes: string | null
+          rsvp_at: string | null
+          rsvp_status: string
+          user_id: string
         }
       }
       set_turn_order: {
