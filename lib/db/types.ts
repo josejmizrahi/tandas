@@ -804,6 +804,16 @@ export type Database = {
       }
     }
     Functions: {
+      cast_ballot: {
+        Args: { p_choice: string; p_vote_id: string }
+        Returns: {
+          cast_at: string
+          choice: string
+          id: string
+          user_id: string
+          vote_id: string
+        }
+      }
       check_in_attendee: {
         Args: { p_arrived_at: string; p_event_id: string; p_user_id: string }
         Returns: undefined
