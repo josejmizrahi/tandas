@@ -1,7 +1,14 @@
 import { z } from 'zod'
 
+export const GroupTypeSchema = z.enum([
+  'recurring_dinner', 'tanda_savings', 'sports_team', 'study_group',
+  'band', 'poker', 'family', 'travel', 'other',
+])
+export type GroupType = z.infer<typeof GroupTypeSchema>
+
 export const CreateGroupSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres').max(60, 'Máximo 60'),
+  group_type: GroupTypeSchema.default('recurring_dinner'),
   event_label: z.string().min(2).max(30).default('Tanda'),
   currency: z.enum(['MXN', 'USD', 'EUR']).default('MXN'),
   timezone: z.string().default('America/Mexico_City'),

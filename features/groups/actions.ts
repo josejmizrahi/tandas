@@ -14,6 +14,7 @@ export async function createGroup(_: unknown, formData: FormData): Promise<Actio
 
   const parsed = CreateGroupSchema.safeParse({
     name: formData.get('name'),
+    group_type: formData.get('group_type') ?? 'recurring_dinner',
     event_label: formData.get('event_label') ?? 'Tanda',
     currency: formData.get('currency') ?? 'MXN',
     timezone: formData.get('timezone') ?? 'America/Mexico_City',
@@ -40,8 +41,15 @@ export async function createGroup(_: unknown, formData: FormData): Promise<Actio
   })
   if (error) return { error: { _form: [error.message] } }
 
+  // group_type isn't a param of create_group_with_admin RPC, so set it via update
+  const newGroupId = (data as { id: string }).id
+  await supabase
+    .from('groups')
+    .update({ group_type: parsed.data.group_type })
+    .eq('id', newGroupId)
+
   revalidatePath('/')
-  redirect(`/g/${(data as { id: string }).id}`)
+  redirect(`/g/${newGroupId}`)
 }
 
 export async function updateGroupSettings(_: unknown, formData: FormData): Promise<ActionResult> {
