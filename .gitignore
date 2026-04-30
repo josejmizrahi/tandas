@@ -50,3 +50,6 @@ supabase/.branches/
 supabase/.temp/
 test-results/
 playwright-report/
+
+# Superpowers brainstorm session files
+.superpowers/
