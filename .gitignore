@@ -79,3 +79,13 @@ ios/fastlane/report.xml
 ios/fastlane/Preview.html
 ios/fastlane/screenshots/
 ios/fastlane/test_output/
+
+# iOS / Xcode
+ios/Tandas.xcodeproj/
+ios/.build/
+ios/DerivedData/
+ios/build/
+ios/*.xcworkspace/
+.DS_Store
+*.xcuserstate
+*.xcuserdatad/
