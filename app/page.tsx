@@ -1,54 +1,68 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Plus, Hash, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { nextOnboardingStep } from './onboarding/step'
 
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name')
-    .eq('id', user.id)
-    .maybeSingle()
+  // Single source of truth for onboarding routing
+  const next = await nextOnboardingStep(user.id)
+  if (next !== '/') redirect(next)
 
-  const seededName = nullableEmailPrefix(user.email) ?? 'Usuario'
-  if (!profile?.display_name || profile.display_name === seededName) {
-    redirect('/onboarding')
-  }
-
+  // Multi-group picker (≥2 groups)
   const { data: memberships } = await supabase
     .from('group_members')
     .select('group_id, groups(id, name)')
     .eq('user_id', user.id)
     .eq('active', true)
 
-  if (!memberships || memberships.length === 0) redirect('/g/new')
-  if (memberships.length === 1) redirect(`/g/${memberships[0].group_id}`)
-
   return (
-    <main className="min-h-dvh p-6 max-w-md mx-auto space-y-4">
-      <h1 className="text-xl font-bold">Tus grupos</h1>
-      <ul className="space-y-2">
-        {memberships.map((m) => (
-          <li key={m.group_id}>
-            <Link className="block p-4 rounded-lg border hover:bg-accent" href={`/g/${m.group_id}`}>
-              {m.groups?.name ?? 'Grupo'}
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <div className="grid gap-2">
-        <Link className="text-center py-2 underline" href="/g/new">Crear grupo nuevo</Link>
-        <Link className="text-center py-2 underline" href="/g/join">Unirme con código</Link>
+    <main className="min-h-dvh flex flex-col items-center justify-center bg-muted/30 p-6">
+      <div className="w-full max-w-sm space-y-4">
+        <div className="flex flex-col items-center gap-2 text-center mb-2">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Users className="size-6" />
+          </div>
+          <h1 className="text-xl font-bold">Tus grupos</h1>
+        </div>
+
+        <ul className="space-y-2">
+          {memberships?.map((m) => (
+            <li key={m.group_id}>
+              <Link href={`/g/${m.group_id}`} className="block">
+                <Card className="hover:bg-accent/50 transition-colors">
+                  <CardContent className="p-4">
+                    <p className="font-medium">{m.groups?.name ?? 'Grupo'}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">¿Otro grupo?</CardTitle>
+            <CardDescription className="text-xs">
+              Puedes estar en varios grupos a la vez.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button asChild variant="outline" className="w-full justify-start">
+              <Link href="/g/new"><Plus className="size-4 mr-2" /> Crear grupo nuevo</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full justify-start">
+              <Link href="/g/join"><Hash className="size-4 mr-2" /> Unirme con código</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </main>
   )
-}
-
-function nullableEmailPrefix(email: string | undefined): string | undefined {
-  if (!email) return undefined
-  const prefix = email.split('@')[0]
-  return prefix || undefined
 }

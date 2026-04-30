@@ -1,9 +1,12 @@
 'use client'
 
 import { useActionState } from 'react'
+import { Loader2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  Field, FieldDescription, FieldGroup, FieldLabel,
+} from '@/components/ui/field'
 import { updateProfile, type ActionResult } from '../actions'
 
 export default function OnboardingForm({ defaultName }: { defaultName?: string }) {
@@ -11,28 +14,38 @@ export default function OnboardingForm({ defaultName }: { defaultName?: string }
     useActionState<ActionResult | null, FormData>(updateProfile, null)
 
   return (
-    <form action={action} className="space-y-4 w-full max-w-sm">
-      <div className="space-y-2">
-        <Label htmlFor="display_name">Cómo te llamas</Label>
-        <Input
-          id="display_name"
-          name="display_name"
-          type="text"
-          placeholder="Pepe Pérez"
-          defaultValue={defaultName}
-          autoComplete="name"
-          required
-          maxLength={50}
-        />
-        {state && 'error' in state && (
-          <p className="text-destructive text-sm">
-            {state.error._form?.[0] ?? state.error.display_name?.[0]}
-          </p>
-        )}
-      </div>
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending ? 'Guardando…' : 'Listo'}
-      </Button>
+    <form action={action} className="w-full">
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="display_name">Tu nombre</FieldLabel>
+          <Input
+            id="display_name"
+            name="display_name"
+            type="text"
+            placeholder="Pepe Pérez"
+            defaultValue={defaultName}
+            autoComplete="name"
+            required
+            maxLength={50}
+            autoFocus
+          />
+          <FieldDescription>
+            Usamos esto en la lista de miembros y al asignarte multas o turnos.
+          </FieldDescription>
+          {state && 'error' in state && (
+            <FieldDescription className="text-destructive">
+              {state.error._form?.[0] ?? state.error.display_name?.[0]}
+            </FieldDescription>
+          )}
+        </Field>
+        <Field>
+          <Button type="submit" disabled={pending} size="lg">
+            {pending && <Loader2 className="size-4 animate-spin mr-2" />}
+            {pending ? 'Guardando…' : 'Continuar'}
+            {!pending && <ArrowRight className="size-4 ml-2" />}
+          </Button>
+        </Field>
+      </FieldGroup>
     </form>
   )
 }

@@ -70,7 +70,7 @@ export async function updateProfile(_: unknown, formData: FormData): Promise<Act
     .upsert({ id: user.id, display_name: parsed.data.display_name }, { onConflict: 'id' })
   if (error) return { error: { _form: [error.message] } }
   revalidatePath('/')
-  redirect('/')
+  redirect('/onboarding/grupo')
 }
 
 export async function signOut() {

@@ -21,6 +21,8 @@ export default async function GroupLayout({
       groupId={gid}
       groupName={group.name}
       displayName={profile?.display_name ?? 'Tú'}
+      email={user.email ?? null}
+      phone={user.phone ?? null}
     >
       {children}
     </AppShell>
