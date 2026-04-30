@@ -9,6 +9,7 @@ const SUBJECT_LABEL: Record<string, string> = {
   fine_appeal:   'Apelación de multa',
   host_swap:     'Cambio de anfitrión',
   general:       'Votación general',
+  amnesty:       'Amnistía general',
 }
 
 export default function OpenVotesList({

@@ -6,6 +6,7 @@ import { isAdminOfGroup } from '@/features/events'
 import {
   listMyFines, listGroupFines, FinesList, IssueFineSheet,
 } from '@/features/fines'
+import { RequestAmnestyDialog } from '@/features/votes'
 
 export default async function PlataPage({ params }: { params: Promise<{ gid: string }> }) {
   const { gid } = await params
@@ -27,13 +28,16 @@ export default async function PlataPage({ params }: { params: Promise<{ gid: str
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Multas</h1>
         {isAdmin && (
-          <IssueFineSheet
-            groupId={gid}
-            members={members.map((m) => ({
-              user_id: m.user_id,
-              display_name: m.profiles?.display_name ?? null,
-            }))}
-          />
+          <div className="flex items-center gap-2">
+            <RequestAmnestyDialog groupId={gid} />
+            <IssueFineSheet
+              groupId={gid}
+              members={members.map((m) => ({
+                user_id: m.user_id,
+                display_name: m.profiles?.display_name ?? null,
+              }))}
+            />
+          </div>
         )}
       </div>
       <FinesList groupId={gid} myFines={myFines} groupFines={groupFines} />
