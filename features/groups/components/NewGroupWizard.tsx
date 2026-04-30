@@ -1,11 +1,14 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Field, FieldDescription, FieldGroup, FieldLabel,
+} from '@/components/ui/field'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -26,78 +29,97 @@ export default function NewGroupWizard() {
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-2">
         <CardTitle>Nuevo grupo</CardTitle>
-        <CardDescription>Configura los parámetros del grupo. Puedes cambiarlos después.</CardDescription>
+        <CardDescription>
+          Lo básico para empezar. Las reglas y umbrales se configuran después en Settings.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre del grupo</Label>
-            <Input id="name" name="name" placeholder="La Tanda de los Martes" required minLength={2} maxLength={60} />
-          </div>
+        <form action={action}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="name">Nombre del grupo</FieldLabel>
+              <Input
+                id="name"
+                name="name"
+                placeholder="La Tanda de los Martes"
+                required
+                minLength={2}
+                maxLength={60}
+                autoFocus
+              />
+            </Field>
 
-          <div className="space-y-2">
-            <Label htmlFor="event_label">¿Cómo le dicen al evento?</Label>
-            <Input id="event_label" name="event_label" defaultValue="Tanda" placeholder="Tanda / Cena / Reunión" />
-          </div>
+            <Field>
+              <FieldLabel htmlFor="event_label">¿Cómo le dicen al evento?</FieldLabel>
+              <Input
+                id="event_label"
+                name="event_label"
+                defaultValue="Tanda"
+                placeholder="Tanda / Cena / Reunión"
+              />
+              <FieldDescription>
+                Aparecerá en la app como &ldquo;Próxima {`{nombre}`}&rdquo;.
+              </FieldDescription>
+            </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="default_day_of_week">Día default</Label>
-              <Select value={day} onValueChange={setDay}>
-                <SelectTrigger id="default_day_of_week">
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS.map((d) => (
-                    <SelectItem key={d.v} value={d.v}>{d.l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <input type="hidden" name="default_day_of_week" value={day} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field>
+                <FieldLabel htmlFor="default_day_of_week">Día de la semana</FieldLabel>
+                <Select value={day} onValueChange={setDay}>
+                  <SelectTrigger id="default_day_of_week">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((d) => (
+                      <SelectItem key={d.v} value={d.v}>{d.l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <input type="hidden" name="default_day_of_week" value={day} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="default_start_time">Hora</FieldLabel>
+                <Input
+                  id="default_start_time"
+                  name="default_start_time"
+                  type="time"
+                  defaultValue="20:30"
+                />
+              </Field>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="default_start_time">Hora default</Label>
-              <Input id="default_start_time" name="default_start_time" type="time" defaultValue="20:30" />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="voting_threshold">Umbral voto</Label>
-              <Input id="voting_threshold" name="voting_threshold" type="number" step="0.05" min="0.01" max="1" defaultValue="0.5" />
-              <p className="text-xs text-muted-foreground">0.01 a 1</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="voting_quorum">Quórum</Label>
-              <Input id="voting_quorum" name="voting_quorum" type="number" step="0.05" min="0.01" max="1" defaultValue="0.5" />
-              <p className="text-xs text-muted-foreground">0.01 a 1</p>
-            </div>
-          </div>
+            <Field>
+              <div className="flex items-start gap-3 rounded-lg border p-3">
+                <Checkbox
+                  id="fund_enabled"
+                  checked={fundEnabled}
+                  onCheckedChange={(v) => setFundEnabled(v === true)}
+                />
+                <input type="hidden" name="fund_enabled" value={fundEnabled ? 'on' : 'off'} />
+                <div className="space-y-1 leading-none flex-1">
+                  <FieldLabel htmlFor="fund_enabled" className="text-sm font-medium cursor-pointer">
+                    Activar fondo común
+                  </FieldLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Las multas pagadas se acumulan en una caja del grupo (para viajes, regalos, etc).
+                  </p>
+                </div>
+              </div>
+            </Field>
 
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="fund_enabled"
-              checked={fundEnabled}
-              onCheckedChange={(v) => setFundEnabled(v === true)}
-            />
-            <input type="hidden" name="fund_enabled" value={fundEnabled ? 'on' : 'off'} />
-            <div className="space-y-1 leading-none">
-              <Label htmlFor="fund_enabled" className="text-sm font-medium">
-                Activar fondo común
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Las multas pagadas se acumulan en una caja del grupo.
-              </p>
-            </div>
-          </div>
+            {state && 'error' in state && (
+              <FieldDescription className="text-destructive">
+                {state.error._form?.[0]}
+              </FieldDescription>
+            )}
 
-          {state && 'error' in state && (
-            <p className="text-destructive text-sm">{state.error._form?.[0]}</p>
-          )}
-
-          <Button type="submit" disabled={pending} className="w-full" size="lg">
-            {pending ? 'Creando…' : 'Crear grupo'}
-          </Button>
+            <Field>
+              <Button type="submit" disabled={pending} size="lg">
+                {pending && <Loader2 className="size-4 animate-spin mr-2" />}
+                {pending ? 'Creando…' : 'Crear grupo'}
+              </Button>
+            </Field>
+          </FieldGroup>
         </form>
       </CardContent>
     </Card>

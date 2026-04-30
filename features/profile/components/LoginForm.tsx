@@ -1,42 +1,156 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
-import { Users, Loader2, Mail, ArrowLeft } from 'lucide-react'
+import { Users, Loader2, Phone, ArrowLeft, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
+  Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator,
 } from '@/components/ui/field'
 import {
   InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot,
 } from '@/components/ui/input-otp'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { requestOtp, verifyOtp, sendMagicLink, type ActionResult } from '../actions'
+import {
+  requestOtp, verifyOtp, sendMagicLink, verifyEmailOtp, type ActionResult,
+} from '../actions'
 
 const RESEND_COOLDOWN_SECONDS = 30
+type Mode = 'pick' | 'email-input' | 'email-verify' | 'phone-input' | 'phone-verify'
 
 export default function LoginForm() {
-  const [phoneValue, setPhoneValue] = useState('')
-  const [emailValue, setEmailValue] = useState('')
-  const [wantsToEditPhone, setWantsToEditPhone] = useState(true)
-  const [otpDigits, setOtpDigits] = useState('')
-  const [resendIn, setResendIn] = useState(0)
-  const verifyFormRef = useRef<HTMLFormElement>(null)
+  const [mode, setMode] = useState<Mode>('pick')
 
-  const [otpReqState, otpReqAction, otpReqPending] =
-    useActionState<ActionResult | null, FormData>(requestOtp, null)
-  const [otpVerifyState, otpVerifyAction, otpVerifyPending] =
-    useActionState<ActionResult | null, FormData>(verifyOtp, null)
-  const [magicState, magicAction, magicPending] =
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <button
+          type="button"
+          onClick={() => setMode('pick')}
+          className="flex flex-col items-center gap-2 font-medium"
+        >
+          <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Users className="size-5" />
+          </div>
+          <span className="sr-only">Tandas</span>
+        </button>
+        <h1 className="text-xl font-bold">Bienvenido a Tandas</h1>
+        <FieldDescription>
+          Si es tu primera vez, te creamos cuenta automáticamente.
+        </FieldDescription>
+      </div>
+
+      {mode === 'pick' && (
+        <PickMode
+          onPickEmail={() => setMode('email-input')}
+          onPickPhone={() => setMode('phone-input')}
+        />
+      )}
+      {mode === 'email-input' && (
+        <EmailInput onSent={() => setMode('email-verify')} onBack={() => setMode('pick')} />
+      )}
+      {mode === 'email-verify' && (
+        <EmailVerify onBack={() => setMode('email-input')} />
+      )}
+      {mode === 'phone-input' && (
+        <PhoneInput onSent={() => setMode('phone-verify')} onBack={() => setMode('pick')} />
+      )}
+      {mode === 'phone-verify' && (
+        <PhoneVerify onBack={() => setMode('phone-input')} />
+      )}
+
+      <FieldDescription className="text-center text-xs">
+        Al continuar, aceptas las reglas que tu grupo defina.
+      </FieldDescription>
+    </div>
+  )
+}
+
+// ============================================================
+function PickMode({
+  onPickEmail, onPickPhone,
+}: { onPickEmail: () => void; onPickPhone: () => void }) {
+  return (
+    <FieldGroup>
+      <Field>
+        <Button onClick={onPickEmail} size="lg">
+          <Mail className="size-4 mr-2" />
+          Continuar con email
+        </Button>
+      </Field>
+      <FieldSeparator>O</FieldSeparator>
+      <Field>
+        <Button onClick={onPickPhone} variant="outline" size="lg">
+          <Phone className="size-4 mr-2" />
+          Continuar con teléfono
+        </Button>
+      </Field>
+    </FieldGroup>
+  )
+}
+
+// ============================================================
+function EmailInput({ onSent, onBack }: { onSent: () => void; onBack: () => void }) {
+  const [emailValue, setEmailValue] = useState('')
+  const [state, action, pending] =
     useActionState<ActionResult | null, FormData>(sendMagicLink, null)
 
-  const otpRequestSucceeded = otpReqState !== null && 'ok' in otpReqState && otpReqState.ok
-  const showVerifyForm = otpRequestSucceeded && !wantsToEditPhone
-  const magicLinkSent = magicState !== null && 'ok' in magicState && magicState.ok
+  useEffect(() => {
+    if (state && 'ok' in state && state.ok) {
+      sessionStorage.setItem('tandas:lastEmail', emailValue)
+      onSent()
+    }
+  }, [state, emailValue, onSent])
+
+  return (
+    <form action={action}>
+      <FieldGroup>
+        <BackLink onClick={onBack}>Otro método</BackLink>
+        <Field>
+          <FieldLabel htmlFor="email">Tu email</FieldLabel>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="tu@email.com"
+            autoComplete="email"
+            required
+            autoFocus
+            value={emailValue}
+            onChange={(e) => setEmailValue(e.target.value)}
+          />
+          <FieldDescription>
+            Te mandaremos un código de 6 dígitos por correo.
+          </FieldDescription>
+          {state && 'error' in state && (
+            <FieldDescription className="text-destructive">
+              {state.error._form?.[0] ?? state.error.email?.[0]}
+            </FieldDescription>
+          )}
+        </Field>
+        <Field>
+          <Button type="submit" disabled={pending} size="lg">
+            {pending && <Loader2 className="size-4 animate-spin mr-2" />}
+            {pending ? 'Enviando…' : 'Enviarme código'}
+          </Button>
+        </Field>
+      </FieldGroup>
+    </form>
+  )
+}
+
+// ============================================================
+function EmailVerify({ onBack }: { onBack: () => void }) {
+  const [emailValue] = useState(() =>
+    typeof window !== 'undefined' ? sessionStorage.getItem('tandas:lastEmail') ?? '' : ''
+  )
+  const [otpDigits, setOtpDigits] = useState('')
+  const [resendIn, setResendIn] = useState(RESEND_COOLDOWN_SECONDS)
+  const verifyFormRef = useRef<HTMLFormElement>(null)
+
+  const [verifyState, verifyAction, verifyPending] =
+    useActionState<ActionResult | null, FormData>(verifyEmailOtp, null)
+  const [reqState, reqAction, reqPending] =
+    useActionState<ActionResult | null, FormData>(sendMagicLink, null)
 
   useEffect(() => {
     if (resendIn <= 0) return
@@ -44,220 +158,243 @@ export default function LoginForm() {
     return () => clearTimeout(t)
   }, [resendIn])
 
-  // Auto-submit OTP form when 6 digits are present
   useEffect(() => {
-    if (otpDigits.length === 6 && !otpVerifyPending) {
+    if (otpDigits.length === 6 && !verifyPending) {
       verifyFormRef.current?.requestSubmit()
     }
-  }, [otpDigits, otpVerifyPending])
+  }, [otpDigits, verifyPending])
 
-  function handleResendOtp() {
+  function handleResend() {
+    if (resendIn > 0) return
+    setResendIn(RESEND_COOLDOWN_SECONDS)
+    const fd = new FormData()
+    fd.set('email', emailValue)
+    reqAction(fd)
+  }
+
+  return (
+    <form action={verifyAction} ref={verifyFormRef}>
+      <input type="hidden" name="email" value={emailValue} />
+      <input type="hidden" name="token" value={otpDigits} />
+      <FieldGroup>
+        <BackLink onClick={onBack}>Cambiar email</BackLink>
+        <FieldDescription className="text-center">
+          Código enviado a <strong>{emailValue}</strong>.<br />
+          Busca el correo y copia el código de 6 dígitos.
+        </FieldDescription>
+        <Field className="items-center">
+          <FieldLabel htmlFor="email-otp" className="sr-only">Código</FieldLabel>
+          <InputOTP
+            id="email-otp"
+            maxLength={6}
+            value={otpDigits}
+            onChange={setOtpDigits}
+            autoFocus
+            disabled={verifyPending}
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+            </InputOTPGroup>
+            <InputOTPSeparator />
+            <InputOTPGroup>
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+          {verifyState && 'error' in verifyState && (
+            <FieldDescription className="text-destructive text-center">
+              {verifyState.error._form?.[0] ?? verifyState.error.token?.[0]}
+            </FieldDescription>
+          )}
+          {reqState && 'ok' in reqState && reqState.ok && (
+            <FieldDescription className="text-emerald-600 text-center">
+              Código reenviado.
+            </FieldDescription>
+          )}
+        </Field>
+        <Field>
+          <Button type="submit" disabled={verifyPending || otpDigits.length < 6} size="lg">
+            {verifyPending && <Loader2 className="size-4 animate-spin mr-2" />}
+            {verifyPending ? 'Verificando…' : 'Entrar'}
+          </Button>
+        </Field>
+        <ResendButton resendIn={resendIn} pending={reqPending} onClick={handleResend} />
+      </FieldGroup>
+    </form>
+  )
+}
+
+// ============================================================
+function PhoneInput({ onSent, onBack }: { onSent: () => void; onBack: () => void }) {
+  const [phoneValue, setPhoneValue] = useState('')
+  const [state, action, pending] =
+    useActionState<ActionResult | null, FormData>(requestOtp, null)
+
+  useEffect(() => {
+    if (state && 'ok' in state && state.ok) {
+      sessionStorage.setItem('tandas:lastPhone', phoneValue)
+      onSent()
+    }
+  }, [state, phoneValue, onSent])
+
+  return (
+    <form action={action}>
+      <FieldGroup>
+        <BackLink onClick={onBack}>Otro método</BackLink>
+        <Field>
+          <FieldLabel htmlFor="phone">Tu número</FieldLabel>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            placeholder="+5215555551234"
+            inputMode="tel"
+            autoComplete="tel"
+            required
+            autoFocus
+            value={phoneValue}
+            onChange={(e) => setPhoneValue(e.target.value)}
+          />
+          <FieldDescription>
+            Te mandaremos un código de 6 dígitos por SMS.
+          </FieldDescription>
+          {state && 'error' in state && (
+            <FieldDescription className="text-destructive">
+              {state.error._form?.[0] ?? state.error.phone?.[0]}
+            </FieldDescription>
+          )}
+        </Field>
+        <Field>
+          <Button type="submit" disabled={pending} size="lg">
+            {pending && <Loader2 className="size-4 animate-spin mr-2" />}
+            {pending ? 'Enviando…' : 'Enviarme código'}
+          </Button>
+        </Field>
+      </FieldGroup>
+    </form>
+  )
+}
+
+// ============================================================
+function PhoneVerify({ onBack }: { onBack: () => void }) {
+  const [phoneValue] = useState(() =>
+    typeof window !== 'undefined' ? sessionStorage.getItem('tandas:lastPhone') ?? '' : ''
+  )
+  const [otpDigits, setOtpDigits] = useState('')
+  const [resendIn, setResendIn] = useState(RESEND_COOLDOWN_SECONDS)
+  const verifyFormRef = useRef<HTMLFormElement>(null)
+
+  const [verifyState, verifyAction, verifyPending] =
+    useActionState<ActionResult | null, FormData>(verifyOtp, null)
+  const [reqState, reqAction, reqPending] =
+    useActionState<ActionResult | null, FormData>(requestOtp, null)
+
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const t = setTimeout(() => setResendIn((n) => Math.max(0, n - 1)), 1000)
+    return () => clearTimeout(t)
+  }, [resendIn])
+
+  useEffect(() => {
+    if (otpDigits.length === 6 && !verifyPending) {
+      verifyFormRef.current?.requestSubmit()
+    }
+  }, [otpDigits, verifyPending])
+
+  function handleResend() {
     if (resendIn > 0) return
     setResendIn(RESEND_COOLDOWN_SECONDS)
     const fd = new FormData()
     fd.set('phone', phoneValue)
-    otpReqAction(fd)
+    reqAction(fd)
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Users className="size-6" />
-        </div>
-        <h1 className="text-xl font-bold">Tandas</h1>
-        <FieldDescription>
-          Reglas, multas y splitwise para tu grupo de amigos.
+    <form action={verifyAction} ref={verifyFormRef}>
+      <input type="hidden" name="phone" value={phoneValue} />
+      <input type="hidden" name="token" value={otpDigits} />
+      <FieldGroup>
+        <BackLink onClick={onBack}>Cambiar número</BackLink>
+        <FieldDescription className="text-center">
+          Código enviado a <strong>{phoneValue}</strong>
         </FieldDescription>
-      </div>
-
-      <Tabs defaultValue="phone" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full">
-          <TabsTrigger value="phone">Teléfono</TabsTrigger>
-          <TabsTrigger value="email">Email</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="phone" className="mt-4">
-          {!showVerifyForm ? (
-            <form
-              action={otpReqAction}
-              onSubmit={() => {
-                setWantsToEditPhone(false)
-                setResendIn(RESEND_COOLDOWN_SECONDS)
-              }}
-            >
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="phone">Tu número</FieldLabel>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="+5215555551234"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    required
-                    value={phoneValue}
-                    onChange={(e) => setPhoneValue(e.target.value)}
-                  />
-                  <FieldDescription>
-                    Te mandaremos un código de 6 dígitos por SMS.
-                  </FieldDescription>
-                  {otpReqState && 'error' in otpReqState && (
-                    <FieldDescription className="text-destructive">
-                      {otpReqState.error._form?.[0] ?? otpReqState.error.phone?.[0]}
-                    </FieldDescription>
-                  )}
-                </Field>
-                <Field>
-                  <Button type="submit" disabled={otpReqPending} size="lg">
-                    {otpReqPending && <Loader2 className="size-4 animate-spin mr-2" />}
-                    {otpReqPending ? 'Enviando…' : 'Enviarme código'}
-                  </Button>
-                </Field>
-              </FieldGroup>
-            </form>
-          ) : (
-            <div>
-              <button
-                type="button"
-                onClick={() => { setWantsToEditPhone(true); setOtpDigits('') }}
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-              >
-                <ArrowLeft className="size-3.5" />
-                Cambiar número
-              </button>
-
-              <form action={otpVerifyAction} ref={verifyFormRef}>
-                <input type="hidden" name="phone" value={phoneValue} />
-                <input type="hidden" name="token" value={otpDigits} />
-                <FieldGroup>
-                  <FieldDescription className="text-center">
-                    Código enviado a <strong>{phoneValue}</strong>
-                  </FieldDescription>
-                  <Field className="items-center">
-                    <FieldLabel htmlFor="otp" className="sr-only">Código de 6 dígitos</FieldLabel>
-                    <InputOTP
-                      id="otp"
-                      maxLength={6}
-                      value={otpDigits}
-                      onChange={setOtpDigits}
-                      autoFocus
-                      disabled={otpVerifyPending}
-                    >
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                      </InputOTPGroup>
-                      <InputOTPSeparator />
-                      <InputOTPGroup>
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                    {otpVerifyState && 'error' in otpVerifyState && (
-                      <FieldDescription className="text-destructive text-center">
-                        {otpVerifyState.error._form?.[0] ?? otpVerifyState.error.token?.[0]}
-                      </FieldDescription>
-                    )}
-                  </Field>
-                  <Field>
-                    <Button
-                      type="submit"
-                      disabled={otpVerifyPending || otpDigits.length < 6}
-                      size="lg"
-                    >
-                      {otpVerifyPending && <Loader2 className="size-4 animate-spin mr-2" />}
-                      {otpVerifyPending ? 'Verificando…' : 'Entrar'}
-                    </Button>
-                  </Field>
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={resendIn > 0 || otpReqPending}
-                    className="text-sm text-muted-foreground underline w-full disabled:no-underline disabled:opacity-50"
-                  >
-                    {resendIn > 0
-                      ? `Reenviar código en ${resendIn}s`
-                      : otpReqPending
-                      ? 'Enviando…'
-                      : 'Reenviar código'}
-                  </button>
-                </FieldGroup>
-              </form>
-            </div>
+        <Field className="items-center">
+          <FieldLabel htmlFor="phone-otp" className="sr-only">Código</FieldLabel>
+          <InputOTP
+            id="phone-otp"
+            maxLength={6}
+            value={otpDigits}
+            onChange={setOtpDigits}
+            autoFocus
+            disabled={verifyPending}
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+            </InputOTPGroup>
+            <InputOTPSeparator />
+            <InputOTPGroup>
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+          {verifyState && 'error' in verifyState && (
+            <FieldDescription className="text-destructive text-center">
+              {verifyState.error._form?.[0] ?? verifyState.error.token?.[0]}
+            </FieldDescription>
           )}
-        </TabsContent>
-
-        <TabsContent value="email" className="mt-4">
-          {!magicLinkSent ? (
-            <form action={magicAction}>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="email">Tu email</FieldLabel>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    autoComplete="email"
-                    required
-                    value={emailValue}
-                    onChange={(e) => setEmailValue(e.target.value)}
-                  />
-                  <FieldDescription>
-                    Te mandaremos un link de acceso. Solo tienes que abrir el correo.
-                  </FieldDescription>
-                  {magicState && 'error' in magicState && (
-                    <FieldDescription className="text-destructive">
-                      {magicState.error._form?.[0] ?? magicState.error.email?.[0]}
-                    </FieldDescription>
-                  )}
-                </Field>
-                <Field>
-                  <Button type="submit" disabled={magicPending} size="lg">
-                    {magicPending && <Loader2 className="size-4 animate-spin mr-2" />}
-                    {magicPending ? 'Enviando…' : 'Enviarme link'}
-                  </Button>
-                </Field>
-              </FieldGroup>
-            </form>
-          ) : (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                <Mail className="size-5" />
-              </div>
-              <div className="space-y-1">
-                <p className="font-medium">Revisa tu correo</p>
-                <p className="text-sm text-muted-foreground">
-                  Te mandamos un link a <strong>{emailValue}</strong>.<br />
-                  Ábrelo desde este mismo dispositivo.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const fd = new FormData()
-                  fd.set('email', emailValue)
-                  magicAction(fd)
-                }}
-                disabled={magicPending}
-                className="text-sm text-muted-foreground underline disabled:opacity-50"
-              >
-                {magicPending ? 'Enviando…' : 'Reenviar link'}
-              </button>
-            </div>
+          {reqState && 'ok' in reqState && reqState.ok && (
+            <FieldDescription className="text-emerald-600 text-center">
+              Código reenviado.
+            </FieldDescription>
           )}
-        </TabsContent>
-      </Tabs>
+        </Field>
+        <Field>
+          <Button type="submit" disabled={verifyPending || otpDigits.length < 6} size="lg">
+            {verifyPending && <Loader2 className="size-4 animate-spin mr-2" />}
+            {verifyPending ? 'Verificando…' : 'Entrar'}
+          </Button>
+        </Field>
+        <ResendButton resendIn={resendIn} pending={reqPending} onClick={handleResend} />
+      </FieldGroup>
+    </form>
+  )
+}
 
-      <FieldSeparator />
+// ============================================================
+function BackLink({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors -mb-2"
+    >
+      <ArrowLeft className="size-3.5" />
+      {children}
+    </button>
+  )
+}
 
-      <FieldDescription className="text-center text-xs">
-        Al continuar, aceptas las reglas que tu grupo defina y la lógica de multas que voten juntos.
-      </FieldDescription>
-    </div>
+function ResendButton({
+  resendIn, pending, onClick,
+}: { resendIn: number; pending: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={resendIn > 0 || pending}
+      className="text-sm text-muted-foreground underline w-full disabled:no-underline disabled:opacity-50"
+    >
+      {resendIn > 0
+        ? `Reenviar código en ${resendIn}s`
+        : pending
+        ? 'Enviando…'
+        : 'Reenviar código'}
+    </button>
   )
 }
