@@ -19,5 +19,7 @@ export async function joinByCode(_: unknown, formData: FormData): Promise<Action
   if (error) return { error: { _form: [error.message] } }
 
   revalidatePath('/')
-  redirect(`/g/${(data as { id: string }).id}`)
+  // Send to the welcome tour instead of straight to /hoy — gives the new
+  // member context on the group, its rules, and their grace period
+  redirect(`/g/${(data as { id: string }).id}/bienvenida`)
 }
