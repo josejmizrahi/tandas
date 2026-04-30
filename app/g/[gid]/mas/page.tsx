@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, ChevronRight } from 'lucide-react'
+import { Users, ChevronRight, Settings } from 'lucide-react'
 
 export default async function MasPage({ params }: { params: Promise<{ gid: string }> }) {
   const { gid } = await params
@@ -20,11 +20,21 @@ export default async function MasPage({ params }: { params: Promise<{ gid: strin
                 <ChevronRight className="size-4 text-muted-foreground" />
               </Link>
             </li>
+            <li>
+              <Link
+                href={`/g/${gid}/mas/settings`}
+                className="flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors"
+              >
+                <Settings className="size-5 text-muted-foreground" />
+                <span className="flex-1">Settings del grupo</span>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+            </li>
           </ul>
         </CardContent>
       </Card>
       <p className="text-xs text-muted-foreground text-center">
-        Settings, fondo común y switcher de grupos llegan en próximas fases.
+        Fondo común y switcher de grupos llegan en próximas fases.
       </p>
     </div>
   )
