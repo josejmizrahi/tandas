@@ -4,19 +4,20 @@ import { useActionState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { joinByCode, type ActionResult } from '../actions'
 
 export default function JoinByCode() {
   const [state, action, pending] =
     useActionState<ActionResult | null, FormData>(joinByCode, null)
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
+    <Card className="w-full max-w-sm">
+      <CardHeader className="space-y-2">
         <CardTitle>Unirme a un grupo</CardTitle>
+        <CardDescription>Pega el código de invitación que te pasaron.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="space-y-3">
+        <form action={action} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="code">Código de invitación</Label>
             <Input
@@ -26,6 +27,7 @@ export default function JoinByCode() {
               placeholder="abc12345"
               autoComplete="off"
               autoCapitalize="off"
+              spellCheck={false}
             />
             {state && 'error' in state && (
               <p className="text-destructive text-sm">
@@ -33,7 +35,7 @@ export default function JoinByCode() {
               </p>
             )}
           </div>
-          <Button type="submit" disabled={pending} className="w-full">
+          <Button type="submit" disabled={pending} className="w-full" size="lg">
             {pending ? 'Verificando…' : 'Unirme'}
           </Button>
         </form>

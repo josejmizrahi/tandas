@@ -27,7 +27,7 @@ export default function LoginForm() {
   const magicLinkSent = magicState !== null && 'ok' in magicState && magicState.ok
 
   return (
-    <Tabs defaultValue="phone" className="w-full max-w-sm">
+    <Tabs defaultValue="phone" className="w-full">
       <TabsList className="grid grid-cols-2 w-full">
         <TabsTrigger value="phone">Teléfono</TabsTrigger>
         <TabsTrigger value="email">Email</TabsTrigger>
