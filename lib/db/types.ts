@@ -1051,6 +1051,37 @@ export type Database = {
         Args: { p_cycle: number; p_group_id: string }
         Returns: string
       }
+      issue_manual_fine: {
+        Args: {
+          p_amount: number
+          p_event_id: string | null
+          p_group_id: string
+          p_reason: string
+          p_rule_id: string | null
+          p_user_id: string
+        }
+        Returns: {
+          amount: number
+          appeal_vote_id: string | null
+          auto_generated: boolean
+          created_at: string
+          details: Json | null
+          event_id: string | null
+          group_id: string
+          id: string
+          issued_by: string | null
+          paid: boolean
+          paid_at: string | null
+          paid_to_fund: boolean
+          reason: string
+          rule_id: string | null
+          updated_at: string
+          user_id: string
+          waived: boolean
+          waived_at: string | null
+          waived_reason: string | null
+        }
+      }
       pay_fine: { Args: { p_fine_id: string }; Returns: undefined }
       propose_rule: {
         Args: {
