@@ -33,7 +33,7 @@ export default function OpenVotesList({
           return (
             <li key={v.id}>
               <Link href={href} className="block">
-                <Card className="glass-subtle hover:bg-accent/50 transition-colors">
+                <Card className="hover:bg-accent/50 transition-colors">
                   <CardContent className="p-3">
                     <p className="font-medium text-sm leading-tight">{v.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">

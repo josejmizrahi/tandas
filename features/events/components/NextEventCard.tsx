@@ -20,7 +20,7 @@ type NextEventCardProps = {
 export default function NextEventCard({ groupId, timezone, event, myRsvp }: NextEventCardProps) {
   if (!event) {
     return (
-      <Card className="glass-subtle">
+      <Card>
         <CardContent className="p-6 text-center text-sm text-muted-foreground">
           No hay eventos próximos. Si eres admin, créa uno desde la pestaña Eventos.
         </CardContent>
@@ -29,7 +29,7 @@ export default function NextEventCard({ groupId, timezone, event, myRsvp }: Next
   }
 
   return (
-    <Card className="glass">
+    <Card>
       <CardHeader>
         <CardTitle>Próximo evento</CardTitle>
       </CardHeader>

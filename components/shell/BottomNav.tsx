@@ -18,7 +18,7 @@ export default function BottomNav({ groupId }: { groupId: string }) {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 glass-chrome border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t pb-[env(safe-area-inset-bottom)]">
       <ul className="flex items-stretch justify-around h-16 max-w-md mx-auto">
         {tabs.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')

@@ -6,7 +6,7 @@ export default function GroupHeader({
   groupName, children,
 }: { groupName: string; children: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 glass-chrome border-b border-white/10">
+    <header className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b">
       <div className="flex items-center justify-between px-4 h-14">
         <button className="flex items-center gap-2 font-semibold" type="button">
           <span className="size-7 rounded-full bg-primary/15 grid place-items-center text-xs">
