@@ -128,3 +128,9 @@
     @apply font-sans;
   }
 }
+
+@theme inline {
+  --color-fine: oklch(0.62 0.21 28);     /* rojo multa */
+  --color-fund: oklch(0.78 0.16 80);     /* dorado fondo */
+  --color-pot:  oklch(0.55 0.22 305);    /* morado pot */
+}
