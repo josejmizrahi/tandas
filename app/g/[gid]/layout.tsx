@@ -17,7 +17,11 @@ export default async function GroupLayout({
   if (!group) notFound()
 
   return (
-    <AppShell groupName={group.name} displayName={profile?.display_name ?? 'Tú'}>
+    <AppShell
+      groupId={gid}
+      groupName={group.name}
+      displayName={profile?.display_name ?? 'Tú'}
+    >
       {children}
     </AppShell>
   )
