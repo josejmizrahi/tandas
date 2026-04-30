@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
@@ -32,15 +33,15 @@ export default async function HomePage() {
       <ul className="space-y-2">
         {memberships.map((m) => (
           <li key={m.group_id}>
-            <a className="block p-4 rounded-lg border hover:bg-accent" href={`/g/${m.group_id}`}>
+            <Link className="block p-4 rounded-lg border hover:bg-accent" href={`/g/${m.group_id}`}>
               {m.groups?.name ?? 'Grupo'}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
       <div className="grid gap-2">
-        <a className="text-center py-2 underline" href="/g/new">Crear grupo nuevo</a>
-        <a className="text-center py-2 underline" href="/g/join">Unirme con código</a>
+        <Link className="text-center py-2 underline" href="/g/new">Crear grupo nuevo</Link>
+        <Link className="text-center py-2 underline" href="/g/join">Unirme con código</Link>
       </div>
     </main>
   )
