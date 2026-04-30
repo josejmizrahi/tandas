@@ -387,6 +387,7 @@ export type Database = {
           fund_target: number | null
           fund_target_label: string | null
           grace_period_events: number
+          group_type: string
           id: string
           invite_code: string
           monthly_fine_cap_mxn: number | null
@@ -417,6 +418,7 @@ export type Database = {
           fund_target?: number | null
           fund_target_label?: string | null
           grace_period_events?: number
+          group_type?: string
           id?: string
           invite_code?: string
           monthly_fine_cap_mxn?: number | null
@@ -447,6 +449,7 @@ export type Database = {
           fund_target?: number | null
           fund_target_label?: string | null
           grace_period_events?: number
+          group_type?: string
           id?: string
           invite_code?: string
           monthly_fine_cap_mxn?: number | null
