@@ -1,18 +1,42 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { redirect, notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { getGroup } from '@/features/groups'
+import { listGroupMembers } from '@/features/members'
+import { isAdminOfGroup } from '@/features/events'
+import {
+  listMyFines, listGroupFines, FinesList, IssueFineSheet,
+} from '@/features/fines'
 
-export default function PlataPage() {
+export default async function PlataPage({ params }: { params: Promise<{ gid: string }> }) {
+  const { gid } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const [group, myFines, groupFines, isAdmin, members] = await Promise.all([
+    getGroup(gid),
+    listMyFines(gid, user.id),
+    listGroupFines(gid),
+    isAdminOfGroup(gid, user.id),
+    listGroupMembers(gid),
+  ])
+  if (!group) notFound()
+
   return (
-    <div className="p-4 max-w-md mx-auto space-y-4">
-      <h1 className="text-xl font-bold">Plata</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Próximamente</CardTitle>
-          <CardDescription>
-            Phase 4: multas (auto + manual + apelación), balance unificado, settle up.
-          </CardDescription>
-        </CardHeader>
-        <CardContent />
-      </Card>
+    <div className="p-4 space-y-4 max-w-md mx-auto">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-bold">Multas</h1>
+        {isAdmin && (
+          <IssueFineSheet
+            groupId={gid}
+            members={members.map((m) => ({
+              user_id: m.user_id,
+              display_name: m.profiles?.display_name ?? null,
+            }))}
+          />
+        )}
+      </div>
+      <FinesList groupId={gid} myFines={myFines} groupFines={groupFines} />
     </div>
   )
 }
