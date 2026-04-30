@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import {
   RequestOtpSchema,
@@ -9,6 +10,28 @@ import {
   MagicLinkSchema,
   UpdateProfileSchema,
 } from './schemas'
+
+/**
+ * Resolve the public origin for OAuth/magic-link redirect URLs.
+ * Order: NEXT_PUBLIC_SITE_URL env → x-forwarded-host header (Vercel) →
+ * host header → empty (will fail Supabase validation, surfacing a real error).
+ */
+async function resolveOrigin(): Promise<string> {
+  const env = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  if (env) return env.replace(/\/$/, '')
+
+  const h = await headers()
+  const forwardedHost = h.get('x-forwarded-host')
+  const forwardedProto = h.get('x-forwarded-proto') ?? 'https'
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`
+
+  const host = h.get('host')
+  if (host) {
+    const proto = host.startsWith('localhost') ? 'http' : 'https'
+    return `${proto}://${host}`
+  }
+  return ''
+}
 
 export type ActionResult<T = unknown> =
   | { ok: true; data?: T }
@@ -49,9 +72,14 @@ export async function sendMagicLink(_: unknown, formData: FormData): Promise<Act
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors }
 
   const supabase = await createClient()
+  const origin = await resolveOrigin()
+  if (!origin) {
+    return { error: { _form: ['No se pudo determinar el dominio del sitio. Configura NEXT_PUBLIC_SITE_URL.'] } }
+  }
+  const emailRedirectTo = `${origin}/auth/callback`
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
-    options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/auth/callback` },
+    options: { emailRedirectTo },
   })
   if (error) return { error: { _form: [error.message] } }
   return { ok: true }
