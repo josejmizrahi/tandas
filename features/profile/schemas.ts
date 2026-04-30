@@ -18,6 +18,12 @@ export const MagicLinkSchema = z.object({
 })
 export type MagicLink = z.infer<typeof MagicLinkSchema>
 
+export const VerifyEmailOtpSchema = z.object({
+  email: z.string().email('Email inválido'),
+  token: z.string().regex(/^\d{6}$/, 'Código de 6 dígitos'),
+})
+export type VerifyEmailOtp = z.infer<typeof VerifyEmailOtpSchema>
+
 export const UpdateProfileSchema = z.object({
   display_name: z.string().min(1, 'Necesario').max(50, 'Máximo 50'),
 })

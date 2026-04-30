@@ -8,6 +8,7 @@ import {
   RequestOtpSchema,
   VerifyOtpSchema,
   MagicLinkSchema,
+  VerifyEmailOtpSchema,
   UpdateProfileSchema,
 } from './schemas'
 
@@ -67,22 +68,42 @@ export async function verifyOtp(_: unknown, formData: FormData): Promise<ActionR
   redirect('/onboarding')
 }
 
+/**
+ * sendMagicLink: triggers Supabase to email both a magic link AND a 6-digit
+ * OTP code. We use the OTP code (verifyEmailOtp) by default because magic
+ * links get burned by email link prefetching (Gmail/Outlook scanners).
+ * The link still works as a fallback if the user clicks it.
+ */
 export async function sendMagicLink(_: unknown, formData: FormData): Promise<ActionResult> {
   const parsed = MagicLinkSchema.safeParse({ email: formData.get('email') })
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors }
 
   const supabase = await createClient()
   const origin = await resolveOrigin()
-  if (!origin) {
-    return { error: { _form: ['No se pudo determinar el dominio del sitio. Configura NEXT_PUBLIC_SITE_URL.'] } }
-  }
-  const emailRedirectTo = `${origin}/auth/callback`
+  const emailRedirectTo = origin ? `${origin}/auth/callback` : undefined
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
-    options: { emailRedirectTo },
+    options: emailRedirectTo ? { emailRedirectTo } : {},
   })
   if (error) return { error: { _form: [error.message] } }
   return { ok: true }
+}
+
+export async function verifyEmailOtp(_: unknown, formData: FormData): Promise<ActionResult> {
+  const parsed = VerifyEmailOtpSchema.safeParse({
+    email: formData.get('email'),
+    token: formData.get('token'),
+  })
+  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.verifyOtp({
+    email: parsed.data.email,
+    token: parsed.data.token,
+    type: 'email',
+  })
+  if (error) return { error: { _form: [error.message] } }
+  redirect('/onboarding')
 }
 
 export async function updateProfile(_: unknown, formData: FormData): Promise<ActionResult> {
