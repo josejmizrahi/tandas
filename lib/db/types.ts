@@ -242,6 +242,7 @@ export type Database = {
           paid_to_fund: boolean
           reason: string
           rule_id: string | null
+          rule_snapshot: Json | null
           updated_at: string
           user_id: string
           waived: boolean
@@ -263,6 +264,7 @@ export type Database = {
           paid_to_fund?: boolean
           reason: string
           rule_id?: string | null
+          rule_snapshot?: Json | null
           updated_at?: string
           user_id: string
           waived?: boolean
@@ -284,6 +286,7 @@ export type Database = {
           paid_to_fund?: boolean
           reason?: string
           rule_id?: string | null
+          rule_snapshot?: Json | null
           updated_at?: string
           user_id?: string
           waived?: boolean
@@ -383,8 +386,10 @@ export type Database = {
           fund_min_participants: number | null
           fund_target: number | null
           fund_target_label: string | null
+          grace_period_events: number
           id: string
           invite_code: string
+          monthly_fine_cap_mxn: number | null
           name: string
           no_show_grace_minutes: number
           rotation_enabled: boolean
@@ -411,8 +416,10 @@ export type Database = {
           fund_min_participants?: number | null
           fund_target?: number | null
           fund_target_label?: string | null
+          grace_period_events?: number
           id?: string
           invite_code?: string
+          monthly_fine_cap_mxn?: number | null
           name: string
           no_show_grace_minutes?: number
           rotation_enabled?: boolean
@@ -439,8 +446,10 @@ export type Database = {
           fund_min_participants?: number | null
           fund_target?: number | null
           fund_target_label?: string | null
+          grace_period_events?: number
           id?: string
           invite_code?: string
+          monthly_fine_cap_mxn?: number | null
           name?: string
           no_show_grace_minutes?: number
           rotation_enabled?: boolean
