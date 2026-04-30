@@ -13,7 +13,7 @@ export default function PendingFinesAlert({
 
   return (
     <Link href={`/g/${groupId}/plata`} className="block">
-      <Card className="border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors">
+      <Card className="glass border-destructive/30 hover:bg-destructive/10 transition-colors">
         <CardContent className="p-4 flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-lg bg-destructive/15 text-destructive shrink-0">
             <AlertTriangle className="size-5" />
