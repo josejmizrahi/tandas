@@ -7,8 +7,12 @@ options:
   groupSortPosition: top
   createIntermediateGroups: true
 configs:
-  Debug: debug
-  Release: release
+  Debug:
+    type: debug
+    xcconfig: Tandas.local.xcconfig
+  Release:
+    type: release
+    xcconfig: Tandas.local.xcconfig
 settings:
   base:
     DEVELOPMENT_TEAM: Y393H99F54
@@ -22,6 +26,8 @@ settings:
     PRODUCT_BUNDLE_IDENTIFIER: com.josejmizrahi.tandas
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    TANDAS_SUPABASE_URL: $(inherited)
+    TANDAS_SUPABASE_ANON_KEY: $(inherited)
 packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift

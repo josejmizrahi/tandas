@@ -89,3 +89,4 @@ ios/*.xcworkspace/
 .DS_Store
 *.xcuserstate
 *.xcuserdatad/
+ios/Tandas.local.xcconfig

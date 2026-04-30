@@ -34,5 +34,9 @@
   </array>
   <key>UIUserInterfaceStyle</key>
   <string>Dark</string>
+  <key>TandasSupabaseURL</key>
+  <string>$(TANDAS_SUPABASE_URL)</string>
+  <key>TandasSupabaseAnonKey</key>
+  <string>$(TANDAS_SUPABASE_ANON_KEY)</string>
 </dict>
 </plist>
