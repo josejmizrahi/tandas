@@ -28,6 +28,12 @@ const eslintConfig = defineConfig([
           { from: 'app',     allow:    ['feature', 'lib', 'ui', 'shell'] },
           { from: 'feature', disallow: ['app'] },
           { from: 'shell',   disallow: ['app'] },
+          // A file in features/X may only import from features/X — never features/Y.
+          {
+            from: [['feature', { name: '${from.name}' }]],
+            disallow: [['feature', { name: '!${from.name}' }]],
+            message: "Feature '${dependency.name}' cannot be imported from feature '${file.name}'. Move shared code to lib/.",
+          },
         ],
       }],
     },
