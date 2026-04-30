@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getGroup } from '@/features/groups'
 import { getNextEventForGroup, getMyAttendance, NextEventCard } from '@/features/events'
+import { listOpenVotesForUser, OpenVotesList } from '@/features/votes'
 
 export default async function HoyPage({ params }: { params: Promise<{ gid: string }> }) {
   const { gid } = await params
@@ -12,7 +13,10 @@ export default async function HoyPage({ params }: { params: Promise<{ gid: strin
   const group = await getGroup(gid)
   if (!group) notFound()
 
-  const event = await getNextEventForGroup(gid)
+  const [event, openVotes] = await Promise.all([
+    getNextEventForGroup(gid),
+    listOpenVotesForUser(gid, user.id),
+  ])
   const myAttendance = event ? await getMyAttendance(event.id, user.id) : null
 
   return (
@@ -24,6 +28,7 @@ export default async function HoyPage({ params }: { params: Promise<{ gid: strin
         event={event}
         myRsvp={(myAttendance?.rsvp_status as 'pending' | 'going' | 'maybe' | 'declined' | undefined) ?? null}
       />
+      <OpenVotesList groupId={gid} votes={openVotes} />
     </div>
   )
 }
