@@ -6,22 +6,25 @@ HERE := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 PROJECT := $(HERE)Tandas.xcodeproj
 DESTINATION ?= platform=iOS Simulator,name=iPhone 17 Pro,OS=latest
 
+# Use xcpretty if installed (gem install xcpretty), otherwise raw xcodebuild output.
+BEAUTIFY := $(shell command -v xcpretty 2>/dev/null || echo cat)
+
 project:
 	cd $(HERE) && xcodegen
 
 build: project
-	xcodebuild build \
+	set -o pipefail; xcodebuild build \
 		-project $(PROJECT) \
 		-scheme Tandas \
 		-destination '$(DESTINATION)' \
-		| xcpretty
+		| $(BEAUTIFY)
 
 test: project
-	xcodebuild test \
+	set -o pipefail; xcodebuild test \
 		-project $(PROJECT) \
 		-scheme Tandas \
 		-destination '$(DESTINATION)' \
-		| xcpretty
+		| $(BEAUTIFY)
 
 clean:
 	rm -rf $(HERE)Tandas.xcodeproj $(HERE).build $(HERE)DerivedData $(HERE)build

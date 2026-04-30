@@ -34,7 +34,5 @@
   </array>
   <key>UIUserInterfaceStyle</key>
   <string>Dark</string>
-  <key>NSAppleMusicUsageDescription</key>
-  <string/>
 </dict>
 </plist>
