@@ -1,97 +1,71 @@
 # Tandas
 
-Mini-app para administrar la "vida en grupo" de amigos: tandas de ahorro, cenas semanales, pots de poker, gastos compartidos. Reglas custom (escritas y votadas por el grupo) que la app ejecuta automáticamente.
+App nativa iOS para administrar la "vida en grupo" de amigos: tandas de ahorro, cenas semanales, pots de poker, gastos compartidos. Reglas custom (escritas y votadas por el grupo) que la app ejecuta automáticamente.
 
-> Mobile-first PWA. Next.js 16 + Supabase + shadcn/ui + Tailwind CSS v4.
+> SwiftUI + Supabase. iOS 26+ (Liquid Glass).
 
-## Spec
-
-`docs/superpowers/specs/2026-04-29-tandas-design.md` — diseño completo.
-`docs/superpowers/plans/2026-04-29-tandas-phase-1-foundation.md` — plan ejecutado.
-
-## Setup local
-
-```bash
-npm install
-cp .env.example .env.local      # llena las 2 NEXT_PUBLIC_* con tus credenciales de Supabase
-npm run dev
-```
-
-Por defecto el proyecto está cableado al Supabase en la nube `fpfvlrwcskhgsjuhrjpz`. Si quieres correr local con Docker:
-
-```bash
-npm run db:start         # supabase local (requiere Docker)
-npm run db:reset         # aplica las 4 migrations desde cero
-npm run db:types         # regenera lib/db/types.ts
-```
-
-## Scripts
-
-| Script | Hace |
-|---|---|
-| `npm run dev` | Next dev server |
-| `npm run build` | Build prod |
-| `npm run lint` | ESLint (incluye boundaries entre features) |
-| `npm run typecheck` | tsc --noEmit |
-| `npm test` | Vitest unit |
-| `npm run test:int` | Vitest integration (necesita Supabase) |
-| `npm run test:e2e` | Playwright mobile (iPhone 13 + Pixel 7) |
-| `npm run db:start` | Levanta Supabase local |
-| `npm run db:reset` | Aplica todas las migrations desde cero |
-| `npm run db:types` | Regenera `lib/db/types.ts` desde Supabase local |
-
-## Estructura
+## Estructura del repo
 
 ```
-app/                       # rutas Next, dumb (solo composición)
-components/ui/             # shadcn primitives (button, sheet, form, ...)
-components/shell/          # AppShell, GroupHeader, ProfileSheet
-features/<dominio>/        # actions, queries, schemas, components, hooks
-  groups · members · profile · (más en Phase 2-7)
-lib/
-  supabase/{server,browser,middleware}.ts
-  db/types.ts              # generado desde Supabase
-  schemas/{ids,money,enums}.ts
-  utils.ts                 # cn helper de shadcn
-supabase/migrations/       # 4 migrations versionadas
-e2e/                       # Playwright mobile (10–15 flows críticos al final)
-docs/superpowers/{specs,plans}/
+ios/                   # Xcode project (SwiftUI app)
+supabase/migrations/   # 9 migrations versionadas, fuente única
+docs/superpowers/      # specs y plans de las phases del MVP
+web-deprecated/        # Next.js 16 app (deprecada 2026-04-30, preservada por referencia)
 ```
 
-## Reglas de import (forzadas por ESLint)
+## Backend (no cambia)
 
-- `features/A` ❌ no importa de `features/B` (sube a `lib/` o crea feature compartida)
-- `lib/` ❌ no importa de `features/` ni `app/`
-- `app/` ❌ sin lógica de negocio (solo composición)
-- Toda mutación: **Zod → server action → RPC `security definer` → revalidate path**
+Supabase project `fpfvlrwcskhgsjuhrjpz`. 14 tablas + RLS + ~22 RPCs cubriendo:
+- Auth (Phone OTP + Email OTP)
+- Groups + members (con tipología)
+- Events + RSVP + check-in + auto-recurrence
+- Rules + propose + votes (con quorum/threshold per grupo)
+- Fines (auto via rule engine + manual + apelación + amnistía)
+- Anti-tirania (grace period + monthly cap + rule snapshots)
 
-## Implementación por fases
+Ver `supabase/migrations/` para esquema completo.
 
-| Fase | Estado | Deliverable |
-|---|---|---|
-| **1** | ✅ shipped | Auth (phone OTP + email magic link) + create/join group + group home con miembros |
-| 2 | pending | Eventos + RSVP + check-in |
-| 3 | pending | Reglas + votos |
-| 4 | pending | Multas (auto + manual + apelación) |
-| 5 | pending | Pots + IOUs |
-| 6 | pending | Expenses + Splitwise + balance hero |
-| 7 | pending | Notifications + web push + pg_cron |
-| 8 | pending | PWA polish + tests sweep |
-| 9 | pending | Production hardening |
+## Setup local (iOS)
+
+1. **Xcode 16+** (App Store)
+2. **iOS 26+ device o simulator** para probar Liquid Glass real
+3. **Apple Developer Account** ($99/año) para distribuir
+4. Abrir `ios/Tandas.xcodeproj`
+5. Build + Run
 
 ## Deploy
 
-Push a `main` → Vercel auto-deploya. Variables de entorno en Vercel Settings (mismas 2 que `.env.example`).
+- **TestFlight** vía Xcode → Archive → Distribute
+- **App Store Connect** para submission
+- **Fastlane** (TBD) para automatizar builds + screenshots
 
-## Stack
+## Decisión arquitectónica: por qué SwiftUI nativo
 
-- **Next.js 16** (App Router, Server Components, Server Actions, Turbopack)
-- **React 19** + **Tailwind CSS v4** + **shadcn/ui**
-- **Supabase** (Postgres + RLS + Auth + Realtime + Edge Functions)
-- **TanStack Query v5** (vistas reactivas — Phase 3+)
-- **Zod** + **React Hook Form** en boundary
-- **PWA** mobile-first con web-push (VAPID, Phase 7)
+Después de 4 phases shipped en Next.js (auth, eventos, reglas+votos, multas, anti-tirania, tipología) decidimos pivotar a iOS nativo porque:
+
+1. **Liquid Glass real** requiere acceso a Metal (no posible en navegador)
+2. Push notifications nativas via APNs son menores fricción que web-push
+3. App Store distribution > "abre en navegador"
+4. Performance superior en mobile
+5. SwiftUI + Supabase Swift SDK = stack consistente
+
+El backend (Supabase) se mantiene idéntico — la iOS app es solo un cliente nuevo. La web app está preservada en `web-deprecated/` por si se decide retomar como landing.
+
+## Phases del MVP (referencia del roadmap web — re-implementar en SwiftUI)
+
+| Phase | Web | iOS |
+|---|---|---|
+| 1 — Auth + grupos | ✅ shipped | ⏳ pending |
+| 2 — Eventos + RSVP | ✅ shipped | ⏳ pending |
+| 3 — Reglas + votos | ✅ shipped | ⏳ pending |
+| 4 — Multas | ✅ shipped | ⏳ pending |
+| 4.5 — Anti-tiranía | ✅ shipped | ⏳ pending |
+| 4.6 — Tipología + welcome | ✅ shipped | ⏳ pending |
+| 5 — Pots | deferred | deferred |
+| 6 — Expenses + Splitwise | deferred | deferred |
+| 7 — Push notifs (APNs) | — | ⏳ pending |
+| 8 — App Store submission | — | ⏳ pending |
 
 ## Co-Authored-By
 
-`claude-flow <ruv@ruv.net>` — todo el código de Phase 1 fue generado con Claude Code.
+`claude-flow <ruv@ruv.net>` — generación de código vía Claude Code.

@@ -53,3 +53,29 @@ playwright-report/
 
 # Superpowers brainstorm session files
 .superpowers/
+
+# Xcode
+ios/build/
+ios/DerivedData/
+ios/**/xcuserdata/
+ios/**/*.xcworkspace/xcuserdata/
+ios/**/*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.swiftpm/
+ios/.build/
+ios/Packages/
+
+# Apple secrets
+*.p8
+*.p12
+*.mobileprovision
+ios/AuthKey_*.p8
+
+# Fastlane
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/screenshots/
+ios/fastlane/test_output/
