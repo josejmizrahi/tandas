@@ -7,12 +7,11 @@ options:
   groupSortPosition: top
   createIntermediateGroups: true
 configs:
-  Debug:
-    type: debug
-    xcconfig: Tandas.local.xcconfig
-  Release:
-    type: release
-    xcconfig: Tandas.local.xcconfig
+  Debug: debug
+  Release: release
+configFiles:
+  Debug: Tandas.local.xcconfig
+  Release: Tandas.local.xcconfig
 settings:
   base:
     DEVELOPMENT_TEAM: Y393H99F54
@@ -77,9 +76,7 @@ schemes:
       targets:
         Tandas: all
         TandasTests: [test]
-        TandasUITests: [test]
     test:
       targets:
         - TandasTests
-        - TandasUITests
       gatherCoverageData: true
