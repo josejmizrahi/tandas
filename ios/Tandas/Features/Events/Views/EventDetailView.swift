@@ -97,7 +97,7 @@ struct EventDetailView: View {
                 // Bottom gradient ensures status pills + title legibility on
                 // bright covers, regardless of theme.
                 LinearGradient(
-                    colors: [.clear, Color.black.opacity(0.55)],
+                    colors: [.clear, Color.ruulImageScrim(.badge)],
                     startPoint: .top, endPoint: .bottom
                 )
                 .frame(height: 180)

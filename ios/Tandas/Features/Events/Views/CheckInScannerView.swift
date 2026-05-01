@@ -7,7 +7,9 @@ struct CheckInScannerView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Camera scanner is intentionally always-black (the camera feed
+            // surface is dark regardless of system color scheme).
+            Color.ruulImageScrim(.opaque).ignoresSafeArea()
 
             switch coordinator.scanner.state {
             case .denied:
@@ -78,7 +80,7 @@ struct CheckInScannerView: View {
 
     private var scanFrame: some View {
         RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-            .strokeBorder(Color.white.opacity(0.6), lineWidth: 3)
+            .strokeBorder(Color.ruulOnImage.opacity(0.6), lineWidth: 3)
             .frame(width: 240, height: 240)
             .background(Color.clear)
     }

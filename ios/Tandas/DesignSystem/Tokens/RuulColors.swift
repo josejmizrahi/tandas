@@ -321,4 +321,67 @@ public extension Color {
             UIColor(white: 1.0, alpha: trait.userInterfaceStyle == .dark ? 0.10 : 0.18)
         })
     }
+
+    // MARK: - Image overlay surfaces (intentionally NOT theme-adaptive)
+    //
+    // These tokens are for content that sits ON TOP of an image / cover /
+    // camera preview. The underlying surface is always-dark (a colored cover
+    // image or a camera feed), so the overlay color is locked regardless of
+    // system color scheme — it is NOT a bug that they don't switch in dark
+    // mode. Use them anywhere `Color.white` or `Color.black.opacity(...)`
+    // would otherwise be hardcoded over an image surface.
+
+    /// White text / UI elements that sit on an always-dark image surface
+    /// (event covers under a vignette, camera scanner UI, the white surface
+    /// of CTA pills inset into a hero gradient).
+    ///
+    /// Apply opacity for hierarchy: `.ruulOnImage.opacity(0.85)` for
+    /// secondary text, `.ruulOnImage.opacity(0.30)` for borders, etc.
+    static var ruulOnImage: Color { .white }
+
+    /// Symmetric inverse of `ruulOnImage` — black text/UI that sits on an
+    /// always-light surface that is itself inset into an image overlay
+    /// context (e.g., dark text inside a `Color.ruulOnImage` CTA pill,
+    /// or text inside a white QR card).
+    ///
+    /// NOT theme-adaptive — both the surface and the text are locked
+    /// because they exist in the cover's color space, not the app's.
+    static var ruulOnImageInverse: Color { .black }
+
+    /// Black scrim layered on top of an image to make overlaid white content
+    /// legible. Use the typed `ImageScrimDepth` enum for consistent values
+    /// across the app.
+    static func ruulImageScrim(_ depth: ImageScrimDepth) -> Color {
+        Color.black.opacity(depth.opacity)
+    }
+}
+
+/// Standard depths for `Color.ruulImageScrim(_:)` — keeps vignette gradients
+/// and badge backgrounds consistent across HomeView, EventCard, and
+/// EventDetailView.
+public enum ImageScrimDepth: Sendable, Hashable {
+    /// 0.20 — top of a vignette gradient (subtle).
+    case light
+    /// 0.35 — mid-vignette transition (hero hero gradient stops).
+    case medium
+    /// 0.55 — badge / pill background overlaid on a colored image.
+    case badge
+    /// 0.78 — bottom of a vignette where white body text reads.
+    case deep
+    /// 0.85 — full bottom of a hero vignette.
+    case max
+    /// 1.0 — fully-opaque black surface (camera viewport background, etc.).
+    /// Use when there's no image behind the scrim; the scrim IS the surface.
+    case opaque
+
+    public var opacity: Double {
+        switch self {
+        case .light:  return 0.20
+        case .medium: return 0.35
+        case .badge:  return 0.55
+        case .deep:   return 0.78
+        case .max:    return 0.85
+        case .opaque: return 1.00
+        }
+    }
 }

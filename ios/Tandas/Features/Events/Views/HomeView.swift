@@ -85,8 +85,8 @@ struct HomeView: View {
                     stops: [
                         .init(color: .clear,                    location: 0.00),
                         .init(color: .clear,                    location: 0.35),
-                        .init(color: Color.black.opacity(0.35), location: 0.65),
-                        .init(color: Color.black.opacity(0.85), location: 1.00)
+                        .init(color: Color.ruulImageScrim(.medium), location: 0.65),
+                        .init(color: Color.ruulImageScrim(.max), location: 1.00)
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
@@ -108,11 +108,11 @@ struct HomeView: View {
         VStack {
             HStack(spacing: RuulSpacing.s2) {
                 if event.hostId == userId {
-                    overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.black.opacity(0.55))
+                    overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.ruulImageScrim(.badge))
                 }
                 Spacer()
                 if event.isRecurringGenerated {
-                    overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.black.opacity(0.55))
+                    overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.ruulImageScrim(.badge))
                 }
             }
             .padding(RuulSpacing.s4)
@@ -125,20 +125,20 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(heroDateLine(event))
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
-                    .foregroundStyle(Color.white.opacity(0.90))
+                    .foregroundStyle(Color.ruulOnImage.opacity(0.90))
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .shadow(color: Color.black.opacity(0.25), radius: 4, x: 0, y: 2)
+                    .shadow(color: Color.ruulImageScrim(.light), radius: 4, x: 0, y: 2)
             }
 
             if let location = event.locationName, !location.isEmpty {
                 Label(location, systemImage: "mappin.and.ellipse")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(Color.ruulOnImage.opacity(0.85))
             }
 
             // RSVP CTA — Apple Sports doesn't have inline CTAs, but for ruul
@@ -182,10 +182,10 @@ struct HomeView: View {
                 Image(systemName: "arrow.right")
                     .font(.system(size: 14, weight: .bold))
             }
-            .foregroundStyle(Color.black)
+            .foregroundStyle(Color.ruulOnImageInverse)
             .padding(.vertical, RuulSpacing.s4)
             .padding(.horizontal, RuulSpacing.s4)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
         .buttonStyle(.ruulPress)
         .padding(.top, RuulSpacing.s2)
@@ -206,18 +206,18 @@ struct HomeView: View {
                 .foregroundStyle(color)
             Text(text)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.ruulOnImage)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.7))
+                .foregroundStyle(Color.ruulOnImage.opacity(0.7))
         }
         .padding(.vertical, RuulSpacing.s3)
         .padding(.horizontal, RuulSpacing.s4)
-        .background(Color.white.opacity(0.18), in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .background(Color.ruulOnImage.opacity(0.18), in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                .stroke(Color.ruulOnImage.opacity(0.25), lineWidth: 0.5)
         )
         .padding(.top, RuulSpacing.s2)
     }
@@ -353,7 +353,7 @@ struct HomeView: View {
                 .font(.system(size: 10, weight: .bold))
                 .tracking(0.5)
         }
-        .foregroundStyle(Color.white)
+        .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(tint, in: Capsule())

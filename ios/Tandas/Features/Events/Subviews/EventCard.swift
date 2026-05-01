@@ -39,10 +39,10 @@ struct EventCard: View {
                 // top stays clean so status badges read against the cover hue.
                 LinearGradient(
                     stops: [
-                        .init(color: .clear,                    location: 0.00),
-                        .init(color: .clear,                    location: 0.30),
-                        .init(color: Color.black.opacity(0.20), location: 0.55),
-                        .init(color: Color.black.opacity(0.78), location: 1.00)
+                        .init(color: .clear,                       location: 0.00),
+                        .init(color: .clear,                       location: 0.30),
+                        .init(color: .ruulImageScrim(.light),      location: 0.55),
+                        .init(color: .ruulImageScrim(.deep),       location: 1.00)
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
@@ -93,11 +93,11 @@ struct EventCard: View {
                     overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.ruulSemanticError)
                 }
                 if event.status == .closed {
-                    overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.black.opacity(0.55))
+                    overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.ruulImageScrim(.badge))
                 }
                 Spacer()
                 if isHostedByMe {
-                    overlayBadge(icon: "star.fill", text: "Hosteas", tint: Color.black.opacity(0.55))
+                    overlayBadge(icon: "star.fill", text: "Hosteas", tint: Color.ruulImageScrim(.badge))
                 }
             }
             .padding(RuulSpacing.s3)
@@ -112,28 +112,28 @@ struct EventCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
                     .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(Color.ruulOnImage.opacity(0.85))
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.title)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .shadow(color: Color.black.opacity(0.18), radius: 2, x: 0, y: 1)
+                    .shadow(color: Color.ruulImageScrim(.light), radius: 2, x: 0, y: 1)
             }
 
             HStack(spacing: RuulSpacing.s3) {
                 if let location = event.locationName, !location.isEmpty {
                     Label(location, systemImage: "mappin.and.ellipse")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.85))
+                        .foregroundStyle(Color.ruulOnImage.opacity(0.85))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 if confirmedCount > 0 {
                     Text("\(confirmedCount) van")
                         .ruulTextStyle(RuulTypography.statSmall)
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(Color.ruulOnImage)
                 }
                 if let myStatus, myStatus != .pending {
                     myRSVPPill(myStatus)
@@ -164,7 +164,7 @@ struct EventCard: View {
                 .font(.system(size: 10, weight: .bold))
                 .tracking(0.5)
         }
-        .foregroundStyle(Color.white)
+        .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(tint, in: Capsule())
@@ -173,13 +173,13 @@ struct EventCard: View {
     private var livePill: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(Color.white)
+                .fill(Color.ruulOnImage)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(0.6)
         }
-        .foregroundStyle(Color.white)
+        .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(Color.ruulSemanticError, in: Capsule())
@@ -200,10 +200,10 @@ struct EventCard: View {
             Text(label)
                 .font(.system(size: 11, weight: .bold))
         }
-        .foregroundStyle(Color.white)
+        .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color.white.opacity(0.22), in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(0.30), lineWidth: 0.5))
+        .background(Color.ruulOnImage.opacity(0.22), in: Capsule())
+        .overlay(Capsule().stroke(Color.ruulOnImage.opacity(0.30), lineWidth: 0.5))
     }
 }

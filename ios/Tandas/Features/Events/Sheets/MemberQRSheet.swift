@@ -22,7 +22,9 @@ struct MemberQRSheet: View {
                 qrImage
                     .frame(width: 240, height: 240)
                     .padding(RuulSpacing.s4)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                    // Always-white background for QR contrast — camera scanners
+                    // need pure white for reliable detection. NOT theme-adaptive.
+                    .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
                 Text(eventTitle)
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)

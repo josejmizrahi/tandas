@@ -79,9 +79,9 @@ struct CreateEventView: View {
                 }
                 Image(systemName: "camera.fill")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.ruulOnImage)
                     .padding(8)
-                    .background(Color.black.opacity(0.55), in: Circle())
+                    .background(Color.ruulImageScrim(.badge), in: Circle())
                     .padding(RuulSpacing.s3)
             }
         }
