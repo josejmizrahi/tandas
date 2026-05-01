@@ -11,42 +11,82 @@ struct OTPInputView: View {
     @State private var resendIn: Int = 30
     @State private var resendTimer: Task<Void, Never>?
     @State private var feedbackTrigger: Int = 0
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         ZStack {
-            MeshBackground()
-            VStack(spacing: Brand.Spacing.xl) {
-                header
-                OTPInput(code: $code, disabled: isVerifying)
-                    .onChange(of: code) { _, newValue in
-                        if newValue.count == 6 && !isVerifying { Task { await verify() } }
-                    }
-                if let errorMessage {
-                    Text(errorMessage).font(.tandaCaption).foregroundStyle(.red)
+            Brand.Surface.canvas.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: Brand.Layout.sectionGap) {
+                Spacer().frame(height: 24)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Escribe el código")
+                        .font(Brand.Typography.heroTitle)
+                        .foregroundStyle(Brand.Surface.textPrimary)
+                    Text("Lo enviamos a \(channel.label).")
+                        .font(Brand.Typography.body)
+                        .foregroundStyle(Brand.Surface.textSecondary)
                 }
+
+                otpRow
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(Brand.Typography.caption)
+                        .foregroundStyle(.red)
+                }
+
                 resendButton
+
                 Spacer()
             }
-            .padding(.horizontal, Brand.Spacing.xl)
-            .padding(.top, Brand.Spacing.xxl)
+            .padding(.horizontal, Brand.Layout.pagePadH)
+            .padding(.bottom, 32)
         }
-        .toolbar { ToolbarItem(placement: .topBarLeading) { backButton } }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Brand.Surface.textPrimary)
+                }
+            }
+        }
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Brand.Surface.canvas, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .onAppear { startResendTimer() }
+        .onAppear {
+            startResendTimer()
+            isFocused = true
+        }
         .onDisappear { resendTimer?.cancel() }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
     }
 
-    private var header: some View {
-        VStack(spacing: Brand.Spacing.s) {
-            Text("Escribe el código")
-                .font(.tandaHero).foregroundStyle(.white)
-            Text("Te lo enviamos a \(Text(channel.label).fontWeight(.semibold).foregroundStyle(.white))")
-                .font(.tandaBody)
-                .foregroundStyle(.white.opacity(0.7))
+    private var otpRow: some View {
+        ZStack {
+            HStack(spacing: 10) {
+                ForEach(0..<6, id: \.self) { i in
+                    OTPSlot(char: char(at: i), isFocused: isFocused && i == code.count)
+                }
+            }
+            TextField("", text: $code)
+                .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .focused($isFocused)
+                .opacity(0.001)
+                .frame(width: 1, height: 1)
+                .onChange(of: code) { _, newValue in
+                    let cleaned = String(newValue.prefix(6).filter(\.isNumber))
+                    if cleaned != newValue { code = cleaned }
+                    if cleaned.count == 6 && !isVerifying {
+                        Task { await verify() }
+                    }
+                }
+                .disabled(isVerifying)
         }
-        .multilineTextAlignment(.center)
+        .contentShape(Rectangle())
+        .onTapGesture { isFocused = true }
     }
 
     private var resendButton: some View {
@@ -54,23 +94,15 @@ struct OTPInputView: View {
             Task { await resend() }
         } label: {
             Text(resendIn > 0 ? "Reenviar en \(resendIn)s" : "Reenviar código")
-                .font(.tandaCaption).foregroundStyle(.white.opacity(resendIn > 0 ? 0.4 : 0.85))
-                .underline(resendIn == 0)
+                .font(Brand.Typography.captionEmph)
+                .foregroundStyle(resendIn > 0 ? Brand.Surface.textTertiary : Brand.accent)
         }
         .disabled(resendIn > 0)
     }
 
-    private var backButton: some View {
-        Button {
-            dismiss()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.left")
-                Text(channel.isPhone ? "Cambiar número" : "Cambiar email")
-            }
-            .font(.tandaBody)
-            .foregroundStyle(.white.opacity(0.85))
-        }
+    private func char(at index: Int) -> String {
+        guard index < code.count else { return "" }
+        return String(code[code.index(code.startIndex, offsetBy: index)])
     }
 
     private func verify() async {
@@ -85,7 +117,6 @@ struct OTPInputView: View {
                 _ = try await app.auth.verifyEmailOTP(email, code: code)
             }
             feedbackTrigger &+= 1
-            // AuthGate will navigate automatically once session changes
         } catch {
             errorMessage = "Código incorrecto. Vuelve a intentarlo."
             code = ""
@@ -113,5 +144,27 @@ struct OTPInputView: View {
                 if !Task.isCancelled { resendIn -= 1 }
             }
         }
+    }
+}
+
+private struct OTPSlot: View {
+    let char: String
+    let isFocused: Bool
+
+    var body: some View {
+        Text(char.isEmpty ? " " : char)
+            .font(.system(size: 24, weight: .semibold, design: .rounded))
+            .foregroundStyle(Brand.Surface.textPrimary)
+            .frame(width: 46, height: 56)
+            .background(
+                RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous)
+                    .fill(Brand.Surface.card)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous)
+                    .stroke(isFocused ? Brand.accent : Brand.Surface.border, lineWidth: isFocused ? 1.5 : 1)
+            )
+            .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isFocused)
+            .animation(.spring(response: 0.25, dampingFraction: 0.75), value: char)
     }
 }

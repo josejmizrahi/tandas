@@ -13,27 +13,37 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            MeshBackground()
-            VStack(spacing: Brand.Spacing.xl) {
-                Spacer()
-                VStack(spacing: Brand.Spacing.m) {
-                    Text("¿Cómo te llaman?").font(.tandaHero).foregroundStyle(.white)
-                    Text("Así te van a ver tus grupos.").font(.tandaBody).foregroundStyle(.white.opacity(0.7))
+            Brand.Surface.canvas.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: Brand.Layout.sectionGap) {
+                Spacer().frame(height: 80)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("¿Cómo te llaman?")
+                        .font(Brand.Typography.heroTitle)
+                        .foregroundStyle(Brand.Surface.textPrimary)
+                    Text("Así te van a ver tus grupos.")
+                        .font(Brand.Typography.body)
+                        .foregroundStyle(Brand.Surface.textSecondary)
                 }
-                .multilineTextAlignment(.center)
-                Field(label: "Tu nombre", error: errorMessage) {
+
+                LumaField(label: "Tu nombre", error: errorMessage) {
                     TextField("Jose", text: $name)
                         .textContentType(.name)
-                        .foregroundStyle(.white)
-                        .font(.tandaTitle)
                 }
-                GlassCapsuleButton(isSubmitting ? "Guardando…" : "Continuar") {
+
+                Button {
                     Task { await submit() }
+                } label: {
+                    Text(isSubmitting ? "Guardando…" : "Continuar")
+                        .frame(maxWidth: .infinity)
+                        .lumaPrimaryPill()
                 }
+                .buttonStyle(.plain)
                 .disabled(!canSubmit)
+
                 Spacer()
             }
-            .padding(.horizontal, Brand.Spacing.xl)
+            .padding(.horizontal, Brand.Layout.pagePadH)
+            .padding(.bottom, 32)
         }
         .sensoryFeedback(.success, trigger: feedback)
     }

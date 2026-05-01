@@ -2,6 +2,7 @@ import SwiftUI
 import AuthenticationServices
 import CryptoKit
 
+/// Luma-style login: brand mark + SiwA + phone/email tabs + field + CTA.
 struct LoginView: View {
     @Environment(AppState.self) private var app
     @State private var vm: AuthViewModel?
@@ -10,42 +11,52 @@ struct LoginView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                MeshBackground()
+                Brand.Surface.canvas.ignoresSafeArea()
                 ScrollView {
-                    VStack(spacing: Brand.Spacing.xl) {
-                        Spacer().frame(height: Brand.Spacing.xxl * 2)
-                        header
-                        appleButton
-                        divider
-                        methodPicker
-                        inputField
-                        sendButton
-                        if let error = vm?.errorMessage {
-                            Text(error).font(.tandaCaption).foregroundStyle(.red)
+                    VStack(alignment: .leading, spacing: Brand.Layout.sectionGap) {
+                        Spacer().frame(height: 80)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkle")
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundStyle(Brand.Surface.textPrimary)
+                                Text("ruul")
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundStyle(Brand.Surface.textPrimary)
+                            }
+                            Text("La vida en grupo, sin pleitos.")
+                                .font(Brand.Typography.body)
+                                .foregroundStyle(Brand.Surface.textSecondary)
                         }
-                        Spacer().frame(height: Brand.Spacing.xl)
+
+                        VStack(spacing: 12) {
+                            appleButton
+                            divider
+                            methodPicker
+                            inputField
+                            sendButton
+                            if let error = vm?.errorMessage {
+                                Text(error)
+                                    .font(Brand.Typography.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+
+                        Spacer()
                         footer
                     }
-                    .padding(.horizontal, Brand.Spacing.xl)
+                    .padding(.horizontal, Brand.Layout.pagePadH)
+                    .padding(.bottom, 32)
                 }
             }
             .navigationDestination(item: bindingForChannel()) { channel in
                 OTPInputView(channel: channel)
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .onAppear {
             if vm == nil { vm = AuthViewModel(auth: app.auth) }
-        }
-    }
-
-    private var header: some View {
-        VStack(spacing: Brand.Spacing.s) {
-            Text("Ruul")
-                .font(.system(size: 44, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-            Text("La vida en grupo, sin pleitos.")
-                .font(.tandaBody)
-                .foregroundStyle(.white.opacity(0.7))
         }
     }
 
@@ -56,17 +67,20 @@ struct LoginView: View {
         } onCompletion: { result in
             handleAppleCompletion(result)
         }
-        .signInWithAppleButtonStyle(.white)
-        .frame(height: 52)
+        .signInWithAppleButtonStyle(.black)
+        .frame(height: Brand.Layout.primaryHeight)
         .clipShape(Capsule())
     }
 
     private var divider: some View {
-        HStack {
-            Rectangle().fill(.white.opacity(0.18)).frame(height: 0.5)
-            Text("o").font(.tandaCaption).foregroundStyle(.white.opacity(0.5))
-            Rectangle().fill(.white.opacity(0.18)).frame(height: 0.5)
+        HStack(spacing: 12) {
+            Rectangle().fill(Brand.Surface.border).frame(height: 1)
+            Text("o")
+                .font(Brand.Typography.caption)
+                .foregroundStyle(Brand.Surface.textTertiary)
+            Rectangle().fill(Brand.Surface.border).frame(height: 1)
         }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -87,20 +101,18 @@ struct LoginView: View {
             @Bindable var bvm = vm
             switch vm.method {
             case .phone:
-                Field(label: "Tu número", description: "Te mandamos un código de 6 dígitos por SMS.") {
+                LumaField(label: "Teléfono", helper: "Te mandamos un código por SMS.") {
                     TextField("+5215555551234", text: $bvm.phone)
                         .keyboardType(.phonePad)
                         .textContentType(.telephoneNumber)
-                        .foregroundStyle(.white)
                 }
             case .email:
-                Field(label: "Tu email", description: "Te mandamos un código de 6 dígitos por correo.") {
+                LumaField(label: "Email", helper: "Te mandamos un código por correo.") {
                     TextField("tu@email.com", text: $bvm.email)
                         .keyboardType(.emailAddress)
                         .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .foregroundStyle(.white)
                 }
             }
         }
@@ -109,18 +121,24 @@ struct LoginView: View {
     @ViewBuilder
     private var sendButton: some View {
         if let vm {
-            GlassCapsuleButton(vm.isSending ? "Enviando…" : "Enviarme código") {
+            Button {
                 Task { await vm.sendOTP() }
+            } label: {
+                Text(vm.isSending ? "Enviando…" : "Continuar")
+                    .frame(maxWidth: .infinity)
+                    .lumaPrimaryPill()
             }
+            .buttonStyle(.plain)
             .disabled(vm.isSending)
         }
     }
 
     private var footer: some View {
         Text("Al continuar aceptas las reglas que tu grupo defina.")
-            .font(.tandaCaption)
-            .foregroundStyle(.white.opacity(0.5))
+            .font(Brand.Typography.caption)
+            .foregroundStyle(Brand.Surface.textTertiary)
             .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
     }
 
     private func bindingForChannel() -> Binding<OTPChannel?> {
@@ -146,7 +164,7 @@ struct LoginView: View {
                 }
             }
         case .failure:
-            break  // user cancelled; no-op
+            break
         }
     }
 }

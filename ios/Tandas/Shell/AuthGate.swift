@@ -72,10 +72,8 @@ struct AuthGate: View {
                 OnboardingView()
             } else if app.profile == nil {
                 BootstrappingView()  // brief flicker while profile loads
-            } else if app.groups.isEmpty {
-                EmptyGroupsView()
             } else {
-                GroupsListView()
+                MainTabView()
             }
         }
         .task { await app.start() }
@@ -87,17 +85,17 @@ struct BootstrappingView: View {
 
     var body: some View {
         ZStack {
-            MeshBackground()
-            VStack(spacing: Brand.Spacing.m) {
+            Brand.Surface.canvas.ignoresSafeArea()
+            VStack(spacing: 12) {
                 ProgressView()
                     .controlSize(.large)
-                    .tint(.white)
+                    .tint(Brand.Surface.textPrimary)
                 if let err = app.bootstrapError {
                     Text("Bootstrap error:\n\(err)")
-                        .font(.tandaCaption)
+                        .font(.system(size: 12))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, Brand.Spacing.xl)
+                        .padding(.horizontal, 24)
                 }
             }
         }

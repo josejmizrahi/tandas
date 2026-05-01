@@ -4,6 +4,11 @@ import Supabase
 @main
 struct TandasApp: App {
     @State private var appState: AppState
+    @AppStorage("ruul_appearance") private var appearanceRaw: String = AppearanceOption.system.rawValue
+
+    private var appearance: AppearanceOption {
+        AppearanceOption(rawValue: appearanceRaw) ?? .system
+    }
 
     init() {
         let useMocks = ProcessInfo.processInfo.environment["TANDAS_USE_MOCKS"] == "1"
@@ -23,9 +28,14 @@ struct TandasApp: App {
 
     var body: some Scene {
         WindowGroup {
+            // Luma-style: respeta sistema o user preference (Auto/Claro/Oscuro).
             AuthGate()
                 .environment(appState)
-                .preferredColorScheme(.dark)
+                .ruulTheme()
+                .preferredColorScheme(appearance.colorScheme)
+                #if DEBUG
+                .ruulShowcaseShakeListener()
+                #endif
         }
     }
 }
