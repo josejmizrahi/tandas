@@ -231,6 +231,18 @@ final class FounderOnboardingCoordinator {
         error = nil
     }
 
+    /// Skip the phone+OTP path: the user authenticated with Apple via the
+    /// SiwA button on PhoneVerifyView (Supabase upgrades the current anon
+    /// session to a real user when signInWithIdToken is called). Mark phone
+    /// + otp steps complete and transition straight to confirmation.
+    func completeViaApple() async {
+        await complete(step: .phoneVerify)
+        await complete(step: .otp)
+        try? await transition(to: .confirm)
+        await trackOnboardingCompleted()
+        await analytics.track(.otpVerified(channel: "apple", attempts: 0))
+    }
+
     func finishOnboarding() async {
         try? progress.clear()
         progressEntity = nil
