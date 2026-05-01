@@ -7,6 +7,7 @@ final class AppState {
     var profile: Profile?
     var groups: [Group] = []
     var isBootstrapping: Bool = true
+    var bootstrapError: String?
 
     let auth: any AuthService
     let profileRepo: any ProfileRepository
@@ -36,11 +37,25 @@ final class AppState {
     }
 
     func refreshProfileAndGroups() async {
-        async let p = (try? await profileRepo.loadMine())
-        async let g = ((try? await groupsRepo.listMine()) ?? [])
-        let (profile, groups) = await (p, g)
-        self.profile = profile
-        self.groups = groups
+        bootstrapError = nil
+        do {
+            async let pTask = profileRepo.loadMine()
+            async let gTask = groupsRepo.listMine()
+            let (p, g) = try await (pTask, gTask)
+            self.profile = p
+            self.groups = g
+        } catch {
+            self.bootstrapError = "\(error)"
+            // Fall through to OnboardingView with an empty profile so the user
+            // isn't trapped on the spinner if the row is missing or RLS blocks.
+            self.profile = Profile(
+                id: session?.user.id ?? UUID(),
+                displayName: "",
+                avatarUrl: nil,
+                phone: session?.user.phone
+            )
+            self.groups = []
+        }
     }
 }
 
@@ -68,12 +83,23 @@ struct AuthGate: View {
 }
 
 struct BootstrappingView: View {
+    @Environment(AppState.self) private var app
+
     var body: some View {
         ZStack {
             MeshBackground()
-            ProgressView()
-                .controlSize(.large)
-                .tint(.white)
+            VStack(spacing: Brand.Spacing.m) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                if let err = app.bootstrapError {
+                    Text("Bootstrap error:\n\(err)")
+                        .font(.tandaCaption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Brand.Spacing.xl)
+                }
+            }
         }
     }
 }
