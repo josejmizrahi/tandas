@@ -30,7 +30,16 @@ enum SupabaseEnvironment {
         guard let url = URL(string: urlString) else {
             throw SupabaseConfigError.malformedURL
         }
-        return SupabaseClient(supabaseURL: url, supabaseKey: anonKey)
+        return SupabaseClient(
+            supabaseURL: url,
+            supabaseKey: anonKey,
+            options: SupabaseClientOptions(
+                db: SupabaseClientOptions.DatabaseOptions(
+                    encoder: .tandas,
+                    decoder: .tandas
+                )
+            )
+        )
     }
 
     /// Host string read from the same Info.plist value the client was built from.

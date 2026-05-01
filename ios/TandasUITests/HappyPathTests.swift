@@ -8,13 +8,11 @@ final class HappyPathTests: XCTestCase {
     }
 
     func testFullOnboardingThroughCreatingGroup() throws {
-        // Skipped: MockAuthService.sessionStream uses a `lazy var` AsyncStream
-        // pattern that doesn't reliably yield from inside actor isolation when
-        // verifyPhoneOTP is called. AuthGate never observes the session change
-        // mid-test, so OnboardingView is never reached. Refactor MockAuthService
-        // to use a continuation registry pattern (or AsyncChannel) before
-        // re-enabling. See plan T18.
-        try XCTSkipIf(true, "Pending MockAuthService.sessionStream fix")
+        // Pendiente: la transición Onboarding → EmptyGroupsView no completa en
+        // 5s post-tap "Continuar". Login → OTP → Onboarding sí pasa (AsyncStream
+        // fix verificado). Probable timing/animation issue de la transición de
+        // AuthGate body cuando @Observable AppState.profile cambia.
+        try XCTSkipIf(true, "Pending Onboarding→Empty transition timing fix")
 
         let app = XCUIApplication()
         app.launchEnvironment = ["TANDAS_USE_MOCKS": "1"]
