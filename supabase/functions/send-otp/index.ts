@@ -46,45 +46,44 @@ serve(async (req) => {
     return jsonError(400, "invalid JSON body");
   }
 
+  // Scope: this function only handles the WhatsApp/Wassenger path. The SMS
+  // fallback is now done CLIENT-SIDE via the canonical Supabase phone-change
+  // flow (`auth.updateUser({phone}) → auth.verifyOtp({type:'phone_change'})`)
+  // because that's the only flow that natively promotes anon → phone with
+  // the same UID. See Plans/AnonAuthUpgradeGap.md for the full rationale.
+  //
+  // If Wassenger is unconfigured or the message fails, return 503 — the
+  // iOS LiveOTPService falls through to the client-side SMS path on this.
+
+  if (!WASSENGER_API_KEY || !WASSENGER_DEVICE_ID) {
+    return jsonError(503, "wassenger_unconfigured");
+  }
+
   const code = generateCode();
   const expires_at = new Date(Date.now() + TTL_MINUTES * 60 * 1000);
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Try WhatsApp first if configured.
-  let channel: "whatsapp" | "sms" = "sms";
-  if (WASSENGER_API_KEY && WASSENGER_DEVICE_ID) {
-    const ok = await sendViaWhatsApp(phone, code);
-    if (ok) channel = "whatsapp";
+  const ok = await sendViaWhatsApp(phone, code);
+  if (!ok) {
+    return jsonError(502, "wassenger_send_failed");
   }
 
-  if (channel === "sms") {
-    // Fall back to Supabase Auth SMS (Twilio under the hood).
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    if (error) {
-      return jsonError(502, `sms send failed: ${error.message}`);
-    }
-    // For SMS path, Supabase Auth manages the code itself; we don't store
-    // anything in otp_codes. We return channel='sms' so the verify-otp
-    // function knows to forward to auth.verifyOtp.
-    return jsonResponse({ channel: "sms", expires_at });
-  }
-
-  // For WhatsApp path, persist the code hash so verify-otp can validate.
+  // Persist the code hash so verify-otp can validate.
   const codeHash = await sha256(`${code}:${phone}`);
   const { error: insertErr } = await supabase
     .from("otp_codes")
     .insert({
       phone_e164: phone,
       code_hash: codeHash,
-      channel,
+      channel: "whatsapp",
       expires_at: expires_at.toISOString(),
     });
   if (insertErr) {
     console.error("otp_codes insert failed", insertErr);
-    return jsonError(500, "failed to store code");
+    return jsonError(500, "store_failed");
   }
 
-  return jsonResponse({ channel, expires_at });
+  return jsonResponse({ channel: "whatsapp", expires_at });
 });
 
 async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
