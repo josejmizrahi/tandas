@@ -7,9 +7,7 @@ struct CheckInScannerView: View {
 
     var body: some View {
         ZStack {
-            // Camera scanner is intentionally always-black (the camera feed
-            // surface is dark regardless of system color scheme).
-            Color.ruulImageScrim(.opaque).ignoresSafeArea()
+            Color.ruulCameraBackground.ignoresSafeArea()
 
             switch coordinator.scanner.state {
             case .denied:

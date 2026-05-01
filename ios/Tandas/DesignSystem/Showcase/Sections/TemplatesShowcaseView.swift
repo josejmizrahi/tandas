@@ -29,7 +29,7 @@ struct TemplatesShowcaseView: View {
                     subtitle: "Mesh background + step container.",
                     primaryCTA: ("Continuar", false, { })
                 ) {
-                    Color.gray.opacity(0.2).frame(height: 120)
+                    Color.ruulBackgroundElevated.frame(height: 120)
                 }
             }
             .frame(height: 460)

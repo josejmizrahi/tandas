@@ -322,66 +322,40 @@ public extension Color {
         })
     }
 
-    // MARK: - Image overlay surfaces (intentionally NOT theme-adaptive)
+    // MARK: - On-image content (text/icons over photo or vibrant cover)
     //
-    // These tokens are for content that sits ON TOP of an image / cover /
-    // camera preview. The underlying surface is always-dark (a colored cover
-    // image or a camera feed), so the overlay color is locked regardless of
-    // system color scheme — it is NOT a bug that they don't switch in dark
-    // mode. Use them anywhere `Color.white` or `Color.black.opacity(...)`
-    // would otherwise be hardcoded over an image surface.
+    // These tokens DON'T adapt to scheme — they always read against a saturated
+    // image backdrop, so the content is always white/translucent-white. Use
+    // these instead of bare Color.white when overlaying text/badges on photos.
 
-    /// White text / UI elements that sit on an always-dark image surface
-    /// (event covers under a vignette, camera scanner UI, the white surface
-    /// of CTA pills inset into a hero gradient).
-    ///
-    /// Apply opacity for hierarchy: `.ruulOnImage.opacity(0.85)` for
-    /// secondary text, `.ruulOnImage.opacity(0.30)` for borders, etc.
-    static var ruulOnImage: Color { .white }
+    /// Primary text on top of image/cover (always white).
+    static var ruulOnImage: Color { Color(uiColor: UIColor(white: 1.0, alpha: 1.0)) }
 
-    /// Symmetric inverse of `ruulOnImage` — black text/UI that sits on an
-    /// always-light surface that is itself inset into an image overlay
-    /// context (e.g., dark text inside a `Color.ruulOnImage` CTA pill,
-    /// or text inside a white QR card).
-    ///
-    /// NOT theme-adaptive — both the surface and the text are locked
-    /// because they exist in the cover's color space, not the app's.
-    static var ruulOnImageInverse: Color { .black }
+    /// Secondary text on top of image/cover (white at 85%).
+    static var ruulOnImageSecondary: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.85)) }
 
-    /// Black scrim layered on top of an image to make overlaid white content
-    /// legible. Use the typed `ImageScrimDepth` enum for consistent values
-    /// across the app.
-    static func ruulImageScrim(_ depth: ImageScrimDepth) -> Color {
-        Color.black.opacity(depth.opacity)
-    }
-}
+    /// Translucent black badge background over an image (for "Cerrado", etc.).
+    static var ruulImageBadge: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.55)) }
 
-/// Standard depths for `Color.ruulImageScrim(_:)` — keeps vignette gradients
-/// and badge backgrounds consistent across HomeView, EventCard, and
-/// EventDetailView.
-public enum ImageScrimDepth: Sendable, Hashable {
-    /// 0.20 — top of a vignette gradient (subtle).
-    case light
-    /// 0.35 — mid-vignette transition (hero hero gradient stops).
-    case medium
-    /// 0.55 — badge / pill background overlaid on a colored image.
-    case badge
-    /// 0.78 — bottom of a vignette where white body text reads.
-    case deep
-    /// 0.85 — full bottom of a hero vignette.
-    case max
-    /// 1.0 — fully-opaque black surface (camera viewport background, etc.).
-    /// Use when there's no image behind the scrim; the scrim IS the surface.
-    case opaque
+    /// Translucent white pill background over an image (for RSVP status pills).
+    static var ruulImagePill: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.22)) }
 
-    public var opacity: Double {
-        switch self {
-        case .light:  return 0.20
-        case .medium: return 0.35
-        case .badge:  return 0.55
-        case .deep:   return 0.78
-        case .max:    return 0.85
-        case .opaque: return 1.00
-        }
-    }
+    /// Translucent white border for pills over images.
+    static var ruulImagePillBorder: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.30)) }
+
+    /// Vignette gradient mid-stop (20% black) for image-content readability.
+    static var ruulImageVignetteMid: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.20)) }
+
+    /// Vignette gradient bottom-stop (78% black).
+    static var ruulImageVignetteDeep: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.78)) }
+
+    /// Drop shadow under text on images (~18% black).
+    static var ruulImageTextShadow: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.18)) }
+
+    /// Camera viewfinder background — always pure black for contrast.
+    static var ruulCameraBackground: Color { Color(uiColor: UIColor.black) }
+
+    /// Text/icon colored to contrast a SOLID white pill placed over an image
+    /// (always black, regardless of scheme — the pill is always white).
+    static var ruulOnImageInverse: Color { Color(uiColor: UIColor.black) }
 }

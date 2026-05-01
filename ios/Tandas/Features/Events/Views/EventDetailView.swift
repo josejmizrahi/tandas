@@ -8,7 +8,6 @@ struct EventDetailView: View {
     @Bindable var coordinator: EventDetailCoordinator
     let memberLookup: (UUID) -> (name: String, avatarURL: URL?)
     var onScannerOpen: () -> Void
-    var onEdit: () -> Void = {}
 
     @State private var qrSheetPresented = false
     @State private var cancelEventSheet = false
@@ -98,7 +97,7 @@ struct EventDetailView: View {
                 // Bottom gradient ensures status pills + title legibility on
                 // bright covers, regardless of theme.
                 LinearGradient(
-                    colors: [.clear, Color.ruulImageScrim(.badge)],
+                    colors: [.clear, Color.ruulImageBadge],
                     startPoint: .top, endPoint: .bottom
                 )
                 .frame(height: 180)
@@ -154,7 +153,7 @@ struct EventDetailView: View {
                     totalConfirmed: coordinator.rsvps.filter { $0.status == .going }.count,
                     totalMembers: coordinator.rsvps.count,
                     onSendReminders: { remindSheet = true },
-                    onEdit: onEdit,
+                    onEdit: { /* wired by parent in V1.x */ },
                     onOpenScanner: onScannerOpen,
                     onCancelEvent: { cancelEventSheet = true },
                     onCloseEvent: { closeSheet = true },
@@ -199,8 +198,10 @@ struct EventDetailView: View {
             }
 
             Text(dateLine)
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Color.ruulAccentPrimary)
+                .textCase(.uppercase)
+                .tracking(0.6)
 
             Text(coordinator.event.title)
                 .ruulTextStyle(RuulTypography.displayLarge)
@@ -276,8 +277,9 @@ struct EventDetailView: View {
         if let description = coordinator.event.description, !description.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("DESCRIPCIÓN")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .tracking(0.6)
                 Text(description)
                     .ruulTextStyle(RuulTypography.bodyLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -304,7 +306,7 @@ struct EventDetailView: View {
             Spacer()
             if coordinator.viewerRole == .host {
                 Button {
-                    onEdit()
+                    // edit hook (V1.x)
                 } label: {
                     Image(systemName: "pencil")
                         .font(.system(size: 16, weight: .bold))

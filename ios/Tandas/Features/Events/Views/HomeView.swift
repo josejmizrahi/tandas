@@ -7,6 +7,8 @@ struct HomeView: View {
     var onOpenEvent: (Event) -> Void
     var onOpenPastEvents: () -> Void
 
+    @State private var showSettings: Bool = false
+
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -26,20 +28,41 @@ struct HomeView: View {
             .overlay(alignment: .bottomTrailing) { fab }
         }
         .task { await coordinator.refresh() }
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Header — Apple Sports style: tiny tracking-uppercase meta +
-    // huge group name in display weight.
+    // huge group name in display weight + settings button (top-right).
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(greeting)
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Text(coordinator.group.name)
-                .ruulTextStyle(RuulTypography.displayMedium)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .lineLimit(2)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(greeting)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Text(coordinator.group.name)
+                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .frame(width: 40, height: 40)
+                    .background(Color.ruulBackgroundElevated, in: Circle())
+                    .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
         }
         .padding(.top, RuulSpacing.s4)
     }
@@ -64,8 +87,9 @@ struct HomeView: View {
         } else if let next = coordinator.nextEvent {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("PRÓXIMO")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .tracking(0.8)
                 heroTile(next)
             }
         } else {
@@ -85,8 +109,8 @@ struct HomeView: View {
                     stops: [
                         .init(color: .clear,                    location: 0.00),
                         .init(color: .clear,                    location: 0.35),
-                        .init(color: Color.ruulImageScrim(.medium), location: 0.65),
-                        .init(color: Color.ruulImageScrim(.max), location: 1.00)
+                        .init(color: Color.ruulImageVignetteMid.opacity(1.0), location: 0.65),
+                        .init(color: Color.ruulImageVignetteDeep.opacity(1.0), location: 1.00)
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
@@ -108,11 +132,11 @@ struct HomeView: View {
         VStack {
             HStack(spacing: RuulSpacing.s2) {
                 if event.hostId == userId {
-                    overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.ruulImageScrim(.badge))
+                    overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.ruulImageBadge)
                 }
                 Spacer()
                 if event.isRecurringGenerated {
-                    overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.ruulImageScrim(.badge))
+                    overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.ruulImageBadge)
                 }
             }
             .padding(RuulSpacing.s4)
@@ -124,21 +148,23 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(heroDateLine(event))
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color.ruulOnImage.opacity(0.90))
+                    .textCase(.uppercase)
+                    .tracking(0.8)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .shadow(color: Color.ruulImageScrim(.light), radius: 4, x: 0, y: 2)
+                    .shadow(color: Color.ruulImageBadge.opacity(0.45), radius: 4, x: 0, y: 2)
             }
 
             if let location = event.locationName, !location.isEmpty {
                 Label(location, systemImage: "mappin.and.ellipse")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.ruulOnImage.opacity(0.85))
+                    .foregroundStyle(Color.ruulOnImageSecondary)
             }
 
             // RSVP CTA — Apple Sports doesn't have inline CTAs, but for ruul
@@ -263,11 +289,12 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.s4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("PRÓXIMOS")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.ruulTextTertiary)
+                        .tracking(0.8)
                     Spacer()
                     Text("\(rest.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
                 VStack(spacing: RuulSpacing.s4) {
