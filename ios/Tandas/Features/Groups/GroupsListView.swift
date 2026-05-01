@@ -64,8 +64,3 @@ struct GroupsListView: View {
     }
 }
 
-// GroupSummaryView stub — implemented in T17
-struct GroupSummaryView: View {
-    let group: Group
-    var body: some View { Text("\(group.name) summary (stub)").foregroundStyle(.white) }
-}
