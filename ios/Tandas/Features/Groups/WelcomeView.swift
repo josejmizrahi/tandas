@@ -10,33 +10,37 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            MeshBackground()
+            Brand.Surface.canvas.ignoresSafeArea()
             ScrollView {
-                VStack(spacing: Brand.Spacing.xl) {
+                VStack(alignment: .leading, spacing: Brand.Layout.sectionGap) {
                     hero
-                    WelcomeStepCard(title: "Período de gracia", symbol: "shield.checkered") {
-                        Text("Tus primeros días no generan multas. Aprende cómo funciona el grupo sin presión.")
-                            .font(.tandaBody).foregroundStyle(.white.opacity(0.85))
+                    stepCard(
+                        symbol: "shield.checkered",
+                        title: "Período de gracia",
+                        body: "Tus primeros días no generan multas. Aprende cómo funciona el grupo sin presión."
+                    )
+                    stepCard(
+                        symbol: "list.bullet.clipboard",
+                        title: "Las reglas del grupo",
+                        body: "Las reglas y multas las decide el grupo y se votan. Para ver y proponer cambios, ve a la pestaña de Reglas."
+                    )
+                    stepCard(
+                        symbol: "person.3",
+                        title: "Quiénes están",
+                        body: membersCopy
+                    )
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Entrar al grupo")
+                            .frame(maxWidth: .infinity)
+                            .lumaPrimaryPill()
                     }
-                    WelcomeStepCard(title: "Las reglas del grupo", symbol: "list.bullet.clipboard") {
-                        Text("Las reglas y multas las decide el grupo y se votan. Para ver y proponer cambios, ve a la pestaña de Reglas (próximamente).")
-                            .font(.tandaBody).foregroundStyle(.white.opacity(0.85))
-                    }
-                    WelcomeStepCard(title: "Quiénes están", symbol: "person.3") {
-                        if isLoading {
-                            ProgressView().tint(.white)
-                        } else if members.isEmpty {
-                            Text("Eres la primera persona del grupo.")
-                                .font(.tandaBody).foregroundStyle(.white.opacity(0.85))
-                        } else {
-                            Text("\(members.count) miembros activos.")
-                                .font(.tandaBody).foregroundStyle(.white.opacity(0.85))
-                        }
-                    }
-                    GlassCapsuleButton("Entrar al grupo") { dismiss() }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, Brand.Spacing.xl)
-                .padding(.top, Brand.Spacing.xxl)
+                .padding(.horizontal, Brand.Layout.pagePadH)
+                .padding(.top, 24)
+                .padding(.bottom, Brand.Layout.pageBottomPad)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -44,15 +48,46 @@ struct WelcomeView: View {
     }
 
     private var hero: some View {
-        VStack(spacing: Brand.Spacing.s) {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(group.groupType.displayName.uppercased())
+                .font(Brand.Typography.rowKicker)
+                .tracking(0.5)
+                .foregroundStyle(Brand.Surface.textSecondary)
             Text("Bienvenido a")
-                .font(.tandaTitle).foregroundStyle(.white.opacity(0.7))
+                .font(Brand.Typography.bodyEmphasis)
+                .foregroundStyle(Brand.Surface.textSecondary)
             Text(group.name)
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-            Text(group.groupType.displayName)
-                .font(.tandaCaption).foregroundStyle(.white.opacity(0.65))
+                .font(Brand.Typography.heroTitle)
+                .foregroundStyle(Brand.Surface.textPrimary)
+        }
+    }
+
+    private var membersCopy: String {
+        if isLoading { return "Cargando miembros…" }
+        if members.isEmpty { return "Eres la primera persona del grupo." }
+        return "\(members.count) miembros activos."
+    }
+
+    private func stepCard(symbol: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: Brand.Layout.rowSpacing) {
+            RoundedRectangle(cornerRadius: Brand.Layout.cardSmallRadius, style: .continuous)
+                .fill(Brand.Surface.card)
+                .frame(width: Brand.Layout.cardSmallSize, height: Brand.Layout.cardSmallSize)
+                .overlay(
+                    Image(systemName: symbol)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Brand.Surface.textPrimary)
+                )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(Brand.Typography.rowTitle)
+                    .foregroundStyle(Brand.Surface.textPrimary)
+                Text(body)
+                    .font(Brand.Typography.caption)
+                    .foregroundStyle(Brand.Surface.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
         }
     }
 

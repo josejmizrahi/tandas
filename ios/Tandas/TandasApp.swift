@@ -4,6 +4,11 @@ import Supabase
 @main
 struct TandasApp: App {
     @State private var appState: AppState
+    @AppStorage("ruul_appearance") private var appearanceRaw: String = AppearanceOption.system.rawValue
+
+    private var appearance: AppearanceOption {
+        AppearanceOption(rawValue: appearanceRaw) ?? .system
+    }
 
     init() {
         let useMocks = ProcessInfo.processInfo.environment["TANDAS_USE_MOCKS"] == "1"
@@ -23,16 +28,11 @@ struct TandasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // Note: .preferredColorScheme(.dark) is intentionally retained
-            // during DS V1. The new design system supports light + dark + HC,
-            // but every existing feature view (LoginView, OnboardingView,
-            // WelcomeView, GroupsListView) was authored for dark only and
-            // would render incorrectly in light. The override is removed when
-            // those features are migrated in subsequent prompts.
+            // Luma-style: respeta sistema o user preference (Auto/Claro/Oscuro).
             AuthGate()
                 .environment(appState)
                 .ruulTheme()
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(appearance.colorScheme)
                 #if DEBUG
                 .ruulShowcaseShakeListener()
                 #endif

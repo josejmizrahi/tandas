@@ -2,12 +2,13 @@ import SwiftUI
 
 struct NewGroupWizard: View {
     @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
     @State private var step: Int = 0
     @State private var selectedType: GroupType?
     @State private var name: String = ""
     @State private var description: String = ""
     @State private var eventLabel: String = ""
-    @State private var dayOfWeek: Int = 2  // martes default
+    @State private var dayOfWeek: Int = 2
     @State private var startTime: Date = Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: .now) ?? .now
     @State private var location: String = ""
     @State private var isSubmitting: Bool = false
@@ -18,28 +19,49 @@ struct NewGroupWizard: View {
 
     var body: some View {
         ZStack {
-            MeshBackground()
-            VStack(spacing: 0) {
+            Brand.Surface.canvas.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 0) {
                 progressBar
+                    .padding(.horizontal, Brand.Layout.pagePadH)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
+
                 content
             }
         }
-        .toolbar { toolbar }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if step > 0 { step -= 1 } else { dismiss() }
+                } label: {
+                    Image(systemName: step > 0 ? "chevron.left" : "xmark")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Brand.Surface.textPrimary)
+                }
+            }
+        }
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Brand.Surface.canvas, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
         .navigationDestination(item: $createdGroup) { g in WelcomeView(group: g) }
     }
 
     private var progressBar: some View {
-        GeometryReader { geo in
-            let totalSteps = needsStep3 ? 3 : 2
-            let progress = CGFloat(step + 1) / CGFloat(totalSteps)
-            ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.15)).frame(height: 4)
-                Capsule().fill(Brand.accent).frame(width: geo.size.width * progress, height: 4)
+        let totalSteps = needsStep3 ? 3 : 2
+        let progress = CGFloat(step + 1) / CGFloat(totalSteps)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Paso \(min(step + 1, totalSteps)) de \(totalSteps)")
+                .font(Brand.Typography.caption)
+                .foregroundStyle(Brand.Surface.textTertiary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Brand.Surface.card).frame(height: 4)
+                    Capsule().fill(Brand.Surface.textPrimary).frame(width: geo.size.width * progress, height: 4)
+                        .animation(.spring(response: 0.4), value: progress)
+                }
             }
+            .frame(height: 4)
         }
-        .frame(height: 4)
-        .padding(.horizontal, Brand.Spacing.xl)
-        .padding(.vertical, Brand.Spacing.m)
     }
 
     @ViewBuilder
@@ -54,10 +76,15 @@ struct NewGroupWizard: View {
 
     private var typologyStep: some View {
         ScrollView {
-            VStack(spacing: Brand.Spacing.l) {
+            VStack(alignment: .leading, spacing: 16) {
                 Text("¿Qué tipo de grupo es?")
-                    .font(.tandaHero).foregroundStyle(.white)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Brand.Spacing.m) {
+                    .font(Brand.Typography.heroTitle)
+                    .foregroundStyle(Brand.Surface.textPrimary)
+                Text("Esto define los defaults del grupo.")
+                    .font(Brand.Typography.body)
+                    .foregroundStyle(Brand.Surface.textSecondary)
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(GroupType.allCases) { type in
                         TypologyCard(type: type, isSelected: selectedType == type) {
                             selectedType = type
@@ -69,83 +96,96 @@ struct NewGroupWizard: View {
                         }
                     }
                 }
+                .padding(.top, 8)
             }
-            .padding(.horizontal, Brand.Spacing.xl)
+            .padding(.horizontal, Brand.Layout.pagePadH)
+            .padding(.bottom, 32)
         }
     }
 
     private var identityStep: some View {
         ScrollView {
-            VStack(spacing: Brand.Spacing.l) {
+            VStack(alignment: .leading, spacing: 20) {
                 Text("Cuéntanos del grupo")
-                    .font(.tandaHero).foregroundStyle(.white)
-                Field(label: "Nombre del grupo") {
+                    .font(Brand.Typography.heroTitle)
+                    .foregroundStyle(Brand.Surface.textPrimary)
+
+                LumaField(label: "Nombre del grupo") {
                     TextField(selectedType?.displayName ?? "", text: $name)
                         .textInputAutocapitalization(.sentences)
-                        .foregroundStyle(.white)
                 }
-                Field(label: "Descripción", description: "Opcional. Máx 280 caracteres.") {
+                LumaField(label: "Descripción", helper: "Opcional. Máx 280 caracteres.") {
                     TextField("Sirve para que los nuevos sepan de qué va.", text: $description, axis: .vertical)
                         .lineLimit(2...4)
-                        .foregroundStyle(.white)
                 }
-                Field(label: "Cómo le llaman al evento", description: "Cena, partido, sesión, ensayo…") {
+                LumaField(label: "Cómo le llaman al evento", helper: "Cena, partido, sesión, ensayo…") {
                     TextField(selectedType?.defaultEventLabel ?? "Evento", text: $eventLabel)
-                        .foregroundStyle(.white)
                 }
-                GlassCapsuleButton("Siguiente") {
-                    step = needsStep3 ? 2 : -1
-                    if !needsStep3 { Task { await submit() } }
+
+                Button {
+                    if needsStep3 {
+                        step = 2
+                    } else {
+                        Task { await submit() }
+                    }
+                } label: {
+                    Text(needsStep3 ? "Siguiente" : "Crear grupo")
+                        .frame(maxWidth: .infinity)
+                        .lumaPrimaryPill()
                 }
+                .buttonStyle(.plain)
                 .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(.horizontal, Brand.Spacing.xl)
+            .padding(.horizontal, Brand.Layout.pagePadH)
+            .padding(.bottom, 32)
         }
     }
 
     private var defaultsStep: some View {
         ScrollView {
-            VStack(spacing: Brand.Spacing.l) {
-                Text("Cuándo se juntan").font(.tandaHero).foregroundStyle(.white)
-                Field(label: "Día de la semana") {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Cuándo se juntan")
+                    .font(Brand.Typography.heroTitle)
+                    .foregroundStyle(Brand.Surface.textPrimary)
+
+                LumaField(label: "Día de la semana") {
                     Picker("Día", selection: $dayOfWeek) {
                         ForEach(0..<7, id: \.self) { Text(dayLabels[$0]).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 }
-                Field(label: "Hora") {
+
+                LumaField(label: "Hora") {
                     DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                         .labelsHidden()
-                        .colorScheme(.dark)
                 }
-                Field(label: "Lugar (opcional)") {
-                    TextField("Casa de Jose, club de tenis, …", text: $location)
-                        .foregroundStyle(.white)
+
+                LumaField(label: "Lugar (opcional)") {
+                    TextField("Casa de Jose, club de tenis…", text: $location)
                 }
+
                 if let error = submitError {
-                    Text(error).font(.tandaCaption).foregroundStyle(.red)
+                    Text(error)
+                        .font(Brand.Typography.caption)
+                        .foregroundStyle(.red)
                 }
-                GlassCapsuleButton(isSubmitting ? "Creando…" : "Crear grupo") {
+
+                Button {
                     Task { await submit() }
+                } label: {
+                    Text(isSubmitting ? "Creando…" : "Crear grupo")
+                        .frame(maxWidth: .infinity)
+                        .lumaPrimaryPill()
                 }
+                .buttonStyle(.plain)
                 .disabled(isSubmitting)
             }
-            .padding(.horizontal, Brand.Spacing.xl)
+            .padding(.horizontal, Brand.Layout.pagePadH)
+            .padding(.bottom, 32)
         }
     }
 
     private var needsStep3: Bool { selectedType?.hasRecurringDefaults ?? false }
-
-    private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                if step > 0 { step -= 1 }
-            } label: {
-                Image(systemName: "chevron.left").foregroundStyle(.white)
-            }
-            .opacity(step > 0 ? 1 : 0)
-        }
-    }
 
     private func submit() async {
         guard let selectedType else { submitError = "Falta el tipo"; return }
