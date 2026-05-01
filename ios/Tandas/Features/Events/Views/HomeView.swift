@@ -28,15 +28,16 @@ struct HomeView: View {
         .task { await coordinator.refresh() }
     }
 
-    // MARK: - Header (magazine-style: huge greeting + group context line)
+    // MARK: - Header — Apple Sports style: tiny tracking-uppercase meta +
+    // huge group name in display weight.
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(greeting)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .foregroundStyle(Color.ruulTextSecondary)
                 .textCase(.uppercase)
-                .tracking(0.6)
+                .tracking(0.8)
             Text(coordinator.group.name)
                 .ruulTextStyle(RuulTypography.displayMedium)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -47,16 +48,15 @@ struct HomeView: View {
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
-        let prefix: String
         switch hour {
-        case 5..<12:  prefix = "BUENOS DÍAS"
-        case 12..<19: prefix = "BUENAS TARDES"
-        default:      prefix = "BUENAS NOCHES"
+        case 5..<12:  return "BUENOS DÍAS"
+        case 12..<19: return "BUENAS TARDES"
+        default:      return "BUENAS NOCHES"
         }
-        return prefix
     }
 
-    // MARK: - Next event hero (full-bleed cover, dramatic title, social proof)
+    // MARK: - Next event hero — Apple Sports tile: full-bleed cover +
+    // overlay content. Same DNA as EventCard but bigger aspect.
 
     @ViewBuilder
     private var nextEventSection: some View {
@@ -67,24 +67,38 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("PRÓXIMO")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulTextTertiary)
                     .tracking(0.8)
-                heroNextEventCard(next)
+                heroTile(next)
             }
         } else {
             emptyHero
         }
     }
 
-    private func heroNextEventCard(_ event: Event) -> some View {
+    private func heroTile(_ event: Event) -> some View {
         Button { onOpenEvent(event) } label: {
-            VStack(spacing: 0) {
-                heroCover(for: event)
-                heroBody(for: event)
+            ZStack(alignment: .bottomLeading) {
+                cover(for: event)
+                    .aspectRatio(4/5, contentMode: .fill)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear,                    location: 0.00),
+                        .init(color: .clear,                    location: 0.35),
+                        .init(color: Color.black.opacity(0.35), location: 0.65),
+                        .init(color: Color.black.opacity(0.85), location: 1.00)
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+
+                heroTopBadges(event)
+                heroBottomBlock(event)
             }
-            .background(Color.ruulBackgroundElevated)
+            .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
-            .ruulElevation(.lg)
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
                     .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
@@ -93,64 +107,59 @@ struct HomeView: View {
         .buttonStyle(.ruulPress)
     }
 
-    private func heroCover(for event: Event) -> some View {
-        ZStack(alignment: .topLeading) {
-            cover(for: event)
-                .aspectRatio(4/3, contentMode: .fill)
-                .frame(maxWidth: .infinity)
-                .clipped()
-
-            LinearGradient(
-                colors: [Color.black.opacity(0.40), .clear, .clear, Color.black.opacity(0.30)],
-                startPoint: .top, endPoint: .bottom
-            )
-
+    private func heroTopBadges(_ event: Event) -> some View {
+        VStack {
             HStack(spacing: RuulSpacing.s2) {
                 if event.hostId == userId {
-                    badge(icon: "star.fill", text: "Hosteas tú", tint: .ruulAccentPrimary)
+                    overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.black.opacity(0.55))
                 }
+                Spacer()
                 if event.isRecurringGenerated {
-                    badge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.black.opacity(0.55))
+                    overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.black.opacity(0.55))
                 }
             }
             .padding(RuulSpacing.s4)
+            Spacer()
         }
     }
 
-    private func heroBody(for event: Event) -> some View {
+    private func heroBottomBlock(_ event: Event) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(heroDateLine(event))
-                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.90))
                     .textCase(.uppercase)
-                    .tracking(0.6)
+                    .tracking(0.8)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.white)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
+                    .shadow(color: Color.black.opacity(0.25), radius: 4, x: 0, y: 2)
             }
 
             if let location = event.locationName, !location.isEmpty {
                 Label(location, systemImage: "mappin.and.ellipse")
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.85))
             }
 
-            // RSVP CTA — primary call to action when pending; status pill if responded.
+            // RSVP CTA — Apple Sports doesn't have inline CTAs, but for ruul
+            // it makes the next-action obvious. Keep it white outline-style
+            // so the cover stays the visual anchor.
             if let myRSVP = coordinator.myRSVPs[event.id] {
                 if myRSVP.status == .pending {
-                    primaryCTAButton(for: event)
+                    inlineCTAButton(for: event)
                 } else {
-                    rsvpStatusRow(for: myRSVP.status)
+                    rsvpStatusOverlay(for: myRSVP.status)
                 }
             } else {
-                primaryCTAButton(for: event)
+                inlineCTAButton(for: event)
             }
         }
-        .padding(RuulSpacing.s6)
+        .padding(RuulSpacing.s5)
     }
 
     private func heroDateLine(_ event: Event) -> String {
@@ -169,14 +178,25 @@ struct HomeView: View {
         return "\(event.startsAt.ruulShortDate.uppercased()) · \(event.startsAt.ruulShortTime)"
     }
 
-    private func primaryCTAButton(for event: Event) -> some View {
-        RuulButton("Ver evento", style: .primary, size: .large, fillsWidth: true) {
-            onOpenEvent(event)
+    private func inlineCTAButton(for event: Event) -> some View {
+        Button { onOpenEvent(event) } label: {
+            HStack {
+                Text("Ver evento")
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundStyle(Color.black)
+            .padding(.vertical, RuulSpacing.s4)
+            .padding(.horizontal, RuulSpacing.s4)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
+        .buttonStyle(.ruulPress)
         .padding(.top, RuulSpacing.s2)
     }
 
-    private func rsvpStatusRow(for status: RSVPStatus) -> some View {
+    private func rsvpStatusOverlay(for status: RSVPStatus) -> some View {
         let (icon, color, text): (String, Color, String) = {
             switch status {
             case .going:    return ("checkmark.circle.fill", .ruulSemanticSuccess, "Vas")
@@ -190,28 +210,34 @@ struct HomeView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(color)
             Text(text)
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.white)
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.7))
         }
         .padding(.vertical, RuulSpacing.s3)
         .padding(.horizontal, RuulSpacing.s4)
-        .background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .background(Color.white.opacity(0.18), in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+        )
+        .padding(.top, RuulSpacing.s2)
     }
 
-    @ViewBuilder
+    // MARK: - Empty state
+
     private var emptyHero: some View {
         VStack(spacing: RuulSpacing.s5) {
             ZStack {
                 Circle()
-                    .fill(Color.ruulAccentSubtle)
+                    .fill(Color.ruulBackgroundElevated)
                     .frame(width: 80, height: 80)
                 Image(systemName: "calendar.badge.plus")
                     .font(.system(size: 32, weight: .semibold))
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulTextPrimary)
             }
             VStack(spacing: RuulSpacing.s2) {
                 Text("Aún no hay eventos")
@@ -233,23 +259,23 @@ struct HomeView: View {
         )
     }
 
-    // MARK: - Upcoming list
+    // MARK: - Upcoming list — section header + tile cards.
 
     @ViewBuilder
     private var upcomingListSection: some View {
         let rest = Array(coordinator.upcomingEvents.dropFirst())
         if !rest.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-                HStack {
-                    Text("Próximos")
-                        .ruulTextStyle(RuulTypography.titleLarge)
-                        .foregroundStyle(Color.ruulTextPrimary)
+            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("PRÓXIMOS")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .tracking(0.8)
                     Spacer()
                     Text("\(rest.count)")
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
-                .padding(.bottom, RuulSpacing.s2)
                 VStack(spacing: RuulSpacing.s4) {
                     ForEach(rest) { event in
                         EventCard(
@@ -267,7 +293,7 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Past events link
+    // MARK: - Past events link — Apple Sports style: subtle row, no chrome.
 
     @ViewBuilder
     private var pastEventsLink: some View {
@@ -277,21 +303,19 @@ struct HomeView: View {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 14, weight: .semibold))
                     Text("Ver historial")
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.system(size: 15, weight: .semibold))
                     Spacer()
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .bold))
                 }
-                .foregroundStyle(Color.ruulAccentPrimary)
+                .foregroundStyle(Color.ruulTextSecondary)
                 .padding(.vertical, RuulSpacing.s4)
-                .padding(.horizontal, RuulSpacing.s5)
-                .background(Color.ruulAccentSubtle, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
             }
             .buttonStyle(.plain)
         }
     }
 
-    // MARK: - FAB
+    // MARK: - FAB — solid neutral (Apple Sports has no brand-color FABs).
 
     private var fab: some View {
         Button(action: onCreateEvent) {
@@ -299,20 +323,14 @@ struct HomeView: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(Color.ruulTextInverse)
                 .frame(width: 60, height: 60)
-                .background(
-                    LinearGradient(
-                        colors: [.ruulAccentPrimary, .ruulAccentSecondary],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ),
-                    in: Circle()
-                )
+                .background(Color.ruulAccentPrimary, in: Circle())
                 .ruulElevation(.lg)
         }
         .buttonStyle(.ruulPress)
         .padding(RuulSpacing.s5)
     }
 
-    // MARK: - Cover helper
+    // MARK: - Cover + badge helpers
 
     @ViewBuilder
     private func cover(for event: Event) -> some View {
@@ -333,17 +351,15 @@ struct HomeView: View {
         return RuulCoverView(cover)
     }
 
-    // MARK: - Generic badge (matches EventCard's style)
-
-    private func badge(icon: String, text: String, tint: Color) -> some View {
+    private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
-            Text(text)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.3)
+            Text(text.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.5)
         }
-        .foregroundStyle(Color.ruulTextInverse)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(tint, in: Capsule())
