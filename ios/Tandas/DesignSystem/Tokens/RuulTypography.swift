@@ -35,10 +35,22 @@ public enum RuulTypography {
     public static let caption        = RuulTextStyle(font: .system(size: 12, weight: .medium,   design: .default), tracking: 0.12, lineHeight: 1.35)
     public static let footnote       = RuulTextStyle(font: .system(size: 11, weight: .medium,   design: .default), tracking: 0.55, lineHeight: 1.30, textCase: .uppercase)
 
+    // MARK: - Apple Sports section labels
+    //
+    // Tracking-uppercase MONOSPACE bold — for "PRÓXIMOS", "INVITADOS",
+    // "EN VIVO" section dividers and stat readouts. Distinct from .footnote
+    // which is design-default proportional.
+    public static let sectionLabel   = RuulTextStyle(font: .system(size: 11, weight: .bold,     design: .monospaced), tracking: 0.8, lineHeight: 1.30, textCase: .uppercase)
+    public static let sectionLabelLg = RuulTextStyle(font: .system(size: 13, weight: .bold,     design: .monospaced), tracking: 0.6, lineHeight: 1.30, textCase: .uppercase)
+
     // MARK: - Mono (numbers, OTP)
 
     public static let mono           = RuulTextStyle(font: .system(size: 14, weight: .regular,  design: .monospaced), tracking: 0, lineHeight: 1.40)
     public static let monoLarge      = RuulTextStyle(font: .system(size: 24, weight: .semibold, design: .monospaced), tracking: -0.24, lineHeight: 1.10)
+    /// Stat numerals — for counts like "12 van", scores, etc.
+    public static let statSmall      = RuulTextStyle(font: .system(size: 13, weight: .bold,     design: .monospaced), tracking: 0,     lineHeight: 1.20)
+    public static let statMedium     = RuulTextStyle(font: .system(size: 17, weight: .bold,     design: .monospaced), tracking: -0.10, lineHeight: 1.15)
+    public static let statHero       = RuulTextStyle(font: .system(size: 48, weight: .heavy,    design: .monospaced), tracking: -1.20, lineHeight: 1.05)
 }
 
 // MARK: - RuulTextStyle

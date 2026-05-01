@@ -52,10 +52,13 @@ public struct RuulActionableCard: View {
                 accessoryView
             }
             .padding(RuulSpacing.s4)
-            .ruulGlass(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous),
-                material: .regular,
-                interactive: true
+            .background(
+                Color.ruulBackgroundElevated,
+                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)

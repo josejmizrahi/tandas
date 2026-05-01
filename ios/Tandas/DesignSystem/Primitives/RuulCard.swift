@@ -1,6 +1,19 @@
 import SwiftUI
 
-public enum RuulCardStyle: Sendable, Hashable { case glass, solid, outlined }
+public enum RuulCardStyle: Sendable, Hashable {
+    /// Apple Sports tile — solid elevated bg, 0.5pt subtle border, no shadow.
+    /// **Default** for content cards. Quiet chrome that lets covers/scores
+    /// take the visual lead.
+    case tile
+    /// Liquid Glass — reserved for transient surfaces (nav bars, sheets,
+    /// floating overlays). Avoid on per-row content cards.
+    case glass
+    /// Solid background with elevation shadow. Use for hero/feature cards
+    /// that need extra prominence (HomeView empty state, etc.).
+    case solid
+    /// Border-only, no fill. Use for ghost / placeholder states.
+    case outlined
+}
 
 /// Card primitive. Variants control surface style.
 public struct RuulCard<Content: View>: View {
@@ -11,7 +24,7 @@ public struct RuulCard<Content: View>: View {
     private let content: () -> Content
 
     public init(
-        _ style: RuulCardStyle = .glass,
+        _ style: RuulCardStyle = .tile,
         tint: Color? = nil,
         interactive: Bool = false,
         padding: CGFloat = RuulSpacing.s5,
@@ -41,6 +54,11 @@ private struct RuulCardStyleModifier: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
         switch style {
+        case .tile:
+            // Apple Sports tile: solid + 0.5pt border, NO shadow.
+            content
+                .background(tint ?? Color.ruulBackgroundElevated, in: shape)
+                .overlay(shape.stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
         case .glass:
             content
                 .ruulGlass(shape, material: .regular, tint: tint, interactive: interactive)
