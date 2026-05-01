@@ -130,7 +130,7 @@ struct BootstrappingView: View {
 
     var body: some View {
         ZStack {
-            RuulMeshBackground(.cool)
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             ProgressView()
                 .controlSize(.large)
                 .tint(Color.ruulAccentPrimary)

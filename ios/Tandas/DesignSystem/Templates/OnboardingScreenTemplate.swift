@@ -40,7 +40,7 @@ public struct OnboardingScreenTemplate<Content: View>: View {
 
     public var body: some View {
         ZStack {
-            RuulMeshBackground(mesh)
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             OnboardingStepContainer(
                 progress: progress,
                 stepCount: stepCount,

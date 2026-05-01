@@ -131,10 +131,11 @@ private enum Hex {
     static let lightTextSecondaryHC: UInt32 = 0x1F2937
     static let lightTextAccentHC: UInt32 = 0x3B4FE5
 
-    static let lightAccentPrimary: UInt32 = 0x5B6CFF
-    static let lightAccentSecondary: UInt32 = 0x8B5CF6
-    static let lightAccentPrimaryHC: UInt32 = 0x3B4FE5
-    static let lightAccentSecondaryHC: UInt32 = 0x6D3FE0
+    // Luma orange — single accent, no violet/indigo anywhere.
+    static let lightAccentPrimary: UInt32 = 0xF77D29
+    static let lightAccentSecondary: UInt32 = 0xFFA561
+    static let lightAccentPrimaryHC: UInt32 = 0xD25E12
+    static let lightAccentSecondaryHC: UInt32 = 0xE88940
 
     static let lightSuccess: UInt32 = 0x10B981
     static let lightWarning: UInt32 = 0xF59E0B
@@ -169,10 +170,11 @@ private enum Hex {
     static let darkTextSecondaryHC: UInt32 = 0xCBD5E1
     static let darkTextAccentHC: UInt32 = 0xA5B0FF
 
-    static let darkAccentPrimary: UInt32 = 0x818CF8
-    static let darkAccentSecondary: UInt32 = 0xA78BFA
-    static let darkAccentPrimaryHC: UInt32 = 0xA5B0FF
-    static let darkAccentSecondaryHC: UInt32 = 0xC4A8FF
+    // Luma orange in dark mode (slightly brighter for legibility on near-black).
+    static let darkAccentPrimary: UInt32 = 0xFF8E3D
+    static let darkAccentSecondary: UInt32 = 0xFFB37A
+    static let darkAccentPrimaryHC: UInt32 = 0xFFAA63
+    static let darkAccentSecondaryHC: UInt32 = 0xFFC79A
 
     static let darkSuccess: UInt32 = 0x34D399
     static let darkWarning: UInt32 = 0xFBBF24
@@ -183,10 +185,19 @@ private enum Hex {
     static let darkErrorHC: UInt32 = 0xFCA5A5
     static let darkInfoHC: UInt32 = 0x93C5FD
 
-    // Mesh sets
-    static let meshCool: [UInt32] = [0xE8EEFF, 0xDCE7F5, 0xE8F0FF, 0xD8E4FB, 0xEAF1FF, 0xD0DEF7, 0xE2EBFA, 0xCDDDF6, 0xE6EFFF]
-    static let meshViolet: [UInt32] = [0xEFE8FF, 0xE5DEF8, 0xF0E8FF, 0xDCD4F2, 0xEAE0FA, 0xD2C4EE, 0xE5DAF6, 0xCDBEEC, 0xEEE6FE]
-    static let meshAqua: [UInt32] = [0xE5F4F8, 0xD8EDF5, 0xECF6FA, 0xC8E5F0, 0xDDF0F7, 0xBADCEC, 0xD3EAF3, 0xAED5E8, 0xE8F5FA]
+    // Monochrome meshes — very subtle near-canvas variations, Luma/Apple-Sports
+    // aesthetic. No violet, blue, or color tint. The 9 stops cluster tightly
+    // around a near-canvas value so MeshGradient renders almost flat with
+    // gentle illumination, not a colored gradient.
+    static let meshCool: [UInt32] = [
+        0xF7F8FA, 0xF2F4F7, 0xF6F8FB, 0xF0F2F5, 0xF4F6F9, 0xEDEFF3, 0xF1F3F6, 0xEAECEF, 0xF5F7FA
+    ]
+    static let meshViolet: [UInt32] = [
+        0xF8F8F9, 0xF3F3F4, 0xF7F7F8, 0xF1F1F2, 0xF5F5F6, 0xEEEEEF, 0xF2F2F3, 0xEBEBEC, 0xF6F6F7
+    ]
+    static let meshAqua: [UInt32] = [
+        0xF7F8F8, 0xF2F4F4, 0xF6F7F7, 0xF0F2F2, 0xF4F6F6, 0xEDEFEF, 0xF1F3F3, 0xEAECEC, 0xF5F7F7
+    ]
 }
 
 // MARK: - Color helpers

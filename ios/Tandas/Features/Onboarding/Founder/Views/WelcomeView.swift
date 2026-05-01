@@ -5,7 +5,7 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            RuulMeshBackground(.cool)
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             VStack(spacing: RuulSpacing.s7) {
                 Spacer()
                 wordmark
@@ -34,12 +34,6 @@ struct WelcomeView: View {
     private var wordmark: some View {
         Text("ruul")
             .ruulTextStyle(RuulTypography.wordmark)
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [.ruulAccentPrimary, .ruulAccentSecondary],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .foregroundStyle(Color.ruulTextPrimary)
     }
 }
