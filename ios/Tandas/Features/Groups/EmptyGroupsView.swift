@@ -61,6 +61,5 @@ struct EmptyGroupsView: View {
     }
 }
 
-// Stubs filled in tasks 13, 14
+// NewGroupWizard stub — implemented in T14
 struct NewGroupWizard: View { var body: some View { Text("NewGroupWizard (stub)").foregroundStyle(.white) } }
-struct JoinByCodeView: View { var body: some View { Text("JoinByCodeView (stub)").foregroundStyle(.white) } }
