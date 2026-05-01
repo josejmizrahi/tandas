@@ -30,6 +30,21 @@ protocol AuthService: Actor {
     func sendEmailOTP(_ email: String) async throws
     func verifyEmailOTP(_ email: String, code: String) async throws -> AppSession
     func signOut() async throws
+
+    /// Sign in anonymously if there's no active session. Used at app launch
+    /// so the founder onboarding can create a group at step 2 (before OTP)
+    /// — `create_group_with_admin` requires `auth.uid()`. The anon user is
+    /// later promoted to a phone-authenticated user via OTP verify.
+    ///
+    /// Default impl is a no-op (Mock authservices have their own session
+    /// management; only LiveAuthService needs a real RPC).
+    func signInAnonymouslyIfNeeded() async throws
+}
+
+extension AuthService {
+    func signInAnonymouslyIfNeeded() async throws {
+        // No-op default. LiveAuthService overrides.
+    }
 }
 
 // MARK: - Mock
@@ -210,6 +225,21 @@ actor LiveAuthService: AuthService {
     func signOut() async throws {
         try await client.auth.signOut()
         applySession(nil)
+    }
+
+    func signInAnonymouslyIfNeeded() async throws {
+        // Bail out if a session already exists (anon or otherwise) — never
+        // wipe a user's session on app launch.
+        if (try? await client.auth.session) != nil { return }
+        // Anonymous sign-ins must be ENABLED in Supabase Dashboard →
+        // Authentication → Providers. If disabled, the throw bubbles up;
+        // GroupsRepository's reactive retry pattern still handles
+        // create-group cases as a fallback.
+        //
+        // The bootstrap()-subscribed authStateChanges stream picks up the
+        // new session and propagates it via applySession(_:); no manual
+        // session yield needed here.
+        _ = try await client.auth.signInAnonymously()
     }
 }
 

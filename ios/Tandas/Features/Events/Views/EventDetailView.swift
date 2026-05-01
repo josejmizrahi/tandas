@@ -8,6 +8,7 @@ struct EventDetailView: View {
     @Bindable var coordinator: EventDetailCoordinator
     let memberLookup: (UUID) -> (name: String, avatarURL: URL?)
     var onScannerOpen: () -> Void
+    var onEdit: () -> Void = {}
 
     @State private var qrSheetPresented = false
     @State private var cancelEventSheet = false
@@ -153,7 +154,7 @@ struct EventDetailView: View {
                     totalConfirmed: coordinator.rsvps.filter { $0.status == .going }.count,
                     totalMembers: coordinator.rsvps.count,
                     onSendReminders: { remindSheet = true },
-                    onEdit: { /* wired by parent in V1.x */ },
+                    onEdit: onEdit,
                     onOpenScanner: onScannerOpen,
                     onCancelEvent: { cancelEventSheet = true },
                     onCloseEvent: { closeSheet = true },
@@ -303,7 +304,7 @@ struct EventDetailView: View {
             Spacer()
             if coordinator.viewerRole == .host {
                 Button {
-                    // edit hook (V1.x)
+                    onEdit()
                 } label: {
                     Image(systemName: "pencil")
                         .font(.system(size: 16, weight: .bold))

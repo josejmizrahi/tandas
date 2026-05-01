@@ -9,6 +9,8 @@ struct MainTabView: View {
     @State private var creationRoute: Bool = false
     @State private var pastRoute: Bool = false
     @State private var scannerRoute: CheckInScannerCoordinator?
+    @State private var editRoute: Event?
+    @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
 
     var body: some View {
         TabView {
@@ -53,6 +55,9 @@ struct MainTabView: View {
                 .fullScreenCover(item: $scannerRoute) { scannerCoord in
                     CheckInScannerView(coordinator: scannerCoord)
                 }
+                .fullScreenCover(item: $editRoute) { event in
+                    eventEditScreen(event)
+                }
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -81,10 +86,35 @@ struct MainTabView: View {
         return AnyView(
             EventDetailView(
                 coordinator: coord,
-                memberLookup: { id in (name: "Member", avatarURL: nil) },  // V1.x wires real lookup
-                onScannerOpen: { openScanner(for: coord) }
+                memberLookup: lookupMember,
+                onScannerOpen: { openScanner(for: coord) },
+                onEdit: { editRoute = coord.event }
             )
         )
+    }
+
+    @ViewBuilder
+    private func eventEditScreen(_ event: Event) -> some View {
+        if let group = app.groups.first(where: { $0.id == event.groupId }) {
+            let editCoord = EventEditCoordinator(
+                event: event,
+                group: group,
+                eventRepo: app.eventRepo,
+                analytics: EventAnalytics(analytics: app.analytics)
+            )
+            EditEventView(coordinator: editCoord)
+                .onChange(of: editCoord.updatedEvent) { _, newValue in
+                    guard newValue != nil else { return }
+                    Task {
+                        await homeCoordinator?.refresh(force: true)
+                        // Refresh the detail route so the open detail view
+                        // picks up the new event payload on next render.
+                        if let updated = newValue {
+                            detailRoute = updated
+                        }
+                    }
+                }
+        }
     }
 
     @ViewBuilder
@@ -118,9 +148,21 @@ struct MainTabView: View {
             scanner: scanner,
             checkInRepo: app.checkInRepo,
             analytics: EventAnalytics(analytics: app.analytics),
-            memberLookup: { _ in "Member" }
+            memberLookup: { [memberDirectory] id in
+                memberDirectory[id]?.displayName ?? "Miembro"
+            }
         )
         scannerRoute = coord
+    }
+
+    /// Resolve a member's display info from the cached directory. Returns
+    /// "Miembro" + nil avatar for unknowns (e.g., a member just added that
+    /// the directory hasn't refreshed yet).
+    private func lookupMember(_ userId: UUID) -> (name: String, avatarURL: URL?) {
+        guard let mwp = memberDirectory[userId] else {
+            return (name: "Miembro", avatarURL: nil)
+        }
+        return (name: mwp.displayName, avatarURL: mwp.avatarURL)
     }
 
     private func nextDefaultDate(for group: Group) -> Date {
@@ -142,6 +184,19 @@ struct MainTabView: View {
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo
         )
+        await refreshMemberDirectory(for: group.id)
+    }
+
+    /// Fetch member+profile pairs once and cache by userId. Refresh whenever
+    /// the active group changes or a refresh is forced from elsewhere.
+    @MainActor
+    private func refreshMemberDirectory(for groupId: UUID) async {
+        guard let rows = try? await app.groupsRepo.membersWithProfiles(of: groupId) else { return }
+        var directory: [UUID: MemberWithProfile] = [:]
+        for row in rows {
+            directory[row.member.userId] = row
+        }
+        memberDirectory = directory
     }
 
     @MainActor

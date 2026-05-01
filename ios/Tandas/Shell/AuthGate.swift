@@ -66,6 +66,14 @@ final class AppState {
     }
 
     func start() async {
+        // Proactive: ensure SOME session exists before we enter the
+        // sessionStream loop. If logged out, sign in anonymously so the
+        // founder onboarding can call create_group_with_admin at step 2
+        // (the RPC requires auth.uid()). If anon sign-ins are disabled in
+        // Supabase, this throws — GroupsRepository's reactive retry still
+        // handles the create-group case as a fallback.
+        try? await auth.signInAnonymouslyIfNeeded()
+
         for await s in auth.sessionStream {
             self.session = s
             if s != nil {

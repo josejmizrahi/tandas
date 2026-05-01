@@ -15,6 +15,7 @@ protocol GroupsRepository: Actor {
     func joinByCode(_ code: String) async throws -> Group
     func leave(_ id: UUID) async throws
     func members(of groupId: UUID) async throws -> [Member]
+    func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile]
 
     // Onboarding V1
     func createInitial(_ draft: GroupDraft) async throws -> Group
@@ -79,6 +80,15 @@ actor MockGroupsRepository: GroupsRepository {
 
     func members(of groupId: UUID) async throws -> [Member] {
         _members[groupId] ?? []
+    }
+
+    func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
+        (_members[groupId] ?? []).map { m in
+            MemberWithProfile(
+                member: m,
+                profile: Profile(id: m.userId, displayName: "Miembro", avatarUrl: nil, phone: nil)
+            )
+        }
     }
 
     func createInitial(_ draft: GroupDraft) async throws -> Group {
@@ -255,6 +265,44 @@ actor LiveGroupsRepository: GroupsRepository {
             .eq("active", value: true)
             .execute()
             .value
+    }
+
+    /// Fetch members joined with their profiles in a single roundtrip via
+    /// PostgREST nested select. Falls back to a member-only result on join
+    /// failure so the UI still has names/avatars (just placeholders).
+    func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
+        struct Row: Decodable, Sendable {
+            let id: UUID
+            let group_id: UUID
+            let user_id: UUID
+            let display_name_override: String?
+            let role: String
+            let active: Bool
+            let joined_at: Date
+            let profiles: Profile?       // PostgREST nested select result
+
+            var member: Member {
+                Member(
+                    id: id,
+                    groupId: group_id,
+                    userId: user_id,
+                    displayNameOverride: display_name_override,
+                    role: role,
+                    active: active,
+                    joinedAt: joined_at
+                )
+            }
+        }
+
+        let rows: [Row] = try await client
+            .from("group_members")
+            .select("id, group_id, user_id, display_name_override, role, active, joined_at, profiles(*)")
+            .eq("group_id", value: groupId.uuidString.lowercased())
+            .eq("active", value: true)
+            .execute()
+            .value
+
+        return rows.map { MemberWithProfile(member: $0.member, profile: $0.profiles) }
     }
 
     // MARK: - Onboarding V1
