@@ -1,0 +1,55 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main, ios-rewrite]
+  pull_request:
+    branches: [main, ios-rewrite]
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      TANDAS_SUPABASE_URL: ${{ secrets.TANDAS_SUPABASE_URL }}
+      TANDAS_SUPABASE_ANON_KEY: ${{ secrets.TANDAS_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+
+      - name: Show Xcode + SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Write local xcconfig from secrets
+        run: |
+          # xcconfig treats `//` as a comment; escape to `/$()/` so
+          # `https://host` survives substitution into Info.plist.
+          URL_ESCAPED=$(echo "$TANDAS_SUPABASE_URL" | sed 's|//|/$()/|')
+          cat > ios/Tandas.local.xcconfig <<EOF
+          TANDAS_SUPABASE_URL = $URL_ESCAPED
+          TANDAS_SUPABASE_ANON_KEY = $TANDAS_SUPABASE_ANON_KEY
+          EOF
+
+      - name: Generate project
+        run: cd ios && xcodegen
+
+      - name: Build & test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ios/Tandas.xcodeproj \
+            -scheme Tandas \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            | xcpretty || (xcodebuild test \
+                -project ios/Tandas.xcodeproj \
+                -scheme Tandas \
+                -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+                CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='')

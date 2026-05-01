@@ -1,69 +1,69 @@
 @AGENTS.md
 
-# Tandas — Project Context
+# Tandas — Project Context (iOS native)
 
-App para administrar la "vida en grupo" de amigos que se reúnen recurrentemente: tandas de ahorro, cenas semanales, banda, etc. Reglas custom (escritas y votadas por el grupo) que la app ejecuta automáticamente: multas, anfitrión rotativo, splitwise de gastos, pots de poker, fondo común.
+App nativa iOS para administrar grupos de amigos. SwiftUI + Supabase. Apple Liquid Glass via iOS 26+.
+
+## Pivotación 2026-04-30
+
+Antes: Next.js 16 PWA (4 phases shipped, 24 routes, 9 migrations).
+Ahora: SwiftUI nativo, mismo Supabase backend.
+
+Razón: Liquid Glass real requiere Metal shaders (no disponibles en navegador web). El usuario quería específicamente el material auténtico de iOS, no aproximaciones CSS.
 
 ## Stack
 
-- **Next.js 16** (App Router, Server Components, Server Actions, Turbopack) — read `node_modules/next/dist/docs/` for v16 breaking changes
-- **React 19** + **Tailwind CSS v4** + **shadcn/ui**
-- **Supabase** (Postgres + RLS + Auth + Realtime + Edge Functions)
-- **TanStack Query v5** solo para vistas reactivas
-- **Zod** + **React Hook Form** en boundary
-- **PWA** mobile-first (web-push con VAPID)
+- **SwiftUI** (iOS 26+ deployment target — para `.glassEffect()` y demás materiales nuevos)
+- **Swift 6** + concurrency strict
+- **supabase-swift** SDK
+- **Xcode 16+** required
+- **Backend**: Supabase project `fpfvlrwcskhgsjuhrjpz` (no cambia)
 
 ## Estructura
 
 ```
-app/                       # rutas Next, dumb (solo composición)
-components/ui/             # shadcn primitives
-components/shell/          # AppShell, BottomNav, GroupHeader
-features/<dominio>/        # actions, queries, schemas, components, hooks
-  groups · members · events · rules · fines · pots · expenses
-  votes · notifications · fund · profile
-lib/
-  supabase/ db/ push/ cron/ i18n/ schemas/ utils/
-supabase/
-  migrations/              # versionadas, aplican via Supabase CLI
-  functions/dispatch-push/ # Edge Function para web-push
-  tests/                   # SQL harness (RLS + rule engine + balance view)
-e2e/                       # Playwright mobile (10–15 flows críticos)
-docs/superpowers/
-  specs/                   # design docs (este es el primero)
-  plans/                   # implementation plans (writing-plans output)
+ios/
+├── Tandas.xcodeproj/
+└── Tandas/
+    ├── TandasApp.swift              # @main app entry
+    ├── Supabase/                    # Client + AuthService + RPCs typed
+    ├── Models/                      # Group, Member, Event, Rule, Vote, Fine
+    ├── Features/                    # Per-domain views + viewmodels
+    │   ├── Auth/
+    │   ├── Groups/
+    │   ├── Events/
+    │   ├── Rules/
+    │   └── Fines/
+    ├── Shell/                       # AppShell, BottomNav, GroupHeader
+    ├── Components/                  # Reusable UI (Field, OTPInput, etc)
+    └── Resources/                   # Assets, Info.plist, entitlements
 ```
 
-## Reglas de import (forzadas por ESLint `eslint-plugin-boundaries`)
+## Reglas
 
-- `features/A` ❌ no importa de `features/B`. Compartido → `lib/` o feature dedicada.
-- `lib/` ❌ no importa de `features/` ni `app/`.
-- `app/` ❌ sin lógica de negocio.
-- Server actions ❌ no llaman otros server actions.
-- Toda mutación: **Zod → server action → RPC `security definer` → revalidate path**.
+- iOS 26+ deployment target (queremos Liquid Glass real, no caemos a fallback)
+- SwiftUI exclusively — nada de UIKit salvo lo que SwiftUI no expone (deeplinks, push handlers)
+- Async/await everywhere (no completion handlers)
+- @Observable para viewmodels (no ObservableObject)
+- Strict concurrency mode on
+- Mock Supabase client para previews + tests
 
-## Naming
+## Backend (referencia)
 
-- Components: `PascalCase.tsx`, default export
-- Hooks: `useXxx.ts`, named export
-- Server actions: `actions.ts`, named camelCase
-- Queries: `queries.ts`, prefijo `get` / `list`
-- Schemas: `XxxSchema` + type `Xxx = z.infer<typeof XxxSchema>`
-- RPCs SQL: `snake_case`
+Las 9 migrations en `supabase/migrations/` son la fuente única. La iOS app consume:
 
-## Spec
+| Recurso | Cómo |
+|---|---|
+| Auth (phone/email OTP) | `supabase.auth.signInWithOtp` + `verifyOtp` |
+| Groups CRUD | `from('groups')` + `rpc('create_group_with_admin')` |
+| Members | `from('group_members')` + `rpc('join_group_by_code')` |
+| Events | `rpc('create_event')` + `rpc('set_rsvp')` + `rpc('check_in_attendee')` + `rpc('close_event')` |
+| Rules | `rpc('propose_rule')` + `from('rules').update(...)` para archive/exceptions |
+| Votes | `rpc('cast_ballot')` + `rpc('close_vote')` + `rpc('create_vote')` para amnesty |
+| Fines | `rpc('pay_fine')` + `rpc('issue_manual_fine')` |
 
-`docs/superpowers/specs/2026-04-29-tandas-design.md` — diseño completo aprobado.
-
-## DoD por PR
-
-- `npm run build` ✓
-- `tsc --noEmit` ✓
-- `npm run test` ✓ (unit + int + sql)
-- ESLint ✓
-- Si toca SQL → `npm run test:sql` ✓
-- Si toca UI → al menos 1 e2e relevante green
-
-## Branch heredada
-
-`claude/friend-group-manager-7dQVV` (en `josejmizrahi/tandas`) tiene un primer bootstrap en Vite + 14 tablas SQL. **NO usar como base de Vite** (descartado), pero **sí cherry-pick las 3 migrations** (`supabase/migrations/0000{1,2,3}_*.sql`) que son la base de `core_schema` + `rls` + `rpcs`. Los 4 fixes documentados en el spec aplican antes de mergear.
+## DoD por commit
+- Compila en Xcode 16+ sin warnings
+- `xcodebuild test` pasa
+- SwiftLint clean (cuando se configure)
+- Functional smoke en simulador iOS 26
