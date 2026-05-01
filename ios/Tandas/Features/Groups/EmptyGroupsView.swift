@@ -61,5 +61,3 @@ struct EmptyGroupsView: View {
     }
 }
 
-// NewGroupWizard stub — implemented in T14
-struct NewGroupWizard: View { var body: some View { Text("NewGroupWizard (stub)").foregroundStyle(.white) } }
