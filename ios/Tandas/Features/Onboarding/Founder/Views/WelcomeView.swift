@@ -33,8 +33,7 @@ struct WelcomeView: View {
     /// Typography wordmark — no asset. Letter-spaced lowercase, gradient fill.
     private var wordmark: some View {
         Text("ruul")
-            .font(.system(size: 88, weight: .bold, design: .default))
-            .tracking(-2)
+            .ruulTextStyle(RuulTypography.wordmark)
             .foregroundStyle(
                 LinearGradient(
                     colors: [.ruulAccentPrimary, .ruulAccentSecondary],

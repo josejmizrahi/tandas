@@ -56,7 +56,7 @@ struct InviteMembersView: View {
         return ShareLink(item: message) {
             HStack(spacing: RuulSpacing.s4) {
                 RuulIconBadge("link", size: .medium)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text("Compartir link")
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
@@ -84,10 +84,10 @@ struct InviteMembersView: View {
             Text("Por invitar (\(coord.pendingInvites.count))")
                 .ruulTextStyle(RuulTypography.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
-            VStack(spacing: 0) {
+            VStack(spacing: RuulSpacing.s0) {
                 ForEach(coord.pendingInvites) { pending in
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                             if let name = pending.displayName {
                                 Text(name)
                                     .ruulTextStyle(RuulTypography.body)

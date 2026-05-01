@@ -36,7 +36,7 @@ struct InitialRulesView: View {
         return RuulCard(.glass) {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: RuulSpacing.s1) {
                         Text(rule.title)
                             .ruulTextStyle(RuulTypography.headline)
                             .foregroundStyle(Color.ruulTextPrimary)

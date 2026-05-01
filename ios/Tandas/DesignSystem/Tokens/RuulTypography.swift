@@ -12,6 +12,8 @@ public enum RuulTypography {
 
     // MARK: - Display
 
+    /// Brand wordmark — for the "ruul" splash on Welcome screens.
+    public static let wordmark       = RuulTextStyle(font: .system(size: 88, weight: .bold,     design: .default), tracking: -2.0,  lineHeight: 1.0)
     public static let displayHero    = RuulTextStyle(font: .system(size: 54, weight: .bold,     design: .default), tracking: -2.16, lineHeight: 1.05)
     public static let displayLarge   = RuulTextStyle(font: .system(size: 44, weight: .bold,     design: .default), tracking: -1.32, lineHeight: 1.08)
     public static let displayMedium  = RuulTextStyle(font: .system(size: 34, weight: .semibold, design: .default), tracking: -0.85, lineHeight: 1.10)

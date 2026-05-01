@@ -51,7 +51,7 @@ struct FounderIdentityView: View {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 96, height: 96)
+                        .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
                         .clipShape(Circle())
                 } else {
                     RuulAvatar(
@@ -61,11 +61,11 @@ struct FounderIdentityView: View {
                     )
                 }
                 Image(systemName: "camera.fill")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: RuulSize.iconSmall, weight: .semibold))
                     .foregroundStyle(Color.ruulTextInverse)
-                    .padding(8)
+                    .padding(RuulSpacing.s2)
                     .background(Color.ruulAccentPrimary, in: Circle())
-                    .offset(x: 32, y: 32)
+                    .offset(x: RuulSpacing.s7, y: RuulSpacing.s7)
             }
         }
         .buttonStyle(.plain)

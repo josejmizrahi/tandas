@@ -60,7 +60,7 @@ struct InviteWelcomeView: View {
     private func cover(for preview: InvitePreview) -> some View {
         let cover = RuulCoverCatalog.cover(named: preview.coverImageName)
         return RuulCoverView(cover)
-            .frame(height: 180)
+            .frame(height: RuulSize.heroBanner)
             .padding(.horizontal, RuulSpacing.s5)
     }
 
