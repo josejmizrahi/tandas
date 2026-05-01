@@ -1,10 +1,13 @@
 import SwiftUI
 import SwiftData
 import Supabase
+import UIKit
+import OSLog
 
 @main
 struct TandasApp: App {
     @State private var appState: AppState
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage("ruul_appearance") private var appearanceRaw: String = AppearanceOption.system.rawValue
 
     private var appearance: AppearanceOption {
@@ -20,13 +23,25 @@ struct TandasApp: App {
             let invites = MockInviteRepository()
             let rules = MockRuleRepository()
             let otp = MockOTPService()
+            let events = MockEventRepository()
+            let rsvps = MockRSVPRepository()
+            let checkIns = MockCheckInRepository()
+            let notifTokens = MockNotificationTokenRepository()
+            let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
                 profileRepo: profile,
                 groupsRepo: groups,
                 inviteRepo: invites,
                 ruleRepo: rules,
-                otp: otp
+                otp: otp,
+                eventRepo: events,
+                rsvpRepo: rsvps,
+                checkInRepo: checkIns,
+                notificationTokenRepo: notifTokens,
+                notifications: NotificationService(tokenRepo: notifTokens),
+                walletService: StubWalletPassService(),
+                analytics: analytics
             ))
         } else {
             let client = SupabaseEnvironment.shared
@@ -36,13 +51,25 @@ struct TandasApp: App {
             let invites = LiveInviteRepository(client: client)
             let rules = LiveRuleRepository(client: client)
             let otp = LiveOTPService(client: client)
+            let events = LiveEventRepository(client: client)
+            let rsvps = LiveRSVPRepository(client: client)
+            let checkIns = LiveCheckInRepository(client: client)
+            let notifTokens = LiveNotificationTokenRepository(client: client)
+            let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
                 profileRepo: profile,
                 groupsRepo: groups,
                 inviteRepo: invites,
                 ruleRepo: rules,
-                otp: otp
+                otp: otp,
+                eventRepo: events,
+                rsvpRepo: rsvps,
+                checkInRepo: checkIns,
+                notificationTokenRepo: notifTokens,
+                notifications: NotificationService(tokenRepo: notifTokens),
+                walletService: StubWalletPassService(),
+                analytics: analytics
             ))
         }
     }
@@ -65,7 +92,58 @@ struct TandasApp: App {
                         appState.handleIncomingURL(url)
                     }
                 }
+                .task {
+                    appDelegate.bind(appState: appState)
+                }
         }
         .modelContainer(for: [OnboardingProgress.self])
+    }
+}
+
+/// Bridges UIKit-only APNs callbacks to AppState.
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    private weak var appState: AppState?
+    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "appdelegate")
+
+    @MainActor
+    func bind(appState: AppState) {
+        self.appState = appState
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Task { @MainActor in
+            await appState?.notifications?.didRegisterDeviceToken(deviceToken)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        log.warning("APNs registration failed: \(error.localizedDescription)")
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        Task { @MainActor in
+            self.appState?.handleIncomingNotification(userInfo: userInfo)
+            completionHandler()
+        }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 }

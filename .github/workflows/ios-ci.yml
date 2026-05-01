@@ -13,6 +13,7 @@ jobs:
     env:
       TANDAS_SUPABASE_URL: ${{ secrets.TANDAS_SUPABASE_URL }}
       TANDAS_SUPABASE_ANON_KEY: ${{ secrets.TANDAS_SUPABASE_ANON_KEY }}
+      RUUL_QR_SECRET: ${{ secrets.RUUL_QR_SECRET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +36,7 @@ jobs:
           cat > ios/Tandas.local.xcconfig <<EOF
           TANDAS_SUPABASE_URL = $URL_ESCAPED
           TANDAS_SUPABASE_ANON_KEY = $TANDAS_SUPABASE_ANON_KEY
+          RUUL_QR_SECRET = ${RUUL_QR_SECRET:-test-qr-secret-for-ci-only}
           EOF
 
       - name: Generate project

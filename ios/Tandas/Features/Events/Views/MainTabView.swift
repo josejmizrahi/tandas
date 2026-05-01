@@ -30,7 +30,7 @@ struct MainTabView: View {
             if let coord = homeCoordinator {
                 HomeView(
                     coordinator: coord,
-                    userId: app.session?.userId ?? UUID(),
+                    userId: app.session?.user.id ?? UUID(),
                     onCreateEvent: { creationRoute = true },
                     onOpenEvent: { event in detailRoute = event },
                     onOpenPastEvents: { pastRoute = true }
@@ -39,7 +39,7 @@ struct MainTabView: View {
                     if let group = app.groups.first {
                         PastEventsView(
                             group: group,
-                            userId: app.session?.userId ?? UUID(),
+                            userId: app.session?.user.id ?? UUID(),
                             eventRepo: app.eventRepo
                         ) { event in detailRoute = event }
                     }
@@ -69,7 +69,7 @@ struct MainTabView: View {
         let coord = EventDetailCoordinator(
             event: event,
             group: group,
-            userId: app.session?.userId ?? UUID(),
+            userId: app.session?.user.id ?? UUID(),
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo,
             checkInRepo: app.checkInRepo,
@@ -138,7 +138,7 @@ struct MainTabView: View {
         guard let group = app.groups.first, homeCoordinator == nil else { return }
         homeCoordinator = HomeCoordinator(
             group: group,
-            userId: app.session?.userId ?? UUID(),
+            userId: app.session?.user.id ?? UUID(),
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo
         )

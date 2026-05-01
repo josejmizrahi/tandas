@@ -41,7 +41,13 @@
   <key>NSContactsUsageDescription</key>
   <string>Para invitar a tu grupo desde tus contactos. Solo se usa cuando tú eliges agregarlos.</string>
   <key>NSPhotoLibraryUsageDescription</key>
-  <string>Para elegir tu foto de perfil del grupo.</string>
+  <string>Para elegir tu foto de perfil del grupo y covers de eventos.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Para escanear códigos QR y marcar llegadas a tus eventos.</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>Para sugerir ubicaciones cercanas y verificar llegadas a eventos.</string>
+  <key>RuulQRSecret</key>
+  <string>$(RUUL_QR_SECRET)</string>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>

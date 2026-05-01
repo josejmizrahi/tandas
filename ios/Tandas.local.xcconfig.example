@@ -1,0 +1,11 @@
+// Local build config — copy to Tandas.local.xcconfig (gitignored) and fill in.
+// xcconfig escapes `//` so use `/$()/` if a value contains them.
+
+// Supabase project (from project dashboard).
+TANDAS_SUPABASE_URL = https:/$()/your-project.supabase.co
+TANDAS_SUPABASE_ANON_KEY = your-anon-key-here
+
+// Shared secret for QR signing — must match the Supabase secret
+// RUUL_QR_SECRET set on the verify-otp + generate-wallet-pass edge
+// functions. Generate with: openssl rand -hex 32
+RUUL_QR_SECRET =

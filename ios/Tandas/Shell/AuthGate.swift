@@ -13,6 +13,10 @@ final class AppState {
     /// When set, the onboarding root view routes to the invited flow.
     var pendingInviteCode: String?
 
+    /// Pending event deep link from a Universal Link / custom URL scheme /
+    /// notification tap. MainTabView picks this up and routes to detail.
+    var pendingEventDeepLink: EventDeepLink?
+
     let auth: any AuthService
     let profileRepo: any ProfileRepository
     let groupsRepo: any GroupsRepository
@@ -20,13 +24,30 @@ final class AppState {
     let ruleRepo: any RuleRepository
     let otp: any OTPService
 
+    // Event layer
+    let eventRepo: any EventRepository
+    let rsvpRepo: any RSVPRepository
+    let checkInRepo: any CheckInRepository
+    let notificationTokenRepo: any NotificationTokenRepository
+    let eventLifecycle: EventLifecycleService
+    let notifications: NotificationService?
+    let walletService: any WalletPassService
+    let analytics: any AnalyticsService
+
     init(
         auth: any AuthService,
         profileRepo: any ProfileRepository,
         groupsRepo: any GroupsRepository,
         inviteRepo: any InviteRepository,
         ruleRepo: any RuleRepository,
-        otp: any OTPService
+        otp: any OTPService,
+        eventRepo: any EventRepository,
+        rsvpRepo: any RSVPRepository,
+        checkInRepo: any CheckInRepository,
+        notificationTokenRepo: any NotificationTokenRepository,
+        notifications: NotificationService? = nil,
+        walletService: any WalletPassService = StubWalletPassService(),
+        analytics: any AnalyticsService = LogAnalyticsService()
     ) {
         self.auth = auth
         self.profileRepo = profileRepo
@@ -34,6 +55,14 @@ final class AppState {
         self.inviteRepo = inviteRepo
         self.ruleRepo = ruleRepo
         self.otp = otp
+        self.eventRepo = eventRepo
+        self.rsvpRepo = rsvpRepo
+        self.checkInRepo = checkInRepo
+        self.notificationTokenRepo = notificationTokenRepo
+        self.notifications = notifications
+        self.walletService = walletService
+        self.analytics = analytics
+        self.eventLifecycle = EventLifecycleService(eventRepo: eventRepo)
     }
 
     func start() async {
@@ -74,11 +103,23 @@ final class AppState {
     func handleIncomingURL(_ url: URL) {
         if let code = InviteLinkGenerator.parseInviteCode(from: url) {
             pendingInviteCode = code
+        } else if let link = EventDeepLink(url: url) {
+            pendingEventDeepLink = link
+        }
+    }
+
+    func handleIncomingNotification(userInfo: [AnyHashable: Any]) {
+        if let link = EventDeepLink(userInfo: userInfo) {
+            pendingEventDeepLink = link
         }
     }
 
     func consumePendingInvite() {
         pendingInviteCode = nil
+    }
+
+    func consumeEventDeepLink() {
+        pendingEventDeepLink = nil
     }
 }
 
@@ -101,7 +142,7 @@ struct AuthGate: View {
                     }
                 }
             } else {
-                MainPlaceholderView()
+                MainTabView()
             }
         }
         .task { await app.start() }
@@ -110,11 +151,15 @@ struct AuthGate: View {
 
     /// Onboarding shows when:
     /// - There's an active OnboardingProgress row in SwiftData (covers the
-    ///   case where the founder is mid-flow at step 5b OTP — session
-    ///   becomes non-nil but flow isn't done), OR
-    /// - The user is logged out (fresh launch / pending invite).
+    ///   case where the founder is mid-flow at OTP — session becomes
+    ///   non-nil but flow isn't done), OR
+    /// - The user is logged out, OR
+    /// - The user has no groups yet.
     private var shouldShowOnboarding: Bool {
-        hasActiveOnboarding || app.session == nil || (app.profile?.needsOnboarding ?? false)
+        hasActiveOnboarding
+            || app.session == nil
+            || (app.profile?.needsOnboarding ?? false)
+            || app.groups.isEmpty
     }
 
     @MainActor
@@ -134,28 +179,6 @@ struct BootstrappingView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(Color.ruulAccentPrimary)
-        }
-    }
-}
-
-/// Placeholder shown post-onboarding until the home/main-app prompt lands.
-struct MainPlaceholderView: View {
-    @Environment(AppState.self) private var app
-
-    var body: some View {
-        ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
-            VStack(spacing: RuulSpacing.s4) {
-                if let profile = app.profile {
-                    Text("Hola, \(profile.displayName)")
-                        .ruulTextStyle(RuulTypography.titleLarge)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-                Text("Próximamente: home, eventos, multas.")
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextSecondary)
-            }
-            .padding(RuulSpacing.s5)
         }
     }
 }
