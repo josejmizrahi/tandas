@@ -36,7 +36,16 @@ public struct RuulOTPInput: View {
             .offset(x: shakeOffset)
 
             // Hidden text field captures actual input.
-            TextField("", text: Binding(get: { code }, set: handleChange))
+            TextField("", text: Binding(
+                get: { code },
+                set: { newValue in
+                    let cleaned = String(newValue.prefix(length).filter(\.isNumber))
+                    code = cleaned
+                    if cleaned.count == length {
+                        onComplete?(cleaned)
+                    }
+                }
+            ))
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .focused($isFocused)

@@ -5,7 +5,6 @@ import SwiftUI
 /// directly via `Color.ruul*` / `Font.ruul*`. The theme exists for views that
 /// need to react to scheme changes mid-render (e.g. switching the showcase
 /// preview between light/dark/HC at runtime).
-@MainActor
 public struct RuulTheme: Sendable {
     public let colors: RuulColors
 
