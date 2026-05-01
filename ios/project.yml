@@ -22,7 +22,7 @@ settings:
     INFOPLIST_FILE: Tandas/Resources/Info.plist
     CODE_SIGN_ENTITLEMENTS: Tandas/Resources/Tandas.entitlements
     CODE_SIGN_STYLE: Automatic
-    PRODUCT_BUNDLE_IDENTIFIER: com.josejmizrahi.tandas
+    PRODUCT_BUNDLE_IDENTIFIER: com.josejmizrahi.ruul
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     TANDAS_SUPABASE_URL: $(inherited)

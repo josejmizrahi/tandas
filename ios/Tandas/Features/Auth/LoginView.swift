@@ -40,7 +40,7 @@ struct LoginView: View {
 
     private var header: some View {
         VStack(spacing: Brand.Spacing.s) {
-            Text("Tandas")
+            Text("Ruul")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             Text("La vida en grupo, sin pleitos.")
