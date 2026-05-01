@@ -76,7 +76,9 @@ schemes:
       targets:
         Tandas: all
         TandasTests: [test]
+        TandasUITests: [test]
     test:
       targets:
         - TandasTests
+        - TandasUITests
       gatherCoverageData: true
