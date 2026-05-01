@@ -19,6 +19,10 @@ enum AnalyticsEvent: Sendable {
     case otpFailed(channel: String, attempts: Int, reason: String)
     case inviteSent(method: String)
 
+    /// Catch-all for events not modeled as their own case. Event-layer
+    /// specifics are added via static factories in EventAnalytics.swift.
+    case untyped(name: String, properties: [String: AnalyticsValue])
+
     enum FlowKind: String, Sendable { case founder, invited }
 
     /// Stable event name used by the analytics backend.
@@ -37,6 +41,7 @@ enum AnalyticsEvent: Sendable {
         case .otpVerified:             return "otp_verified"
         case .otpFailed:               return "otp_failed"
         case .inviteSent:              return "invite_sent"
+        case .untyped(let n, _):       return n
         }
     }
 
@@ -73,6 +78,8 @@ enum AnalyticsEvent: Sendable {
             return ["channel": .string(ch), "attempts": .int(att), "reason": .string(reason)]
         case .inviteSent(let method):
             return ["method": .string(method)]
+        case .untyped(_, let props):
+            return props
         }
     }
 }
