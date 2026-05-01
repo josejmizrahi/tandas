@@ -59,8 +59,3 @@ struct JoinByCodeView: View {
     }
 }
 
-// WelcomeView stub — implemented in T15
-struct WelcomeView: View {
-    let group: Group
-    var body: some View { Text("Welcome to \(group.name) (stub)").foregroundStyle(.white) }
-}
