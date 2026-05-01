@@ -3,38 +3,29 @@ import Supabase
 
 @main
 struct TandasApp: App {
+    @State private var appState: AppState
+
+    init() {
+        let client = SupabaseEnvironment.shared
+        let auth = LiveAuthService(client: client)
+        let profile = LiveProfileRepository(client: client)
+        let groups = LiveGroupsRepository(client: client)
+        _appState = State(initialValue: AppState(
+            auth: auth, profileRepo: profile, groupsRepo: groups
+        ))
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.supabase, SupabaseEnvironment.shared)
+            AuthGate()
+                .environment(appState)
+                .preferredColorScheme(.dark)
         }
     }
 }
 
-private struct SupabaseClientKey: EnvironmentKey {
-    static let defaultValue: SupabaseClient = SupabaseEnvironment.shared
-}
-
-extension EnvironmentValues {
-    var supabase: SupabaseClient {
-        get { self[SupabaseClientKey.self] }
-        set { self[SupabaseClientKey.self] = newValue }
-    }
-}
-
-struct ContentView: View {
-    @Environment(\.supabase) private var supabase
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            VStack(spacing: 8) {
-                Text("Tandas")
-                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                Text("Supabase: \(SupabaseEnvironment.configuredHost)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            .foregroundStyle(.white)
-        }
-    }
-}
+// Stub views — implemented in tasks 9, 11, 12, 16
+struct LoginView: View { var body: some View { Text("LoginView (stub)").foregroundStyle(.white) } }
+struct OnboardingView: View { var body: some View { Text("OnboardingView (stub)").foregroundStyle(.white) } }
+struct EmptyGroupsView: View { var body: some View { Text("EmptyGroupsView (stub)").foregroundStyle(.white) } }
+struct GroupsListView: View { var body: some View { Text("GroupsListView (stub)").foregroundStyle(.white) } }
