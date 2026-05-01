@@ -22,7 +22,7 @@ struct AppUser: Sendable, Equatable {
 
 protocol AuthService: Actor {
     var session: AppSession? { get async }
-    var sessionStream: AsyncStream<AppSession?> { get }
+    nonisolated var sessionStream: AsyncStream<AppSession?> { get }
 
     func signInWithApple() async throws -> AppSession
     func sendPhoneOTP(_ phone: String) async throws
@@ -36,29 +36,42 @@ protocol AuthService: Actor {
 
 actor MockAuthService: AuthService {
     private var _session: AppSession?
-    private var _continuation: AsyncStream<AppSession?>.Continuation?
-    private(set) lazy var sessionStream: AsyncStream<AppSession?> = makeStream()
+    private var continuations: [UUID: AsyncStream<AppSession?>.Continuation] = [:]
 
-    private func makeStream() -> AsyncStream<AppSession?> {
+    var session: AppSession? { _session }
+
+    nonisolated var sessionStream: AsyncStream<AppSession?> {
         AsyncStream { continuation in
-            self.assignContinuation(continuation)
+            let id = UUID()
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.unregister(id: id) }
+            }
+            Task { await self.register(continuation, id: id) }
         }
     }
 
-    private func assignContinuation(_ c: AsyncStream<AppSession?>.Continuation) {
-        self._continuation = c
+    private func register(_ c: AsyncStream<AppSession?>.Continuation, id: UUID) {
+        continuations[id] = c
         c.yield(_session)
     }
 
-    var session: AppSession? { _session }
+    private func unregister(id: UUID) {
+        continuations.removeValue(forKey: id)
+    }
+
+    private func applySession(_ s: AppSession?) {
+        _session = s
+        for (_, c) in continuations {
+            c.yield(s)
+        }
+    }
 
     func signInWithApple() async throws -> AppSession {
         let s = AppSession(
             user: AppUser(id: UUID(), email: "apple@example.com", phone: nil),
             accessToken: "mock-apple-token"
         )
-        _session = s
-        _continuation?.yield(s)
+        applySession(s)
         return s
     }
 
@@ -70,8 +83,7 @@ actor MockAuthService: AuthService {
             user: AppUser(id: UUID(), email: nil, phone: phone),
             accessToken: "mock-phone-token"
         )
-        _session = s
-        _continuation?.yield(s)
+        applySession(s)
         return s
     }
 
@@ -83,14 +95,12 @@ actor MockAuthService: AuthService {
             user: AppUser(id: UUID(), email: email, phone: nil),
             accessToken: "mock-email-token"
         )
-        _session = s
-        _continuation?.yield(s)
+        applySession(s)
         return s
     }
 
     func signOut() async throws {
-        _session = nil
-        _continuation?.yield(nil)
+        applySession(nil)
     }
 }
 
@@ -99,8 +109,7 @@ actor MockAuthService: AuthService {
 actor LiveAuthService: AuthService {
     private let client: SupabaseClient
     private var _session: AppSession?
-    private var _continuation: AsyncStream<AppSession?>.Continuation?
-    private(set) lazy var sessionStream: AsyncStream<AppSession?> = makeStream()
+    private var continuations: [UUID: AsyncStream<AppSession?>.Continuation] = [:]
     private var observerTask: Task<Void, Never>?
 
     init(client: SupabaseClient) {
@@ -108,21 +117,37 @@ actor LiveAuthService: AuthService {
         Task { await self.bootstrap() }
     }
 
-    private func makeStream() -> AsyncStream<AppSession?> {
+    var session: AppSession? { _session }
+
+    nonisolated var sessionStream: AsyncStream<AppSession?> {
         AsyncStream { continuation in
-            self.assignContinuation(continuation)
+            let id = UUID()
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.unregister(id: id) }
+            }
+            Task { await self.register(continuation, id: id) }
         }
     }
 
-    private func assignContinuation(_ c: AsyncStream<AppSession?>.Continuation) {
-        _continuation = c
+    private func register(_ c: AsyncStream<AppSession?>.Continuation, id: UUID) {
+        continuations[id] = c
         c.yield(_session)
+    }
+
+    private func unregister(id: UUID) {
+        continuations.removeValue(forKey: id)
+    }
+
+    private func applySession(_ s: AppSession?) {
+        _session = s
+        for (_, c) in continuations {
+            c.yield(s)
+        }
     }
 
     private func bootstrap() async {
         if let session = try? await client.auth.session {
-            _session = session.toAppSession()
-            _continuation?.yield(_session)
+            applySession(session.toAppSession())
         }
         let stream = client.auth.authStateChanges
         observerTask = Task { [weak self] in
@@ -133,16 +158,7 @@ actor LiveAuthService: AuthService {
         }
     }
 
-    private func applySession(_ s: AppSession?) async {
-        _session = s
-        _continuation?.yield(s)
-    }
-
-    var session: AppSession? { _session }
-
     func signInWithApple() async throws -> AppSession {
-        // The actual ASAuthorizationController flow runs on main actor in the View.
-        // This entry point assumes the caller has already obtained the identity token.
         throw AuthError.unknown("Use signInWithApple(idToken:) on LiveAuthService directly.")
     }
 
@@ -152,8 +168,7 @@ actor LiveAuthService: AuthService {
                 credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken, nonce: nonce)
             )
             let mapped = response.toAppSession()
-            _session = mapped
-            _continuation?.yield(mapped)
+            applySession(mapped)
             return mapped
         } catch {
             throw AuthError.unknown(error.localizedDescription)
@@ -169,8 +184,7 @@ actor LiveAuthService: AuthService {
             let response = try await client.auth.verifyOTP(phone: phone, token: code, type: .sms)
             guard let session = response.session else { throw AuthError.invalidOTP }
             let mapped = session.toAppSession()
-            _session = mapped
-            _continuation?.yield(mapped)
+            applySession(mapped)
             return mapped
         } catch {
             throw AuthError.invalidOTP
@@ -186,8 +200,7 @@ actor LiveAuthService: AuthService {
             let response = try await client.auth.verifyOTP(email: email, token: code, type: .email)
             guard let session = response.session else { throw AuthError.invalidOTP }
             let mapped = session.toAppSession()
-            _session = mapped
-            _continuation?.yield(mapped)
+            applySession(mapped)
             return mapped
         } catch {
             throw AuthError.invalidOTP
@@ -196,8 +209,7 @@ actor LiveAuthService: AuthService {
 
     func signOut() async throws {
         try await client.auth.signOut()
-        _session = nil
-        _continuation?.yield(nil)
+        applySession(nil)
     }
 }
 

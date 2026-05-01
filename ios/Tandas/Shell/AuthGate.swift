@@ -23,7 +23,7 @@ final class AppState {
     }
 
     func start() async {
-        for await s in await auth.sessionStream {
+        for await s in auth.sessionStream {
             self.session = s
             if s != nil {
                 await refreshProfileAndGroups()
