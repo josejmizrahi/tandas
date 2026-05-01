@@ -92,16 +92,6 @@ struct AuthGate: View {
         SwiftUI.Group {
             if app.isBootstrapping || !hasCheckedOnboarding {
                 BootstrappingView()
-<<<<<<< HEAD
-            } else if app.session == nil {
-                LoginView()
-            } else if let profile = app.profile, profile.needsOnboarding {
-                OnboardingView()
-            } else if app.profile == nil {
-                BootstrappingView()  // brief flicker while profile loads
-            } else {
-                MainTabView()
-=======
             } else if shouldShowOnboarding {
                 OnboardingRootView(pendingInviteCode: app.pendingInviteCode) { _ in
                     Task {
@@ -112,7 +102,6 @@ struct AuthGate: View {
                 }
             } else {
                 MainPlaceholderView()
->>>>>>> claude/onboarding-v1
             }
         }
         .task {
@@ -143,21 +132,6 @@ struct BootstrappingView: View {
 
     var body: some View {
         ZStack {
-<<<<<<< HEAD
-            Brand.Surface.canvas.ignoresSafeArea()
-            VStack(spacing: 12) {
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(Brand.Surface.textPrimary)
-                if let err = app.bootstrapError {
-                    Text("Bootstrap error:\n\(err)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                }
-            }
-=======
             RuulMeshBackground(.cool)
             ProgressView()
                 .controlSize(.large)
@@ -184,7 +158,6 @@ struct MainPlaceholderView: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             .padding(RuulSpacing.s5)
->>>>>>> claude/onboarding-v1
         }
     }
 }
