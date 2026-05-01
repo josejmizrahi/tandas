@@ -80,7 +80,7 @@ struct EditEventView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulOnImage)
                     .padding(8)
-                    .background(Color.ruulImageScrim(.badge), in: Circle())
+                    .background(Color.ruulImageBadge, in: Circle())
                     .padding(RuulSpacing.s3)
             }
         }

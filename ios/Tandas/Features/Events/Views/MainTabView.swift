@@ -87,8 +87,7 @@ struct MainTabView: View {
             EventDetailView(
                 coordinator: coord,
                 memberLookup: lookupMember,
-                onScannerOpen: { openScanner(for: coord) },
-                onEdit: { editRoute = coord.event }
+                onScannerOpen: { openScanner(for: coord) }
             )
         )
     }
