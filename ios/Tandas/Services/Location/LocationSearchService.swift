@@ -36,7 +36,7 @@ final class LocationSearchService: NSObject {
 
 extension LocationSearchService: MKLocalSearchCompleterDelegate {
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        let results = completer.results
+        nonisolated(unsafe) let results = completer.results
         Task { @MainActor in
             self.suggestions = results
         }

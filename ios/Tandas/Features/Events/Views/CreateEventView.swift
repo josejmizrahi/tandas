@@ -217,20 +217,24 @@ struct CreateEventView: View {
                 }
                 Divider()
                 PhotosPicker(selection: $photosPickerItem, matching: .images) {
-                    HStack(spacing: RuulSpacing.s3) {
-                        Image(systemName: "photo.on.rectangle")
-                            .foregroundStyle(Color.ruulAccentPrimary)
-                        Text("Subir foto propia")
-                            .ruulTextStyle(RuulTypography.body)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                        Spacer()
-                    }
-                    .padding(RuulSpacing.s4)
-                    .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular, interactive: true)
+                    photosPickerLabel
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private var photosPickerLabel: some View {
+        HStack(spacing: RuulSpacing.s3) {
+            Image(systemName: "photo.on.rectangle")
+                .foregroundStyle(Color.ruulAccentPrimary)
+            Text("Subir foto propia")
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Spacer()
+        }
+        .padding(RuulSpacing.s4)
+        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular, interactive: true)
     }
 
     // MARK: - Computed

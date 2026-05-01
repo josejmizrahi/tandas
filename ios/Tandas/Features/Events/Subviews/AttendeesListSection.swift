@@ -23,7 +23,7 @@ struct AttendeesListSection: View {
             let info = memberLookup($0.userId)
             return RuulAvatarStack.Person(id: $0.userId.uuidString, name: info.name, imageURL: info.avatarURL)
         }
-        return Group {
+        return SwiftUI.Group {
             if !people.isEmpty {
                 RuulAvatarStack(people: people, size: .large, maxVisible: 6)
             } else {

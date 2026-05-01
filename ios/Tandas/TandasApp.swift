@@ -132,10 +132,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let userInfo = response.notification.request.content.userInfo
+        // Cross-actor send of non-Sendable types; opt out under our control.
+        nonisolated(unsafe) let userInfo = response.notification.request.content.userInfo
+        nonisolated(unsafe) let handler = completionHandler
         Task { @MainActor in
             self.appState?.handleIncomingNotification(userInfo: userInfo)
-            completionHandler()
+            handler()
         }
     }
 

@@ -13,7 +13,7 @@ struct EventRSVPStateView: View {
     let onShowQR: () -> Void
 
     var body: some View {
-        Group {
+        SwiftUI.Group {
             switch status {
             case .pending:  pendingView
             case .going:    goingView

@@ -28,10 +28,9 @@ struct PastEventsView: View {
             ErrorStateView(
                 systemImage: "wifi.exclamationmark",
                 title: "No pudimos cargar el historial",
-                message: error.localizedDescription
-            ) {
-                Task { await load() }
-            }
+                message: error.localizedDescription,
+                retryAction: ("Reintentar", { Task { await load() } })
+            )
             .padding(RuulSpacing.s5)
         } else if events.isEmpty {
             EmptyStateView(

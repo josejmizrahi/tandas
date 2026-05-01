@@ -87,9 +87,10 @@ final class QRScannerService: NSObject {
         }
 
         captureSession.commitConfiguration()
-        Task.detached { [self] in
-            captureSession.startRunning()
-        }
+        // Apple recommends starting on a background queue but AVCaptureSession
+        // isn't Sendable under Swift 6 strict concurrency. Sync call is safe;
+        // brief main-thread block during camera startup is acceptable.
+        captureSession.startRunning()
         state = .scanning
     }
 }
