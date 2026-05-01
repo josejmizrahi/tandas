@@ -107,13 +107,14 @@ public extension RuulColors {
 // MARK: - Hex constants (single source of truth, easy to tune)
 
 private enum Hex {
-    // Light
-    static let lightCanvas: UInt32 = 0xF7F8FA
-    static let lightElevated: UInt32 = 0xFFFFFF
-    static let lightRecessed: UInt32 = 0xEFF1F4
+    // Light — Apple Sports vibe: pure white canvas, near-white elevated.
+    // Content (event covers) supplies all the color; chrome stays monochrome.
+    static let lightCanvas: UInt32 = 0xFFFFFF
+    static let lightElevated: UInt32 = 0xF5F5F7
+    static let lightRecessed: UInt32 = 0xEEEEF0
     static let lightCanvasHC: UInt32 = 0xFFFFFF
     static let lightElevatedHC: UInt32 = 0xFFFFFF
-    static let lightRecessedHC: UInt32 = 0xE5E8ED
+    static let lightRecessedHC: UInt32 = 0xE0E0E2
 
     static let lightGlassThin: UInt32 = 0xFFFFFF
     static let lightGlassRegular: UInt32 = 0xFFFFFF
@@ -122,20 +123,24 @@ private enum Hex {
     static let lightGlassRegularHC: UInt32 = 0xFFFFFF
     static let lightGlassThickHC: UInt32 = 0xFFFFFF
 
-    static let lightTextPrimary: UInt32 = 0x0A0E1A
-    static let lightTextSecondary: UInt32 = 0x475569
-    static let lightTextTertiary: UInt32 = 0x94A3B8
+    static let lightTextPrimary: UInt32 = 0x000000
+    static let lightTextSecondary: UInt32 = 0x6B6B6F
+    static let lightTextTertiary: UInt32 = 0xA1A1A6
     static let lightTextInverse: UInt32 = 0xFFFFFF
-    static let lightTextAccent: UInt32 = 0x5B6CFF
+    // textAccent now mirrors textPrimary — Apple Sports doesn't use a brand
+    // accent color for inline text; emphasis comes from weight + size.
+    static let lightTextAccent: UInt32 = 0x000000
     static let lightTextPrimaryHC: UInt32 = 0x000000
-    static let lightTextSecondaryHC: UInt32 = 0x1F2937
-    static let lightTextAccentHC: UInt32 = 0x3B4FE5
+    static let lightTextSecondaryHC: UInt32 = 0x3A3A3C
+    static let lightTextAccentHC: UInt32 = 0x000000
 
-    // Luma orange — single accent, no violet/indigo anywhere.
-    static let lightAccentPrimary: UInt32 = 0xF77D29
-    static let lightAccentSecondary: UInt32 = 0xFFA561
-    static let lightAccentPrimaryHC: UInt32 = 0xD25E12
-    static let lightAccentSecondaryHC: UInt32 = 0xE88940
+    // Apple Sports — fully monochrome accent. App chrome (FAB, focus rings,
+    // primary buttons) is pure black in light mode. Color identity lives in
+    // event covers (saturated mesh gradients) and semantic states.
+    static let lightAccentPrimary: UInt32 = 0x000000
+    static let lightAccentSecondary: UInt32 = 0x1C1C1E
+    static let lightAccentPrimaryHC: UInt32 = 0x000000
+    static let lightAccentSecondaryHC: UInt32 = 0x000000
 
     static let lightSuccess: UInt32 = 0x10B981
     static let lightWarning: UInt32 = 0xF59E0B
@@ -146,12 +151,13 @@ private enum Hex {
     static let lightErrorHC: UInt32 = 0xB91C1C
     static let lightInfoHC: UInt32 = 0x1D4ED8
 
-    // Dark
-    static let darkCanvas: UInt32 = 0x0A0E1A
-    static let darkElevated: UInt32 = 0x131826
-    static let darkRecessed: UInt32 = 0x050811
+    // Dark — Apple Sports vibe: near-OLED black canvas, subtle elevation
+    // step. NOT navy/blue. Lets covers + scores pop with maximum contrast.
+    static let darkCanvas: UInt32 = 0x000000
+    static let darkElevated: UInt32 = 0x1C1C1E
+    static let darkRecessed: UInt32 = 0x0A0A0B
     static let darkCanvasHC: UInt32 = 0x000000
-    static let darkElevatedHC: UInt32 = 0x0F1422
+    static let darkElevatedHC: UInt32 = 0x121214
     static let darkRecessedHC: UInt32 = 0x000000
 
     static let darkGlassThin: UInt32 = 0xFFFFFF
@@ -161,20 +167,22 @@ private enum Hex {
     static let darkGlassRegularHC: UInt32 = 0xFFFFFF
     static let darkGlassThickHC: UInt32 = 0xFFFFFF
 
-    static let darkTextPrimary: UInt32 = 0xF8FAFC
-    static let darkTextSecondary: UInt32 = 0x94A3B8
-    static let darkTextTertiary: UInt32 = 0x64748B
-    static let darkTextInverse: UInt32 = 0x0A0E1A
-    static let darkTextAccent: UInt32 = 0x818CF8
+    static let darkTextPrimary: UInt32 = 0xFFFFFF
+    static let darkTextSecondary: UInt32 = 0x9A9A9F
+    static let darkTextTertiary: UInt32 = 0x636367
+    static let darkTextInverse: UInt32 = 0x000000
+    // textAccent mirrors textPrimary in dark too — pure white inline emphasis.
+    static let darkTextAccent: UInt32 = 0xFFFFFF
     static let darkTextPrimaryHC: UInt32 = 0xFFFFFF
-    static let darkTextSecondaryHC: UInt32 = 0xCBD5E1
-    static let darkTextAccentHC: UInt32 = 0xA5B0FF
+    static let darkTextSecondaryHC: UInt32 = 0xD1D1D6
+    static let darkTextAccentHC: UInt32 = 0xFFFFFF
 
-    // Luma orange in dark mode (slightly brighter for legibility on near-black).
-    static let darkAccentPrimary: UInt32 = 0xFF8E3D
-    static let darkAccentSecondary: UInt32 = 0xFFB37A
-    static let darkAccentPrimaryHC: UInt32 = 0xFFAA63
-    static let darkAccentSecondaryHC: UInt32 = 0xFFC79A
+    // Apple Sports — fully monochrome accent in dark mode too. Pure white
+    // for FAB / primary buttons / focus rings on the near-OLED background.
+    static let darkAccentPrimary: UInt32 = 0xFFFFFF
+    static let darkAccentSecondary: UInt32 = 0xE5E5E7
+    static let darkAccentPrimaryHC: UInt32 = 0xFFFFFF
+    static let darkAccentSecondaryHC: UInt32 = 0xFFFFFF
 
     static let darkSuccess: UInt32 = 0x34D399
     static let darkWarning: UInt32 = 0xFBBF24

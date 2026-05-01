@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Magazine-style card representing a single event in lists. Full-width
-/// 16:9 cover anchors the visual identity; meta + social proof live below.
-/// Solid elevated card (not glass) — glass is reserved for transient
-/// surfaces (nav bars, sheets, overlays).
+/// Full-tile event card. Apple Sports pattern: the cover IS the card —
+/// content is overlaid in white over a vignette gradient. No body section,
+/// no white space. Each card has its own color identity from the cover.
 struct EventCard: View {
     let event: Event
     let myStatus: RSVPStatus?
@@ -30,13 +29,29 @@ struct EventCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 0) {
-                coverHero
-                content
+            ZStack(alignment: .bottomLeading) {
+                cover
+                    .aspectRatio(16/11, contentMode: .fill)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+
+                // Vignette: bottom 60% darkens for white-text legibility,
+                // top stays clean so status badges read against the cover hue.
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear,                    location: 0.00),
+                        .init(color: .clear,                    location: 0.30),
+                        .init(color: Color.black.opacity(0.20), location: 0.55),
+                        .init(color: Color.black.opacity(0.78), location: 1.00)
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+
+                topBadgesOverlay
+                bottomContentOverlay
             }
-            .background(Color.ruulBackgroundElevated)
+            .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-            .ruulElevation(.md)
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
@@ -45,36 +60,7 @@ struct EventCard: View {
         .buttonStyle(.ruulPress)
     }
 
-    // MARK: - Cover hero (16:9, edge-to-edge inside the card)
-
-    private var coverHero: some View {
-        ZStack(alignment: .topLeading) {
-            cover
-                .aspectRatio(16/9, contentMode: .fill)
-                .frame(maxWidth: .infinity)
-                .clipped()
-
-            // Subtle top-left gradient for badge legibility against bright covers.
-            LinearGradient(
-                colors: [Color.black.opacity(0.30), .clear],
-                startPoint: .topLeading,
-                endPoint: .center
-            )
-
-            HStack(spacing: RuulSpacing.s2) {
-                if isHostedByMe {
-                    badge(icon: "star.fill", text: "Hosteas", tint: .ruulAccentPrimary)
-                }
-                if event.status == .inProgress {
-                    livePill
-                }
-                if event.status == .cancelled {
-                    badge(icon: "xmark.circle.fill", text: "Cancelado", tint: .ruulSemanticError)
-                }
-            }
-            .padding(RuulSpacing.s3)
-        }
-    }
+    // MARK: - Cover
 
     @ViewBuilder
     private var cover: some View {
@@ -95,57 +81,68 @@ struct EventCard: View {
         return RuulCoverView(cover)
     }
 
-    // MARK: - Content section
+    // MARK: - Top badges (status indicators, always visible against cover)
 
-    private var content: some View {
+    private var topBadgesOverlay: some View {
+        VStack(alignment: .leading) {
+            HStack(spacing: RuulSpacing.s2) {
+                if event.status == .inProgress {
+                    livePill
+                }
+                if event.status == .cancelled {
+                    overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.ruulSemanticError)
+                }
+                if event.status == .closed {
+                    overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.black.opacity(0.55))
+                }
+                Spacer()
+                if isHostedByMe {
+                    overlayBadge(icon: "star.fill", text: "Hosteas", tint: Color.black.opacity(0.55))
+                }
+            }
+            .padding(RuulSpacing.s3)
+            Spacer()
+        }
+    }
+
+    // MARK: - Bottom content (date / title / meta / footer all in white)
+
+    private var bottomContentOverlay: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.85))
                     .textCase(.uppercase)
-                    .tracking(0.5)
+                    .tracking(0.6)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.title)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
+                    .shadow(color: Color.black.opacity(0.18), radius: 2, x: 0, y: 1)
             }
 
-            if let location = event.locationName, !location.isEmpty {
-                Label(location, systemImage: "mappin.and.ellipse")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .lineLimit(1)
-            }
-
-            if confirmedCount > 0 || !attendeeAvatars.isEmpty || (myStatus != nil && myStatus != .pending) {
-                footer
+            HStack(spacing: RuulSpacing.s3) {
+                if let location = event.locationName, !location.isEmpty {
+                    Label(location, systemImage: "mappin.and.ellipse")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if confirmedCount > 0 {
+                    Text("\(confirmedCount) van")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.white)
+                }
+                if let myStatus, myStatus != .pending {
+                    myRSVPPill(myStatus)
+                }
             }
         }
-        .padding(RuulSpacing.s5)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: - Footer (social proof + my RSVP)
-
-    private var footer: some View {
-        HStack(spacing: RuulSpacing.s3) {
-            if !attendeeAvatars.isEmpty {
-                RuulAvatarStack(people: attendeeAvatars, size: .small, maxVisible: 4)
-            }
-            if confirmedCount > 0 {
-                Text("\(confirmedCount) van")
-                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.ruulTextPrimary)
-            }
-            Spacer(minLength: 0)
-            if let myStatus, myStatus != .pending {
-                myRSVPPill(myStatus)
-            }
-        }
-        .padding(.top, RuulSpacing.s2)
+        .padding(RuulSpacing.s4)
     }
 
     // MARK: - Helpers
@@ -153,23 +150,23 @@ struct EventCard: View {
     private var dateDescription: String {
         let calendar = Calendar.current
         if calendar.isDateInToday(event.startsAt) {
-            return "Hoy · \(event.startsAt.ruulShortTime)"
+            return "HOY · \(event.startsAt.ruulShortTime)"
         }
         if calendar.isDateInTomorrow(event.startsAt) {
-            return "Mañana · \(event.startsAt.ruulShortTime)"
+            return "MAÑANA · \(event.startsAt.ruulShortTime)"
         }
         return "\(event.startsAt.ruulShortDate.uppercased()) · \(event.startsAt.ruulShortTime)"
     }
 
-    private func badge(icon: String, text: String, tint: Color) -> some View {
+    private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
-            Text(text)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.3)
+            Text(text.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.5)
         }
-        .foregroundStyle(Color.ruulTextInverse)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(tint, in: Capsule())
@@ -178,36 +175,37 @@ struct EventCard: View {
     private var livePill: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(Color.ruulSemanticError)
+                .fill(Color.white)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
-                .font(.system(size: 11, weight: .bold))
-                .tracking(0.5)
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.6)
         }
-        .foregroundStyle(Color.ruulTextInverse)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(Color.black.opacity(0.65), in: Capsule())
+        .background(Color.ruulSemanticError, in: Capsule())
     }
 
     private func myRSVPPill(_ status: RSVPStatus) -> some View {
-        let (icon, tint, label): (String, Color, String) = {
+        let (icon, label): (String, String) = {
             switch status {
-            case .going:    return ("checkmark", .ruulSemanticSuccess, "Vas")
-            case .maybe:    return ("questionmark", .ruulSemanticWarning, "Tal vez")
-            case .declined: return ("xmark", .ruulSemanticError, "No vas")
-            case .pending:  return ("circle", .ruulTextTertiary, "")
+            case .going:    return ("checkmark", "Vas")
+            case .maybe:    return ("questionmark", "Tal vez")
+            case .declined: return ("xmark", "No vas")
+            case .pending:  return ("circle", "")
             }
         }()
         return HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
             Text(label)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .bold))
         }
-        .foregroundStyle(tint)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(tint.opacity(0.12), in: Capsule())
+        .background(Color.white.opacity(0.22), in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.30), lineWidth: 0.5))
     }
 }
