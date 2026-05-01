@@ -104,10 +104,8 @@ struct AuthGate: View {
                 MainPlaceholderView()
             }
         }
-        .task {
-            await app.start()
-            await refreshOnboardingState()
-        }
+        .task { await app.start() }
+        .task { await refreshOnboardingState() }
     }
 
     /// Onboarding shows when:
