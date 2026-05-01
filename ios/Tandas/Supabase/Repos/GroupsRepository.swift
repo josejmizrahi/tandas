@@ -260,6 +260,18 @@ actor LiveGroupsRepository: GroupsRepository {
     // MARK: - Onboarding V1
 
     func createInitial(_ draft: GroupDraft) async throws -> Group {
+        // The founder hasn't done OTP yet at this point of onboarding. The RPC
+        // create_group_with_admin requires auth.uid() — if there's no session,
+        // sign in anonymously so the group can be born and later promoted via
+        // OTP. Requires Supabase Auth → Anonymous sign-ins ENABLED.
+        if (try? await client.auth.session) == nil {
+            do {
+                _ = try await client.auth.signInAnonymously()
+            } catch {
+                throw GroupsError.rpcFailed("anon_signin_disabled: \(error.localizedDescription)")
+            }
+        }
+
         struct Params: Encodable {
             let p_name: String
             let p_event_label: String
