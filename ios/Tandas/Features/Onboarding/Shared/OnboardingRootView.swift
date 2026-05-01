@@ -24,7 +24,7 @@ struct OnboardingRootView: View {
     }
 
     var body: some View {
-        Group {
+        SwiftUI.Group {
             if let bundle = coordinatorBundle {
                 if let founder = bundle.founder {
                     FounderFlow(coordinator: founder, onCompleted: onCompleted)

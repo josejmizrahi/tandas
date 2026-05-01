@@ -80,7 +80,7 @@ struct InviteWelcomeView: View {
         let people = names.prefix(5).enumerated().map { idx, name in
             RuulAvatarStack.Person(id: "\(idx)", name: name)
         }
-        return Group {
+        return SwiftUI.Group {
             if !people.isEmpty {
                 RuulAvatarStack(people: Array(people), size: .large, maxVisible: 5)
             } else {

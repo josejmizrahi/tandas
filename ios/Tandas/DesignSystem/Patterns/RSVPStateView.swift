@@ -12,7 +12,7 @@ public struct RSVPStateView: View {
     }
 
     public var body: some View {
-        Group {
+        SwiftUI.Group {
             switch state {
             case .notResponded:
                 threeButtons

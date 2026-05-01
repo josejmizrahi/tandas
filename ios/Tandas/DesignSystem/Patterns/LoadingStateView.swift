@@ -12,7 +12,7 @@ public struct LoadingStateView: View {
     }
 
     public var body: some View {
-        Group {
+        SwiftUI.Group {
             switch variant {
             case .list:   list
             case .card:   card

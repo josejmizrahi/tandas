@@ -21,7 +21,7 @@ public struct RuulDatePicker: View {
     }
 
     public var body: some View {
-        Group {
+        SwiftUI.Group {
             if let range {
                 DatePicker(title, selection: $date, in: range, displayedComponents: components)
             } else {

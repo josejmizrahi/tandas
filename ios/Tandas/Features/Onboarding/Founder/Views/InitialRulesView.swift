@@ -5,7 +5,6 @@ struct InitialRulesView: View {
     @State private var infoRule: RuleDraft?
 
     var body: some View {
-        @Bindable var bindable = coord
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
@@ -18,9 +17,9 @@ struct InitialRulesView: View {
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.s4) {
                 ForEach(coord.draft.rules.indices, id: \.self) { idx in
-                    ruleCard(at: idx, bindable: bindable)
+                    ruleCard(at: idx)
                 }
-                rotationSection(bindable: bindable)
+                rotationSection
             }
         }
         .ruulSheet(item: $infoRule) { rule in
@@ -32,7 +31,7 @@ struct InitialRulesView: View {
         Double(FounderStep.rules.index) / Double(FounderStep.allCases.count - 1)
     }
 
-    private func ruleCard(at idx: Int, bindable: Bindable<FounderOnboardingCoordinator>) -> some View {
+    private func ruleCard(at idx: Int) -> some View {
         let rule = coord.draft.rules[idx]
         return RuulCard(.glass) {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
@@ -80,13 +79,14 @@ struct InitialRulesView: View {
         .animation(.ruulSnappy, value: rule.enabled)
     }
 
-    private func rotationSection(bindable: Bindable<FounderOnboardingCoordinator>) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+    private var rotationSection: some View {
+        @Bindable var b = coord
+        return VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             Text("¿Tu grupo rota anfitrión?")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             RuulSegmentedControl(
-                selection: $bindable.draft.rotationMode,
+                selection: $b.draft.rotationMode,
                 segments: RotationMode.allCases.map { ($0, segmentLabel(for: $0)) }
             )
             Text(coord.draft.rotationMode.description)

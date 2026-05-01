@@ -2,7 +2,7 @@ import Foundation
 
 /// Draft of a rule shown in the founder onboarding step 4. Mutable as the
 /// user toggles enable/disable and edits the amount.
-struct RuleDraft: Identifiable, Sendable, Hashable {
+struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
     let id: UUID
     let code: String                  // matches Supabase rules.code: late, no_rsvp, etc.
     var title: String

@@ -13,7 +13,6 @@ struct GroupVocabularyView: View {
     ]
 
     var body: some View {
-        @Bindable var bindable = coord
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
@@ -25,10 +24,10 @@ struct GroupVocabularyView: View {
             canContinue: true
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.s7) {
-                vocabularySection(bindable: bindable)
-                frequencySection(bindable: bindable)
+                vocabularySection
+                frequencySection
                 if coord.draft.frequencyType != nil && coord.draft.frequencyType != .unscheduled {
-                    dayTimeSection(bindable: bindable)
+                    dayTimeSection
                 }
             }
         }
@@ -38,28 +37,28 @@ struct GroupVocabularyView: View {
         Double(FounderStep.vocabulary.index) / Double(FounderStep.allCases.count - 1)
     }
 
-    private func vocabularySection(bindable: Bindable<FounderOnboardingCoordinator>) -> some View {
+    private var vocabularySection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             Text("¿Cómo le dicen?")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             RuulFlowChips(
                 selection: Binding(
-                    get: { bindable.draft.eventVocabulary.wrappedValue },
-                    set: { bindable.draft.eventVocabulary.wrappedValue = $0 ?? "evento" }
+                    get: { coord.draft.eventVocabulary },
+                    set: { coord.draft.eventVocabulary = $0 ?? "evento" }
                 ),
                 options: Self.vocabularyOptions,
                 allowOther: true,
                 otherSentinel: "otro",
                 customValue: Binding(
-                    get: { bindable.draft.customVocabulary.wrappedValue ?? "" },
-                    set: { bindable.draft.customVocabulary.wrappedValue = $0 }
+                    get: { coord.draft.customVocabulary ?? "" },
+                    set: { coord.draft.customVocabulary = $0 }
                 )
             )
         }
     }
 
-    private func frequencySection(bindable: Bindable<FounderOnboardingCoordinator>) -> some View {
+    private var frequencySection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             Text("¿Cada cuánto?")
                 .ruulTextStyle(RuulTypography.headline)
@@ -76,7 +75,7 @@ struct GroupVocabularyView: View {
         }
     }
 
-    private func dayTimeSection(bindable: Bindable<FounderOnboardingCoordinator>) -> some View {
+    private var dayTimeSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s3) {
             Text("Día y hora")
                 .ruulTextStyle(RuulTypography.headline)
@@ -90,8 +89,6 @@ struct GroupVocabularyView: View {
                 ),
                 options: dayOptions
             )
-            // Time picker uses RuulDatePicker .hourAndMinute. We store back to
-            // frequencyConfig hour/minute on each change.
             RuulDatePicker(
                 "Hora",
                 date: Binding(

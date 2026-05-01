@@ -20,6 +20,7 @@ struct MockGroupsRepositoryTests {
             eventLabel: "Cena",
             currency: "MXN",
             groupType: .recurringDinner,
+            coverImageName: nil,
             defaultDayOfWeek: 2,
             defaultStartTime: "20:00:00",
             defaultLocation: "Casa de Jose"
@@ -34,8 +35,12 @@ struct MockGroupsRepositoryTests {
     @Test("joinByCode finds preseeded group")
     func joinByCode() async throws {
         let preseed = Group(
-            id: UUID(), name: "Tanda viejos", description: nil,
-            groupType: .tandaSavings, inviteCode: "tandaaaa",
+            id: UUID(),
+            name: "Tanda viejos",
+            description: nil,
+            groupType: .tandaSavings,
+            inviteCode: "tandaaaa",
+            createdBy: UUID(),
             createdAt: .now
         )
         let repo = MockGroupsRepository(seed: [preseed])
