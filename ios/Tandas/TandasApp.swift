@@ -24,6 +24,5 @@ struct TandasApp: App {
     }
 }
 
-// Stub views — implemented in tasks 12, 16
-struct EmptyGroupsView: View { var body: some View { Text("EmptyGroupsView (stub)").foregroundStyle(.white) } }
+// Stub views — implemented in task 16
 struct GroupsListView: View { var body: some View { Text("GroupsListView (stub)").foregroundStyle(.white) } }
