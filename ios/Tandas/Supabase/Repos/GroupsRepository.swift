@@ -264,14 +264,6 @@ actor LiveGroupsRepository: GroupsRepository {
         // create_group_with_admin requires auth.uid() — if there's no session,
         // sign in anonymously so the group can be born and later promoted via
         // OTP. Requires Supabase Auth → Anonymous sign-ins ENABLED.
-        if (try? await client.auth.session) == nil {
-            do {
-                _ = try await client.auth.signInAnonymously()
-            } catch {
-                throw GroupsError.rpcFailed("anon_signin_disabled: \(error.localizedDescription)")
-            }
-        }
-
         struct Params: Encodable {
             let p_name: String
             let p_event_label: String
@@ -288,14 +280,32 @@ actor LiveGroupsRepository: GroupsRepository {
             p_group_type: GroupType.recurringDinner.rawValue,
             p_cover_image_name: draft.coverImageName
         )
-        do {
-            let g: Group = try await client
+
+        func runRPC() async throws -> Group {
+            try await client
                 .rpc("create_group_with_admin", params: params)
                 .execute()
                 .value
-            return g
+        }
+
+        // First attempt with whatever session we have.
+        do {
+            return try await runRPC()
         } catch {
-            throw GroupsError.rpcFailed(error.localizedDescription)
+            // 'not authenticated' (RPC raises this when auth.uid() is null), or
+            // any other PostgREST error from a stale token. Sign out + anon
+            // signin + retry once.
+            try? await client.auth.signOut()
+            do {
+                _ = try await client.auth.signInAnonymously()
+            } catch {
+                throw GroupsError.rpcFailed("anon_signin_failed: \(error.localizedDescription)")
+            }
+            do {
+                return try await runRPC()
+            } catch {
+                throw GroupsError.rpcFailed(error.localizedDescription)
+            }
         }
     }
 
