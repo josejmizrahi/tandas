@@ -23,9 +23,19 @@ struct TandasApp: App {
 
     var body: some Scene {
         WindowGroup {
+            // Note: .preferredColorScheme(.dark) is intentionally retained
+            // during DS V1. The new design system supports light + dark + HC,
+            // but every existing feature view (LoginView, OnboardingView,
+            // WelcomeView, GroupsListView) was authored for dark only and
+            // would render incorrectly in light. The override is removed when
+            // those features are migrated in subsequent prompts.
             AuthGate()
                 .environment(appState)
+                .ruulTheme()
                 .preferredColorScheme(.dark)
+                #if DEBUG
+                .ruulShowcaseShakeListener()
+                #endif
         }
     }
 }
