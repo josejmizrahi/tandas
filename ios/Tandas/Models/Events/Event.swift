@@ -23,6 +23,10 @@ struct Event: Identifiable, Codable, Sendable, Hashable {
     let rsvpDeadline: Date?
     let closedAt: Date?
     let createdBy: UUID?
+    /// Max seats (going + plus-ones). nil = unlimited.
+    let capacityMax: Int?
+    let allowPlusOnes: Bool
+    let maxPlusOnesPerMember: Int
     let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
@@ -46,6 +50,9 @@ struct Event: Identifiable, Codable, Sendable, Hashable {
         case closedAt              = "closed_at"
         case createdBy             = "created_by"
         case createdAt             = "created_at"
+        case capacityMax           = "capacity_max"
+        case allowPlusOnes         = "allow_plus_ones"
+        case maxPlusOnesPerMember  = "max_plus_ones_per_member"
     }
 
     init(
@@ -71,7 +78,10 @@ struct Event: Identifiable, Codable, Sendable, Hashable {
         rsvpDeadline: Date? = nil,
         closedAt: Date? = nil,
         createdBy: UUID? = nil,
-        createdAt: Date
+        createdAt: Date,
+        capacityMax: Int? = nil,
+        allowPlusOnes: Bool = false,
+        maxPlusOnesPerMember: Int = 0
     ) {
         self.id = id
         self.groupId = groupId
@@ -96,6 +106,9 @@ struct Event: Identifiable, Codable, Sendable, Hashable {
         self.closedAt = closedAt
         self.createdBy = createdBy
         self.createdAt = createdAt
+        self.capacityMax = capacityMax
+        self.allowPlusOnes = allowPlusOnes
+        self.maxPlusOnesPerMember = maxPlusOnesPerMember
     }
 
     /// Tolerant decoder: missing newer columns (e.g. on a fixture from
@@ -125,6 +138,9 @@ struct Event: Identifiable, Codable, Sendable, Hashable {
         self.closedAt             = try c.decodeIfPresent(Date.self,   forKey: .closedAt)
         self.createdBy            = try c.decodeIfPresent(UUID.self,   forKey: .createdBy)
         self.createdAt            = try c.decode(Date.self,   forKey: .createdAt)
+        self.capacityMax          = try c.decodeIfPresent(Int.self,    forKey: .capacityMax)
+        self.allowPlusOnes        = (try? c.decode(Bool.self, forKey: .allowPlusOnes)) ?? false
+        self.maxPlusOnesPerMember = (try? c.decode(Int.self,  forKey: .maxPlusOnesPerMember)) ?? 0
     }
 }
 

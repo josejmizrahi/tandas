@@ -3,33 +3,70 @@ import SwiftUI
 /// RSVP control — Apple Sports / Luma aesthetic: monochrome surfaces with
 /// thin borders, status conveyed via small colored dot + uppercase label,
 /// never via saturated tinted backgrounds.
+///
+/// Handles 5 statuses (pending/going/maybe/declined/waitlisted) plus
+/// plus-ones stepper when the event allows extra guests, plus
+/// capacity-aware "Voy" pill (auto-becomes "Lista de espera" when at
+/// capacity).
 struct EventRSVPStateView: View {
     let status: RSVPStatus
     let event: Event
     let walletAvailable: Bool
+    let isAtCapacity: Bool
+    @Binding var plusOnes: Int
     let onChange: (RSVPStatus) -> Void
     let onAddToWallet: () -> Void
     let onShowQR: () -> Void
 
+    init(
+        status: RSVPStatus,
+        event: Event,
+        walletAvailable: Bool,
+        isAtCapacity: Bool = false,
+        plusOnes: Binding<Int> = .constant(0),
+        onChange: @escaping (RSVPStatus) -> Void,
+        onAddToWallet: @escaping () -> Void,
+        onShowQR: @escaping () -> Void
+    ) {
+        self.status = status
+        self.event = event
+        self.walletAvailable = walletAvailable
+        self.isAtCapacity = isAtCapacity
+        self._plusOnes = plusOnes
+        self.onChange = onChange
+        self.onAddToWallet = onAddToWallet
+        self.onShowQR = onShowQR
+    }
+
     var body: some View {
         SwiftUI.Group {
             switch status {
-            case .pending:  pendingView
-            case .going:    goingView
-            case .maybe:    maybeView
-            case .declined: declinedView
+            case .pending:    pendingView
+            case .going:      goingView
+            case .maybe:      maybeView
+            case .declined:   declinedView
+            case .waitlisted: waitlistedView
             }
         }
         .animation(.ruulMorph, value: status)
     }
 
-    // MARK: - Pending — 3 segment-style pills, equal weight, monochrome
+    // MARK: - Pending — 3 segment-style pills (capacity-aware) + plus-ones row
 
     private var pendingView: some View {
-        HStack(spacing: RuulSpacing.s2) {
-            choicePill(.going,    label: "Voy",     icon: "checkmark", dot: .ruulSemanticSuccess)
-            choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .ruulSemanticWarning)
-            choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .ruulSemanticError)
+        VStack(spacing: RuulSpacing.s3) {
+            if event.allowPlusOnes && event.maxPlusOnesPerMember > 0 {
+                plusOnesRow
+            }
+            HStack(spacing: RuulSpacing.s2) {
+                if isAtCapacity {
+                    choicePill(.going, label: "Lista", icon: "person.crop.circle.badge.clock", dot: .ruulSemanticWarning)
+                } else {
+                    choicePill(.going, label: "Voy", icon: "checkmark", dot: .ruulSemanticSuccess)
+                }
+                choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .ruulSemanticWarning)
+                choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .ruulSemanticError)
+            }
         }
     }
 
@@ -60,15 +97,74 @@ struct EventRSVPStateView: View {
         .buttonStyle(.ruulPress)
     }
 
-    // MARK: - Going (confirmed) — flat monochrome card with status header + actions
+    // MARK: - Plus-ones stepper (inline row, shown when event allows it)
+
+    private var plusOnesRow: some View {
+        HStack(spacing: RuulSpacing.s3) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Color.ruulTextTertiary)
+            Text("Llevo a más gente")
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Spacer()
+            stepperControl
+        }
+        .padding(.horizontal, RuulSpacing.s4)
+        .padding(.vertical, RuulSpacing.s3)
+        .background(Color.ruulBackgroundElevated)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+        )
+    }
+
+    private var stepperControl: some View {
+        HStack(spacing: 4) {
+            stepperButton(icon: "minus", enabled: plusOnes > 0) {
+                if plusOnes > 0 { plusOnes -= 1 }
+            }
+            Text("+\(plusOnes)")
+                .ruulTextStyle(RuulTypography.statSmall)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .frame(minWidth: 28)
+            stepperButton(icon: "plus", enabled: plusOnes < event.maxPlusOnesPerMember) {
+                if plusOnes < event.maxPlusOnesPerMember { plusOnes += 1 }
+            }
+        }
+    }
+
+    private func stepperButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                .frame(width: 26, height: 26)
+                .background(Color.ruulBackgroundCanvas)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+        }
+        .buttonStyle(.ruulPress)
+        .disabled(!enabled)
+    }
+
+    // MARK: - Going (confirmed) — flat monochrome card
 
     private var goingView: some View {
         confirmedCard(
             statusLabel: "VAS",
             statusDot: .ruulSemanticSuccess,
-            title: "Confirmado",
+            title: plusOnes > 0 ? "Confirmado · +\(plusOnes)" : "Confirmado",
             subtitle: arrivalLine
-        ) { confirmedActions }
+        ) {
+            VStack(spacing: RuulSpacing.s3) {
+                if event.allowPlusOnes && event.maxPlusOnesPerMember > 0 {
+                    plusOnesRow
+                }
+                confirmedActions
+            }
+        }
     }
 
     @ViewBuilder
@@ -98,8 +194,27 @@ struct EventRSVPStateView: View {
     @ViewBuilder
     private var maybeActions: some View {
         HStack(spacing: RuulSpacing.s2) {
-            actionButton("Voy", icon: "checkmark", primary: true) { onChange(.going) }
+            actionButton(
+                isAtCapacity ? "Lista" : "Voy",
+                icon: isAtCapacity ? "person.crop.circle.badge.clock" : "checkmark",
+                primary: true
+            ) { onChange(.going) }
             actionButton("No voy", icon: "xmark", primary: false) { onChange(.declined) }
+        }
+    }
+
+    // MARK: - Waitlisted — amber dot, neutral card, "remove from list" action
+
+    private var waitlistedView: some View {
+        confirmedCard(
+            statusLabel: "EN LISTA",
+            statusDot: .ruulSemanticWarning,
+            title: "En lista de espera",
+            subtitle: "Te avisamos si se libera lugar"
+        ) {
+            actionButton("Quitarme de la lista", icon: "xmark", primary: false) {
+                onChange(.declined)
+            }
         }
     }
 
@@ -131,7 +246,7 @@ struct EventRSVPStateView: View {
         )
     }
 
-    // MARK: - Confirmed-card scaffold (going + maybe share this layout)
+    // MARK: - Confirmed-card scaffold (going + maybe + waitlisted share this layout)
 
     @ViewBuilder
     private func confirmedCard<Actions: View>(

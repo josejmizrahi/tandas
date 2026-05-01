@@ -9,6 +9,7 @@ struct EventCard: View {
     let isHostedByMe: Bool
     let attendeeAvatars: [RuulAvatarStack.Person]
     let confirmedCount: Int
+    let isAtCapacity: Bool
     let onTap: () -> Void
 
     init(
@@ -17,6 +18,7 @@ struct EventCard: View {
         isHostedByMe: Bool,
         attendeeAvatars: [RuulAvatarStack.Person] = [],
         confirmedCount: Int = 0,
+        isAtCapacity: Bool = false,
         onTap: @escaping () -> Void
     ) {
         self.event = event
@@ -24,6 +26,7 @@ struct EventCard: View {
         self.isHostedByMe = isHostedByMe
         self.attendeeAvatars = attendeeAvatars
         self.confirmedCount = confirmedCount
+        self.isAtCapacity = isAtCapacity
         self.onTap = onTap
     }
 
@@ -94,6 +97,9 @@ struct EventCard: View {
                 }
                 if event.status == .closed {
                     overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.ruulImageBadge)
+                }
+                if isAtCapacity && event.status == .upcoming {
+                    overlayBadge(icon: "person.fill.checkmark", text: "Lleno", tint: Color.ruulSemanticError)
                 }
                 Spacer()
                 if isHostedByMe {

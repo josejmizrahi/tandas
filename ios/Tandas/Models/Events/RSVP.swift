@@ -13,6 +13,10 @@ struct RSVP: Identifiable, Codable, Sendable, Hashable {
     let checkInMethod: CheckInMethod?
     let checkInLocationVerified: Bool
     let markedBy: UUID?
+    /// Extra guests this member is bringing. 0 = just themselves.
+    let plusOnes: Int
+    /// 1-based position on the waitlist; nil unless `status == .waitlisted`.
+    let waitlistPosition: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -25,6 +29,8 @@ struct RSVP: Identifiable, Codable, Sendable, Hashable {
         case checkInMethod            = "check_in_method"
         case checkInLocationVerified  = "check_in_location_verified"
         case markedBy                 = "marked_by"
+        case plusOnes                 = "plus_ones"
+        case waitlistPosition         = "waitlist_position"
     }
 
     init(
@@ -37,7 +43,9 @@ struct RSVP: Identifiable, Codable, Sendable, Hashable {
         arrivedAt: Date? = nil,
         checkInMethod: CheckInMethod? = nil,
         checkInLocationVerified: Bool = false,
-        markedBy: UUID? = nil
+        markedBy: UUID? = nil,
+        plusOnes: Int = 0,
+        waitlistPosition: Int? = nil
     ) {
         self.id = id
         self.eventId = eventId
@@ -49,6 +57,8 @@ struct RSVP: Identifiable, Codable, Sendable, Hashable {
         self.checkInMethod = checkInMethod
         self.checkInLocationVerified = checkInLocationVerified
         self.markedBy = markedBy
+        self.plusOnes = plusOnes
+        self.waitlistPosition = waitlistPosition
     }
 
     init(from decoder: Decoder) throws {
@@ -63,9 +73,14 @@ struct RSVP: Identifiable, Codable, Sendable, Hashable {
         self.checkInMethod            = try c.decodeIfPresent(CheckInMethod.self, forKey: .checkInMethod)
         self.checkInLocationVerified  = (try? c.decode(Bool.self, forKey: .checkInLocationVerified)) ?? false
         self.markedBy                 = try c.decodeIfPresent(UUID.self, forKey: .markedBy)
+        self.plusOnes                 = (try? c.decode(Int.self, forKey: .plusOnes)) ?? 0
+        self.waitlistPosition         = try c.decodeIfPresent(Int.self, forKey: .waitlistPosition)
     }
 
     var isCheckedIn: Bool { arrivedAt != nil }
 
     var isAttending: Bool { status == .going }
+
+    /// Total seats this member occupies (1 + their plus-ones).
+    var seatCount: Int { 1 + plusOnes }
 }

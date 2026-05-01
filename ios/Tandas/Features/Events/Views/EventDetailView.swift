@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 /// Full-bleed event detail. Cover scrolls under a transparent nav that
 /// fades to a glass bar as the user scrolls past the cover. Title sits in
@@ -10,11 +11,14 @@ struct EventDetailView: View {
     var onScannerOpen: () -> Void
 
     @State private var qrSheetPresented = false
+    @State private var shareSheetPresented = false
     @State private var cancelEventSheet = false
     @State private var cancelAttendanceSheet = false
     @State private var remindSheet = false
     @State private var closeSheet = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var pendingPlusOnes: Int = 0
+    var calendarService: CalendarExportService?
 
     private let coverHeight: CGFloat = 380
 
@@ -40,6 +44,22 @@ struct EventDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .ignoresSafeArea(edges: .top)
         .task { await coordinator.refresh() }
+        .task { await coordinator.startRealtime() }
+        .onDisappear { coordinator.stopRealtime() }
+        .onChange(of: coordinator.myRSVP?.plusOnes) { _, newValue in
+            // Sync the local stepper state with whatever the server returned
+            // (e.g. a re-confirmation that downgraded plusOnes due to capacity).
+            pendingPlusOnes = newValue ?? 0
+        }
+        .ruulSheet(isPresented: $shareSheetPresented) {
+            ShareEventSheet(
+                isPresented: $shareSheetPresented,
+                event: coordinator.event,
+                groupVocabulary: coordinator.group.eventVocabulary,
+                hostName: nil,
+                onAddToCalendar: addToCalendar
+            )
+        }
         .ruulSheet(isPresented: $qrSheetPresented) {
             MemberQRSheet(
                 isPresented: $qrSheetPresented,
@@ -135,8 +155,10 @@ struct EventDetailView: View {
                 status: coordinator.myRSVP?.status ?? .pending,
                 event: coordinator.event,
                 walletAvailable: coordinator.walletService.isAvailable,
+                isAtCapacity: isAtCapacity,
+                plusOnes: $pendingPlusOnes,
                 onChange: { newStatus in
-                    Task { await coordinator.setRSVP(newStatus, reason: nil) }
+                    Task { await coordinator.setRSVP(newStatus, plusOnes: pendingPlusOnes, reason: nil) }
                 },
                 onAddToWallet: {
                     Task { _ = await coordinator.generateWalletPass() }
@@ -209,6 +231,8 @@ struct EventDetailView: View {
                 .lineLimit(4)
                 .fixedSize(horizontal: false, vertical: true)
 
+            capacityBar
+
             if let location = coordinator.event.locationName, !location.isEmpty {
                 Button {
                     openMaps()
@@ -242,6 +266,39 @@ struct EventDetailView: View {
             return "MAÑANA · \(coordinator.event.startsAt.ruulShortTime)"
         }
         return "\(coordinator.event.startsAt.ruulShortDate.uppercased()) · \(coordinator.event.startsAt.ruulShortTime)"
+    }
+
+    // MARK: - Capacity bar (visible when event has capacity_max)
+
+    @ViewBuilder
+    private var capacityBar: some View {
+        if let capacityMax = coordinator.event.capacityMax {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    HStack(spacing: 4) {
+                        Text("\(seatsTaken)")
+                            .ruulTextStyle(RuulTypography.statMedium)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                        Text("DE \(capacityMax)")
+                            .ruulTextStyle(RuulTypography.sectionLabel)
+                            .foregroundStyle(Color.ruulTextTertiary)
+                    }
+                    Spacer()
+                    if seatsTaken >= capacityMax {
+                        Text("LLENO")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(0.6)
+                            .foregroundStyle(Color.ruulOnImage)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.ruulSemanticError, in: Capsule())
+                    }
+                }
+                RuulProgressBar(
+                    value: min(1.0, Double(seatsTaken) / Double(capacityMax))
+                )
+            }
+        }
     }
 
     // MARK: - Sections
@@ -291,35 +348,46 @@ struct EventDetailView: View {
     // MARK: - Top nav (transparent → glass on scroll)
 
     private var topNav: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .frame(width: 36, height: 36)
-                    .background(.regularMaterial, in: Circle())
-                    .ruulElevation(.sm)
-            }
-            .buttonStyle(.ruulPress)
+        HStack(spacing: RuulSpacing.s2) {
+            navCircleButton(icon: "xmark") { dismiss() }
             Spacer()
+            navCircleButton(icon: "square.and.arrow.up") {
+                shareSheetPresented = true
+            }
             if coordinator.viewerRole == .host {
-                Button {
-                    // edit hook (V1.x)
-                } label: {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(.regularMaterial, in: Circle())
-                        .ruulElevation(.sm)
-                }
-                .buttonStyle(.ruulPress)
+                navCircleButton(icon: "pencil") { onEdit() }
             }
         }
         .padding(.horizontal, RuulSpacing.s4)
         .padding(.top, statusBarTopPadding)
+    }
+
+    private func navCircleButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.ruulTextPrimary)
+                .frame(width: 36, height: 36)
+                .background(.regularMaterial, in: Circle())
+                .ruulElevation(.sm)
+        }
+        .buttonStyle(.ruulPress)
+    }
+
+    /// Add the event to the user's default calendar via CalendarExportService.
+    /// Surface failures via the coordinator's error channel.
+    private func addToCalendar() {
+        guard let calendarService else { return }
+        Task {
+            do {
+                _ = try await calendarService.addToCalendar(
+                    coordinator.event,
+                    vocabulary: coordinator.group.eventVocabulary
+                )
+            } catch {
+                // Fail silently — the user can retry from the Share sheet.
+            }
+        }
     }
 
     private var statusBarTopPadding: CGFloat {
@@ -385,6 +453,23 @@ struct EventDetailView: View {
         }
     }
 
+    /// Sum of going seats (1 + plus_ones) currently confirmed.
+    private var seatsTaken: Int {
+        coordinator.rsvps
+            .filter { $0.status == .going }
+            .reduce(0) { $0 + 1 + $1.plusOnes }
+    }
+
+    private var isAtCapacity: Bool {
+        guard let max = coordinator.event.capacityMax else { return false }
+        // Current user's existing seats don't count against capacity if
+        // they're re-confirming (server handles the check the same way).
+        let myExisting = coordinator.myRSVP?.status == .going
+            ? (1 + (coordinator.myRSVP?.plusOnes ?? 0))
+            : 0
+        return (seatsTaken - myExisting + 1 + pendingPlusOnes) > max
+    }
+
     private var isAfterRSVPDeadline: Bool {
         guard let deadline = coordinator.event.rsvpDeadline else { return false }
         return Date.now > deadline
@@ -397,9 +482,25 @@ struct EventDetailView: View {
 
     private func openMaps() {
         guard let lat = coordinator.event.locationLat,
-              let lng = coordinator.event.locationLng else { return }
-        let url = URL(string: "https://maps.apple.com/?ll=\(lat),\(lng)&q=\(coordinator.event.locationName ?? "")")!
-        UIApplication.shared.open(url)
+              let lng = coordinator.event.locationLng else {
+            // Fall back to a search query when we have a location name but
+            // no coords (e.g. user typed it but didn't pick from autocomplete).
+            if let name = coordinator.event.locationName,
+               let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+               let url = URL(string: "https://maps.apple.com/?q=\(encoded)") {
+                UIApplication.shared.open(url)
+            }
+            return
+        }
+        // Prefer MKMapItem so Apple Maps opens in directions mode with the
+        // event title as the destination name.
+        let coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let mapItem = MKMapItem(placemark: placemark)
+        mapItem.name = coordinator.event.locationName ?? coordinator.event.title
+        mapItem.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+        ])
     }
 
     // MARK: - Pills

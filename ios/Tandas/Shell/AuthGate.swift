@@ -34,6 +34,10 @@ final class AppState {
     let walletService: any WalletPassService
     let analytics: any AnalyticsService
 
+    /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
+    /// preview environments — coordinator falls back to manual refresh.
+    let realtimeFactory: ((UUID) -> RSVPRealtimeService)?
+
     init(
         auth: any AuthService,
         profileRepo: any ProfileRepository,
@@ -47,7 +51,8 @@ final class AppState {
         notificationTokenRepo: any NotificationTokenRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
-        analytics: any AnalyticsService = LogAnalyticsService()
+        analytics: any AnalyticsService = LogAnalyticsService(),
+        realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil
     ) {
         self.auth = auth
         self.profileRepo = profileRepo
@@ -62,6 +67,7 @@ final class AppState {
         self.notifications = notifications
         self.walletService = walletService
         self.analytics = analytics
+        self.realtimeFactory = realtimeFactory
         self.eventLifecycle = EventLifecycleService(eventRepo: eventRepo)
     }
 

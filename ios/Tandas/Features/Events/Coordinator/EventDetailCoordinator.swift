@@ -23,6 +23,7 @@ final class EventDetailCoordinator {
     private let notifications: NotificationService?
     let walletService: any WalletPassService
     private let analytics: EventAnalytics
+    private let realtimeFactory: ((UUID) -> RSVPRealtimeService)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "event.detail")
 
     init(
@@ -35,7 +36,8 @@ final class EventDetailCoordinator {
         lifecycle: EventLifecycleService,
         notifications: NotificationService?,
         walletService: any WalletPassService,
-        analytics: EventAnalytics
+        analytics: EventAnalytics,
+        realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil
     ) {
         self.event = event
         self.group = group
@@ -48,6 +50,7 @@ final class EventDetailCoordinator {
         self.notifications = notifications
         self.walletService = walletService
         self.analytics = analytics
+        self.realtimeFactory = realtimeFactory
         Task {
             await analytics.eventView(eventId: event.id, viewerRole: viewerRole.analyticsRole)
         }
@@ -70,23 +73,28 @@ final class EventDetailCoordinator {
 
     // MARK: - RSVP
 
-    func setRSVP(_ status: RSVPStatus, reason: String? = nil) async {
+    func setRSVP(_ status: RSVPStatus, plusOnes: Int = 0, reason: String? = nil) async {
         guard !isMutating else { return }
         let previous = myRSVP
-        // Optimistic update — replace local immediately.
+        // Optimistic update — replace local immediately. Server may downgrade
+        // .going → .waitlisted if at capacity; the post-RPC update lands the
+        // truth when the server response comes back.
         myRSVP = RSVP(
             id: previous?.id ?? UUID(),
             eventId: event.id,
             userId: userId,
             status: status,
             respondedAt: .now,
-            cancelledReason: reason
+            cancelledReason: reason,
+            plusOnes: plusOnes
         )
         isMutating = true
         defer { isMutating = false }
 
         do {
-            let updated = try await rsvpRepo.setRSVP(eventId: event.id, status: status, reason: reason)
+            let updated = try await rsvpRepo.setRSVP(
+                eventId: event.id, status: status, plusOnes: plusOnes, reason: reason
+            )
             myRSVP = updated
             updateLocalRSVPList(with: updated)
 
@@ -192,6 +200,57 @@ final class EventDetailCoordinator {
             await analytics.autoGenerationToggled(enabled: enabled)
         } catch {
             self.error = .updateFailed(error.localizedDescription)
+        }
+    }
+
+    /// Host promotes the next waitlisted member to .going. Server enforces
+    /// capacity check + admin/host gating.
+    func promoteFromWaitlist() async {
+        guard viewerRole == .host, !isMutating else { return }
+        isMutating = true
+        defer { isMutating = false }
+        do {
+            let promoted = try await rsvpRepo.promoteFromWaitlist(eventId: event.id)
+            updateLocalRSVPList(with: promoted)
+        } catch {
+            self.error = .rsvpFailed(error.localizedDescription)
+        }
+    }
+
+    /// Realtime subscription to event_attendance for this event. Called when
+    /// the detail view appears. Updates `rsvps` + `myRSVP` whenever any
+    /// attendee row changes — RSVP changes by other members reflect
+    /// immediately without a manual refresh.
+    private var realtimeTask: Task<Void, Never>?
+    private var realtimeService: RSVPRealtimeService?
+
+    func startRealtime() async {
+        guard realtimeTask == nil, let factory = realtimeFactory else { return }
+        let service = factory(event.id)
+        realtimeService = service
+        realtimeTask = Task { [weak self] in
+            for await change in service.changes {
+                guard let self else { return }
+                await self.applyRealtimeChange(change)
+            }
+        }
+        await service.subscribe()
+    }
+
+    func stopRealtime() {
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        Task { [realtimeService] in await realtimeService?.unsubscribe() }
+        realtimeService = nil
+    }
+
+    private func applyRealtimeChange(_ change: RSVPRealtimeService.Change) async {
+        switch change {
+        case .upsert(let rsvp):
+            updateLocalRSVPList(with: rsvp)
+            if rsvp.userId == userId { myRSVP = rsvp }
+        case .delete(let rsvpId):
+            rsvps.removeAll { $0.id == rsvpId }
         }
     }
 

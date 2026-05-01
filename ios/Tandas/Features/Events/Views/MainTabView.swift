@@ -11,6 +11,7 @@ struct MainTabView: View {
     @State private var scannerRoute: CheckInScannerCoordinator?
     @State private var editRoute: Event?
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
+    @State private var calendarService = CalendarExportService()
 
     var body: some View {
         TabView {
@@ -81,13 +82,16 @@ struct MainTabView: View {
             lifecycle: app.eventLifecycle,
             notifications: app.notifications,
             walletService: app.walletService,
-            analytics: EventAnalytics(analytics: app.analytics)
+            analytics: EventAnalytics(analytics: app.analytics),
+            realtimeFactory: app.realtimeFactory
         )
         return AnyView(
             EventDetailView(
                 coordinator: coord,
                 memberLookup: lookupMember,
-                onScannerOpen: { openScanner(for: coord) }
+                onScannerOpen: { openScanner(for: coord) },
+                calendarService: calendarService,
+                onEdit: { editRoute = coord.event }
             )
         )
     }

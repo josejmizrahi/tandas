@@ -69,7 +69,10 @@ struct TandasApp: App {
                 notificationTokenRepo: notifTokens,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
-                analytics: analytics
+                analytics: analytics,
+                realtimeFactory: { eventId in
+                    RSVPRealtimeService(client: client, eventId: eventId)
+                }
             ))
         }
     }

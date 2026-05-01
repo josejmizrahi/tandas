@@ -10,13 +10,15 @@ enum RSVPStatus: String, Codable, Sendable, Hashable, CaseIterable {
     case going
     case maybe
     case declined
+    case waitlisted
 
     var displayName: String {
         switch self {
-        case .pending:  return "Sin responder"
-        case .going:    return "Voy"
-        case .maybe:    return "Tal vez"
-        case .declined: return "No voy"
+        case .pending:    return "Sin responder"
+        case .going:      return "Voy"
+        case .maybe:      return "Tal vez"
+        case .declined:   return "No voy"
+        case .waitlisted: return "En lista de espera"
         }
     }
 }
