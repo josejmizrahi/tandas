@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import Supabase
 
 @main
@@ -11,24 +12,38 @@ struct TandasApp: App {
             let auth = MockAuthService()
             let profile = MockProfileRepository(seed: Profile(id: UUID(), displayName: "", avatarUrl: nil, phone: nil))
             let groups = MockGroupsRepository()
-            _appState = State(initialValue: AppState(auth: auth, profileRepo: profile, groupsRepo: groups))
+            let invites = MockInviteRepository()
+            let rules = MockRuleRepository()
+            let otp = MockOTPService()
+            _appState = State(initialValue: AppState(
+                auth: auth,
+                profileRepo: profile,
+                groupsRepo: groups,
+                inviteRepo: invites,
+                ruleRepo: rules,
+                otp: otp
+            ))
         } else {
             let client = SupabaseEnvironment.shared
             let auth = LiveAuthService(client: client)
             let profile = LiveProfileRepository(client: client)
             let groups = LiveGroupsRepository(client: client)
-            _appState = State(initialValue: AppState(auth: auth, profileRepo: profile, groupsRepo: groups))
+            let invites = LiveInviteRepository(client: client)
+            let rules = LiveRuleRepository(client: client)
+            let otp = LiveOTPService(client: client)
+            _appState = State(initialValue: AppState(
+                auth: auth,
+                profileRepo: profile,
+                groupsRepo: groups,
+                inviteRepo: invites,
+                ruleRepo: rules,
+                otp: otp
+            ))
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            // Note: .preferredColorScheme(.dark) is intentionally retained
-            // during DS V1. The new design system supports light + dark + HC,
-            // but every existing feature view (LoginView, OnboardingView,
-            // WelcomeView, GroupsListView) was authored for dark only and
-            // would render incorrectly in light. The override is removed when
-            // those features are migrated in subsequent prompts.
             AuthGate()
                 .environment(appState)
                 .ruulTheme()
@@ -36,7 +51,15 @@ struct TandasApp: App {
                 #if DEBUG
                 .ruulShowcaseShakeListener()
                 #endif
+                .onOpenURL { url in
+                    appState.handleIncomingURL(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL {
+                        appState.handleIncomingURL(url)
+                    }
+                }
         }
+        .modelContainer(for: [OnboardingProgress.self])
     }
 }
-
