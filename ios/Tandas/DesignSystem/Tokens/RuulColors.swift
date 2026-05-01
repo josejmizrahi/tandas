@@ -284,4 +284,22 @@ public extension Color {
     static var ruulBorderDefault: Color  { RuulColors.default.borderDefault }
     static var ruulBorderStrong: Color   { RuulColors.default.borderStrong }
     static var ruulBorderGlass: Color    { RuulColors.default.borderGlass }
+
+    /// Modal scrim / dimming overlay (Color.black.opacity(0.35) replacement).
+    /// Adapts: stronger in light mode (so dim is visible) vs dark mode.
+    static var ruulOverlayDim: Color {
+        Color(uiColor: UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(white: 0.0, alpha: 0.55)
+                : UIColor(white: 0.0, alpha: 0.35)
+        })
+    }
+
+    /// Decorative highlight overlay used for soft inner glows on textured
+    /// surfaces (mesh covers, etc). Subtle white wash.
+    static var ruulOverlayHighlight: Color {
+        Color(uiColor: UIColor { trait in
+            UIColor(white: 1.0, alpha: trait.userInterfaceStyle == .dark ? 0.10 : 0.18)
+        })
+    }
 }

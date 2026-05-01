@@ -74,7 +74,7 @@ public struct RuulAvatar: View {
             )
             Text(initials)
                 .font(.system(size: size.fontSize, weight: .semibold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.ruulTextInverse)
         }
     }
 

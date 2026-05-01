@@ -133,7 +133,7 @@ public struct RuulCoverView: View {
             EmptyView()
         case .orb(let opacity):
             Circle()
-                .fill(Color.white.opacity(opacity))
+                .fill(Color.ruulOverlayHighlight.opacity(opacity / 0.18))
                 .frame(width: 80, height: 80)
                 .blur(radius: 16)
                 .offset(x: 40, y: -30)

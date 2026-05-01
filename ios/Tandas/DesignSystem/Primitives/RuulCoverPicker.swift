@@ -41,8 +41,8 @@ public struct RuulCoverPicker: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.white, Color.ruulAccentPrimary)
-                        .background(Circle().fill(Color.white).padding(2))
+                        .foregroundStyle(Color.ruulTextInverse, Color.ruulAccentPrimary)
+                        .background(Circle().fill(Color.ruulBackgroundElevated).padding(2))
                         .offset(x: -8, y: 8)
                         .transition(.scale.combined(with: .opacity))
                 }

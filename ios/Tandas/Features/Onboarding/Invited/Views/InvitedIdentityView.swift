@@ -52,7 +52,7 @@ struct InvitedIdentityView: View {
                 }
                 Image(systemName: "camera.fill")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.ruulTextInverse)
                     .padding(8)
                     .background(Color.ruulAccentPrimary, in: Circle())
                     .offset(x: 32, y: 32)

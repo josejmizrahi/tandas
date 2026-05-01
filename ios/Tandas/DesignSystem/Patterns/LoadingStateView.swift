@@ -91,7 +91,7 @@ private struct Skeleton: View {
             ZStack {
                 Color.ruulBackgroundRecessed
                 LinearGradient(
-                    colors: [.clear, Color.white.opacity(0.30), .clear],
+                    colors: [.clear, Color.ruulOverlayHighlight, .clear],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
