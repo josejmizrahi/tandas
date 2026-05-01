@@ -14,7 +14,7 @@ configFiles:
   Release: Tandas.local.xcconfig
 settings:
   base:
-    DEVELOPMENT_TEAM: G3TMTFSG7S
+    DEVELOPMENT_TEAM: 5URBQFD44F
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     ENABLE_USER_SCRIPT_SANDBOXING: YES
@@ -24,7 +24,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
     PRODUCT_BUNDLE_IDENTIFIER: com.josejmizrahi.ruul
     MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     TANDAS_SUPABASE_URL: $(inherited)
     TANDAS_SUPABASE_ANON_KEY: $(inherited)
 packages:
