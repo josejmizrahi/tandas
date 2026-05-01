@@ -12,9 +12,9 @@ import CoreGraphics
 public enum RuulRadius {
     public static let none:   CGFloat = 0
     public static let sm:     CGFloat = 8
-    public static let md:     CGFloat = 14
-    public static let lg:     CGFloat = 20
-    public static let xl:     CGFloat = 28
+    public static let md:     CGFloat = 12       // input fields, small cards
+    public static let lg:     CGFloat = 16       // cards (Luma/Apple Sports default)
+    public static let xl:     CGFloat = 20       // hero tiles, modal sheet tops
     public static let pill:   CGFloat = 999
     public static let circle: CGFloat = 9999
 }

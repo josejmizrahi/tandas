@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// State-driven RSVP control. Distinct from the DS `RSVPStateView` stub —
-/// this one uses the real `RSVPStatus` enum, gives a dominant primary
-/// "Voy" affordance (Luma pattern), and transforms into a confirmed card
-/// with QR / Wallet access once responded.
+/// RSVP control — Apple Sports / Luma aesthetic: monochrome surfaces with
+/// thin borders, status conveyed via small colored dot + uppercase label,
+/// never via saturated tinted backgrounds.
 struct EventRSVPStateView: View {
     let status: RSVPStatus
     let event: Event
@@ -24,55 +23,35 @@ struct EventRSVPStateView: View {
         .animation(.ruulMorph, value: status)
     }
 
-    // MARK: - Pending — primary "Voy" + 2 secondary affordances (Luma style)
+    // MARK: - Pending — 3 segment-style pills, equal weight, monochrome
 
     private var pendingView: some View {
-        VStack(spacing: RuulSpacing.s3) {
-            primaryGoingButton
-            HStack(spacing: RuulSpacing.s3) {
-                secondaryButton(.maybe, label: "Tal vez", icon: "questionmark", tint: .ruulSemanticWarning)
-                secondaryButton(.declined, label: "No voy", icon: "xmark", tint: .ruulTextSecondary)
-            }
+        HStack(spacing: RuulSpacing.s2) {
+            choicePill(.going,    label: "Voy",     icon: "checkmark", dot: .ruulSemanticSuccess)
+            choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .ruulSemanticWarning)
+            choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .ruulSemanticError)
         }
     }
 
-    private var primaryGoingButton: some View {
-        Button { onChange(.going) } label: {
-            HStack(spacing: RuulSpacing.s3) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 22, weight: .bold))
-                Text("Voy")
-                    .ruulTextStyle(RuulTypography.title)
-                Spacer()
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 16, weight: .bold))
-                    .opacity(0.7)
-            }
-            .foregroundStyle(Color.ruulTextInverse)
-            .padding(.vertical, RuulSpacing.s5)
-            .padding(.horizontal, RuulSpacing.s5)
-            .frame(maxWidth: .infinity)
-            .background(
-                Color.ruulSemanticSuccess,
-                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-            )
-        }
-        .buttonStyle(.ruulPress)
-    }
-
-    private func secondaryButton(_ s: RSVPStatus, label: String, icon: String, tint: Color) -> some View {
+    private func choicePill(_ s: RSVPStatus, label: String, icon: String, dot: Color) -> some View {
         Button { onChange(s) } label: {
-            HStack(spacing: RuulSpacing.s2) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(tint)
+            VStack(spacing: RuulSpacing.s1) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                        .frame(width: 28, height: 28)
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.ruulTextPrimary)
+                }
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.s4)
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .background(Color.ruulBackgroundElevated)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
@@ -81,48 +60,113 @@ struct EventRSVPStateView: View {
         .buttonStyle(.ruulPress)
     }
 
-    // MARK: - Going (confirmed) — celebratory card
+    // MARK: - Going (confirmed) — flat monochrome card with status header + actions
 
     private var goingView: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
-            HStack(spacing: RuulSpacing.s3) {
-                ZStack {
-                    Circle()
-                        .fill(Color.ruulSemanticSuccess.opacity(0.18))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color.ruulSemanticSuccess)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Vas")
-                        .ruulTextStyle(RuulTypography.titleLarge)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text(arrivalLine)
-                        .ruulTextStyle(RuulTypography.callout)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                Spacer()
-            }
+        confirmedCard(
+            statusLabel: "VAS",
+            statusDot: .ruulSemanticSuccess,
+            title: "Confirmado",
+            subtitle: arrivalLine
+        ) { confirmedActions }
+    }
 
-            HStack(spacing: RuulSpacing.s2) {
-                if walletAvailable {
-                    actionButton("Wallet", icon: "wallet.bifold.fill", primary: true, action: onAddToWallet)
-                }
-                actionButton("Mi QR", icon: "qrcode", primary: !walletAvailable, action: onShowQR)
-                actionButton("Cambiar", icon: "arrow.triangle.2.circlepath", primary: false) {
-                    onChange(.pending)
-                }
+    @ViewBuilder
+    private var confirmedActions: some View {
+        HStack(spacing: RuulSpacing.s2) {
+            if walletAvailable {
+                actionButton("Wallet", icon: "wallet.bifold.fill", primary: true, action: onAddToWallet)
+            }
+            actionButton("Mi QR", icon: "qrcode", primary: !walletAvailable, action: onShowQR)
+            actionButton("Cambiar", icon: "arrow.triangle.2.circlepath", primary: false) {
+                onChange(.pending)
             }
         }
-        .padding(RuulSpacing.s5)
-        .background(
-            Color.ruulSemanticSuccess.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-        )
+    }
+
+    // MARK: - Maybe — same monochrome card pattern, amber dot only
+
+    private var maybeView: some View {
+        confirmedCard(
+            statusLabel: "TAL VEZ",
+            statusDot: .ruulSemanticWarning,
+            title: "Por decidir",
+            subtitle: "Confirma o cancela cuando puedas"
+        ) { maybeActions }
+    }
+
+    @ViewBuilder
+    private var maybeActions: some View {
+        HStack(spacing: RuulSpacing.s2) {
+            actionButton("Voy", icon: "checkmark", primary: true) { onChange(.going) }
+            actionButton("No voy", icon: "xmark", primary: false) { onChange(.declined) }
+        }
+    }
+
+    // MARK: - Declined — slim neutral row, "Cambiar" inline link
+
+    private var declinedView: some View {
+        HStack(spacing: RuulSpacing.s3) {
+            Circle()
+                .fill(Color.ruulSemanticError)
+                .frame(width: 8, height: 8)
+            Text("NO VAS")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Spacer()
+            Button { onChange(.pending) } label: {
+                Text("Cambiar")
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+            .buttonStyle(.ruulPress)
+        }
+        .padding(.horizontal, RuulSpacing.s4)
+        .padding(.vertical, RuulSpacing.s4)
+        .background(Color.ruulBackgroundElevated)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .stroke(Color.ruulSemanticSuccess.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+        )
+    }
+
+    // MARK: - Confirmed-card scaffold (going + maybe share this layout)
+
+    @ViewBuilder
+    private func confirmedCard<Actions: View>(
+        statusLabel: String,
+        statusDot: Color,
+        title: String,
+        subtitle: String,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.s2) {
+                Circle()
+                    .fill(statusDot)
+                    .frame(width: 8, height: 8)
+                Text(statusLabel)
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Spacer()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Text(subtitle)
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            actions()
+        }
+        .padding(RuulSpacing.s4)
+        .background(Color.ruulBackgroundElevated)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
         )
     }
 
@@ -137,118 +181,26 @@ struct EventRSVPStateView: View {
         return "El \(event.startsAt.ruulWeekday.lowercased()) a las \(event.startsAt.ruulShortTime)"
     }
 
-    // MARK: - Maybe — amber tinted with confirm/decline shortcuts
-
-    private var maybeView: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
-            HStack(spacing: RuulSpacing.s3) {
-                ZStack {
-                    Circle()
-                        .fill(Color.ruulSemanticWarning.opacity(0.18))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "questionmark")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color.ruulSemanticWarning)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Tal vez")
-                        .ruulTextStyle(RuulTypography.titleLarge)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text("Decide cuando puedas")
-                        .ruulTextStyle(RuulTypography.callout)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                Spacer()
-            }
-            HStack(spacing: RuulSpacing.s2) {
-                Button { onChange(.going) } label: {
-                    Text("Confirmar voy")
-                        .ruulTextStyle(RuulTypography.callout)
-                        .foregroundStyle(Color.ruulTextInverse)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.s3)
-                        .background(Color.ruulSemanticSuccess, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
-                }
-                .buttonStyle(.ruulPress)
-                Button { onChange(.declined) } label: {
-                    Text("No voy")
-                        .ruulTextStyle(RuulTypography.callout)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.s3)
-                        .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
-                }
-                .buttonStyle(.ruulPress)
-            }
-        }
-        .padding(RuulSpacing.s5)
-        .background(
-            Color.ruulSemanticWarning.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .stroke(Color.ruulSemanticWarning.opacity(0.25), lineWidth: 1)
-        )
-    }
-
-    // MARK: - Declined — neutral, low-key
-
-    private var declinedView: some View {
-        HStack(spacing: RuulSpacing.s3) {
-            ZStack {
-                Circle()
-                    .fill(Color.ruulBackgroundRecessed)
-                    .frame(width: 36, height: 36)
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.ruulTextSecondary)
-            }
-            Text("No vas")
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-            Spacer()
-            Button { onChange(.pending) } label: {
-                Text("Cambiar")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulAccentPrimary)
-                    .padding(.horizontal, RuulSpacing.s3)
-                    .padding(.vertical, RuulSpacing.s2)
-                    .background(Color.ruulAccentSubtle, in: Capsule())
-            }
-            .buttonStyle(.ruulPress)
-        }
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
-        )
-    }
-
-    // MARK: - Action buttons (going state)
+    // MARK: - Action buttons — pill primary (inverse fill) / pill ghost
 
     private func actionButton(_ label: String, icon: String, primary: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            HStack(spacing: RuulSpacing.s1) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                 Text(label)
-                    .font(.system(size: 12, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.callout)
             }
-            .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.s3)
+            .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
             .background(
-                primary
-                    ? AnyShapeStyle(Color.ruulSemanticSuccess)
-                    : AnyShapeStyle(Color.ruulBackgroundElevated),
-                in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                primary ? Color.ruulTextPrimary : Color.ruulBackgroundCanvas
             )
+            .clipShape(Capsule())
             .overlay(
                 primary ? nil :
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                Capsule().stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
