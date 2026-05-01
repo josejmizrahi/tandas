@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["G3TMTFSG7S.com.josejmizrahi.ruul"],
+        "components": [
+          {
+            "/": "/invite/*",
+            "comment": "Match invite deep links"
+          }
+        ]
+      }
+    ]
+  }
+}

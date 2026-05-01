@@ -22,10 +22,15 @@ struct ModelsTests {
           "description":null,
           "group_type":"recurring_dinner",
           "invite_code":"abc12345",
+          "created_by":"4F2504E0-4F89-11D3-9A0C-0305E82C3301",
           "created_at":"2026-04-30T10:00:00Z"
         }
         """.data(using: .utf8)!
-        let g = try JSONDecoder.tandas.decode(Group.self, from: json)
+        // Group has explicit CodingKeys with snake_case raw values, so use a
+        // plain decoder (not JSONDecoder.tandas) to avoid double-conversion.
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let g = try decoder.decode(Group.self, from: json)
         #expect(g.name == "Cena martes")
         #expect(g.groupType == .recurringDinner)
         #expect(g.inviteCode == "abc12345")

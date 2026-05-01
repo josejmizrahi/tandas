@@ -38,5 +38,20 @@
   <string>$(TANDAS_SUPABASE_URL)</string>
   <key>TandasSupabaseAnonKey</key>
   <string>$(TANDAS_SUPABASE_ANON_KEY)</string>
+  <key>NSContactsUsageDescription</key>
+  <string>Para invitar a tu grupo desde tus contactos. Solo se usa cuando tú eliges agregarlos.</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>Para elegir tu foto de perfil del grupo.</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>com.josejmizrahi.ruul.invite</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>ruul</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>
