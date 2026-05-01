@@ -53,13 +53,9 @@ struct EventRSVPStateView: View {
             .padding(.horizontal, RuulSpacing.s5)
             .frame(maxWidth: .infinity)
             .background(
-                LinearGradient(
-                    colors: [.ruulSemanticSuccess, Color(hex: 0x0E8C5C)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ),
+                Color.ruulSemanticSuccess,
                 in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
             )
-            .ruulElevation(.md)
         }
         .buttonStyle(.ruulPress)
     }
@@ -121,13 +117,7 @@ struct EventRSVPStateView: View {
         }
         .padding(RuulSpacing.s5)
         .background(
-            LinearGradient(
-                colors: [
-                    Color.ruulSemanticSuccess.opacity(0.10),
-                    Color.ruulSemanticSuccess.opacity(0.04)
-                ],
-                startPoint: .top, endPoint: .bottom
-            ),
+            Color.ruulSemanticSuccess.opacity(0.08),
             in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
         )
         .overlay(
@@ -193,13 +183,7 @@ struct EventRSVPStateView: View {
         }
         .padding(RuulSpacing.s5)
         .background(
-            LinearGradient(
-                colors: [
-                    Color.ruulSemanticWarning.opacity(0.10),
-                    Color.ruulSemanticWarning.opacity(0.04)
-                ],
-                startPoint: .top, endPoint: .bottom
-            ),
+            Color.ruulSemanticWarning.opacity(0.08),
             in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
         )
         .overlay(

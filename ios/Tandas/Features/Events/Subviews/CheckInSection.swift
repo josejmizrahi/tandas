@@ -15,9 +15,9 @@ struct CheckInSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
             if isVisible {
-                Text("Check-in")
-                    .ruulTextStyle(RuulTypography.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                Text("CHECK-IN")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
                 guestSection
                 if viewerIsHost {
                     hostSection
@@ -38,7 +38,7 @@ struct CheckInSection: View {
     }
 
     private var notYetCheckedInCard: some View {
-        RuulCard(.glass) {
+        RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.s3) {
                 Text("Marca tu llegada")
                     .ruulTextStyle(RuulTypography.headline)
@@ -52,7 +52,7 @@ struct CheckInSection: View {
     }
 
     private func checkedInCard(arrivedAt: Date) -> some View {
-        RuulCard(.glass, tint: .ruulSemanticSuccess) {
+        RuulCard(.tile, tint: .ruulSemanticSuccess) {
             HStack(spacing: RuulSpacing.s3) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 26, weight: .bold))
@@ -75,9 +75,9 @@ struct CheckInSection: View {
         let confirmedNotCheckedIn = confirmedRSVPs.filter { !$0.isCheckedIn }
         if !confirmedNotCheckedIn.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-                Text("Marca llegadas")
-                    .ruulTextStyle(RuulTypography.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                Text("MARCA LLEGADAS")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
                 VStack(spacing: 0) {
                     ForEach(confirmedNotCheckedIn, id: \.id) { rsvp in
                         hostRow(for: rsvp)

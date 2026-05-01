@@ -2,7 +2,7 @@ import SwiftUI
 import MapKit
 
 /// Glass-styled autocomplete picker backed by `LocationSearchService`.
-/// Suggestions appear as a list of `RuulCard(.glass)` rows below the field.
+/// Suggestions appear as a list of solid tile rows below the field.
 struct LocationAutocompletePicker: View {
     @Binding var locationName: String?
     @Binding var locationLat: Double?
@@ -57,10 +57,13 @@ struct LocationAutocompletePicker: View {
                         Spacer(minLength: 0)
                     }
                     .padding(RuulSpacing.s3)
-                    .ruulGlass(
-                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous),
-                        material: .regular,
-                        interactive: true
+                    .background(
+                        Color.ruulBackgroundElevated,
+                        in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                            .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
                     )
                 }
                 .buttonStyle(.ruulPress)

@@ -34,10 +34,8 @@ struct HomeView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(greeting)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .ruulTextStyle(RuulTypography.sectionLabelLg)
                 .foregroundStyle(Color.ruulTextSecondary)
-                .textCase(.uppercase)
-                .tracking(0.8)
             Text(coordinator.group.name)
                 .ruulTextStyle(RuulTypography.displayMedium)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -66,9 +64,8 @@ struct HomeView: View {
         } else if let next = coordinator.nextEvent {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("PRÓXIMO")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                    .tracking(0.8)
                 heroTile(next)
             }
         } else {
@@ -127,10 +124,8 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(heroDateLine(event))
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.white.opacity(0.90))
-                    .textCase(.uppercase)
-                    .tracking(0.8)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.displayMedium)
@@ -268,12 +263,11 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.s4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("PRÓXIMOS")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
-                        .tracking(0.8)
                     Spacer()
                     Text("\(rest.count)")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .ruulTextStyle(RuulTypography.statSmall)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
                 VStack(spacing: RuulSpacing.s4) {

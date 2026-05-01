@@ -30,7 +30,7 @@ struct GroupTourOverlay: View {
     }
 
     private var card: some View {
-        RuulCard(.glass) {
+        RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.s4) {
                 Text("Bienvenido a \(coord.preview?.groupName ?? "tu grupo")")
                     .ruulTextStyle(RuulTypography.titleLarge)

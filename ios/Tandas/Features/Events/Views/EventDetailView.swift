@@ -198,10 +198,8 @@ struct EventDetailView: View {
             }
 
             Text(dateLine)
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Color.ruulAccentPrimary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+                .ruulTextStyle(RuulTypography.sectionLabelLg)
+                .foregroundStyle(Color.ruulTextPrimary)
 
             Text(coordinator.event.title)
                 .ruulTextStyle(RuulTypography.displayLarge)
@@ -277,9 +275,8 @@ struct EventDetailView: View {
         if let description = coordinator.event.description, !description.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("DESCRIPCIÓN")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                    .tracking(0.6)
                 Text(description)
                     .ruulTextStyle(RuulTypography.bodyLarge)
                     .foregroundStyle(Color.ruulTextPrimary)

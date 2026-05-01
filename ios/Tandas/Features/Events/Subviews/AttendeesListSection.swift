@@ -45,11 +45,15 @@ struct AttendeesListSection: View {
                 } label: {
                     HStack(spacing: RuulSpacing.s2) {
                         sectionIcon(for: status)
-                        Text("\(sectionLabel(for: status)) (\(filtered.count))")
-                            .ruulTextStyle(RuulTypography.headline)
+                        Text(sectionLabel(for: status).uppercased())
+                            .ruulTextStyle(RuulTypography.sectionLabelLg)
                             .foregroundStyle(Color.ruulTextPrimary)
+                        Text("\(filtered.count)")
+                            .ruulTextStyle(RuulTypography.statSmall)
+                            .foregroundStyle(Color.ruulTextTertiary)
                         Spacer()
                         Image(systemName: expanded.contains(status) ? "chevron.up" : "chevron.down")
+                            .font(.system(size: RuulSize.iconXS, weight: .bold))
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                     .contentShape(Rectangle())

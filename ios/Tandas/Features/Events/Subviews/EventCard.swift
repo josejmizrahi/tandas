@@ -111,10 +111,8 @@ struct EventCard: View {
         VStack(alignment: .leading, spacing: RuulSpacing.s3) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.white.opacity(0.85))
-                    .textCase(.uppercase)
-                    .tracking(0.6)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.title)
@@ -134,7 +132,7 @@ struct EventCard: View {
                 Spacer(minLength: 0)
                 if confirmedCount > 0 {
                     Text("\(confirmedCount) van")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .ruulTextStyle(RuulTypography.statSmall)
                         .foregroundStyle(Color.white)
                 }
                 if let myStatus, myStatus != .pending {

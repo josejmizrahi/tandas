@@ -8,7 +8,7 @@ struct RecurrenceOptionsCard: View {
     let group: Group
 
     var body: some View {
-        RuulCard(.glass) {
+        RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.s3) {
                 HStack(spacing: RuulSpacing.s3) {
                     RuulIconBadge("arrow.triangle.2.circlepath", size: .small)

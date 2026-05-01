@@ -33,7 +33,7 @@ struct InitialRulesView: View {
 
     private func ruleCard(at idx: Int) -> some View {
         let rule = coord.draft.rules[idx]
-        return RuulCard(.glass) {
+        return RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: RuulSpacing.s1) {

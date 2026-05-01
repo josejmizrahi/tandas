@@ -16,9 +16,9 @@ struct EventHostActionsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
-            Text("Como host")
-                .ruulTextStyle(RuulTypography.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+            Text("COMO HOST")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
 
             statsCard
             actionsCard
@@ -34,16 +34,21 @@ struct EventHostActionsSection: View {
     }
 
     private var statsCard: some View {
-        RuulCard(.glass) {
+        RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-                HStack {
-                    Text("\(totalConfirmed) de \(totalMembers) confirmaron")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                HStack(alignment: .lastTextBaseline) {
+                    HStack(spacing: 6) {
+                        Text("\(totalConfirmed)")
+                            .ruulTextStyle(RuulTypography.statMedium)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                        Text("DE \(totalMembers) CONFIRMARON")
+                            .ruulTextStyle(RuulTypography.sectionLabel)
+                            .foregroundStyle(Color.ruulTextTertiary)
+                    }
                     Spacer()
                     Text("\(percentConfirmed)%")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .ruulTextStyle(RuulTypography.statMedium)
+                        .foregroundStyle(Color.ruulTextPrimary)
                 }
                 RuulProgressBar(value: ratioConfirmed)
             }
@@ -91,7 +96,7 @@ struct EventHostActionsSection: View {
     @State private var autoGenerateLocal: Bool = false
 
     private var autoGenerateToggleCard: some View {
-        RuulCard(.glass) {
+        RuulCard(.tile) {
             HStack(alignment: .top, spacing: RuulSpacing.s3) {
                 RuulIconBadge("arrow.triangle.2.circlepath", size: .small)
                 VStack(alignment: .leading, spacing: 2) {

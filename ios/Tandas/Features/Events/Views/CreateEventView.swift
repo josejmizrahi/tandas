@@ -135,7 +135,7 @@ struct CreateEventView: View {
                 Text("Host")
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextSecondary)
-                RuulCard(.glass) {
+                RuulCard(.tile) {
                     HStack(spacing: RuulSpacing.s3) {
                         RuulIconBadge("person.fill", size: .small)
                         Text(hostLabel)
@@ -234,7 +234,14 @@ struct CreateEventView: View {
             Spacer()
         }
         .padding(RuulSpacing.s4)
-        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular, interactive: true)
+        .background(
+            Color.ruulBackgroundElevated,
+            in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+        )
     }
 
     // MARK: - Computed
