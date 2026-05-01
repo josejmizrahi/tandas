@@ -24,8 +24,7 @@ struct TandasApp: App {
     }
 }
 
-// Stub views — implemented in tasks 10, 11, 12, 16
-struct OTPInputView: View { let channel: OTPChannel; var body: some View { Text("OTPInputView (stub) — \(channel.label)").foregroundStyle(.white) } }
+// Stub views — implemented in tasks 11, 12, 16
 struct OnboardingView: View { var body: some View { Text("OnboardingView (stub)").foregroundStyle(.white) } }
 struct EmptyGroupsView: View { var body: some View { Text("EmptyGroupsView (stub)").foregroundStyle(.white) } }
 struct GroupsListView: View { var body: some View { Text("GroupsListView (stub)").foregroundStyle(.white) } }
