@@ -54,11 +54,12 @@ struct InvitedIdentityView: View {
                     .font(.system(size: RuulSize.iconSmall, weight: .semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.s2)
-                    .background(Color.ruulAccentPrimary, in: Circle())
+                    .background(Color.ruulTextPrimary, in: Circle())
                     .offset(x: RuulSpacing.s7, y: RuulSpacing.s7)
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Cambiar foto")
     }
 
     private func loadAvatar(from item: PhotosPickerItem?) async {

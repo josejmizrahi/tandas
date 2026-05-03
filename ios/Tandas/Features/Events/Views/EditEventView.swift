@@ -79,12 +79,13 @@ struct EditEventView: View {
                 Image(systemName: "camera.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulOnImage)
-                    .padding(8)
+                    .padding(RuulSpacing.s2)
                     .background(Color.ruulImageBadge, in: Circle())
                     .padding(RuulSpacing.s3)
             }
         }
         .buttonStyle(.ruulPress)
+        .accessibilityLabel("Cambiar portada")
     }
 
     private var defaultCover: some View {

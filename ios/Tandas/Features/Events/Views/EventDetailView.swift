@@ -220,10 +220,8 @@ struct EventDetailView: View {
             }
 
             Text(dateLine)
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Color.ruulAccentPrimary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+                .ruulTextStyle(RuulTypography.sectionLabelLg)
+                .foregroundStyle(Color.ruulTextPrimary)
 
             Text(coordinator.event.title)
                 .ruulTextStyle(RuulTypography.displayLarge)
@@ -285,13 +283,14 @@ struct EventDetailView: View {
                     }
                     Spacer()
                     if seatsTaken >= capacityMax {
-                        Text("LLENO")
-                            .font(.system(size: 10, weight: .bold))
-                            .tracking(0.6)
-                            .foregroundStyle(Color.ruulOnImage)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Color.ruulSemanticError, in: Capsule())
+                        HStack(spacing: RuulSpacing.s2) {
+                            Circle()
+                                .fill(Color.ruulSemanticError)
+                                .frame(width: 8, height: 8)
+                            Text("LLENO")
+                                .ruulTextStyle(RuulTypography.sectionLabel)
+                                .foregroundStyle(Color.ruulTextPrimary)
+                        }
                     }
                 }
                 RuulProgressBar(
@@ -334,9 +333,8 @@ struct EventDetailView: View {
         if let description = coordinator.event.description, !description.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("DESCRIPCIÓN")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                    .tracking(0.6)
                 Text(description)
                     .ruulTextStyle(RuulTypography.bodyLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -349,20 +347,20 @@ struct EventDetailView: View {
 
     private var topNav: some View {
         HStack(spacing: RuulSpacing.s2) {
-            navCircleButton(icon: "xmark") { dismiss() }
+            navCircleButton(icon: "xmark", label: "Cerrar") { dismiss() }
             Spacer()
-            navCircleButton(icon: "square.and.arrow.up") {
+            navCircleButton(icon: "square.and.arrow.up", label: "Compartir") {
                 shareSheetPresented = true
             }
             if coordinator.viewerRole == .host {
-                navCircleButton(icon: "pencil") { onEdit() }
+                navCircleButton(icon: "pencil", label: "Editar") { onEdit() }
             }
         }
         .padding(.horizontal, RuulSpacing.s4)
         .padding(.top, statusBarTopPadding)
     }
 
-    private func navCircleButton(icon: String, action: @escaping () -> Void) -> some View {
+    private func navCircleButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .bold))
@@ -372,6 +370,7 @@ struct EventDetailView: View {
                 .ruulElevation(.sm)
         }
         .buttonStyle(.ruulPress)
+        .accessibilityLabel(label)
     }
 
     /// Add the event to the user's default calendar via CalendarExportService.
@@ -503,34 +502,27 @@ struct EventDetailView: View {
         ])
     }
 
-    // MARK: - Pills
+    // MARK: - Pills (Apple Sports / Luma flat: dot + uppercase label, no tint bg)
 
     private func statusPill(_ text: String, icon: String, tint: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
-            Text(text.uppercased())
-                .font(.system(size: 11, weight: .bold))
-                .tracking(0.5)
+        HStack(spacing: RuulSpacing.s2) {
+            Circle()
+                .fill(tint)
+                .frame(width: 8, height: 8)
+            Text(text)
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextPrimary)
         }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(tint.opacity(0.15), in: Capsule())
     }
 
     private var livePill: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: RuulSpacing.s2) {
             Circle()
                 .fill(Color.ruulSemanticError)
-                .frame(width: 6, height: 6)
+                .frame(width: 8, height: 8)
             Text("EN VIVO")
-                .font(.system(size: 11, weight: .bold))
-                .tracking(0.5)
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextPrimary)
         }
-        .foregroundStyle(Color.ruulSemanticError)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color.ruulSemanticError.opacity(0.15), in: Capsule())
     }
 }

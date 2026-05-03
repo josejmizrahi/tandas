@@ -57,17 +57,18 @@ struct CheckInScannerView: View {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 32))
-                    .foregroundStyle(.white, .black.opacity(0.5))
+                    .foregroundStyle(Color.ruulOnImage, Color.ruulImageBadge)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Cerrar")
             Spacer()
             VStack(alignment: .center, spacing: 4) {
                 Text("Modo check-in")
                     .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.ruulOnImage)
                 Text("\(coordinator.checkedCount) de \(coordinator.totalConfirmed) llegaron")
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Color.ruulOnImageSecondary)
             }
             Spacer()
             Color.clear.frame(width: 32, height: 32)  // spacer for symmetry
@@ -90,7 +91,7 @@ struct CheckInScannerView: View {
                     RuulAvatar(name: recent.name, size: .small, border: .glass)
                     Text(recent.name)
                         .ruulTextStyle(RuulTypography.body)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.ruulOnImage)
                     Spacer()
                     Text("✓ Llegó")
                         .ruulTextStyle(RuulTypography.caption)
@@ -136,10 +137,10 @@ struct CheckInScannerView: View {
         VStack(spacing: RuulSpacing.s3) {
             Image(systemName: icon)
                 .font(.system(size: 60, weight: .bold))
-                .foregroundStyle(.white, color)
+                .foregroundStyle(Color.ruulOnImage, color)
             Text(title)
                 .ruulTextStyle(RuulTypography.title)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.ruulOnImage)
         }
         .padding(RuulSpacing.s7)
         .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
@@ -154,13 +155,13 @@ struct CheckInScannerView: View {
             Spacer()
             Image(systemName: "camera.fill")
                 .font(.system(size: 60))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(Color.ruulOnImageSecondary)
             Text("Necesitamos permiso de cámara")
                 .ruulTextStyle(RuulTypography.title)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.ruulOnImage)
             Text("Para escanear QRs y marcar llegadas.")
                 .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(Color.ruulOnImageSecondary)
                 .multilineTextAlignment(.center)
             RuulButton("Abrir Configuración", style: .primary, size: .large) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -178,10 +179,10 @@ struct CheckInScannerView: View {
             Spacer()
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 50))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(Color.ruulOnImageSecondary)
             Text(msg)
                 .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.ruulOnImage)
                 .multilineTextAlignment(.center)
             RuulButton("Cerrar", style: .glass, size: .medium) { dismiss() }
             Spacer()

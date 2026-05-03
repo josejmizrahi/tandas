@@ -117,10 +117,8 @@ struct EventCard: View {
         VStack(alignment: .leading, spacing: RuulSpacing.s3) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulOnImageSecondary)
-                    .textCase(.uppercase)
-                    .tracking(0.6)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.title)
@@ -133,14 +131,14 @@ struct EventCard: View {
             HStack(spacing: RuulSpacing.s3) {
                 if let location = event.locationName, !location.isEmpty {
                     Label(location, systemImage: "mappin.and.ellipse")
-                        .font(.system(size: 12, weight: .medium))
+                        .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulOnImageSecondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 if confirmedCount > 0 {
                     Text("\(confirmedCount) van")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .ruulTextStyle(RuulTypography.statSmall)
                         .foregroundStyle(Color.ruulOnImage)
                 }
                 if let myStatus, myStatus != .pending {
@@ -165,52 +163,51 @@ struct EventCard: View {
     }
 
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: RuulSpacing.s1) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
-            Text(text.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .tracking(0.5)
+            Text(text)
+                .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, RuulSpacing.s2)
+        .padding(.vertical, RuulSpacing.s1 + 1)
         .background(tint, in: Capsule())
     }
 
     private var livePill: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: RuulSpacing.s1 + 1) {
             Circle()
                 .fill(Color.ruulOnImage)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
-                .font(.system(size: 10, weight: .bold))
-                .tracking(0.6)
+                .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, RuulSpacing.s2)
+        .padding(.vertical, RuulSpacing.s1 + 1)
         .background(Color.ruulSemanticError, in: Capsule())
     }
 
     private func myRSVPPill(_ status: RSVPStatus) -> some View {
         let (icon, label): (String, String) = {
             switch status {
-            case .going:    return ("checkmark", "Vas")
-            case .maybe:    return ("questionmark", "Tal vez")
-            case .declined: return ("xmark", "No vas")
-            case .pending:  return ("circle", "")
+            case .going:      return ("checkmark", "Vas")
+            case .maybe:      return ("questionmark", "Tal vez")
+            case .declined:   return ("xmark", "No vas")
+            case .waitlisted: return ("person.crop.circle.badge.clock", "En lista")
+            case .pending:    return ("circle", "")
             }
         }()
-        return HStack(spacing: 4) {
+        return HStack(spacing: RuulSpacing.s1) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
             Text(label)
-                .font(.system(size: 11, weight: .bold))
+                .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, RuulSpacing.s2)
+        .padding(.vertical, RuulSpacing.s1)
         .background(Color.ruulImagePill, in: Capsule())
         .overlay(Capsule().stroke(Color.ruulImagePillBorder, lineWidth: 0.5))
     }
