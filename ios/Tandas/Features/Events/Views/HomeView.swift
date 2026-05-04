@@ -7,6 +7,7 @@ struct HomeView: View {
     var onOpenEvent: (Event) -> Void
     var onOpenPastEvents: () -> Void
     var onSwitchGroup: (() -> Void)? = nil
+    var onInvitePeople: (() -> Void)? = nil
 
     @State private var showSettings: Bool = false
 
@@ -48,20 +49,40 @@ struct HomeView: View {
                 groupNameLabel
             }
             Spacer()
-            Button {
-                showSettings = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(Color.ruulBackgroundElevated, in: Circle())
-                    .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+            HStack(spacing: RuulSpacing.s2) {
+                if let onInvitePeople {
+                    headerIconButton(
+                        systemName: "person.badge.plus",
+                        accessibilityLabel: "Invitar gente",
+                        action: onInvitePeople
+                    )
+                }
+                headerIconButton(
+                    systemName: "gearshape",
+                    accessibilityLabel: "Ajustes"
+                ) {
+                    showSettings = true
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Ajustes")
         }
         .padding(.top, RuulSpacing.s4)
+    }
+
+    private func headerIconButton(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Color.ruulTextPrimary)
+                .frame(width: 40, height: 40)
+                .background(Color.ruulBackgroundElevated, in: Circle())
+                .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     @ViewBuilder

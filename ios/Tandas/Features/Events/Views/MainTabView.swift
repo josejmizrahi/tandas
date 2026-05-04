@@ -31,6 +31,7 @@ struct MainTabView: View {
     @State private var groupSwitcherPresented: Bool = false
     @State private var createGroupPresented: Bool = false
     @State private var joinGroupPresented: Bool = false
+    @State private var inviteSharePresented: Bool = false
 
     enum Tab: Hashable, Sendable { case home, inbox, rules, me }
 
@@ -86,6 +87,13 @@ struct MainTabView: View {
                 // same: activeGroupId is set inside the sheet, switch is reactive
             }
             .environment(app)
+        }
+        .sheet(isPresented: $inviteSharePresented) {
+            if let group = app.activeGroup {
+                InviteShareSheet(group: group)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
 
@@ -243,7 +251,8 @@ struct MainTabView: View {
                     onCreateEvent: { creationRoute = true },
                     onOpenEvent: { event in detailRoute = event },
                     onOpenPastEvents: { pastRoute = true },
-                    onSwitchGroup: { groupSwitcherPresented = true }
+                    onSwitchGroup: { groupSwitcherPresented = true },
+                    onInvitePeople: { inviteSharePresented = true }
                 )
                 .navigationDestination(isPresented: $pastRoute) {
                     if let group = app.activeGroup {
