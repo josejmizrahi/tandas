@@ -9,6 +9,8 @@ struct EventDetailView: View {
     @Bindable var coordinator: EventDetailCoordinator
     let memberLookup: (UUID) -> (name: String, avatarURL: URL?)
     var onScannerOpen: () -> Void
+    var calendarService: CalendarExportService?
+    var onEdit: () -> Void = {}
 
     @State private var qrSheetPresented = false
     @State private var shareSheetPresented = false
@@ -18,7 +20,6 @@ struct EventDetailView: View {
     @State private var closeSheet = false
     @State private var scrollOffset: CGFloat = 0
     @State private var pendingPlusOnes: Int = 0
-    var calendarService: CalendarExportService?
 
     private let coverHeight: CGFloat = 380
 

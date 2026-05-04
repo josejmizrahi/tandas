@@ -93,10 +93,11 @@ struct AttendeesListSection: View {
     private func sectionIcon(for status: RSVPStatus) -> some View {
         let (icon, color): (String, Color) = {
             switch status {
-            case .going:    return ("checkmark.circle.fill", .ruulSemanticSuccess)
-            case .maybe:    return ("questionmark.circle.fill", .ruulSemanticWarning)
-            case .declined: return ("xmark.circle.fill", .ruulSemanticError)
-            case .pending:  return ("clock", .ruulTextTertiary)
+            case .going:      return ("checkmark.circle.fill", .ruulSemanticSuccess)
+            case .maybe:      return ("questionmark.circle.fill", .ruulSemanticWarning)
+            case .declined:   return ("xmark.circle.fill", .ruulSemanticError)
+            case .waitlisted: return ("person.crop.circle.badge.clock", .ruulSemanticWarning)
+            case .pending:    return ("clock", .ruulTextTertiary)
             }
         }()
         return Image(systemName: icon)
@@ -105,10 +106,11 @@ struct AttendeesListSection: View {
 
     private func sectionLabel(for status: RSVPStatus) -> String {
         switch status {
-        case .going:    return "Van"
-        case .maybe:    return "Tal vez"
-        case .declined: return "No van"
-        case .pending:  return "Pendientes"
+        case .going:      return "Van"
+        case .maybe:      return "Tal vez"
+        case .declined:   return "No van"
+        case .waitlisted: return "Lista de espera"
+        case .pending:    return "Pendientes"
         }
     }
 }

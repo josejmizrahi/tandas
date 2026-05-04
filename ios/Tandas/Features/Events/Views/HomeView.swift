@@ -42,8 +42,10 @@ struct HomeView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(greeting)
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color.ruulTextSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
                 Text(coordinator.group.name)
                     .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -61,7 +63,6 @@ struct HomeView: View {
                     .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Ajustes")
         }
         .padding(.top, RuulSpacing.s4)
     }
@@ -86,8 +87,9 @@ struct HomeView: View {
         } else if let next = coordinator.nextEvent {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                 Text("PRÓXIMO")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .tracking(0.8)
                 heroTile(next)
             }
         } else {
@@ -144,22 +146,24 @@ struct HomeView: View {
 
     private func heroBottomBlock(_ event: Event) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(heroDateLine(event))
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
-                    .foregroundStyle(Color.ruulOnImageSecondary)
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.ruulOnImage.opacity(0.90))
+                    .textCase(.uppercase)
+                    .tracking(0.8)
 
                 Text(event.title)
                     .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .shadow(color: Color.ruulImageTextShadow, radius: 4, x: 0, y: 2)
+                    .shadow(color: Color.ruulImageBadge.opacity(0.45), radius: 4, x: 0, y: 2)
             }
 
             if let location = event.locationName, !location.isEmpty {
                 Label(location, systemImage: "mappin.and.ellipse")
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.ruulOnImageSecondary)
             }
 
@@ -199,13 +203,14 @@ struct HomeView: View {
         Button { onOpenEvent(event) } label: {
             HStack {
                 Text("Ver evento")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.system(size: 16, weight: .semibold))
                 Spacer()
                 Image(systemName: "arrow.right")
                     .font(.system(size: 14, weight: .bold))
             }
             .foregroundStyle(Color.ruulOnImageInverse)
-            .padding(RuulSpacing.s4)
+            .padding(.vertical, RuulSpacing.s4)
+            .padding(.horizontal, RuulSpacing.s4)
             .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
         .buttonStyle(.ruulPress)
@@ -213,33 +218,33 @@ struct HomeView: View {
     }
 
     private func rsvpStatusOverlay(for status: RSVPStatus) -> some View {
-        let (dotColor, text): (Color, String) = {
+        let (icon, color, text): (String, Color, String) = {
             switch status {
-            case .going:      return (.ruulSemanticSuccess, "Vas")
-            case .maybe:      return (.ruulSemanticWarning, "Estás considerando")
-            case .declined:   return (.ruulSemanticError,   "No vas")
-            case .waitlisted: return (.ruulSemanticWarning, "En lista de espera")
-            case .pending:    return (.ruulTextTertiary,    "Pendiente")
+            case .going:      return ("checkmark.circle.fill", .ruulSemanticSuccess, "Vas")
+            case .maybe:      return ("questionmark.circle.fill", .ruulSemanticWarning, "Estás considerando")
+            case .declined:   return ("xmark.circle.fill", .ruulSemanticError, "No vas")
+            case .waitlisted: return ("person.crop.circle.badge.clock", .ruulSemanticWarning, "En lista de espera")
+            case .pending:    return ("clock", .ruulTextTertiary, "Pendiente")
             }
         }()
         return HStack(spacing: RuulSpacing.s2) {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(color)
             Text(text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Color.ruulOnImage)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.ruulOnImageSecondary)
+                .foregroundStyle(Color.ruulOnImage.opacity(0.7))
         }
         .padding(.vertical, RuulSpacing.s3)
         .padding(.horizontal, RuulSpacing.s4)
-        .background(Color.ruulImagePill, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .background(Color.ruulOnImage.opacity(0.18), in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.ruulImagePillBorder, lineWidth: 0.5)
+                .stroke(Color.ruulOnImage.opacity(0.25), lineWidth: 0.5)
         )
         .padding(.top, RuulSpacing.s2)
     }
@@ -285,11 +290,12 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.s4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("PRÓXIMOS")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.ruulTextTertiary)
+                        .tracking(0.8)
                     Spacer()
                     Text("\(rest.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
                 VStack(spacing: RuulSpacing.s4) {
@@ -319,7 +325,7 @@ struct HomeView: View {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 14, weight: .semibold))
                     Text("Ver historial")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.system(size: 15, weight: .semibold))
                     Spacer()
                     Image(systemName: "arrow.right")
                         .font(.system(size: 12, weight: .bold))
@@ -331,8 +337,7 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - FAB — Apple Sports has no brand-color FABs: solid black on white,
-    // monochrome chrome with shadow.
+    // MARK: - FAB — solid neutral (Apple Sports has no brand-color FABs).
 
     private var fab: some View {
         Button(action: onCreateEvent) {
@@ -340,12 +345,11 @@ struct HomeView: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(Color.ruulTextInverse)
                 .frame(width: 60, height: 60)
-                .background(Color.ruulTextPrimary, in: Circle())
+                .background(Color.ruulAccentPrimary, in: Circle())
                 .ruulElevation(.lg)
         }
         .buttonStyle(.ruulPress)
         .padding(RuulSpacing.s5)
-        .accessibilityLabel("Crear evento")
     }
 
     // MARK: - Cover + badge helpers
@@ -370,15 +374,16 @@ struct HomeView: View {
     }
 
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: RuulSpacing.s1) {
+        HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
-            Text(text)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+            Text(text.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.5)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, RuulSpacing.s2)
-        .padding(.vertical, RuulSpacing.s1 + 1)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(tint, in: Capsule())
     }
 }
