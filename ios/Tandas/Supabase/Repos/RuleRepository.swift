@@ -5,7 +5,7 @@ enum RuleError: Error, Equatable {
     case rpcFailed(String)
 }
 
-struct Rule: Identifiable, Codable, Sendable, Hashable {
+struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
     let id: UUID
     let groupId: UUID
     let code: String?
@@ -23,7 +23,7 @@ struct Rule: Identifiable, Codable, Sendable, Hashable {
 
 protocol RuleRepository: Actor {
     /// Creates only the enabled drafts. Returns the created rules.
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [Rule]
+    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
 }
 
 // MARK: - Mock
@@ -32,12 +32,12 @@ actor MockRuleRepository: RuleRepository {
     private(set) var lastCreatedDrafts: [RuleDraft] = []
     var nextCreateError: RuleError?
 
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [Rule] {
+    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let enabled = drafts.filter(\.enabled)
         lastCreatedDrafts = enabled
-        return enabled.map { d in
-            Rule(
+        return enabled.map { d -> OnboardingRule in
+            OnboardingRule(
                 id: UUID(),
                 groupId: groupId,
                 code: d.code,
@@ -56,7 +56,7 @@ actor LiveRuleRepository: RuleRepository {
     private let client: SupabaseClient
     init(client: SupabaseClient) { self.client = client }
 
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [Rule] {
+    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
         struct Params: Encodable {
             let p_group_id: String
             let p_code: String
@@ -74,7 +74,7 @@ actor LiveRuleRepository: RuleRepository {
             let amount_mxn: Int
         }
 
-        var rules: [Rule] = []
+        var rules: [OnboardingRule] = []
         for draft in drafts where draft.enabled {
             let p = Params(
                 p_group_id: groupId.uuidString.lowercased(),
@@ -85,7 +85,7 @@ actor LiveRuleRepository: RuleRepository {
                 p_action: ActionEnvelope(type: "fine", amount_mxn: draft.amountMXN)
             )
             do {
-                let rule: Rule = try await client
+                let rule: OnboardingRule = try await client
                     .rpc("create_initial_rule", params: p)
                     .execute()
                     .value
