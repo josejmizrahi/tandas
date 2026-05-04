@@ -133,10 +133,20 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
   },
 
   // (V1) Single target = the member who flipped their RSVP same-day.
-  rsvpChangedSameDay: async (event, _rule, _context) => {
-    if (!event.member_id) return [];
+  // event.member_id is null when iOS emits without resolving group_members.id.
+  // Sprint 1c fix: fall back to event.payload.user_id (the auth.uid the iOS
+  // coordinator includes), looking up the matching group_members row.
+  rsvpChangedSameDay: async (event, _rule, context) => {
+    let memberId = event.member_id;
+    if (!memberId) {
+      const userId = (event.payload?.user_id as string | undefined) ?? null;
+      if (userId) {
+        memberId = context.members.find((m) => m.user_id === userId)?.id ?? null;
+      }
+    }
+    if (!memberId) return [];
     return [{
-      member_id: event.member_id,
+      member_id: memberId,
       resource_id: event.resource_id,
       context: { ...event.payload },
     }];

@@ -6,8 +6,14 @@
 //
 // Idempotency: an event is only marked processed AFTER its consequences
 // commit. If the function crashes mid-batch, the next run picks it up
-// again. Consequence executors are responsible for their own dedup
-// (the `fines` table uses (event_id, member_id, rule_id) as a soft key).
+// again. proposeFine itself short-circuits if a fine already exists for
+// (event_id, user_id, rule_id) in proposed/officialized/in_appeal state.
+//
+// Sprint 1c: proposeFine inserts user_id (not member_id) and details
+// (not evidence), matching the legacy fines table schema. The cron runs
+// as service role so auth.uid() is null — the rsvpChangedSameDay trigger
+// resolves the target via event.payload.user_id (iOS coordinator includes
+// it explicitly).
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
@@ -160,35 +166,58 @@ async function buildContext(
     }
   }
 
-  // Anti-tirania monthly fine cap context
+  // Anti-tirania monthly fine cap context. Sprint 1c: fines table keys by
+  // user_id (not member_id) so we count + index on user_id.
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
   const { data: monthFines } = await supabase
     .from("fines")
-    .select("member_id")
+    .select("user_id")
     .eq("group_id", event.group_id)
     .gte("created_at", monthStart.toISOString());
 
   const finesThisMonthByMember = new Map<string, number>();
   for (const f of monthFines ?? []) {
-    finesThisMonthByMember.set(f.member_id, (finesThisMonthByMember.get(f.member_id) ?? 0) + 1);
+    finesThisMonthByMember.set(f.user_id, (finesThisMonthByMember.get(f.user_id) ?? 0) + 1);
   }
+
+  // proposeFine resolves member_id (group_members.id) → user_id (auth.users.id)
+  // before inserting into the legacy fines table. Idempotent: skips if a
+  // matching open fine already exists for this (event, user, rule).
+  const memberIdToUserId = new Map<string, string>();
+  for (const m of members ?? []) memberIdToUserId.set(m.id, m.user_id);
 
   const sink: ConsequenceSink = {
     proposeFine: async (args) => {
+      const userId = memberIdToUserId.get(args.member_id);
+      if (!userId) {
+        throw new Error(`proposeFine: member ${args.member_id} not found in group ${args.group_id}`);
+      }
+
+      const { data: existing } = await supabase
+        .from("fines")
+        .select("id")
+        .eq("event_id", args.event_id)
+        .eq("user_id", userId)
+        .eq("rule_id", args.rule_id)
+        .in("status", ["proposed", "officialized", "in_appeal"])
+        .maybeSingle();
+      if (existing) return existing.id as string;
+
       const { data, error } = await supabase
         .from("fines")
         .insert({
           event_id: args.event_id,
           group_id: args.group_id,
-          member_id: args.member_id,
+          user_id: userId,
           rule_id: args.rule_id,
           amount: args.amount,
           reason: args.reason,
-          evidence: args.evidence,
+          details: args.evidence,
           status: "proposed",
+          auto_generated: true,
         })
         .select("id")
         .single();
