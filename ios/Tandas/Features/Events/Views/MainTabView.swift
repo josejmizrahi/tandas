@@ -207,6 +207,14 @@ struct MainTabView: View {
                 .fullScreenCover(isPresented: $creationRoute) {
                     eventCreationScreen
                 }
+                .onChange(of: creationRoute) { wasOpen, isOpen in
+                    // Refresh on cover dismissal regardless of source.
+                    // Refreshing inside the dismissed subview's onChange races
+                    // with view teardown and sometimes drops the Task.
+                    if wasOpen && !isOpen {
+                        Task { await homeCoordinator?.refresh(force: true) }
+                    }
+                }
                 .fullScreenCover(item: $scannerRoute) { scannerCoord in
                     CheckInScannerView(coordinator: scannerCoord)
                 }

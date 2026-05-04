@@ -114,14 +114,20 @@ final class EventDetailCoordinator {
             //   2. Same-day flip → triggers the "Cancelación mismo día" rule.
             // The cron edge function process-system-events handles the rest.
             if let systemEvents {
+                // user_id must be in the payload: the cron runs as service
+                // role with no auth.uid(), and the rule engine's
+                // rsvpChangedSameDay evaluator falls back to
+                // payload.user_id to resolve the target member.
+                let userIdString = userId.uuidString.lowercased()
                 await systemEvents.emit(
                     .rsvpSubmitted,
                     groupId: group.id,
                     resourceId: event.id,
-                    memberId: nil,  // server resolves member_id from auth.uid
+                    memberId: nil,
                     payload: .object([
-                        "from":   .string(previous?.status.rawValue ?? "pending"),
-                        "to":     .string(status.rawValue),
+                        "user_id": .string(userIdString),
+                        "from":    .string(previous?.status.rawValue ?? "pending"),
+                        "to":      .string(status.rawValue),
                         "plus_ones": .int(plusOnes)
                     ])
                 )
@@ -132,6 +138,7 @@ final class EventDetailCoordinator {
                         resourceId: event.id,
                         memberId: nil,
                         payload: .object([
+                            "user_id": .string(userIdString),
                             "from": .string(previous?.status.rawValue ?? "pending"),
                             "to":   .string(status.rawValue)
                         ])
