@@ -220,6 +220,8 @@ struct EventDetailView: View {
                 }
             }
 
+            countdownLine
+
             Text(dateLine)
                 .ruulTextStyle(RuulTypography.sectionLabelLg)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -233,27 +235,56 @@ struct EventDetailView: View {
             capacityBar
 
             if let location = coordinator.event.locationName, !location.isEmpty {
-                Button {
-                    openMaps()
-                } label: {
-                    HStack(spacing: RuulSpacing.s2) {
-                        Image(systemName: "mappin.and.ellipse")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text(location)
-                            .ruulTextStyle(RuulTypography.body)
-                        Spacer()
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.ruulTextTertiary)
-                    }
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .padding(RuulSpacing.s4)
-                    .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                EventLocationCard(
+                    locationName: location,
+                    coordinate: locationCoordinate,
+                    onOpenMaps: openMaps
+                )
             }
         }
         .padding(.horizontal, RuulSpacing.s5)
+    }
+
+    /// Apple Invites signature: prominent countdown ("EMPIEZA EN 2 DÍAS") shown
+    /// for upcoming events <7 days out. Hidden once the event starts or for
+    /// long-horizon dates (would feel like noise).
+    @ViewBuilder
+    private var countdownLine: some View {
+        if let countdown = countdownText {
+            HStack(spacing: RuulSpacing.s2) {
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.ruulSemanticWarning)
+                Text(countdown)
+                    .ruulTextStyle(RuulTypography.sectionLabelLg)
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+        }
+    }
+
+    private var countdownText: String? {
+        guard coordinator.event.status == .upcoming else { return nil }
+        let interval = coordinator.event.startsAt.timeIntervalSince(.now)
+        guard interval > 0 else { return nil }
+        let days = Int(interval / 86_400)
+        let hours = Int(interval / 3600)
+        let minutes = Int(interval / 60)
+        if interval < 3600 {
+            return "EMPIEZA EN \(max(1, minutes)) MIN"
+        }
+        if interval < 86_400 {
+            return "EMPIEZA EN \(hours) H"
+        }
+        if days < 7 {
+            return days == 1 ? "EMPIEZA MAÑANA" : "EMPIEZA EN \(days) DÍAS"
+        }
+        return nil
+    }
+
+    private var locationCoordinate: CLLocationCoordinate2D? {
+        guard let lat = coordinator.event.locationLat,
+              let lng = coordinator.event.locationLng else { return nil }
+        return CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
 
     private var dateLine: String {

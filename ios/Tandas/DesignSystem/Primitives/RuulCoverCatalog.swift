@@ -98,7 +98,6 @@ public extension RuulCover {
 public struct RuulCoverView: View {
     private let cover: RuulCover
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var phase: CGFloat = 0
 
     public init(_ cover: RuulCover) {
         self.cover = cover
@@ -106,24 +105,57 @@ public struct RuulCoverView: View {
 
     public var body: some View {
         ZStack {
-            MeshGradient(
-                width: 3, height: 3,
-                points: [
-                    .init(x: 0, y: 0),    .init(x: 0.5, y: 0),   .init(x: 1, y: 0),
-                    .init(x: 0, y: 0.5),  .init(x: 0.5, y: Float(0.5 + 0.05 * sin(phase))),  .init(x: 1, y: 0.5),
-                    .init(x: 0, y: 1),    .init(x: 0.5, y: 1),   .init(x: 1, y: 1)
-                ],
-                colors: cover.palette
-            )
+            // Apple Invites signature: a 4x4 mesh gradient that breathes
+            // continuously via TimelineView. Each interior control point drifts
+            // on its own sine wave so the gradient feels alive without ever
+            // looking jittery. Reduce-motion users get the static center frame.
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
+                let t = reduceMotion
+                    ? 0
+                    : context.date.timeIntervalSinceReferenceDate
+                MeshGradient(
+                    width: 4,
+                    height: 4,
+                    points: meshPoints(at: t),
+                    colors: paddedPalette
+                )
+            }
             decorationLayer
         }
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) {
-                phase = .pi
-            }
+    }
+
+    /// 4x4 = 16 control points. Corners + edge midpoints stay locked; the four
+    /// interior points drift on slow phase-shifted sine waves. Amplitude is
+    /// tiny (≤0.06) so the motion reads as "breathing", not "wobbling".
+    private func meshPoints(at t: TimeInterval) -> [SIMD2<Float>] {
+        let amp: Float = 0.06
+        let speed: Float = 0.18
+        let p = Float(t) * speed
+        // Four interior offsets, each on a different phase so the mesh swirls.
+        let dx1 = amp * sin(p);              let dy1 = amp * cos(p * 0.9)
+        let dx2 = amp * cos(p * 1.1);        let dy2 = amp * sin(p * 1.2 + 1)
+        let dx3 = amp * sin(p * 0.85 + 2);   let dy3 = amp * cos(p + 1.5)
+        let dx4 = amp * cos(p * 1.05 + 3);   let dy4 = amp * sin(p * 0.95 + 0.5)
+        return [
+            .init(0, 0),                 .init(0.33, 0),                  .init(0.67, 0),                  .init(1, 0),
+            .init(0, 0.33),              .init(0.33 + dx1, 0.33 + dy1),   .init(0.67 + dx2, 0.33 + dy2),   .init(1, 0.33),
+            .init(0, 0.67),              .init(0.33 + dx3, 0.67 + dy3),   .init(0.67 + dx4, 0.67 + dy4),   .init(1, 0.67),
+            .init(0, 1),                 .init(0.33, 1),                  .init(0.67, 1),                  .init(1, 1)
+        ]
+    }
+
+    /// Curated covers ship 9 colors (matching the previous 3x3 mesh). The 4x4
+    /// mesh needs 16. We tile / repeat to fill — visually identical because the
+    /// gradient interpolates between adjacent points.
+    private var paddedPalette: [Color] {
+        let base = cover.palette
+        guard base.count < 16 else { return Array(base.prefix(16)) }
+        var padded = base
+        while padded.count < 16 {
+            padded.append(base[padded.count % base.count])
         }
+        return padded
     }
 
     @ViewBuilder
