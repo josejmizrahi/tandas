@@ -27,6 +27,9 @@ struct TandasApp: App {
             let rsvps = MockRSVPRepository()
             let checkIns = MockCheckInRepository()
             let notifTokens = MockNotificationTokenRepository()
+            let systemEvents = MockSystemEventRepository()
+            let userActions = MockUserActionRepository()
+            let appeals = MockAppealRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -39,6 +42,9 @@ struct TandasApp: App {
                 rsvpRepo: rsvps,
                 checkInRepo: checkIns,
                 notificationTokenRepo: notifTokens,
+                systemEventRepo: systemEvents,
+                userActionRepo: userActions,
+                appealRepo: appeals,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics
@@ -55,6 +61,9 @@ struct TandasApp: App {
             let rsvps = LiveRSVPRepository(client: client)
             let checkIns = LiveCheckInRepository(client: client)
             let notifTokens = LiveNotificationTokenRepository(client: client)
+            let systemEvents = LiveSystemEventRepository(client: client)
+            let userActions = LiveUserActionRepository(client: client)
+            let appeals = LiveAppealRepository(client: client)
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -67,6 +76,9 @@ struct TandasApp: App {
                 rsvpRepo: rsvps,
                 checkInRepo: checkIns,
                 notificationTokenRepo: notifTokens,
+                systemEventRepo: systemEvents,
+                userActionRepo: userActions,
+                appealRepo: appeals,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics,

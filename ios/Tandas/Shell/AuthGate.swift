@@ -34,6 +34,15 @@ final class AppState {
     let walletService: any WalletPassService
     let analytics: any AnalyticsService
 
+    // Platform layer (Sprint 1a). Models + repos live; the rule engine is
+    // server-side, in `process-system-events` / `evaluate-event-rules` edge
+    // functions. The Swift side only emits via SystemEventEmitter and reads
+    // back via the repos for inbox / appeals UI in Sprint 1c.
+    let systemEventRepo: any SystemEventRepository
+    let userActionRepo: any UserActionRepository
+    let appealRepo: any AppealRepository
+    let systemEventEmitter: SystemEventEmitter
+
     /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
     /// preview environments — coordinator falls back to manual refresh.
     let realtimeFactory: ((UUID) -> RSVPRealtimeService)?
@@ -49,6 +58,9 @@ final class AppState {
         rsvpRepo: any RSVPRepository,
         checkInRepo: any CheckInRepository,
         notificationTokenRepo: any NotificationTokenRepository,
+        systemEventRepo: any SystemEventRepository,
+        userActionRepo: any UserActionRepository,
+        appealRepo: any AppealRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
@@ -64,6 +76,10 @@ final class AppState {
         self.rsvpRepo = rsvpRepo
         self.checkInRepo = checkInRepo
         self.notificationTokenRepo = notificationTokenRepo
+        self.systemEventRepo = systemEventRepo
+        self.userActionRepo = userActionRepo
+        self.appealRepo = appealRepo
+        self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService
         self.analytics = analytics
