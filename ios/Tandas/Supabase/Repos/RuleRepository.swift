@@ -24,6 +24,11 @@ struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
 protocol RuleRepository: Actor {
     /// Creates only the enabled drafts. Returns the created rules.
     func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
+
+    /// Seeds the 5 default Platform rules for the "Cena recurrente" template
+    /// via the `seed_dinner_template_rules` RPC. Idempotent — re-running on a
+    /// group that already has Platform-shape rules is a no-op.
+    func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule]
 }
 
 // MARK: - Mock
@@ -44,6 +49,21 @@ actor MockRuleRepository: RuleRepository {
                 title: d.title,
                 description: d.description,
                 enabled: true,
+                status: "active"
+            )
+        }
+    }
+
+    func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
+        // Mock returns 5 fake rows so previews/tests see expected counts.
+        return DinnerRecurringTemplate.defaultRules(groupId: groupId).map {
+            OnboardingRule(
+                id: $0.id,
+                groupId: groupId,
+                code: nil,
+                title: $0.name,
+                description: nil,
+                enabled: $0.isActive,
                 status: "active"
             )
         }
@@ -95,5 +115,19 @@ actor LiveRuleRepository: RuleRepository {
             }
         }
         return rules
+    }
+
+    func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
+        struct Params: Encodable { let p_group_id: String }
+        do {
+            return try await client
+                .rpc("seed_dinner_template_rules", params: Params(
+                    p_group_id: groupId.uuidString.lowercased()
+                ))
+                .execute()
+                .value
+        } catch {
+            throw RuleError.rpcFailed(error.localizedDescription)
+        }
     }
 }

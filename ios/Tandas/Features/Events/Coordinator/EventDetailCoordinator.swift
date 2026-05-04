@@ -24,6 +24,7 @@ final class EventDetailCoordinator {
     let walletService: any WalletPassService
     private let analytics: EventAnalytics
     private let realtimeFactory: ((UUID) -> RSVPRealtimeService)?
+    private let systemEvents: SystemEventEmitter?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "event.detail")
 
     init(
@@ -37,7 +38,8 @@ final class EventDetailCoordinator {
         notifications: NotificationService?,
         walletService: any WalletPassService,
         analytics: EventAnalytics,
-        realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil
+        realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil,
+        systemEvents: SystemEventEmitter? = nil
     ) {
         self.event = event
         self.group = group
@@ -51,6 +53,7 @@ final class EventDetailCoordinator {
         self.walletService = walletService
         self.analytics = analytics
         self.realtimeFactory = realtimeFactory
+        self.systemEvents = systemEvents
         Task {
             await analytics.eventView(eventId: event.id, viewerRole: viewerRole.analyticsRole)
         }
@@ -106,6 +109,36 @@ final class EventDetailCoordinator {
                 hoursToEvent: hours
             )
 
+            // Sprint 1b: feed the rule engine. Two cases matter for V1 rules:
+            //   1. Any RSVP submission → eventually used by future rules.
+            //   2. Same-day flip → triggers the "Cancelación mismo día" rule.
+            // The cron edge function process-system-events handles the rest.
+            if let systemEvents {
+                await systemEvents.emit(
+                    .rsvpSubmitted,
+                    groupId: group.id,
+                    resourceId: event.id,
+                    memberId: nil,  // server resolves member_id from auth.uid
+                    payload: .object([
+                        "from":   .string(previous?.status.rawValue ?? "pending"),
+                        "to":     .string(status.rawValue),
+                        "plus_ones": .int(plusOnes)
+                    ])
+                )
+                if isSameDayAsEvent && (previous?.status == .going) && status != .going {
+                    await systemEvents.emit(
+                        .rsvpChangedSameDay,
+                        groupId: group.id,
+                        resourceId: event.id,
+                        memberId: nil,
+                        payload: .object([
+                            "from": .string(previous?.status.rawValue ?? "pending"),
+                            "to":   .string(status.rawValue)
+                        ])
+                    )
+                }
+            }
+
             // Schedule / cancel local reminders.
             if let notifications {
                 if status == .going {
@@ -139,6 +172,7 @@ final class EventDetailCoordinator {
             myRSVP = updated
             updateLocalRSVPList(with: updated)
             await analytics.checkIn(eventId: event.id, method: .selfMethod, locationVerified: locationVerified)
+            await emitCheckIn(arrivedAt: updated.arrivedAt)
         } catch {
             self.error = .checkInFailed(error.localizedDescription)
         }
@@ -152,9 +186,27 @@ final class EventDetailCoordinator {
             let updated = try await checkInRepo.hostMarkCheckIn(eventId: event.id, memberId: memberId)
             updateLocalRSVPList(with: updated)
             await analytics.checkIn(eventId: event.id, method: .hostMarked, locationVerified: false)
+            await emitCheckIn(arrivedAt: updated.arrivedAt, forMemberId: memberId)
         } catch {
             self.error = .checkInFailed(error.localizedDescription)
         }
+    }
+
+    /// Sprint 1b: emit the `checkInRecorded` SystemEvent so the rule engine
+    /// can fire the "Llegada tardía" escalating-fine rule. The minutes-late
+    /// computation happens server-side using `events.starts_at`; we only
+    /// pass the arrival timestamp + member context.
+    private func emitCheckIn(arrivedAt: Date?, forMemberId: UUID? = nil) async {
+        guard let systemEvents else { return }
+        await systemEvents.emit(
+            .checkInRecorded,
+            groupId: group.id,
+            resourceId: event.id,
+            memberId: forMemberId,  // nil = self check-in; server resolves from auth.uid
+            payload: .object([
+                "arrived_at": .string(ISO8601DateFormatter().string(from: arrivedAt ?? .now))
+            ])
+        )
     }
 
     // MARK: - Host actions
@@ -181,6 +233,23 @@ final class EventDetailCoordinator {
         defer { isMutating = false }
         do {
             event = try await lifecycle.closeEvent(event, in: group, autoGenerateEnabled: autoGenerateEnabled)
+            // Sprint 1b: feed the rule engine. The platform's
+            // process-system-events cron will pick this up on the next
+            // minute; if the host wants the proposed fines NOW, the
+            // companion `evaluate-event-rules` edge function can be
+            // invoked from Sprint 1c's ReviewProposedFinesView with the
+            // event_id payload (it dedups against this same SystemEvent).
+            if let systemEvents {
+                await systemEvents.emit(
+                    .eventClosed,
+                    groupId: group.id,
+                    resourceId: event.id,
+                    memberId: nil,
+                    payload: .object([
+                        "auto_generate": .bool(autoGenerateEnabled)
+                    ])
+                )
+            }
         } catch {
             self.error = .closeFailed(error.localizedDescription)
         }
@@ -271,6 +340,13 @@ final class EventDetailCoordinator {
         } else {
             rsvps.append(updated)
         }
+    }
+
+    /// True when "now" is the same calendar day as the event's start in the
+    /// device's local timezone. Used to gate `rsvpChangedSameDay` SystemEvent
+    /// emission so we don't fire it for legitimate next-week changes.
+    private var isSameDayAsEvent: Bool {
+        Calendar.current.isDate(.now, inSameDayAs: event.startsAt)
     }
 }
 

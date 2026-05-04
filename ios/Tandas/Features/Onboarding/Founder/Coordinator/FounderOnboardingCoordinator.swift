@@ -78,12 +78,20 @@ final class FounderOnboardingCoordinator {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         await complete(step: .identity)
-        try? await transition(to: .group)
+        try? await transition(to: .templateSelect)
     }
 
     func skipIdentity() async {
         displayName = ""
         await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.identity.rawValue))
+        try? await transition(to: .templateSelect)
+    }
+
+    /// Sprint 1b: TemplateSelectorView auto-advances 600ms after selection.
+    /// Pure transition — `draft.template` is set by the view itself when the
+    /// user taps a card; this just moves the flow forward.
+    func advanceFromTemplateSelect() async {
+        await complete(step: .templateSelect)
         try? await transition(to: .group)
     }
 
@@ -94,6 +102,18 @@ final class FounderOnboardingCoordinator {
         do {
             let group = try await groupRepo.createInitial(draft)
             createdGroup = group
+            // Sprint 1b: seed the 5 default Platform rules for the chosen
+            // template. Idempotent — safe to retry if the user re-enters
+            // this step after a connectivity blip. Failure here is non-fatal:
+            // the legacy rule step (.rules) still works; we just log so we
+            // can surface in analytics later.
+            if draft.template == DinnerRecurringTemplate.TemplateID.dinnerRecurring.rawValue {
+                do {
+                    _ = try await ruleRepo.seedDinnerTemplateRules(groupId: group.id)
+                } catch {
+                    log.warning("seedDinnerTemplateRules failed: \(error.localizedDescription)")
+                }
+            }
             await complete(step: .group)
             try? await transition(to: .vocabulary)
         } catch {

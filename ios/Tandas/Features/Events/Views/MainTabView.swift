@@ -1,7 +1,10 @@
 import SwiftUI
 
-/// Top-level tab container shown after onboarding. V1 has 1 tab (Home);
-/// future prompts add Rules, Multas, Settings.
+/// Top-level tab container shown after onboarding. Sprint 1b: expanded
+/// from 1 → 4 tabs (Inicio, Inbox, Reglas, Yo) using ResourceTabBar so
+/// the platform-template architecture is reflected in the chrome from
+/// day one. Inbox / Reglas / Yo render stub placeholders until Sprint
+/// 1c fills them with the real ActionInboxView, RulesView, ProfileView.
 struct MainTabView: View {
     @Environment(AppState.self) private var app
     @State private var homeCoordinator: HomeCoordinator?
@@ -12,15 +15,27 @@ struct MainTabView: View {
     @State private var editRoute: Event?
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
     @State private var calendarService = CalendarExportService()
+    @State private var selectedTab: Tab = .home
+
+    enum Tab: Hashable, Sendable { case home, inbox, rules, me }
 
     var body: some View {
-        TabView {
-            homeTab
-                .tabItem {
-                    Label("Inicio", systemImage: "house.fill")
-                }
+        ResourceTabBar(
+            tabs: [
+                .init(id: Tab.home,  label: "Inicio", systemImage: "house.fill"),
+                .init(id: Tab.inbox, label: "Inbox",  systemImage: "tray.fill"),
+                .init(id: Tab.rules, label: "Reglas", systemImage: "list.bullet.clipboard.fill"),
+                .init(id: Tab.me,    label: "Yo",     systemImage: "person.crop.circle.fill")
+            ],
+            selection: $selectedTab
+        ) { tab in
+            switch tab {
+            case .home:  homeTab
+            case .inbox: InboxTabStub()
+            case .rules: RulesTabStub()
+            case .me:    ProfileTabStub()
+            }
         }
-        .tint(Color.ruulAccentPrimary)
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }
@@ -83,7 +98,8 @@ struct MainTabView: View {
             notifications: app.notifications,
             walletService: app.walletService,
             analytics: EventAnalytics(analytics: app.analytics),
-            realtimeFactory: app.realtimeFactory
+            realtimeFactory: app.realtimeFactory,
+            systemEvents: app.systemEventEmitter
         )
         return AnyView(
             EventDetailView(

@@ -53,6 +53,7 @@ final class OnboardingProgress {
 enum FounderStep: String, CaseIterable, Codable, Sendable {
     case welcome
     case identity        // founder personal name + avatar
+    case templateSelect  // platform template (Sprint 1b — Cena recurrente only in V1)
     case group           // group identity (name + cover)
     case vocabulary
     case rules
