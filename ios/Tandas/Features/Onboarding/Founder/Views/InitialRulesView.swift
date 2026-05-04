@@ -20,11 +20,31 @@ struct InitialRulesView: View {
                     ruleCard(at: idx)
                 }
                 rotationSection
+                if let errorMessage {
+                    Text(errorMessage)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulSemanticError)
+                        .padding(RuulSpacing.s3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                                .fill(Color.ruulSemanticError.opacity(0.08))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                                .stroke(Color.ruulSemanticError.opacity(0.4), lineWidth: 1)
+                        )
+                }
             }
         }
         .ruulSheet(item: $infoRule) { rule in
             ruleInfoSheet(for: rule)
         }
+    }
+
+    private var errorMessage: String? {
+        guard let err = coord.error, case .createRulesFailed(let msg) = err else { return nil }
+        return "No pudimos guardar las reglas: \(msg)"
     }
 
     private var progressValue: Double {

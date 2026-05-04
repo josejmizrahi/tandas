@@ -62,6 +62,39 @@ final class FounderOnboardingCoordinator {
         }
         if let name = entity.displayName { displayName = name }
         if let phone = entity.phoneE164 { phoneE164 = phone }
+
+        // Re-hydrate `createdGroup` for steps after .group. Without this, the
+        // guards in advanceFromVocabulary / advanceFromRules / advanceFromInvite
+        // (which check `createdGroup != nil`) silently no-op after an app
+        // restart, leaving the user stuck on Continuar with no error shown.
+        if currentStep.index > FounderStep.group.index {
+            if let groupId = entity.createdGroupId,
+               let detail = try? await groupRepo.get(groupId) {
+                createdGroup = detail.group
+                log.debug("restored createdGroup id=\(groupId)")
+            } else if let groups = try? await groupRepo.listMine(),
+                      let recent = groups.sorted(by: { $0.createdAt > $1.createdAt }).first {
+                // Legacy fallback for progress rows persisted before
+                // createdGroupId existed (or fetch by id failed). Take the
+                // user's most recently created group and patch the entity.
+                createdGroup = recent
+                entity.createdGroupId = recent.id
+                try? progress.save(entity)
+                log.debug("recovered createdGroup via listMine fallback: \(recent.id)")
+            } else {
+                // No recoverable group for the current auth user. This happens
+                // when the anon session that originally created the group was
+                // lost (e.g., signOut from Settings, or a different anon was
+                // promoted/replaced). Roll back to .group so the current user
+                // creates a fresh group; their draft.name etc. is preserved.
+                log.warning("could not restore createdGroup at step \(self.currentStep.rawValue); resetting to .group")
+                currentStep = .group
+                entity.founderStep = .group
+                entity.createdGroupId = nil
+                try? progress.save(entity)
+            }
+        }
+
         log.debug("restored at step \(self.currentStep.rawValue)")
         await analytics.track(.stepStarted(flowType: .founder, stepID: currentStep.rawValue, stepIndex: currentStep.index))
         stepEnteredAt = .now
@@ -163,6 +196,7 @@ final class FounderOnboardingCoordinator {
             await complete(step: .rules)
             try? await transition(to: .invite)
         } catch {
+            log.error("advanceFromRules failed: \(String(describing: error)) — message: \(error.localizedDescription)")
             self.error = .createRulesFailed(error.localizedDescription)
             await analytics.track(.stepFailed(flowType: .founder, stepID: FounderStep.rules.rawValue, errorType: "create_rules"))
         }
@@ -233,6 +267,7 @@ final class FounderOnboardingCoordinator {
         do {
             try await otp.verifyCode(phoneE164: phoneE164, code: code, channel: otpChannel)
             await analytics.track(.otpVerified(channel: otpChannel.rawValue, attempts: otpAttempts))
+            OnboardingCompletion.mark()
             await complete(step: .otp)
             try? await transition(to: .confirm)
             await trackOnboardingCompleted()
@@ -256,6 +291,7 @@ final class FounderOnboardingCoordinator {
     /// session to a real user when signInWithIdToken is called). Mark phone
     /// + otp steps complete and transition straight to confirmation.
     func completeViaApple() async {
+        OnboardingCompletion.mark()
         await complete(step: .phoneVerify)
         await complete(step: .otp)
         try? await transition(to: .confirm)
@@ -304,6 +340,7 @@ final class FounderOnboardingCoordinator {
         entity.founderStep = currentStep
         entity.displayName = displayName
         entity.phoneE164 = phoneE164.isEmpty ? nil : phoneE164
+        entity.createdGroupId = createdGroup?.id
         if let data = try? JSONEncoder().encode(draft) {
             entity.draftJSON = data
         }

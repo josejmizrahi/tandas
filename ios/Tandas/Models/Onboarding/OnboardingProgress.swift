@@ -16,6 +16,7 @@ final class OnboardingProgress {
     var draftJSON: Data?                 // encoded GroupDraft snapshot (founder)
     var displayName: String?
     var phoneE164: String?
+    var createdGroupId: UUID?            // founder: id of the group created at step .group
     var startedAt: Date
     var lastUpdatedAt: Date
 
