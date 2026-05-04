@@ -6,6 +6,7 @@ struct HomeView: View {
     var onCreateEvent: () -> Void
     var onOpenEvent: (Event) -> Void
     var onOpenPastEvents: () -> Void
+    var onSwitchGroup: (() -> Void)? = nil
 
     @State private var showSettings: Bool = false
 
@@ -44,10 +45,7 @@ struct HomeView: View {
                 Text(greeting)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextSecondary)
-                Text(coordinator.group.name)
-                    .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .lineLimit(2)
+                groupNameLabel
             }
             Spacer()
             Button {
@@ -64,6 +62,31 @@ struct HomeView: View {
             .accessibilityLabel("Ajustes")
         }
         .padding(.top, RuulSpacing.s4)
+    }
+
+    @ViewBuilder
+    private var groupNameLabel: some View {
+        if let onSwitchGroup {
+            Button(action: onSwitchGroup) {
+                HStack(alignment: .center, spacing: RuulSpacing.s2) {
+                    Text(coordinator.group.name)
+                        .ruulTextStyle(RuulTypography.displayMedium)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Cambiar de grupo")
+        } else {
+            Text(coordinator.group.name)
+                .ruulTextStyle(RuulTypography.displayMedium)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .lineLimit(2)
+        }
     }
 
     private var greeting: String {

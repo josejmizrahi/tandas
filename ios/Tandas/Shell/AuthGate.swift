@@ -9,6 +9,30 @@ final class AppState {
     var isBootstrapping: Bool = true
     var bootstrapError: String?
 
+    /// Currently selected group. Persisted across launches via UserDefaults
+    /// so the user lands on the same group they were viewing last. Defaults
+    /// to the first group on the user's list when unset or stale.
+    var activeGroupId: UUID? {
+        didSet {
+            if let id = activeGroupId {
+                UserDefaults.standard.set(id.uuidString, forKey: Self.activeGroupKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.activeGroupKey)
+            }
+        }
+    }
+
+    /// Resolves to the active group if it's still in `groups`, otherwise
+    /// falls back to the first group. nil only if the user has zero groups.
+    var activeGroup: Group? {
+        if let id = activeGroupId, let g = groups.first(where: { $0.id == id }) {
+            return g
+        }
+        return groups.first
+    }
+
+    private static let activeGroupKey = "ruul_active_group_id"
+
     /// Pending invite code from a Universal Link / custom URL scheme.
     /// When set, the onboarding root view routes to the invited flow.
     var pendingInviteCode: String?
@@ -88,6 +112,13 @@ final class AppState {
         self.analytics = analytics
         self.realtimeFactory = realtimeFactory
         self.eventLifecycle = EventLifecycleService(eventRepo: eventRepo)
+        // Restore last-active group selection. If the persisted id doesn't
+        // match any current group at refresh time, `activeGroup` falls back
+        // to groups.first.
+        if let raw = UserDefaults.standard.string(forKey: Self.activeGroupKey),
+           let id = UUID(uuidString: raw) {
+            self.activeGroupId = id
+        }
     }
 
     func start() async {

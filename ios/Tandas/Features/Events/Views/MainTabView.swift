@@ -25,6 +25,12 @@ struct MainTabView: View {
     @State private var reviewProposedRoute: Event?
     @State private var voteOnAppealRoute: AppealRouteContext?
 
+    // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
+    // points), create (new group from scratch), join (with invite code).
+    @State private var groupSwitcherPresented: Bool = false
+    @State private var createGroupPresented: Bool = false
+    @State private var joinGroupPresented: Bool = false
+
     enum Tab: Hashable, Sendable { case home, inbox, rules, me }
 
     var body: some View {
@@ -48,6 +54,37 @@ struct MainTabView: View {
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }
+        }
+        .onChange(of: app.activeGroupId) { _, _ in
+            // User switched groups via the group switcher. Rebuild all
+            // coordinators so HomeView, Inbox, and Profile/Fines reflect
+            // the new group's data.
+            Task {
+                guard let group = app.activeGroup else { return }
+                await rebuildCoordinators(for: group)
+            }
+        }
+        .sheet(isPresented: $groupSwitcherPresented) {
+            GroupSwitcherSheet(
+                onCreateGroup: { createGroupPresented = true },
+                onJoinGroup: { joinGroupPresented = true }
+            )
+            .environment(app)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $createGroupPresented) {
+            CreateGroupSheet { _ in
+                // onCreated: AppState already switched activeGroupId; the
+                // .onChange hook above rebuilds coordinators automatically.
+            }
+            .environment(app)
+        }
+        .sheet(isPresented: $joinGroupPresented) {
+            JoinGroupSheet { _ in
+                // same: activeGroupId is set inside the sheet, switch is reactive
+            }
+            .environment(app)
         }
     }
 
@@ -190,10 +227,11 @@ struct MainTabView: View {
                     userId: app.session?.user.id ?? UUID(),
                     onCreateEvent: { creationRoute = true },
                     onOpenEvent: { event in detailRoute = event },
-                    onOpenPastEvents: { pastRoute = true }
+                    onOpenPastEvents: { pastRoute = true },
+                    onSwitchGroup: { groupSwitcherPresented = true }
                 )
                 .navigationDestination(isPresented: $pastRoute) {
-                    if let group = app.groups.first {
+                    if let group = app.activeGroup {
                         PastEventsView(
                             group: group,
                             userId: app.session?.user.id ?? UUID(),
@@ -285,7 +323,7 @@ struct MainTabView: View {
 
     @ViewBuilder
     private var eventCreationScreen: some View {
-        if let group = app.groups.first {
+        if let group = app.activeGroup {
             let suggested = nextDefaultDate(for: group)
             let creation = EventCreationCoordinator(
                 group: group,
@@ -343,7 +381,16 @@ struct MainTabView: View {
 
     @MainActor
     private func bootstrap() async {
-        guard let group = app.groups.first, homeCoordinator == nil else { return }
+        guard let group = app.activeGroup else { return }
+        // Initial wire-up. Rebuild on active-group change is handled by the
+        // .onChange(of: app.activeGroupId) hook in the body.
+        if homeCoordinator?.group.id != group.id {
+            await rebuildCoordinators(for: group)
+        }
+    }
+
+    @MainActor
+    private func rebuildCoordinators(for group: Group) async {
         let userId = app.session?.user.id ?? UUID()
         homeCoordinator = HomeCoordinator(
             group: group,
