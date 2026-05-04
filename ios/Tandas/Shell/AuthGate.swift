@@ -159,6 +159,7 @@ final class AppState {
 struct AuthGate: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(OnboardingCompletion.userDefaultsKey) private var hasOnboarded: Bool = false
     @State private var hasActiveOnboarding: Bool = false
     @State private var hasCheckedOnboarding: Bool = false
 
@@ -166,31 +167,37 @@ struct AuthGate: View {
         SwiftUI.Group {
             if app.isBootstrapping || !hasCheckedOnboarding {
                 BootstrappingView()
+            } else if hasActiveOnboarding {
+                onboardingFlow
+            } else if app.session == nil && hasOnboarded {
+                SignInView()
             } else if shouldShowOnboarding {
-                OnboardingRootView(pendingInviteCode: app.pendingInviteCode) { _ in
-                    Task {
-                        app.consumePendingInvite()
-                        await refreshOnboardingState()
-                        await app.refreshProfileAndGroups()
-                    }
-                }
+                onboardingFlow
             } else {
                 MainTabView()
             }
         }
         .task { await app.start() }
         .task { await refreshOnboardingState() }
+        .onChange(of: app.session?.user.id) { _, _ in
+            Task { await refreshOnboardingState() }
+        }
     }
 
-    /// Onboarding shows when:
-    /// - There's an active OnboardingProgress row in SwiftData (covers the
-    ///   case where the founder is mid-flow at OTP — session becomes
-    ///   non-nil but flow isn't done), OR
-    /// - The user is logged out, OR
-    /// - The user has no groups yet.
+    private var onboardingFlow: some View {
+        OnboardingRootView(pendingInviteCode: app.pendingInviteCode) { _ in
+            Task {
+                app.consumePendingInvite()
+                await refreshOnboardingState()
+                await app.refreshProfileAndGroups()
+            }
+        }
+    }
+
+    /// Onboarding shows for first-time users. Returning users (hasOnboarded
+    /// flag set, session nil) see SignInView instead — handled above.
     private var shouldShowOnboarding: Bool {
-        hasActiveOnboarding
-            || app.session == nil
+        app.session == nil
             || (app.profile?.needsOnboarding ?? false)
             || app.groups.isEmpty
     }

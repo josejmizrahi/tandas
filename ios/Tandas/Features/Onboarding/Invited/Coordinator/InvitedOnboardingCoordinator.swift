@@ -114,6 +114,7 @@ final class InvitedOnboardingCoordinator {
         do {
             try await otp.verifyCode(phoneE164: phoneE164, code: code, channel: otpChannel)
             await analytics.track(.otpVerified(channel: otpChannel.rawValue, attempts: otpAttempts))
+            OnboardingCompletion.mark()
             // Mark invite used (best effort — failure here is logged but doesn't stop the flow).
             if let inviteId = matchingInviteId {
                 _ = try? await inviteRepo.markUsed(inviteId: inviteId)
