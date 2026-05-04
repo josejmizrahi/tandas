@@ -90,8 +90,9 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $inviteSharePresented) {
             if let group = app.activeGroup {
-                InviteShareSheet(group: group)
-                    .presentationDetents([.medium, .large])
+                GroupInfoSheet(group: group)
+                    .environment(app)
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
         }
