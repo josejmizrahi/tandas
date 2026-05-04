@@ -17,13 +17,22 @@ struct MainTabView: View {
     @State private var calendarService = CalendarExportService()
     @State private var selectedTab: Tab = .home
 
+    // Sprint 1c: inbox + my-fines coordinators owned at tab root so refresh
+    // state survives tab switches. Built lazily once we have a session.
+    @State private var inboxCoordinator: InboxCoordinator?
+    @State private var myFinesCoordinator: MyFinesCoordinator?
+    @State private var fineDetailRoute: Fine?
+    @State private var reviewProposedRoute: Event?
+    @State private var voteOnAppealRoute: AppealRouteContext?
+
     enum Tab: Hashable, Sendable { case home, inbox, rules, me }
 
     var body: some View {
         ResourceTabBar(
             tabs: [
                 .init(id: Tab.home,  label: "Inicio", systemImage: "house.fill"),
-                .init(id: Tab.inbox, label: "Inbox",  systemImage: "tray.fill"),
+                .init(id: Tab.inbox, label: "Inbox",  systemImage: "tray.fill",
+                      badge: badgeForInbox),
                 .init(id: Tab.rules, label: "Reglas", systemImage: "list.bullet.clipboard.fill"),
                 .init(id: Tab.me,    label: "Yo",     systemImage: "person.crop.circle.fill")
             ],
@@ -31,14 +40,144 @@ struct MainTabView: View {
         ) { tab in
             switch tab {
             case .home:  homeTab
-            case .inbox: InboxTabStub()
+            case .inbox: inboxTab
             case .rules: RulesTabStub()
-            case .me:    ProfileTabStub()
+            case .me:    profileTab
             }
         }
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }
+        }
+    }
+
+    private var badgeForInbox: ResourceTabBadge? {
+        let count = inboxCoordinator?.actions.count ?? 0
+        return count > 0 ? .count(count) : nil
+    }
+
+    // MARK: - Inbox tab
+
+    @ViewBuilder
+    private var inboxTab: some View {
+        NavigationStack {
+            if let coord = inboxCoordinator {
+                ActionInboxView(coordinator: coord) { action in
+                    Task { await handleInboxAction(action) }
+                }
+                .navigationDestination(item: $fineDetailRoute) { fine in
+                    fineDetailScreen(fine)
+                }
+                .navigationDestination(item: $reviewProposedRoute) { event in
+                    reviewProposedScreen(event)
+                }
+                .ruulSheet(item: $voteOnAppealRoute) { ctx in
+                    voteOnAppealSheet(ctx)
+                }
+            } else {
+                ZStack {
+                    Color.ruulBackgroundCanvas.ignoresSafeArea()
+                    ProgressView().tint(Color.ruulAccentPrimary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var profileTab: some View {
+        NavigationStack {
+            if let coord = myFinesCoordinator {
+                MyFinesView(coordinator: coord) { fine in
+                    fineDetailRoute = fine
+                }
+                .navigationDestination(item: $fineDetailRoute) { fine in
+                    fineDetailScreen(fine)
+                }
+            } else {
+                ProfileTabStub()
+            }
+        }
+    }
+
+    private func fineDetailScreen(_ fine: Fine) -> some View {
+        let coord = FineDetailCoordinator(
+            fine: fine,
+            userId: app.session?.user.id ?? UUID(),
+            fineRepo: app.fineRepo,
+            appealRepo: app.appealRepo
+        )
+        return FineDetailView(
+            coordinator: coord,
+            onAppeal: nil,
+            onViewAppeal: { appeal in
+                voteOnAppealRoute = AppealRouteContext(appeal: appeal, fine: fine)
+            }
+        )
+    }
+
+    private func reviewProposedScreen(_ event: Event) -> some View {
+        let coord = ReviewProposedFinesCoordinator(event: event, fineRepo: app.fineRepo)
+        return ReviewProposedFinesView(coordinator: coord) { userId in
+            memberDirectory[userId]?.displayName ?? "Miembro"
+        }
+    }
+
+    @ViewBuilder
+    private func voteOnAppealSheet(_ ctx: AppealRouteContext) -> some View {
+        // Resolve appellant name from the directory if we have it
+        let appellantName: String = {
+            // appeal.appellantMemberId is a group_members.id; look up via directory
+            if let entry = memberDirectory.values.first(where: { $0.member.id == ctx.appeal.appellantMemberId }) {
+                return entry.displayName
+            }
+            return "Un miembro"
+        }()
+        VoteOnAppealSheet(
+            isPresented: voteOnAppealBinding,
+            fine: ctx.fine,
+            appeal: ctx.appeal,
+            appellantName: appellantName,
+            voteCounts: nil
+        ) { choice in
+            Task {
+                try? await app.appealRepo.castVote(appealId: ctx.appeal.id, choice: choice)
+                await inboxCoordinator?.refresh()
+            }
+        }
+    }
+
+    private var voteOnAppealBinding: Binding<Bool> {
+        Binding(
+            get: { voteOnAppealRoute != nil },
+            set: { if !$0 { voteOnAppealRoute = nil } }
+        )
+    }
+
+    /// Routing: ActionType → which screen / sheet to open.
+    @MainActor
+    private func handleInboxAction(_ action: UserAction) async {
+        switch action.actionType {
+        case .finePending:
+            if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
+                fineDetailRoute = fine
+            }
+        case .fineProposalReview:
+            if let event = try? await app.eventRepo.event(action.referenceId) {
+                reviewProposedRoute = event
+            }
+        case .appealVotePending:
+            if let appeal = try? await app.appealRepo.appeal(id: action.referenceId),
+               let fine = try? await app.fineRepo.fine(id: appeal.fineId) {
+                voteOnAppealRoute = AppealRouteContext(appeal: appeal, fine: fine)
+            }
+        case .rsvpPending:
+            if let event = try? await app.eventRepo.event(action.referenceId) {
+                detailRoute = event
+                selectedTab = .home
+            }
+        case .slotPending, .votePending, .contributionDue, .compensationDue:
+            // Not used by V1 template — no-op for now.
+            break
         }
     }
 
@@ -197,11 +336,21 @@ struct MainTabView: View {
     @MainActor
     private func bootstrap() async {
         guard let group = app.groups.first, homeCoordinator == nil else { return }
+        let userId = app.session?.user.id ?? UUID()
         homeCoordinator = HomeCoordinator(
             group: group,
-            userId: app.session?.user.id ?? UUID(),
+            userId: userId,
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo
+        )
+        inboxCoordinator = InboxCoordinator(
+            userId: userId,
+            groupId: group.id,
+            userActionRepo: app.userActionRepo
+        )
+        myFinesCoordinator = MyFinesCoordinator(
+            userId: userId,
+            fineRepo: app.fineRepo
         )
         await refreshMemberDirectory(for: group.id)
     }
@@ -231,4 +380,11 @@ struct MainTabView: View {
 // CheckInScannerCoordinator must be Identifiable for fullScreenCover(item:).
 extension CheckInScannerCoordinator: Identifiable {
     nonisolated var id: UUID { event.id }
+}
+
+// Wrapper used by ruulSheet(item:) when routing the appellant vote screen.
+struct AppealRouteContext: Identifiable, Hashable {
+    let appeal: Appeal
+    let fine: Fine
+    var id: UUID { appeal.id }
 }

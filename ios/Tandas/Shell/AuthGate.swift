@@ -41,6 +41,7 @@ final class AppState {
     let systemEventRepo: any SystemEventRepository
     let userActionRepo: any UserActionRepository
     let appealRepo: any AppealRepository
+    let fineRepo: any FineRepository
     let systemEventEmitter: SystemEventEmitter
 
     /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
@@ -61,6 +62,7 @@ final class AppState {
         systemEventRepo: any SystemEventRepository,
         userActionRepo: any UserActionRepository,
         appealRepo: any AppealRepository,
+        fineRepo: any FineRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
@@ -79,6 +81,7 @@ final class AppState {
         self.systemEventRepo = systemEventRepo
         self.userActionRepo = userActionRepo
         self.appealRepo = appealRepo
+        self.fineRepo = fineRepo
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService

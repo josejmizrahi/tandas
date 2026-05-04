@@ -7,6 +7,9 @@ public protocol AppealRepository: Actor {
     func appeals(for groupId: UUID) async throws -> [Appeal]
     /// Appeal by id, or nil if not visible to caller.
     func appeal(id: UUID) async throws -> Appeal?
+    /// Most-recent appeal for a given fine, regardless of status. Used by
+    /// FineDetailView to know whether to show "Apelar" or "Ver apelación".
+    func appealForFine(fineId: UUID) async throws -> Appeal?
     /// Aggregated counts for an appeal — anonymized via the
     /// `appeal_vote_counts` view, never raw ballot rows.
     func voteCounts(appealId: UUID) async throws -> AppealVoteCounts?
@@ -36,6 +39,13 @@ public actor MockAppealRepository: AppealRepository {
 
     public func appeal(id: UUID) async throws -> Appeal? {
         appealsStore.first { $0.id == id }
+    }
+
+    public func appealForFine(fineId: UUID) async throws -> Appeal? {
+        appealsStore
+            .filter { $0.fineId == fineId }
+            .sorted { $0.createdAt > $1.createdAt }
+            .first
     }
 
     public func voteCounts(appealId: UUID) async throws -> AppealVoteCounts? {
@@ -127,6 +137,18 @@ public actor LiveAppealRepository: AppealRepository {
             .single()
             .execute()
             .value
+    }
+
+    public func appealForFine(fineId: UUID) async throws -> Appeal? {
+        let rows: [Appeal] = (try? await client
+            .from("appeals")
+            .select("*")
+            .eq("fine_id", value: fineId.uuidString.lowercased())
+            .order("created_at", ascending: false)
+            .limit(1)
+            .execute()
+            .value) ?? []
+        return rows.first
     }
 
     public func voteCounts(appealId: UUID) async throws -> AppealVoteCounts? {
