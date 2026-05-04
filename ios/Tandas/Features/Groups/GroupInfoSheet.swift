@@ -23,6 +23,7 @@ struct GroupInfoSheet: View {
     @State private var leaveConfirmPresented: Bool = false
     @State private var isLeaving: Bool = false
     @State private var leaveError: String?
+    @State private var settingsPresented: Bool = false
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.info")
 
@@ -38,10 +39,18 @@ struct GroupInfoSheet: View {
         app.session?.user.id
     }
 
+    private var isCurrentUserAdmin: Bool {
+        guard let uid = currentUserId else { return false }
+        return members.first(where: { $0.member.userId == uid })?.member.role == "admin"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                    if isCurrentUserAdmin {
+                        editButton
+                    }
                     inviteSection
                     membersSection
                     leaveSection
@@ -67,6 +76,12 @@ struct GroupInfoSheet: View {
             .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
         }
         .task { await loadMembers() }
+        .sheet(isPresented: $settingsPresented) {
+            GroupSettingsSheet(group: group)
+                .environment(app)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .confirmationDialog(
             "¿Salir de \(group.name)?",
             isPresented: $leaveConfirmPresented,
@@ -79,6 +94,46 @@ struct GroupInfoSheet: View {
         } message: {
             Text("Vas a perder acceso a los eventos y multas de este grupo. Para volver, alguien va a tener que invitarte de nuevo.")
         }
+    }
+
+    // MARK: - Edit (admin only)
+
+    private var editButton: some View {
+        Button {
+            settingsPresented = true
+        } label: {
+            HStack(spacing: RuulSpacing.s3) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.ruulAccentSubtle, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Editar grupo")
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Vocabulario, multas, anfitrión")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .padding(.horizontal, RuulSpacing.s4)
+            .padding(.vertical, RuulSpacing.s3)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .fill(Color.ruulBackgroundElevated)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Editar configuración del grupo")
     }
 
     // MARK: - Invite
