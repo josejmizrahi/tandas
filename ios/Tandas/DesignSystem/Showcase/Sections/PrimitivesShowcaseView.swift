@@ -13,6 +13,7 @@ struct PrimitivesShowcaseView: View {
     @State private var sheetPresented = false
     @State private var coverPresented = false
     @State private var toast: RuulToastModel?
+    @State private var pickedTemplate: String = "dinner"
 
     var body: some View {
         ScrollView {
@@ -32,6 +33,10 @@ struct PrimitivesShowcaseView: View {
                 meshSection
                 presentationSection
                 toastSection
+                templatePickerSection
+                actionCardSection
+                metricCardSection
+                timelineSection
             }
             .padding(RuulSpacing.s5)
         }
@@ -223,6 +228,106 @@ struct PrimitivesShowcaseView: View {
                         toast = .init("Toast", message: "\(String(describing: style)) example", style: style)
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: - Sprint 0 (platform-template DS adjustments)
+
+    private var templatePickerSection: some View {
+        ShowcaseSection("TemplatePickerCard", subtitle: "single-select template tile, supports coming-soon variant") {
+            VStack(spacing: RuulSpacing.s3) {
+                TemplatePickerCard(
+                    icon: "fork.knife.circle.fill",
+                    title: "Cena recurrente",
+                    subtitle: "Cenas que se repiten con el mismo grupo",
+                    bullets: ["Rotación de host", "RSVP + check-in", "Multas por reglas"],
+                    isSelected: pickedTemplate == "dinner",
+                    onSelect: { pickedTemplate = "dinner" }
+                )
+                TemplatePickerCard(
+                    icon: "ticket.fill",
+                    title: "Recurso compartido",
+                    subtitle: "Palco, casa, suscripción",
+                    bullets: ["Asignación rotativa"],
+                    isComingSoon: true,
+                    onSelect: {}
+                )
+            }
+        }
+    }
+
+    private var actionCardSection: some View {
+        ShowcaseSection("ActionCard", subtitle: "inbox row — type icon + priority dot + time-remaining") {
+            VStack(spacing: RuulSpacing.s3) {
+                ActionCard(
+                    icon: "exclamationmark.triangle.fill",
+                    title: "Multa pendiente: $300",
+                    subtitle: "No-show en cena del 12 de mayo",
+                    priority: .urgent,
+                    timeRemaining: "VENCE EN 3 D",
+                    onTap: {}
+                )
+                ActionCard(
+                    icon: "hand.raised.fill",
+                    title: "Vota una apelación",
+                    subtitle: "María apeló su multa",
+                    priority: .high,
+                    timeRemaining: "12 H",
+                    onTap: {}
+                )
+                ActionCard(
+                    icon: "bell.fill",
+                    title: "Recordatorio de pago",
+                    priority: .low,
+                    onTap: {}
+                )
+            }
+        }
+    }
+
+    private var metricCardSection: some View {
+        ShowcaseSection("RuulMetricCard", subtitle: "stat tile — compact / regular / hero with trend deltas") {
+            VStack(spacing: RuulSpacing.s3) {
+                RuulMetricCard(
+                    label: "ASISTENCIA PROMEDIO",
+                    value: "87",
+                    unitSuffix: "%",
+                    trend: .up("+5% vs mes pasado"),
+                    size: .hero
+                )
+                HStack(spacing: RuulSpacing.s3) {
+                    RuulMetricCard(label: "MULTAS DEL MES", value: "1240", unitPrefix: "$", trend: .down("-15%"), size: .compact)
+                    RuulMetricCard(label: "EVENTOS", value: "4", trend: .flat("igual"), size: .compact)
+                }
+            }
+        }
+    }
+
+    private var timelineSection: some View {
+        ShowcaseSection("RuulTimelineItem", subtitle: "vertical history rail — first / middle / last variants") {
+            VStack(spacing: 0) {
+                RuulTimelineItem(
+                    icon: "checkmark",
+                    title: "Cerraste la cena del jueves",
+                    subtitle: "12 confirmados, 9 llegaron",
+                    timestamp: "HOY · 22:14",
+                    tone: .positive,
+                    isFirst: true
+                )
+                RuulTimelineItem(
+                    icon: "hand.raised.fill",
+                    title: "María apeló su multa de $300",
+                    timestamp: "HOY · 19:02",
+                    tone: .warning
+                )
+                RuulTimelineItem(
+                    icon: "person.fill.badge.plus",
+                    title: "Juan se unió al grupo",
+                    timestamp: "LUN · 10:12",
+                    tone: .info,
+                    isLast: true
+                )
             }
         }
     }

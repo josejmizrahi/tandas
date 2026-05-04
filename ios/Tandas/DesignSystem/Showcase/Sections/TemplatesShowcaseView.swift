@@ -3,13 +3,16 @@ import SwiftUI
 
 struct TemplatesShowcaseView: View {
     enum DemoTab: Hashable, Sendable { case a, b, c }
+    enum ResourceDemoTab: Hashable, Sendable { case home, inbox, rules, me }
     @State private var demoTab: DemoTab = .a
+    @State private var resourceTab: ResourceDemoTab = .home
 
     var body: some View {
         ScrollView {
             VStack(spacing: RuulSpacing.s4) {
                 onboardingTemplateSection
                 mainAppTemplateSection
+                resourceTabBarSection
                 detailTemplateSection
                 modalTemplateSection
             }
@@ -49,6 +52,26 @@ struct TemplatesShowcaseView: View {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
                     Text("Tab \(String(describing: tab))").ruulTextStyle(RuulTypography.title)
+                }
+            }
+            .frame(height: 360)
+        }
+    }
+
+    private var resourceTabBarSection: some View {
+        ShowcaseSection("ResourceTabBar", subtitle: "MainApp + per-tab badge support (used by templates that need an Inbox count)") {
+            ResourceTabBar(
+                tabs: [
+                    .init(id: ResourceDemoTab.home,  label: "Inicio", systemImage: "house.fill"),
+                    .init(id: ResourceDemoTab.inbox, label: "Inbox",  systemImage: "tray.fill", badge: .count(3)),
+                    .init(id: ResourceDemoTab.rules, label: "Reglas", systemImage: "list.bullet.clipboard.fill"),
+                    .init(id: ResourceDemoTab.me,    label: "Yo",     systemImage: "person.crop.circle.fill")
+                ],
+                selection: $resourceTab
+            ) { tab in
+                ZStack {
+                    Color.ruulBackgroundCanvas.ignoresSafeArea()
+                    Text("\(String(describing: tab))").ruulTextStyle(RuulTypography.title)
                 }
             }
             .frame(height: 360)
