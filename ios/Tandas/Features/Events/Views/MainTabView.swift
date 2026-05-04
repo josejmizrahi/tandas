@@ -21,6 +21,7 @@ struct MainTabView: View {
     // state survives tab switches. Built lazily once we have a session.
     @State private var inboxCoordinator: InboxCoordinator?
     @State private var myFinesCoordinator: MyFinesCoordinator?
+    @State private var rulesCoordinator: RulesCoordinator?
     @State private var fineDetailRoute: Fine?
     @State private var reviewProposedRoute: Event?
     @State private var voteOnAppealRoute: AppealRouteContext?
@@ -47,7 +48,7 @@ struct MainTabView: View {
             switch tab {
             case .home:  homeTab
             case .inbox: inboxTab
-            case .rules: RulesTabStub()
+            case .rules: rulesTab
             case .me:    profileTab
             }
         }
@@ -94,6 +95,20 @@ struct MainTabView: View {
     }
 
     // MARK: - Inbox tab
+
+    @ViewBuilder
+    private var rulesTab: some View {
+        NavigationStack {
+            if let coord = rulesCoordinator {
+                RulesView(coordinator: coord)
+            } else {
+                ZStack {
+                    Color.ruulBackgroundCanvas.ignoresSafeArea()
+                    ProgressView().tint(Color.ruulAccentPrimary)
+                }
+            }
+        }
+    }
 
     @ViewBuilder
     private var inboxTab: some View {
@@ -406,6 +421,10 @@ struct MainTabView: View {
         myFinesCoordinator = MyFinesCoordinator(
             userId: userId,
             fineRepo: app.fineRepo
+        )
+        rulesCoordinator = RulesCoordinator(
+            group: group,
+            ruleRepo: app.ruleRepo
         )
         await refreshMemberDirectory(for: group.id)
     }

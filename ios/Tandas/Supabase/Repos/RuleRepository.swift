@@ -29,6 +29,10 @@ protocol RuleRepository: Actor {
     /// via the `seed_dinner_template_rules` RPC. Idempotent — re-running on a
     /// group that already has Platform-shape rules is a no-op.
     func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule]
+
+    /// Read-only list of all rules for a group, ordered by creation time.
+    /// Used by the Reglas tab to show the active group's rules.
+    func list(groupId: UUID) async throws -> [GroupRule]
 }
 
 // MARK: - Mock
@@ -67,6 +71,11 @@ actor MockRuleRepository: RuleRepository {
                 status: "active"
             )
         }
+    }
+
+    func list(groupId: UUID) async throws -> [GroupRule] {
+        // Empty in mock — RulesView shows the empty state.
+        []
     }
 }
 
@@ -129,5 +138,15 @@ actor LiveRuleRepository: RuleRepository {
         } catch {
             throw RuleError.rpcFailed(error.localizedDescription)
         }
+    }
+
+    func list(groupId: UUID) async throws -> [GroupRule] {
+        try await client
+            .from("rules")
+            .select("id,group_id,code,title,description,enabled,is_active,action,consequences")
+            .eq("group_id", value: groupId.uuidString.lowercased())
+            .order("created_at", ascending: true)
+            .execute()
+            .value
     }
 }
