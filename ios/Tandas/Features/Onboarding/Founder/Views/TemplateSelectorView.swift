@@ -13,12 +13,10 @@ struct TemplateSelectorView: View {
 
     var body: some View {
         OnboardingScreenTemplate(
-            mesh: nil,
             progress: progress,
             stepCount: FounderStep.allCases.count,
             title: "¿Qué tipo de grupo es?",
-            subtitle: "Elige el template — define cómo se comporta. Después puedes personalizar todo.",
-            primaryCTA: nil
+            subtitle: "Elige el template — define cómo se comporta. Después puedes personalizar todo."
         ) {
             VStack(spacing: RuulSpacing.s3) {
                 TemplatePickerCard(

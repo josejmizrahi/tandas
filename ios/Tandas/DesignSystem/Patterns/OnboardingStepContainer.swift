@@ -12,7 +12,7 @@ public struct OnboardingStepContainer<Content: View>: View {
     private let stepCount: Int?
     private let title: String
     private let subtitle: String?
-    private let primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)
+    private let primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)?
     private let secondaryCTA: (label: String, perform: () -> Void)?
     private let canContinue: Bool
     private let content: () -> Content
@@ -22,7 +22,7 @@ public struct OnboardingStepContainer<Content: View>: View {
         stepCount: Int? = nil,
         title: String,
         subtitle: String? = nil,
-        primaryCTA: (label: String, isLoading: Bool, perform: () -> Void),
+        primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)? = nil,
         secondaryCTA: (label: String, perform: () -> Void)? = nil,
         canContinue: Bool = true,
         @ViewBuilder content: @escaping () -> Content
@@ -74,10 +74,13 @@ public struct OnboardingStepContainer<Content: View>: View {
         }
     }
 
+    @ViewBuilder
     private var ctaStack: some View {
         VStack(spacing: RuulSpacing.s2) {
-            RuulButton(primaryCTA.label, style: .primary, size: .large, isLoading: primaryCTA.isLoading, fillsWidth: true, action: primaryCTA.perform)
-                .disabled(!canContinue)
+            if let primaryCTA {
+                RuulButton(primaryCTA.label, style: .primary, size: .large, isLoading: primaryCTA.isLoading, fillsWidth: true, action: primaryCTA.perform)
+                    .disabled(!canContinue)
+            }
             if let secondaryCTA {
                 RuulButton(secondaryCTA.label, style: .plain, size: .medium, action: secondaryCTA.perform)
             }
