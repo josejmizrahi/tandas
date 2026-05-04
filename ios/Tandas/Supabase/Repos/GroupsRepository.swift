@@ -267,42 +267,40 @@ actor LiveGroupsRepository: GroupsRepository {
             .value
     }
 
-    /// Fetch members joined with their profiles in a single roundtrip via
-    /// PostgREST nested select. Falls back to a member-only result on join
-    /// failure so the UI still has names/avatars (just placeholders).
+    /// Fetch members + profiles in two queries (members → profiles).
+    /// Previously tried a single PostgREST nested select with `profiles(*)`
+    /// but that 400'd because `group_members.user_id` FKs to `auth.users.id`,
+    /// not `public.profiles.id`, so PostgREST couldn't infer the embed
+    /// relationship. Splitting is robust and only adds one round-trip.
     func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
-        struct Row: Decodable, Sendable {
-            let id: UUID
-            let group_id: UUID
-            let user_id: UUID
-            let display_name_override: String?
-            let role: String
-            let active: Bool
-            let joined_at: Date
-            let profiles: Profile?       // PostgREST nested select result
-
-            var member: Member {
-                Member(
-                    id: id,
-                    groupId: group_id,
-                    userId: user_id,
-                    displayNameOverride: display_name_override,
-                    role: role,
-                    active: active,
-                    joinedAt: joined_at
-                )
-            }
-        }
-
-        let rows: [Row] = try await client
+        let members: [Member] = try await client
             .from("group_members")
-            .select("id, group_id, user_id, display_name_override, role, active, joined_at, profiles(*)")
+            .select("*")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .eq("active", value: true)
             .execute()
             .value
 
-        return rows.map { MemberWithProfile(member: $0.member, profile: $0.profiles) }
+        if members.isEmpty { return [] }
+
+        let userIds = members.map { $0.userId.uuidString.lowercased() }
+        let profiles: [Profile] = (try? await client
+            .from("profiles")
+            .select("*")
+            .in("id", values: userIds)
+            .execute()
+            .value) ?? []
+
+        let profilesByUserId = Dictionary(
+            profiles.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        let rows: [(member: Member, profile: Profile?)] = members.map { m in
+            (m, profilesByUserId[m.userId])
+        }
+
+        return rows.map { MemberWithProfile(member: $0.member, profile: $0.profile) }
     }
 
     // MARK: - Onboarding V1
