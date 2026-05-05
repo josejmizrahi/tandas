@@ -1,0 +1,75 @@
+import Foundation
+import Observation
+import OSLog
+
+/// Loads + paginates `SystemEvent`s for `GroupHistoryView`. Holds the
+/// active filter state; refilters by re-querying (no client-side
+/// filtering — server does it).
+@Observable
+@MainActor
+final class GroupHistoryCoordinator {
+    let groupId: UUID
+    private let repo: any SystemEventRepository
+    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "history")
+
+    private static let pageSize = 50
+
+    var filter: SystemEventFilter
+    var events: [SystemEvent] = []
+    var isLoading: Bool = false
+    var hasMore: Bool = true
+    var loadError: String?
+
+    init(groupId: UUID, repo: any SystemEventRepository) {
+        self.groupId = groupId
+        self.repo = repo
+        self.filter = SystemEventFilter(groupId: groupId)
+    }
+
+    func refresh() async {
+        events = []
+        hasMore = true
+        loadError = nil
+        await loadMore()
+    }
+
+    func loadMore() async {
+        guard !isLoading, hasMore else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let page = try await repo.query(filter: filter, limit: Self.pageSize, offset: events.count)
+            events.append(contentsOf: page)
+            if page.count < Self.pageSize { hasMore = false }
+        } catch {
+            log.error("loadMore failed: \(error.localizedDescription, privacy: .public)")
+            loadError = error.localizedDescription
+        }
+    }
+
+    func setEventType(_ type: SystemEventType?) {
+        filter.eventType = type
+        Task { await refresh() }
+    }
+
+    func setMember(_ memberId: UUID?) {
+        filter.memberId = memberId
+        Task { await refresh() }
+    }
+
+    func setDateRange(from: Date?, to: Date?) {
+        filter.fromDate = from
+        filter.toDate = to
+        Task { await refresh() }
+    }
+
+    func clearFilters() {
+        filter = SystemEventFilter(groupId: groupId)
+        Task { await refresh() }
+    }
+
+    var hasAnyFilter: Bool {
+        filter.memberId != nil || filter.eventType != nil ||
+        filter.resourceId != nil || filter.fromDate != nil || filter.toDate != nil
+    }
+}

@@ -151,12 +151,35 @@ struct MainTabView: View {
                 MyFinesView(coordinator: coord) { fine in
                     fineDetailRoute = fine
                 }
+                .toolbar {
+                    if app.activeGroup != nil {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            NavigationLink {
+                                groupHistoryScreen
+                            } label: {
+                                Image(systemName: "clock.arrow.circlepath")
+                            }
+                        }
+                    }
+                }
                 .navigationDestination(item: $fineDetailRoute) { fine in
                     fineDetailScreen(fine)
                 }
             } else {
                 ProfileTabStub()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var groupHistoryScreen: some View {
+        if let group = app.activeGroup {
+            GroupHistoryView(coordinator: GroupHistoryCoordinator(
+                groupId: group.id,
+                repo: app.systemEventRepo
+            ))
+        } else {
+            EmptyView()
         }
     }
 

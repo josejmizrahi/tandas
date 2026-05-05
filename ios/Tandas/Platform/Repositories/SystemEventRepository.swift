@@ -20,6 +20,36 @@ public protocol SystemEventRepository: Actor {
 
     /// Lists recent system events for a group (chronological desc).
     func recent(groupId: UUID, limit: Int) async throws -> [SystemEvent]
+
+    /// Filtered + paginated query for the GroupHistoryView. All filter
+    /// fields except `groupId` are optional. Returns chronological desc.
+    func query(filter: SystemEventFilter, limit: Int, offset: Int) async throws -> [SystemEvent]
+}
+
+/// Search filter for the history view. `nil` fields = no constraint.
+public struct SystemEventFilter: Sendable, Equatable, Hashable {
+    public let groupId: UUID
+    public var memberId: UUID?
+    public var eventType: SystemEventType?
+    public var resourceId: UUID?
+    public var fromDate: Date?
+    public var toDate: Date?
+
+    public init(
+        groupId: UUID,
+        memberId: UUID? = nil,
+        eventType: SystemEventType? = nil,
+        resourceId: UUID? = nil,
+        fromDate: Date? = nil,
+        toDate: Date? = nil
+    ) {
+        self.groupId = groupId
+        self.memberId = memberId
+        self.eventType = eventType
+        self.resourceId = resourceId
+        self.fromDate = fromDate
+        self.toDate = toDate
+    }
 }
 
 // MARK: - Mock
@@ -55,6 +85,23 @@ public actor MockSystemEventRepository: SystemEventRepository {
             .sorted { $0.occurredAt > $1.occurredAt }
             .prefix(limit)
             .map { $0 }
+    }
+
+    public func query(filter: SystemEventFilter, limit: Int, offset: Int) async throws -> [SystemEvent] {
+        let filtered = emitted
+            .filter { ev in
+                guard ev.groupId == filter.groupId else { return false }
+                if let m = filter.memberId, ev.memberId != m { return false }
+                if let t = filter.eventType, ev.eventType != t { return false }
+                if let r = filter.resourceId, ev.resourceId != r { return false }
+                if let from = filter.fromDate, ev.occurredAt < from { return false }
+                if let to = filter.toDate, ev.occurredAt > to { return false }
+                return true
+            }
+            .sorted { $0.occurredAt > $1.occurredAt }
+        let start = min(offset, filtered.count)
+        let end   = min(offset + limit, filtered.count)
+        return Array(filtered[start..<end])
     }
 }
 
@@ -98,6 +145,33 @@ public actor LiveSystemEventRepository: SystemEventRepository {
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("occurred_at", ascending: false)
             .limit(limit)
+            .execute()
+            .value
+    }
+
+    public func query(filter: SystemEventFilter, limit: Int, offset: Int) async throws -> [SystemEvent] {
+        var q = client
+            .from("system_events")
+            .select("*")
+            .eq("group_id", value: filter.groupId.uuidString.lowercased())
+        if let m = filter.memberId {
+            q = q.eq("member_id", value: m.uuidString.lowercased())
+        }
+        if let t = filter.eventType {
+            q = q.eq("event_type", value: t.rawValue)
+        }
+        if let r = filter.resourceId {
+            q = q.eq("resource_id", value: r.uuidString.lowercased())
+        }
+        if let from = filter.fromDate {
+            q = q.gte("occurred_at", value: ISO8601DateFormatter().string(from: from))
+        }
+        if let to = filter.toDate {
+            q = q.lte("occurred_at", value: ISO8601DateFormatter().string(from: to))
+        }
+        return try await q
+            .order("occurred_at", ascending: false)
+            .range(from: offset, to: offset + limit - 1)
             .execute()
             .value
     }
