@@ -24,6 +24,11 @@ struct GroupInfoSheet: View {
     @State private var isLeaving: Bool = false
     @State private var leaveError: String?
     @State private var settingsPresented: Bool = false
+    @State private var governancePresented: Bool = false
+    /// Locally tracked override for the group used to render this sheet —
+    /// we keep it in sync after governance edits so the summary refreshes
+    /// without a parent re-render.
+    @State private var liveGroup: Group?
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.info")
 
@@ -44,10 +49,14 @@ struct GroupInfoSheet: View {
         return members.first(where: { $0.member.userId == uid })?.member.role == "admin"
     }
 
+    private var currentGroup: Group { liveGroup ?? group }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                    profileHeader
+                    governanceSection
                     if isCurrentUserAdmin {
                         editButton
                     }
@@ -56,7 +65,7 @@ struct GroupInfoSheet: View {
                     leaveSection
                 }
                 .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s5)
+                .padding(.top, RuulSpacing.s4)
                 .padding(.bottom, RuulSpacing.s7)
             }
             .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
@@ -66,7 +75,7 @@ struct GroupInfoSheet: View {
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(group.name)
+                    Text(currentGroup.name)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
@@ -77,13 +86,21 @@ struct GroupInfoSheet: View {
         }
         .task { await loadMembers() }
         .sheet(isPresented: $settingsPresented) {
-            GroupSettingsSheet(group: group)
+            GroupSettingsSheet(group: currentGroup)
                 .environment(app)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $governancePresented) {
+            GovernanceSettingsView(group: currentGroup) { updated in
+                liveGroup = updated
+            }
+            .environment(app)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
         .confirmationDialog(
-            "¿Salir de \(group.name)?",
+            "¿Salir de \(currentGroup.name)?",
             isPresented: $leaveConfirmPresented,
             titleVisibility: .visible
         ) {
@@ -93,6 +110,127 @@ struct GroupInfoSheet: View {
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("Vas a perder acceso a los eventos y multas de este grupo. Para volver, alguien va a tener que invitarte de nuevo.")
+        }
+    }
+
+    // MARK: - Profile header
+
+    private var profileHeader: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            // Cover or solid placeholder. Cover edit is P1 #10 — for V1
+            // we render whatever was set at onboarding (if any) and show
+            // a subtle accent gradient when nothing is configured.
+            ZStack(alignment: .bottomLeading) {
+                if let coverName = currentGroup.coverImageName, !coverName.isEmpty {
+                    Image(coverName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 120)
+                        .clipped()
+                } else {
+                    LinearGradient(
+                        colors: [Color.ruulAccentPrimary.opacity(0.65), Color.ruulAccentPrimary.opacity(0.15)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(height: 120)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(currentGroup.name)
+                    .ruulTextStyle(RuulTypography.title)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(2)
+                Text(headerSubtitle)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        let typeLabel = currentGroup.groupType.displayName
+        let countLabel = members.isEmpty
+            ? "Cargando miembros…"
+            : "\(members.count) \(members.count == 1 ? "miembro" : "miembros")"
+        return "\(typeLabel) · \(countLabel)"
+    }
+
+    // MARK: - Governance summary
+
+    private var governanceSection: some View {
+        let g = currentGroup.effectiveGovernance
+        let canEdit = isCurrentUserAdmin && g.whoCanModifyGovernance == .founder
+        return VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            HStack(alignment: .firstTextBaseline) {
+                sectionLabel("GOBIERNO")
+                Spacer()
+                if canEdit {
+                    Button("Editar") { governancePresented = true }
+                        .ruulTextStyle(RuulTypography.callout)
+                        .foregroundStyle(Color.ruulAccentPrimary)
+                }
+            }
+            VStack(spacing: RuulSpacing.s2) {
+                governanceRow(label: "Modifica reglas",  value: permissionLabel(g.whoCanModifyRules))
+                governanceRow(label: "Inicia votaciones", value: permissionLabel(g.whoCanCreateVotes))
+                governanceRow(label: "Quita miembros",   value: permissionLabel(g.whoCanRemoveMembers))
+                governanceRow(
+                    label: "Votación",
+                    value: "\(g.votingQuorumPercent)% quórum · \(g.votingThresholdPercent)% mayoría · \(g.votingDurationHours)h"
+                )
+                governanceRow(
+                    label: "Anonimato",
+                    value: g.votesAreAnonymous ? "Votos anónimos" : "Votos públicos"
+                )
+            }
+            .padding(RuulSpacing.s4)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .fill(Color.ruulBackgroundElevated)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+            )
+
+            if !canEdit && g.whoCanModifyGovernance != .founder {
+                Text("Para cambiar el gobierno, abrí una votación.")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .padding(.leading, RuulSpacing.s1)
+            }
+        }
+    }
+
+    private func governanceRow(label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextSecondary)
+            Spacer()
+            Text(value)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private func permissionLabel(_ level: PermissionLevel) -> String {
+        switch level {
+        case .founder:           return "Solo founder"
+        case .anyMember:         return "Cualquiera"
+        case .majorityVote:      return "Votación"
+        case .supermajorityVote: return "Votación 2/3"
+        case .host:              return "Solo host"
+        case .treasurer:         return "Tesorero"
         }
     }
 
