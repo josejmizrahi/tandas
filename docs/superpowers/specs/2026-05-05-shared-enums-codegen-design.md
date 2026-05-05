@@ -291,7 +291,11 @@ For each enum:
 4. **Migrate Swift call sites**: `EnumType.allCases` → `EnumType.knownCases`; `EnumType(rawValue: s)` → `EnumType.from(raw: s)`; `enum.rawValue` → `enum.rawString`. Exhaustive switches gain `case .unknown(let s):` or `@unknown default`. (Per 2026-05-05 inspection: only 2 `.allCases` sites for the 6 target enums, both on `SystemEventType` in `GroupHistoryView.swift`. No explicit `(rawValue:)` for the 6 enums; Codable handles the rest.)
 5. **Update `_shared/platformTypes.ts`**: replace inline union with `import { SystemEventType } from "./types/systemEventType.ts";`. Re-export if needed.
 6. **Drift sweep**: the `grep-orphans.ts` CI tool now catches new orphans automatically. For this migration commit, also run it locally (`deno run -A scripts/codegen/grep-orphans.ts`) and address any pre-existing orphans surfaced (likely targets: `voteOpened`, `voteResolved` which exist in SQL but not in pre-migration TS — they will resolve themselves once `SystemEventType` is migrated).
-7. **Run pre-merge audit** (only for `PermissionLevel` and `SystemEventType`): see "Pre-merge audits" section.
+7. **Run pre-merge audits** (per enum):
+   - `PermissionLevel`: Audit A (governance jsonb round-trip).
+   - `SystemEventType`: Audit C (silently-skipped rules waking up) before merge; Audit B (orphan rule triggers) after merge.
+   - Other 4 enums: skip — none are persisted to jsonb columns or trigger consequences.
+   See "Pre-merge audits" section for SQL.
 8. **Verify tests**: `xcodebuild test`, `deno test supabase/functions/_tests/`.
 9. **Commit**: one enum per commit.
 
@@ -357,6 +361,16 @@ The codegen alone does not protect Postgres or non-`_shared/types/` TS files fro
 
 False positives are expected; allowlisting is cheap. The job blocks PR if a new orphan appears that isn't allowlisted.
 
+**Allowlist inclusion criteria** (must be in the file's header comment and enforced by review):
+
+A string may be added to `orphan-allowlist.txt` only if **all** of the following hold:
+
+- It is provably not an enum value of any of the 6 catalogued enums (today or in any planned future case).
+- It originates from a different naming domain — e.g., a Postgres column or RPC name (`group_id`, `select_member`), a Stripe / Apple / Sentry SDK identifier (`paymentSheet`, `applePay`), a 3rd-party API field, an i18n key, or a Swift property name that happens to match `[a-z][A-Za-z0-9]*`.
+- The PR adding it includes a one-line comment in the allowlist explaining the source: `paymentSheet     # Stripe SDK API name`.
+
+Adding a string whose origin cannot be cited in one sentence is not allowed; in that case the answer is to add the value to the corresponding Swift enum source instead. PR review must reject silenced-without-explanation entries — otherwise the allowlist becomes a drift cemetery and defeats the purpose of the check.
+
 This closes the Postgres source-of-truth gap without taking on `CHECK` constraints or `CREATE TYPE` (Decision 3 stands).
 
 ## Pre-merge audits (one-time, V1 migration only)
@@ -387,7 +401,32 @@ where trigger->>'eventType' not in (
 
 Any row returned is a rule that was silently failing. Per row, decide: rename the trigger (data migration) or delete the rule.
 
-Both audits are documented runbooks, not code; their output gets reviewed before the migration commit lands.
+**Audit C — silently-skipped rules waking up** (before the `SystemEventType` migration):
+
+Adding `voteOpened`, `voteResolved`, and `fineReminderSent` to the TS catalog means the rule engine starts evaluating rules whose `trigger.eventType` matches them — rules that have been silently skipped to date. If those rules have side-effecting consequences (`fine`, `sendNotification`, `assignSlot`, `transferRight`), they begin firing prospectively the moment the migration deploys.
+
+Run before merging the `SystemEventType` migration:
+
+```sql
+select id, group_id, name, is_active,
+       trigger->>'eventType'         as trigger_event,
+       jsonb_array_length(consequences) as cons_count,
+       consequences
+from rules
+where is_active = true
+  and trigger->>'eventType' in ('voteOpened', 'voteResolved', 'fineReminderSent')
+order by group_id, name;
+```
+
+Per row, classify:
+
+- **Designed-correct, was just broken** — flip the migration switch, accept that the rule starts working. Notify affected groups in advance if consequences create fines or notifications.
+- **Stale / no longer wanted** — set `is_active=false` in a separate commit before the codegen migration lands.
+- **Designed wrong, needs rewrite** — pause the migration on this enum until the rule is fixed.
+
+Past `system_events` rows with these `event_type` values are already marked `processed_at IS NOT NULL` by the existing cron (which marks processed even when no rules match), so retroactive replay is not a concern. The risk is purely prospective.
+
+All audits are documented runbooks, not code; their output gets attached to the migration PR before merge.
 
 ## Out of Scope (V1)
 
