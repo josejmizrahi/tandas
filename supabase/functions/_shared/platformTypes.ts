@@ -52,25 +52,9 @@ export interface SystemEvent {
 // Rule
 // =============================================================================
 
-export type ConditionType =
-  | "alwaysTrue"
-  | "responseStatusIs"
-  | "checkInExists"
-  | "checkInMinutesLate"
-  | "eventDescriptionMissing"
-  | "minutesAfterScheduled"
-  | "hoursBeforeEvent"
-  | "memberHasMultipleFines"
-  | "memberFinesAbove"
-  | "memberMissedConsecutive"
-  | "eventDayOfWeek"
-  | "eventTimeWindow"
-  | "fundBalanceAbove"
-  | "fundBalanceBelow"
-  | "rotationPositionEquals";
-
+import { type ConditionType } from "./types/conditionType.ts";
 import { type ConsequenceType } from "./types/consequenceType.ts";
-export type { ConsequenceType };
+export type { ConditionType, ConsequenceType };
 
 export interface RuleTrigger {
   eventType: SystemEventType;

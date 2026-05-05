@@ -47,4 +47,19 @@ final class CodableEnumsTests: XCTestCase {
             return
         }
     }
+
+    func testConditionTypeRoundTrip() throws {
+        for value in ConditionType.knownCases {
+            let data = try JSONEncoder().encode(value)
+            let decoded = try JSONDecoder().decode(ConditionType.self, from: data)
+            XCTAssertEqual(value, decoded)
+        }
+
+        let unknownData = #""futureCondition""#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ConditionType.self, from: unknownData)
+        guard case .unknown(let s) = decoded, s == "futureCondition" else {
+            XCTFail("expected .unknown(\"futureCondition\"), got \(decoded)")
+            return
+        }
+    }
 }
