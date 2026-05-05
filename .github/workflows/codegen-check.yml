@@ -1,0 +1,31 @@
+name: Codegen drift
+
+on:
+  push:
+    branches: [main, ios-rewrite]
+  pull_request:
+
+jobs:
+  catalog-types:
+    name: platform/types/catalog.json → Swift + TS
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run codegen
+        run: node scripts/codegen/types.mjs
+
+      - name: Fail if generated files drifted from catalog
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::Generated files do not match platform/types/catalog.json."
+            echo "Run \`node scripts/codegen/types.mjs\` locally and commit the result."
+            git --no-pager diff --stat
+            git --no-pager diff
+            exit 1
+          fi

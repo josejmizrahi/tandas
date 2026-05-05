@@ -1,5 +1,7 @@
 import Foundation
 
+// AUTO-GENERATED — Do not edit by hand. Source: platform/types/catalog.json. Run: node scripts/codegen/types.mjs
+
 /// Every condition the rule engine knows how to evaluate. Rules combine
 /// multiple conditions with AND.
 ///
@@ -52,12 +54,16 @@ public enum ConditionType: String, Codable, Sendable, Hashable, CaseIterable {
 
     case rotationPositionEquals  = "rotationPositionEquals"
 
+    /// True if Sprint 1a / V1 has an evaluator implementation.
     public var isImplementedInV1: Bool {
         switch self {
-        case .alwaysTrue, .responseStatusIs, .checkInExists,
-             .checkInMinutesLate, .eventDescriptionMissing:
+        case .alwaysTrue, .responseStatusIs, .checkInExists, .checkInMinutesLate,
+             .eventDescriptionMissing:
             return true
-        default:
+        case .minutesAfterScheduled, .hoursBeforeEvent, .memberHasMultipleFines,
+             .memberFinesAbove, .memberMissedConsecutive, .eventDayOfWeek,
+             .eventTimeWindow, .fundBalanceAbove, .fundBalanceBelow,
+             .rotationPositionEquals:
             return false
         }
     }

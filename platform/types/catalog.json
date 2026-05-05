@@ -1,0 +1,368 @@
+{
+  "version": "1.0.0",
+  "generatedHeader": "AUTO-GENERATED — Do not edit by hand. Source: platform/types/catalog.json. Run: node scripts/codegen/types.mjs",
+  "enums": {
+    "SystemEventType": {
+      "swiftFile": "ios/Tandas/Platform/Models/SystemEventType.swift",
+      "swiftProtocols": ["String", "Codable", "Sendable", "Hashable", "CaseIterable"],
+      "swiftAccessLevel": "public",
+      "emitIsImplementedInV1": true,
+      "doc": "Every event the platform may emit. The rule engine matches `Rule.trigger\n.eventType` against this enum.\n\nCases marked **(V1)** have a TriggerEvaluator implementation in\n`_shared/ruleEngine.ts`. Other cases are declared so the model stays\nV4-ready; the engine ignores rules whose trigger is not implemented yet.",
+      "values": [
+        {
+          "name": "eventClosed",
+          "category": "Event resource lifecycle",
+          "implementedV1": true,
+          "doc": "(V1) Host pressed \"Cerrar evento\" — fires `evaluate-event-rules`\nimmediately so proposed fines appear without cron lag."
+        },
+        {
+          "name": "eventCreated",
+          "implementedV1": true,
+          "doc": "Event was created. Not used by V1 rules but emitted on every create\nso analytics + future rules can hook in."
+        },
+        {
+          "name": "rsvpDeadlinePassed",
+          "implementedV1": true,
+          "doc": "(V1) RSVP deadline passed — synthetic, scheduled by cron."
+        },
+        {
+          "name": "hoursBeforeEvent",
+          "implementedV1": true,
+          "doc": "(V1) Synthetic — emitted by the cron N hours before an event starts,\nso rules like \"host sin menú\" can check at -24h."
+        },
+        {
+          "name": "rsvpSubmitted",
+          "category": "RSVP / attendance",
+          "implementedV1": true,
+          "doc": "(V1) Member submitted or updated their RSVP."
+        },
+        {
+          "name": "rsvpChangedSameDay",
+          "implementedV1": true,
+          "doc": "(V1) Member changed their RSVP after it became \"same-day\"."
+        },
+        {
+          "name": "checkInRecorded",
+          "implementedV1": true,
+          "doc": "(V1) Someone arrived (host or self check-in)."
+        },
+        {
+          "name": "checkInMissed",
+          "implementedV1": false,
+          "doc": "Confirmed-going member never checked in — synthetic, computed at\nevent close time. V1 handles via `eventClosed` + `checkInExists=false`\ncondition; this case exists for future rules that want a dedicated\ntrigger."
+        },
+        {
+          "name": "eventDescriptionMissing",
+          "implementedV1": true,
+          "doc": "Host hasn't filled in the event description/menú yet. Used by the\noptional V1 rule \"Anfitrión sin menú\" (default OFF)."
+        },
+        {
+          "name": "slotAssigned",
+          "category": "Slot resource (Fase 2)",
+          "implementedV1": false
+        },
+        {
+          "name": "slotDeclined",
+          "implementedV1": false
+        },
+        {
+          "name": "slotExpired",
+          "implementedV1": false
+        },
+        {
+          "name": "fineOfficialized",
+          "category": "Fines + appeals",
+          "implementedV1": true
+        },
+        {
+          "name": "finePaid",
+          "implementedV1": true
+        },
+        {
+          "name": "fineReminderSent",
+          "implementedV1": true,
+          "doc": "Cron emitted reminder for an unpaid fine at 3/7/14 day thresholds."
+        },
+        {
+          "name": "appealCreated",
+          "implementedV1": true
+        },
+        {
+          "name": "appealResolved",
+          "implementedV1": true
+        },
+        {
+          "name": "voteOpened",
+          "implementedV1": true,
+          "doc": "(V1) Generic vote opened — emitted by `start_vote` RPC."
+        },
+        {
+          "name": "voteCast",
+          "implementedV1": true,
+          "doc": "(V1) Member cast their ballot — emitted by `cast_vote` RPC."
+        },
+        {
+          "name": "voteResolved",
+          "implementedV1": true,
+          "doc": "(V1) Generic vote finalized — emitted by `finalize_vote` RPC. Carries\n`payload.resolution`: `passed` | `failed` | `quorum_failed`."
+        },
+        {
+          "name": "fundDeposit",
+          "category": "Fund (Fase posterior)",
+          "implementedV1": false
+        },
+        {
+          "name": "fundThresholdReached",
+          "implementedV1": false
+        },
+        {
+          "name": "positionChanged",
+          "category": "Rotation / membership",
+          "implementedV1": false
+        },
+        {
+          "name": "memberJoined",
+          "implementedV1": true
+        },
+        {
+          "name": "memberLeft",
+          "implementedV1": true
+        }
+      ]
+    },
+    "ConditionType": {
+      "swiftFile": "ios/Tandas/Platform/Models/ConditionType.swift",
+      "swiftProtocols": ["String", "Codable", "Sendable", "Hashable", "CaseIterable"],
+      "swiftAccessLevel": "public",
+      "emitIsImplementedInV1": true,
+      "doc": "Every condition the rule engine knows how to evaluate. Rules combine\nmultiple conditions with AND.\n\nCases marked **(V1)** have a ConditionEvaluator implementation in\n`_shared/ruleEngine.ts`. Other cases throw `NotImplementedError` server-\nside; rules using them are skipped with a structured log line.",
+      "values": [
+        {
+          "name": "alwaysTrue",
+          "category": "V1 conditions (used by template \"Cena recurrente\")",
+          "implementedV1": true,
+          "doc": "(V1) Always true. Used when a rule has no preconditions."
+        },
+        {
+          "name": "responseStatusIs",
+          "implementedV1": true,
+          "doc": "(V1) Member RSVP equals a configured status.\nConfig: `{ \"status\": \"pending\" | \"going\" | \"maybe\" | \"declined\" | \"waitlisted\" }`"
+        },
+        {
+          "name": "checkInExists",
+          "implementedV1": true,
+          "doc": "(V1) A check-in row exists / does not exist for the member.\nConfig: `{ \"exists\": true | false }`"
+        },
+        {
+          "name": "checkInMinutesLate",
+          "implementedV1": true,
+          "doc": "(V1) Minutes late at check-in vs the event start time.\nConfig: `{ \"thresholdMinutes\": Int }` — true when `lateMinutes >= threshold`."
+        },
+        {
+          "name": "eventDescriptionMissing",
+          "implementedV1": true,
+          "doc": "(V1) Event description / menú is empty."
+        },
+        {
+          "name": "minutesAfterScheduled",
+          "category": "Time-based",
+          "implementedV1": false,
+          "doc": "X minutes after the event's scheduled start time."
+        },
+        {
+          "name": "hoursBeforeEvent",
+          "implementedV1": false,
+          "doc": "X hours before the event starts. Used as a synthetic trigger config\nrather than a condition in V1."
+        },
+        {
+          "name": "memberHasMultipleFines",
+          "category": "Member history (Fase posterior)",
+          "implementedV1": false
+        },
+        {
+          "name": "memberFinesAbove",
+          "implementedV1": false
+        },
+        {
+          "name": "memberMissedConsecutive",
+          "implementedV1": false
+        },
+        {
+          "name": "eventDayOfWeek",
+          "category": "Event meta",
+          "implementedV1": false
+        },
+        {
+          "name": "eventTimeWindow",
+          "implementedV1": false
+        },
+        {
+          "name": "fundBalanceAbove",
+          "category": "Fund (Fase posterior)",
+          "implementedV1": false
+        },
+        {
+          "name": "fundBalanceBelow",
+          "implementedV1": false
+        },
+        {
+          "name": "rotationPositionEquals",
+          "category": "Rotation",
+          "implementedV1": false
+        }
+      ]
+    },
+    "ConsequenceType": {
+      "swiftFile": "ios/Tandas/Platform/Models/ConsequenceType.swift",
+      "swiftProtocols": ["String", "Codable", "Sendable", "Hashable", "CaseIterable"],
+      "swiftAccessLevel": "public",
+      "emitIsImplementedInV1": true,
+      "doc": "Every consequence the rule engine can execute when a rule's conditions\nmatch. Rules can chain multiple consequences (all execute).\n\nCases marked **(V1)** have a ConsequenceExecutor implementation in\n`_shared/ruleEngine.ts`. Other cases throw `NotImplementedError`; rules\nusing them are skipped with a structured log line so the architecture\nstays V4-ready without silently failing in production.",
+      "values": [
+        {
+          "name": "fine",
+          "category": "V1 (only `fine` is implemented)",
+          "implementedV1": true,
+          "doc": "(V1) Create a row in `fines` table with status `proposed`. The\nfine_review_periods row gives host 24h to review before auto-\nofficializing.\nConfig (flat fee): `{ \"amount\": 200 }`\nConfig (escalating): `{ \"baseAmount\": 200, \"stepAmount\": 50, \"stepMinutes\": 30 }`"
+        },
+        {
+          "name": "loseTurn",
+          "category": "Reserved for future phases",
+          "implementedV1": false
+        },
+        {
+          "name": "losePriority",
+          "implementedV1": false
+        },
+        {
+          "name": "serviceCompensation",
+          "implementedV1": false
+        },
+        {
+          "name": "blockTemporary",
+          "implementedV1": false
+        },
+        {
+          "name": "reciprocity",
+          "implementedV1": false
+        },
+        {
+          "name": "logOnly",
+          "implementedV1": false
+        },
+        {
+          "name": "sumPoints",
+          "implementedV1": false
+        },
+        {
+          "name": "subtractPoints",
+          "implementedV1": false
+        },
+        {
+          "name": "sendNotification",
+          "implementedV1": false
+        },
+        {
+          "name": "startVote",
+          "implementedV1": false
+        },
+        {
+          "name": "createEvent",
+          "implementedV1": false
+        },
+        {
+          "name": "assignSlot",
+          "implementedV1": false
+        },
+        {
+          "name": "transferRight",
+          "implementedV1": false
+        },
+        {
+          "name": "callWebhook",
+          "implementedV1": false
+        }
+      ]
+    },
+    "ResourceType": {
+      "swiftFile": "ios/Tandas/Platform/Models/ResourceType.swift",
+      "swiftProtocols": ["String", "Codable", "Sendable", "Hashable", "CaseIterable"],
+      "swiftAccessLevel": "public",
+      "swiftRawValuesImplicit": true,
+      "values": [
+        {
+          "name": "event",
+          "doc": "V1 — the only implemented type. Lives in `events` table; queried via\n`events_view` which projects to a Resource shape."
+        },
+        {
+          "name": "slot",
+          "precedingComment": "V2+ types — declared here so the platform model is V4-ready. Edge\nfunction rule engine ignores types it doesn't know about; Swift code\nthrows a clear error if it sees one before the matching template\nships.",
+          "trailingComment": "boleto, cupo, lugar — Fase 2 (Recurso compartido)"
+        },
+        {
+          "name": "fund",
+          "trailingComment": "caja, fondo común"
+        },
+        {
+          "name": "position",
+          "trailingComment": "lugar en rotación"
+        },
+        {
+          "name": "asset",
+          "trailingComment": "palco, cabaña — Fase 2"
+        },
+        {
+          "name": "contribution",
+          "trailingComment": "aporte a tanda — Fase 3"
+        }
+      ]
+    },
+    "GovernanceAction": {
+      "swiftFile": "ios/Tandas/Platform/Models/GovernanceAction.swift",
+      "swiftProtocols": ["String", "Sendable", "Hashable", "CaseIterable"],
+      "swiftAccessLevel": "public",
+      "doc": "Governance action evaluated by `GovernanceService`. Each case maps to one\nkey in `groups.governance` jsonb. Stable raw values — these are part of\nthe API surface for SQL helper functions like `group_governance_level`.",
+      "values": [
+        { "name": "modifyRules",      "rawValue": "whoCanModifyRules" },
+        { "name": "inviteMembers",    "rawValue": "whoCanInviteMembers" },
+        { "name": "removeMembers",    "rawValue": "whoCanRemoveMembers" },
+        { "name": "closeEvents",      "rawValue": "whoCanCloseEvents" },
+        { "name": "createVotes",      "rawValue": "whoCanCreateVotes" },
+        { "name": "modifyGovernance", "rawValue": "whoCanModifyGovernance" }
+      ]
+    },
+    "PermissionLevel": {
+      "swiftFile": "ios/Tandas/Platform/Models/PermissionLevel.swift",
+      "swiftProtocols": ["String", "Codable", "Sendable", "Hashable", "CaseIterable"],
+      "swiftAccessLevel": "public",
+      "swiftRawValuesImplicit": true,
+      "doc": "Permission level applied to a governance action. Stored as raw string in\n`groups.governance` jsonb. The values mirror the enum cases verbatim\n(camelCase on disk to match the migration backfill).",
+      "values": [
+        {
+          "name": "founder",
+          "doc": "Only the founder of the group can perform the action."
+        },
+        {
+          "name": "anyMember",
+          "doc": "Any active member of the group can perform the action."
+        },
+        {
+          "name": "majorityVote",
+          "doc": "A successful majority vote (>= 50% threshold by default) is required."
+        },
+        {
+          "name": "supermajorityVote",
+          "doc": "A successful supermajority vote (>= 66% threshold by default) is required."
+        },
+        {
+          "name": "host",
+          "doc": "Only the host of the contextual event can perform the action.\nUseful for actions like `closeEvents` where the actor is determined\nby the resource being acted on."
+        },
+        {
+          "name": "treasurer",
+          "doc": "Only the treasurer (V2 role) can perform the action."
+        }
+      ]
+    }
+  }
+}

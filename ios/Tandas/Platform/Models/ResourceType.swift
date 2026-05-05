@@ -1,5 +1,7 @@
 import Foundation
 
+// AUTO-GENERATED — Do not edit by hand. Source: platform/types/catalog.json. Run: node scripts/codegen/types.mjs
+
 public enum ResourceType: String, Codable, Sendable, Hashable, CaseIterable {
     /// V1 — the only implemented type. Lives in `events` table; queried via
     /// `events_view` which projects to a Resource shape.

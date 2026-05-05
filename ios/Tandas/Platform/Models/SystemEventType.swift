@@ -1,5 +1,7 @@
 import Foundation
 
+// AUTO-GENERATED — Do not edit by hand. Source: platform/types/catalog.json. Run: node scripts/codegen/types.mjs
+
 /// Every event the platform may emit. The rule engine matches `Rule.trigger
 /// .eventType` against this enum.
 ///
@@ -72,21 +74,17 @@ public enum SystemEventType: String, Codable, Sendable, Hashable, CaseIterable {
     case memberJoined            = "memberJoined"
     case memberLeft              = "memberLeft"
 
-    /// True if Sprint 1a / V1 has a TriggerEvaluator implementation.
+    /// True if Sprint 1a / V1 has an evaluator implementation.
     public var isImplementedInV1: Bool {
         switch self {
-        case .eventClosed, .checkInRecorded, .rsvpChangedSameDay,
-             .hoursBeforeEvent, .rsvpSubmitted, .rsvpDeadlinePassed,
-             .eventDescriptionMissing,
-             .appealCreated, .appealResolved,
-             .voteOpened, .voteCast, .voteResolved,
-             .fineOfficialized, .finePaid, .fineReminderSent,
-             .eventCreated, .memberJoined, .memberLeft:
+        case .eventClosed, .eventCreated, .rsvpDeadlinePassed, .hoursBeforeEvent,
+             .rsvpSubmitted, .rsvpChangedSameDay, .checkInRecorded,
+             .eventDescriptionMissing, .fineOfficialized, .finePaid,
+             .fineReminderSent, .appealCreated, .appealResolved, .voteOpened,
+             .voteCast, .voteResolved, .memberJoined, .memberLeft:
             return true
-        case .checkInMissed,
-             .slotAssigned, .slotDeclined, .slotExpired,
-             .fundDeposit, .fundThresholdReached,
-             .positionChanged:
+        case .checkInMissed, .slotAssigned, .slotDeclined, .slotExpired,
+             .fundDeposit, .fundThresholdReached, .positionChanged:
             return false
         }
     }

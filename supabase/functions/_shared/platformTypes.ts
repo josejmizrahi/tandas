@@ -1,10 +1,39 @@
-// Platform types — TypeScript mirror of the Swift platform models. Used by
-// the rule engine and the cron functions.
+// Platform types — TypeScript mirror of the Swift platform models. The
+// string-union enums live in `platformEnums.generated.ts` (auto-generated
+// from `platform/types/catalog.json`). This file owns the structural
+// interfaces (`SystemEvent`, `Rule`, `RuleTarget`, …) that aren't part of
+// the codegen.
 //
-// Keep this file in sync with `ios/Tandas/Platform/Models/`. When you add
-// a new SystemEventType / ConditionType / ConsequenceType in Swift, append
-// it here too. Mismatches are not silently ignored — the rule engine logs
-// "unknown ConditionType" and skips the rule.
+// To add or rename an enum value: edit `platform/types/catalog.json` and
+// run `node scripts/codegen/types.mjs`. CI rejects PRs whose generated
+// output differs from the catalog.
+
+export {
+  type SystemEventType,
+  type ConditionType,
+  type ConsequenceType,
+  type ResourceType,
+  type GovernanceAction,
+  type PermissionLevel,
+  SystemEventType_ALL,
+  ConditionType_ALL,
+  ConsequenceType_ALL,
+  ResourceType_ALL,
+  GovernanceAction_ALL,
+  PermissionLevel_ALL,
+  isSystemEventType,
+  isConditionType,
+  isConsequenceType,
+  isResourceType,
+  isGovernanceAction,
+  isPermissionLevel,
+} from "./platformEnums.generated.ts";
+
+import type {
+  SystemEventType,
+  ConditionType,
+  ConsequenceType,
+} from "./platformEnums.generated.ts";
 
 export type UUID = string;
 export type ISODate = string;
@@ -12,30 +41,6 @@ export type ISODate = string;
 // =============================================================================
 // SystemEvent
 // =============================================================================
-
-export type SystemEventType =
-  | "eventClosed"
-  | "eventCreated"
-  | "rsvpDeadlinePassed"
-  | "hoursBeforeEvent"
-  | "rsvpSubmitted"
-  | "rsvpChangedSameDay"
-  | "checkInRecorded"
-  | "checkInMissed"
-  | "eventDescriptionMissing"
-  | "slotAssigned"
-  | "slotDeclined"
-  | "slotExpired"
-  | "fineOfficialized"
-  | "finePaid"
-  | "appealCreated"
-  | "appealResolved"
-  | "voteCast"
-  | "fundDeposit"
-  | "fundThresholdReached"
-  | "positionChanged"
-  | "memberJoined"
-  | "memberLeft";
 
 export interface SystemEvent {
   id: UUID;
@@ -51,40 +56,6 @@ export interface SystemEvent {
 // =============================================================================
 // Rule
 // =============================================================================
-
-export type ConditionType =
-  | "alwaysTrue"
-  | "responseStatusIs"
-  | "checkInExists"
-  | "checkInMinutesLate"
-  | "eventDescriptionMissing"
-  | "minutesAfterScheduled"
-  | "hoursBeforeEvent"
-  | "memberHasMultipleFines"
-  | "memberFinesAbove"
-  | "memberMissedConsecutive"
-  | "eventDayOfWeek"
-  | "eventTimeWindow"
-  | "fundBalanceAbove"
-  | "fundBalanceBelow"
-  | "rotationPositionEquals";
-
-export type ConsequenceType =
-  | "fine"
-  | "loseTurn"
-  | "losePriority"
-  | "serviceCompensation"
-  | "blockTemporary"
-  | "reciprocity"
-  | "logOnly"
-  | "sumPoints"
-  | "subtractPoints"
-  | "sendNotification"
-  | "startVote"
-  | "createEvent"
-  | "assignSlot"
-  | "transferRight"
-  | "callWebhook";
 
 export interface RuleTrigger {
   eventType: SystemEventType;
