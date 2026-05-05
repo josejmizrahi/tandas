@@ -11,4 +11,7 @@
 # Format: one identifier per line, optionally followed by '#' and a comment.
 # Do not silence drift by adding entries without a citable origin.
 
-# (none yet — populated as needed during enum migrations)
+eventType  # JSON property name in jsonb_build_object rule trigger payloads
+config     # JSON property name in jsonb_build_object rule trigger/condition/consequence payloads
+trigger    # JSON property name in jsonb_build_object template-row payloads
+hours      # JSON property name inside hoursBeforeEvent rule config payloads

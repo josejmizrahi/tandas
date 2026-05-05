@@ -62,4 +62,19 @@ final class CodableEnumsTests: XCTestCase {
             return
         }
     }
+
+    func testSystemEventTypeRoundTrip() throws {
+        for value in SystemEventType.knownCases {
+            let data = try JSONEncoder().encode(value)
+            let decoded = try JSONDecoder().decode(SystemEventType.self, from: data)
+            XCTAssertEqual(value, decoded)
+        }
+
+        let unknownData = #""futureSystemEvent""#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(SystemEventType.self, from: unknownData)
+        guard case .unknown(let s) = decoded, s == "futureSystemEvent" else {
+            XCTFail("expected .unknown(\"futureSystemEvent\"), got \(decoded)")
+            return
+        }
+    }
 }

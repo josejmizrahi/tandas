@@ -32,7 +32,7 @@ struct SystemEventDetailView: View {
     private var metadataCard: some View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-                row("Tipo", event.eventType.rawValue)
+                row("Tipo", event.eventType.rawString)
                 row("Cuándo", Self.absoluteFormatter.string(from: event.occurredAt))
                 if let name = memberName {
                     row("Miembro", name)
@@ -79,7 +79,7 @@ struct SystemEventDetailView: View {
         case .fineOfficialized: return "Multa oficializada"
         case .finePaid:       return "Multa pagada"
         case .checkInRecorded: return "Check-in"
-        default: return event.eventType.rawValue
+        default: return event.eventType.rawString
         }
     }
 

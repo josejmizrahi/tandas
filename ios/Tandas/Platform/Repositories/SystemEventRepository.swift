@@ -128,7 +128,7 @@ public actor LiveSystemEventRepository: SystemEventRepository {
         let id: UUID = try await client
             .rpc("record_system_event", params: Params(
                 p_group_id: groupId.uuidString.lowercased(),
-                p_event_type: eventType.rawValue,
+                p_event_type: eventType.rawString,
                 p_resource_id: resourceId?.uuidString.lowercased(),
                 p_member_id: memberId?.uuidString.lowercased(),
                 p_payload: payload
@@ -158,7 +158,7 @@ public actor LiveSystemEventRepository: SystemEventRepository {
             q = q.eq("member_id", value: m.uuidString.lowercased())
         }
         if let t = filter.eventType {
-            q = q.eq("event_type", value: t.rawValue)
+            q = q.eq("event_type", value: t.rawString)
         }
         if let r = filter.resourceId {
             q = q.eq("resource_id", value: r.uuidString.lowercased())

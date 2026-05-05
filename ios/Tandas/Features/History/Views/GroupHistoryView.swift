@@ -59,7 +59,7 @@ struct GroupHistoryView: View {
     private var activeFilterBar: some View {
         HStack(spacing: RuulSpacing.s2) {
             if let t = coordinator.filter.eventType {
-                filterChip(label: t.rawValue) {
+                filterChip(label: t.rawString) {
                     coordinator.setEventType(nil)
                 }
             }
@@ -160,7 +160,7 @@ struct HistoryFilterSheet: View {
     @Bindable var coordinator: GroupHistoryCoordinator
     let dismiss: () -> Void
 
-    private static let typeOptions: [SystemEventType?] = [nil] + SystemEventType.allCases
+    private static let typeOptions: [SystemEventType?] = [nil] + SystemEventType.knownCases
 
     var body: some View {
         ModalSheetTemplate(
@@ -193,8 +193,8 @@ struct HistoryFilterSheet: View {
                     set: { coordinator.setEventType($0) }
                 )) {
                     Text("Todos").tag(SystemEventType?.none)
-                    ForEach(SystemEventType.allCases, id: \.self) { t in
-                        Text(t.rawValue).tag(SystemEventType?.some(t))
+                    ForEach(SystemEventType.knownCases, id: \.self) { t in
+                        Text(t.rawString).tag(SystemEventType?.some(t))
                     }
                 } label: { EmptyView() }
                 .pickerStyle(.menu)

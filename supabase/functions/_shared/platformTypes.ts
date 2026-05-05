@@ -9,33 +9,14 @@
 export type UUID = string;
 export type ISODate = string;
 
+import { type SystemEventType } from "./types/systemEventType.ts";
+import { type ConditionType } from "./types/conditionType.ts";
+import { type ConsequenceType } from "./types/consequenceType.ts";
+export type { SystemEventType, ConditionType, ConsequenceType };
+
 // =============================================================================
 // SystemEvent
 // =============================================================================
-
-export type SystemEventType =
-  | "eventClosed"
-  | "eventCreated"
-  | "rsvpDeadlinePassed"
-  | "hoursBeforeEvent"
-  | "rsvpSubmitted"
-  | "rsvpChangedSameDay"
-  | "checkInRecorded"
-  | "checkInMissed"
-  | "eventDescriptionMissing"
-  | "slotAssigned"
-  | "slotDeclined"
-  | "slotExpired"
-  | "fineOfficialized"
-  | "finePaid"
-  | "appealCreated"
-  | "appealResolved"
-  | "voteCast"
-  | "fundDeposit"
-  | "fundThresholdReached"
-  | "positionChanged"
-  | "memberJoined"
-  | "memberLeft";
 
 export interface SystemEvent {
   id: UUID;
@@ -51,10 +32,6 @@ export interface SystemEvent {
 // =============================================================================
 // Rule
 // =============================================================================
-
-import { type ConditionType } from "./types/conditionType.ts";
-import { type ConsequenceType } from "./types/consequenceType.ts";
-export type { ConditionType, ConsequenceType };
 
 export interface RuleTrigger {
   eventType: SystemEventType;
