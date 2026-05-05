@@ -58,6 +58,7 @@ enum FounderStep: String, CaseIterable, Codable, Sendable {
     case group           // group identity (name + cover)
     case vocabulary
     case rules
+    case governance      // Bloque 6 — who can modify rules, voting config
     case invite
     case phoneVerify
     case otp

@@ -133,6 +133,8 @@ private struct FounderFlow: View {
             GroupVocabularyView()
         case .rules:
             InitialRulesView()
+        case .governance:
+            GovernanceConfigView()
         case .invite:
             InviteMembersView()
         case .phoneVerify:

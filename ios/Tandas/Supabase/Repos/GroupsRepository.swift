@@ -20,6 +20,7 @@ protocol GroupsRepository: Actor {
     // Onboarding V1
     func createInitial(_ draft: GroupDraft) async throws -> Group
     func updateConfig(groupId: UUID, patch: GroupConfigPatch) async throws -> Group
+    func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group
     func fetchPreview(byInviteCode code: String) async throws -> InvitePreview
 }
 
@@ -129,6 +130,25 @@ actor MockGroupsRepository: GroupsRepository {
             rotationMode: patch.rotationMode ?? g.rotationMode,
             createdBy: g.createdBy,
             createdAt: g.createdAt
+        )
+        _groups[idx] = updated
+        return updated
+    }
+
+    func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let g = _groups[idx]
+        let updated = Group(
+            id: g.id, name: g.name, description: g.description,
+            groupType: g.groupType, inviteCode: g.inviteCode,
+            coverImageName: g.coverImageName, eventVocabulary: g.eventVocabulary,
+            frequencyType: g.frequencyType, frequencyConfig: g.frequencyConfig,
+            finesEnabled: g.finesEnabled, rotationMode: g.rotationMode,
+            baseTemplate: g.baseTemplate, activeModules: g.activeModules,
+            governance: rules, settings: g.settings,
+            createdBy: g.createdBy, createdAt: g.createdAt
         )
         _groups[idx] = updated
         return updated
@@ -377,6 +397,27 @@ actor LiveGroupsRepository: GroupsRepository {
         do {
             let g: Group = try await client
                 .rpc("update_group_config", params: params)
+                .execute()
+                .value
+            return g
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group {
+        // Direct UPDATE on groups.governance jsonb. RLS policy
+        // groups_update_admin gates this to founders / admins.
+        struct Patch: Encodable {
+            let governance: GovernanceRules
+        }
+        do {
+            let g: Group = try await client
+                .from("groups")
+                .update(Patch(governance: rules))
+                .eq("id", value: groupId.uuidString.lowercased())
+                .select()
+                .single()
                 .execute()
                 .value
             return g

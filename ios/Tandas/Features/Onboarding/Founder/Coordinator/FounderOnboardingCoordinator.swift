@@ -194,7 +194,7 @@ final class FounderOnboardingCoordinator {
             )
             createdGroup = try await groupRepo.updateConfig(groupId: group.id, patch: patch)
             await complete(step: .rules)
-            try? await transition(to: .invite)
+            try? await transition(to: .governance)
         } catch {
             log.error("advanceFromRules failed: \(String(describing: error)) — message: \(error.localizedDescription)")
             self.error = .createRulesFailed(error.localizedDescription)
@@ -215,6 +215,33 @@ final class FounderOnboardingCoordinator {
             createdGroup = updated
         }
         await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.rules.rawValue))
+        try? await transition(to: .governance)
+    }
+
+    /// Persists customised governance rules to `groups.governance`. Called
+    /// when founder taps "Continuar" on `GovernanceConfigView`. If
+    /// persistence fails the founder can retry; we don't block onboarding.
+    func advanceFromGovernance(rules: GovernanceRules) async {
+        guard let group = createdGroup, !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            createdGroup = try await groupRepo.updateGovernance(groupId: group.id, rules: rules)
+            await complete(step: .governance)
+            try? await transition(to: .invite)
+        } catch {
+            log.error("advanceFromGovernance failed: \(String(describing: error))")
+            await analytics.track(.stepFailed(flowType: .founder, stepID: FounderStep.governance.rawValue, errorType: "update_governance"))
+            // Soft-fail: keep template defaults already on the row, advance
+            // anyway so onboarding doesn't dead-end.
+            try? await transition(to: .invite)
+        }
+    }
+
+    /// Skip governance step — keeps template defaults backfilled by
+    /// migration 00019 / set at group creation.
+    func skipGovernance() async {
+        await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.governance.rawValue))
         try? await transition(to: .invite)
     }
 
