@@ -8,7 +8,14 @@
 
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { runRulesForEvent, type ConsequenceSink, type RuleContext } from "./ruleEngine.ts";
+import { _resetLogSink, _setLogSink, type StructuredEntry } from "./log.ts";
 import type { Rule, SystemEvent } from "./platformTypes.ts";
+
+function captureLogs(): { entries: StructuredEntry[]; restore: () => void } {
+  const entries: StructuredEntry[] = [];
+  _setLogSink((e) => entries.push(e));
+  return { entries, restore: () => _resetLogSink() };
+}
 
 const groupId = "g00000000-0000-0000-0000-000000000001";
 const eventId = "e00000000-0000-0000-0000-000000000001";
@@ -285,24 +292,167 @@ Deno.test("inactive rule → never fires", async () => {
   assertEquals(captured.length, 0);
 });
 
-Deno.test("unimplemented consequence → records failure, does not throw", async () => {
+Deno.test("unimplemented consequence → records failure + structured warn log per target", async () => {
   const { sink, captured } = captureSink();
-  const rule = makeRule(
-    "future rule",
-    { eventType: "eventClosed", config: {} },
-    [{ type: "alwaysTrue", config: {} }],
-    // loseTurn is declared in the enum but has no executor in V1.
-    [{ type: "loseTurn", config: {} }],
-  );
+  const { entries, restore } = captureLogs();
+  try {
+    const rule = makeRule(
+      "future rule",
+      { eventType: "eventClosed", config: {} },
+      [{ type: "alwaysTrue", config: {} }],
+      // loseTurn is declared in the enum but has no executor in V1.
+      [{ type: "loseTurn", config: {} }],
+    );
 
-  const ctx = baseContext({ sink });
-  const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+    const ctx = baseContext({ sink });
+    const event = makeEvent("eventClosed");
+    const results = await runRulesForEvent(event, [rule], ctx);
 
-  // 3 active members × 1 unimplemented consequence = 3 failure rows
-  assertEquals(results.length, 3);
-  for (const r of results) {
-    assertEquals(r.success, false);
-    assertEquals(r.error?.includes("unimplemented consequence"), true);
+    // 3 active members × 1 unimplemented consequence = 3 failure rows + 3 logs
+    assertEquals(results.length, 3);
+    for (const r of results) {
+      assertEquals(r.success, false);
+      assertEquals(r.error?.includes("unimplemented consequence"), true);
+    }
+    assertEquals(captured.length, 0);
+
+    assertEquals(entries.length, 3);
+    for (const e of entries) {
+      assertEquals(e.level, "warn");
+      assertEquals(e.code, "rule_engine.evaluator_not_implemented");
+      assertEquals(e.engine_phase, "consequence");
+      assertEquals(e.type_id, "loseTurn");
+      assertEquals(e.rule_id, rule.id);
+      assertEquals(e.rule_name, rule.name);
+      assertEquals(e.module_id, null);
+      assertEquals(e.group_id, groupId);
+      assertEquals(e.system_event_id, event.id);
+      assertEquals(e.phase_target, "phase_2");
+      assertEquals(typeof e.timestamp, "string");
+    }
+  } finally {
+    restore();
   }
-  assertEquals(captured.length, 0);
+});
+
+// =============================================================================
+// Reserved-type failure modes — must surface, not silent-skip
+// =============================================================================
+
+Deno.test("unimplemented trigger → 1 failure record + structured warn log (no targets derived)", async () => {
+  const { sink, captured } = captureSink();
+  const { entries, restore } = captureLogs();
+  try {
+    // slotAssigned is reserved for phase_2 (Recurso compartido template).
+    // No trigger evaluator in V1 — must NOT silently skip.
+    const rule = makeRule(
+      "phase 2 rule",
+      { eventType: "slotAssigned", config: {} },
+      [{ type: "alwaysTrue", config: {} }],
+      [{ type: "fine", config: { amount: 100 } }],
+    );
+
+    const ctx = baseContext({ sink });
+    const event = makeEvent("slotAssigned");
+    const results = await runRulesForEvent(event, [rule], ctx);
+
+    // No targets ever derived → exactly 1 failure record for the rule itself.
+    assertEquals(results.length, 1);
+    assertEquals(results[0].success, false);
+    assertEquals(results[0].member_id, null);
+    assertEquals(results[0].error?.includes("unimplemented trigger"), true);
+    assertEquals(captured.length, 0);
+
+    assertEquals(entries.length, 1);
+    const e = entries[0];
+    assertEquals(e.level, "warn");
+    assertEquals(e.code, "rule_engine.evaluator_not_implemented");
+    assertEquals(e.engine_phase, "trigger");
+    assertEquals(e.type_id, "slotAssigned");
+    assertEquals(e.rule_id, rule.id);
+    assertEquals(e.rule_name, rule.name);
+    assertEquals(e.module_id, null);
+    assertEquals(e.group_id, groupId);
+    assertEquals(e.system_event_id, event.id);
+    assertEquals(e.phase_target, "phase_2");
+    assertEquals(typeof e.timestamp, "string");
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("unimplemented condition → failure per target + structured warn log per target", async () => {
+  const { sink, captured } = captureSink();
+  const { entries, restore } = captureLogs();
+  try {
+    // memberFinesAbove is reserved for phase_4 (custom rule editor).
+    // Condition with no evaluator must NOT silently set allMatched=false
+    // without recording a failure.
+    const rule = makeRule(
+      "phase 4 rule",
+      { eventType: "eventClosed", config: {} },
+      [{ type: "memberFinesAbove", config: { count: 3 } }],
+      [{ type: "fine", config: { amount: 100 } }],
+    );
+
+    const ctx = baseContext({ sink });
+    const event = makeEvent("eventClosed");
+    const results = await runRulesForEvent(event, [rule], ctx);
+
+    // 3 active members × 1 unimplemented condition = 3 failure rows + 3 logs
+    assertEquals(results.length, 3);
+    for (const r of results) {
+      assertEquals(r.success, false);
+      assertEquals(r.error?.includes("unimplemented condition"), true);
+    }
+    assertEquals(captured.length, 0);
+
+    assertEquals(entries.length, 3);
+    for (const e of entries) {
+      assertEquals(e.level, "warn");
+      assertEquals(e.code, "rule_engine.evaluator_not_implemented");
+      assertEquals(e.engine_phase, "condition");
+      assertEquals(e.type_id, "memberFinesAbove");
+      assertEquals(e.rule_id, rule.id);
+      assertEquals(e.rule_name, rule.name);
+      assertEquals(e.module_id, null);
+      assertEquals(e.group_id, groupId);
+      assertEquals(e.system_event_id, event.id);
+      assertEquals(e.phase_target, "phase_4");
+      assertEquals(typeof e.timestamp, "string");
+    }
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("unmapped reserved type → phase_target='unknown' (signals roadmap gap)", async () => {
+  const { sink, captured } = captureSink();
+  const { entries, restore } = captureLogs();
+  try {
+    // logOnly is intentionally NOT in CONSEQUENCE_PHASE — it's a V1.x utility
+    // without a phase home. We expect phase_target='unknown' so a future dev
+    // sees the signal "this needs a roadmap decision" rather than silent gating.
+    const rule = makeRule(
+      "log-only rule",
+      { eventType: "rsvpChangedSameDay", config: {} },
+      [{ type: "alwaysTrue", config: {} }],
+      [{ type: "logOnly", config: {} }],
+    );
+
+    const ctx = baseContext({ sink });
+    const event = makeEvent("rsvpChangedSameDay", { member_id: memberAlice.id });
+    const results = await runRulesForEvent(event, [rule], ctx);
+
+    assertEquals(results.length, 1);
+    assertEquals(results[0].success, false);
+    assertEquals(captured.length, 0);
+
+    assertEquals(entries.length, 1);
+    assertEquals(entries[0].phase_target, "unknown");
+    assertEquals(entries[0].type_id, "logOnly");
+    assertEquals(entries[0].engine_phase, "consequence");
+  } finally {
+    restore();
+  }
 });

@@ -23,6 +23,76 @@ import {
   SystemEventType,
   UUID,
 } from "./platformTypes.ts";
+import { logStructured } from "./log.ts";
+
+// =============================================================================
+// Reserved-type → phase_target mapping
+//
+// When the engine encounters a Trigger/Condition/Consequence it does not
+// implement, it emits a structured warn log with `phase_target` so a future
+// dev can distinguish "this feature is reserved for Fase X" from "this is a
+// real bug". Phase semantics:
+//
+//   phase_2   → Recurso compartido template (palco/cabaña, slots, rotation)
+//   phase_3   → Tanda template (rotating savings, fund balance)
+//   phase_4   → Custom rule editor (advanced conditions/consequences)
+//   unknown   → enum case has no phase plan; treat as bug
+//
+// Types absent from these tables resolve to "unknown" — the signal that
+// someone added a SystemEventType / ConditionType / ConsequenceType case
+// without slotting it into a roadmap phase.
+// =============================================================================
+
+const TRIGGER_PHASE: Partial<Record<SystemEventType, string>> = {
+  // Phase 2: Recurso compartido
+  slotAssigned: "phase_2",
+  slotDeclined: "phase_2",
+  slotExpired: "phase_2",
+  positionChanged: "phase_2",
+  checkInMissed: "phase_2",
+  // Phase 3: Tanda
+  fundDeposit: "phase_3",
+  fundThresholdReached: "phase_3",
+  // V1 emitters that no rule consumes today fall through to "unknown" —
+  // intentional, so an authoring slip surfaces as a real signal.
+};
+
+const CONDITION_PHASE: Partial<Record<ConditionType, string>> = {
+  // Phase 2: Recurso compartido
+  rotationPositionEquals: "phase_2",
+  // Phase 3: Tanda
+  fundBalanceAbove: "phase_3",
+  fundBalanceBelow: "phase_3",
+  // Phase 4: Custom rule editor
+  minutesAfterScheduled: "phase_4",
+  memberHasMultipleFines: "phase_4",
+  memberFinesAbove: "phase_4",
+  memberMissedConsecutive: "phase_4",
+  eventDayOfWeek: "phase_4",
+  eventTimeWindow: "phase_4",
+  // hoursBeforeEvent is a trigger config, not a standalone condition —
+  // intentionally left out so an author using it as condition logs "unknown".
+};
+
+const CONSEQUENCE_PHASE: Partial<Record<ConsequenceType, string>> = {
+  // Phase 2: Recurso compartido
+  loseTurn: "phase_2",
+  losePriority: "phase_2",
+  assignSlot: "phase_2",
+  transferRight: "phase_2",
+  // Phase 4: Custom rule editor + advanced behaviors
+  serviceCompensation: "phase_4",
+  blockTemporary: "phase_4",
+  reciprocity: "phase_4",
+  sumPoints: "phase_4",
+  subtractPoints: "phase_4",
+  startVote: "phase_4",
+  createEvent: "phase_4",
+  callWebhook: "phase_4",
+  // logOnly / sendNotification: intentionally "unknown" — V1.x utilities
+  // without a formal phase home; surfacing them as unknown invites a
+  // decision rather than silent gating.
+};
 
 // =============================================================================
 // Engine context — what evaluators read + what executors mutate
@@ -305,7 +375,14 @@ export async function runRulesForEvent(
   for (const rule of matchingRules) {
     const triggerFn = TRIGGERS[rule.trigger.eventType];
     if (!triggerFn) {
-      console.warn(`[ruleEngine] no trigger evaluator for ${rule.trigger.eventType}`);
+      logNotImplemented({
+        enginePhase: "trigger",
+        typeId: rule.trigger.eventType,
+        rule,
+        event,
+        phaseTarget: TRIGGER_PHASE[rule.trigger.eventType],
+      });
+      results.push(failure(rule.id, null, `unimplemented trigger: ${rule.trigger.eventType}`));
       continue;
     }
 
@@ -320,10 +397,18 @@ export async function runRulesForEvent(
     for (const target of targets) {
       // AND across all conditions
       let allMatched = true;
+      let missingCondition: string | null = null;
       for (const cond of rule.conditions) {
         const condFn = CONDITIONS[cond.type];
         if (!condFn) {
-          console.warn(`[ruleEngine] no condition evaluator for ${cond.type} (rule ${rule.id})`);
+          logNotImplemented({
+            enginePhase: "condition",
+            typeId: cond.type,
+            rule,
+            event,
+            phaseTarget: CONDITION_PHASE[cond.type],
+          });
+          missingCondition = cond.type;
           allMatched = false;
           break;
         }
@@ -333,12 +418,25 @@ export async function runRulesForEvent(
           break;
         }
       }
+      if (missingCondition) {
+        // Condition evaluator missing — record a failure per target so the
+        // rule run is observable, not silently skipped.
+        results.push(failure(rule.id, target.member_id, `unimplemented condition: ${missingCondition}`));
+        continue;
+      }
       if (!allMatched) continue;
 
       // All conditions matched — fire every consequence.
       for (const cons of rule.consequences) {
         const consFn = CONSEQUENCES[cons.type];
         if (!consFn) {
+          logNotImplemented({
+            enginePhase: "consequence",
+            typeId: cons.type,
+            rule,
+            event,
+            phaseTarget: CONSEQUENCE_PHASE[cons.type],
+          });
           results.push(failure(rule.id, target.member_id, `unimplemented consequence: ${cons.type}`));
           continue;
         }
@@ -352,4 +450,35 @@ export async function runRulesForEvent(
   }
 
   return results;
+}
+
+// =============================================================================
+// Structured logging for not-implemented evaluators
+// =============================================================================
+
+function logNotImplemented(args: {
+  enginePhase: "trigger" | "condition" | "consequence";
+  typeId: string;
+  rule: Rule;
+  event: SystemEvent;
+  phaseTarget: string | undefined;
+}): void {
+  // Rules don't carry module_id in V1 — reserved for the Module registry
+  // (Bloque 5). Surface as null so consumers can index on the field today.
+  const moduleId = (args.rule as unknown as { module_id?: string | null }).module_id ?? null;
+
+  logStructured({
+    level: "warn",
+    code: "rule_engine.evaluator_not_implemented",
+    engine_phase: args.enginePhase,
+    type_id: args.typeId,
+    rule_id: args.rule.id,
+    rule_name: args.rule.name,
+    module_id: moduleId,
+    group_id: args.rule.group_id,
+    system_event_id: args.event.id,
+    phase_target: args.phaseTarget ?? "unknown",
+    timestamp: new Date().toISOString(),
+    message: `No ${args.enginePhase} evaluator for ${args.typeId}`,
+  });
 }
