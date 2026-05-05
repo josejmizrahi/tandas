@@ -1,156 +1,169 @@
 import SwiftUI
 
-/// Cross-group event feed. Renders `MyFeedCoordinator.sectioned()` —
-/// Hoy / Esta semana / Próximos / Recientes. Tap on a row activates that
-/// event's group and opens the EventDetail.
+/// Cross-group event feed. Apple Invites pattern: the first event of the
+/// nearest section gets hero treatment (full EventCard); the rest render
+/// as compact `EventRow`s grouped by day language.
+///
+/// Design contract (Docs/DesignPrinciples.md):
+///   - Hero card uses the event cover as background
+///   - Compact rows reuse EventRow primitive
+///   - Sections labeled with tracked uppercase (HOY / MAÑANA / etc.)
+///   - Date language, never raw date strings
+///   - Empty state conversational, has CTA
 struct MyFeedView: View {
     @State var coordinator: MyFeedCoordinator
     @Environment(AppState.self) private var app
-    @Environment(\.dismiss) private var dismiss
 
     let onSelectEvent: (Event, Group) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
-                if let err = coordinator.loadError {
-                    errorBanner(err)
-                }
-                if coordinator.events.isEmpty && !coordinator.isLoading {
-                    emptyState
-                } else {
-                    ForEach(coordinator.sectioned(), id: \.0) { section, events in
-                        sectionView(section: section, events: events)
+        ZStack {
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                    if let err = coordinator.loadError {
+                        errorBanner(err)
+                    }
+                    if coordinator.events.isEmpty && !coordinator.isLoading {
+                        emptyState
+                    } else {
+                        contentSections
                     }
                 }
+                .padding(.horizontal, RuulSpacing.s5)
+                .padding(.top, RuulSpacing.s2)
+                .padding(.bottom, RuulSpacing.s12)
             }
-            .padding(RuulSpacing.s4)
+            .scrollIndicators(.hidden)
+            .refreshable { await coordinator.refresh() }
         }
         .navigationTitle("Mis eventos")
         .navigationBarTitleDisplayMode(.large)
         .task { await coordinator.refresh() }
-        .refreshable { await coordinator.refresh() }
     }
 
-    private func sectionView(section: MyFeedCoordinator.Section, events: [Event]) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-            HStack {
-                Text(section.title)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                Spacer()
-                Text("\(events.count)")
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
-            }
-            VStack(spacing: RuulSpacing.s2) {
-                ForEach(events) { ev in
-                    Button {
-                        if let g = coordinator.group(for: ev) {
-                            onSelectEvent(ev, g)
-                        }
-                    } label: {
-                        feedRow(event: ev)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
+    // MARK: - Sections
 
-    private func feedRow(event: Event) -> some View {
-        let group = coordinator.group(for: event)
-        return RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-                HStack(alignment: .firstTextBaseline) {
-                    if let groupName = group?.name {
-                        Text(groupName)
-                            .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulTextAccent)
-                            .textCase(.uppercase)
-                    }
-                    Spacer()
-                    Text(formattedDate(event.startsAt))
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                Text(event.title)
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .multilineTextAlignment(.leading)
-                if let location = event.locationName {
-                    HStack(spacing: 4) {
-                        Image(systemName: "mappin.and.ellipse")
-                        Text(location)
-                    }
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                }
-                statusPill(for: event)
-            }
+    @ViewBuilder
+    private var contentSections: some View {
+        let sections = coordinator.sectioned()
+        ForEach(sections, id: \.0) { section, events in
+            sectionView(section: section, events: events, isFirst: section == sections.first?.0)
         }
     }
 
     @ViewBuilder
-    private func statusPill(for event: Event) -> some View {
-        if event.status == .cancelled {
-            pill(label: "Cancelado", color: .ruulSemanticError)
-        } else if event.status == .closed || (event.startsAt < .now && event.status == .upcoming) {
-            pill(label: "Cerrado", color: .ruulTextTertiary)
-        } else if Calendar.current.isDateInToday(event.startsAt) {
-            pill(label: "Hoy", color: .ruulSemanticSuccess)
+    private func sectionView(
+        section: MyFeedCoordinator.Section,
+        events: [Event],
+        isFirst: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            sectionHeader(section: section, count: events.count)
+
+            // Hero treatment: first event of the FIRST non-empty section
+            // (typically Hoy or the next upcoming day).
+            let useHero = isFirst && (section == .today || section == .thisWeek || section == .upcoming)
+            if useHero, let hero = events.first {
+                heroCard(for: hero)
+                ForEach(events.dropFirst()) { ev in
+                    eventRow(for: ev)
+                }
+            } else {
+                ForEach(events) { ev in
+                    eventRow(for: ev)
+                }
+            }
         }
     }
 
-    private func pill(label: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(color)
-                .frame(width: 6, height: 6)
-            Text(label)
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(color)
-                .textCase(.uppercase)
+    private func sectionHeader(section: MyFeedCoordinator.Section, count: Int) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(section.title.uppercased())
+                .ruulTextStyle(RuulTypography.sectionLabelLg)
+                .foregroundStyle(Color.ruulTextSecondary)
+            Spacer()
+            Text("\(count)")
+                .ruulTextStyle(RuulTypography.statSmall)
+                .foregroundStyle(Color.ruulTextTertiary)
         }
     }
+
+    // MARK: - Hero card (full cover, EventCard primitive)
+
+    private func heroCard(for event: Event) -> some View {
+        let group = coordinator.group(for: event)
+        return EventCard(
+            event: event,
+            myStatus: nil,                    // V1.x — batch RSVP load deferred
+            isHostedByMe: false,              // cross-group hosted-by-me requires per-event lookup; defer
+            attendeeAvatars: [],
+            confirmedCount: 0,
+            isAtCapacity: false
+        ) {
+            if let group { onSelectEvent(event, group) }
+        }
+    }
+
+    // MARK: - Compact row
+
+    private func eventRow(for event: Event) -> some View {
+        let group = coordinator.group(for: event)
+        let groupName = (coordinator.groupsById.count > 1) ? group?.name : nil
+        return EventRow(
+            event: event,
+            groupName: groupName,
+            myStatus: nil                     // V1.x — batch RSVP load deferred
+        ) {
+            if let group { onSelectEvent(event, group) }
+        }
+    }
+
+    // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: RuulSpacing.s3) {
-            Image(systemName: "calendar.badge.clock")
-                .ruulTextStyle(RuulTypography.title)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Text("Sin eventos próximos")
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-            Text("Cuando alguno de tus grupos cree un evento, aparecerá acá.")
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .multilineTextAlignment(.center)
+        VStack(spacing: RuulSpacing.s4) {
+            ZStack {
+                Circle()
+                    .fill(Color.ruulAccentSubtle)
+                    .frame(width: 96, height: 96)
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 38, weight: .medium))
+                    .foregroundStyle(Color.ruulAccentPrimary)
+            }
+            VStack(spacing: RuulSpacing.s2) {
+                Text("Todo tranquilo por ahora")
+                    .ruulTextStyle(RuulTypography.title)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Text("Cuando tus grupos creen eventos, los vas a ver acá juntos.")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, RuulSpacing.s8)
+        .padding(.vertical, RuulSpacing.s12)
     }
 
     private func errorBanner(_ message: String) -> some View {
-        Text("No pudimos cargar: \(message)")
-            .ruulTextStyle(RuulTypography.caption)
-            .foregroundStyle(Color.ruulSemanticError)
-            .padding(RuulSpacing.s3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulSemanticError.opacity(0.08))
-            )
-    }
-
-    private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.dateFormat = "EEE d MMM · HH:mm"
-        return f
-    }()
-
-    private func formattedDate(_ date: Date) -> String {
-        Self.dateFormatter.string(from: date)
+        HStack(spacing: RuulSpacing.s2) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Color.ruulSemanticError)
+            Text(message)
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .lineLimit(2)
+        }
+        .padding(RuulSpacing.s3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .fill(Color.ruulSemanticError.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color.ruulSemanticError.opacity(0.3), lineWidth: 0.5)
+        )
     }
 }

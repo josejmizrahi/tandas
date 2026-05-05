@@ -1,0 +1,194 @@
+import SwiftUI
+
+/// Compact list row for events. The workhorse cell across MyFeedView,
+/// PastEventsView, and any future "list of events" surface.
+///
+/// Visual model (Apple Invites compact pattern):
+///
+///   ┌──────┐  GROUP NAME · HOY 9:00 PM
+///   │ cover│  Cena del jueves
+///   │ 64×64│  📍 Casa de María · 4 van
+///   └──────┘
+///
+/// - Left: 64×64 cover thumbnail (image or procedural mesh fallback) with
+///   the rounded-square Apple Invites look.
+/// - Right: tracked uppercase metadata + display title + secondary meta row.
+/// - Whole cell is `.ruulPress` so tap haptic + scale feedback come for free.
+struct EventRow: View {
+    let event: Event
+    let groupName: String?
+    let myStatus: RSVPStatus?
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: RuulSpacing.s4) {
+                cover
+                content
+                Spacer(minLength: 0)
+                trailing
+            }
+            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.s4)
+            .background(Color.ruulBackgroundElevated)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.ruulPress)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    // MARK: - Cover thumbnail
+
+    @ViewBuilder
+    private var cover: some View {
+        SwiftUI.Group {
+            if let url = event.coverImageURL {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img): img.resizable().scaledToFill()
+                    default:                fallbackCover
+                    }
+                }
+            } else {
+                fallbackCover
+            }
+        }
+        .frame(width: 64, height: 64)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+        )
+    }
+
+    private var fallbackCover: some View {
+        let cover = RuulCoverCatalog.cover(named: event.coverImageName)
+        return RuulCoverView(cover)
+    }
+
+    // MARK: - Content column
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(metaLine)
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(metaColor)
+                .lineLimit(1)
+            Text(event.title)
+                .ruulTextStyle(RuulTypography.headline)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            if let location = event.locationName, !location.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "mappin")
+                        .font(.system(size: 11, weight: .medium))
+                    Text(location)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(Color.ruulTextSecondary)
+            }
+        }
+    }
+
+    /// Meta line composes group name (if cross-group) + date language.
+    /// "LOS CUATES · HOY 9:00 PM" or "MAÑANA 9:00 PM" (single-group).
+    private var metaLine: String {
+        var parts: [String] = []
+        if let groupName, !groupName.isEmpty {
+            parts.append(groupName.uppercased())
+        }
+        parts.append(dateLabel.uppercased())
+        return parts.joined(separator: " · ")
+    }
+
+    private var dateLabel: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(event.startsAt)    { return "Hoy \(event.startsAt.ruulShortTime)" }
+        if calendar.isDateInTomorrow(event.startsAt) { return "Mañana \(event.startsAt.ruulShortTime)" }
+        if calendar.isDateInYesterday(event.startsAt) { return "Ayer" }
+        return "\(event.startsAt.ruulShortDate) \(event.startsAt.ruulShortTime)"
+    }
+
+    /// Meta color carries status: cancelled is red, hosted-by-me + future is
+    /// accent, in-progress is the live red, otherwise secondary.
+    private var metaColor: Color {
+        if event.status == .cancelled { return .ruulSemanticError }
+        if event.status == .inProgress { return .ruulSemanticError }
+        if event.startsAt < .now && event.status == .upcoming { return .ruulTextTertiary }
+        if Calendar.current.isDateInToday(event.startsAt) { return .ruulAccentPrimary }
+        return .ruulTextSecondary
+    }
+
+    // MARK: - Trailing
+
+    @ViewBuilder
+    private var trailing: some View {
+        if event.status == .inProgress {
+            livePill
+        } else if let myStatus, myStatus != .pending {
+            rsvpPill(myStatus)
+        }
+    }
+
+    private var livePill: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(Color.ruulSemanticError)
+                .frame(width: 6, height: 6)
+            Text("EN VIVO")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulSemanticError)
+        }
+    }
+
+    private func rsvpPill(_ status: RSVPStatus) -> some View {
+        let (icon, label, color): (String, String, Color) = {
+            switch status {
+            case .going:      return ("checkmark", "Vas",       .ruulSemanticSuccess)
+            case .maybe:      return ("questionmark", "Tal vez", .ruulSemanticWarning)
+            case .declined:   return ("xmark", "No vas",         .ruulTextTertiary)
+            case .waitlisted: return ("hourglass", "Lista",      .ruulAccentPrimary)
+            case .pending:    return ("circle", "",              .ruulTextTertiary)
+            }
+        }()
+        return HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(label)
+                .ruulTextStyle(RuulTypography.sectionLabel)
+        }
+        .foregroundStyle(color)
+    }
+
+    // MARK: - Accessibility
+
+    private var accessibilityLabel: String {
+        var parts: [String] = []
+        if let groupName { parts.append(groupName) }
+        parts.append(event.title)
+        parts.append(event.startsAt.ruulRelativeDescription)
+        if event.status == .cancelled { parts.append("cancelado") }
+        if event.status == .inProgress { parts.append("en curso") }
+        if let myStatus, myStatus != .pending {
+            parts.append(rsvpAccessibilityLabel(myStatus))
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private func rsvpAccessibilityLabel(_ status: RSVPStatus) -> String {
+        switch status {
+        case .going:      return "vas"
+        case .maybe:      return "tal vez"
+        case .declined:   return "no vas"
+        case .waitlisted: return "lista de espera"
+        case .pending:    return ""
+        }
+    }
+}
