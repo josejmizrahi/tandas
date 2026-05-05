@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Supabase
 
 enum InviteError: Error, Equatable {
@@ -69,6 +70,7 @@ actor MockInviteRepository: InviteRepository {
 
 actor LiveInviteRepository: InviteRepository {
     private let client: SupabaseClient
+    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "invites")
     init(client: SupabaseClient) { self.client = client }
 
     func createInvite(groupId: UUID, phoneE164: String?) async throws -> Invite {
@@ -83,17 +85,60 @@ actor LiveInviteRepository: InviteRepository {
             invited_by: userId.uuidString.lowercased(),
             phone_e164: phoneE164
         )
+        let invite: Invite
         do {
-            let invite: Invite = try await client
+            invite = try await client
                 .from("invites")
                 .insert(payload)
                 .select()
                 .single()
                 .execute()
                 .value
-            return invite
         } catch {
             throw InviteError.rpcFailed(error.localizedDescription)
+        }
+
+        if let phone = phoneE164, !phone.isEmpty {
+            await sendWhatsAppBestEffort(inviteId: invite.id, phone: phone, groupId: groupId)
+        }
+        return invite
+    }
+
+    /// Best-effort WhatsApp send via the `send-whatsapp-invite` edge function.
+    /// Failures (Wassenger unconfigured, network, etc.) are swallowed — the
+    /// invite row exists; recipient can be re-invited if the message never
+    /// arrives.
+    private func sendWhatsAppBestEffort(inviteId: UUID, phone: String, groupId: UUID) async {
+        do {
+            struct GroupInfo: Decodable {
+                let name: String
+                let invite_code: String
+            }
+            let info: GroupInfo = try await client
+                .from("groups")
+                .select("name, invite_code")
+                .eq("id", value: groupId.uuidString.lowercased())
+                .single()
+                .execute()
+                .value
+
+            struct Body: Encodable {
+                let invite_id: String
+                let phone: String
+                let group_name: String
+                let invite_code: String
+            }
+            _ = try await client.functions.invoke(
+                "send-whatsapp-invite",
+                options: FunctionInvokeOptions(body: Body(
+                    invite_id: inviteId.uuidString.lowercased(),
+                    phone: phone,
+                    group_name: info.name,
+                    invite_code: info.invite_code
+                ))
+            ) as WhatsAppInviteResponse
+        } catch {
+            log.warning("WhatsApp invite send failed (best-effort): \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -123,4 +168,9 @@ actor LiveInviteRepository: InviteRepository {
             throw InviteError.rpcFailed(error.localizedDescription)
         }
     }
+}
+
+private struct WhatsAppInviteResponse: Decodable {
+    let sent: Bool?
+    let reason: String?
 }
