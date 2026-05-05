@@ -1,10 +1,13 @@
-// Platform types — TypeScript mirror of the Swift platform models. Used by
-// the rule engine and the cron functions.
+// Platform types for the rule engine and edge functions.
 //
-// Keep this file in sync with `ios/Tandas/Platform/Models/`. When you add
-// a new SystemEventType / ConditionType / ConsequenceType in Swift, append
-// it here too. Mismatches are not silently ignored — the rule engine logs
-// "unknown ConditionType" and skips the rule.
+// Enums (SystemEventType, ConditionType, ConsequenceType) are codegen-
+// produced from `ios/Tandas/Platform/Models/<Name>.swift` — see
+// `scripts/codegen/README.md`. Do not edit them inline here.
+//
+// The structs/interfaces below (SystemEvent, Rule, RuleTrigger, etc.)
+// are still hand-maintained mirrors of the Swift Platform/Models structs.
+// A future Fase 0.5 may add codegen for those too; until then, keep them
+// in sync manually when the Swift side changes.
 
 export type UUID = string;
 export type ISODate = string;
