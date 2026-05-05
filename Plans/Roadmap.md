@@ -181,8 +181,8 @@ después. Sin esto, Fase 2 cuesta 3x.
    - Alertas: error rate > 1%, decode failures > 0.
 
 5. **Cerrar P0 de UICompleteCoverage**.
-   - `EditRulesView` + `EditRuleSheet` (gobernanza-aware)
-   - `GovernanceSettingsView` (post-onboarding edit)
+   - ~~`EditRulesView` + `EditRuleSheet` (gobernanza-aware)~~ ✅ shipped 2026-05-05
+   - ~~`GovernanceSettingsView` (post-onboarding edit)~~ ✅ shipped pre-2026-05-05
    - `AddManualFineSheet` + `VoidFineSheet`
    - `OpenVotesView` (genérica para 7 tipos de voto)
    - `EditMembersSheet` (promote, remove, reorder turn)
