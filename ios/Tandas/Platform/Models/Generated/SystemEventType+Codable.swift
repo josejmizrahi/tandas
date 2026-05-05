@@ -30,6 +30,8 @@ extension SystemEventType {
         .positionChanged,
         .memberJoined,
         .memberLeft,
+        .ruleEnabledChanged,
+        .ruleAmountChanged,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -58,6 +60,8 @@ extension SystemEventType {
         "positionChanged",
         "memberJoined",
         "memberLeft",
+        "ruleEnabledChanged",
+        "ruleAmountChanged",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -97,6 +101,8 @@ extension SystemEventType {
         case .positionChanged: return "positionChanged"
         case .memberJoined: return "memberJoined"
         case .memberLeft: return "memberLeft"
+        case .ruleEnabledChanged: return "ruleEnabledChanged"
+        case .ruleAmountChanged: return "ruleAmountChanged"
         case .unknown(let s): return s
         }
     }
@@ -128,6 +134,8 @@ extension SystemEventType {
         case "positionChanged": return .positionChanged
         case "memberJoined": return .memberJoined
         case "memberLeft": return .memberLeft
+        case "ruleEnabledChanged": return .ruleEnabledChanged
+        case "ruleAmountChanged": return .ruleAmountChanged
         default: return .unknown(raw)
         }
     }

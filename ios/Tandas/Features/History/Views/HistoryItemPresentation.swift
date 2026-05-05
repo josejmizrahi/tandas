@@ -120,6 +120,14 @@ struct HistoryItemPresentation {
             self.icon = "person.crop.circle.badge.minus"
             self.title = "\(actor) salió del grupo"
             self.tone = .neutral
+        case .ruleEnabledChanged:
+            self.icon = "switch.2"
+            self.title = "\(actor) cambió el estado de una regla"
+            self.tone = .neutral
+        case .ruleAmountChanged:
+            self.icon = "pencil.line"
+            self.title = "\(actor) editó la multa de una regla"
+            self.tone = .neutral
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"

@@ -46,5 +46,11 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     case memberJoined
     case memberLeft
 
+    // MARK: - Rule mutations (audit only — not rule-engine triggers)
+    /// Emitted when a rule is toggled on/off (UPDATE rules.enabled).
+    case ruleEnabledChanged
+    /// Emitted when a rule's fine amount is edited (UPDATE rules.action).
+    case ruleAmountChanged
+
     case unknown(String)
 }

@@ -15,7 +15,8 @@ extension SystemEventType {
         case .checkInMissed,
              .slotAssigned, .slotDeclined, .slotExpired,
              .fundDeposit, .fundThresholdReached,
-             .positionChanged:
+             .positionChanged,
+             .ruleEnabledChanged, .ruleAmountChanged:
             return false
         case .unknown:
             return false
