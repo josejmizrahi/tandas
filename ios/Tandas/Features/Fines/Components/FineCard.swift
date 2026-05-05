@@ -8,11 +8,21 @@ struct FineCard: View {
     let fine: Fine
     let ruleName: String?           // resolved by parent (denormalized)
     let eventTitle: String?         // resolved by parent
+    /// Optional cross-group label. Set by MyFinesView when caller has 2+
+    /// groups; rendered as a small uppercase tracked chip above the
+    /// status row so the user knows which group this fine belongs to.
+    var groupName: String? = nil
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+                if let groupName {
+                    Text(groupName)
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulTextAccent)
+                        .textCase(.uppercase)
+                }
                 statusRow
                 Divider().background(Color.ruulBorderSubtle)
                 contentRow

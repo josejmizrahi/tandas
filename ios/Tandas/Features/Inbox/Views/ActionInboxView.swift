@@ -20,7 +20,7 @@ struct ActionInboxView: View {
                             ActionCard(
                                 icon: icon(for: action.actionType),
                                 title: action.title,
-                                subtitle: action.body,
+                                subtitle: subtitle(for: action),
                                 priority: priority(for: action.priority),
                                 timeRemaining: nil,
                                 onTap: { onOpenAction(action) }
@@ -60,6 +60,19 @@ struct ActionInboxView: View {
         case .votePending:        return "checkmark.square.fill"
         case .contributionDue:    return "banknote.fill"
         case .compensationDue:    return "arrow.up.right"
+        }
+    }
+
+    /// Compose action subtitle with the group label for cross-group inbox.
+    /// Returns "Los Cuates · 200 MXN" when both group + body are present;
+    /// drops the separator gracefully if either is missing.
+    private func subtitle(for action: UserAction) -> String? {
+        let groupName = coordinator.groupName(for: action)
+        switch (groupName, action.body) {
+        case let (group?, body?): return "\(group) · \(body)"
+        case let (group?, nil):   return group
+        case let (nil, body?):    return body
+        case (nil, nil):          return nil
         }
     }
 

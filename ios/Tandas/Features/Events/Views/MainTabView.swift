@@ -257,6 +257,15 @@ struct MainTabView: View {
     /// Routing: ActionType → which screen / sheet to open.
     @MainActor
     private func handleInboxAction(_ action: UserAction) async {
+        // 14.2 — Inbox is cross-group; if the action's group isn't the
+        // currently active one, switch before opening the detail. This
+        // triggers AppState.activeGroupId.didSet which rebuilds tab
+        // coordinators, so by the time we set the route the home/fines
+        // contexts already match.
+        if app.activeGroup?.id != action.groupId {
+            app.activeGroupId = action.groupId
+        }
+
         switch action.actionType {
         case .finePending:
             if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
@@ -469,12 +478,14 @@ struct MainTabView: View {
         )
         inboxCoordinator = InboxCoordinator(
             userId: userId,
-            groupId: group.id,
-            userActionRepo: app.userActionRepo
+            groupId: nil,                   // 14.2 — cross-group inbox
+            userActionRepo: app.userActionRepo,
+            groupsRepo: app.groupsRepo
         )
         myFinesCoordinator = MyFinesCoordinator(
             userId: userId,
-            fineRepo: app.fineRepo
+            fineRepo: app.fineRepo,
+            groupsRepo: app.groupsRepo
         )
         rulesCoordinator = RulesCoordinator(
             group: group,

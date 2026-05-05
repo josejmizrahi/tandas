@@ -46,7 +46,12 @@ struct MyFinesView: View {
         if !coordinator.pending.isEmpty {
             section(title: "POR RESOLVER", count: coordinator.pending.count) {
                 ForEach(coordinator.pending) { fine in
-                    FineCard(fine: fine, ruleName: nil, eventTitle: nil) {
+                    FineCard(
+                        fine: fine,
+                        ruleName: nil,
+                        eventTitle: nil,
+                        groupName: coordinator.groupsById.count > 1 ? coordinator.groupName(for: fine) : nil
+                    ) {
                         onOpenFine(fine)
                     }
                 }
@@ -66,7 +71,12 @@ struct MyFinesView: View {
         if !coordinator.resolved.isEmpty {
             section(title: "HISTORIAL", count: coordinator.resolved.count) {
                 ForEach(coordinator.resolved) { fine in
-                    FineCard(fine: fine, ruleName: nil, eventTitle: nil) {
+                    FineCard(
+                        fine: fine,
+                        ruleName: nil,
+                        eventTitle: nil,
+                        groupName: coordinator.groupsById.count > 1 ? coordinator.groupName(for: fine) : nil
+                    ) {
                         onOpenFine(fine)
                     }
                 }
