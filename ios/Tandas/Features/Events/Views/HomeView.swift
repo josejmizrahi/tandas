@@ -444,14 +444,15 @@ struct HomeView: View {
                         .ruulTextStyle(RuulTypography.statSmall)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
-                VStack(spacing: RuulSpacing.s4) {
+                // Apple Invites pattern: hero anchors the eye, rest are
+                // compact rows so the screen breathes. Heavy EventCards
+                // here would compete with the hero for attention.
+                VStack(spacing: RuulSpacing.s2) {
                     ForEach(rest) { event in
-                        EventCard(
+                        EventRow(
                             event: event,
-                            myStatus: coordinator.myRSVPs[event.id]?.status,
-                            isHostedByMe: event.hostId == userId,
-                            attendeeAvatars: [],
-                            confirmedCount: 0
+                            groupName: nil,                                    // single-group context here
+                            myStatus: coordinator.myRSVPs[event.id]?.status
                         ) {
                             onOpenEvent(event)
                         }

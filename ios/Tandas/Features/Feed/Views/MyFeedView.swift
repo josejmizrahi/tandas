@@ -122,28 +122,12 @@ struct MyFeedView: View {
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: RuulSpacing.s4) {
-            ZStack {
-                Circle()
-                    .fill(Color.ruulAccentSubtle)
-                    .frame(width: 96, height: 96)
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 38, weight: .medium))
-                    .foregroundStyle(Color.ruulAccentPrimary)
-            }
-            VStack(spacing: RuulSpacing.s2) {
-                Text("Todo tranquilo por ahora")
-                    .ruulTextStyle(RuulTypography.title)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                Text("Cuando tus grupos creen eventos, los vas a ver acá juntos.")
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 280)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, RuulSpacing.s12)
+        EmptyStateView(
+            systemImage: "calendar.badge.clock",
+            title: "Todo tranquilo por ahora",
+            message: "Cuando alguno de tus grupos cree un evento, vas a verlo acá junto con los demás."
+        )
+        .padding(.top, RuulSpacing.s8)
     }
 
     private func errorBanner(_ message: String) -> some View {

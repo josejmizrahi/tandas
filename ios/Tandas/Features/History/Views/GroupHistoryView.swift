@@ -132,20 +132,14 @@ struct GroupHistoryView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: RuulSpacing.s3) {
-            Image(systemName: "clock.arrow.circlepath")
-                .ruulTextStyle(RuulTypography.title)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Text("Sin actividad todavía")
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-            Text("Cuando pasen cosas en el grupo (eventos, RSVPs, multas, votaciones) aparecerán acá.")
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, RuulSpacing.s8)
+        // Use the canonical EmptyStateView primitive — same shape as
+        // every other empty state in the app (consistency principle).
+        EmptyStateView(
+            systemImage: "clock.arrow.circlepath",
+            title: "Sin actividad todavía",
+            message: "Cuando pasen cosas en el grupo —eventos, RSVPs, multas, votaciones— aparecerán acá."
+        )
+        .padding(.top, RuulSpacing.s8)
     }
 
     private func errorBanner(_ message: String) -> some View {
