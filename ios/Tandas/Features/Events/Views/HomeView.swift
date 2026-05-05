@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var coordinator: HomeCoordinator
+    @Environment(AppState.self) private var app
     let userId: UUID
     var onCreateEvent: () -> Void
     var onOpenEvent: (Event) -> Void
@@ -18,6 +19,9 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.s8) {
                     header
+                    if app.groups.count > 1 {
+                        groupQuickSwitcher
+                    }
                     nextEventSection
                     upcomingListSection
                     pastEventsLink
@@ -91,6 +95,72 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// 14.4 — Group quick-switcher. Visible only when the user has 2+
+    /// groups. Renders a horizontal strip of pill chips; tap to switch
+    /// active group inline (no sheet). The full sheet still opens via
+    /// the group name button above for create/join entry points.
+    private var groupQuickSwitcher: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: RuulSpacing.s2) {
+                ForEach(app.groups) { group in
+                    groupChip(group)
+                }
+                manageGroupsChip
+            }
+            .padding(.horizontal, RuulSpacing.s5)
+        }
+        .padding(.horizontal, -RuulSpacing.s5)  // bleed to screen edge
+    }
+
+    private func groupChip(_ group: Group) -> some View {
+        let isActive = app.activeGroup?.id == group.id
+        return Button {
+            if !isActive {
+                app.activeGroupId = group.id
+            }
+        } label: {
+            Text(group.name)
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(isActive ? Color.ruulAccentPrimary : Color.ruulTextPrimary)
+                .lineLimit(1)
+                .padding(.horizontal, RuulSpacing.s4)
+                .padding(.vertical, RuulSpacing.s2)
+                .background(
+                    Capsule()
+                        .fill(isActive ? Color.ruulAccentSubtle : Color.ruulBackgroundElevated)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isActive ? Color.ruulAccentPrimary.opacity(0.4) : Color.ruulBorderSubtle,
+                            lineWidth: isActive ? 1.0 : 0.5
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(group.name)\(isActive ? ", grupo activo" : "")")
+    }
+
+    @ViewBuilder
+    private var manageGroupsChip: some View {
+        if let onSwitchGroup {
+            Button(action: onSwitchGroup) {
+                Image(systemName: "ellipsis")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .frame(width: 36, height: 32)
+                    .background(
+                        Capsule().fill(Color.ruulBackgroundElevated)
+                    )
+                    .overlay(
+                        Capsule().stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Más opciones de grupos")
+        }
     }
 
     @ViewBuilder
