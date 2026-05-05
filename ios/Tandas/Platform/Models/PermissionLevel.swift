@@ -15,6 +15,8 @@ public enum PermissionLevel: Codable, Sendable, Hashable {
     case supermajorityVote
 
     /// Only the host of the contextual event can perform the action.
+    /// Useful for actions like `closeEvents` where the actor is determined
+    /// by the resource being acted on.
     case host
 
     /// Only the treasurer (V2 role) can perform the action.

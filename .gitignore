@@ -90,3 +90,6 @@ ios/*.xcworkspace/
 *.xcuserstate
 *.xcuserdatad/
 ios/Tandas.local.xcconfig
+
+# Codegen tooling — Deno lockfile is regenerated on demand
+scripts/codegen/deno.lock
