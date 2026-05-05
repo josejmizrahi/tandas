@@ -76,6 +76,10 @@ struct HistoryItemPresentation {
             self.icon = "creditcard.and.123"
             self.title = "\(actor) pagó una multa"
             self.tone = .positive
+        case .fineReminderSent:
+            self.icon = "bell.badge"
+            self.title = "Recordatorio de multa pendiente"
+            self.tone = .warning
         case .appealCreated:
             self.icon = "scales.tighten"
             self.title = "\(actor) apeló una multa"

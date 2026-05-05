@@ -49,6 +49,8 @@ public enum SystemEventType: String, Codable, Sendable, Hashable, CaseIterable {
 
     case fineOfficialized        = "fineOfficialized"
     case finePaid                = "finePaid"
+    /// Cron emitted reminder for an unpaid fine at 3/7/14 day thresholds.
+    case fineReminderSent        = "fineReminderSent"
     case appealCreated           = "appealCreated"
     case appealResolved          = "appealResolved"
     /// (V1) Generic vote opened — emitted by `start_vote` RPC.
@@ -78,7 +80,7 @@ public enum SystemEventType: String, Codable, Sendable, Hashable, CaseIterable {
              .eventDescriptionMissing,
              .appealCreated, .appealResolved,
              .voteOpened, .voteCast, .voteResolved,
-             .fineOfficialized, .finePaid,
+             .fineOfficialized, .finePaid, .fineReminderSent,
              .eventCreated, .memberJoined, .memberLeft:
             return true
         case .checkInMissed,
