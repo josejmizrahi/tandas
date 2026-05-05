@@ -195,6 +195,7 @@ struct GovernanceConfigView: View {
         case .supermajorityVote: return "Votación 2/3"
         case .host:              return "Solo host"
         case .treasurer:         return "Tesorero"
+        case .unknown(let s):    return s
         }
     }
 

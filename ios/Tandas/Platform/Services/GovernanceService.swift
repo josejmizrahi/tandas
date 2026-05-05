@@ -37,7 +37,7 @@ public actor GovernanceService {
     ) -> GovernanceDecision {
         let level = group.effectiveGovernance.level(for: action)
         let decision = evaluate(level: level, member: member, in: group, context: context)
-        log.debug("canPerform action=\(action.rawValue, privacy: .public) level=\(level.rawValue, privacy: .public) decision=\(String(describing: decision), privacy: .public)")
+        log.debug("canPerform action=\(action.rawValue, privacy: .public) level=\(level.rawString, privacy: .public) decision=\(String(describing: decision), privacy: .public)")
         return decision
     }
 
@@ -89,6 +89,11 @@ public actor GovernanceService {
             // V2 — treasurer role exists in MemberRole but no UI assigns it
             // yet. Deny by default.
             return member.roles.contains(.treasurer) ? .allowed : .denied(reason: .notTreasurer)
+
+        case .unknown(let raw):
+            // Forward-compat: a future permission level was persisted that
+            // this client doesn't understand. Deny safely.
+            return .denied(reason: .unknownLevel(raw))
         }
     }
 }
@@ -121,5 +126,6 @@ public enum GovernanceDecision: Sendable, Hashable {
         case notTreasurer
         case inactiveMember
         case missingContext(String)
+        case unknownLevel(String)
     }
 }
