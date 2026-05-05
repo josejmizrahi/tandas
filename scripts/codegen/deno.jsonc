@@ -1,0 +1,20 @@
+{
+  // Local Deno config for the codegen tooling. Keeps lints/types consistent
+  // and pins task aliases used by Makefile.
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "useTabs": false,
+    "indentWidth": 2
+  },
+  "tasks": {
+    "gen": "deno run -A gen-types.ts",
+    "gen:check": "deno run -A gen-types.ts --check",
+    "gen:orphans": "deno run -A grep-orphans.ts",
+    "test": "deno test -A"
+  }
+}
