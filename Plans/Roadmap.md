@@ -245,10 +245,11 @@ funciona en la vida real, no solo en el simulador.
 
 **DoD**:
 - [ ] App live en App Store
-- [ ] 100 grupos creados orgánicamente (no de Jose o equipo)
+- [ ] 30–50 grupos creados orgánicamente (no de Jose o equipo) — número ajustado por D1 (iOS 26 exclusivo)
 - [ ] Funnel onboarding > 65% completion
 - [ ] Push notif delivery rate > 95%
 - [ ] 0 incidents Sev1 en producción 14 días seguidos
+- [ ] Web companion read-only live (D2)
 
 **Riesgos**:
 - App Store rechazo por OTP custom (Apple a veces empuja a Sign in
@@ -501,10 +502,20 @@ Features que aplican a todos los templates y aumentan retención
 
 ---
 
-## 5. Decisiones que tienes que tomar antes de Fase 0
+## 5. Decisiones — TOMADAS 2026-05-05
 
-Estas no son recomendaciones, son decisiones que dependen de info
-que no tengo. Cada una afecta el plan.
+Las 6 decisiones del §5 quedaron cerradas. Resumen:
+
+| # | Decisión | Impacto |
+|---|---|---|
+| D1 | **iOS 26 exclusivo** (no bajar) | Fase 1 target baja de 100 → 30–50 grupos |
+| D2 | **Web companion read-only en Fase 1** | +3 semanas Fase 1, abre canal Android |
+| D3 | **Tandas tracking-only en Fase 3**, payments diferido hasta PMF + consulta legal | Sin riesgo regulatorio early |
+| D4 | **OSS `platform/ruleEngine` en Fase 4** | Templates / módulos / UI quedan cerrados |
+| D5 | **Sentry (crashes) + PostHog (producto)** | Datadog deferred a Fase 5+ |
+| D6 | Co-Authored-By claude-flow: **visible en commits internos, removido en release tags públicos** | Cosmético |
+
+Detalle y razonamiento de cada una abajo.
 
 ### D1. iOS 26+ exclusivo o bajar a iOS 17/18
 
