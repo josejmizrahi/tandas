@@ -65,67 +65,39 @@
 
 ---
 
-## 2. Decisiones que necesito de vos antes de seguir
+## 2. Decisiones tomadas (delegadas por usuario 2026-05-04, "haslo como sea mejor para el proyecto, piensa a futuro")
 
-El prompt mismo (sección "Notas finales") da 3 puntos de recorte. Decidí cada uno:
+Razonamiento general: el prompt define ruul como **plataforma de autogobierno**. Recortar lo identitario (governance) o lo abstracto-correcto (Vote genérico, Modules) es deuda técnica que sale 5-10x más cara cuando madure el producto. Los recortes que sí aplican son los de scope refinement, no los arquitecturales.
 
-### Decisión A — Governance configurable
+### A — Governance configurable: **MANTENER**
+Es el USP del producto ("el grupo decide cómo se gobierna"). Hardcodear founder-edita es deshacer la promesa del producto. 1 semana invertida ahora, no se va a poder retro-fittear sin tocar cada acción mutable.
 
-**Mantener**: agregar `groups.governance jsonb` + `GovernanceService` + 6 PermissionLevels + `GovernanceConfigView` paso 6 + permission checks en cada acción mutable. ~1 semana extra.
+### B — History rica: **MANTENER, con scope V1 reducido**
+Timeline + filtros (miembro/tipo/fecha/recurso) ✓ V1.
+CSV export → V1.x (no bloquea ship; nice-to-have). Ahorra ~0.5d sin perder transparencia visible.
 
-**Recortar**: hardcoded "founder edita reglas + invita; any member crea votos; host cierra eventos". ~1 sem ahorro. Implica: cuando algún día quieras "votar para cambiar regla X" hay refactor.
+### C — Vote genérico: **MANTENER**
+Migrar `appeals → votes (vote_type)` cuando ya hay producción es 10x más caro que hacerlo en frío. La abstracción correcta vale los 4d ahora.
 
-→ **Elegí**: ☐ Mantener   ☐ Recortar
+### D — Module registry: **MANTENER, minimalista**
+ModuleRegistry como struct registry estático + 5 modules como structs sin sobreingeniería. ~1.5-2d (no 3d). Facilita Fase 2 sin construir framework hipotético.
 
-### Decisión B — History rica
+### E — Reorg folders: **HACER AL FINAL**
+Bloque 10 después de los bloques de código. Hacer reorg primero rompe imports innecesariamente y mete ruido en cada PR siguiente. Hacerlo último en su propio bloque es la PR más limpia.
 
-**Mantener**: `GroupHistoryView` + `HistoryTimelineView` + filtros (miembro/tipo/fecha/recurso) + `SystemEventDetailView` + CSV export. ~3 días.
+### F — Settings jsonb consolidado: **MANTENER**
+SoT único es no-negociable. Columnas duales divergen inevitablemente.
 
-**Recortar**: timeline simple sin filtros ni export. ~3 días ahorro. Implica: pierde transparencia (prompt dice "no es opcional").
+### G — Rule engine en Swift: **Interpretación 1**
+Tipos compartidos (Rule, RuleCondition, RuleConsequence, ConditionType, ConsequenceType, etc.) en Swift para previews + tests + decoders. Motor real en TS edge fns. Respeta Regla 6 del prompt ("100% servidor").
 
-→ **Elegí**: ☐ Mantener   ☐ Recortar
+### Decisiones extra (responden las 6 open questions)
 
-### Decisión C — Vote genérico
-
-**Mantener**: refactorizar `appeals + appeal_votes` → `votes + vote_casts` con `vote_type`. `start-vote/cast-vote/finalize-vote` edge fns genéricos. ~4 días.
-
-**Recortar**: dejar `appeals` hardcoded como está. ~4 días ahorro. Implica: `ruleChange/memberRemoval/fundWithdrawal` votes en V2 requieren rewrite.
-
-→ **Elegí**: ☐ Mantener   ☐ Recortar
-
-### Decisión D — Modules registry (no recorte del prompt, pero pregunta válida)
-
-**Mantener**: `ModuleRegistry` + 5 modules de V1 (BasicFines, RotatingHost, RSVP, CheckIn, AppealVoting) en Swift. ~3 días.
-
-**Recortar**: dejar V1 sin module abstraction; agregar cuando llegue Fase 2. ~3 días ahorro. Implica: en Fase 2 necesitás extraer modules de código existente (mantenible).
-
-→ **Elegí**: ☐ Mantener   ☐ Recortar
-
-### Decisión E — Reorg `Features/` → `Universal/` + `Templates/DinnerRecurring/Views/`
-
-Cosmético. ~1 día. Bajo riesgo de regresiones (renames + import updates). Mejora claridad arquitectural.
-
-→ **Elegí**: ☐ Hacer ahora   ☐ Posponer al final
-
-### Decisión F — Migration de `groups` flat → `settings jsonb`
-
-El prompt dice: `event_label, frequency_*, rotation_mode, grace_period_events, monthly_fine_cap_mxn` viven en `groups.settings jsonb`, no como columnas flat.
-
-**Mantener**: migrar columnas a `settings`. ~1 día. Backward compat via view que las proyecta.
-
-**Recortar**: dejar las columnas flat; aceptar que el `settings` jsonb propuesto es para futuras extensiones. ~1 día ahorro. Implica: divergencia respecto a Spec; un grupo tiene "settings flat" + "settings jsonb" = confuso.
-
-→ **Elegí**: ☐ Mantener   ☐ Recortar
-
-### Decisión G — Rule engine en Swift (Parte 3 del prompt)
-
-El prompt detalla `actor RuleEngine` + protocols Swift. Pero la Regla 6 del prompt dice "Rule engine 100% en servidor". Hoy el motor real corre en TS edge fns.
-
-**Interpretación 1**: las protocols Swift son tipos compartidos para tests + previews; lógica real queda en TS. Bajo costo.
-
-**Interpretación 2**: motor cliente Swift completo + cliente decide cuándo el server lo overrides. Viola Regla 6.
-
-→ **Voto**: Interpretación 1. Confirmar: ☐ OK   ☐ Distinto
+- **Branch strategy**: commits por bloque a `main`. Cada bloque DoD-verde (build + tests pasan). Branches separados solo para bloques que tocan migrations destructivas (drop columns) tras 2 semanas paridad.
+- **Tests existentes**: canon. No romper. `HappyPathTests.swift` deshabilitado se queda deshabilitado en V1; reescritura es V1.x.
+- **Rollout timing**: 2 semanas paridad mínimo. Aceptable para vos según indicaste prompt.
+- **Docs viva**: yo las escribo en cada bloque que corresponde. `Platform.md` post-bloques 1-5; `EventTypes.md/ConditionTypes.md/ConsequenceTypes.md` post-bloque 12; `TemplateGuide.md/ModuleGuide.md` post-bloque 5; `Governance.md` post-bloque 3.
+- **Infra status (APNs/AASA/Wassenger/QR_SECRET)**: pendiente confirmación tuya en momento de necesidad. No bloquean V1 — todos tienen stubs/fallback. Documentar follow-ups post-V1.
 
 ---
 
