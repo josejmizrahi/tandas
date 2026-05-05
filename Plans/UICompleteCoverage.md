@@ -158,11 +158,14 @@ Format: `[priority] surface — backend it covers — effort`
 
 ### P0 — Identity-defining gaps (build first)
 
-1. **EditRulesView + EditRuleSheet**
+1. ~~**EditRulesView + EditRuleSheet**~~ ✅ shipped 2026-05-05 (commits `b86876b..b07f6b8`)
    - Backend: `rules` table, `propose_rule` RPC, `governance.whoCanModifyRules`
    - Today: RulesView is read-only. Founders can't edit amounts, toggle, add. Killer for V1 daily use.
    - Effort: ~4-5h
    - DoD: Founder (or other based on governance) can toggle rule active, edit fine amount, add new rule from template, archive rule. Goes through GovernanceService gate.
+   - **Known follow-ups from V1 implementation:**
+     - **`RuleSummaryFormatter` unintegrated** (~1h, P3). Implemented in `Features/Rules/RuleSummaryFormatter.swift` but `EditRuleSheet`'s "CÓMO FUNCIONA" section currently shows `rule.description` as fallback because `GroupRule` does not carry `trigger` + `conditions` fields (only the platform `Rule` model does). Hydrate `GroupRule` with the decoded trigger + conditions on `RuleRepository.list(...)` so the formatter actually renders. Code is dead until then.
+     - **Spec process improvement**: the spec assumed `finalize_vote` archived rules on `rule_repeal` pass — it didn't. Migration 00026 was added mid-execution to close the gap. Future specs that touch existing RPCs/triggers should include a "Backend assumptions verified" section with concrete `grep`/SQL queries against the actual function bodies before approval.
 
 2. **GovernanceSettingsView**
    - Backend: `groups.governance` jsonb, `updateGovernance` repo method
