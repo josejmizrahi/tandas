@@ -1,0 +1,29 @@
+# Pinned list of token-contexts the orphan grep cares about.
+# A camelCase string literal triggers the orphan check only if it
+# appears within ORPHAN_PROXIMITY characters of one of these tokens
+# on the same logical line.
+#
+# Adding a context: only do it for a real new place where enum string
+# literals appear; not for every camelCase-adjacent column. PR review
+# rejects expansions without justification.
+
+# SQL contexts (supabase/migrations/*.sql)
+record_system_event(
+event_type
+'eventType'
+"eventType"
+condition_type
+'conditionType'
+consequence_type
+'consequenceType'
+trigger->>'eventType'
+
+# TypeScript contexts (supabase/functions/**/*.ts, excl. _shared/types/)
+event_type:
+eventType:
+condition_type:
+conditionType:
+consequence_type:
+consequenceType:
+emitSystemEvent(
+recordEvent(

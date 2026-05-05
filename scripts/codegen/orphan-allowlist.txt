@@ -1,0 +1,14 @@
+# Allowlist of camelCase string literals that are NOT enum values.
+#
+# Inclusion criteria (must hold for every entry; PR review rejects entries
+# that violate any of these):
+#   1. The string is provably not an enum value of any catalogued enum,
+#      now or in any planned future case.
+#   2. It originates from a different naming domain — Postgres column,
+#      RPC name, third-party SDK identifier, i18n key, etc.
+#   3. The entry includes a one-line comment naming the source domain.
+#
+# Format: one identifier per line, optionally followed by '#' and a comment.
+# Do not silence drift by adding entries without a citable origin.
+
+# (none yet — populated as needed during enum migrations)
