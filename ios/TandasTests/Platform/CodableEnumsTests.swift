@@ -17,4 +17,19 @@ final class CodableEnumsTests: XCTestCase {
             return
         }
     }
+
+    func testResourceTypeRoundTrip() throws {
+        for value in ResourceType.knownCases {
+            let data = try JSONEncoder().encode(value)
+            let decoded = try JSONDecoder().decode(ResourceType.self, from: data)
+            XCTAssertEqual(value, decoded)
+        }
+
+        let unknownData = #""futureResource""#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ResourceType.self, from: unknownData)
+        guard case .unknown(let s) = decoded, s == "futureResource" else {
+            XCTFail("expected .unknown(\"futureResource\"), got \(decoded)")
+            return
+        }
+    }
 }
