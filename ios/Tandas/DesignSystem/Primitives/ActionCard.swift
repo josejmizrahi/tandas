@@ -36,6 +36,7 @@ public struct ActionCard: View {
     }
 
     private let icon: String
+    private let meta: String?              // uppercase tracked label above title
     private let title: String
     private let subtitle: String?
     private let priority: Priority
@@ -44,6 +45,7 @@ public struct ActionCard: View {
 
     public init(
         icon: String,
+        meta: String? = nil,
         title: String,
         subtitle: String? = nil,
         priority: Priority = .medium,
@@ -51,6 +53,7 @@ public struct ActionCard: View {
         onTap: @escaping () -> Void
     ) {
         self.icon = icon
+        self.meta = meta
         self.title = title
         self.subtitle = subtitle
         self.priority = priority
@@ -95,6 +98,12 @@ public struct ActionCard: View {
 
     private var contentColumn: some View {
         VStack(alignment: .leading, spacing: 2) {
+            if let meta {
+                Text(meta.uppercased())
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextAccent)
+                    .lineLimit(1)
+            }
             HStack(spacing: RuulSpacing.s2) {
                 Circle()
                     .fill(priority.dotColor)
@@ -129,7 +138,9 @@ public struct ActionCard: View {
     }
 
     private var accessibilityLabel: String {
-        var parts = [title]
+        var parts: [String] = []
+        if let meta { parts.append(meta) }
+        parts.append(title)
         if let subtitle { parts.append(subtitle) }
         parts.append("Prioridad \(priority.label.lowercased())")
         if let timeRemaining { parts.append(timeRemaining) }
