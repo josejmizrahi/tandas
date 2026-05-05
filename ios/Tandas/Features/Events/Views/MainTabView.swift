@@ -21,6 +21,7 @@ struct MainTabView: View {
     // state survives tab switches. Built lazily once we have a session.
     @State private var inboxCoordinator: InboxCoordinator?
     @State private var myFinesCoordinator: MyFinesCoordinator?
+    @State private var profileCoordinator: ProfileCoordinator?
     @State private var rulesCoordinator: RulesCoordinator?
     @State private var fineDetailRoute: Fine?
     @State private var reviewProposedRoute: Event?
@@ -145,26 +146,40 @@ struct MainTabView: View {
         }
     }
 
+    @State private var myFinesRoute: Bool = false
+    @State private var historyRoute: Bool = false
+    @State private var settingsRoute: Bool = false
+
     @ViewBuilder
     private var profileTab: some View {
         NavigationStack {
-            if let coord = myFinesCoordinator {
-                MyFinesView(coordinator: coord) { fine in
-                    fineDetailRoute = fine
-                }
-                .toolbar {
-                    if app.activeGroup != nil {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            NavigationLink {
-                                groupHistoryScreen
-                            } label: {
-                                Image(systemName: "clock.arrow.circlepath")
-                            }
+            if let pCoord = profileCoordinator {
+                ProfileView(
+                    coordinator: pCoord,
+                    onOpenMyFines: { myFinesRoute = true },
+                    onOpenHistory: { historyRoute = true },
+                    onOpenSettings: { settingsRoute = true },
+                    onSignOut: {
+                        Task { try? await app.auth.signOut() }
+                    }
+                )
+                .navigationDestination(isPresented: $myFinesRoute) {
+                    if let fCoord = myFinesCoordinator {
+                        MyFinesView(coordinator: fCoord) { fine in
+                            fineDetailRoute = fine
                         }
                     }
                 }
+                .navigationDestination(isPresented: $historyRoute) {
+                    groupHistoryScreen
+                }
                 .navigationDestination(item: $fineDetailRoute) { fine in
                     fineDetailScreen(fine)
+                }
+                .sheet(isPresented: $settingsRoute) {
+                    SettingsSheet()
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
                 }
             } else {
                 ProfileTabStub()
@@ -486,6 +501,11 @@ struct MainTabView: View {
             userId: userId,
             fineRepo: app.fineRepo,
             groupsRepo: app.groupsRepo
+        )
+        profileCoordinator = ProfileCoordinator(
+            userId: userId,
+            profileRepo: app.profileRepo,
+            fineRepo: app.fineRepo
         )
         rulesCoordinator = RulesCoordinator(
             group: group,
