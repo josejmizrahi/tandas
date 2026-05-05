@@ -51,7 +51,13 @@ public enum SystemEventType: String, Codable, Sendable, Hashable, CaseIterable {
     case finePaid                = "finePaid"
     case appealCreated           = "appealCreated"
     case appealResolved          = "appealResolved"
+    /// (V1) Generic vote opened — emitted by `start_vote` RPC.
+    case voteOpened              = "voteOpened"
+    /// (V1) Member cast their ballot — emitted by `cast_vote` RPC.
     case voteCast                = "voteCast"
+    /// (V1) Generic vote finalized — emitted by `finalize_vote` RPC. Carries
+    /// `payload.resolution`: `passed` | `failed` | `quorum_failed`.
+    case voteResolved            = "voteResolved"
 
     // MARK: - Fund (Fase posterior)
 
@@ -70,7 +76,8 @@ public enum SystemEventType: String, Codable, Sendable, Hashable, CaseIterable {
         case .eventClosed, .checkInRecorded, .rsvpChangedSameDay,
              .hoursBeforeEvent, .rsvpSubmitted, .rsvpDeadlinePassed,
              .eventDescriptionMissing,
-             .appealCreated, .appealResolved, .voteCast,
+             .appealCreated, .appealResolved,
+             .voteOpened, .voteCast, .voteResolved,
              .fineOfficialized, .finePaid,
              .eventCreated, .memberJoined, .memberLeft:
             return true
