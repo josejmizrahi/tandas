@@ -84,7 +84,7 @@ EditRuleSheet (new, modal)
 
 **Modified:**
 - `ios/Tandas/Features/Rules/RulesView.swift` — adds the conditional pencil button in nav. No other changes.
-- `ios/Tandas/Features/Rules/RulesCoordinator.swift` — exposes `canEditRules: Bool` consulted by the pencil. Kept as a simple `@Published` flag.
+- `ios/Tandas/Features/Rules/RulesCoordinator.swift` — exposes `canEditRules: Bool` consulted by the pencil. Kept as a simple `@Observable` property (matches CLAUDE.md convention: viewmodels use `@Observable`, not `ObservableObject` / `@Published`).
 - `ios/Tandas/Platform/Repositories/RulesRepository.swift` — adds `setEnabled`, `setFlatFineAmount`, `pendingRepealVote`.
 - `ios/TandasTests/Platform/CodableEnumsTests.swift` — append rendering check for `ruleEnabledChanged` / `ruleAmountChanged` via `HistoryItemPresentation`.
 
