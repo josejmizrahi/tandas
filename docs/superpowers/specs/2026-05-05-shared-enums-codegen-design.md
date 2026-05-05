@@ -8,7 +8,21 @@
 
 ## Goal
 
-Eliminate manual sync between Swift and TypeScript for the 6 shared platform enums (`SystemEventType`, `ConditionType`, `ConsequenceType`, `ResourceType`, `GovernanceAction`, `PermissionLevel`). A hand-written Swift file is the single source; codegen produces a defensive Swift `Codable` extension plus a TypeScript union type. Pre-commit hook + CI prevent drift.
+Eliminate manual sync between Swift and TypeScript for the platform enums shared with the rule engine. A hand-written Swift file is the single source; codegen produces a defensive Swift `Codable` extension plus a TypeScript union type. Pre-commit hook + CI prevent drift.
+
+**V1 scope reduced from 6 to 5 enums on 2026-05-05** during plan-writing inspection: `GovernanceAction` violates the case-name-equals-raw-value invariant (case `modifyRules` maps to raw `"whoCanModifyRules"` persisted in `groups.governance` jsonb) and has no TypeScript consumer. It is deferred to its own spec — see "Out of Scope (V1)".
+
+The five in-scope enums:
+
+| Enum | TS consumer today? | Codable today? | Codegen produces |
+|---|---|---|---|
+| `SystemEventType` | yes (rule engine) | yes | `+Codable.swift` + TS |
+| `ConditionType` | yes (rule engine) | yes | `+Codable.swift` + TS |
+| `ConsequenceType` | yes (rule engine) | yes | `+Codable.swift` + TS |
+| `ResourceType` | no | yes | `+Codable.swift` + TS (forward-compat) |
+| `PermissionLevel` | no | yes | `+Codable.swift` + TS (forward-compat) |
+
+`ResourceType` and `PermissionLevel` get TS files even though no edge function imports them today. Marginal cost is zero (the codegen treats every in-scope source uniformly), and Fase 2 (`shared_resource`) and Fase 5 (custom rules) are likely consumers.
 
 ## Motivation
 
@@ -24,7 +38,7 @@ Rules referencing those triggers from seed data silently log "unknown" and skip 
 | # | Decision | Notes |
 |---|---|---|
 | 1 | **Swift is source.** TS is generated. | Matches existing convention in `platformTypes.ts` header comment. |
-| 2 | **V1 scope: the 6 enums only.** | Structs (`SystemEvent`, `Rule`, `RuleTrigger`, etc.) stay hand-maintained. Future Fase 0.5 may extend. |
+| 2 | **V1 scope: 5 enums.** `SystemEventType`, `ConditionType`, `ConsequenceType` (dual-source today), plus `ResourceType` and `PermissionLevel` (Swift-only today, TS generated for forward-compat). `GovernanceAction` deferred. | Structs (`SystemEvent`, `Rule`, `RuleTrigger`, etc.) stay hand-maintained. Future Fase 0.5 may extend. |
 | 3 | **Postgres remains permissive.** | No `CHECK` constraint, no `CREATE TYPE`. Codegen does not touch DB. Avoids migration coupling and stays compatible with future custom-rules-per-group (Fase 5). |
 | 4 | **Defensive Swift decoding via `case unknown(String)` bucket.** | Consumers must handle `.unknown` explicitly. Prevents crash when server emits a case the client predates. |
 | 5 | **CI gate via pre-commit (lefthook) + verifier job.** | Local hook auto-regenerates and stages output; CI fails the PR if output is stale. Generated files are committed. |
@@ -39,17 +53,17 @@ ios/Tandas/Platform/Models/              ios/Tandas/Platform/Models/Generated/
   ConditionType.swift            ─────►    ConditionType+Codable.swift
   ConsequenceType.swift          ─────►    ConsequenceType+Codable.swift
   ResourceType.swift             ─────►    ResourceType+Codable.swift
-  GovernanceAction.swift         ─────►    GovernanceAction+Codable.swift
   PermissionLevel.swift          ─────►    PermissionLevel+Codable.swift
                                          supabase/functions/_shared/types/
                                  ─────►    systemEventType.ts
                                  ─────►    conditionType.ts
                                  ─────►    consequenceType.ts
                                  ─────►    resourceType.ts
-                                 ─────►    governanceAction.ts
                                  ─────►    permissionLevel.ts
                                          scripts/codegen/  (tooling, ~150–200 LOC)
 ```
+
+`GovernanceAction.swift` stays untouched in V1 (deferred — see "Out of Scope").
 
 Hand-written source files contain only case names + `case unknown(String)`. Computed properties (e.g., `isImplementedInV1`) move to `*+Extensions.swift` files; the parser ignores them.
 
@@ -235,7 +249,7 @@ pre-commit:
   parallel: true
   commands:
     gen-types:
-      glob: "ios/Tandas/Platform/Models/{SystemEventType,ConditionType,ConsequenceType,ResourceType,GovernanceAction,PermissionLevel}.swift"
+      glob: "ios/Tandas/Platform/Models/*.swift"
       run: |
         deno run -A scripts/codegen/gen-types.ts
         git add ios/Tandas/Platform/Models/Generated supabase/functions/_shared/types
@@ -281,11 +295,11 @@ Runs in parallel with the existing `ios-ci.yml`. Expected runtime ~30s.
 
 ## Migration Plan
 
-Per-enum, in this order (least risk first): `PermissionLevel`, `GovernanceAction`, `ResourceType`, `ConsequenceType`, `ConditionType`, `SystemEventType`. One commit per enum.
+Per-enum, in this order (least risk first): `PermissionLevel`, `ResourceType`, `ConsequenceType`, `ConditionType`, `SystemEventType`. One commit per enum. `GovernanceAction` is out of scope (see "Out of Scope").
 
 For each enum:
 
-1. **Pre-flight check**: confirm every existing `case x = "y"` in the source file has `x == y` (case name equals raw value). All current 6 enums comply per inspection 2026-05-05, so removing the `= "..."` literals preserves wire format. If a future enum has a divergence, that's persisted state and needs a separate data-migration plan before this codegen migration.
+1. **Pre-flight check**: confirm every existing `case x = "y"` in the source file has `x == y` (case name equals raw value). All 5 in-scope enums comply per inspection 2026-05-05; `GovernanceAction` does not comply (`case modifyRules = "whoCanModifyRules"` etc.) and is deferred. If a future enum has a divergence, that's persisted state and needs a separate data-migration plan before this codegen migration.
 2. **Mutate source file**: drop `: String, CaseIterable`; drop `= "rawValue"` literals; add `case unknown(String)`; add `// @codegen:enum`; move computed props to `<Name>+Extensions.swift`.
 3. **Run `make gen`**: produces `Generated/<Name>+Codable.swift` and `_shared/types/<name>.ts`.
 4. **Migrate Swift call sites**: `EnumType.allCases` → `EnumType.knownCases`; `EnumType(rawValue: s)` → `EnumType.from(raw: s)`; `enum.rawValue` → `enum.rawString`. Exhaustive switches gain `case .unknown(let s):` or `@unknown default`. (Per 2026-05-05 inspection: only 2 `.allCases` sites for the 6 target enums, both on `SystemEventType` in `GroupHistoryView.swift`. No explicit `(rawValue:)` for the 6 enums; Codable handles the rest.)
@@ -385,7 +399,7 @@ Query a sample of production data:
 select id, governance from groups limit 20;
 ```
 
-Confirm every persisted value (`anyMember`, `founder`, `host`, `majorityVote`, etc.) appears in the post-migration `PermissionLevel.knownRawValues`. The Swift cases today use `case anyMember = "anyMember"` — codegen preserves rawString as the case name — so identity should hold. But verify before, not after. Same check applies to `GovernanceAction` if it's persisted anywhere.
+Confirm every persisted value (`anyMember`, `founder`, `host`, `majorityVote`, etc.) appears in the post-migration `PermissionLevel.knownRawValues`. The Swift cases today use `case anyMember = "anyMember"` — codegen preserves rawString as the case name — so identity should hold. But verify before, not after. The `governance` jsonb's *keys* (`whoCanModifyRules` etc., from `GovernanceAction`) are not affected because `GovernanceAction` is out of scope; only the *values* (which are `PermissionLevel`s) move under codegen.
 
 **Audit B — orphan rule triggers** (after the `SystemEventType` migration):
 
@@ -432,6 +446,7 @@ All audits are documented runbooks, not code; their output gets attached to the 
 
 - Postgres `CHECK` constraints or `CREATE TYPE` (kept permissive per Decision 3).
 - Codegen of structs/interfaces (`SystemEvent`, `Rule`, `RuleTrigger`, etc.) — possible Fase 0.5.
+- `GovernanceAction` enum. Excluded because (a) case names diverge from raw values (`case modifyRules = "whoCanModifyRules"`) and the raw values are persisted in `groups.governance` jsonb, so the codegen pattern would silently break authorization; (b) it has no TS consumer today, so there is no Swift↔TS drift to close. A separate spec will handle it if drift ever appears (likely never — the keys are set in migrations 00019 / 00021 and read by SQL helpers, all controllable). Do not delete `GovernanceAction.swift`; do not migrate it; the `@codegen:enum` marker MUST NOT be added to it.
 - Codegen of doc comments per case across to TS — would require parser to attribute comments to cases; not justified for V1.
 - TS-side runtime enforcement of `isSystemEventType` on inbound payloads — guard is exposed but call sites are not migrated.
 - Cross-repo deployment ordering safeguards (server-deploys-before-client). Defer to release-process documentation, not codegen scope.
@@ -441,5 +456,5 @@ All audits are documented runbooks, not code; their output gets attached to the 
 - All 6 enums migrated and CI green.
 - TS `_shared/platformTypes.ts` is free of inline enum string literals; all 6 enums imported from generated files.
 - A new case added to any enum's source file requires a single `make gen` to produce both the Swift Generated and TS files; CI fails if forgotten.
-- Zero decode-failure crashes from `SystemEventType` / `ConditionType` / `ConsequenceType` / `ResourceType` / `GovernanceAction` / `PermissionLevel` in TestFlight builds for two consecutive weeks after rollout.
+- Zero decode-failure crashes from `SystemEventType` / `ConditionType` / `ConsequenceType` / `ResourceType` / `PermissionLevel` in TestFlight builds for two consecutive weeks after rollout. (`GovernanceAction` excluded — out of V1 scope.)
 - Roadmap §3 Fase 0 item #1 marked done.
