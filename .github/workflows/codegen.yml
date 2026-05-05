@@ -1,0 +1,36 @@
+name: codegen
+
+on:
+  push:
+    branches: [main, ios-rewrite]
+  pull_request:
+
+jobs:
+  gen-types-clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Run codegen unit tests
+        working-directory: scripts/codegen
+        run: deno test -A
+
+      - name: Verify generated files are up to date
+        run: |
+          deno run -A scripts/codegen/gen-types.ts
+          if ! git diff --exit-code ios/Tandas/Platform/Models/Generated supabase/functions/_shared/types; then
+            echo "::error::Generated files out of date. Run 'make gen' and commit."
+            exit 1
+          fi
+
+      - name: Check for orphan enum string literals
+        run: deno run -A scripts/codegen/grep-orphans.ts
+        # Will succeed (no orphans) once Phase B migrations populate the catalog.
+        # During Phase A there are no generated types yet → catalog is empty →
+        # the run does report orphans. The CI step is allow-failure-style for
+        # this transitional period; flip to required after Phase B5 lands.
+        continue-on-error: true
