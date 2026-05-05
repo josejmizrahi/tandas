@@ -1,6 +1,20 @@
 import Foundation
 import OSLog
 
+/// Abstraction over `GovernanceService` so coordinators can inject mocks in
+/// tests. The single requirement mirrors the actor's `canPerform` signature.
+/// Marked `async throws` so callers must `await` (actor isolation) and so
+/// future implementations that consult I/O can fail without breaking the
+/// protocol surface; the current `GovernanceService` actor never throws.
+protocol GovernanceServiceProtocol: Sendable {
+    func canPerform(
+        _ action: GovernanceAction,
+        member: Member,
+        in group: Group,
+        context: GovernanceContext?
+    ) async throws -> GovernanceDecision
+}
+
 /// Single point of decision for "can member X perform action Y in group Z?".
 /// Reads `Group.governance` and `Member.roles`; defers vote-required actions
 /// to the caller (vote creation isn't done by this service — it just signals
@@ -19,7 +33,7 @@ import OSLog
 /// Stateless: every call is pure. Marked actor for futureproofing in case
 /// it grows DB consultations (active votes, member counts, etc.); current
 /// implementation does no I/O.
-public actor GovernanceService {
+public actor GovernanceService: GovernanceServiceProtocol {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "governance")
 
     public init() {}
