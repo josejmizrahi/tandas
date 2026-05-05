@@ -12,6 +12,11 @@ public protocol UserActionRepository: Actor {
     /// Marks an action as resolved. Idempotent — already-resolved actions
     /// are no-ops.
     func resolve(actionId: UUID) async throws
+
+    /// Cross-group pending counts: `{ groupId: count }`. Used by the home
+    /// quick-switcher to badge each group chip with the user's pending
+    /// load. RLS scopes to the caller's groups automatically.
+    func pendingCountsByGroup(userId: UUID) async throws -> [UUID: Int]
 }
 
 // MARK: - Mock
@@ -48,6 +53,14 @@ public actor MockUserActionRepository: UserActionRepository {
             createdAt: a.createdAt,
             resolvedAt: .now
         )
+    }
+
+    public func pendingCountsByGroup(userId: UUID) async throws -> [UUID: Int] {
+        var counts: [UUID: Int] = [:]
+        for action in actions where action.userId == userId && action.isPending {
+            counts[action.groupId, default: 0] += 1
+        }
+        return counts
     }
 
     private func priorityRank(_ p: ActionPriority) -> Int {
@@ -87,5 +100,24 @@ public actor LiveUserActionRepository: UserActionRepository {
             .update(["resolved_at": ISO8601DateFormatter().string(from: .now)])
             .eq("id", value: actionId.uuidString.lowercased())
             .execute()
+    }
+
+    public func pendingCountsByGroup(userId: UUID) async throws -> [UUID: Int] {
+        // Pull just the group_id column for pending rows; aggregate client-
+        // side. Cheaper round-trip than a custom RPC for V1's expected
+        // small action volume per user.
+        struct Row: Decodable { let group_id: UUID }
+        let rows: [Row] = try await client
+            .from("user_actions")
+            .select("group_id")
+            .eq("user_id", value: userId.uuidString.lowercased())
+            .is("resolved_at", value: nil)
+            .execute()
+            .value
+        var counts: [UUID: Int] = [:]
+        for row in rows {
+            counts[row.group_id, default: 0] += 1
+        }
+        return counts
     }
 }

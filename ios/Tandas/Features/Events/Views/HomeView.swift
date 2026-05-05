@@ -12,6 +12,7 @@ struct HomeView: View {
     var onOpenFeed: (() -> Void)? = nil
 
     @State private var showSettings: Bool = false
+    @State private var pendingCountsByGroup: [UUID: Int] = [:]
 
     var body: some View {
         ZStack {
@@ -35,6 +36,15 @@ struct HomeView: View {
             .overlay(alignment: .bottomTrailing) { fab }
         }
         .task { await coordinator.refresh() }
+        .task {
+            // 14.5 — load pending counts for badge per group chip.
+            // Re-runs on appear; cheap (one column SELECT).
+            if app.groups.count > 1, let userId = app.session?.user.id {
+                if let counts = try? await app.userActionRepo.pendingCountsByGroup(userId: userId) {
+                    pendingCountsByGroup = counts
+                }
+            }
+        }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .presentationDetents([.medium, .large])
@@ -116,31 +126,51 @@ struct HomeView: View {
 
     private func groupChip(_ group: Group) -> some View {
         let isActive = app.activeGroup?.id == group.id
+        let pendingCount = pendingCountsByGroup[group.id] ?? 0
         return Button {
             if !isActive {
                 app.activeGroupId = group.id
             }
         } label: {
-            Text(group.name)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(isActive ? Color.ruulAccentPrimary : Color.ruulTextPrimary)
-                .lineLimit(1)
-                .padding(.horizontal, RuulSpacing.s4)
-                .padding(.vertical, RuulSpacing.s2)
-                .background(
-                    Capsule()
-                        .fill(isActive ? Color.ruulAccentSubtle : Color.ruulBackgroundElevated)
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isActive ? Color.ruulAccentPrimary.opacity(0.4) : Color.ruulBorderSubtle,
-                            lineWidth: isActive ? 1.0 : 0.5
+            HStack(spacing: RuulSpacing.s2) {
+                Text(group.name)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(isActive ? Color.ruulAccentPrimary : Color.ruulTextPrimary)
+                    .lineLimit(1)
+                if pendingCount > 0 {
+                    Text(pendingCount > 99 ? "99+" : "\(pendingCount)")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(
+                            Capsule().fill(Color.ruulSemanticError)
                         )
-                )
+                }
+            }
+            .padding(.horizontal, RuulSpacing.s4)
+            .padding(.vertical, RuulSpacing.s2)
+            .background(
+                Capsule()
+                    .fill(isActive ? Color.ruulAccentSubtle : Color.ruulBackgroundElevated)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(
+                        isActive ? Color.ruulAccentPrimary.opacity(0.4) : Color.ruulBorderSubtle,
+                        lineWidth: isActive ? 1.0 : 0.5
+                    )
+            )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(group.name)\(isActive ? ", grupo activo" : "")")
+        .accessibilityLabel(accessibilityLabelFor(group: group, isActive: isActive, count: pendingCount))
+    }
+
+    private func accessibilityLabelFor(group: Group, isActive: Bool, count: Int) -> String {
+        var parts: [String] = [group.name]
+        if isActive { parts.append("grupo activo") }
+        if count > 0 { parts.append("\(count) pendientes") }
+        return parts.joined(separator: ", ")
     }
 
     @ViewBuilder
