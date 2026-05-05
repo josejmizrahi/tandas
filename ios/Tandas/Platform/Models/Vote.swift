@@ -46,6 +46,7 @@ public struct Vote: Identifiable, Sendable, Codable, Hashable {
 public enum VoteType: String, Codable, Sendable, Hashable, CaseIterable {
     case fineAppeal       = "fine_appeal"
     case ruleChange       = "rule_change"
+    case ruleRepeal       = "rule_repeal"
     case memberRemoval    = "member_removal"
     case fundWithdrawal   = "fund_withdrawal"
     case roleAssignment   = "role_assignment"
