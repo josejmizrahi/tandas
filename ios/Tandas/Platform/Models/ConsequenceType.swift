@@ -7,7 +7,8 @@ import Foundation
 /// `_shared/ruleEngine.ts`. Other cases throw `NotImplementedError`; rules
 /// using them are skipped with a structured log line so the architecture
 /// stays V4-ready without silently failing in production.
-public enum ConsequenceType: String, Codable, Sendable, Hashable, CaseIterable {
+// @codegen:enum
+public enum ConsequenceType: Codable, Sendable, Hashable {
 
     // MARK: - V1 (only `fine` is implemented)
 
@@ -16,24 +17,24 @@ public enum ConsequenceType: String, Codable, Sendable, Hashable, CaseIterable {
     /// officializing.
     /// Config (flat fee): `{ "amount": 200 }`
     /// Config (escalating): `{ "baseAmount": 200, "stepAmount": 50, "stepMinutes": 30 }`
-    case fine                    = "fine"
+    case fine
 
     // MARK: - Reserved for future phases
 
-    case loseTurn                = "loseTurn"
-    case losePriority            = "losePriority"
-    case serviceCompensation     = "serviceCompensation"
-    case blockTemporary          = "blockTemporary"
-    case reciprocity             = "reciprocity"
-    case logOnly                 = "logOnly"
-    case sumPoints               = "sumPoints"
-    case subtractPoints          = "subtractPoints"
-    case sendNotification        = "sendNotification"
-    case startVote               = "startVote"
-    case createEvent             = "createEvent"
-    case assignSlot              = "assignSlot"
-    case transferRight           = "transferRight"
-    case callWebhook             = "callWebhook"
+    case loseTurn
+    case losePriority
+    case serviceCompensation
+    case blockTemporary
+    case reciprocity
+    case logOnly
+    case sumPoints
+    case subtractPoints
+    case sendNotification
+    case startVote
+    case createEvent
+    case assignSlot
+    case transferRight
+    case callWebhook
 
-    public var isImplementedInV1: Bool { self == .fine }
+    case unknown(String)
 }

@@ -69,22 +69,8 @@ export type ConditionType =
   | "fundBalanceBelow"
   | "rotationPositionEquals";
 
-export type ConsequenceType =
-  | "fine"
-  | "loseTurn"
-  | "losePriority"
-  | "serviceCompensation"
-  | "blockTemporary"
-  | "reciprocity"
-  | "logOnly"
-  | "sumPoints"
-  | "subtractPoints"
-  | "sendNotification"
-  | "startVote"
-  | "createEvent"
-  | "assignSlot"
-  | "transferRight"
-  | "callWebhook";
+import { type ConsequenceType } from "./types/consequenceType.ts";
+export type { ConsequenceType };
 
 export interface RuleTrigger {
   eventType: SystemEventType;

@@ -32,4 +32,19 @@ final class CodableEnumsTests: XCTestCase {
             return
         }
     }
+
+    func testConsequenceTypeRoundTrip() throws {
+        for value in ConsequenceType.knownCases {
+            let data = try JSONEncoder().encode(value)
+            let decoded = try JSONDecoder().decode(ConsequenceType.self, from: data)
+            XCTAssertEqual(value, decoded)
+        }
+
+        let unknownData = #""futureConsequence""#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ConsequenceType.self, from: unknownData)
+        guard case .unknown(let s) = decoded, s == "futureConsequence" else {
+            XCTFail("expected .unknown(\"futureConsequence\"), got \(decoded)")
+            return
+        }
+    }
 }
