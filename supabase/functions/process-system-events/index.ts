@@ -18,14 +18,16 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { runRulesForEvent, type ConsequenceSink, type RuleContext } from "../_shared/ruleEngine.ts";
+import { getNow } from "../_shared/time.ts";
 import type { Rule, SystemEvent } from "../_shared/platformTypes.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BATCH_SIZE = parseInt(Deno.env.get("BATCH_SIZE") ?? "100");
 
-serve(async (_req) => {
+serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const now = getNow(req);
 
   // 1. Pull unprocessed events
   const { data: events, error: selErr } = await supabase
@@ -62,12 +64,12 @@ serve(async (_req) => {
 
       if (matchingRules.length === 0) {
         // No rules to run — still mark processed so we don't retry
-        await markProcessed(supabase, event.id);
+        await markProcessed(supabase, event.id, now);
         continue;
       }
 
       // 3. Build context
-      const context = await buildContext(supabase, event);
+      const context = await buildContext(supabase, event, now);
 
       // 4. Run engine
       const results = await runRulesForEvent(event, matchingRules as Rule[], context);
@@ -75,7 +77,7 @@ serve(async (_req) => {
       totalErrors += results.filter((r) => !r.success).length;
 
       // 5. Mark processed
-      await markProcessed(supabase, event.id, results);
+      await markProcessed(supabase, event.id, now, results);
     } catch (e) {
       console.error("[process-system-events] event failed", event.id, e);
       totalErrors += 1;
@@ -96,9 +98,10 @@ serve(async (_req) => {
 async function markProcessed(
   supabase: ReturnType<typeof createClient>,
   eventId: string,
+  now: Date,
   results?: unknown[],
 ) {
-  const update: Record<string, unknown> = { processed_at: new Date().toISOString() };
+  const update: Record<string, unknown> = { processed_at: now.toISOString() };
   if (results) {
     update.payload = { results };
   }
@@ -108,6 +111,7 @@ async function markProcessed(
 async function buildContext(
   supabase: ReturnType<typeof createClient>,
   event: SystemEvent,
+  now: Date,
 ): Promise<RuleContext> {
   // Members of the group
   const { data: members } = await supabase
@@ -168,7 +172,7 @@ async function buildContext(
 
   // Anti-tirania monthly fine cap context. Sprint 1c: fines table keys by
   // user_id (not member_id) so we count + index on user_id.
-  const monthStart = new Date();
+  const monthStart = new Date(now.getTime());
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
@@ -227,7 +231,7 @@ async function buildContext(
   };
 
   return {
-    now: new Date(),
+    now,
     members: (members ?? []).map((m) => ({ id: m.id, user_id: m.user_id, active: m.active })),
     resource,
     rsvps,
