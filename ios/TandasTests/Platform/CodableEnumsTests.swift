@@ -77,4 +77,40 @@ final class CodableEnumsTests: XCTestCase {
             return
         }
     }
+
+    // MARK: - History rendering for new SystemEventType cases (e266a16)
+
+    func testRuleEnabledChangedRenders() {
+        let event = SystemEvent.mock(type: .ruleEnabledChanged, occurredAt: Date())
+        let p = HistoryItemPresentation(event: event, memberName: "Alice")
+        XCTAssertEqual(p.icon, "switch.2")
+        XCTAssertEqual(p.title, "Alice cambió el estado de una regla")
+        XCTAssertEqual(p.tone, .neutral)
+    }
+
+    func testRuleAmountChangedRenders() {
+        let event = SystemEvent.mock(type: .ruleAmountChanged, occurredAt: Date())
+        let p = HistoryItemPresentation(event: event, memberName: "Alice")
+        XCTAssertEqual(p.icon, "pencil.line")
+        XCTAssertEqual(p.title, "Alice editó la multa de una regla")
+        XCTAssertEqual(p.tone, .neutral)
+    }
+}
+
+// MARK: - Test fixtures
+
+extension SystemEvent {
+    /// Minimal fixture for tests that only care about `eventType` + `occurredAt`.
+    static func mock(type: SystemEventType, occurredAt: Date) -> SystemEvent {
+        SystemEvent(
+            id: UUID(),
+            groupId: UUID(),
+            eventType: type,
+            resourceId: nil,
+            memberId: nil,
+            payload: .empty,
+            occurredAt: occurredAt,
+            processedAt: nil
+        )
+    }
 }
