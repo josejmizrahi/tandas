@@ -15,6 +15,26 @@
 -- verified and app code dual-writes are validated.
 
 -- =============================================================================
+-- 0. Drop legacy votes + RPCs from 00006_phase3_votes
+-- =============================================================================
+--
+-- Existing public.votes (from 00006) had a different schema: subject_type,
+-- subject_id, opens_at, threshold/quorum numeric, committee_only, result
+-- (jsonb). Zero rows in production, no FK references, no app consumers.
+-- The legacy RPCs (create_vote, close_vote, cast_ballot) operate on that
+-- shape and become orphans after we redefine the table.
+--
+-- Drop CASCADE clears the table + its policies + dependents in one shot.
+
+drop function if exists public.cast_ballot(uuid, uuid, text) cascade;
+drop function if exists public.close_vote(uuid) cascade;
+drop function if exists public.create_vote(uuid, text, uuid, text, text, jsonb) cascade;
+drop function if exists public.create_vote(uuid, text, uuid, text, text) cascade;
+drop function if exists public.create_vote cascade;
+drop table    if exists public.ballots cascade;
+drop table    if exists public.votes cascade;
+
+-- =============================================================================
 -- 1. votes — generic vote envelope
 -- =============================================================================
 
