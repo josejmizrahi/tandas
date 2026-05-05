@@ -1,0 +1,13 @@
+# Lefthook config — runs the codegen on commit so generated files stay
+# in sync with hand-written sources. Glob is intentionally wildcard;
+# the codegen filters by the @codegen:enum marker, so it's safe to
+# re-run on unrelated Swift edits (a no-op).
+
+pre-commit:
+  parallel: true
+  commands:
+    gen-types:
+      glob: "ios/Tandas/Platform/Models/*.swift"
+      run: |
+        deno run -A scripts/codegen/gen-types.ts
+        git add ios/Tandas/Platform/Models/Generated supabase/functions/_shared/types

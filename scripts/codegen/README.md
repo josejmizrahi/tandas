@@ -35,3 +35,12 @@ Edit `orphan-allowlist.txt`. Each entry needs a one-line comment explaining the 
 - Codegen of structs (only enums). 
 - Postgres CHECK constraints (kept permissive per spec Decision 3).
 - `GovernanceAction` (spec Out of Scope).
+
+## Setting up the pre-commit hook
+
+```sh
+brew install lefthook
+lefthook install
+```
+
+The hook runs `make gen` automatically on Swift edits in `ios/Tandas/Platform/Models/`. If you can't install lefthook, you must run `make gen` manually before committing — CI will fail otherwise.
