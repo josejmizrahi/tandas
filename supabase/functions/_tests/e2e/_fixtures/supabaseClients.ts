@@ -33,13 +33,15 @@ export function anonClient(): SupabaseClient {
 
 /**
  * Creates a confirmed test user via auth.admin and signs them in. Returns
- * both the user_id and a SupabaseClient authenticated as that user — use
- * the latter for any RPC call that needs auth.uid() to resolve.
+ * the user_id, an authenticated SupabaseClient, and the raw access_token
+ * JWT — use the latter to build a fresh user-scoped client (see
+ * `userClient` below) for RLS-sensitive negative tests where you want to
+ * make sure no admin context leaks in.
  */
 export async function createTestUser(args: {
   email: string;
   password: string;
-}): Promise<{ userId: string; client: SupabaseClient }> {
+}): Promise<{ userId: string; client: SupabaseClient; accessToken: string }> {
   const admin = adminClient();
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -52,16 +54,20 @@ export async function createTestUser(args: {
   }
   const userId = created.user!.id;
 
-  const userClient = anonClient();
-  const { error: signInErr } = await userClient.auth.signInWithPassword({
+  const authedClient = anonClient();
+  const { data: signInData, error: signInErr } = await authedClient.auth.signInWithPassword({
     email: args.email,
     password: args.password,
   });
   if (signInErr) {
     throw new Error(`createTestUser(${args.email}) signIn failed: ${signInErr.message}`);
   }
+  const accessToken = signInData.session?.access_token;
+  if (!accessToken) {
+    throw new Error(`createTestUser(${args.email}) signIn returned no session/access_token`);
+  }
 
-  return { userId, client: userClient };
+  return { userId, client: authedClient, accessToken };
 }
 
 /** Convenience: drops a user from auth (cleanup). */
@@ -69,4 +75,17 @@ export async function deleteTestUser(userId: string): Promise<void> {
   const admin = adminClient();
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) console.warn(`[e2e] deleteTestUser(${userId}) failed (best-effort): ${error.message}`);
+}
+
+/**
+ * Returns an anon-key SupabaseClient that forwards the given JWT as
+ * `Authorization: Bearer <jwt>`. Use for RLS tests where you want PostgREST
+ * to evaluate policies as that user — admin/service-role clients bypass
+ * RLS entirely and would mask policy bugs.
+ */
+export function userClient(accessToken: string): SupabaseClient {
+  return createClient(env.supabaseUrl, env.anonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }

@@ -22,6 +22,7 @@ export interface SeededMember {
   memberId: string;          // group_members.id
   email: string;
   client: SupabaseClient;     // authenticated as this user
+  accessToken: string;        // raw JWT — feed into userClient() for RLS tests
 }
 
 export interface SeededGroup {
@@ -54,12 +55,13 @@ export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
   for (const spec of opts.memberSpecs) {
     const email = `e2e-${runTag}-${spec.handle.toLowerCase()}@test.local`;
     const password = `pwd-${crypto.randomUUID()}`;
-    const { userId, client } = await createTestUser({ email, password });
+    const { userId, client, accessToken } = await createTestUser({ email, password });
     provisioned.push({
       handle: spec.handle,
       userId,
       email,
       client,
+      accessToken,
       memberId: "",   // filled in below
     });
   }
