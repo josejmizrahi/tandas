@@ -18,6 +18,11 @@ struct EventPatch: Sendable, Equatable {
 protocol EventRepository: Actor {
     func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event]
     func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event]
+    /// Cross-group feed: every active event the caller is a member of, future
+    /// + recent past, ordered by `starts_at` ascending. RLS on `events`
+    /// (`events_select` policy) handles the member-scope filter so no
+    /// explicit group filter is needed here.
+    func feedAcrossGroups(limit: Int) async throws -> [Event]
     func event(_ id: UUID) async throws -> Event
     func nextEvent(in groupId: UUID) async throws -> Event?
     func createEvent(_ draft: EventDraft, in groupId: UUID, isRecurringGenerated: Bool) async throws -> Event
@@ -49,6 +54,16 @@ actor MockEventRepository: EventRepository {
         events
             .filter { $0.groupId == groupId && ($0.status == .closed || $0.status == .cancelled || $0.startsAt < .now) }
             .sorted { $0.startsAt > $1.startsAt }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    func feedAcrossGroups(limit: Int) async throws -> [Event] {
+        if let err = nextFetchError { nextFetchError = nil; throw err }
+        let twoWeeksAgo = Date.now.addingTimeInterval(-14 * 86_400)
+        return events
+            .filter { $0.status.isActive && $0.startsAt >= twoWeeksAgo }
+            .sorted { $0.startsAt < $1.startsAt }
             .prefix(limit)
             .map { $0 }
     }
@@ -191,6 +206,26 @@ actor LiveEventRepository: EventRepository {
                 .eq("group_id", value: groupId.uuidString.lowercased())
                 .in("status", values: ["completed", "cancelled"])
                 .order("starts_at", ascending: false)
+                .limit(limit)
+                .execute()
+                .value
+        } catch {
+            throw EventError.fetchFailed(error.localizedDescription)
+        }
+    }
+
+    func feedAcrossGroups(limit: Int) async throws -> [Event] {
+        // No group_id filter — RLS `events_select` returns only events the
+        // caller is a member of. Pulls a 2-week window backward + all
+        // upcoming so the home feed has both context and forecast.
+        let twoWeeksAgo = Date.now.addingTimeInterval(-14 * 86_400)
+        do {
+            return try await client
+                .from("events")
+                .select("*")
+                .in("status", values: ["scheduled", "in_progress", "completed"])
+                .gte("starts_at", value: ISO8601DateFormatter().string(from: twoWeeksAgo))
+                .order("starts_at", ascending: true)
                 .limit(limit)
                 .execute()
                 .value

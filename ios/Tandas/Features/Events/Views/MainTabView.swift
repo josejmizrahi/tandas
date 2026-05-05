@@ -25,6 +25,7 @@ struct MainTabView: View {
     @State private var fineDetailRoute: Fine?
     @State private var reviewProposedRoute: Event?
     @State private var voteOnAppealRoute: AppealRouteContext?
+    @State private var feedRoute: Bool = false
 
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
     // points), create (new group from scratch), join (with invite code).
@@ -172,6 +173,22 @@ struct MainTabView: View {
     }
 
     @ViewBuilder
+    private var feedScreen: some View {
+        MyFeedView(
+            coordinator: MyFeedCoordinator(
+                eventRepo: app.eventRepo,
+                groupsRepo: app.groupsRepo
+            )
+        ) { event, group in
+            // Switch active group then open the event detail. The
+            // didSet on activeGroupId triggers coordinator rebuild.
+            app.activeGroupId = group.id
+            feedRoute = false
+            detailRoute = event
+        }
+    }
+
+    @ViewBuilder
     private var groupHistoryScreen: some View {
         if let group = app.activeGroup {
             GroupHistoryView(coordinator: GroupHistoryCoordinator(
@@ -276,7 +293,8 @@ struct MainTabView: View {
                     onOpenEvent: { event in detailRoute = event },
                     onOpenPastEvents: { pastRoute = true },
                     onSwitchGroup: { groupSwitcherPresented = true },
-                    onInvitePeople: { inviteSharePresented = true }
+                    onInvitePeople: { inviteSharePresented = true },
+                    onOpenFeed: { feedRoute = true }
                 )
                 .navigationDestination(isPresented: $pastRoute) {
                     if let group = app.activeGroup {
@@ -286,6 +304,9 @@ struct MainTabView: View {
                             eventRepo: app.eventRepo
                         ) { event in detailRoute = event }
                     }
+                }
+                .navigationDestination(isPresented: $feedRoute) {
+                    feedScreen
                 }
                 .fullScreenCover(item: $detailRoute) { event in
                     eventDetailScreen(event)

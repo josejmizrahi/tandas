@@ -8,6 +8,7 @@ struct HomeView: View {
     var onOpenPastEvents: () -> Void
     var onSwitchGroup: (() -> Void)? = nil
     var onInvitePeople: (() -> Void)? = nil
+    var onOpenFeed: (() -> Void)? = nil
 
     @State private var showSettings: Bool = false
 
@@ -50,6 +51,13 @@ struct HomeView: View {
             }
             Spacer()
             HStack(spacing: RuulSpacing.s2) {
+                if let onOpenFeed {
+                    headerIconButton(
+                        systemName: "calendar.badge.clock",
+                        accessibilityLabel: "Mis eventos en todos los grupos",
+                        action: onOpenFeed
+                    )
+                }
                 if let onInvitePeople {
                     headerIconButton(
                         systemName: "person.badge.plus",
