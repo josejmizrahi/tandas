@@ -5,6 +5,19 @@ enum RuleError: Error, Equatable {
     case rpcFailed(String)
 }
 
+public enum RulesRepositoryError: Error {
+    case notFlatFine
+    case rlsDenied
+    case other(Error)
+}
+
+/// Lightweight Vote projection for the pending-repeal badge.
+struct PendingVote: Sendable, Hashable {
+    let id: UUID
+    let referenceId: UUID
+    let closesAt: Date
+}
+
 struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
     let id: UUID
     let groupId: UUID
@@ -33,6 +46,17 @@ protocol RuleRepository: Actor {
     /// Read-only list of all rules for a group, ordered by creation time.
     /// Used by the Reglas tab to show the active group's rules.
     func list(groupId: UUID) async throws -> [GroupRule]
+
+    /// Toggles enabled/disabled. Postgres trigger emits ruleEnabledChanged.
+    func setEnabled(ruleId: UUID, enabled: Bool) async throws
+
+    /// Updates the flat fine amount. Caller must pre-validate via
+    /// `rule.fineShape == .flat`. Throws `.notFlatFine` if the rule is
+    /// escalating or unknown shape. Postgres trigger emits ruleAmountChanged.
+    func setFlatFineAmount(rule: GroupRule, amount: Int) async throws
+
+    /// Returns the open rule_repeal vote for a rule, if any.
+    func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote?
 }
 
 // MARK: - Mock
@@ -76,6 +100,22 @@ actor MockRuleRepository: RuleRepository {
     func list(groupId: UUID) async throws -> [GroupRule] {
         // Empty in mock — RulesView shows the empty state.
         []
+    }
+
+    private(set) var lastSetEnabled: (ruleId: UUID, enabled: Bool)?
+    private(set) var lastSetAmount: (ruleId: UUID, amount: Int)?
+
+    func setEnabled(ruleId: UUID, enabled: Bool) async throws {
+        lastSetEnabled = (ruleId, enabled)
+    }
+
+    func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
+        guard case .flat = rule.fineShape else { throw RulesRepositoryError.notFlatFine }
+        lastSetAmount = (rule.id, amount)
+    }
+
+    func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote? {
+        nil
     }
 }
 
@@ -148,5 +188,58 @@ actor LiveRuleRepository: RuleRepository {
             .order("created_at", ascending: true)
             .execute()
             .value
+    }
+
+    func setEnabled(ruleId: UUID, enabled: Bool) async throws {
+        struct Body: Encodable { let enabled: Bool }
+        do {
+            _ = try await client.from("rules")
+                .update(Body(enabled: enabled))
+                .eq("id", value: ruleId.uuidString.lowercased())
+                .execute()
+        } catch {
+            throw RulesRepositoryError.other(error)
+        }
+    }
+
+    func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
+        guard case .flat = rule.fineShape else { throw RulesRepositoryError.notFlatFine }
+
+        struct ConsequenceBody: Encodable {
+            let type: String
+            let config: ConfigBody
+        }
+        struct ConfigBody: Encodable { let amount: Int }
+        struct Body: Encodable { let consequences: [ConsequenceBody] }
+
+        do {
+            _ = try await client.from("rules")
+                .update(Body(consequences: [
+                    ConsequenceBody(type: "fine", config: ConfigBody(amount: amount))
+                ]))
+                .eq("id", value: rule.id.uuidString.lowercased())
+                .execute()
+        } catch {
+            throw RulesRepositoryError.other(error)
+        }
+    }
+
+    func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote? {
+        struct Row: Decodable {
+            let id: UUID
+            let reference_id: UUID
+            let closes_at: Date
+        }
+        let rows: [Row] = try await client.from("votes")
+            .select("id, reference_id, closes_at")
+            .eq("group_id", value: groupId.uuidString.lowercased())
+            .eq("vote_type", value: "rule_repeal")
+            .eq("reference_id", value: ruleId.uuidString.lowercased())
+            .eq("status", value: "open")
+            .limit(1)
+            .execute()
+            .value
+        guard let row = rows.first else { return nil }
+        return PendingVote(id: row.id, referenceId: row.reference_id, closesAt: row.closes_at)
     }
 }
