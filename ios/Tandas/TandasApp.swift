@@ -22,6 +22,8 @@ struct TandasApp: App {
             let groups = MockGroupsRepository()
             let invites = MockInviteRepository()
             let rules = MockRuleRepository()
+            let votes = MockVoteRepository()
+            let governance = GovernanceService()
             let otp = MockOTPService()
             let events = MockEventRepository()
             let rsvps = MockRSVPRepository()
@@ -38,6 +40,8 @@ struct TandasApp: App {
                 groupsRepo: groups,
                 inviteRepo: invites,
                 ruleRepo: rules,
+                voteRepo: votes,
+                governance: governance,
                 otp: otp,
                 eventRepo: events,
                 rsvpRepo: rsvps,
@@ -58,6 +62,8 @@ struct TandasApp: App {
             let groups = LiveGroupsRepository(client: client)
             let invites = LiveInviteRepository(client: client)
             let rules = LiveRuleRepository(client: client)
+            let votes = LiveVoteRepository(client: client)
+            let governance = GovernanceService()
             let otp = LiveOTPService(client: client)
             let events = LiveEventRepository(client: client)
             let rsvps = LiveRSVPRepository(client: client)
@@ -74,6 +80,8 @@ struct TandasApp: App {
                 groupsRepo: groups,
                 inviteRepo: invites,
                 ruleRepo: rules,
+                voteRepo: votes,
+                governance: governance,
                 otp: otp,
                 eventRepo: events,
                 rsvpRepo: rsvps,

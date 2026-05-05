@@ -16,16 +16,13 @@ struct EditRulesView: View {
         .navigationTitle("Editar reglas")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $sheetRule) { rule in
-            // EditRuleSheet is implemented in C3. For C2, we just need
-            // a placeholder navigation that doesn't crash. C3 will
-            // replace this with the real sheet.
             NavigationStack {
-                Text("EditRuleSheet placeholder for: \(rule.title)")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancelar") { sheetRule = nil }
-                        }
-                    }
+                EditRuleSheet(
+                    rule: rule,
+                    pending: coordinator.pendingVotes[rule.id],
+                    coordinator: coordinator,
+                    onDismiss: { sheetRule = nil }
+                )
             }
         }
     }

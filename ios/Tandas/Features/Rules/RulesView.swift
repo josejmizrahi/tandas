@@ -2,10 +2,16 @@ import SwiftUI
 
 /// Read-only list of the active group's rules. Replaces RulesTabStub. Each
 /// rule shows its name, description, and fine amount badge. Inactive /
-/// disabled rules render dimmed. Editing comes in a later sprint
-/// (visual rule builder).
+/// disabled rules render dimmed. The trailing toolbar pencil is visible
+/// iff `coordinator.canEditRules` (governance check passes for
+/// `.modifyRules`); tapping it pushes `EditRulesView` with a fresh
+/// `EditRulesCoordinator` built from the same dependencies.
 struct RulesView: View {
     @Bindable var coordinator: RulesCoordinator
+    /// `VoteRepository` is needed by `EditRulesCoordinator.openRepealVote`.
+    /// `RulesCoordinator` itself doesn't use it, so the view holds it
+    /// directly to avoid leaking the dependency into the read-side coord.
+    let voteRepo: any VoteRepository
 
     var body: some View {
         ZStack {
@@ -40,6 +46,32 @@ struct RulesView: View {
         .task { await coordinator.refresh() }
         .navigationTitle("Reglas")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if coordinator.canEditRules {
+                    NavigationLink {
+                        EditRulesView(coordinator: makeEditCoordinator())
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .accessibilityLabel("Editar reglas")
+                }
+            }
+        }
+    }
+
+    /// Builds a fresh `EditRulesCoordinator` reusing the read-side coord's
+    /// dependencies plus the locally-held `voteRepo`. Constructed lazily so
+    /// the navigation destination only spins one up when the user taps the
+    /// pencil.
+    private func makeEditCoordinator() -> EditRulesCoordinator {
+        EditRulesCoordinator(
+            group: coordinator.group,
+            currentMember: coordinator.currentMember,
+            governance: coordinator.governance,
+            ruleRepo: coordinator.ruleRepo,
+            voteRepo: voteRepo
+        )
     }
 
     private var header: some View {

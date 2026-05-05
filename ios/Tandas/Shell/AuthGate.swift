@@ -46,6 +46,8 @@ final class AppState {
     let groupsRepo: any GroupsRepository
     let inviteRepo: any InviteRepository
     let ruleRepo: any RuleRepository
+    let voteRepo: any VoteRepository
+    let governance: any GovernanceServiceProtocol
     let otp: any OTPService
 
     // Event layer
@@ -78,6 +80,8 @@ final class AppState {
         groupsRepo: any GroupsRepository,
         inviteRepo: any InviteRepository,
         ruleRepo: any RuleRepository,
+        voteRepo: any VoteRepository,
+        governance: any GovernanceServiceProtocol,
         otp: any OTPService,
         eventRepo: any EventRepository,
         rsvpRepo: any RSVPRepository,
@@ -97,6 +101,8 @@ final class AppState {
         self.groupsRepo = groupsRepo
         self.inviteRepo = inviteRepo
         self.ruleRepo = ruleRepo
+        self.voteRepo = voteRepo
+        self.governance = governance
         self.otp = otp
         self.eventRepo = eventRepo
         self.rsvpRepo = rsvpRepo

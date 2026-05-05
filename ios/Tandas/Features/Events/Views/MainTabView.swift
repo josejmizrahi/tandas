@@ -111,7 +111,7 @@ struct MainTabView: View {
     private var rulesTab: some View {
         NavigationStack {
             if let coord = rulesCoordinator {
-                RulesView(coordinator: coord)
+                RulesView(coordinator: coord, voteRepo: app.voteRepo)
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -507,11 +507,33 @@ struct MainTabView: View {
             profileRepo: app.profileRepo,
             fineRepo: app.fineRepo
         )
+        // Load member directory before RulesCoordinator so we can hand it
+        // the current actor's `Member` row for the governance check.
+        await refreshMemberDirectory(for: group.id)
+        let currentMember = memberDirectory[userId]?.member
+            ?? Self.fallbackMember(userId: userId, groupId: group.id)
         rulesCoordinator = RulesCoordinator(
             group: group,
+            currentMember: currentMember,
+            governance: app.governance,
             ruleRepo: app.ruleRepo
         )
-        await refreshMemberDirectory(for: group.id)
+    }
+
+    /// Synthetic inactive member used when the directory hasn't surfaced
+    /// the current user yet (anon sessions, just-joined races). Forces the
+    /// fail-closed governance gate to deny — the pencil stays hidden until
+    /// the next directory refresh promotes the row.
+    private static func fallbackMember(userId: UUID, groupId: UUID) -> Member {
+        Member(
+            id: UUID(),
+            groupId: groupId,
+            userId: userId,
+            role: "member",
+            roles: [.member],
+            active: false,
+            joinedAt: .now
+        )
     }
 
     /// Fetch member+profile pairs once and cache by userId. Refresh whenever
