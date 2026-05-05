@@ -20,9 +20,6 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.s8) {
                     header
-                    if app.groups.count > 1 {
-                        groupQuickSwitcher
-                    }
                     nextEventSection
                     upcomingListSection
                     pastEventsLink
@@ -65,13 +62,9 @@ struct HomeView: View {
             }
             Spacer()
             HStack(spacing: RuulSpacing.s2) {
-                if let onOpenFeed {
-                    headerIconButton(
-                        systemName: "calendar.badge.clock",
-                        accessibilityLabel: "Mis eventos en todos los grupos",
-                        action: onOpenFeed
-                    )
-                }
+                // Calendar icon removed: redundant with HomeView itself
+                // (this view IS events). Cross-group feed now lives inside
+                // the group Menu below ("Ver todos mis eventos").
                 if let onInvitePeople {
                     headerIconButton(
                         systemName: "person.badge.plus",
@@ -107,115 +100,73 @@ struct HomeView: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    /// 14.4 — Group quick-switcher. Visible only when the user has 2+
-    /// groups. Renders a horizontal strip of pill chips; tap to switch
-    /// active group inline (no sheet). The full sheet still opens via
-    /// the group name button above for create/join entry points.
-    private var groupQuickSwitcher: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: RuulSpacing.s2) {
-                ForEach(app.groups) { group in
-                    groupChip(group)
-                }
-                manageGroupsChip
-            }
-            .padding(.horizontal, RuulSpacing.s5)
-        }
-        .padding(.horizontal, -RuulSpacing.s5)  // bleed to screen edge
-    }
-
-    private func groupChip(_ group: Group) -> some View {
-        let isActive = app.activeGroup?.id == group.id
-        let pendingCount = pendingCountsByGroup[group.id] ?? 0
-        return Button {
-            if !isActive {
-                app.activeGroupId = group.id
-            }
-        } label: {
-            HStack(spacing: RuulSpacing.s2) {
-                Text(group.name)
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(isActive ? Color.ruulAccentPrimary : Color.ruulTextPrimary)
-                    .lineLimit(1)
-                if pendingCount > 0 {
-                    Text(pendingCount > 99 ? "99+" : "\(pendingCount)")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(
-                            Capsule().fill(Color.ruulSemanticError)
-                        )
-                }
-            }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s2)
-            .background(
-                Capsule()
-                    .fill(isActive ? Color.ruulAccentSubtle : Color.ruulBackgroundElevated)
-            )
-            .overlay(
-                Capsule()
-                    .stroke(
-                        isActive ? Color.ruulAccentPrimary.opacity(0.4) : Color.ruulBorderSubtle,
-                        lineWidth: isActive ? 1.0 : 0.5
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabelFor(group: group, isActive: isActive, count: pendingCount))
-    }
-
-    private func accessibilityLabelFor(group: Group, isActive: Bool, count: Int) -> String {
-        var parts: [String] = [group.name]
-        if isActive { parts.append("grupo activo") }
-        if count > 0 { parts.append("\(count) pendientes") }
-        return parts.joined(separator: ", ")
-    }
-
-    @ViewBuilder
-    private var manageGroupsChip: some View {
-        if let onSwitchGroup {
-            Button(action: onSwitchGroup) {
-                Image(systemName: "ellipsis")
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .frame(width: 36, height: 32)
-                    .background(
-                        Capsule().fill(Color.ruulBackgroundElevated)
-                    )
-                    .overlay(
-                        Capsule().stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Más opciones de grupos")
-        }
-    }
-
+    /// Group context selector — single source of truth for switching groups,
+    /// seeing pendings per group, accessing the cross-group feed, and
+    /// managing groups (create/join). Replaces the previous chip strip and
+    /// header calendar icon (both were redundant with this Menu).
+    ///
+    /// iOS-native pattern: tap the group name (with chevron) → contextual
+    /// menu floats from the tap point. Same affordance Calendar.app uses
+    /// for its calendar selector and Mail.app for mailboxes.
     @ViewBuilder
     private var groupNameLabel: some View {
-        if let onSwitchGroup {
-            Button(action: onSwitchGroup) {
-                HStack(alignment: .center, spacing: RuulSpacing.s2) {
-                    Text(coordinator.group.name)
-                        .ruulTextStyle(RuulTypography.displayMedium)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+        Menu {
+            // Switch between groups. Active group has a checkmark; pending
+            // count appended inline so users see at a glance which group
+            // has activity waiting.
+            ForEach(app.groups) { group in
+                Button {
+                    if app.activeGroup?.id != group.id {
+                        app.activeGroupId = group.id
+                    }
+                } label: {
+                    let count = pendingCountsByGroup[group.id] ?? 0
+                    let display = count > 0 ? "\(group.name) · \(count)" : group.name
+                    if app.activeGroup?.id == group.id {
+                        Label(display, systemImage: "checkmark")
+                    } else {
+                        Text(display)
+                    }
+                }
+            }
+
+            if app.groups.count > 1, let onOpenFeed {
+                Divider()
+                Button(action: onOpenFeed) {
+                    Label("Ver todos mis eventos", systemImage: "calendar.badge.clock")
+                }
+            }
+
+            if let onSwitchGroup {
+                Divider()
+                Button(action: onSwitchGroup) {
+                    Label("Administrar grupos", systemImage: "person.2.gobackward")
+                }
+            }
+        } label: {
+            HStack(alignment: .center, spacing: RuulSpacing.s2) {
+                Text(coordinator.group.name)
+                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                if menuShouldShowChevron {
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Cambiar de grupo")
-        } else {
-            Text(coordinator.group.name)
-                .ruulTextStyle(RuulTypography.displayMedium)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .lineLimit(2)
+            .contentShape(Rectangle())
         }
+        .menuStyle(.borderlessButton)
+        .accessibilityLabel("Cambiar de grupo")
+    }
+
+    /// Hide the chevron when there's nothing for the menu to do (single
+    /// group + no manage/feed callbacks). In practice MainTabView always
+    /// provides the callbacks so this is mostly defensive.
+    private var menuShouldShowChevron: Bool {
+        app.groups.count > 1 || onSwitchGroup != nil || onOpenFeed != nil
     }
 
     private var greeting: String {
