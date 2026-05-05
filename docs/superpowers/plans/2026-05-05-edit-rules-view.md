@@ -2105,7 +2105,43 @@ struct EditRuleSheet: View {
 extension GroupRule: Identifiable {}
 ```
 
-(If `GroupRule` already conforms to `Identifiable`, drop the extension. Likewise for the `start_vote` integration: the simplest path is to inject a `VotesRepository` into `EditRulesCoordinator` and call its `startVote(.ruleRepeal(ruleId:))`. The `openRepealVote` stub above is intentionally minimal so this task ships UI; vote-open wiring is its own micro-step inside this same task — add it before commit if `VotesRepository` is already present, otherwise document as Task C3a follow-up.)
+(If `GroupRule` already conforms to `Identifiable`, drop the extension.)
+
+**Wire `openRepealVote` into `EditRulesCoordinator`**: open `ios/Tandas/Features/Rules/EditRulesCoordinator.swift` (created in Task B3) and append this method before the closing brace of the class:
+
+```swift
+    /// Opens a rule_repeal vote via VoteRepository. The vote machinery
+    /// emits voteOpened immediately; close_vote (cron-driven) handles the
+    /// archive step when the vote resolves passed.
+    func openRepealVote(rule: GroupRule) async {
+        do {
+            _ = try await voteRepo.startVote(
+                groupId: group.id,
+                voteType: .ruleRepeal,
+                referenceId: rule.id,
+                title: "Archivar: \(rule.title)",
+                description: nil,
+                payload: [:]
+            )
+            await refresh()
+        } catch {
+            log.warning("startVote failed: \(error.localizedDescription)")
+            self.error = mapMutationError(error)
+        }
+    }
+```
+
+Add the dependency to the coordinator's init in Task B3:
+```swift
+private let voteRepo: any VoteRepository
+// in init:
+//   voteRepo: any VoteRepository,
+//   self.voteRepo = voteRepo
+```
+
+If `VoteType.ruleRepeal` is not yet a case, add it to the `VoteType` enum source. The `votes.vote_type` column is text and migration 00023 already accepts the literal `'rule_repeal'` (the database side has no constraint to update). If `VoteType` lives under the `@codegen:enum` marker, run `make gen` after editing the source. If it's a hand-maintained enum, add the case directly and update any exhaustive switches surfaced by the compiler.
+
+The call sites that construct `EditRulesCoordinator` (in Task C3 step 3, the `makeEditCoordinator()` helper inside `RulesView`) must now also pass a `VoteRepository` instance — typically pulled from the same `AppShell` that already holds `RuleRepository`.
 
 - [ ] **Step 2: Modify `RulesCoordinator.swift` to expose `canEditRules`**
 
