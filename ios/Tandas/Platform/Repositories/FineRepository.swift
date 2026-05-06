@@ -36,6 +36,11 @@ public protocol FineRepository: Actor {
 public actor MockFineRepository: FineRepository {
     public private(set) var fines: [Fine] = []
 
+    /// Test hook: when true, the next call to `issueManual` throws and resets.
+    private var throwOnIssueManual: Bool = false
+
+    public func setThrowOnIssueManual(_ value: Bool) { throwOnIssueManual = value }
+
     public init(seed: [Fine] = []) { self.fines = seed }
 
     public func myFines(userId: UUID) async throws -> [Fine] {
@@ -85,6 +90,10 @@ public actor MockFineRepository: FineRepository {
         reason: String,
         eventId: UUID?
     ) async throws -> Fine {
+        if throwOnIssueManual {
+            throwOnIssueManual = false
+            throw NSError(domain: "MockFineRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "admin only"])
+        }
         let fine = Fine(
             id: UUID(),
             groupId: groupId,
