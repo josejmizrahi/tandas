@@ -77,6 +77,7 @@ struct SystemEventDetailView: View {
         case .appealCreated:  return "Apelación abierta"
         case .appealResolved: return "Apelación resuelta"
         case .fineOfficialized: return "Multa oficializada"
+        case .fineVoided:     return "Multa anulada"
         case .finePaid:       return "Multa pagada"
         case .checkInRecorded: return "Check-in"
         default: return event.eventType.rawString
