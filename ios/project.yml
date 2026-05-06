@@ -28,6 +28,11 @@ settings:
     TANDAS_SUPABASE_URL: $(inherited)
     TANDAS_SUPABASE_ANON_KEY: $(inherited)
     SENTRY_DSN: $(inherited)
+  configs:
+    Debug:
+      DEBUG_INFORMATION_FORMAT: dwarf
+    Release:
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
 packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
