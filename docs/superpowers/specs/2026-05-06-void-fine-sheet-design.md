@@ -39,7 +39,11 @@ Per the spec-process-improvement note, this section documents what was checked a
 1. Status guard: reject if `status NOT IN ('proposed','officialized')`.
 2. Reason guard: reject if `length(coalesce(p_reason,'')) < 2`.
 3. Emit `user_actions(action_type='fineVoided', priority='normal')` for the fined user.
-4. Emit `record_system_event(group_id, 'fineVoided', fine.id, ...)` for audit.
+4. Emit `record_system_event(group_id, 'fineVoided', fine.id, ...)` for audit. Payload includes `voided_by_user_id = auth.uid()` so multi-admin V2 has attribution baked in (free now, ugly to backfill later).
+
+**Side-effect: `fine_review_periods` orphan (verified non-blocking).** When a `proposed` fine is voided during the 24h grace window, the row in `fine_review_periods` for that event keeps `officialized_at IS NULL` forever (the void doesn't touch it). Audit confirmed no consumer cares: only references are (a) `fine_review_periods_unexpired_idx` partial index in `00014:241-243` which is perf-only, and (b) `officialize_fine` in `00016:241-245` which only writes. No cron job, no iOS query, no edge fn reads `WHERE officialized_at IS NULL` for branching logic. Documenting here so a future indexer of this table knows to expect orphans from voids.
+
+**Self-void edge case (V1 documented limitation).** The `!coordinator.isMine` gate in the `actionFooter` prevents an admin from voiding their own fine via the UI. With single-admin-per-group in V1, this is undefined behaviour — the admin would have to be told to use a workaround. V2 multi-admin will require a flow where another admin is solicited; not in scope.
 
 The trigger is unchanged. The `void_fine` body becomes the single source of truth for "fine got voided → notify + record". This is consistent with how `issue_manual_fine` post-00028 inserts directly with `status='officialized'` and lets the trigger emit `finePending`.
 
@@ -127,7 +131,11 @@ begin
     'fineVoided',
     f.id,
     null,
-    jsonb_build_object('amount', f.amount, 'reason', p_reason)
+    jsonb_build_object(
+      'amount', f.amount,
+      'reason', p_reason,
+      'voided_by_user_id', uid
+    )
   );
 
   return f;
@@ -490,7 +498,7 @@ Error rendering: `Text(error)` with `RuulTypography.caption` + `Color.ruulSemant
 
 **Integration tests (deno, local-only):** optional. `Tests/Edge/void_fine_test.ts`:
 
-- Happy path: status='voided', waived=true, waived_reason set, user_action(fineVoided) row exists, system_event(fineVoided) row exists.
+- Happy path: status='voided', waived=true, waived_reason set, user_action(fineVoided) row exists, system_event(fineVoided) row exists with payload containing `voided_by_user_id` matching auth.uid().
 - Non-admin rejected.
 - Status guard rejects paid/voided/in_appeal.
 - Reason guard rejects null/empty/single-char.
