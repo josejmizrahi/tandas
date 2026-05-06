@@ -173,11 +173,11 @@ Format: `[priority] surface — backend it covers — effort`
    - Effort: ~2-3h
    - DoD: Linked from RulesView and from ProfileView/Group settings. Same form as `GovernanceConfigView` but for an existing group. Triggers a vote when whoCanModifyGovernance != founder.
 
-3. **AddManualFineSheet** (host action)
+3. ~~**AddManualFineSheet**~~ ✅ shipped 2026-05-06 (commits `4499cc9..0bb7c7a`)
    - Backend: `issue_manual_fine` RPC
-   - Today: no entry point. Host can't fine someone outside the rule engine.
+   - ~~Today: no entry point. Host can't fine someone outside the rule engine.~~
    - Effort: ~2h
-   - DoD: Reachable from EventDetailView host actions and from FineDetailView ("issue similar"). Member picker + amount + reason. Fine appears as `is_manual=true`.
+   - DoD: Reachable from EventDetailView host actions. Member picker + amount + reason. Fine appears as `is_manual=true`, `auto_generated=false`, status `officialized`.
 
 4. **VoidFineSheet** (host/admin action)
    - Backend: `void_fine` RPC

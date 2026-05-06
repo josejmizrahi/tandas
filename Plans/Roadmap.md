@@ -189,7 +189,8 @@ después. Sin esto, Fase 2 cuesta 3x.
 5. **Cerrar P0 de UICompleteCoverage**.
    - ~~`EditRulesView` + `EditRuleSheet` (gobernanza-aware)~~ ✅ shipped 2026-05-05
    - ~~`GovernanceSettingsView` (post-onboarding edit)~~ ✅ shipped pre-2026-05-05
-   - `AddManualFineSheet` + `VoidFineSheet`
+   - ~~`AddManualFineSheet`~~ ✅ shipped 2026-05-06
+   - `VoidFineSheet`
    - `OpenVotesView` (genérica para 7 tipos de voto)
    - `EditMembersSheet` (promote, remove, reorder turn)
 
