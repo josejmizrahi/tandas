@@ -67,12 +67,13 @@ public struct GovernanceRules: Codable, Sendable, Equatable, Hashable {
     /// `GovernanceService` to gate mutable operations.
     public func level(for action: GovernanceAction) -> PermissionLevel {
         switch action {
-        case .modifyRules:       return whoCanModifyRules
-        case .inviteMembers:     return whoCanInviteMembers
-        case .removeMembers:     return whoCanRemoveMembers
-        case .closeEvents:       return whoCanCloseEvents
-        case .createVotes:       return whoCanCreateVotes
-        case .modifyGovernance:  return whoCanModifyGovernance
+        case .modifyRules:        return whoCanModifyRules
+        case .inviteMembers:      return whoCanInviteMembers
+        case .removeMembers:      return whoCanRemoveMembers
+        case .closeEvents:        return whoCanCloseEvents
+        case .createVotes:        return whoCanCreateVotes
+        case .modifyGovernance:   return whoCanModifyGovernance
+        case .issueManualFine:    return .founder    // synthetic V1; no jsonb field yet
         }
     }
 }
