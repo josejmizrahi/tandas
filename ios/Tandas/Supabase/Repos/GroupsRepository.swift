@@ -40,10 +40,22 @@ struct GroupConfigPatch: Sendable, Equatable {
 actor MockGroupsRepository: GroupsRepository {
     private var _groups: [Group]
     private var _members: [UUID: [Member]] = [:]
+    /// Optional preseeded `MemberWithProfile` rows so tests can control the
+    /// effective `displayName` returned by `membersWithProfiles(of:)`. When
+    /// non-empty, takes precedence over `_members` (which only stores raw
+    /// `Member` rows and synthesizes a stub Profile).
+    private var _membersWithProfiles: [MemberWithProfile] = []
     var nextCreateError: GroupsError?
     var nextPreviewError: GroupsError?
 
     init(seed: [Group] = []) { self._groups = seed }
+
+    /// Test convenience: seed a flat list of `MemberWithProfile` rows.
+    /// `membersWithProfiles(of:)` filters this list by `member.groupId`.
+    init(membersWithProfilesSeed: [MemberWithProfile]) {
+        self._groups = []
+        self._membersWithProfiles = membersWithProfilesSeed
+    }
 
     func listMine() async throws -> [Group] { _groups }
 
@@ -84,7 +96,10 @@ actor MockGroupsRepository: GroupsRepository {
     }
 
     func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
-        (_members[groupId] ?? []).map { m in
+        if !_membersWithProfiles.isEmpty {
+            return _membersWithProfiles.filter { $0.member.groupId == groupId }
+        }
+        return (_members[groupId] ?? []).map { m in
             MemberWithProfile(
                 member: m,
                 profile: Profile(id: m.userId, displayName: "Miembro", avatarUrl: nil, phone: nil)
