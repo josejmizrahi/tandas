@@ -174,11 +174,17 @@ después. Sin esto, Fase 2 cuesta 3x.
    - Bloquea merge si la migration no tiene `down` o no es idempotente.
 
 4. **Observabilidad mínima**.
-   - Sentry (o Datadog) integrado en iOS y Edge Functions.
+   - ~~Sentry (o Datadog) integrado en iOS y Edge Functions.~~ ✅ shipped 2026-05-05 (Sentry MVP — iOS commit `cd87910`, edge commit `cbb9c79` + 13 funciones deployed).
    - Logs estructurados (JSON) en todas las edge functions.
    - Dashboard básico: rule firings/min, error rate por RPC,
      decode failures por tipo.
    - Alertas: error rate > 1%, decode failures > 0.
+
+   **Sentry MVP follow-ups (P3, no bloquean nada)**:
+   - `finalize-appeal-votes` legacy (v2, sin Sentry wrapper): probablemente tiene pg_cron pointing at the old slug. Auditar `cron.job` y migrar a `finalize-votes` (la version nueva en repo + deployed v1 con Sentry).
+   - `verify_jwt` flipped: CLI deployed con `verify_jwt=true` para process-system-events y finalize-fine-reviews (eran false). Cron sigue funcionando (probably uses service_role JWT). Si algún cliente externo las llamaba sin auth, ahora rechaza. Pinear en `supabase/config.toml` si decisión consciente.
+   - dSYM upload phase: Run Script Build Phase para subir symbols a Sentry. Sin esto, iOS crashes aparecen como hex addresses. ~15 min via project.yml `postBuildScripts`.
+   - PostHog product analytics + custom breadcrumbs en rule engine: explicitly deferred al primer beta tester con uso real.
 
 5. **Cerrar P0 de UICompleteCoverage**.
    - ~~`EditRulesView` + `EditRuleSheet` (gobernanza-aware)~~ ✅ shipped 2026-05-05
