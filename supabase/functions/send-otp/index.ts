@@ -18,6 +18,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { corsHeaders } from "../_shared/cors.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const WASSENGER_API_KEY = Deno.env.get("WASSENGER_API_KEY") ?? "";
 const WASSENGER_DEVICE_ID = Deno.env.get("WASSENGER_DEVICE_ID") ?? "";
@@ -30,7 +31,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const TTL_MINUTES = 10;
 
-serve(async (req) => {
+serve(withSentry(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -84,7 +85,7 @@ serve(async (req) => {
   }
 
   return jsonResponse({ channel: "whatsapp", expires_at });
-});
+}, { functionName: "send-otp" }));
 
 async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
   const controller = new AbortController();

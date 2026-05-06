@@ -18,8 +18,9 @@
 // Response (V1 stub): 503 { error: "wallet not configured" }
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
-serve(async (req) => {
+serve(withSentry(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*" } });
   }
@@ -39,4 +40,4 @@ serve(async (req) => {
     JSON.stringify({ error: "real impl pending", stubbed: true }),
     { status: 503, headers: { "Content-Type": "application/json" } },
   );
-});
+}, { functionName: "generate-wallet-pass" }));

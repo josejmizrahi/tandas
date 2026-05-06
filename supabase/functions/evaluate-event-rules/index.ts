@@ -18,11 +18,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { runRulesForEvent, type ConsequenceSink, type RuleContext } from "../_shared/ruleEngine.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import type { Rule, SystemEvent } from "../_shared/platformTypes.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-serve(async (req) => {
+serve(withSentry(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -127,7 +128,7 @@ serve(async (req) => {
     fines_proposed: results.flatMap((r) => r.created_resource_ids).length,
     errors: results.filter((r) => !r.success).length,
   });
-});
+}, { functionName: "evaluate-event-rules" }));
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

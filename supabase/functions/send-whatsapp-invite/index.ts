@@ -14,12 +14,13 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { corsHeaders } from "../_shared/cors.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const WASSENGER_API_KEY = Deno.env.get("WASSENGER_API_KEY") ?? "";
 const WASSENGER_DEVICE_ID = Deno.env.get("WASSENGER_DEVICE_ID") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 
-serve(async (req) => {
+serve(withSentry(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -90,7 +91,7 @@ serve(async (req) => {
   }
 
   return jsonResponse({ sent: true });
-});
+}, { functionName: "send-whatsapp-invite" }));
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

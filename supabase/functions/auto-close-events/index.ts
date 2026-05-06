@@ -9,12 +9,13 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CLOSE_AFTER_HOURS = parseInt(Deno.env.get("AUTO_CLOSE_AFTER_HOURS") ?? "24");
 
-serve(async (_req) => {
+serve(withSentry(async (_req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const cutoff = new Date(Date.now() - CLOSE_AFTER_HOURS * 60 * 60 * 1000);
 
@@ -59,4 +60,4 @@ serve(async (_req) => {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
-});
+}, { functionName: "auto-close-events" }));

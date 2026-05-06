@@ -20,12 +20,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { runRulesForEvent, type ConsequenceSink, type RuleContext } from "../_shared/ruleEngine.ts";
 import { getNow } from "../_shared/time.ts";
 import type { Rule, SystemEvent } from "../_shared/platformTypes.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BATCH_SIZE = parseInt(Deno.env.get("BATCH_SIZE") ?? "100");
 
-serve(async (req) => {
+serve(withSentry(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const now = getNow(req);
 
@@ -93,7 +94,7 @@ serve(async (req) => {
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
-});
+}, { functionName: "process-system-events" }));
 
 async function markProcessed(
   supabase: ReturnType<typeof createClient>,

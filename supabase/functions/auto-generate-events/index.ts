@@ -11,12 +11,13 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TARGET_FUTURE_COUNT = 4;
 
-serve(async (_req) => {
+serve(withSentry(async (_req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   const { data: groups, error: groupsErr } = await supabase
@@ -74,7 +75,7 @@ serve(async (_req) => {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
-});
+}, { functionName: "auto-generate-events" }));
 
 function nextDate(from: Date, type: string): Date {
   const d = new Date(from);
