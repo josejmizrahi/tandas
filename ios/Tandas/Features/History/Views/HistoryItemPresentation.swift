@@ -72,6 +72,10 @@ struct HistoryItemPresentation {
             self.icon = "creditcard.fill"
             self.title = "Se oficializó una multa"
             self.tone = .warning
+        case .fineVoided:
+            self.icon = "xmark.circle"
+            self.title = "Se anuló una multa"
+            self.tone = .neutral
         case .finePaid:
             self.icon = "creditcard.and.123"
             self.title = "\(actor) pagó una multa"
