@@ -190,7 +190,7 @@ después. Sin esto, Fase 2 cuesta 3x.
    - ~~`EditRulesView` + `EditRuleSheet` (gobernanza-aware)~~ ✅ shipped 2026-05-05
    - ~~`GovernanceSettingsView` (post-onboarding edit)~~ ✅ shipped pre-2026-05-05
    - ~~`AddManualFineSheet`~~ ✅ shipped 2026-05-06
-   - `VoidFineSheet`
+   - ~~`VoidFineSheet`~~ ✅ shipped 2026-05-06
    - `OpenVotesView` (genérica para 7 tipos de voto)
    - `EditMembersSheet` (promote, remove, reorder turn)
 
