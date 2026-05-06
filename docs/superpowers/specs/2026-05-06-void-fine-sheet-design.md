@@ -22,7 +22,7 @@ Allow a group admin (V1: founder) to annul a fine that should not have been issu
 
 Per the spec-process-improvement note, this section documents what was checked against actual prod state.
 
-**`void_fine` RPC (00016_fines_v2.sql:142-163)**:
+**`void_fine` RPC (00016_fines_v2.sql:251-278)**:
 
 - Signature `(p_fine_id uuid, p_reason text default null)` returns `public.fines`.
 - Validators: `auth.uid() not null`, `is_group_admin(f.group_id, uid)`. **No status guard.** **No reason length guard.** Both gaps closed by 00029.
@@ -73,7 +73,9 @@ supabase/migrations/
   00029_void_fine_guards_and_emit_rollback.sql                   ← new (restores 00016 body)
 ```
 
-**Architectural decision (locked):** governance + repos reach FineDetailView via two closures injected by MainTabView (matching the AddManualFineSheet pattern from 2026-05-06). `FineDetailCoordinator`'s API stays unchanged. The closures capture `app.governance`, `app.fineRepo`, `app.groupsRepo` and the user id.
+**Architectural decision (locked):** governance + repos reach FineDetailView via two closures injected by MainTabView (matching the AddManualFineSheet pattern from 2026-05-06). `FineDetailCoordinator`'s API stays unchanged — but `makeVoidFineCoordinator` captures the just-built `coord` and threads `coord.refresh` into the new `VoidFineCoordinator` as `onSubmitted`. That's the auto-refresh story (see "Same-admin refresh" in §3).
+
+The closures capture `app.governance`, `app.fineRepo`, `app.groupsRepo`, the current user id, and `coord.refresh` (lexically, since both closures are constructed in the same `fineDetailScreen` body).
 
 **Cross-group complication:** fines may be from any group the user belongs to (MyFinesView is cross-group). The `computeCanVoidFine` closure resolves the user's `Member` row in `fine.groupId` via `groupsRepo.membersWithProfiles(of:)` before running the governance check. Cost: one extra round-trip per FineDetailView open. Acceptable — FineDetailCoordinator already loads async on `.task`.
 
@@ -181,8 +183,14 @@ final class VoidFineCoordinator {
 
     private let fineRepo: any FineRepository
     private let groupsRepo: any GroupsRepository
+    private let onSubmitted: () async -> Void   // refresh hook into FineDetailCoordinator
 
-    init(fine: Fine, fineRepo: any FineRepository, groupsRepo: any GroupsRepository)
+    init(
+        fine: Fine,
+        fineRepo: any FineRepository,
+        groupsRepo: any GroupsRepository,
+        onSubmitted: @escaping () async -> Void = {}
+    )
 
     var canSubmit: Bool {
         !isSubmitting &&
@@ -198,7 +206,9 @@ final class VoidFineCoordinator {
 
 `resolveTargetName` calls `groupsRepo.membersWithProfiles(of: fine.groupId)`, finds row matching `fine.userId`, sets `targetMemberName` to `displayName`. Falls back to `"el multado"` on lookup failure (logged warning, no UI error).
 
-`submit` calls `fineRepo.void(fineId: fine.id, reason: reason.trimmed)`, returns Fine or nil + error.
+`submit` calls `fineRepo.void(fineId: fine.id, reason: reason.trimmed)`. On success: `await onSubmitted()` (so the parent `FineDetailCoordinator` refreshes BEFORE the View dismisses the sheet — guarantees stale state never paints), then returns the updated Fine. On failure: sets `error` via `humanize`, returns nil. The View checks the return: non-nil → fire haptic + flip `isPresented`.
+
+`onSubmitted` defaults to a no-op so unit tests don't have to wire it. The Mock-based tests verify it's invoked exactly when submit succeeds (see §5).
 
 `humanize` mapping in §4.
 
@@ -328,7 +338,15 @@ private func fineDetailScreen(_ fine: Fine) -> some View {
             } catch { return false }
         },
         makeVoidFineCoordinator: {
-            VoidFineCoordinator(fine: fine, fineRepo: fineRepo, groupsRepo: groupsRepo)
+            // Captures `coord` lexically — when void succeeds, onSubmitted refreshes
+            // FineDetailCoordinator so the View re-renders the new state (status pill,
+            // hidden buttons, ANULADA section) before the sheet closes.
+            VoidFineCoordinator(
+                fine: fine,
+                fineRepo: fineRepo,
+                groupsRepo: groupsRepo,
+                onSubmitted: { await coord.refresh() }
+            )
         },
         currentUserId: userId
     )
@@ -379,21 +397,34 @@ VoidFineCoordinator.resolveTargetName
 
 ```
 VoidFineSheet [tap "Anular multa"]
-  └─ coordinator.submit()
-      ├─ guard canSubmit
-      ├─ isSubmitting = true; error = nil
-      ├─ try fineRepo.void(fineId: fine.id, reason: reason.trimmed)
-      │   └─ LiveFineRepository.rpc("void_fine", params: { p_fine_id, p_reason })
-      │       └─ server: status guard + reason guard + UPDATE + user_action(fineVoided) + record_system_event(fineVoided)
-      ├─ on success: isSubmitting=false; haptic .success; isPresented=false
-      └─ on failure: isSubmitting=false; error=humanize(...); form preserved
+  └─ Task { let f = await coordinator.submit() ; if f != nil { isPresented = false ; haptic .success } }
+      └─ coordinator.submit()
+          ├─ guard canSubmit
+          ├─ isSubmitting = true; error = nil
+          ├─ try fineRepo.void(fineId: fine.id, reason: reason.trimmed)
+          │   └─ LiveFineRepository.rpc("void_fine", params: { p_fine_id, p_reason })
+          │       └─ server: status guard + reason guard + UPDATE + user_action(fineVoided) + record_system_event(fineVoided)
+          ├─ on success:
+          │   ├─ await onSubmitted()         // → FineDetailCoordinator.refresh() — repaints parent
+          │   ├─ isSubmitting = false
+          │   └─ return updated Fine
+          └─ on failure: isSubmitting=false; error=humanize(...); form preserved; return nil
 ```
+
+The View dismisses + fires haptic only on non-nil return. `onSubmitted` runs *before* the sheet closes so the parent `FineDetailView` has its `coordinator.fine` already updated by the time SwiftUI removes the sheet — no flash of stale state.
 
 **Visibility for fined user (other session):**
 
 `user_actions(fineVoided)` row → ActionInboxView shows "Multa anulada por admin: $200"; MyFinesView puts the fine in "Resueltas" tab with tertiary status dot. Tap → FineDetailView shows "ANULADA POR ADMIN" section with `waived_reason`.
 
-**Same-admin refresh:** FineDetailCoordinator's `.task` re-runs on view re-render after sheet closes. Fine state updates. Buttons hide. ANULADA section appears.
+**Same-admin refresh:** sheets do **not** retrigger the parent's `.task` on dismiss — FineDetailView's `.task { await coordinator.refresh() }` runs only on `onAppear`. So the success path goes through the `onSubmitted` closure injected at coordinator construction time. Sequence:
+
+1. `VoidFineCoordinator.submit` calls `await onSubmitted()` (which is `coord.refresh()` from MainTabView's factory).
+2. `FineDetailCoordinator.refresh` re-fetches the fine via `fineRepo.fine(id:)` and reassigns its `@Observable` `fine` property.
+3. SwiftUI re-renders FineDetailView: hero status pill flips to "ANULADA", `actionsForMyFine` and `actionsForAdmin` both gate-out (status no longer ∈ {proposed, officialized}), `voidedSection` shows the `waivedReason`.
+4. `VoidFineCoordinator.submit` returns the updated Fine; the View flips `isPresented = false` and fires haptic.
+
+Order matters: refresh **before** dismiss prevents a single-frame paint of stale state behind the closing sheet.
 
 ## §4 — Error handling y validación
 
@@ -447,6 +478,8 @@ Error rendering: `Text(error)` with `RuulTypography.caption` + `Color.ruulSemant
 - `submit_clearsErrorOnRetry`
 - `submit_humanizesStatusGate` — set MockFineRepo error message to "cannot void fine with status paid", assert UI message contains "ya no se puede anular"
 - `submit_blocksDoubleTap`
+- `submit_invokesOnSubmittedOnSuccess` — wire a counting closure as `onSubmitted`, run a passing submit, assert counter == 1 AND that the counter incremented before `submit()` returned (so the parent refresh happens before view dismissal).
+- `submit_doesNotInvokeOnSubmittedOnFailure` — set Mock to throw, run submit, assert counter == 0 (failure path skips the refresh hook).
 
 `MockFineRepository` gains `setThrowOnVoid(_:)` + `setVoidErrorMessage(_:)`.
 
@@ -469,8 +502,8 @@ Error rendering: `Text(error)` with `RuulTypography.caption` + `Color.ruulSemant
 3. Empty reason → CTA disabled.
 4. Single char → CTA disabled.
 5. "Duplicada" → CTA enabled.
-6. Tap → spinner → "Anulando…" → sheet closes → haptic.
-7. FineDetailView refreshes → status dot tertiary, no Pagar/Apelar/Anular buttons, "ANULADA POR ADMIN" section with reason.
+6. Tap → spinner → "Anulando…" → sheet closes → haptic. **No flash of stale state behind the closing sheet** (status pill must already say "ANULADA" before the sheet animation finishes — proves `onSubmitted` ran before dismiss).
+7. FineDetailView final state → status dot tertiary, no Pagar/Apelar/Anular buttons, "ANULADA POR ADMIN" section with reason.
 8. Switch to fined user: ActionInboxView "Multa anulada por admin: $200" with body "Duplicada". MyFinesView in "Resueltas" tab with tertiary dot. Tap fine → ANULADA section visible.
 9. Admin opens paid fine → "Anular multa" NOT visible (status gate).
 10. Admin opens voided fine → "Anular multa" NOT visible. ANULADA section visible.
