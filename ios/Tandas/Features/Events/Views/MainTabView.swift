@@ -379,13 +379,44 @@ struct MainTabView: View {
             realtimeFactory: app.realtimeFactory,
             systemEvents: app.systemEventEmitter
         )
+        let userId = app.session?.user.id ?? UUID()
+        let governance = app.governance
+        let fineRepo = app.fineRepo
+        let groupsRepo = app.groupsRepo
+        let memberDirectorySnapshot = memberDirectory
+
         return AnyView(
             EventDetailView(
                 coordinator: coord,
                 memberLookup: lookupMember,
                 onScannerOpen: { openScanner(for: coord) },
                 calendarService: calendarService,
-                onEdit: { editRoute = coord.event }
+                onEdit: { editRoute = coord.event },
+                computeCanIssueManualFine: {
+                    let me = memberDirectorySnapshot[userId]?.member
+                        ?? Self.fallbackMember(userId: userId, groupId: group.id)
+                    do {
+                        let decision = try await governance.canPerform(
+                            .issueManualFine,
+                            member: me,
+                            in: group,
+                            context: nil
+                        )
+                        if case .allowed = decision { return true }
+                        return false
+                    } catch {
+                        return false
+                    }
+                },
+                makeAddManualFineCoordinator: {
+                    AddManualFineCoordinator(
+                        groupId: group.id,
+                        eventId: event.id,
+                        fineRepo: fineRepo,
+                        groupsRepo: groupsRepo
+                    )
+                },
+                currentUserId: userId
             )
         )
     }

@@ -13,6 +13,8 @@ struct EventHostActionsSection: View {
     let onCancelEvent: () -> Void
     let onCloseEvent: () -> Void
     let onToggleAutoGenerate: (Bool) -> Void
+    let canIssueManualFine: Bool
+    let onIssueManualFine: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s4) {
@@ -86,6 +88,14 @@ struct EventHostActionsSection: View {
                 accessory: .none,
                 action: onCancelEvent
             )
+            if canIssueManualFine {
+                RuulActionableCard(
+                    icon: "exclamationmark.triangle",
+                    title: "Multar manualmente",
+                    subtitle: "Sin pasar por reglas automáticas.",
+                    action: onIssueManualFine
+                )
+            }
         }
     }
 

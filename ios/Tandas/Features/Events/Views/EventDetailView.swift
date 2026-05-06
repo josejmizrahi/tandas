@@ -11,6 +11,15 @@ struct EventDetailView: View {
     var onScannerOpen: () -> Void
     var calendarService: CalendarExportService?
     var onEdit: () -> Void = {}
+    /// Async governance check. EventDetailView calls it once in `.task`
+    /// and stores the result in `canIssueManualFine` @State. Fail-closed:
+    /// any throw / non-allowed decision keeps the action card hidden.
+    let computeCanIssueManualFine: () async -> Bool
+    /// Factory invoked when the sheet opens. Captures fineRepo + groupsRepo
+    /// + groupId/eventId so the sheet's coordinator gets fresh state per open.
+    let makeAddManualFineCoordinator: () -> AddManualFineCoordinator
+    /// Current user id, needed by the sheet to filter members.
+    let currentUserId: UUID
 
     @State private var qrSheetPresented = false
     @State private var shareSheetPresented = false
@@ -18,6 +27,8 @@ struct EventDetailView: View {
     @State private var cancelAttendanceSheet = false
     @State private var remindSheet = false
     @State private var closeSheet = false
+    @State private var addManualFinePresented = false
+    @State private var canIssueManualFine: Bool = false
     @State private var scrollOffset: CGFloat = 0
     @State private var pendingPlusOnes: Int = 0
 
@@ -46,6 +57,9 @@ struct EventDetailView: View {
         .ignoresSafeArea(edges: .top)
         .task { await coordinator.refresh() }
         .task { await coordinator.startRealtime() }
+        .task {
+            canIssueManualFine = await computeCanIssueManualFine()
+        }
         .onDisappear { coordinator.stopRealtime() }
         .onChange(of: coordinator.myRSVP?.plusOnes) { _, newValue in
             // Sync the local stepper state with whatever the server returned
@@ -99,6 +113,13 @@ struct EventDetailView: View {
             ) {
                 Task { await coordinator.closeEvent(autoGenerateEnabled: false) }
             }
+        }
+        .ruulSheet(isPresented: $addManualFinePresented) {
+            AddManualFineSheet(
+                isPresented: $addManualFinePresented,
+                coordinator: makeAddManualFineCoordinator(),
+                currentUserId: currentUserId
+            )
         }
     }
 
@@ -182,7 +203,9 @@ struct EventDetailView: View {
                     onCloseEvent: { closeSheet = true },
                     onToggleAutoGenerate: { enabled in
                         Task { await coordinator.toggleAutoGenerate(enabled) }
-                    }
+                    },
+                    canIssueManualFine: canIssueManualFine,
+                    onIssueManualFine: { addManualFinePresented = true }
                 )
                 .padding(.horizontal, RuulSpacing.s5)
             }
