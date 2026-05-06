@@ -29,7 +29,6 @@ struct AddManualFineSheet: View {
                     Text(error)
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulSemanticError)
-                        .padding(.horizontal, RuulSpacing.s2)
                 }
                 submitButton
             }
@@ -51,6 +50,7 @@ struct AddManualFineSheet: View {
                     memberRow(mwp)
                 }
             }
+            .disabled(coordinator.isSubmitting)
         }
     }
 
