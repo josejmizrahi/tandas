@@ -115,6 +115,9 @@ struct EventDetailView: View {
             }
         }
         .ruulSheet(isPresented: $addManualFinePresented) {
+            // Fresh coordinator per open: makeAddManualFineCoordinator() runs
+            // each time the binding flips false→true. Deliberate — avoids
+            // leaking partially-filled form state from cancelled sessions.
             AddManualFineSheet(
                 isPresented: $addManualFinePresented,
                 coordinator: makeAddManualFineCoordinator(),

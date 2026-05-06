@@ -365,10 +365,11 @@ struct MainTabView: View {
         guard let group = app.groups.first(where: { $0.id == event.groupId }) else {
             return AnyView(EmptyView())
         }
+        let userId = app.session?.user.id ?? UUID()
         let coord = EventDetailCoordinator(
             event: event,
             group: group,
-            userId: app.session?.user.id ?? UUID(),
+            userId: userId,
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo,
             checkInRepo: app.checkInRepo,
@@ -379,7 +380,6 @@ struct MainTabView: View {
             realtimeFactory: app.realtimeFactory,
             systemEvents: app.systemEventEmitter
         )
-        let userId = app.session?.user.id ?? UUID()
         let governance = app.governance
         let fineRepo = app.fineRepo
         let groupsRepo = app.groupsRepo
