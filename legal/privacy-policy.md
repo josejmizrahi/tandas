@@ -1,7 +1,7 @@
 # Política de Privacidad — ruul
 
 **Última actualización:** 5 de mayo de 2026
-**Versión:** 1.0 (Beta)
+**Versión:** 1.1 (Beta)
 
 Esta política describe cómo ruul ("la App", "nosotros") recolecta, usa y protege la información personal de las personas que usan la aplicación. Al instalar y usar ruul, aceptas las prácticas descritas aquí.
 
@@ -55,6 +55,8 @@ Compartimos información con tres tipos de terceros, todos necesarios para que l
 **Supabase Inc.** — proveedor de la infraestructura de backend (base de datos, autenticación, funciones). Tu información se almacena en servidores de Supabase ubicados en Estados Unidos. Su política de privacidad está en `supabase.com/privacy`.
 
 **Apple Inc.** — para enviar notificaciones push (vía Apple Push Notification Service) y para autenticación con Sign in with Apple si la usas. Su política está en `apple.com/legal/privacy`.
+
+**Sentry (Functional Software, Inc.)** — para detectar fallas técnicas, usamos Sentry, que recibe trazas de errores y metadata del dispositivo (versión iOS, modelo, versión de la app). Configurado para no procesar información personal identificable: emails, teléfonos, ni nombres no se transmiten. Su política de privacidad está en `sentry.io/privacy`.
 
 **Otros miembros de tu grupo** — cuando perteneces a un grupo, los demás miembros ven tu nombre, tu rol, tu actividad en el grupo (RSVPs, check-ins, multas, votos) y los comentarios que dejas. Esto es inherente al funcionamiento de la app: un grupo no puede coordinarse si los miembros no se ven entre ellos.
 
