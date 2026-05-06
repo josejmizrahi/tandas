@@ -41,6 +41,15 @@ public actor MockFineRepository: FineRepository {
 
     public func setThrowOnIssueManual(_ value: Bool) { throwOnIssueManual = value }
 
+    /// Test hook: when true, the next call to `void` throws and resets.
+    private var throwOnVoid: Bool = false
+    /// Test hook: error message for the next thrown void. Default mirrors a
+    /// realistic server raise for humanize() coverage.
+    private var voidErrorMessage: String = "only admins can void fines"
+
+    public func setThrowOnVoid(_ value: Bool) { throwOnVoid = value }
+    public func setVoidErrorMessage(_ message: String) { voidErrorMessage = message }
+
     public init(seed: [Fine] = []) { self.fines = seed }
 
     public func myFines(userId: UUID) async throws -> [Fine] {
@@ -70,7 +79,15 @@ public actor MockFineRepository: FineRepository {
     }
 
     public func void(fineId: UUID, reason: String?) async throws -> Fine {
-        try update(fineId: fineId) { f in
+        if throwOnVoid {
+            throwOnVoid = false
+            throw NSError(
+                domain: "MockFineRepository",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: voidErrorMessage]
+            )
+        }
+        return try update(fineId: fineId) { f in
             Fine(
                 id: f.id, groupId: f.groupId, userId: f.userId, ruleId: f.ruleId,
                 eventId: f.eventId, reason: f.reason, amount: f.amount,
