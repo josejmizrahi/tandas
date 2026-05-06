@@ -222,12 +222,57 @@ struct MainTabView: View {
             fineRepo: app.fineRepo,
             appealRepo: app.appealRepo
         )
+        let userId = app.session?.user.id ?? UUID()
+        let governance = app.governance
+        let fineRepo = app.fineRepo
+        let groupsRepo = app.groupsRepo
+        let groups = app.groups
+
         return FineDetailView(
             coordinator: coord,
             onAppeal: nil,
             onViewAppeal: { appeal in
                 voteOnAppealRoute = AppealRouteContext(appeal: appeal, fine: fine)
-            }
+            },
+            computeCanVoidFine: {
+                guard let group = groups.first(where: { $0.id == fine.groupId }) else { return false }
+                do {
+                    let rows = try await groupsRepo.membersWithProfiles(of: fine.groupId)
+                    let me = rows.first(where: { $0.member.userId == userId })?.member
+                        ?? Member(
+                            id: UUID(),
+                            groupId: fine.groupId,
+                            userId: userId,
+                            role: "member",
+                            roles: [.member],
+                            active: false,
+                            joinedAt: .now
+                        )
+                    let decision = try await governance.canPerform(
+                        .voidFine,
+                        member: me,
+                        in: group,
+                        context: nil
+                    )
+                    if case .allowed = decision { return true }
+                    return false
+                } catch {
+                    return false
+                }
+            },
+            makeVoidFineCoordinator: {
+                // Captures `coord` lexically — when void succeeds, onSubmitted
+                // refreshes FineDetailCoordinator so the View re-renders the new
+                // state (status pill, hidden buttons, ANULADA section) before
+                // the sheet closes.
+                VoidFineCoordinator(
+                    fine: fine,
+                    fineRepo: fineRepo,
+                    groupsRepo: groupsRepo,
+                    onSubmitted: { await coord.refresh() }
+                )
+            },
+            currentUserId: userId
         )
     }
 
