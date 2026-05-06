@@ -8,8 +8,20 @@ struct FineDetailView: View {
     var onAppeal: (() -> Void)?
     var onViewAppeal: ((Appeal) -> Void)?
 
+    /// V1: gate for the "Anular multa" button. Resolved async on appear
+    /// because governance.canPerform requires loading the user's Member row
+    /// in the fine's group (cross-group fines via MyFinesView).
+    let computeCanVoidFine: () async -> Bool
+    /// Factory: creates a fresh `VoidFineCoordinator` each time the sheet
+    /// is opened. Captures `app.governance`, repos, and `coord.refresh`
+    /// (via onSubmitted) lexically in MainTabView.fineDetailScreen.
+    let makeVoidFineCoordinator: () -> VoidFineCoordinator
+    let currentUserId: UUID
+
     @State private var appealSheetPresented = false
     @State private var payConfirmPresented = false
+    @State private var voidSheetPresented = false
+    @State private var canVoidFine: Bool = false
 
     var body: some View {
         ZStack {
@@ -19,6 +31,7 @@ struct FineDetailView: View {
                     hero
                     reasonCard
                     evidenceSection
+                    voidedSection
                     appealStatusInline
                 }
                 .padding(.horizontal, RuulSpacing.s5)
@@ -31,6 +44,7 @@ struct FineDetailView: View {
         .navigationTitle("Multa")
         .navigationBarTitleDisplayMode(.inline)
         .task { await coordinator.refresh() }
+        .task { canVoidFine = await computeCanVoidFine() }
         .ruulSheet(isPresented: $appealSheetPresented) {
             AppealFineSheet(
                 isPresented: $appealSheetPresented,
@@ -38,6 +52,17 @@ struct FineDetailView: View {
             ) { reason in
                 Task { await coordinator.startAppeal(reason: reason) }
             }
+        }
+        .ruulSheet(isPresented: $voidSheetPresented) {
+            // Fresh coordinator per open: makeVoidFineCoordinator() runs each
+            // time the binding flips false→true. Deliberate — avoids leaking
+            // partially-filled form state from cancelled sessions. The factory
+            // wires onSubmitted = { coord.refresh() } so the parent repaints
+            // before the sheet dismisses.
+            VoidFineSheet(
+                isPresented: $voidSheetPresented,
+                coordinator: makeVoidFineCoordinator()
+            )
         }
     }
 
@@ -133,6 +158,34 @@ struct FineDetailView: View {
         }
     }
 
+    // MARK: - Voided section (admin closure reason after Anular)
+
+    @ViewBuilder
+    private var voidedSection: some View {
+        if coordinator.fine.status == .voided,
+           let waivedReason = coordinator.fine.waivedReason,
+           !waivedReason.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                Text("ANULADA POR ADMIN")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                Text(waivedReason)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .padding(RuulSpacing.s4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        Color.ruulBackgroundElevated,
+                        in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                            .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                    )
+            }
+        }
+    }
+
     // MARK: - Inline appeal status (when there's an active appeal)
 
     @ViewBuilder
@@ -186,7 +239,22 @@ struct FineDetailView: View {
             Spacer()
             if coordinator.isMine {
                 actionsForMyFine
+            } else {
+                actionsForAdmin
             }
+        }
+    }
+
+    @ViewBuilder
+    private var actionsForAdmin: some View {
+        if canVoidFine,
+           coordinator.fine.status == .proposed || coordinator.fine.status == .officialized {
+            RuulButton("Anular multa", style: .destructive, size: .large, fillsWidth: true) {
+                voidSheetPresented = true
+            }
+            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.vertical, RuulSpacing.s3)
+            .background(.regularMaterial)
         }
     }
 
