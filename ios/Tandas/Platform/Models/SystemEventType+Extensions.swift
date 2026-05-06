@@ -9,7 +9,7 @@ extension SystemEventType {
              .eventDescriptionMissing,
              .appealCreated, .appealResolved,
              .voteOpened, .voteCast, .voteResolved,
-             .fineOfficialized, .finePaid, .fineReminderSent,
+             .fineOfficialized, .fineVoided, .finePaid, .fineReminderSent,
              .eventCreated, .memberJoined, .memberLeft:
             return true
         case .checkInMissed,

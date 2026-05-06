@@ -15,6 +15,7 @@ export const systemEventTypeValues = [
   "slotDeclined",
   "slotExpired",
   "fineOfficialized",
+  "fineVoided",
   "finePaid",
   "fineReminderSent",
   "appealCreated",

@@ -29,6 +29,7 @@ public enum SystemEventType: Codable, Sendable, Hashable {
 
     // MARK: - Fines + appeals
     case fineOfficialized
+    case fineVoided
     case finePaid
     case fineReminderSent
     case appealCreated

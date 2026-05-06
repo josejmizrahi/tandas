@@ -18,6 +18,7 @@ extension SystemEventType {
         .slotDeclined,
         .slotExpired,
         .fineOfficialized,
+        .fineVoided,
         .finePaid,
         .fineReminderSent,
         .appealCreated,
@@ -48,6 +49,7 @@ extension SystemEventType {
         "slotDeclined",
         "slotExpired",
         "fineOfficialized",
+        "fineVoided",
         "finePaid",
         "fineReminderSent",
         "appealCreated",
@@ -89,6 +91,7 @@ extension SystemEventType {
         case .slotDeclined: return "slotDeclined"
         case .slotExpired: return "slotExpired"
         case .fineOfficialized: return "fineOfficialized"
+        case .fineVoided: return "fineVoided"
         case .finePaid: return "finePaid"
         case .fineReminderSent: return "fineReminderSent"
         case .appealCreated: return "appealCreated"
@@ -122,6 +125,7 @@ extension SystemEventType {
         case "slotDeclined": return .slotDeclined
         case "slotExpired": return .slotExpired
         case "fineOfficialized": return .fineOfficialized
+        case "fineVoided": return .fineVoided
         case "finePaid": return .finePaid
         case "fineReminderSent": return .fineReminderSent
         case "appealCreated": return .appealCreated
