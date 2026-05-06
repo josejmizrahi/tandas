@@ -3,6 +3,7 @@ import SwiftData
 import Supabase
 import UIKit
 import OSLog
+import Sentry
 
 @main
 struct TandasApp: App {
@@ -15,6 +16,7 @@ struct TandasApp: App {
     }
 
     init() {
+        Self.startSentry()
         let useMocks = ProcessInfo.processInfo.environment["TANDAS_USE_MOCKS"] == "1"
         if useMocks {
             let auth = MockAuthService()
@@ -98,6 +100,40 @@ struct TandasApp: App {
                     RSVPRealtimeService(client: client, eventId: eventId)
                 }
             ))
+        }
+    }
+
+    /// Sentry MVP — crash capture only. No performance monitoring, no
+    /// breadcrumbs beyond the SDK defaults. PII (email, username, IP) is
+    /// scrubbed in beforeSend so events stay anonymized; group_id /
+    /// rule_id metadata that callers attach via tags survives. Privacy
+    /// Policy v1.1 discloses Sentry as a third-party processor.
+    private static func startSentry() {
+        let dsn = (Bundle.main.object(forInfoDictionaryKey: "SentryDSN") as? String) ?? ""
+        guard !dsn.isEmpty else {
+            // No DSN configured (e.g., local dev with stub xcconfig). Skip
+            // SDK init; SentrySDK calls become no-ops.
+            return
+        }
+        let shortVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
+        let buildNumber = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "0"
+        SentrySDK.start { options in
+            options.dsn = dsn
+            options.releaseName = "ruul-ios@\(shortVersion)+\(buildNumber)"
+            #if DEBUG
+            options.environment = "development"
+            #else
+            options.environment = "production"
+            #endif
+            options.tracesSampleRate = 0.0
+            options.attachScreenshot = false
+            options.attachViewHierarchy = false
+            options.beforeSend = { event in
+                event.user?.email = nil
+                event.user?.username = nil
+                event.user?.ipAddress = nil
+                return event
+            }
         }
     }
 

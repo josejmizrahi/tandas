@@ -50,6 +50,8 @@
   <string>Para sugerir ubicaciones cercanas y verificar llegadas a eventos.</string>
   <key>RuulQRSecret</key>
   <string>$(RUUL_QR_SECRET)</string>
+  <key>SentryDSN</key>
+  <string>$(SENTRY_DSN)</string>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>

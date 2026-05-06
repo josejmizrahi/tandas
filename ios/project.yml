@@ -27,6 +27,7 @@ settings:
     CURRENT_PROJECT_VERSION: "2"
     TANDAS_SUPABASE_URL: $(inherited)
     TANDAS_SUPABASE_ANON_KEY: $(inherited)
+    SENTRY_DSN: $(inherited)
 packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
@@ -34,6 +35,9 @@ packages:
   SnapshotTesting:
     url: https://github.com/pointfreeco/swift-snapshot-testing
     from: "1.17.0"
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: "8.40.0"
 targets:
   Tandas:
     type: application
@@ -48,6 +52,8 @@ targets:
     dependencies:
       - package: Supabase
         product: Supabase
+      - package: Sentry
+        product: Sentry
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
