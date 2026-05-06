@@ -42,6 +42,45 @@ final class GovernanceServiceTests: XCTestCase {
             return
         }
     }
+
+    // MARK: - .voidFine (V1: synthetic .founder level)
+
+    func testCanPerformVoidFine_allowedForFounder() async throws {
+        let service = GovernanceService()
+        let group = Group.mock(id: UUID())
+        let founder = Member.mock(role: .founder, groupId: group.id)
+
+        let decision = try await service.canPerform(
+            .voidFine,
+            member: founder,
+            in: group,
+            context: nil
+        )
+
+        if case .allowed = decision {
+            // expected
+        } else {
+            XCTFail("expected .allowed, got \(decision)")
+        }
+    }
+
+    func testCanPerformVoidFine_deniedForNonFounder() async throws {
+        let service = GovernanceService()
+        let group = Group.mock(id: UUID())
+        let member = Member.mock(role: .member, groupId: group.id)
+
+        let decision = try await service.canPerform(
+            .voidFine,
+            member: member,
+            in: group,
+            context: nil
+        )
+
+        guard case .denied(reason: .notFounder) = decision else {
+            XCTFail("expected .denied(.notFounder), got \(decision)")
+            return
+        }
+    }
 }
 
 // MARK: - Test fixtures

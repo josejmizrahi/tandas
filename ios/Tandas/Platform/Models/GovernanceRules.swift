@@ -74,6 +74,7 @@ public struct GovernanceRules: Codable, Sendable, Equatable, Hashable {
         case .createVotes:        return whoCanCreateVotes
         case .modifyGovernance:   return whoCanModifyGovernance
         case .issueManualFine:    return .founder    // synthetic V1; no jsonb field yet
+        case .voidFine:           return .founder    // synthetic V1; no jsonb field yet
         }
     }
 }
