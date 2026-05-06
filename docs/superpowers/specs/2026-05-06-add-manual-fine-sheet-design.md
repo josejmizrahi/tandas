@@ -34,9 +34,11 @@ Per the spec-process-improvement note from `Plans/UICompleteCoverage.md` (P0 #1 
 - Fires `if new.auto_generated and new.status = 'proposed'`. Manual fines (auto_generated=false) **bypass it** — no `fine_review_periods` row, no `fineProposalReview` user_action.
 - Comment in 00016:64-65 says manual fines "bypass [grace] (host is the sole reviewer)". Implementation never closes the cycle: manual fine sits at status='proposed' forever, no `finePending` user_action emitted, fined user has no UI visibility.
 
-**`on_fine_status_change` trigger (00016_fines_v2.sql:?)**: fires `finePending` user_action when status flips to `'officialized'`.
+**`fines_after_status_change` trigger (00016_fines_v2.sql:130-133, function `on_fine_officialized` at 00016:101-128)**: declared `after update of status on public.fines`; function body gated on `old.status = 'proposed' and new.status = 'officialized'`. Verified by grep — UPDATE-only, will not fire on INSERT.
 
-**Conclusion**: backend has a latent bug. Manual fines are silently invisible to the fined user. Fix is required for AddManualFineSheet to be functional. Migration 00028 in this spec sets `status='officialized'` explicitly in the RPC insert; the existing on_fine_status_change trigger handles the user_action emission.
+**Conclusion**: backend has two latent bugs that compound. Manual fines (a) are inserted with column-default status='proposed' and (b) even if we set status='officialized' on insert, the trigger that emits `finePending` does not fire on INSERT. Both must be fixed for AddManualFineSheet to be functional.
+
+Fix path: migration 00028 (a) extends `fines_after_status_change` trigger to fire `after insert or update of status` and broadens the function body to handle the INSERT case (`TG_OP = 'INSERT' and new.status = 'officialized'`), and (b) sets `status='officialized'` explicitly in the `issue_manual_fine` insert. Auto-generated fines (status='proposed' at insert, officialized later via cron UPDATE) keep their existing path unchanged. The single trigger now serves as the canonical "fine becomes officialized → notify user + record system_event" hook regardless of how the fine got there.
 
 **`is_group_admin` source-of-truth check** (canonical: `roles` JSONB array, post-00027): admin == founder in V1 (`create_group_with_admin` creates the row with `role='admin'`, migration 00019 backfills `roles=['founder','member']`). No multi-admin support yet; "Member management P1 #6" is the future spec that adds non-founder admins.
 
@@ -55,8 +57,8 @@ ios/Tandas/
   Platform/Models/GovernanceRules.swift                    ← edited (level(for:) switch +1 synthetic case)
 
 supabase/migrations/
-  00028_issue_manual_fine_officialize.sql         ← new (CREATE OR REPLACE RPC, status='officialized' explicit)
-  00028_issue_manual_fine_officialize_rollback.sql ← new (CREATE OR REPLACE with prior body)
+  00028_issue_manual_fine_officialize.sql         ← new (3 parts: extend on_fine_officialized body for INSERT case; re-create trigger as INSERT OR UPDATE; issue_manual_fine inserts status='officialized')
+  00028_issue_manual_fine_officialize_rollback.sql ← new (reverts all 3 parts to pre-00028 state)
 
 ios/TandasTests/Coordinator/AddManualFineCoordinatorTests.swift ← new
 ios/TandasTests/Service/GovernanceServiceTests.swift            ← edited (+2 tests)
@@ -225,19 +227,88 @@ public func level(for action: GovernanceAction) -> PermissionLevel {
 
 No change to `GovernanceRules` struct fields. No `governance` jsonb migration. Server-side `is_group_admin` already aligned with founder via 00019 backfill.
 
-**7. Migration `00028_issue_manual_fine_officialize.sql` (+ rollback)**
+**7. Migration `00028_issue_manual_fine_officialize.sql` (+ rollback)** — three coordinated parts in one migration
 
-Forward migration: `CREATE OR REPLACE FUNCTION public.issue_manual_fine(...)` with the only change being the INSERT statement explicitly setting `status = 'officialized'`. All validators, snapshot logic, and grants identical.
+Forward migration:
 
 ```sql
--- 00028 — issue_manual_fine sets status='officialized' explicitly
+-- 00028 — issue_manual_fine officializes immediately + on_fine_officialized
+--          fires on INSERT too.
 --
--- Manual fines were being inserted with column-default status='proposed', and
--- the on_fine_inserted trigger explicitly skips manual fines, so they sat
--- invisible forever. The on_fine_status_change trigger emits finePending
--- when status flips to 'officialized', so setting status explicitly closes
--- the cycle.
+-- Two compounding bugs prevented manual fines from being visible to the
+-- fined user:
+--
+--   1. issue_manual_fine inserted with column-default status='proposed'.
+--      The on_fine_inserted trigger explicitly skips manual fines (it only
+--      seeds review periods for auto_generated). Manual fines sat at
+--      'proposed' forever.
+--
+--   2. The on_fine_officialized trigger that emits the 'finePending'
+--      user_action and 'fineOfficialized' system_event was declared
+--      `after update of status` only — it never fired on INSERT, even if
+--      a fine was inserted directly with status='officialized'.
+--
+-- Fix:
+--   Part A. Broaden on_fine_officialized to handle the INSERT case.
+--   Part B. Re-create the trigger to fire on INSERT or UPDATE of status.
+--   Part C. issue_manual_fine inserts with status='officialized' explicitly.
+--
+-- Auto-generated fines (status='proposed' at insert → cron flips to
+-- 'officialized' via UPDATE later) are unaffected: their UPDATE path still
+-- triggers the same emission. The trigger is now the single source of truth
+-- for "a fine became officialized → notify user", regardless of path.
 
+-- =========================================================
+-- Part A: extend trigger function body
+-- =========================================================
+create or replace function public.on_fine_officialized()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  v_should_emit boolean := false;
+begin
+  if TG_OP = 'INSERT' and new.status = 'officialized' then
+    v_should_emit := true;
+  elsif TG_OP = 'UPDATE'
+        and old.status = 'proposed'
+        and new.status = 'officialized' then
+    v_should_emit := true;
+  end if;
+
+  if v_should_emit then
+    insert into public.user_actions (
+      user_id, group_id, action_type, reference_id,
+      title, body, priority
+    ) values (
+      new.user_id, new.group_id, 'finePending', new.id,
+      'Multa pendiente: $' || trim(to_char(new.amount, 'FM999G999D00')),
+      new.reason,
+      'high'
+    );
+
+    perform public.record_system_event(
+      new.group_id,
+      'fineOfficialized',
+      new.id,
+      null,
+      jsonb_build_object('amount', new.amount, 'rule_id', new.rule_id)
+    );
+  end if;
+  return new;
+end;
+$$;
+
+-- =========================================================
+-- Part B: extend trigger fire condition
+-- =========================================================
+drop trigger if exists fines_after_status_change on public.fines;
+create trigger fines_after_status_change
+  after insert or update of status on public.fines
+  for each row execute function public.on_fine_officialized();
+
+-- =========================================================
+-- Part C: issue_manual_fine inserts with status='officialized'
+-- =========================================================
 create or replace function public.issue_manual_fine(
   p_group_id uuid,
   p_user_id uuid,
@@ -282,7 +353,11 @@ revoke execute on function public.issue_manual_fine(uuid, uuid, numeric, text, u
 grant  execute on function public.issue_manual_fine(uuid, uuid, numeric, text, uuid, uuid) to authenticated;
 ```
 
-Rollback: same `CREATE OR REPLACE` with the prior body (no explicit status, falls through to default 'proposed').
+Rollback (`00028_issue_manual_fine_officialize_rollback.sql`):
+
+- Part C: `CREATE OR REPLACE` `issue_manual_fine` with the prior body (no explicit status; falls through to default 'proposed').
+- Part B: `DROP TRIGGER` and re-create as `after update of status` only.
+- Part A: `CREATE OR REPLACE` `on_fine_officialized` with the prior body (the `if old.status = 'proposed' and new.status = 'officialized'` form).
 
 ## §3 — Data flow
 
@@ -402,13 +477,14 @@ Error displayed in a single `RuulCalloutCard.error` above the CTA — one error 
 **Smoke manual (mandatory before merge)**:
 
 1. Admin (founder) opens an event → CÓMO HOST visible → "Multar manualmente" visible.
-2. Tap → sheet appears with members list (no admin in the list).
+2. Tap → sheet appears with members list. The current user (the admin issuing) is excluded from the picker; other admins (if any) remain selectable.
 3. Select member → CTA changes to `"Multar a Ana — $0"`.
 4. Fill amount + reason → CTA `"Multar a Ana — $200"` enabled.
 5. Tap CTA → spinner → sheet closes → haptic success.
-6. Switch to fined user (second device or logout/login): inbox shows `finePending` user_action; MyFinesView lists the fine with status `officialized`.
-7. Regular member opens the same event → does NOT see "Multar manualmente" in CÓMO HOST (canPerform gate).
-8. Group of 1 (admin only) → sheet shows empty state, CTA invisible.
+6. Same admin pulls-to-refresh on EventDetailView (or opens MyFinesView for that group): the new fine appears with `status='officialized'`, `issued_by=admin`, `auto_generated=false`. Confirms server-side persistence — without this check, a regression where the row is silently dropped would still pass the haptic-success step.
+7. Switch to fined user (second device or logout/login): ActionInboxView shows the `finePending` user_action; MyFinesView lists the fine with status `officialized`.
+8. Regular member opens the same event → does NOT see "Multar manualmente" in CÓMO HOST (canPerform gate).
+9. Group of 1 (admin only) → sheet shows empty state, CTA invisible.
 
 **Build gate** (must succeed before commit):
 
