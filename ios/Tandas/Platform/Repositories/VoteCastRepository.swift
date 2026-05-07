@@ -29,6 +29,10 @@ actor MockVoteCastRepository: VoteCastRepository {
 
     init(seed: [VoteCast] = []) { self.store = seed }
 
+    /// Test helper: lets tests inject a one-shot error that the next `cast`
+    /// call will throw. Mirrors the pattern used by `MockVoteRepository`.
+    func setNextCastError(_ error: Error?) { self.nextCastError = error }
+
     func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast? {
         store.first { $0.voteId == voteId && $0.memberId == userMemberId }
     }
