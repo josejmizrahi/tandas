@@ -329,30 +329,79 @@ Plans/
 
 # 6. Current Canonical Documents
 
-As of now, these are considered core canonical references.
+As of 2026-05-07 (post-consolidación pre-Fase 2), these are the
+canonical references.
 
-## Vision
+## Vision / strategy
 
-- `Docs/Vision.md`
-- `Docs/Ruul-Social-Primitives-and-Product-Logic.md`
+- `docs/Ruul-Social-Primitives-and-Product-Logic.md` — primitives, 130
+  group categories, product logic.
 
-## Architecture
+## Architecture (canonical, "how it works")
 
-- `Plans/Pre-Phase2-Architecture-Consolidation-Plan.md`
-- `Plans/Audit-2026-05-06.md`
+- `docs/Platform.md` — 7 primary citizens (Group, Member, Resource,
+  Rule, SystemEvent, Action, Vote) + dataflow.
+- `docs/Governance.md` — `groups.governance` jsonb model + per-action
+  permission checks via `GovernanceService`.
+- `docs/TemplateGuide.md` — templates as data, not code.
+- `docs/ModuleGuide.md` — composable modules, ModuleRegistry.
+- `docs/RuleAuthoring.md` — WHEN/IF/THEN rule shape + composing
+  triggers/conditions/consequences.
+- `docs/EventTypes.md` — catalog of `SystemEventType`.
+- `docs/ConditionTypes.md` — catalog of `ConditionType`.
+- `docs/ConsequenceTypes.md` — catalog of `ConsequenceType`.
+
+## Product / UX
+
+- `docs/DesignSystem.md` (v3.0) — tokens, components, Liquid Glass
+  patterns. Authoritative for any new UI.
+- `docs/DesignPrinciples.md` — what "Apple-grade" means for ruul.
+- `docs/UXAudit.md` — 2026-05-04 snapshot of every surface (some
+  references are pre-Resource-centric — read with that lens).
+
+## Active plans
+
+- `Plans/Active/Roadmap.md` — north star, the 6 phases.
+- `Plans/Active/Audit-2026-05-06.md` — post-F0 audit, items §5.3
+  fully closed at 2026-05-07.
+- `Plans/Active/Beta1.md` — current cycle: real-cena observation
+  period, journal template, freeze rules.
+- `Plans/Active/Phase0-DSv3-Migration-2026-05-07.md` — DS migration
+  in progress in parallel session.
+- `Plans/Active/SystemEventsArchival.md` — deferred plan for pre-Fase 4.
+- `Plans/Active/GroupTypeRemoval.md` — follow-up to audit §7c.
+- `Plans/Active/AnonAuthUpgradeGap.md` — open backlog.
+- `Plans/Active/DSFutureComponents.md` — DS deferred items.
+
+## Historical (non-canonical, kept for context)
+
+- `Plans/Completed/` — every executed plan (Phase 1, F0 sprints,
+  V1 layers, audits).
+- `Plans/Archive/` — superseded docs (Roadmap followups, V1 DS spec).
+- `docs/Archive/` — placeholder for legacy doc moves (none yet —
+  current `docs/*.md` are aligned with Resource-centric model).
+
+> **Note on path references in older docs**: docs written pre-2026-05-07
+> may reference plans by their old flat path (`Plans/Phase1.md`,
+> `Plans/Audit-2026-05-06.md`, etc.). After the 2026-05-07 reorg, those
+> files now live under `Plans/Active|Completed|Archive/`. The basename
+> is unchanged — if a doc says `Plans/X.md`, look in
+> `Plans/Active/X.md` or `Plans/Completed/X.md`.
 
 ---
 
-# 7. Immediate Cleanup Targets
+# 7. Beta 1 freeze (2026-05-07 → exit)
 
-The following types of documents should be archived or rewritten:
+Architecture is **frozen** while Beta 1 runs. See
+`Plans/Active/Beta1.md` for:
 
-- GroupType-driven docs;
-- event-centric-only architecture docs;
-- duplicated roadmap docs;
-- hardcoded template docs;
-- docs that treat `resources` as future instead of canonical;
-- docs that model verticals as separate apps.
+- the cena journal template;
+- what's allowed during Beta (bugs, polish, analytics);
+- what's NOT allowed (new primitives, refactors, templates);
+- exit criteria → Phase 2 decision.
+
+No new structural docs during Beta 1 unless they describe a critical
+bug fix or analytics scaffolding.
 
 ---
 

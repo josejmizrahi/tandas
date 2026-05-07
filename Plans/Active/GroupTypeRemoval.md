@@ -6,7 +6,7 @@
 
 ## Why this is split out
 
-The audit (`Plans/Audit-2026-05-06.md` §5.3 item 7c) calls for full
+The audit (`Plans/Active/Audit-2026-05-06.md` §5.3 item 7c) calls for full
 removal of the legacy `GroupType` enum + the `groups.group_type` column,
 folding their data into `templates.config.presentation` /
 `templates.config.defaultCategory`.
@@ -82,7 +82,7 @@ the changes mergeable in small pieces, the work is split:
 - [ ] `grep -rn "GroupType\b" --include="*.swift" ios/` returns zero
       results.
 - [ ] `groups.group_type` column dropped in prod.
-- [ ] `Plans/Audit-2026-05-06.md` §5.3 item 7c crossed off.
+- [ ] `Plans/Active/Audit-2026-05-06.md` §5.3 item 7c crossed off.
 - [ ] Founder can still create a group from the Cena recurrente
       template; subtitle reads "Cena recurrente · X miembros".
 
