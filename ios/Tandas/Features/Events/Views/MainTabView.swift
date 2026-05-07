@@ -58,6 +58,16 @@ struct MainTabView: View {
     @State private var joinGroupPresented: Bool = false
     @State private var inviteSharePresented: Bool = false
 
+    // Sprint 3 polish — placeholder handlers wired to real flows.
+    /// Picker sheet shown por tap del "+" en OpenVotesListView. Routes a
+    /// CreateGeneralProposalSheet o CreateRuleChangeSheet.
+    @State private var createVoteSheetPresented: Bool = false
+    @State private var createGeneralProposalPresented: Bool = false
+    @State private var createRuleChangePresented: Bool = false
+    /// Settings → Salir del grupo: tracking del network call para deshabilitar
+    /// el botón mientras corre (alert se cierra con tap en "Salir").
+    @State private var leaveGroupInProgress: Bool = false
+
     enum Tab: String, RuulTabItem, CaseIterable {
         case home, group, history, settings
 
@@ -335,9 +345,9 @@ struct MainTabView: View {
                     .alert("¿Salir del grupo?", isPresented: $leaveGroupConfirmation) {
                         Button("Cancelar", role: .cancel) {}
                         Button("Salir", role: .destructive) {
-                            // Fase 6: implementar RPC `leave_group` + refresh
-                            // de AppState.groups. Por ahora placeholder.
+                            Task { await leaveActiveGroup() }
                         }
+                        .disabled(leaveGroupInProgress)
                     } message: {
                         Text("Esta acción es permanente. Solo el founder puede agregarte de vuelta.")
                     }
@@ -360,13 +370,55 @@ struct MainTabView: View {
                 onSelectVote: { vote in
                     voteDetailRoute = VoteDetailRouteContext(vote: vote)
                 },
-                // Phase G2 follow-up: wiring CreateVoteSheet (general
-                // proposal + rule_change pickers) is its own task. For the
-                // dead-tap fix the "+" toolbar button is intentionally a
-                // no-op; an empty-state CTA in OpenVotesListView calls the
-                // same closure. Tracked separately.
-                onCreateVote: {}
+                onCreateVote: { createVoteSheetPresented = true }
             )
+            .sheet(isPresented: $createVoteSheetPresented) {
+                CreateVoteSheet(
+                    onPickGeneralProposal: { createGeneralProposalPresented = true },
+                    onPickRuleChange: { createRuleChangePresented = true }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $createGeneralProposalPresented, onDismiss: {
+                Task { await rulesCoordinator?.refresh() }
+            }) {
+                if let member = currentGroupMember(in: group) {
+                    CreateGeneralProposalSheet(
+                        coordinator: CreateGeneralProposalCoordinator(
+                            group: group,
+                            member: member,
+                            voteRepo: app.voteRepo,
+                            governance: app.governance
+                        ),
+                        onCreated: { _ in
+                            Task { await rulesCoordinator?.refresh() }
+                        }
+                    )
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .sheet(isPresented: $createRuleChangePresented, onDismiss: {
+                Task { await rulesCoordinator?.refresh() }
+            }) {
+                if let member = currentGroupMember(in: group) {
+                    CreateRuleChangeSheet(
+                        coordinator: CreateRuleChangeCoordinator(
+                            group: group,
+                            member: member,
+                            availableRules: rulesCoordinator?.rules ?? [],
+                            voteRepo: app.voteRepo,
+                            governance: app.governance
+                        ),
+                        onCreated: { _ in
+                            Task { await rulesCoordinator?.refresh() }
+                        }
+                    )
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
         } else {
             EmptyView()
         }
@@ -394,6 +446,39 @@ struct MainTabView: View {
     /// the cached `memberDirectory` populated on tab bootstrap. Returns nil
     /// if the directory hasn't surfaced the row yet (rare edge — caller
     /// renders EmptyView in that case).
+    /// Resuelve el `Member` row del usuario actual en el grupo dado, vía
+    /// el directorio cacheado por `refreshMemberDirectory(for:)`. Devuelve
+    /// nil si todavía no hidrato — caller renderiza no-op.
+    private func currentGroupMember(in group: Group) -> Member? {
+        guard let userId = app.session?.user.id else { return nil }
+        return memberDirectory[userId]?.member
+    }
+
+    /// Soft-leave: marca al user como `active = false` en `group_members`
+    /// vía `GroupsRepository.leave(_:)`. Después refresca AppState.groups
+    /// para que el switcher reciba la lista actualizada — `activeGroup`
+    /// auto-resuelve a `groups.first` si el active queda stale.
+    private func leaveActiveGroup() async {
+        guard !leaveGroupInProgress, let group = app.activeGroup else { return }
+        leaveGroupInProgress = true
+        defer { leaveGroupInProgress = false }
+        do {
+            try await app.groupsRepo.leave(group.id)
+            await app.refreshProfileAndGroups()
+            // Si el grupo activo persiste por estado stale, resetear al primero.
+            if app.groups.first(where: { $0.id == group.id }) == nil {
+                app.activeGroupId = app.groups.first?.id
+            }
+            selectedTab = .home
+        } catch {
+            // No tracked-error path por ahora; en V2 mostrar toast.
+            // Coordinator-level errors (que sí muestran retry) pertenecen al
+            // refresh subsequent — aquí dejamos fallar silenciosamente porque
+            // la operación es intencional del user y el rebuild de
+            // coordinators ya hace defensive reload via .onChange.
+        }
+    }
+
     private func resolveUserMemberId(in group: Group) -> UUID? {
         guard let userId = app.session?.user.id else { return nil }
         return memberDirectory[userId]?.member.id
