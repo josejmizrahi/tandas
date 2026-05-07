@@ -80,20 +80,6 @@ struct RulesView: View {
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
         }
         .task { await coordinator.refresh() }
-        .navigationTitle("Reglas")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if coordinator.canEditRules {
-                    NavigationLink {
-                        EditRulesView(coordinator: makeEditCoordinator())
-                    } label: {
-                        Image(systemName: "pencil")
-                    }
-                    .accessibilityLabel("Editar reglas")
-                }
-            }
-        }
     }
 
     /// Builds a fresh `EditRulesCoordinator` reusing the read-side coord's
@@ -112,13 +98,30 @@ struct RulesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-            Text(coordinator.group.name)
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Text("\(activeCount) reglas activas")
-                .ruulTextStyle(RuulTypography.title)
-                .foregroundStyle(Color.ruulTextPrimary)
+        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                Text(coordinator.group.name)
+                    .ruulTextStyle(RuulTypography.sectionLabelLg)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Text("\(activeCount) reglas activas")
+                    .ruulTextStyle(RuulTypography.title)
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+            Spacer(minLength: 0)
+            if coordinator.canEditRules {
+                NavigationLink {
+                    EditRulesView(coordinator: makeEditCoordinator())
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.ruulTextPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(Color.ruulBackgroundElevated, in: Circle())
+                        .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Editar reglas")
+            }
         }
         .padding(.top, RuulSpacing.s2)
     }

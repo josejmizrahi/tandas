@@ -70,8 +70,6 @@ struct ProfileView: View {
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
         }
         .task { await coordinator.refresh() }
-        .navigationTitle("Yo")
-        .navigationBarTitleDisplayMode(.large)
     }
 
     // MARK: - Hero (avatar + name + group meta)

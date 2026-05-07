@@ -52,8 +52,6 @@ struct ActionInboxView: View {
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.actions.isEmpty)
         }
         .task { await coordinator.refresh() }
-        .navigationTitle("Inbox")
-        .navigationBarTitleDisplayMode(.large)
     }
 
     private var emptyState: some View {
