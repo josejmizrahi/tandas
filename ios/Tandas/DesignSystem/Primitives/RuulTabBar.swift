@@ -36,6 +36,8 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
+        // TODO v3 §13: replace .regularMaterial → .glassBackground() / .glassMaterial()
+        //             cuando SwiftUI iOS 26 SDK los exponga.
         .background(Capsule().fill(.regularMaterial))
         .padding(.horizontal, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.sm)

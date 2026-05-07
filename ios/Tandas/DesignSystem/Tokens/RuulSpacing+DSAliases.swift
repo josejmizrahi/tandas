@@ -18,4 +18,8 @@ public extension RuulSpacing {
     static let screenPadding: CGFloat = lg   // 20 — screen horizontal margin
     static let sectionGap: CGFloat    = xxl  // 32 — between major sections
     static let itemGap: CGFloat       = sm   // 12 — between items in list
+
+    /// Bottom safe area reserved for floating tab bar chrome.
+    /// Per DS v3 §3.1 (bumped 80 → 100 to accommodate Liquid Glass capsule).
+    static let tabBarBottomSafeArea: CGFloat = 100
 }

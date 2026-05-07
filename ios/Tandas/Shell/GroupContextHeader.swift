@@ -57,6 +57,8 @@ struct GroupContextHeader<Trailing: View>: View {
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
         .background(
+            // TODO v3 §13: replace .regularMaterial → .glassBackground() / .glassMaterial()
+            //             cuando SwiftUI iOS 26 SDK los exponga.
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .fill(.regularMaterial)
                 .overlay(

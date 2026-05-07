@@ -43,6 +43,8 @@ public struct RuulPillButton: View {
                 .font(.system(size: size.symbolSize, weight: .medium))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: size.dimension, height: size.dimension)
+                // TODO v3 §13: replace .regularMaterial → .glassBackground() / .glassMaterial()
+                //             cuando SwiftUI iOS 26 SDK los exponga.
                 .background(Circle().fill(.regularMaterial))
         }
         .buttonStyle(.plain)
