@@ -2,66 +2,70 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleDevelopmentRegion</key>
-  <string>es</string>
-  <key>CFBundleDisplayName</key>
-  <string>Ruul</string>
-  <key>CFBundleExecutable</key>
-  <string>$(EXECUTABLE_NAME)</string>
-  <key>CFBundleIdentifier</key>
-  <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-  <key>CFBundleIconName</key>
-  <string>AppIcon</string>
-  <key>CFBundleInfoDictionaryVersion</key>
-  <string>6.0</string>
-  <key>CFBundleName</key>
-  <string>$(PRODUCT_NAME)</string>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleShortVersionString</key>
-  <string>$(MARKETING_VERSION)</string>
-  <key>CFBundleVersion</key>
-  <string>$(CURRENT_PROJECT_VERSION)</string>
-  <key>LSRequiresIPhoneOS</key>
-  <true/>
-  <key>UILaunchScreen</key>
-  <dict/>
-  <key>UIRequiredDeviceCapabilities</key>
-  <array>
-    <string>arm64</string>
-  </array>
-  <key>UISupportedInterfaceOrientations</key>
-  <array>
-    <string>UIInterfaceOrientationPortrait</string>
-  </array>
-  <key>UIUserInterfaceStyle</key>
-  <string>Dark</string>
-  <key>TandasSupabaseURL</key>
-  <string>$(TANDAS_SUPABASE_URL)</string>
-  <key>TandasSupabaseAnonKey</key>
-  <string>$(TANDAS_SUPABASE_ANON_KEY)</string>
-  <key>NSContactsUsageDescription</key>
-  <string>Para invitar a tu grupo desde tus contactos. Solo se usa cuando tú eliges agregarlos.</string>
-  <key>NSPhotoLibraryUsageDescription</key>
-  <string>Para elegir tu foto de perfil del grupo y covers de eventos.</string>
-  <key>NSCameraUsageDescription</key>
-  <string>Para escanear códigos QR y marcar llegadas a tus eventos.</string>
-  <key>NSLocationWhenInUseUsageDescription</key>
-  <string>Para sugerir ubicaciones cercanas y verificar llegadas a eventos.</string>
-  <key>RuulQRSecret</key>
-  <string>$(RUUL_QR_SECRET)</string>
-  <key>SentryDSN</key>
-  <string>$(SENTRY_DSN)</string>
-  <key>CFBundleURLTypes</key>
-  <array>
-    <dict>
-      <key>CFBundleURLName</key>
-      <string>com.josejmizrahi.ruul.invite</string>
-      <key>CFBundleURLSchemes</key>
-      <array>
-        <string>ruul</string>
-      </array>
-    </dict>
-  </array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es</string>
+	<key>CFBundleDisplayName</key>
+	<string>Ruul</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.josejmizrahi.ruul.invite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ruul</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Para escanear códigos QR y marcar llegadas a tus eventos.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Para invitar a tu grupo desde tus contactos. Solo se usa cuando tú eliges agregarlos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Para sugerir ubicaciones cercanas y verificar llegadas a eventos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Para elegir tu foto de perfil del grupo y covers de eventos.</string>
+	<key>RuulQRSecret</key>
+	<string>$(RUUL_QR_SECRET)</string>
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
+	<key>TandasSupabaseAnonKey</key>
+	<string>$(TANDAS_SUPABASE_ANON_KEY)</string>
+	<key>TandasSupabaseURL</key>
+	<string>$(TANDAS_SUPABASE_URL)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
 </dict>
 </plist>
