@@ -6,7 +6,7 @@ final class InboxCoordinator {
     private(set) var actions: [UserAction] = []
     private(set) var groupsById: [UUID: Group] = [:]
     private(set) var isLoading: Bool = false
-    private(set) var error: String?
+    private(set) var error: CoordinatorError?
 
     private let userId: UUID
     /// When nil (default in 14.2), the inbox is cross-group: every pending
@@ -31,6 +31,7 @@ final class InboxCoordinator {
 
     func refresh() async {
         isLoading = true
+        error = nil
         defer { isLoading = false }
         do {
             async let actionsTask = userActionRepo.pending(userId: userId, groupId: groupId)
@@ -43,9 +44,11 @@ final class InboxCoordinator {
             self.groupsById = Dictionary(uniqueKeysWithValues: loadedGroups.map { ($0.id, $0) })
         } catch {
             log.warning("inbox load failed: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar tu inbox")
         }
     }
+
+    func clearError() { error = nil }
 
     func groupName(for action: UserAction) -> String? {
         groupsById[action.groupId]?.name

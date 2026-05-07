@@ -12,7 +12,12 @@ struct OpenVotesListView: View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
             SwiftUI.Group {
-                if coordinator.openVotes.isEmpty && coordinator.isLoading {
+                if let error = coordinator.error, coordinator.openVotes.isEmpty {
+                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.openVotes.isEmpty && coordinator.isLoading {
                     LoadingStateView(.list)
                         .padding(.horizontal, RuulSpacing.s5)
                         .padding(.top, RuulSpacing.s5)
@@ -52,6 +57,7 @@ struct OpenVotesListView: View {
                     .transition(.opacity)
                 }
             }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.openVotes.isEmpty)
         }

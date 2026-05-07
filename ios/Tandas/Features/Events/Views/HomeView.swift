@@ -184,7 +184,11 @@ struct HomeView: View {
     @ViewBuilder
     private var nextEventSection: some View {
         SwiftUI.Group {
-            if coordinator.isLoading && coordinator.nextEvent == nil {
+            if let error = coordinator.error, coordinator.nextEvent == nil {
+                ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
+                    .frame(minHeight: 360, alignment: .top)
+                    .transition(.opacity)
+            } else if coordinator.isLoading && coordinator.nextEvent == nil {
                 LoadingStateView(.card)
                     .frame(minHeight: 360, alignment: .top)
                     .transition(.opacity)
@@ -201,6 +205,7 @@ struct HomeView: View {
                     .transition(.opacity)
             }
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.nextEvent?.id)
     }

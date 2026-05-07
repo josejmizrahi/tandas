@@ -36,7 +36,12 @@ struct ProfileView: View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
             SwiftUI.Group {
-                if coordinator.profile == nil && coordinator.isLoading {
+                if let error = coordinator.error, coordinator.profile == nil {
+                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.profile == nil && coordinator.isLoading {
                     LoadingStateView(.card)
                         .padding(.horizontal, RuulSpacing.s5)
                         .padding(.top, RuulSpacing.s5)
@@ -62,6 +67,7 @@ struct ProfileView: View {
                     .transition(.opacity)
                 }
             }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
         }

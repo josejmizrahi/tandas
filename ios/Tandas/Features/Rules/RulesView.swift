@@ -37,7 +37,12 @@ struct RulesView: View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
             SwiftUI.Group {
-                if coordinator.isLoading && coordinator.rules.isEmpty {
+                if let error = coordinator.error, coordinator.rules.isEmpty {
+                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.isLoading && coordinator.rules.isEmpty {
                     LoadingStateView(.list)
                         .padding(.horizontal, RuulSpacing.s5)
                         .padding(.top, RuulSpacing.s5)
@@ -72,6 +77,7 @@ struct RulesView: View {
                     .transition(.opacity)
                 }
             }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
         }

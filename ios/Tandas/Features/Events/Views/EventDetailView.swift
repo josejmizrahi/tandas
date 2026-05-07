@@ -38,21 +38,30 @@ struct EventDetailView: View {
         ZStack(alignment: .top) {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 0) {
-                    parallaxHero
-                    contentSection
+            if coordinator.hasInitialLoadError, let error = coordinator.error {
+                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                    .padding(.horizontal, RuulSpacing.s5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        parallaxHero
+                        contentSection
+                    }
                 }
+                .scrollIndicators(.hidden)
+                .background(scrollOffsetReader)
+
+                // Sticky bottom CTA bar (cancel link or close button when host).
+                stickyBottomBar
             }
-            .scrollIndicators(.hidden)
-            .background(scrollOffsetReader)
 
             // Top nav — transparent over the cover, glass after scrolling.
+            // Always visible (even on initial-load error) so the user can dismiss.
             topNav
-
-            // Sticky bottom CTA bar (cancel link or close button when host).
-            stickyBottomBar
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.hasInitialLoadError)
         .toolbar(.hidden, for: .navigationBar)
         .ignoresSafeArea(edges: .top)
         .task { await coordinator.refresh() }

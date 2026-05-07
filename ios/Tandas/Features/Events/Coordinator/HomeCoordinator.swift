@@ -17,7 +17,7 @@ final class HomeCoordinator {
 
     private(set) var myRSVPs: [UUID: RSVP] = [:]
     private(set) var isLoading: Bool = false
-    private(set) var error: EventError?
+    private(set) var error: CoordinatorError?
     private(set) var lastRefreshedAt: Date?
 
     let group: Group
@@ -45,6 +45,7 @@ final class HomeCoordinator {
             return
         }
         isLoading = true
+        error = nil
         defer { isLoading = false }
         do {
             let upcoming = try await eventRepo.upcomingEvents(in: group.id, limit: 20)
@@ -58,7 +59,7 @@ final class HomeCoordinator {
             }
             lastRefreshedAt = .now
         } catch {
-            self.error = .fetchFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar tus eventos")
             log.warning("home refresh failed: \(error.localizedDescription)")
         }
     }

@@ -11,7 +11,12 @@ final class EventDetailCoordinator {
     private(set) var myRSVP: RSVP?
     private(set) var isLoading: Bool = false
     private(set) var isMutating: Bool = false
-    private(set) var error: EventError?
+    private(set) var error: CoordinatorError?
+    /// True only for the initial load case (no event data yet + error set).
+    /// EventDetailView swaps the parallax for ErrorStateView in this state;
+    /// mid-flight errors (RSVP, check-in) keep the parallax visible and the
+    /// existing alert/toast pathway handles the surface.
+    var hasInitialLoadError: Bool { error != nil && rsvps.isEmpty && myRSVP == nil }
 
     let viewerRole: ViewerRole
     let group: Group
@@ -61,6 +66,7 @@ final class EventDetailCoordinator {
 
     func refresh() async {
         isLoading = true
+        error = nil
         defer { isLoading = false }
         do {
             async let fetchedEvent = eventRepo.event(event.id)
@@ -70,7 +76,7 @@ final class EventDetailCoordinator {
             rsvps = try await allRSVPs
             myRSVP = try await mine
         } catch {
-            self.error = .fetchFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar el evento")
         }
     }
 
@@ -162,7 +168,7 @@ final class EventDetailCoordinator {
         } catch {
             // Rollback.
             myRSVP = previous
-            self.error = .rsvpFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos guardar tu RSVP")
         }
     }
 
@@ -181,7 +187,7 @@ final class EventDetailCoordinator {
             await analytics.checkIn(eventId: event.id, method: .selfMethod, locationVerified: locationVerified)
             await emitCheckIn(arrivedAt: updated.arrivedAt)
         } catch {
-            self.error = .checkInFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos marcar tu asistencia")
         }
     }
 
@@ -195,7 +201,7 @@ final class EventDetailCoordinator {
             await analytics.checkIn(eventId: event.id, method: .hostMarked, locationVerified: false)
             await emitCheckIn(arrivedAt: updated.arrivedAt, forMemberId: memberId)
         } catch {
-            self.error = .checkInFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos marcar la asistencia")
         }
     }
 
@@ -230,7 +236,7 @@ final class EventDetailCoordinator {
                 await notifications.cancelLocalReminders(for: event.id)
             }
         } catch {
-            self.error = .cancelFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cancelar el evento")
         }
     }
 
@@ -258,7 +264,7 @@ final class EventDetailCoordinator {
                 )
             }
         } catch {
-            self.error = .closeFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cerrar el evento")
         }
     }
 
@@ -276,7 +282,7 @@ final class EventDetailCoordinator {
             try await lifecycle.setAutoGenerate(enabled, group: group)
             await analytics.autoGenerationToggled(enabled: enabled)
         } catch {
-            self.error = .updateFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos actualizar el ajuste")
         }
     }
 
@@ -290,7 +296,7 @@ final class EventDetailCoordinator {
             let promoted = try await rsvpRepo.promoteFromWaitlist(eventId: event.id)
             updateLocalRSVPList(with: promoted)
         } catch {
-            self.error = .rsvpFailed(error.localizedDescription)
+            self.error = CoordinatorError.from(error, fallback: "No pudimos promover de la lista de espera")
         }
     }
 

@@ -10,7 +10,7 @@ import OSLog
 final class RulesCoordinator {
     private(set) var rules: [GroupRule] = []
     private(set) var isLoading: Bool = false
-    private(set) var error: String?
+    private(set) var error: CoordinatorError?
     private(set) var canEditRules: Bool = false
     /// Number of votes with `status='open'` for `group`. Refreshed alongside
     /// the rule list so `RulesView` can surface a "Votos abiertos" section
@@ -45,6 +45,7 @@ final class RulesCoordinator {
 
     func refresh() async {
         isLoading = true
+        error = nil
         defer { isLoading = false }
 
         do {
@@ -73,7 +74,7 @@ final class RulesCoordinator {
             rules = platform.isEmpty ? all : platform
         } catch {
             log.warning("rules load failed: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar las reglas")
         }
 
         // Best-effort fetch for the "Votos abiertos" surface. Don't surface
@@ -86,4 +87,6 @@ final class RulesCoordinator {
             log.warning("openVotes count load failed: \(error.localizedDescription)")
         }
     }
+
+    func clearError() { error = nil }
 }

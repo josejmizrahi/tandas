@@ -14,8 +14,16 @@ struct VoteDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.s5) {
                 VoteHeader(vote: coordinator.vote)
-                bodyForType
-                VoteCastSection(coordinator: coordinator)
+                SwiftUI.Group {
+                    if let error = coordinator.error, coordinator.counts == nil {
+                        ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                            .transition(.opacity)
+                    } else {
+                        bodyForType
+                        VoteCastSection(coordinator: coordinator)
+                    }
+                }
+                .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
             }
             .padding(.horizontal, RuulSpacing.s5)
             .padding(.top, RuulSpacing.s2)

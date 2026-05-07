@@ -16,8 +16,9 @@ final class VoteDetailCoordinator {
 
     private(set) var myCast: VoteCast?
     private(set) var counts: VoteCounts?
+    private(set) var isLoading: Bool = false
     private(set) var isCasting: Bool = false
-    private(set) var error: String?
+    private(set) var error: CoordinatorError?
 
     var alreadyVoted: Bool { (myCast?.choice ?? .pending) != .pending }
     var voteIsClosed: Bool { vote.status != .open }
@@ -37,14 +38,16 @@ final class VoteDetailCoordinator {
     }
 
     func refresh() async {
+        isLoading = true
+        error = nil
+        defer { isLoading = false }
         async let myCastTask = castRepo.myCast(voteId: vote.id, userMemberId: userMemberId)
         async let countsTask = castRepo.counts(voteId: vote.id)
         do {
             myCast = try await myCastTask
             counts = try await countsTask
-            error = nil
         } catch {
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar el voto")
             log.warning("vote detail refresh failed: \(error.localizedDescription)")
         }
     }
@@ -66,9 +69,17 @@ final class VoteDetailCoordinator {
             log.warning("cast failed: \(msg)")
             if msg.contains("vote closed") || msg.contains("not open") {
                 await refresh()
-                self.error = "Este voto ya cerró. Refrescamos resultados."
+                self.error = CoordinatorError(
+                    title: "Voto cerrado",
+                    message: "Este voto ya cerró. Refrescamos resultados.",
+                    isRetryable: false
+                )
             } else {
-                self.error = "No pudimos registrar tu voto: \(msg)"
+                self.error = CoordinatorError(
+                    title: "No pudimos registrar tu voto",
+                    message: msg,
+                    isRetryable: true
+                )
             }
         }
     }

@@ -6,7 +6,7 @@ final class MyFinesCoordinator {
     private(set) var fines: [Fine] = []
     private(set) var groupsById: [UUID: Group] = [:]
     private(set) var isLoading: Bool = false
-    private(set) var error: String?
+    private(set) var error: CoordinatorError?
 
     private let userId: UUID
     private let fineRepo: any FineRepository
@@ -25,6 +25,7 @@ final class MyFinesCoordinator {
 
     func refresh() async {
         isLoading = true
+        error = nil
         defer { isLoading = false }
         do {
             async let finesTask = fineRepo.myFines(userId: userId)
@@ -37,9 +38,11 @@ final class MyFinesCoordinator {
             self.groupsById = Dictionary(uniqueKeysWithValues: loadedGroups.map { ($0.id, $0) })
         } catch {
             log.warning("myFines load failed: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar tus multas")
         }
     }
+
+    func clearError() { error = nil }
 
     func groupName(for fine: Fine) -> String? {
         groupsById[fine.groupId]?.name

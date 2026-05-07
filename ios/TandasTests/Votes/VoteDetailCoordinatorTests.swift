@@ -165,6 +165,7 @@ struct VoteDetailCoordinatorTests {
         ))
         await coord.cast(.inFavor)
         #expect(coord.error != nil)
-        #expect(coord.error?.contains("cerró") == true)
+        let summary = (coord.error?.title ?? "") + " " + (coord.error?.message ?? "")
+        #expect(summary.contains("cerró"))
     }
 }

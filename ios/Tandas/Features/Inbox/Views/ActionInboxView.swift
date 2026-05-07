@@ -12,7 +12,12 @@ struct ActionInboxView: View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
             SwiftUI.Group {
-                if coordinator.actions.isEmpty && coordinator.isLoading {
+                if let error = coordinator.error, coordinator.actions.isEmpty {
+                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.actions.isEmpty && coordinator.isLoading {
                     LoadingStateView(.list)
                         .padding(.horizontal, RuulSpacing.s5)
                         .padding(.top, RuulSpacing.s5)
@@ -44,6 +49,7 @@ struct ActionInboxView: View {
                     .transition(.opacity)
                 }
             }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.actions.isEmpty)
         }

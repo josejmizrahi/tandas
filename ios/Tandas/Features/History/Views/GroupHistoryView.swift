@@ -16,9 +16,6 @@ struct GroupHistoryView: View {
                 if coordinator.hasAnyFilter {
                     activeFilterBar
                 }
-                if let err = coordinator.loadError {
-                    errorBanner(err)
-                }
                 content
             }
             .padding(RuulSpacing.s4)
@@ -95,7 +92,10 @@ struct GroupHistoryView: View {
     @ViewBuilder
     private var content: some View {
         SwiftUI.Group {
-            if coordinator.events.isEmpty && coordinator.isLoading {
+            if let error = coordinator.error, coordinator.events.isEmpty {
+                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                    .transition(.opacity)
+            } else if coordinator.events.isEmpty && coordinator.isLoading {
                 LoadingStateView(.list)
                     .padding(.top, RuulSpacing.s2)
                     .transition(.opacity)
@@ -107,6 +107,7 @@ struct GroupHistoryView: View {
                     .transition(.opacity)
             }
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.events.isEmpty)
     }
@@ -155,17 +156,6 @@ struct GroupHistoryView: View {
         .padding(.top, RuulSpacing.s8)
     }
 
-    private func errorBanner(_ message: String) -> some View {
-        Text("No pudimos cargar: \(message)")
-            .ruulTextStyle(RuulTypography.caption)
-            .foregroundStyle(Color.ruulSemanticError)
-            .padding(RuulSpacing.s3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulSemanticError.opacity(0.08))
-            )
-    }
 }
 
 /// Filter editor presented as a sheet over GroupHistoryView.

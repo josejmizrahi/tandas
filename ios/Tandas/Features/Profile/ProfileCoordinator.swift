@@ -18,7 +18,7 @@ final class ProfileCoordinator {
     var profile: Profile?
     var fines: [Fine] = []
     var isLoading: Bool = false
-    var loadError: String?
+    var error: CoordinatorError?
 
     init(
         userId: UUID,
@@ -32,8 +32,8 @@ final class ProfileCoordinator {
 
     func refresh() async {
         isLoading = true
+        error = nil
         defer { isLoading = false }
-        loadError = nil
         do {
             async let profileTask = profileRepo.loadMine()
             async let finesTask = fineRepo.myFines(userId: userId)
@@ -42,9 +42,11 @@ final class ProfileCoordinator {
             self.fines = loadedFines
         } catch {
             log.warning("profile refresh failed: \(error.localizedDescription, privacy: .public)")
-            loadError = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar tu perfil")
         }
     }
+
+    func clearError() { error = nil }
 
     // MARK: - Derived stats
 

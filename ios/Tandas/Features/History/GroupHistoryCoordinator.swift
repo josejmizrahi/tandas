@@ -18,7 +18,7 @@ final class GroupHistoryCoordinator {
     var events: [SystemEvent] = []
     var isLoading: Bool = false
     var hasMore: Bool = true
-    var loadError: String?
+    var error: CoordinatorError?
 
     init(groupId: UUID, repo: any SystemEventRepository) {
         self.groupId = groupId
@@ -29,7 +29,7 @@ final class GroupHistoryCoordinator {
     func refresh() async {
         events = []
         hasMore = true
-        loadError = nil
+        error = nil
         await loadMore()
     }
 
@@ -43,9 +43,11 @@ final class GroupHistoryCoordinator {
             if page.count < Self.pageSize { hasMore = false }
         } catch {
             log.error("loadMore failed: \(error.localizedDescription, privacy: .public)")
-            loadError = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar la historia")
         }
     }
+
+    func clearError() { error = nil }
 
     func setEventType(_ type: SystemEventType?) {
         filter.eventType = type

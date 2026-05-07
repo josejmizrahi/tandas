@@ -14,7 +14,7 @@ final class OpenVotesCoordinator {
 
     private(set) var openVotes: [Vote] = []
     private(set) var isLoading: Bool = false
-    private(set) var error: String?
+    private(set) var error: CoordinatorError?
     private(set) var lastRefreshedAt: Date?
 
     private let cacheTTL: TimeInterval = 60
@@ -30,16 +30,18 @@ final class OpenVotesCoordinator {
             return
         }
         isLoading = true
+        error = nil
         defer { isLoading = false }
         do {
             openVotes = try await voteRepo.openVotes(for: group.id)
             lastRefreshedAt = .now
-            error = nil
         } catch {
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar los votos abiertos")
             log.warning("openVotes refresh failed: \(error.localizedDescription)")
         }
     }
+
+    func clearError() { error = nil }
 
     /// Sectioned: closing-soon (next 24h) vs other (≥24h until close).
     func sectioned() -> [(Section, [Vote])] {

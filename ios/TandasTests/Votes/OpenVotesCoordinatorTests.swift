@@ -85,7 +85,7 @@ struct OpenVotesCoordinatorTests {
         let coord = OpenVotesCoordinator(group: group, voteRepo: repo)
         await coord.refresh()
 
-        #expect(coord.error?.contains("network down") == true)
+        #expect(coord.error?.message?.contains("network down") == true)
         #expect(coord.openVotes.isEmpty)
     }
 }
