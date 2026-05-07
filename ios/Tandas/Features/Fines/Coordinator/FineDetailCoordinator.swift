@@ -14,19 +14,36 @@ final class FineDetailCoordinator {
 
     private let fineRepo: any FineRepository
     private let appealRepo: any AppealRepository
+    private let analytics: (any AnalyticsService)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "fines.detail")
 
     init(
         fine: Fine,
         userId: UUID,
         fineRepo: any FineRepository,
-        appealRepo: any AppealRepository
+        appealRepo: any AppealRepository,
+        analytics: (any AnalyticsService)? = nil
     ) {
         self.fine = fine
         self.userId = userId
         self.isMine = fine.userId == userId
         self.fineRepo = fineRepo
         self.appealRepo = appealRepo
+        self.analytics = analytics
+    }
+
+    /// Beta 1 instrumentation (Plans/Active/Beta1.md §4): emit fine_seen
+    /// the first time the detail surface renders for this fine. View
+    /// callers invoke once on `.task {}` / `.onAppear`.
+    func trackSeen() async {
+        guard let analytics else { return }
+        let beta = BetaAnalytics(analytics: analytics)
+        await beta.fineSeen(
+            fineId: fine.id,
+            ruleSlug: nil,
+            isMine: isMine,
+            status: fine.status.rawValue
+        )
     }
 
     func refresh() async {
@@ -49,6 +66,10 @@ final class FineDetailCoordinator {
         defer { isMutating = false }
         do {
             _ = try await appealRepo.startAppeal(fineId: fine.id, reason: reason)
+            if let analytics {
+                let beta = BetaAnalytics(analytics: analytics)
+                await beta.fineAppealStarted(fineId: fine.id, ruleSlug: nil)
+            }
             await refresh()
         } catch {
             self.error = error.localizedDescription
@@ -61,6 +82,11 @@ final class FineDetailCoordinator {
         defer { isMutating = false }
         do {
             fine = try await fineRepo.pay(fineId: fine.id)
+            if let analytics {
+                let beta = BetaAnalytics(analytics: analytics)
+                let amountInt = NSDecimalNumber(decimal: fine.amount).intValue
+                await beta.finePaid(fineId: fine.id, amountMxn: amountInt)
+            }
         } catch {
             self.error = error.localizedDescription
         }

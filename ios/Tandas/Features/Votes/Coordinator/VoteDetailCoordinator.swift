@@ -12,6 +12,7 @@ final class VoteDetailCoordinator {
     private let userMemberId: UUID
     private let voteRepo: any VoteRepository
     private let castRepo: any VoteCastRepository
+    private let analytics: (any AnalyticsService)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "vote-detail")
 
     private(set) var myCast: VoteCast?
@@ -28,13 +29,15 @@ final class VoteDetailCoordinator {
         group: Group,
         userMemberId: UUID,
         voteRepo: any VoteRepository,
-        castRepo: any VoteCastRepository
+        castRepo: any VoteCastRepository,
+        analytics: (any AnalyticsService)? = nil
     ) {
         self.vote = vote
         self.group = group
         self.userMemberId = userMemberId
         self.voteRepo = voteRepo
         self.castRepo = castRepo
+        self.analytics = analytics
     }
 
     func refresh() async {
@@ -59,6 +62,17 @@ final class VoteDetailCoordinator {
 
         do {
             try await castRepo.cast(voteId: vote.id, choice: choice)
+            // Beta 1 instrumentation (Plans/Active/Beta1.md §4):
+            // capture every successful cast with vote_type so we can
+            // split fine_appeal from rule_change / general_proposal.
+            if let analytics {
+                let beta = BetaAnalytics(analytics: analytics)
+                await beta.voteCast(
+                    voteId: vote.id,
+                    voteType: vote.voteType.rawValue,
+                    choice: choice.rawValue
+                )
+            }
             await refresh()
         } catch {
             // Edge case: vote closed mid-cast. Surfaceamos copy claro

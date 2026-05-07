@@ -10,6 +10,7 @@ struct TandasApp: App {
     @State private var appState: AppState
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage("ruul_appearance") private var appearanceRaw: String = AppearanceOption.system.rawValue
+    @Environment(\.scenePhase) private var scenePhase
 
     private var appearance: AppearanceOption {
         AppearanceOption(rawValue: appearanceRaw) ?? .system
@@ -164,6 +165,14 @@ struct TandasApp: App {
                 }
         }
         .modelContainer(for: [OnboardingProgress.self])
+        // Beta 1 instrumentation (Plans/Active/Beta1.md §4): fire
+        // app_opened on every transition into .active. Cheapest signal
+        // for DAU + retention curves during the cena observation window.
+        .onChange(of: scenePhase) { _, new in
+            guard new == .active else { return }
+            let beta = BetaAnalytics(analytics: appState.analytics)
+            Task { await beta.appOpened() }
+        }
     }
 }
 

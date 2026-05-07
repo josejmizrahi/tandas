@@ -196,6 +196,16 @@ final class AppState {
     }
 
     func handleIncomingNotification(userInfo: [AnyHashable: Any]) {
+        // Beta 1 instrumentation (Plans/Active/Beta1.md §4): track which
+        // push notif kinds users actually act on. `kind` discriminator
+        // mirrors what `dispatch-notifications` writes into the deep
+        // link path (event/rule/vote/fine/invite/appeal).
+        let kind = (userInfo["deep_link_kind"] as? String)
+            ?? (userInfo["kind"] as? String)
+            ?? "unknown"
+        let beta = BetaAnalytics(analytics: analytics)
+        Task { await beta.notificationTapped(kind: kind) }
+
         if let link = EventDeepLink(userInfo: userInfo) {
             pendingEventDeepLink = link
         }

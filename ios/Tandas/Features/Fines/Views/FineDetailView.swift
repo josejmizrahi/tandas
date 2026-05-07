@@ -45,6 +45,7 @@ struct FineDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await coordinator.refresh() }
         .task { canVoidFine = await computeCanVoidFine() }
+        .task { await coordinator.trackSeen() }
         .ruulSheet(isPresented: $appealSheetPresented) {
             AppealFineSheet(
                 isPresented: $appealSheetPresented,

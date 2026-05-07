@@ -103,20 +103,42 @@ Append al final de [§5 Journal entries](#5-journal-entries).
 ## 4. Observable questions (analytics minimal)
 
 Mínimo viable de telemetría para evitar dependencia 100% del journal
-manual. PostHog events + algunos counts SQL:
+manual. Lo emitido hoy desde iOS — todo via `LogAnalyticsService` →
+OSLog `subsystem:com.josejmizrahi.ruul category:analytics`. Pull
+durante Beta vía Xcode → Window → Devices and Simulators → View
+Device Logs y filtrar.
 
-| Pregunta | Métrica | Source |
+### Eventos iOS (`Services/Analytics/`)
+
+| Evento | Cuándo se emite | Properties relevantes |
 |---|---|---|
-| ¿Las reglas se usan? | fines_emitted_per_rule_slug | `select count(*) from fines group by rule_id` |
-| ¿Las multas se pagan? | paid_rate, waived_rate, in_appeal_rate | `fines` status distribution |
-| ¿Las apelaciones se votan? | votes_per_appeal_avg | `vote_casts` join `votes` |
-| ¿Las notificaciones llegan? | apns_delivery_rate | Sentry breadcrumbs |
-| ¿Los onboarding terminan? | onboarding_completion_funnel | PostHog ya conectado |
-| ¿La gente vuelve? | DAU, sessions per user, days since last open | PostHog |
+| `app_opened` | scenePhase → .active | (ninguna — count signal) |
+| `notification_tapped` | tap de push que abre la app | `kind` (event/rule/vote/fine/...) |
+| `onboarding_started` / `onboarding_completed` / `onboarding_step_*` | flujo onboarding | `flow_type`, `step_id`, ms |
+| `group_created` | tras create_group_with_admin | `has_vocabulary`, `fines_enabled`, `rules_count` |
+| `rsvp_changed` | toggle RSVP | `from_status`, `to_status`, `time_to_event_hours` |
+| `check_in` | check-in self/manual/QR | `method`, `location_verified` |
+| `vote_cast` | tras castRepo.cast() exitoso | `vote_type`, `choice` |
+| `fine_seen` | FineDetailView.task `.trackSeen()` | `is_mine`, `status` |
+| `fine_appeal_started` | startAppeal() exitoso | `fine_id`, `rule_slug` |
+| `fine_paid` | payFine() exitoso | `amount_mxn` |
 
-Implementación de estas métricas: **solo si requieren < 1d de trabajo**.
-Si requiere refactor, anotar en `Plans/Active/Beta1Followups.md` (a
-crear cuando aparezca el primer item) y diferir.
+### Queries SQL complementarias (server-side)
+
+Para preguntas que no necesitan iOS instrumentation, leer directo de Supabase:
+
+| Pregunta | Query |
+|---|---|
+| ¿Las reglas se usan? | `select rule_id, count(*) from fines group by rule_id` |
+| ¿Distribución de status de multas? | `select status, count(*) from fines group by status` |
+| ¿Apelaciones casteadas vs abiertas? | `select count(*) filter (where status='resolved') / count(*) from votes where vote_type='fine_appeal'` |
+| ¿APNs delivery? | edge function `dispatch-notifications` Sentry breadcrumbs |
+
+### Regla
+Implementación de cualquier métrica nueva: **solo si requiere < 1h
+de trabajo**. Si requiere refactor (e.g. wirear analytics en otro
+coordinator), anotar en `Plans/Active/Beta1Followups.md` (a crear
+cuando aparezca el primer item) y diferir.
 
 ---
 

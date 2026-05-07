@@ -444,7 +444,8 @@ struct MainTabView: View {
                     group: group,
                     userMemberId: userMemberId,
                     voteRepo: app.voteRepo,
-                    castRepo: app.voteCastRepo
+                    castRepo: app.voteCastRepo,
+                    analytics: app.analytics
                 )
             )
         } else {
@@ -526,7 +527,8 @@ struct MainTabView: View {
             fine: fine,
             userId: app.session?.user.id ?? UUID(),
             fineRepo: app.fineRepo,
-            appealRepo: app.appealRepo
+            appealRepo: app.appealRepo,
+            analytics: app.analytics
         )
         let userId = app.session?.user.id ?? UUID()
         let governance = app.governance
