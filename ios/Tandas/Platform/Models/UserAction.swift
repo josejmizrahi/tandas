@@ -57,16 +57,17 @@ public struct UserAction: Identifiable, Sendable, Hashable, Codable {
 
 public enum ActionType: String, Codable, Sendable, Hashable, CaseIterable {
     // V1
-    case finePending          = "finePending"
-    case fineVoided           = "fineVoided"
-    case appealVotePending    = "appealVotePending"
-    case rsvpPending          = "rsvpPending"
-    case fineProposalReview   = "fineProposalReview"
+    case finePending             = "finePending"
+    case fineVoided              = "fineVoided"
+    case appealVotePending       = "appealVotePending"
+    case rsvpPending             = "rsvpPending"
+    case fineProposalReview      = "fineProposalReview"
+    case ruleChangeApplyPending  = "ruleChangeApplyPending"  // NEW: emitted by finalize_vote v3 when rule_change passes
     // Future phases
-    case slotPending          = "slotPending"
-    case votePending          = "votePending"
-    case contributionDue      = "contributionDue"
-    case compensationDue      = "compensationDue"
+    case slotPending             = "slotPending"
+    case votePending             = "votePending"
+    case contributionDue         = "contributionDue"
+    case compensationDue         = "compensationDue"
 }
 
 public enum ActionPriority: String, Codable, Sendable, Hashable, CaseIterable {

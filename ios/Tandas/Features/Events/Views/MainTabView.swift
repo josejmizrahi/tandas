@@ -349,6 +349,9 @@ struct MainTabView: View {
                 detailRoute = event
                 selectedTab = .home
             }
+        case .ruleChangeApplyPending:
+            // Routing to EditRuleSheet pre-loaded llega en Phase G (Task G3).
+            break
         case .slotPending, .votePending, .contributionDue, .compensationDue:
             // Not used by V1 template — no-op for now.
             break
