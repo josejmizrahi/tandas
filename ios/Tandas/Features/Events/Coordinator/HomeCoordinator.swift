@@ -6,6 +6,15 @@ import OSLog
 final class HomeCoordinator {
     private(set) var nextEvent: Event?
     private(set) var upcomingEvents: [Event] = []
+
+    /// Resource-shaped accessor sobre `nextEvent`. V1 deriva trivialmente
+    /// envolviendo en `EventResource`; cuando un segundo resource type
+    /// shippee, este passa a ser canonical y `nextEvent` se elimina (Path B
+    /// additive de Sub-fase B — Phase 0.5 audit § 5.1 #8).
+    var nextResource: (any ResourceProtocol)? {
+        nextEvent.map(EventResource.init)
+    }
+
     private(set) var myRSVPs: [UUID: RSVP] = [:]
     private(set) var isLoading: Bool = false
     private(set) var error: EventError?
