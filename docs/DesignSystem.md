@@ -1,4 +1,4 @@
-# ruul — Design System
+# ruul — Design System v2.0
 
 > Documento autoritativo sobre cómo se ve y se siente ruul.
 > Cualquier nueva pantalla, componente, o pattern visual debe
@@ -6,20 +6,30 @@
 > requiere justificación documentada y update de este doc.
 >
 > Última actualización: 2026-05-07
+> Versión: 2.0.0
 > Mantenedor: founder + reviewer
 > Stack: Swift 6, SwiftUI puro, iOS 26+, Liquid Glass nativo
+>
+> Cambios v1 → v2:
+>   - Estructura de tabs corregida (Inicio · Grupo · Historial · Ajustes)
+>   - Multi-group como arquitectura estructural desde V1
+>   - Patrón híbrido: Home cross-grupos, otras tabs grupo-activo
+>   - 5 componentes nuevos para multi-group support
+>   - Color automático por categoría de template
 
 ---
 
 ## §0 Cómo usar este documento
 
-**Si vas a construir una pantalla nueva**: leé §1 (filosofía), después saltá a §6 (patterns de pantallas) y buscá el pattern más cercano. Si no existe, leé §3 (componentes) para combinar piezas. Si necesitás componente nuevo, leé §10 (reglas de evolución).
+**Si vas a construir una pantalla nueva**: leé §1 (filosofía), después §6 (catálogo de pantallas) y §5 (layout patterns). Si necesitás componente nuevo, leé §10.
 
-**Si vas a construir un componente nuevo**: leé §1, §2 (tokens), §10 (reglas de evolución). Componentes nuevos se agregan a §3 con su API, ejemplos, y tests.
+**Si vas a construir un componente nuevo**: leé §1, §2 (tokens), §10 (reglas de evolución).
 
 **Si vas a hacer revisión de código UI**: usá §11 (review checklist).
 
-**Si sos founder revisando dirección**: leé §1 y §13 (anti-patterns).
+**Si sos founder revisando dirección**: leé §1, §4 (multi-group context), §13 (anti-patterns).
+
+**Cuándo este doc se actualiza**: al cierre de cada fase mayor, o cuando se descubre decisión arquitectónica que invalide algo previo.
 
 ---
 
@@ -33,12 +43,13 @@ ruul es **infraestructura de autogobierno para grupos**. La UI debe transmitir:
 - **Predictibilidad**: el usuario siempre sabe qué pasa y por qué
 - **Transparencia**: cada decisión tiene historial visible
 - **Calma**: la app no compite por atención, espera al usuario
+- **Multi-group nativo**: ningún usuario tiene un solo grupo, nunca
 
 ruul NO se ve como:
 
 - Notion / Linear (demasiado utilitario, sin personalidad)
 - Headspace / Calm (demasiado emocional)
-- Discord / Slack (demasiado social)
+- Discord / Slack (demasiado social — aunque tomamos ideas de switcher)
 - Splitwise / Venmo (demasiado transaccional)
 - Luma (demasiado aspiracional)
 
@@ -75,6 +86,7 @@ ruul SÍ se ve como:
 4. **Movimiento es feedback**: animaciones confirman acciones, nunca decoran
 5. **Liquid Glass es chrome**: glass para UI infrastructure (toolbars, tab bar, sheets), surfaces sólidas para contenido
 6. **Tap targets son generosos**: mínimo 44x44pt, target real (no solo icono)
+7. **Multi-group es estructural**: cada item de Home muestra su grupo de origen claramente
 
 ---
 
@@ -96,25 +108,15 @@ public enum RuulSpacing {
     public static let xxxl: CGFloat = 48
 
     // Aliases semánticos
-    public static let cardPadding: CGFloat = md      // padding interno de cards
-    public static let screenPadding: CGFloat = lg    // padding lateral de pantallas
-    public static let sectionGap: CGFloat = xxl      // entre secciones de pantalla
-    public static let itemGap: CGFloat = sm          // entre items en lista
+    public static let cardPadding: CGFloat = md
+    public static let screenPadding: CGFloat = lg
+    public static let sectionGap: CGFloat = xxl
+    public static let itemGap: CGFloat = sm
+    public static let tabBarBottomSafeArea: CGFloat = 80  // espacio para tab bar flotante
 }
 ```
 
-**Reglas de aplicación**:
-
-- Padding interno de cards: `cardPadding` (16pt)
-- Padding lateral de pantallas: `screenPadding` (20pt)
-- Gap entre items en lista: `itemGap` (12pt)
-- Gap entre secciones: `sectionGap` (32pt)
-- Padding superior debajo de header: `xl` (24pt)
-- Padding inferior antes de tab bar flotante: `xxxl` (48pt)
-
 ### §2.2 Tipografía
-
-Sistema basado en SF Pro (sans para body, UI) + New York (serif para títulos importantes). Todos respetan Dynamic Type.
 
 ```swift
 public extension Font {
@@ -131,36 +133,27 @@ public extension Font {
     static let ruulBody = Font.system(.body, design: .default, weight: .regular)
     static let ruulBodyEmphasis = Font.system(.body, design: .default, weight: .semibold)
 
-    // === Caption === (metadata, timestamps, secondary info)
+    // === Caption === (metadata, timestamps)
     static let ruulCaption = Font.system(.subheadline, design: .default, weight: .regular)
     static let ruulCaptionEmphasis = Font.system(.subheadline, design: .default, weight: .medium)
     static let ruulCaptionSmall = Font.system(.footnote, design: .default, weight: .regular)
 
-    // === Numeric === (siempre tabular para alineación vertical)
+    // === Numeric === (siempre tabular)
     static let ruulMoneyLarge = Font.system(.title, design: .default, weight: .semibold).monospacedDigit()
     static let ruulMoneyMedium = Font.system(.title3, design: .default, weight: .semibold).monospacedDigit()
     static let ruulMoneySmall = Font.system(.body, design: .default, weight: .semibold).monospacedDigit()
 
-    // === Label === (botones, tab bar, etiquetas estructurales)
+    // === Label === (botones, tab bar)
     static let ruulLabel = Font.system(.subheadline, design: .default, weight: .medium)
     static let ruulLabelSmall = Font.system(.caption, design: .default, weight: .medium)
 
     // === Microcopy === (legales, timestamps muy pequeños)
     static let ruulMicro = Font.system(.caption2, design: .default, weight: .regular)
+
+    // === Group === (NEW v2: para nombre del grupo en items)
+    static let ruulGroupLabel = Font.system(.caption, design: .default, weight: .medium)
 }
 ```
-
-**Reglas de aplicación**:
-
-- Hero de pantalla: `ruulDisplayMedium` o `ruulDisplayLarge`
-- Título de card: `ruulTitleSmall` o `ruulTitleMedium`
-- Body de contenido: `ruulBody`
-- Metadata (fecha, ubicación): `ruulCaption`
-- Section header (en uppercase con tracking): `ruulCaptionEmphasis`
-- Cualquier monto en pesos: `ruulMoney*` (siempre tabular)
-- Labels de tab bar: `ruulLabelSmall`
-
-**NO usar**: `.font(.title)` directo. Siempre via tokens.
 
 ### §2.3 Color
 
@@ -168,33 +161,33 @@ Sistema semántico, todo via Asset Catalog para soporte automático light/dark/a
 
 ```swift
 public extension Color {
-    // === Backgrounds === (jerarquía de superficies)
+    // === Backgrounds ===
     static let ruulBackground = Color(.systemGroupedBackground)
     static let ruulSurface = Color(.secondarySystemGroupedBackground)
     static let ruulSurfaceElevated = Color(.tertiarySystemGroupedBackground)
 
-    // === Text === (jerarquía de contenido)
+    // === Text ===
     static let ruulTextPrimary = Color(.label)
     static let ruulTextSecondary = Color(.secondaryLabel)
     static let ruulTextTertiary = Color(.tertiaryLabel)
     static let ruulTextQuaternary = Color(.quaternaryLabel)
 
-    // === Brand === (definir en Assets.xcassets)
-    static let ruulAccent = Color("AccentColor")          // azul-teal serio (#1B4D7A range)
-    static let ruulAccentMuted = Color("AccentColorMuted") // tinte light del accent
+    // === Brand ===
+    static let ruulAccent = Color("AccentColor")
+    static let ruulAccentMuted = Color("AccentColorMuted")
 
-    // === Semantic === (significado funcional, no decorativo)
-    static let ruulPositive = Color(.systemGreen)         // confirmaciones, "going"
-    static let ruulNegative = Color(.systemRed)           // multas, "not going", errores
-    static let ruulWarning = Color(.systemOrange)         // pendientes, expiraciones próximas
-    static let ruulInfo = Color(.systemBlue)              // info neutral
-    static let ruulNeutral = Color(.systemGray)           // estados inactivos
+    // === Semantic ===
+    static let ruulPositive = Color(.systemGreen)
+    static let ruulNegative = Color(.systemRed)
+    static let ruulWarning = Color(.systemOrange)
+    static let ruulInfo = Color(.systemBlue)
+    static let ruulNeutral = Color(.systemGray)
 
-    // === Borders & dividers ===
+    // === Borders ===
     static let ruulSeparator = Color(.separator)
     static let ruulSeparatorOpaque = Color(.opaqueSeparator)
 
-    // === Semantic backgrounds === (tinted surfaces para estados)
+    // === Semantic backgrounds ===
     static let ruulPositiveBackground = Color.ruulPositive.opacity(0.12)
     static let ruulNegativeBackground = Color.ruulNegative.opacity(0.12)
     static let ruulWarningBackground = Color.ruulWarning.opacity(0.12)
@@ -202,33 +195,78 @@ public extension Color {
 }
 ```
 
-**Reglas de aplicación**:
+### §2.4 Group color ramps (NEW v2)
 
-- Background de pantalla: `ruulBackground`
-- Superficie de card: `ruulSurface`
-- Card elevada (sheets, popovers): `ruulSurfaceElevated`
-- Texto principal: `ruulTextPrimary`
-- Metadata: `ruulTextSecondary`
-- Disabled state: `ruulTextTertiary`
-- CTA primario: background `ruulAccent`, foreground white
-- Multa o error: `ruulNegative` con `ruulNegativeBackground`
-- Confirmación exitosa: `ruulPositive`
+Mapping de categoría de template a color ramp del avatar del grupo.
+
+**El color es automático según la categoría del template del grupo. NO se puede customizar por founder.**
+
+```swift
+public enum GroupCategory: String {
+    case socialRecurring     // Cenas, clubes de lectura, tertulias
+    case sharedResource      // Palcos, cabañas, yates, suscripciones
+    case rotatingSavings     // Tandas, susu, hui, vaquitas
+    case patrimonialFamily   // Consejos familiares, herencias
+    case amateurTeam         // Bandas, equipos deportivos
+    case groupTravel         // Squad trips, retreats, viajes
+    case religiousCultural   // Comunidades religiosas, hermandades
+    case professionalInformal // Cooperativas, mastermind, partnerships
+    case digitalCommunity    // Servidores Discord, mod teams
+    case commitmentPact      // Pactos de fitness, productividad
+
+    public var ramp: GroupColorRamp {
+        switch self {
+        case .socialRecurring: .teal       // verde teal - sociable, calmo
+        case .sharedResource: .blue        // azul - profesional, recurso
+        case .rotatingSavings: .purple     // púrpura - financiero, ahorro
+        case .patrimonialFamily: .amber    // amber - serio, patrimonial
+        case .amateurTeam: .green          // verde - dinámico, deportivo
+        case .groupTravel: .coral          // coral - aspiracional, viaje
+        case .religiousCultural: .pink     // pink - cálido, comunidad
+        case .professionalInformal: .gray  // gris - serio, formal
+        case .digitalCommunity: .blue      // azul - digital, online
+        case .commitmentPact: .green       // verde - crecimiento, hábito
+        }
+    }
+}
+
+public enum GroupColorRamp: String {
+    case teal, blue, purple, amber, green, coral, pink, gray
+
+    /// Background del avatar (el más claro del ramp)
+    public var background: Color {
+        Color("GroupRamp/\(rawValue)/50")
+    }
+
+    /// Foreground de las iniciales (el más oscuro del ramp)
+    public var foreground: Color {
+        Color("GroupRamp/\(rawValue)/800")
+    }
+
+    /// Para borders o accents del grupo (mid-ramp)
+    public var accent: Color {
+        Color("GroupRamp/\(rawValue)/600")
+    }
+}
+```
 
 **Asset Catalog setup requerido**:
 
 ```
-Assets.xcassets/
-├── AccentColor.colorset/
-│   ├── Any (light): #1B4D7A (azul-teal serio)
-│   └── Dark: #4A8FBF (versión más legible en dark)
-└── AccentColorMuted.colorset/
-    ├── Any: #1B4D7A @ 12% opacity sobre background
-    └── Dark: #4A8FBF @ 16% opacity
+Assets.xcassets/GroupRamp/
+├── teal/50, 100, 200, 400, 600, 800, 900
+├── blue/50, 100, 200, 400, 600, 800, 900
+├── purple/50, 100, 200, 400, 600, 800, 900
+├── amber/50, 100, 200, 400, 600, 800, 900
+├── green/50, 100, 200, 400, 600, 800, 900
+├── coral/50, 100, 200, 400, 600, 800, 900
+├── pink/50, 100, 200, 400, 600, 800, 900
+└── gray/50, 100, 200, 400, 600, 800, 900
 ```
 
-**REGLA CRÍTICA**: nunca colores hardcoded fuera de Assets. `Color(red: ..., green: ..., blue: ...)` en código de View es prohibido.
+Cada color tiene 7 stops (50 más claro → 900 más oscuro) con variantes light/dark mode.
 
-### §2.4 Geometría
+### §2.5 Geometría
 
 ```swift
 public enum RuulRadius {
@@ -240,23 +278,13 @@ public enum RuulRadius {
 }
 
 public enum RuulBorder {
-    public static let thin: CGFloat = 0.5      // separators sutiles
-    public static let regular: CGFloat = 1.0   // borders de cards
-    public static let thick: CGFloat = 2.0     // selección, focus
+    public static let thin: CGFloat = 0.5
+    public static let regular: CGFloat = 1.0
+    public static let thick: CGFloat = 2.0
 }
 ```
 
-**Reglas de aplicación**:
-
-- Cards: `RuulRadius.large` (16pt)
-- Botones: `RuulRadius.medium` (12pt)
-- Pills (back button, action groups): `RuulRadius.pill`
-- Sheets y modals: `RuulRadius.extraLarge` (20pt) — Apple los usa así por default
-- Avatars: `Circle()` (no radius)
-
-### §2.5 Sombras
-
-ruul usa sombras MUY sutiles. Si la sombra es visible obvia, está mal.
+### §2.6 Sombras
 
 ```swift
 public extension View {
@@ -274,53 +302,29 @@ public extension View {
 }
 ```
 
-**Reglas**:
-
-- Cards normales: `ruulShadowSubtle` o sin sombra (con border)
-- Sheets flotantes: `ruulShadowMedium`
-- Modales overlay: `ruulShadowElevated`
-- Botones: sin sombra
-- Tab bar flotante: sin sombra (Liquid Glass hace el trabajo)
-
-### §2.6 Animación
+### §2.7 Animación
 
 ```swift
 public extension Animation {
-    // === Para feedback de tap ===
     static let ruulTap = Animation.spring(response: 0.3, dampingFraction: 0.7)
-
-    // === Para transiciones de estado (RSVP cambia, etc) ===
     static let ruulStateChange = Animation.smooth(duration: 0.3)
-
-    // === Para aparición de elementos ===
     static let ruulAppear = Animation.smooth(duration: 0.4)
-
-    // === Para feedback emocional positivo (confirmación) ===
     static let ruulSuccess = Animation.spring(response: 0.4, dampingFraction: 0.6)
-
-    // === Para movimientos sutiles continuos (pull to refresh) ===
     static let ruulSubtle = Animation.easeInOut(duration: 0.2)
+    static let ruulGroupSwitch = Animation.smooth(duration: 0.4)  // NEW v2
 }
 ```
 
-**Reglas**:
-
-- Duración máxima: 0.5s (más se siente lento)
-- Spring para feedback humano (tap, success)
-- Smooth para transitions de sistema (cambio de pantalla, expand)
-- EaseInOut para micro-animaciones (loading dots, etc)
-
-**NO usar**: animaciones decorativas, bouncy exagerado, particles, confetti, shake, pulse continuo.
-
-### §2.7 Haptics
+### §2.8 Haptics
 
 ```swift
 public enum RuulHaptic {
-    case lightTap      // tap en card importante, navegación
-    case mediumTap     // selección de opción, toggle
-    case success       // confirmación exitosa (RSVP, voto, multa apelada)
-    case warning       // alerta de atención requerida
-    case error         // acción falló
+    case lightTap
+    case mediumTap
+    case success
+    case warning
+    case error
+    case groupSwitch  // NEW v2: feedback al cambiar grupo activo
 
     public func trigger() {
         switch self {
@@ -334,37 +338,28 @@ public enum RuulHaptic {
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
         case .error:
             UINotificationFeedbackGenerator().notificationOccurred(.error)
+        case .groupSwitch:
+            UISelectionFeedbackGenerator().selectionChanged()
         }
     }
 }
 ```
 
-**Reglas críticas**:
-
-- Haptic SOLO en acciones que el usuario inicia conscientemente
-- NO haptic en cada scroll, cada appear, cada animación pasiva
-- Success haptic: solo cuando algo importante se confirmó (no en cada tap)
-- Error haptic: solo en errores reales del usuario (no en errores de red)
-
 ---
 
 ## §3 Componentes core
 
-### §3.1 Componentes ya existentes (Sprint 0)
+### §3.1 Componentes ya existentes
 
-Tu reviewer ya construyó estos. Documentamos su API esperada:
+Sprint 0 entregó (asumiendo APIs alineadas con tokens de §2):
 
-- `TemplatePickerCard` — selección de template en onboarding
-- `ActionCard` — item del Inbox con priority + action
-- `ResourceTabBar` — tab bar de filtros dentro de un resource
-- `RuulMetricCard` — número grande con label y trend
-- `RuulTimelineItem` — item de history timeline
-
-Si la implementación actual de estos diverge de lo descrito abajo, abrir issue para alinear.
+- `TemplatePickerCard`
+- `ActionCard`
+- `ResourceTabBar`
+- `RuulMetricCard`
+- `RuulTimelineItem`
 
 ### §3.2 RuulCard — container base
-
-Container universal para cualquier item con datos.
 
 ```swift
 public struct RuulCard<Content: View>: View {
@@ -391,23 +386,7 @@ public struct RuulCard<Content: View>: View {
 }
 ```
 
-**Uso**:
-
-```swift
-RuulCard {
-    VStack(alignment: .leading, spacing: 8) {
-        Text("Próxima cena").font(.ruulCaption).foregroundStyle(.secondary)
-        Text("Martes 14, 8:00 pm").font(.ruulTitleSmall)
-    }
-}
-```
-
-**Variantes**:
-
-- `RuulCard.elevated()` — con `ruulShadowSubtle()`
-- `RuulCard.bordered()` — con border de `ruulSeparator` opacity 0.5
-
-### §3.3 RuulPillButton — back button + acciones de header
+### §3.3 RuulPillButton
 
 ```swift
 public struct RuulPillButton: View {
@@ -416,16 +395,9 @@ public struct RuulPillButton: View {
     var size: Size = .regular
 
     public enum Size {
-        case small  // 32x32
-        case regular // 40x40
-        case large   // 48x48
-
+        case small, regular, large
         var dimension: CGFloat {
-            switch self {
-            case .small: 32
-            case .regular: 40
-            case .large: 48
-            }
+            switch self { case .small: 32; case .regular: 40; case .large: 48 }
         }
     }
 
@@ -445,22 +417,7 @@ public struct RuulPillButton: View {
 }
 ```
 
-**Uso típico**:
-
-```swift
-HStack {
-    RuulPillButton(symbol: "chevron.left") { dismiss() }
-    Spacer()
-    RuulHeaderActions {
-        RuulPillButton(symbol: "magnifyingglass") { showSearch() }
-        RuulPillButton(symbol: "ellipsis") { showMore() }
-    }
-}
-```
-
-### §3.4 RuulHeaderActions — grupo de acciones en pill compartida
-
-Cuando hay 2+ acciones en header, agruparlas en una sola pill.
+### §3.4 RuulHeaderActions
 
 ```swift
 public struct RuulHeaderActions<Content: View>: View {
@@ -481,7 +438,7 @@ public struct RuulHeaderActions<Content: View>: View {
 }
 ```
 
-### §3.5 RuulButton — botón estándar con variantes
+### §3.5 RuulButton
 
 ```swift
 public struct RuulButton: View {
@@ -494,69 +451,24 @@ public struct RuulButton: View {
     var isDestructive: Bool = false
 
     public enum Style {
-        case primary    // accent background, white text
-        case secondary  // surface background, primary text
-        case tertiary   // transparent, accent text
-        case glass      // material background, primary text (para sobre cover images)
+        case primary       // accent background, white text
+        case secondary     // surface background, primary text
+        case tertiary      // transparent, accent text
+        case glass         // material background, primary text
     }
 
     public enum Size {
-        case small      // 32 height, ruulCaptionEmphasis
-        case regular    // 44 height, ruulLabel
-        case large      // 56 height, ruulBody emphasis
-    }
-
-    public var body: some View {
-        Button(action: handleTap) {
-            HStack(spacing: 8) {
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(foregroundColor)
-                } else if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: iconSize, weight: .medium))
-                }
-                Text(title)
-                    .font(labelFont)
-            }
-            .foregroundStyle(foregroundColor)
-            .frame(maxWidth: .infinity)
-            .frame(height: size.height)
-            .background(backgroundView)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium))
+        case small, regular, large
+        var height: CGFloat {
+            switch self { case .small: 32; case .regular: 44; case .large: 56 }
         }
-        .buttonStyle(.plain)
-        .disabled(isLoading)
     }
 
-    // Implementation details: foregroundColor, backgroundView, etc.
-    // (omitido por brevedad — se construye en RuulButton.swift completo)
+    // body implementation: ver RuulButton.swift completo
 }
 ```
 
-**Uso**:
-
-```swift
-// CTA primario en sheet
-RuulButton("Confirmar asistencia", action: confirm)
-
-// Acción secundaria
-RuulButton("Cancelar", style: .secondary, action: cancel)
-
-// Acción destructiva
-RuulButton("Eliminar regla", style: .secondary, action: delete, isDestructive: true)
-
-// Botón sobre cover image
-RuulButton("Inscribirse", style: .glass, action: subscribe)
-
-// Con icono
-RuulButton("Crear evento", icon: "plus", action: create)
-```
-
-### §3.6 RuulTabBar — tab bar flotante con Liquid Glass
-
-Componente principal de navegación. Reemplaza `TabView` default.
+### §3.6 RuulTabBar
 
 ```swift
 public struct RuulTabBar<Tab: RuulTabItem>: View {
@@ -572,8 +484,7 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
         .background {
-            Capsule()
-                .fill(.regularMaterial)
+            Capsule().fill(.regularMaterial)
         }
         .padding(.horizontal, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.sm)
@@ -588,8 +499,20 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
             }
         } label: {
             VStack(spacing: 2) {
-                Image(systemName: tab.symbol)
-                    .font(.system(size: 20, weight: .regular))
+                if let badge = tab.badge {
+                    ZStack {
+                        Image(systemName: tab.symbol)
+                            .font(.system(size: 20, weight: .regular))
+                        // Badge dot for unread/pending count
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 8, y: -8)
+                    }
+                } else {
+                    Image(systemName: tab.symbol)
+                        .font(.system(size: 20, weight: .regular))
+                }
                 Text(tab.label)
                     .font(.ruulLabelSmall)
             }
@@ -609,60 +532,56 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
 public protocol RuulTabItem: Identifiable, Hashable {
     var label: String { get }
     var symbol: String { get }
+    var badge: Int? { get }  // NEW v2: notification dot
 }
 ```
 
-**Uso en MainTabView**:
+### §3.7 RuulSubTabBar (NEW v2)
+
+Sub-tabs horizontales dentro de la tab Grupo. Pills horizontales scrollables si hay muchas.
 
 ```swift
-enum MainTab: String, RuulTabItem {
-    case home, inbox, history, settings
+public struct RuulSubTabBar<Tab: RuulSubTabItem>: View {
+    @Binding var selected: Tab
+    let tabs: [Tab]
 
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .home: "Inicio"
-        case .inbox: "Pendientes"
-        case .history: "Historial"
-        case .settings: "Ajustes"
-        }
-    }
-    var symbol: String {
-        switch self {
-        case .home: "house"
-        case .inbox: "tray"
-        case .history: "clock.arrow.circlepath"
-        case .settings: "gear"
+    public var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: RuulSpacing.xs) {
+                ForEach(tabs) { tab in
+                    Button {
+                        RuulHaptic.lightTap.trigger()
+                        withAnimation(.ruulTap) {
+                            selected = tab
+                        }
+                    } label: {
+                        Text(tab.label)
+                            .font(.ruulLabel)
+                            .foregroundStyle(selected.id == tab.id ? .white : .primary)
+                            .padding(.horizontal, RuulSpacing.md)
+                            .padding(.vertical, RuulSpacing.xs)
+                            .background {
+                                if selected.id == tab.id {
+                                    Capsule().fill(Color.ruulAccent)
+                                } else {
+                                    Capsule().fill(Color.ruulSurface)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, RuulSpacing.screenPadding)
         }
     }
 }
 
-struct MainTabView: View {
-    @State private var selected: MainTab = .home
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            // Content por tab
-            switch selected {
-            case .home: HomeView()
-            case .inbox: InboxView()
-            case .history: HistoryView()
-            case .settings: SettingsView()
-            }
-
-            RuulTabBar(selected: $selected, tabs: MainTab.allCases)
-        }
-    }
+public protocol RuulSubTabItem: Identifiable, Hashable {
+    var label: String { get }
 }
 ```
 
-**Notas**:
-
-- La tab bar NO usa `TabView` de SwiftUI porque queremos control total del visual
-- El contenido debajo no necesita padding bottom — la tab bar flota encima con margen
-- Cada pantalla principal debe asegurar `safeAreaInset` o padding inferior de ~80pt para que el último item no quede oculto
-
-### §3.7 RuulSectionHeader — headers de sección en listas
+### §3.8 RuulSectionHeader
 
 ```swift
 public struct RuulSectionHeader: View {
@@ -694,28 +613,18 @@ public struct RuulSectionHeader: View {
 }
 ```
 
-**Uso**:
-
-```swift
-RuulSectionHeader(title: "Hoy", subtitle: "martes")
-RuulSectionHeader(title: "Multas pendientes")
-```
-
-### §3.8 RuulMoneyView — montos consistentes
-
-Cualquier display de dinero usa este componente. Asegura tabular numbers, formato consistente, accesibilidad.
+### §3.9 RuulMoneyView
 
 ```swift
 public struct RuulMoneyView: View {
     let amount: Decimal
-    let currency: String  // "MXN", "USD", etc
+    let currency: String
     var size: Size = .medium
     var showSign: Bool = false
     var color: SemanticColor = .neutral
 
     public enum Size {
         case small, medium, large
-
         var font: Font {
             switch self {
             case .small: .ruulMoneySmall
@@ -727,7 +636,6 @@ public struct RuulMoneyView: View {
 
     public enum SemanticColor {
         case neutral, positive, negative
-
         var color: Color {
             switch self {
             case .neutral: .ruulTextPrimary
@@ -744,28 +652,16 @@ public struct RuulMoneyView: View {
             .accessibilityLabel(accessibleLabel)
     }
 
-    private var formatted: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currency
-        let prefix = showSign && amount > 0 ? "+" : ""
-        return prefix + (formatter.string(from: amount as NSNumber) ?? "")
-    }
-
-    private var accessibleLabel: String {
-        // "250 pesos" en vez de "$250" para VoiceOver
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .spellOut
-        formatter.locale = Locale(identifier: "es_MX")
-        return (formatter.string(from: amount as NSNumber) ?? "") + " \(currency)"
-    }
+    // formatted, accessibleLabel implementación: NumberFormatter
 }
 ```
 
-### §3.9 RuulAvatarView — avatares consistentes
+### §3.10 RuulPersonAvatar
+
+Avatar de un miembro/persona. Distinto de RuulGroupAvatar (que es del grupo).
 
 ```swift
-public struct RuulAvatarView: View {
+public struct RuulPersonAvatar: View {
     let initials: String
     let imageURL: URL?
     var size: Size = .medium
@@ -773,23 +669,15 @@ public struct RuulAvatarView: View {
 
     public enum Size {
         case xs, sm, md, lg, xl
-
         var dimension: CGFloat {
             switch self {
-            case .xs: 24
-            case .sm: 32
-            case .md: 40
-            case .lg: 56
-            case .xl: 80
+            case .xs: 24; case .sm: 32; case .md: 40; case .lg: 56; case .xl: 80
             }
         }
-
         var font: Font {
             switch self {
-            case .xs: .ruulMicro
-            case .sm: .ruulCaptionSmall
-            case .md: .ruulCaption
-            case .lg: .ruulBodyEmphasis
+            case .xs: .ruulMicro; case .sm: .ruulCaptionSmall
+            case .md: .ruulCaption; case .lg: .ruulBodyEmphasis
             case .xl: .ruulTitleMedium
             }
         }
@@ -822,7 +710,204 @@ public struct RuulAvatarView: View {
 }
 ```
 
-### §3.10 RuulBadge — pequeñas etiquetas de estado
+### §3.11 RuulGroupAvatar (NEW v2)
+
+Avatar del grupo. Distinto de RuulPersonAvatar — usa color ramp automático según categoría.
+
+```swift
+public struct RuulGroupAvatar: View {
+    let group: Group
+    var size: Size = .medium
+
+    public enum Size {
+        case xs, sm, md, lg, xl
+        var dimension: CGFloat {
+            switch self {
+            case .xs: 20; case .sm: 24; case .md: 32; case .lg: 40; case .xl: 56
+            }
+        }
+        var font: Font {
+            switch self {
+            case .xs: .system(size: 9, weight: .semibold)
+            case .sm: .system(size: 11, weight: .semibold)
+            case .md: .system(size: 12, weight: .semibold)
+            case .lg: .system(size: 14, weight: .semibold)
+            case .xl: .system(size: 18, weight: .semibold)
+            }
+        }
+    }
+
+    public var body: some View {
+        let ramp = group.category.ramp
+
+        ZStack {
+            if let imageURL = group.avatarURL {
+                AsyncImage(url: imageURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    placeholderView(ramp: ramp)
+                }
+            } else {
+                placeholderView(ramp: ramp)
+            }
+        }
+        .frame(width: size.dimension, height: size.dimension)
+        .clipShape(Circle())
+    }
+
+    private func placeholderView(ramp: GroupColorRamp) -> some View {
+        ZStack {
+            Circle().fill(ramp.background)
+            Text(group.initials.uppercased())
+                .font(size.font)
+                .foregroundStyle(ramp.foreground)
+        }
+    }
+}
+```
+
+### §3.12 RuulOriginTag (NEW v2)
+
+Tag pequeño que muestra de qué grupo viene un item en Home (cross-grupos).
+
+```swift
+public struct RuulOriginTag: View {
+    let group: Group
+
+    public var body: some View {
+        HStack(spacing: 6) {
+            RuulGroupAvatar(group: group, size: .sm)
+            Text(group.name)
+                .font(.ruulGroupLabel)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+}
+```
+
+**Uso**:
+
+```swift
+// En cada ActionCard de Home
+VStack(alignment: .leading, spacing: 8) {
+    RuulOriginTag(group: action.originGroup)
+    // ... resto del action card
+}
+```
+
+### §3.13 RuulGroupSwitcher (NEW v2)
+
+Pill button en header de tab Grupo, Historial, Ajustes. Muestra grupo activo, abre selector al tap.
+
+```swift
+public struct RuulGroupSwitcher: View {
+    @Binding var activeGroup: Group
+    let availableGroups: [Group]
+    @State private var showSheet = false
+
+    public var body: some View {
+        Button {
+            RuulHaptic.lightTap.trigger()
+            showSheet = true
+        } label: {
+            HStack(spacing: 8) {
+                RuulGroupAvatar(group: activeGroup, size: .sm)
+                Text(activeGroup.name)
+                    .font(.ruulTitleSmall)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(.regularMaterial))
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showSheet) {
+            RuulGroupSwitcherSheet(
+                activeGroup: $activeGroup,
+                availableGroups: availableGroups
+            )
+        }
+    }
+}
+```
+
+### §3.14 RuulGroupSwitcherSheet (NEW v2)
+
+Bottom sheet con lista de grupos. Tap en grupo lo activa.
+
+```swift
+public struct RuulGroupSwitcherSheet: View {
+    @Binding var activeGroup: Group
+    let availableGroups: [Group]
+    @Environment(\.dismiss) private var dismiss
+
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: RuulSpacing.xs) {
+                    ForEach(availableGroups) { group in
+                        Button {
+                            RuulHaptic.groupSwitch.trigger()
+                            withAnimation(.ruulGroupSwitch) {
+                                activeGroup = group
+                            }
+                            dismiss()
+                        } label: {
+                            HStack(spacing: RuulSpacing.md) {
+                                RuulGroupAvatar(group: group, size: .lg)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(group.name)
+                                        .font(.ruulTitleSmall)
+                                        .foregroundStyle(.primary)
+                                    Text(group.category.displayName)
+                                        .font(.ruulCaption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                if group.id == activeGroup.id {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.ruulAccent)
+                                }
+                            }
+                            .padding(RuulSpacing.md)
+                            .background(Color.ruulSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, RuulSpacing.screenPadding)
+            }
+            .navigationTitle("Tus grupos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cerrar") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        // crear nuevo grupo
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+```
+
+### §3.15 RuulBadge
 
 ```swift
 public struct RuulBadge: View {
@@ -842,7 +927,6 @@ public struct RuulBadge: View {
             case .info: .ruulInfoBackground
             }
         }
-
         var foreground: Color {
             switch self {
             case .neutral: .ruulTextSecondary
@@ -872,17 +956,7 @@ public struct RuulBadge: View {
 }
 ```
 
-**Uso**:
-
-```swift
-RuulBadge(text: "Pendiente", style: .warning, icon: "clock")
-RuulBadge(text: "Confirmado", style: .positive, icon: "checkmark")
-RuulBadge(text: "Multa", style: .negative)
-```
-
-### §3.11 RuulEmptyState — estados vacíos
-
-Cualquier lista o pantalla con contenido vacío usa este componente.
+### §3.16 RuulEmptyState
 
 ```swift
 public struct RuulEmptyState: View {
@@ -924,278 +998,147 @@ public struct RuulEmptyState: View {
 }
 ```
 
-**Empty states canónicos por contexto**:
+### §3.17 RuulErrorState, RuulLoadingState, RuulInlineMessage
 
-```swift
-// Inbox vacío
-RuulEmptyState(
-    symbol: "checkmark.circle",
-    title: "Todo al día",
-    message: "No hay acciones pendientes en tu grupo."
-)
-
-// Sin eventos
-RuulEmptyState(
-    symbol: "calendar",
-    title: "Sin próximos eventos",
-    message: "Crea el primer evento del grupo.",
-    action: .init(label: "Crear evento", handler: { ... })
-)
-
-// Sin multas
-RuulEmptyState(
-    symbol: "checkmark.shield",
-    title: "Sin multas",
-    message: "Tu grupo está al corriente."
-)
-
-// Sin votaciones
-RuulEmptyState(
-    symbol: "checkmark.bubble",
-    title: "Sin votos abiertos",
-    message: "Tu grupo no tiene decisiones pendientes."
-)
-
-// Sin historial
-RuulEmptyState(
-    symbol: "clock.arrow.circlepath",
-    title: "Sin historial todavía",
-    message: "El historial del grupo aparecerá aquí cuando ocurran eventos."
-)
-```
-
-### §3.12 RuulErrorState — estados de error
-
-```swift
-public struct RuulErrorState: View {
-    let title: String
-    let message: String
-    var retryAction: (() -> Void)? = nil
-
-    public var body: some View {
-        VStack(spacing: RuulSpacing.md) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48, weight: .light))
-                .foregroundStyle(.ruulWarning)
-
-            Text(title)
-                .font(.ruulTitleMedium)
-
-            Text(message)
-                .font(.ruulBody)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 280)
-
-            if let retryAction {
-                RuulButton("Reintentar", style: .secondary, action: retryAction)
-                    .frame(maxWidth: 200)
-            }
-        }
-        .padding(RuulSpacing.xxxl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-```
-
-**Variants comunes**:
-
-```swift
-// Sin conexión
-RuulErrorState(
-    title: "Sin conexión",
-    message: "Verifica tu conexión a internet e intenta de nuevo.",
-    retryAction: refresh
-)
-
-// Error de servidor
-RuulErrorState(
-    title: "Algo salió mal",
-    message: "No pudimos cargar la información. Intenta de nuevo en un momento.",
-    retryAction: refresh
-)
-
-// Sin permisos
-RuulErrorState(
-    title: "Sin permiso",
-    message: "No tienes permiso para realizar esta acción. Contacta al fundador del grupo."
-)
-```
-
-### §3.13 RuulLoadingState — estados de carga
-
-```swift
-public struct RuulLoadingState: View {
-    var message: String? = nil
-
-    public var body: some View {
-        VStack(spacing: RuulSpacing.md) {
-            ProgressView()
-                .controlSize(.large)
-                .tint(.ruulAccent)
-
-            if let message {
-                Text(message)
-                    .font(.ruulCaption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-```
-
-**Reglas**:
-
-- Para cargas <1 segundo: NO mostrar loading state, solo dejar pantalla en blanco brevemente
-- Para cargas 1-3 segundos: ProgressView sin mensaje
-- Para cargas >3 segundos: ProgressView con mensaje informativo
-- Para refresh de lista existente: usar `.refreshable` standard, no overlay
-
-### §3.14 RuulInlineMessage — mensajes contextuales
-
-Para alertas o información dentro del flujo, no como sheet ni como toast.
-
-```swift
-public struct RuulInlineMessage: View {
-    let text: String
-    var style: Style = .info
-    var icon: String? = nil
-    var action: ActionConfig? = nil
-
-    public enum Style {
-        case info, success, warning, error
-
-        var background: Color {
-            switch self {
-            case .info: .ruulInfoBackground
-            case .success: .ruulPositiveBackground
-            case .warning: .ruulWarningBackground
-            case .error: .ruulNegativeBackground
-            }
-        }
-
-        var foreground: Color {
-            switch self {
-            case .info: .ruulInfo
-            case .success: .ruulPositive
-            case .warning: .ruulWarning
-            case .error: .ruulNegative
-            }
-        }
-
-        var defaultIcon: String {
-            switch self {
-            case .info: "info.circle.fill"
-            case .success: "checkmark.circle.fill"
-            case .warning: "exclamationmark.triangle.fill"
-            case .error: "xmark.octagon.fill"
-            }
-        }
-    }
-
-    public struct ActionConfig {
-        let label: String
-        let handler: () -> Void
-    }
-
-    public var body: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.sm) {
-            Image(systemName: icon ?? style.defaultIcon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(style.foreground)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(text)
-                    .font(.ruulCaption)
-                    .foregroundStyle(.primary)
-
-                if let action {
-                    Button(action.label, action: action.handler)
-                        .font(.ruulCaptionEmphasis)
-                        .foregroundStyle(style.foreground)
-                }
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(RuulSpacing.md)
-        .background(style.background)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium))
-    }
-}
-```
+(Implementación igual que v1, ver doc anterior)
 
 ---
 
-## §4 Patterns de UX
+## §4 Multi-group context (NEW v2)
 
-### §4.1 RSVP states (5 estados)
+Esta es la sección más importante de v2. Establece reglas de cómo el sistema maneja múltiples grupos.
 
-Decisión locked: 5 estados de RSVP. Visual consistente:
+### §4.1 Principio fundamental
 
-| Estado | Color | Icon | Copy |
-|---|---|---|---|
-| pending | ruulNeutral | "questionmark.circle" | "Sin responder" |
-| going | ruulPositive | "checkmark.circle.fill" | "Voy" |
-| maybe | ruulInfo | "questionmark.diamond.fill" | "Tal vez" |
-| declined | ruulTextSecondary | "xmark.circle" | "No voy" |
-| waitlisted | ruulWarning | "clock.fill" | "Lista de espera" |
+**Un usuario puede pertenecer a 1-N grupos. Toda la UI debe funcionar correctamente con N=1 hasta N=20+.**
 
-Cualquier vista que muestre RSVP usa estos mismos colors + icons + copy.
+No es feature opcional. No es fase futura. Es estructura de V1.
 
-### §4.2 Vote states
+### §4.2 Patrón híbrido de scope
 
-| Estado | Color | Icon | Copy |
-|---|---|---|---|
-| open | ruulInfo | "circle.dashed" | "Abierto" |
-| closing_soon | ruulWarning | "clock.badge.exclamationmark" | "Cierra pronto" |
-| resolved_passed | ruulPositive | "checkmark.circle.fill" | "Aprobado" |
-| resolved_rejected | ruulNegative | "xmark.circle.fill" | "Rechazado" |
-| expired | ruulTextSecondary | "clock.badge.xmark" | "Expirado" |
+Cada tab opera en uno de dos modos:
 
-### §4.3 Fine states
+**Cross-grupos (todas las grupos del usuario)**:
+- Tab **Inicio**: muestra contenido de todos los grupos del usuario, con avatar/nombre del grupo en cada item
 
-| Estado | Color | Icon | Copy |
-|---|---|---|---|
-| proposed | ruulWarning | "clock.fill" | "Propuesta" |
-| confirmed | ruulNegative | "exclamationmark.circle" | "Confirmada" |
-| paid | ruulPositive | "checkmark.circle.fill" | "Pagada" |
-| appealed | ruulInfo | "questionmark.bubble" | "En apelación" |
-| forgiven | ruulTextSecondary | "checkmark.circle" | "Perdonada" |
+**Grupo-activo (un grupo seleccionado a la vez)**:
+- Tab **Grupo**: opera sobre el grupo activo, con switcher en header
+- Tab **Historial**: idem
+- Tab **Ajustes**: subseccciones globales (perfil, notificaciones del usuario) + grupo-activo (members, rules de ese grupo)
 
-### §4.4 Member states
+### §4.3 Concepto de "grupo activo"
 
-| Estado | Color | Icon |
+El grupo activo es persistente por sesión. Cuando el usuario:
+
+- **Abre la app**: vuelve al último grupo activo de la sesión anterior
+- **Cambia grupo**: el cambio aplica a tabs grupo-específicas
+- **Recibe push de otro grupo**: tap en push cambia el grupo activo automáticamente
+
+### §4.4 Switcher behavior
+
+- Vive en el header de tabs Grupo, Historial, Ajustes
+- NO vive en Home (Home es cross-grupos)
+- Tap abre `RuulGroupSwitcherSheet` (bottom sheet)
+- Tap en grupo distinto: cambia activo + dismiss sheet + animación de transición
+
+### §4.5 Items de Home con origen
+
+Cada item en Home (hero, pendiente, activity) muestra `RuulOriginTag`:
+
+- Avatar pequeño del grupo (color ramp)
+- Nombre del grupo en caption
+- Posicionado arriba del item
+
+Esto NO es opcional. Es invariante de Home.
+
+### §4.6 Caso 1 grupo solamente
+
+Cuando el usuario tiene exactamente 1 grupo:
+
+- Home: NO muestra `RuulOriginTag` en items (solo hay un grupo, redundante)
+- Tabs grupo-específicas: switcher se muestra como solo lectura (no es interactivo, solo informa nombre)
+- Cuando agrega segundo grupo: switcher se vuelve interactivo automáticamente, items de home empiezan a mostrar origen
+
+### §4.7 Color ramp por categoría de template
+
+Mapping fijo, no customizable por founder:
+
+| Categoría | Ramp | Razón |
 |---|---|---|
-| active | ruulPositive | "person.fill.checkmark" |
-| invited | ruulInfo | "person.badge.clock" |
-| suspended | ruulWarning | "person.fill.xmark" |
-| removed | ruulTextTertiary | "person.fill.xmark" |
+| socialRecurring | teal | Sociable, calmo |
+| sharedResource | blue | Profesional, compartido |
+| rotatingSavings | purple | Financiero, ahorro |
+| patrimonialFamily | amber | Serio, patrimonial |
+| amateurTeam | green | Dinámico, deportivo |
+| groupTravel | coral | Aspiracional, viaje |
+| religiousCultural | pink | Cálido, comunidad |
+| professionalInformal | gray | Serio, formal |
+| digitalCommunity | blue | Digital |
+| commitmentPact | green | Crecimiento |
+
+**Por qué automático**: si fuera elegible, todos los grupos del mismo dueño tenderían al mismo color personal. La distinción visual entre grupos se perdería. Color como feature funcional > color como expresión personal.
+
+### §4.8 Iniciales del grupo
+
+Cada grupo tiene dos campos:
+- `name` (string largo): "Cuates de cenas martes"
+- `initials` (string 1-3 chars): "CC"
+
+Al crear grupo:
+- Founder ingresa `name`
+- Sistema sugiere `initials` automáticas (primeras letras de palabras significativas)
+- Founder puede override antes de crear
+
+Esto permite nombres descriptivos largos sin sacrificar avatares legibles.
+
+### §4.9 Hero de Home — selección del item
+
+Cuando hay múltiples grupos con eventos próximos, el hero muestra **el item de mayor urgencia temporal cross-grupos**.
+
+Algoritmo de prioridad:
+1. Items con deadline en <2h
+2. Items con deadline en <24h
+3. Items con deadline en <72h
+4. Próximo evento cronológico
+
+Empate se rompe por proximidad temporal directa.
+
+Si no hay nada urgente: hero se reemplaza por sección "Próximos eventos" con lista cronológica cross-grupos.
+
+### §4.10 Push notifications con multi-group
+
+Toda push notification debe incluir:
+- `group_id` en payload (para identificar grupo)
+- `deeplink` que abra app con grupo-activo correcto
+
+Tap en push:
+- Cambia grupo activo si necesario (silenciosamente, sin haptic)
+- Navega al item específico del push
 
 ---
 
 ## §5 Layout patterns
 
-### §5.1 Estructura de pantalla principal (con tab bar flotante)
+### §5.1 Estructura de pantalla principal con tab bar flotante
 
 ```swift
-struct MainScreenLayout: View {
+struct MainScreenLayout<Content: View>: View {
+    let content: Content
+
     var body: some View {
         ZStack(alignment: .top) {
             Color.ruulBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header (puede ser sticky o scroll-away)
+                // Header (sticky o scroll-away)
                 screenHeader
 
-                // Contenido principal
                 ScrollView {
                     VStack(spacing: RuulSpacing.sectionGap) {
-                        // Secciones aquí
+                        content
                     }
                     .padding(.vertical, RuulSpacing.lg)
-                    .padding(.bottom, 80) // espacio para tab bar
+                    .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
                 }
             }
         }
@@ -1203,43 +1146,126 @@ struct MainScreenLayout: View {
 }
 ```
 
-### §5.2 Estructura de detail view
+### §5.2 Estructura de pantalla con grupo activo (Grupo, Historial, Ajustes)
 
 ```swift
-struct DetailScreenLayout: View {
+struct GroupScopedScreenLayout<Content: View>: View {
+    @Binding var activeGroup: Group
+    let availableGroups: [Group]
+    let content: Content
+
     var body: some View {
         ZStack(alignment: .top) {
             Color.ruulBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header con back button
-                detailHeader
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RuulSpacing.sectionGap) {
-                        // Hero (datos principales del item)
-                        heroSection
-
-                        // Acción primaria (si aplica)
-                        primaryActionSection
-
-                        // Metadata secundaria
-                        metadataSection
-
-                        // Timeline o sub-content
-                        timelineSection
-                    }
-                    .padding(.horizontal, RuulSpacing.screenPadding)
-                    .padding(.vertical, RuulSpacing.lg)
+                // Header con group switcher
+                HStack {
+                    RuulGroupSwitcher(
+                        activeGroup: $activeGroup,
+                        availableGroups: availableGroups
+                    )
+                    Spacer()
+                    // acciones específicas de la tab
                 }
+                .padding(.horizontal, RuulSpacing.screenPadding)
+                .padding(.vertical, RuulSpacing.md)
+
+                content
             }
         }
-        .navigationBarHidden(true) // usamos custom header
     }
 }
 ```
 
-### §5.3 Estructura de sheet de creación
+### §5.3 Estructura de tab Grupo con sub-tabs adaptativas
+
+```swift
+struct GroupTabView: View {
+    @Binding var activeGroup: Group
+    @State var selectedSubTab: GroupSubTab
+
+    var availableSubTabs: [GroupSubTab] {
+        // Adaptativo según template del grupo activo
+        var tabs: [GroupSubTab] = []
+        if activeGroup.template.hasEvents { tabs.append(.events) }
+        if activeGroup.template.hasRotation { tabs.append(.rotation) }
+        if activeGroup.template.hasSlots { tabs.append(.slots) }
+        if activeGroup.template.hasFund { tabs.append(.fund) }
+        if activeGroup.template.hasProposals { tabs.append(.proposals) }
+        tabs.append(.rules)  // siempre
+        tabs.append(.fines)  // siempre en V1
+        return tabs
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header con switcher
+            HStack {
+                RuulGroupSwitcher(activeGroup: $activeGroup, availableGroups: ...)
+                Spacer()
+            }
+            .padding(.horizontal, RuulSpacing.screenPadding)
+            .padding(.vertical, RuulSpacing.md)
+
+            // Sub-tabs horizontales
+            RuulSubTabBar(selected: $selectedSubTab, tabs: availableSubTabs)
+                .padding(.bottom, RuulSpacing.md)
+
+            // Content adaptativo según sub-tab
+            switch selectedSubTab {
+            case .events: EventsListView(group: activeGroup)
+            case .rotation: RotationView(group: activeGroup)
+            case .slots: SlotsView(group: activeGroup)
+            case .fund: FundView(group: activeGroup)
+            case .proposals: ProposalsView(group: activeGroup)
+            case .rules: RulesView(group: activeGroup)
+            case .fines: FinesView(group: activeGroup)
+            }
+        }
+    }
+}
+```
+
+### §5.4 Lista con secciones por día (cross-grupos)
+
+```swift
+struct DateSectionedListWithOrigin: View {
+    let sections: [(date: DayHeader, items: [ItemWithOrigin])]
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                ForEach(sections, id: \.date) { section in
+                    VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                        RuulSectionHeader(
+                            title: section.date.primary,
+                            subtitle: section.date.secondary
+                        )
+
+                        VStack(spacing: RuulSpacing.itemGap) {
+                            ForEach(section.items) { item in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    RuulOriginTag(group: item.group)
+                                    // resto del item
+                                }
+                                .padding(RuulSpacing.cardPadding)
+                                .background(Color.ruulSurface)
+                                .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large))
+                                .padding(.horizontal, RuulSpacing.screenPadding)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, RuulSpacing.lg)
+            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
+        }
+    }
+}
+```
+
+### §5.5 Sheet de creación
 
 ```swift
 struct CreationSheet: View {
@@ -1247,7 +1273,6 @@ struct CreationSheet: View {
         NavigationStack {
             Form {
                 Section { /* campos */ }
-                Section { /* más campos */ }
             }
             .formStyle(.grouped)
             .navigationTitle("Nueva regla")
@@ -1267,98 +1292,73 @@ struct CreationSheet: View {
 }
 ```
 
-### §5.4 Lista con secciones por día
-
-```swift
-struct DateSectionedList<Content: View>: View {
-    let sections: [(date: DayHeader, items: [Item])]
-    let row: (Item) -> Content
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: RuulSpacing.xl) {
-                ForEach(sections, id: \.date) { section in
-                    VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                        RuulSectionHeader(
-                            title: section.date.primary,
-                            subtitle: section.date.secondary
-                        )
-
-                        VStack(spacing: RuulSpacing.itemGap) {
-                            ForEach(section.items) { item in
-                                row(item)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, RuulSpacing.lg)
-            .padding(.bottom, 80)
-        }
-    }
-}
-```
-
 ---
 
-## §6 Catálogo de pantallas (Fase 1 V1)
-
-Todas las pantallas que existen al cierre de F0. Documentadas como referencias canónicas.
+## §6 Catálogo de pantallas
 
 ### §6.1 Onboarding flow
 
-- **WelcomeView** — splash con CTA "Empezar"
-- **AuthView** — verificación de número (WhatsApp OTP)
-- **TemplateSelectorView** — elegir template (Cena recurrente, etc)
-- **CreateGroupSheet** — datos básicos del grupo
-- **InviteMembersSheet** — invitar primeros miembros
-- **GroupReadyView** — confirmación de grupo creado
+- `WelcomeView` — splash con CTA "Empezar"
+- `AuthView` — verificación de número (WhatsApp OTP)
+- `TemplateSelectorView` — elegir template
+- `CreateGroupSheet` — datos básicos (incluye campo `initials` con sugerencia automática)
+- `InviteMembersSheet` — invitar primeros miembros
+- `GroupReadyView` — confirmación
 
-**Pattern común**: cada paso es 1 pantalla con 1 acción primaria. NO progressdisclosure complejo. NO onboarding marketing-style con illustrations.
+### §6.2 Main tabs (corregido v2)
 
-### §6.2 Main tabs
+**Tab 1 — Inicio (cross-grupos)**:
+- `HomeView` — overview cross-grupos con `RuulOriginTag` en cada item
+  - Hero: item de mayor urgencia (cualquier grupo, cualquier tipo)
+  - Section: pendientes de todos los grupos (con origen)
+  - Section: actividad reciente cross-grupos
 
-**Tab 1 — Inicio**:
-- `HomeView` — overview del grupo
-  - Hero: próximo evento
-  - Section: acciones pendientes (preview, link a Inbox)
-  - Section: actividad reciente (preview, link a Historial)
+**Tab 2 — Grupo (grupo-activo, NEW v2)**:
+- `GroupTabView` — header con switcher + sub-tabs adaptativas según template
+  - Sub-tab: `EventsListView` (si template tiene events)
+  - Sub-tab: `RotationView` (Fase 2+)
+  - Sub-tab: `SlotsView` (Fase 3+)
+  - Sub-tab: `FundView` (Fase 4+)
+  - Sub-tab: `ProposalsView` (Fase 5+)
+  - Sub-tab: `RulesView` (siempre)
+  - Sub-tab: `FinesView` (siempre V1)
 
-**Tab 2 — Pendientes (Inbox)**:
-- `ActionInboxView` — lista de UserActions
-  - Sectioned por priority (urgent first)
-  - Tap → respective detail view
-
-**Tab 3 — Historial**:
-- `HistoryView` — timeline de SystemEvents
+**Tab 3 — Historial (grupo-activo)**:
+- `HistoryView` — timeline de SystemEvents del grupo activo
+  - Header con switcher
   - Sectioned por día
-  - Filtrable por tipo (RSVP, multa, voto, etc)
+  - Filtrable por tipo
 
-**Tab 4 — Ajustes**:
-- `SettingsView` — configuración
-  - Sub: GroupSettingsView, RulesView, MembersView, ProfileView
+**Tab 4 — Ajustes (dual scope)**:
+- `SettingsView` — dual scope
+  - Sección "Tu cuenta" (global): perfil, notificaciones del usuario
+  - Sección "Este grupo" (grupo-activo, con switcher): members, governance, danger zone
 
-### §6.3 Detail views
+### §6.3 Group switcher
 
-- `EventDetailView` — detalle de cena con RSVP, lista de going, host info
-- `FineDetailView` — detalle de multa con razón, monto, opción apelar
+- `RuulGroupSwitcherSheet` — bottom sheet con lista de grupos del usuario
+
+### §6.4 Detail views
+
+- `EventDetailView` — detalle de evento (cena u otro)
+- `FineDetailView` — detalle de multa con opción apelar
 - `VoteDetailView` — router a body por voteType
   - `FineAppealVoteBody`
   - `GeneralProposalVoteBody`
   - `RuleChangeVoteBody`
   - `GenericVoteBody`
-- `RuleDetailView` — detalle de regla del grupo
-- `MemberDetailView` — perfil de miembro con stats
+- `RuleDetailView` — detalle de regla
+- `MemberDetailView` — perfil de miembro
 
-### §6.4 Sheets de acción
+### §6.5 Sheets de acción
 
-- `RSVPSheet` — confirmar/cancelar asistencia
-- `AppealFineSheet` — apelar multa
-- `VoteOnAppealSheet` — votar en apelación
-- `CreateGeneralProposalSheet` — proponer al grupo
-- `CreateRuleChangeSheet` — proponer cambio de regla
-- `EditRuleSheet` — editar regla (founder only)
-- `EditMembersSheet` — gestionar miembros
+- `RSVPSheet`
+- `AppealFineSheet`
+- `VoteOnAppealSheet`
+- `CreateGeneralProposalSheet`
+- `CreateRuleChangeSheet`
+- `EditRuleSheet`
+- `EditMembersSheet`
 
 ---
 
@@ -1366,56 +1366,42 @@ Todas las pantallas que existen al cierre de F0. Documentadas como referencias c
 
 ### §7.1 iPhone (target principal V1)
 
-Todas las pantallas se diseñan primero para iPhone 15 (393 width). Verificar también:
-- iPhone SE (375 width) — minimum support
-- iPhone 16 Pro Max (430 width) — máximo
-
-**Reglas**:
+- iPhone 15 (393pt) como base
+- Verificar iPhone SE (375pt) y iPhone 16 Pro Max (430pt)
 - Touch targets mínimos 44x44pt
-- Contenido nunca extiende a bordes (mínimo 16pt padding lateral)
-- Tab bar flotante respeta safe area inferior
-- Headers respetan safe area superior
 
 ### §7.2 iPad y macOS (V2+)
 
-V1 NO optimiza para iPad/Mac. La app funciona pero no se optimiza visualmente. Cuando se haga en V2+:
-- iPad: split view con sidebar para nav
+V1 funciona pero no se optimiza visualmente. Cuando se haga:
+- iPad: split view con sidebar de grupos a la izquierda (mejor que bottom sheet en iPad)
 - Mac: window resizable, sidebar persistente
 
 ### §7.3 Dynamic Type
 
-Toda la tipografía usa `.system(.style)` que respeta Dynamic Type. Casos especiales:
-- Números monetarios: respetan Dynamic Type pero mantienen tabular
-- Tab bar labels: NO escalan más allá de XL para no romper layout
-
-Test obligatorio: cada pantalla debe verificarse en Dynamic Type AX5 (más grande). Si rompe, se ajusta layout.
+- Toda tipografía respeta Dynamic Type
+- Verificación obligatoria en AX5
+- Tab bar labels NO escalan más allá de XL
 
 ### §7.4 Light vs Dark
 
-Todo el sistema funciona en ambos modos via Asset Catalog y `.systemColors`.
-
-**Reglas para dark mode**:
-- Fondos NUNCA son negro puro (#000) — usar `systemGroupedBackground` que es near-black
-- Surfaces tienen mayor contraste con fondo en dark que en light
-- Liquid Glass se ajusta automáticamente
-- Accent color tiene variant más legible para dark
+- Asset Catalog con variants de cada color
+- Liquid Glass auto-adapta
+- Group color ramps tienen variants light/dark
 
 ---
 
 ## §8 Iconografía
 
-### §8.1 Sistema de iconos
+### §8.1 Sistema
 
-**SF Symbols only** para toda iconografía estructural. Ningún custom icon en V1.
-
-Pesos preferidos: `.regular` para iconos en context, `.medium` para acciones primarias, `.semibold` solo en badges pequeños.
+**SF Symbols only**. Pesos preferidos: `.regular` para context, `.medium` para acciones primarias.
 
 ### §8.2 Iconos canónicos por concepto
 
 | Concepto | SF Symbol |
 |---|---|
-| Inicio/home | `house` |
-| Inbox/pendientes | `tray` |
+| Inicio | `house` |
+| Grupo (tab) | `person.3` |
 | Historial | `clock.arrow.circlepath` |
 | Ajustes | `gear` |
 | Atrás | `chevron.left` |
@@ -1428,8 +1414,9 @@ Pesos preferidos: `.regular` para iconos en context, `.medium` para acciones pri
 | Editar | `pencil` |
 | Compartir | `square.and.arrow.up` |
 | Notificación | `bell` |
+| Cambiar grupo | `chevron.down` (en switcher) |
 | Persona | `person.fill` |
-| Grupo | `person.3.fill` |
+| Grupo (concepto) | `person.3.fill` |
 | Evento/cena | `fork.knife` o `calendar` |
 | Multa | `exclamationmark.circle` |
 | Dinero | `dollarsign.circle` |
@@ -1438,8 +1425,11 @@ Pesos preferidos: `.regular` para iconos en context, `.medium` para acciones pri
 | Tiempo | `clock` |
 | Ubicación | `mappin.and.ellipse` |
 | Anfitrión | `crown.fill` |
-
-**Regla**: si necesitás un concepto nuevo, buscá primero en SF Symbols (5000+ disponibles). Solo si no existe, considerá custom — y eso requiere update de este doc.
+| Rotación | `arrow.triangle.2.circlepath` (NEW Fase 2) |
+| Slot | `square.grid.3x1.below.line.grid.1x2` (NEW Fase 3) |
+| Fondo | `banknote` (NEW Fase 4) |
+| Activo | `building.columns` (NEW Fase 3) |
+| Propuesta | `text.bubble` (NEW Fase 5) |
 
 ---
 
@@ -1447,39 +1437,30 @@ Pesos preferidos: `.regular` para iconos en context, `.medium` para acciones pri
 
 ### §9.1 Mínimos no negociables
 
-Cualquier pantalla que no cumpla estos mínimos es feature roto:
+1. **VoiceOver completo**
+2. **Dynamic Type AX5**
+3. **Reduce Motion**
+4. **Contraste WCAG AA** (4.5:1 normal, 3:1 grande)
+5. **Touch targets 44x44pt**
 
-1. **VoiceOver completo**: todo elemento interactivo tiene label, hint cuando aplica, traits correctos
-2. **Dynamic Type**: layout funciona en AX5
-3. **Reduce Motion**: animaciones se reducen cuando el usuario lo activa en Settings
-4. **Contraste WCAG AA**: 4.5:1 mínimo para texto normal, 3:1 para texto grande
-5. **Touch targets**: 44x44pt mínimo
-
-### §9.2 Patterns de accesibilidad
+### §9.2 Patterns críticos para multi-group
 
 ```swift
-// Cards complejos: combinar children
-ActionCard(...)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(title), \(subtitle), \(priority)")
-    .accessibilityHint("Toca para ver detalles")
+// RuulOriginTag debe leer claramente
+RuulOriginTag(group: action.originGroup)
+    .accessibilityLabel("Grupo \(group.name)")
+    .accessibilityHint("Categoría: \(group.category.displayName)")
+
+// RuulGroupSwitcher
+RuulGroupSwitcher(...)
+    .accessibilityLabel("Grupo activo: \(activeGroup.name)")
+    .accessibilityHint("Toca para cambiar a otro grupo")
     .accessibilityAddTraits(.isButton)
 
-// Imágenes decorativas
-Image(systemName: "calendar")
-    .accessibilityHidden(true)
-
-// Imágenes informativas
-RuulAvatarView(...)
-    .accessibilityLabel("Foto de \(memberName)")
-
-// Money con lectura humana
-RuulMoneyView(amount: 250, currency: "MXN")
-// label automático: "250 pesos"
-
-// Estados visuales que dependen de color
-RuulBadge(text: "Pendiente", style: .warning)
-    .accessibilityLabel("Pendiente, requiere atención")
+// Item de Home con origen
+ActionCard(...)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("\(group.name): \(action.title), \(action.subtitle)")
 ```
 
 ### §9.3 Reduce Motion
@@ -1487,219 +1468,212 @@ RuulBadge(text: "Pendiente", style: .warning)
 ```swift
 @Environment(\.accessibilityReduceMotion) var reduceMotion
 
-withAnimation(reduceMotion ? .none : .ruulStateChange) {
-    // cambio de estado
+withAnimation(reduceMotion ? .none : .ruulGroupSwitch) {
+    activeGroup = newGroup
 }
 ```
 
 ---
 
-## §10 Reglas de evolución del Design System
+## §10 Reglas de evolución
 
 ### §10.1 Cuándo agregar componente nuevo
 
-Agregar componente nuevo cuando:
+Mismo criterio que v1: pattern aparece 3+ veces, no existe variante razonable, semánticamente distinto.
 
-1. **Mismo pattern aparece 3+ veces** en pantallas distintas
-2. **No existe variante razonable** de componente existente que cubra el caso
-3. **Es semánticamente distinto** (no solo visualmente)
+### §10.2 Evolución por fase
 
-**NO agregar componente** cuando:
-- Solo difiere en padding, color, font de uno existente (usá variantes)
-- Es one-off de una sola pantalla (mantenelo local)
-- Es experimento (probalo local primero, evaluá en review)
-
-### §10.2 Cuándo modificar componente existente
-
-**Cambios menores** (compatible, no breaking):
-- Agregar variante nueva (ej: `.glass` style en RuulButton)
-- Agregar prop opcional con default
-- Agregar size nuevo
-
-**Cambios mayores** (breaking):
-- Cambiar API public
-- Cambiar comportamiento default
-- Eliminar variante o prop
-
-Cualquier cambio mayor requiere:
-1. Issue documentando motivo
-2. Migration guide en este doc
-3. Update de todos los call sites en el mismo PR
-
-### §10.3 Evolución por fase
-
-**Fase 1 (V1, actual)**:
-- Componentes core de §3
+**Fase 1 (V1, actual)** - shipped:
+- Componentes core §3 incluyendo multi-group support
 - Patterns de §5 y §6
-- iconografía SF Symbols
+- 4 tabs base
+- Tab Grupo solo con sub-tabs Events, Rules, Fines
 
 **Fase 2 (Rotation universal)**: agregar
-- `RuulRotationView` — visualización de orden actual y próximos turnos
+- `RuulRotationView` — visualización de orden de rotación
 - `RuulPositionBadge` — posición en rotación
-- patterns de "perdiste tu turno" / "tu turno se acerca"
+- Nueva sub-tab "Rotación" en GroupTabView
+- Pattern: "alguien saltó turno"
 
 **Fase 3 (Slot + Asset)**: agregar
 - `RuulSlotCard` — slot asignable con CTA accept/decline
-- `RuulAssetView` — vista del asset compartido con calendar
-- patterns de cascada de asignación
+- `RuulAssetView` — vista del activo con calendar
+- Nuevas sub-tabs "Activos" y "Slots"
+- Pattern: cascada de asignación
 
 **Fase 4 (Fund + Contribution + Cycle)**: agregar
-- `RuulFundBalanceCard` — saldo del fondo con trend
+- `RuulFundBalanceCard` — saldo con trend
 - `RuulContributionRow` — aporte esperado/realizado
-- `RuulCyclePhase` — indicador de fase actual del ciclo
-- patterns de settle up
+- `RuulCyclePhase` — indicador de fase
+- Nueva sub-tab "Fondo"
+- Pattern: settle up
 
 **Fase 5 (Proposal + Comment + Roles)**: agregar
-- `RuulProposalCard` — propuesta con lifecycle
-- `RuulCommentThread` — discusión asociada a un objeto
-- `RuulRoleBadge` — rol de miembro en contexto
-- patterns de governance profunda
+- `RuulProposalCard`
+- `RuulCommentThread`
+- `RuulRoleBadge`
+- Nueva sub-tab "Propuestas"
+- Filtros opcionales en Home (cuando user tiene 5+ grupos)
 
-**Fase 6 (Editor custom + Commitment)**: agregar
-- `RuulRuleBuilder` — editor visual de reglas
-- `RuulConditionRow`, `RuulConsequenceCard`, `RuulFlowConnector`
-- `RuulCommitmentCard` — promesa con auto-reporte
+**Fase 6 (Editor + Commitment)**: agregar
+- `RuulRuleBuilder`
+- `RuulConditionRow`, `RuulConsequenceCard`
+- `RuulCommitmentCard`
+- Sub-tab "Compromisos"
 
-### §10.4 Versionado del DS
+### §10.3 Versionado del DS
 
-Este documento tiene version semver implícito:
-- **Major** (X.0.0): cambios breaking en componentes core
-- **Minor** (1.X.0): nuevos componentes, fases nuevas
-- **Patch** (1.1.X): clarificaciones, ejemplos, fixes
+**Major** (X.0.0): cambios breaking en componentes core o arquitectura
+**Minor** (1.X.0): nuevos componentes, fases nuevas
+**Patch** (1.1.X): clarificaciones, fixes
 
-Estado actual: **DS v1.0.0** (release inicial al cierre de F0).
+Estado actual: **DS v2.0.0** — cambios mayores respecto a v1 (estructura tabs, multi-group).
 
 ---
 
 ## §11 Review checklist
 
-Cuando se haga code review de UI, verificar:
-
 ### §11.1 Tokens
 
-- [ ] Spacing usa `RuulSpacing.*`, no valores hardcoded
-- [ ] Tipografía usa `Font.ruul*`, no `.title`/`.body` directos
-- [ ] Colores usan `Color.ruul*`, no `Color(red:green:blue:)`
+- [ ] Spacing usa `RuulSpacing.*`
+- [ ] Tipografía usa `Font.ruul*`
+- [ ] Colores usan `Color.ruul*` o group color ramps
 - [ ] Corner radius usa `RuulRadius.*`
 - [ ] Animaciones usan `Animation.ruul*`
 
 ### §11.2 Componentes
 
-- [ ] Reutiliza componentes existentes en lugar de inline custom
-- [ ] Componentes nuevos justificados según §10.1
+- [ ] Reutiliza componentes existentes
+- [ ] Componentes nuevos justificados
 - [ ] Props opcionales con defaults razonables
 - [ ] Accessibility labels presentes
 
-### §11.3 Patterns
+### §11.3 Multi-group (NEW v2)
 
-- [ ] Estructura de pantalla sigue §5 patterns
+- [ ] Si la pantalla muestra contenido cross-grupos: cada item tiene `RuulOriginTag`
+- [ ] Si la pantalla es grupo-activo: header tiene `RuulGroupSwitcher`
+- [ ] Funciona correctamente con N=1 grupo (sin items redundantes de origen)
+- [ ] Funciona correctamente con N=20 grupos (no se rompe el switcher)
+
+### §11.4 Patterns
+
+- [ ] Estructura sigue §5 patterns
 - [ ] Empty/error/loading states explícitos
 - [ ] Tap feedback (haptic donde corresponde)
 - [ ] Dynamic Type funciona en AX5
 
-### §11.4 Copy
+### §11.5 Copy
 
 - [ ] Tono descriptivo, no acusatorio
 - [ ] Sin emojis estructurales
 - [ ] Sin exclamaciones excepto confirmaciones críticas
 - [ ] Concreto, no aspiracional
 
-### §11.5 Performance
+### §11.6 Performance
 
-- [ ] LazyVStack/LazyHStack para listas largas
-- [ ] AsyncImage con placeholder y caching
-- [ ] No re-renders innecesarios (verificar @Observable scope)
+- [ ] LazyVStack para listas largas
+- [ ] AsyncImage con placeholder
+- [ ] No re-renders innecesarios
 
 ---
 
-## §12 Anti-patterns explícitos
+## §12 Anti-patterns
 
-Cosas que en algún momento alguien va a querer hacer y NO debe hacerse:
+**❌ Tabs separadas para Pendientes/Notificaciones/Inbox**
+→ Pendientes vive en Home con badge en tab bar.
 
-**❌ Gradientes decorativos en backgrounds o cards**
+**❌ Switcher de grupo en Home**
+→ Home es cross-grupos por diseño. Switcher solo en otras tabs.
+
+**❌ Items de Home sin indicar grupo de origen (multi-group user)**
+→ Cada item de Home cross-grupos debe tener `RuulOriginTag`.
+
+**❌ Color del avatar elegido por founder**
+→ Color automático según categoría de template.
+
+**❌ Sub-tabs en tab Grupo idénticas en todos los templates**
+→ Sub-tabs son adaptativas según template del grupo activo.
+
+**❌ Gradientes decorativos**
 → ruul es Wallet, no Stripe.
 
-**❌ Cover images coloridas grandes en cada item de lista**
+**❌ Cover images coloridas grandes en cada item**
 → Eso es Luma. Ruul usa SF Symbols o avatares chicos.
 
-**❌ Animaciones de bounce/elastic exageradas**
-→ Spring sutil sí. Bounce dramático no.
+**❌ Animaciones bouncy exageradas**
+→ Spring sutil sí.
 
 **❌ Modo dark forzado siempre**
 → Respetar preferencia del sistema.
 
-**❌ Skeleton screens animados**
-→ ProgressView simple en V1. Skeleton es refinement de F5+.
+**❌ Skeleton screens animados en V1**
+→ ProgressView simple.
 
 **❌ Toasts/snackbars por cada acción**
-→ Solo para confirmaciones críticas. Usar inline state changes para resto.
+→ Solo confirmaciones críticas.
 
-**❌ Onboarding de 5 pantallas con illustrations**
-→ Onboarding ruul es funcional, máximo 3 pantallas.
+**❌ Onboarding marketing-style con illustrations**
+→ Onboarding funcional, máximo 3 pantallas.
 
 **❌ Iconos custom mediocres**
-→ SF Symbols hasta que tengamos illustrator senior dedicado.
+→ SF Symbols.
 
-**❌ Fonts custom (Tiempos, GT Sectra, etc)**
-→ SF Pro + New York que vienen con iOS son excelentes.
+**❌ Fonts custom no nativas**
+→ SF Pro + New York.
 
-**❌ Negro puro #000 como background**
-→ `systemGroupedBackground` que es near-black y consistente.
+**❌ Negro puro #000 background**
+→ `systemGroupedBackground`.
 
-**❌ TabView default de SwiftUI**
-→ `RuulTabBar` flotante con Liquid Glass.
+**❌ TabView default**
+→ `RuulTabBar` flotante.
 
 **❌ NavigationView (deprecated)**
-→ `NavigationStack` con value-typed paths.
+→ `NavigationStack`.
 
 **❌ Combine para nuevos features**
 → async/await + @Observable.
 
 **❌ UIKit en código nuevo**
-→ SwiftUI puro. Solo legacy puede tener UIKit, y se migra cuando se toca.
+→ SwiftUI puro.
 
-**❌ Hardcoded strings en UI**
-→ Localizable strings desde el día 1, aunque V1 sea solo español.
+**❌ Hardcoded strings**
+→ Localizable desde V1.
 
 **❌ Hex colors en código**
 → Asset Catalog only.
+
+**❌ Mostrar nombre del grupo como prefijo en cada texto**
+→ Usar `RuulOriginTag` que muestra avatar + nombre arriba del item.
 
 ---
 
 ## §13 Filosofía de excepciones
 
-Este documento es autoritativo, pero no infalible. Habrá casos donde la regla correcta sea romperse.
+Este documento es autoritativo, pero no infalible.
 
 **Cuándo es válido desviarse**:
 
-1. La regla del DS produce resultado peor que ignorarla en este caso específico
-2. El caso es genuinamente nuevo y el DS aún no lo cubre
-3. Hay restricción técnica (rendimiento, accessibility, hardware) que fuerza alternativa
+1. La regla del DS produce resultado peor que ignorarla
+2. El caso es genuinamente nuevo y el DS no lo cubre
+3. Hay restricción técnica que fuerza alternativa
 
-**Cuándo NO es válido desviarse**:
+**Cuándo NO es válido**:
 
-1. "Me parece más bonito hacerlo distinto"
+1. "Me parece más bonito"
 2. "Es más rápido de implementar"
 3. "Otros productos lo hacen así"
 
-**Si te desviás**:
-
-1. Documentá en el código por qué
-2. Abrí issue para evaluar update del DS
-3. Si la desviación gana, actualizá este doc en el mismo PR
+**Si te desviás**: documentá en el código por qué, abrí issue para evaluar update del DS.
 
 ---
 
-## §14 Apéndice: ejemplos completos de pantalla
+## §14 Apéndices: ejemplos de pantallas completas
 
-### §14.1 HomeView completa
+### §14.1 HomeView completa (cross-grupos)
 
 ```swift
 struct HomeView: View {
-    @State var coordinator = HomeCoordinator(
-        eventRepo: .live,
-        actionRepo: .live
-    )
+    @State var coordinator = HomeCoordinator(...)
 
     var body: some View {
         ZStack {
@@ -1718,63 +1692,25 @@ struct HomeView: View {
                 .padding(.horizontal, RuulSpacing.screenPadding)
                 .padding(.top, RuulSpacing.md)
 
-                // Content
                 ScrollView {
                     VStack(alignment: .leading, spacing: RuulSpacing.sectionGap) {
-                        // Hero: próximo evento
-                        if let nextEvent = coordinator.nextEvent {
-                            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                                Text("PRÓXIMA CENA")
-                                    .font(.ruulCaptionEmphasis)
-                                    .foregroundStyle(.secondary)
-                                    .tracking(0.5)
-                                    .padding(.horizontal, RuulSpacing.screenPadding)
-
-                                EventHeroCard(event: nextEvent)
-                                    .padding(.horizontal, RuulSpacing.screenPadding)
-                            }
-                        } else {
-                            RuulEmptyState(
-                                symbol: "calendar",
-                                title: "Sin próximos eventos",
-                                message: "Crea el primer evento del grupo.",
-                                action: .init(
-                                    label: "Crear evento",
-                                    handler: coordinator.createEvent
-                                )
-                            )
+                        // Hero
+                        if let urgent = coordinator.mostUrgentItem {
+                            heroSection(item: urgent)
                         }
 
-                        // Acciones pendientes preview
+                        // Pendientes cross-grupos
                         if !coordinator.pendingActions.isEmpty {
-                            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                                RuulSectionHeader(title: "Pendientes para vos")
+                            pendingsSection
+                        }
 
-                                VStack(spacing: RuulSpacing.itemGap) {
-                                    ForEach(coordinator.pendingActions.prefix(3)) { action in
-                                        ActionCard(
-                                            title: action.title,
-                                            subtitle: action.subtitle,
-                                            priority: action.priority,
-                                            action: { coordinator.openAction(action) }
-                                        )
-                                        .padding(.horizontal, RuulSpacing.screenPadding)
-                                    }
-
-                                    if coordinator.pendingActions.count > 3 {
-                                        Button("Ver todas (\(coordinator.pendingActions.count))") {
-                                            coordinator.openInbox()
-                                        }
-                                        .font(.ruulCaptionEmphasis)
-                                        .foregroundStyle(.ruulAccent)
-                                        .padding(.horizontal, RuulSpacing.screenPadding)
-                                    }
-                                }
-                            }
+                        // Activity reciente cross-grupos
+                        if !coordinator.recentActivity.isEmpty {
+                            activitySection
                         }
                     }
                     .padding(.vertical, RuulSpacing.lg)
-                    .padding(.bottom, 80) // espacio para tab bar
+                    .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
                 }
                 .refreshable {
                     await coordinator.refresh()
@@ -1783,114 +1719,84 @@ struct HomeView: View {
         }
         .task { await coordinator.load() }
     }
+
+    private func heroSection(item: UrgentItem) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            Text("PRÓXIMO")
+                .font(.ruulCaptionEmphasis)
+                .foregroundStyle(.secondary)
+                .tracking(1.5)
+                .padding(.horizontal, RuulSpacing.screenPadding)
+
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                RuulOriginTag(group: item.group)
+                // resto del hero según tipo de item
+            }
+            .padding(RuulSpacing.lg)
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large))
+            .padding(.horizontal, RuulSpacing.screenPadding)
+        }
+    }
+
+    // pendingsSection, activitySection: similar structure
 }
 ```
 
-### §14.2 Detail view completa (FineDetailView)
+### §14.2 GroupTabView completa
 
 ```swift
-struct FineDetailView: View {
-    let fineId: FineID
-    @State var coordinator: FineDetailCoordinator
+struct GroupTabView: View {
+    @Binding var activeGroup: Group
+    let availableGroups: [Group]
+    @State var selectedSubTab: GroupSubTab = .events
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Color.ruulBackground.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Custom header
-                HStack {
-                    RuulPillButton(symbol: "chevron.left") {
-                        coordinator.dismiss()
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, RuulSpacing.md)
-                .padding(.top, RuulSpacing.md)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RuulSpacing.sectionGap) {
-                        // Hero: monto + razón
-                        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                            RuulBadge(text: "Multa", style: .negative)
-
-                            RuulMoneyView(
-                                amount: coordinator.fine.amount,
-                                currency: "MXN",
-                                size: .large,
-                                color: .negative
-                            )
-
-                            Text(coordinator.fine.reason)
-                                .font(.ruulTitleLarge)
-
-                            Text(coordinator.fine.detailDescription)
-                                .font(.ruulBody)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        // Action
-                        if coordinator.canAppeal {
-                            VStack(spacing: RuulSpacing.sm) {
-                                RuulButton(
-                                    "Apelar esta multa",
-                                    style: .primary,
-                                    action: coordinator.openAppeal
-                                )
-
-                                Text("Tu grupo votará si la apelación es justa")
-                                    .font(.ruulCaption)
-                                    .foregroundStyle(.tertiary)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                            }
-                        }
-
-                        // Metadata
-                        VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                            RuulSectionHeader(title: "Detalles")
-
-                            RuulCard {
-                                VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                                    metadataRow(label: "Aplicada", value: coordinator.fine.appliedAt.formatted())
-                                    Divider()
-                                    metadataRow(label: "Regla", value: coordinator.fine.ruleName)
-                                    Divider()
-                                    metadataRow(label: "Evento", value: coordinator.fine.eventName)
-                                }
-                            }
-                        }
-
-                        // Timeline
-                        VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                            RuulSectionHeader(title: "Historia")
-
-                            VStack(spacing: 0) {
-                                ForEach(coordinator.timeline) { event in
-                                    RuulTimelineItem(event: event)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, RuulSpacing.screenPadding)
-                    .padding(.vertical, RuulSpacing.lg)
-                    .padding(.bottom, 80)
+        VStack(spacing: 0) {
+            // Header con switcher
+            HStack {
+                RuulGroupSwitcher(
+                    activeGroup: $activeGroup,
+                    availableGroups: availableGroups
+                )
+                Spacer()
+                RuulPillButton(symbol: "ellipsis") {
+                    // group settings shortcut
                 }
             }
+            .padding(.horizontal, RuulSpacing.screenPadding)
+            .padding(.vertical, RuulSpacing.md)
+
+            // Sub-tabs adaptativas
+            RuulSubTabBar(
+                selected: $selectedSubTab,
+                tabs: availableSubTabs(for: activeGroup)
+            )
+            .padding(.bottom, RuulSpacing.md)
+
+            // Content
+            switch selectedSubTab {
+            case .events: EventsListView(group: activeGroup)
+            case .rotation: RotationView(group: activeGroup)
+            case .slots: SlotsView(group: activeGroup)
+            case .fund: FundView(group: activeGroup)
+            case .proposals: ProposalsView(group: activeGroup)
+            case .rules: RulesView(group: activeGroup)
+            case .fines: FinesView(group: activeGroup)
+            }
         }
-        .navigationBarHidden(true)
-        .task { await coordinator.load() }
     }
 
-    private func metadataRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.ruulCaption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.ruulCaption)
-        }
+    func availableSubTabs(for group: Group) -> [GroupSubTab] {
+        var tabs: [GroupSubTab] = []
+        if group.template.hasEvents { tabs.append(.events) }
+        if group.template.hasRotation { tabs.append(.rotation) }
+        if group.template.hasSlots { tabs.append(.slots) }
+        if group.template.hasFund { tabs.append(.fund) }
+        if group.template.hasProposals { tabs.append(.proposals) }
+        tabs.append(.rules)
+        tabs.append(.fines)
+        return tabs
     }
 }
 ```
@@ -1899,24 +1805,40 @@ struct FineDetailView: View {
 
 ## §15 Glosario
 
-- **Token**: valor de design (color, spacing, font) referenciado por nombre en lugar de literal
-- **Surface**: background level (background → surface → surfaceElevated en jerarquía)
-- **Chrome**: UI infrastructure (toolbars, tab bar, sheets) — donde va Liquid Glass
-- **Content**: contenido del usuario (cards, listas, detail) — surfaces sólidas
-- **Pattern**: combinación canónica de componentes para resolver caso recurrente
-- **Liquid Glass**: material translúcido de iOS 26 con blur dinámico que reacciona al contenido detrás
+- **Token**: valor de design referenciado por nombre
+- **Surface**: background level (background → surface → surfaceElevated)
+- **Chrome**: UI infrastructure (toolbars, tab bar, sheets) — Liquid Glass
+- **Content**: contenido del usuario — surfaces sólidas
+- **Pattern**: combinación canónica de componentes
+- **Liquid Glass**: material translúcido iOS 26
+- **Group active**: el grupo seleccionado para tabs grupo-específicas (NEW v2)
+- **Cross-group**: tab que muestra contenido de todos los grupos del usuario (NEW v2)
+- **Origin tag**: avatar + nombre del grupo en items de Home (NEW v2)
+- **Color ramp**: 7 stops de un mismo color para grupos (NEW v2)
+
+---
+
+## Changelog
+
+**v2.0.0 (2026-05-07)**:
+- BREAKING: Tab structure cambió de 4 (Inicio/Pendientes/Historial/Ajustes) a 4 distintas (Inicio/Grupo/Historial/Ajustes)
+- BREAKING: Multi-group como arquitectura estructural V1
+- Componentes nuevos: RuulGroupAvatar, RuulGroupSwitcher, RuulGroupSwitcherSheet, RuulSubTabBar, RuulOriginTag
+- Token nuevo: GroupCategory + GroupColorRamp con 8 ramps
+- Patterns nuevos: §4 Multi-group context, §5.2 Group-scoped layout, §5.3 GroupTabView
+- Anti-patterns nuevos: 4 patterns relacionados a multi-group y tabs
+
+**v1.0.0 (2026-05-06)**:
+- Release inicial al cierre de Fase 1 (F0)
 
 ---
 
 ## Cómo este documento evoluciona
 
 Cada cierre de fase mayor:
-
-1. Lista los componentes nuevos shipped
+1. Lista componentes nuevos shipped
 2. Documenta nuevos patterns identificados
 3. Lista anti-patterns descubiertos
-4. Update §10.3 con próxima fase
+4. Update §10.2 con próxima fase
 
-Pull requests a este documento requieren review de founder + reviewer.
-
-Versión actual: **v1.0.0** — DS inicial al cierre de Fase 1 (F0).
+PRs a este documento requieren review de founder + reviewer.
