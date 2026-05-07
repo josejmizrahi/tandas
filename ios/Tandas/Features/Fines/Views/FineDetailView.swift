@@ -237,11 +237,36 @@ struct FineDetailView: View {
     private var actionFooter: some View {
         VStack {
             Spacer()
-            if coordinator.isMine {
-                actionsForMyFine
-            } else {
-                actionsForAdmin
+            SwiftUI.Group {
+                if coordinator.isMine {
+                    actionsForMyFine
+                } else {
+                    actionsForAdmin
+                }
             }
+        }
+        .allowsHitTesting(footerHasContent)
+    }
+
+    /// True if either `actionsForMyFine` or `actionsForAdmin` would render
+    /// non-empty content for the current state. Mirrors the gate logic in
+    /// each builder so a footer with no actions doesn't capture taps over
+    /// the scroll content beneath.
+    private var footerHasContent: Bool {
+        if coordinator.isMine {
+            // Mirror `actionsForMyFine` gate: appeal-pending hides; only
+            // .officialized and .proposed surface buttons.
+            if let appeal = coordinator.existingAppeal, appeal.isVotingOpen {
+                return false
+            }
+            switch coordinator.fine.status {
+            case .officialized, .proposed: return true
+            case .paid, .voided, .inAppeal: return false
+            }
+        } else {
+            // Mirror `actionsForAdmin` gate.
+            guard canVoidFine else { return false }
+            return coordinator.fine.status == .proposed || coordinator.fine.status == .officialized
         }
     }
 

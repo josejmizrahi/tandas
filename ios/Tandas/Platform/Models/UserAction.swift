@@ -58,6 +58,7 @@ public struct UserAction: Identifiable, Sendable, Hashable, Codable {
 public enum ActionType: String, Codable, Sendable, Hashable, CaseIterable {
     // V1
     case finePending          = "finePending"
+    case fineVoided           = "fineVoided"
     case appealVotePending    = "appealVotePending"
     case rsvpPending          = "rsvpPending"
     case fineProposalReview   = "fineProposalReview"

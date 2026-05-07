@@ -54,6 +54,7 @@ struct ActionInboxView: View {
     private func icon(for type: ActionType) -> String {
         switch type {
         case .finePending:        return "exclamationmark.triangle.fill"
+        case .fineVoided:         return "xmark.circle"
         case .appealVotePending:  return "hand.raised.fill"
         case .rsvpPending:        return "checkmark.circle.fill"
         case .fineProposalReview: return "doc.text.magnifyingglass"

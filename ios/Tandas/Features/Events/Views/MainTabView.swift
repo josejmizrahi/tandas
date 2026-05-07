@@ -331,6 +331,10 @@ struct MainTabView: View {
             if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
                 fineDetailRoute = fine
             }
+        case .fineVoided:
+            if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
+                fineDetailRoute = fine
+            }
         case .fineProposalReview:
             if let event = try? await app.eventRepo.event(action.referenceId) {
                 reviewProposedRoute = event
