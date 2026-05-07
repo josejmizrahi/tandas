@@ -1,5 +1,21 @@
 import Foundation
 
+/// **DEPRECATED** — scheduled for removal per audit doc § 5.3 item 7c.
+///
+/// The data on each case (displayName, symbolName, copy, defaultEventLabel)
+/// has moved to `templates.config.presentation` in migration 00037.
+/// `templates.config.defaultCategory` carries the category mapping. Use
+/// `Template.effectiveDisplayName` etc. on the loaded template instead.
+///
+/// Removal blocked on:
+///   1. TemplateRegistry being wired into AppState + loaded at bootstrap.
+///   2. GroupInfoSheet + onboarding template selector reading from
+///      Template instead of GroupType.
+///   3. Repositories migrating CreateGroupParams to carry baseTemplate
+///      (string id) instead of GroupType, plus updated RPC parameter.
+///   4. Tests dropping GroupType assertions.
+///
+/// Tracked in `Plans/GroupTypeRemoval.md`.
 enum GroupType: String, Codable, Sendable, CaseIterable, Identifiable {
     case recurringDinner = "recurring_dinner"
     case tandaSavings = "tanda_savings"
