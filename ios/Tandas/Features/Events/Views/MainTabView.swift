@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// Top-level tab container shown after onboarding. Sprint 1b: expanded
-/// from 1 → 4 tabs (Inicio, Inbox, Reglas, Yo) using ResourceTabBar so
-/// the platform-template architecture is reflected in the chrome from
-/// day one. Inbox / Reglas / Yo render stub placeholders until Sprint
-/// 1c fills them with the real ActionInboxView, RulesView, ProfileView.
+/// Top-level tab container shown after onboarding. Sprint 1b expandió de
+/// 1 → 4 tabs (Inicio, Inbox, Reglas, Yo). Fase C (DS alignment) reemplaza
+/// el chrome de `ResourceTabBar` (TabView default + ultraThinMaterial) por
+/// el patrón overlay del DS doc §3.6: TabView nativo invisible
+/// (`.toolbar(.hidden, for: .tabBar)`) + `RuulTabBar` capsule glass
+/// flotando encima. Esto preserva el state per-tab (cada tab se queda
+/// con su `NavigationStack` viva al cambiar) y entrega el look real de
+/// Liquid Glass.
 struct MainTabView: View {
     @Environment(AppState.self) private var app
     @State private var homeCoordinator: HomeCoordinator?
@@ -50,25 +53,78 @@ struct MainTabView: View {
     @State private var joinGroupPresented: Bool = false
     @State private var inviteSharePresented: Bool = false
 
-    enum Tab: Hashable, Sendable { case home, inbox, rules, me }
+    enum Tab: String, RuulTabItem, CaseIterable {
+        case home, inbox, rules, me
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .home:  return "Inicio"
+            case .inbox: return "Inbox"
+            case .rules: return "Reglas"
+            case .me:    return "Yo"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .home:  return "house.fill"
+            case .inbox: return "tray.fill"
+            case .rules: return "list.bullet.clipboard.fill"
+            case .me:    return "person.crop.circle.fill"
+            }
+        }
+        /// Default `nil` from the protocol extension; runtime badge counts
+        /// are projected by `TabBadged` below so the static enum stays pure.
+        var badgeCount: Int? { nil }
+    }
+
+    /// Runtime wrapper that keeps `Tab`'s identity (`id == rawValue`) but
+    /// projects a live `badgeCount` (e.g. inbox `actions.count`). Used as
+    /// the `RuulTabItem` passed to `RuulTabBar`; the binding is over
+    /// `Tab.ID` (`String`) so the selection round-trips back to the enum.
+    private struct TabBadged: RuulTabItem {
+        let base: MainTabView.Tab
+        let badgeCount: Int?
+
+        var id: String { base.id }
+        var label: String { base.label }
+        var symbol: String { base.symbol }
+    }
+
+    private var tabItems: [TabBadged] {
+        Tab.allCases.map { tab in
+            TabBadged(
+                base: tab,
+                badgeCount: tab == .inbox ? (inboxCoordinator?.actions.count ?? 0) : nil
+            )
+        }
+    }
+
+    /// Binding bridge: `RuulTabBar` works on `Tab.ID` (String); the rest of
+    /// the view holds `selectedTab: Tab`. The setter only updates if the
+    /// raw value is a known case, so unrelated string mutations are safely
+    /// ignored.
+    private var selectedTabIDBinding: Binding<String> {
+        Binding(
+            get: { selectedTab.id },
+            set: { newID in
+                if let new = Tab(rawValue: newID) { selectedTab = new }
+            }
+        )
+    }
 
     var body: some View {
-        ResourceTabBar(
-            tabs: [
-                .init(id: Tab.home,  label: "Inicio", systemImage: "house.fill"),
-                .init(id: Tab.inbox, label: "Inbox",  systemImage: "tray.fill",
-                      badge: badgeForInbox),
-                .init(id: Tab.rules, label: "Reglas", systemImage: "list.bullet.clipboard.fill"),
-                .init(id: Tab.me,    label: "Yo",     systemImage: "person.crop.circle.fill")
-            ],
-            selection: $selectedTab
-        ) { tab in
-            switch tab {
-            case .home:  homeTab
-            case .inbox: inboxTab
-            case .rules: rulesTab
-            case .me:    profileTab
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                homeTab.tag(Tab.home)
+                inboxTab.tag(Tab.inbox)
+                rulesTab.tag(Tab.rules)
+                profileTab.tag(Tab.me)
             }
+            .toolbar(.hidden, for: .tabBar)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+
+            RuulTabBar(selected: selectedTabIDBinding, tabs: tabItems)
         }
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
@@ -123,11 +179,6 @@ struct MainTabView: View {
         }) { ctx in
             ruleEditSheet(ctx)
         }
-    }
-
-    private var badgeForInbox: ResourceTabBadge? {
-        let count = inboxCoordinator?.actions.count ?? 0
-        return count > 0 ? .count(count) : nil
     }
 
     // MARK: - Inbox tab

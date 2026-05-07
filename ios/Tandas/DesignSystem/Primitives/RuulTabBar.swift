@@ -3,16 +3,28 @@ import SwiftUI
 public protocol RuulTabItem: Identifiable, Hashable, Sendable {
     var label: String { get }
     var symbol: String { get }
+    /// Pending count badge. Nil or `0` hides the badge. Positive renders a
+    /// red capsule overlay on the icon. Default is `nil` so existing tab
+    /// items don't have to opt in.
+    var badgeCount: Int? { get }
+}
+
+public extension RuulTabItem {
+    var badgeCount: Int? { nil }
 }
 
 /// Tab bar flotante con Liquid Glass. Reemplaza TabView default — Fase C
 /// hace el swap real en `MainTabView`.
+///
+/// La selección se modela por `Tab.ID` (en lugar de `Tab` directo) para que
+/// callsites puedan usar wrappers con datos derivados (e.g. badge runtime)
+/// sin romper la identidad del tab subyacente.
 public struct RuulTabBar<Tab: RuulTabItem>: View {
-    @Binding private var selected: Tab
+    @Binding private var selectedID: Tab.ID
     private let tabs: [Tab]
 
-    public init(selected: Binding<Tab>, tabs: [Tab]) {
-        self._selected = selected
+    public init(selected: Binding<Tab.ID>, tabs: [Tab]) {
+        self._selectedID = selected
         self.tabs = tabs
     }
 
@@ -30,13 +42,24 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
     }
 
     private func tabButton(for tab: Tab) -> some View {
-        let isSelected = selected.id == tab.id
+        let isSelected = selectedID == tab.id
         return Button {
-            withAnimation(.ruulTap) { selected = tab }
+            withAnimation(.ruulTap) { selectedID = tab.id }
         } label: {
             VStack(spacing: 2) {
-                Image(systemName: tab.symbol)
-                    .font(.system(size: 20, weight: .regular))
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: tab.symbol)
+                        .font(.system(size: 20, weight: .regular))
+                    if let count = tab.badgeCount, count > 0 {
+                        Text("\(min(count, 99))")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.ruulNegative))
+                            .offset(x: 8, y: -6)
+                    }
+                }
                 Text(tab.label)
                     .font(.ruulLabelSmall)
             }
@@ -59,19 +82,20 @@ private struct PreviewTab: RuulTabItem {
     let id: String
     let label: String
     let symbol: String
+    var badgeCount: Int? = nil
 }
 
 #Preview("RuulTabBar") {
-    @Previewable @State var selected = PreviewTab(id: "home", label: "Inicio", symbol: "house")
+    @Previewable @State var selectedID: String = "home"
     let tabs: [PreviewTab] = [
         .init(id: "home", label: "Inicio", symbol: "house"),
-        .init(id: "inbox", label: "Pendientes", symbol: "tray"),
+        .init(id: "inbox", label: "Pendientes", symbol: "tray", badgeCount: 3),
         .init(id: "history", label: "Historial", symbol: "clock.arrow.circlepath"),
         .init(id: "settings", label: "Ajustes", symbol: "gear"),
     ]
     return ZStack(alignment: .bottom) {
         Color.ruulBackground.ignoresSafeArea()
-        RuulTabBar(selected: $selected, tabs: tabs)
+        RuulTabBar(selected: $selectedID, tabs: tabs)
     }
 }
 #endif
