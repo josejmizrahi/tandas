@@ -19,7 +19,7 @@ struct ActionInboxView: View {
                         ForEach(coordinator.actions) { action in
                             ActionCard(
                                 icon: icon(for: action.actionType),
-                                meta: coordinator.groupName(for: action),
+                                meta: meta(for: action),
                                 title: action.title,
                                 subtitle: action.body,
                                 priority: priority(for: action.priority),
@@ -58,11 +58,23 @@ struct ActionInboxView: View {
         case .appealVotePending:       return "hand.raised.fill"
         case .rsvpPending:             return "checkmark.circle.fill"
         case .fineProposalReview:      return "doc.text.magnifyingglass"
-        case .ruleChangeApplyPending:  return "slider.horizontal.3"
+        case .ruleChangeApplyPending:  return "list.bullet.clipboard.fill"
         case .slotPending:             return "ticket.fill"
-        case .votePending:             return "checkmark.square.fill"
+        case .votePending:             return "hand.raised.fill"
         case .contributionDue:         return "banknote.fill"
         case .compensationDue:         return "arrow.up.right"
+        }
+    }
+
+    /// Most action types show the group name as meta; rule-change apply
+    /// rows replace that with the vote-resolved timestamp ("votado [fecha]")
+    /// so the host immediately sees how recent the approval is.
+    private func meta(for action: UserAction) -> String? {
+        switch action.actionType {
+        case .ruleChangeApplyPending:
+            return "Votado \(action.createdAt.ruulRelativeDescription)"
+        default:
+            return coordinator.groupName(for: action)
         }
     }
 
