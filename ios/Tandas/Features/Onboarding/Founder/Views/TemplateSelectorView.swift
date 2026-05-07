@@ -8,7 +8,7 @@ import SwiftUI
 /// Auto-advances 600ms after selection so users don't need to tap a CTA.
 struct TemplateSelectorView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord
-    @State private var selected: DinnerRecurringTemplate.TemplateID? = .dinnerRecurring
+    @State private var selected: String? = TemplateRegistry.dinnerRecurringId
     @State private var advanceTimer: Task<Void, Never>?
 
     var body: some View {
@@ -28,8 +28,8 @@ struct TemplateSelectorView: View {
                         "RSVP con check-in",
                         "Multas por reglas que ustedes definen"
                     ],
-                    isSelected: selected == .dinnerRecurring,
-                    onSelect: { select(.dinnerRecurring) }
+                    isSelected: selected == TemplateRegistry.dinnerRecurringId,
+                    onSelect: { select(TemplateRegistry.dinnerRecurringId) }
                 )
                 TemplatePickerCard(
                     icon: "ticket.fill",
@@ -52,9 +52,9 @@ struct TemplateSelectorView: View {
         .onDisappear { advanceTimer?.cancel() }
     }
 
-    private func select(_ template: DinnerRecurringTemplate.TemplateID) {
-        selected = template
-        coord.draft.template = template.rawValue
+    private func select(_ templateId: String) {
+        selected = templateId
+        coord.draft.template = templateId
         // Auto-advance — feels like Apple's onboarding picks. Cancellable in
         // case the user changes their mind before the 600ms elapses.
         advanceTimer?.cancel()

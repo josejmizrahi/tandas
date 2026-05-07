@@ -92,7 +92,7 @@ struct CreateGroupSheet: View {
             do {
                 var draft = GroupDraft.empty
                 draft.name = trimmed
-                draft.template = DinnerRecurringTemplate.TemplateID.dinnerRecurring.rawValue
+                draft.template = TemplateRegistry.dinnerRecurringId
                 draft.coverImageName = coverImageName
                 let group = try await app.groupsRepo.createInitial(draft)
                 // Seed the 5 platform rules so the rule engine fires for this

@@ -7,7 +7,20 @@ import OSLog
 ///
 /// Keeps the hot path (group creation, MainTabView render, onboarding
 /// step lookup) free of network round trips.
+///
+/// **Static IDs**: Swift code that needs to reference a specific template
+/// by name (e.g. backward-compat defaults in deserializers, onboarding
+/// gates) reads the `…Id` constants below. The pattern is "declare on
+/// demand" — adding a new template means a new row in `templates` table;
+/// only add a Swift constant when code needs to compare against the id.
 actor TemplateRegistry {
+    /// Stable id for the V1 dinner template. Mirrors the row seeded by
+    /// migration 00021. Swift code that needs to reference this template
+    /// by name (backward-compat defaults in deserializers, onboarding
+    /// gates) reads from this constant rather than hardcoding the
+    /// literal `"recurring_dinner"`.
+    static let dinnerRecurringId: String = "recurring_dinner"
+
     private let repository: any TemplateRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "templates")
 

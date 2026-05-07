@@ -12,13 +12,6 @@ import Foundation
 /// which inserts these rules atomically.
 public enum DinnerRecurringTemplate {
 
-    public enum TemplateID: String, Sendable {
-        case dinnerRecurring   = "recurring_dinner"
-        case sharedResource    = "shared_resource"   // Fase 2 placeholder
-        case rotatingSavings   = "rotating_savings"  // Fase 3 placeholder
-        case custom            = "custom"            // Fase 4 placeholder
-    }
-
     /// The 5 default rules for "Cena recurrente". All MXN amounts; the
     /// template-specific UI in Sprint 1c will let founders edit amounts +
     /// toggle activeness before the group goes live.

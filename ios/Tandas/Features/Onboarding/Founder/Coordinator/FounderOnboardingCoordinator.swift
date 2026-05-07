@@ -140,7 +140,7 @@ final class FounderOnboardingCoordinator {
             // this step after a connectivity blip. Failure here is non-fatal:
             // the legacy rule step (.rules) still works; we just log so we
             // can surface in analytics later.
-            if draft.template == DinnerRecurringTemplate.TemplateID.dinnerRecurring.rawValue {
+            if draft.template == TemplateRegistry.dinnerRecurringId {
                 do {
                     _ = try await ruleRepo.seedDinnerTemplateRules(groupId: group.id)
                 } catch {
