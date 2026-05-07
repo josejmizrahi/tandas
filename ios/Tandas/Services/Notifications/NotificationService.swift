@@ -7,9 +7,11 @@ import OSLog
 ///
 /// V1 scope:
 /// - Local notifications fully wired (24h/2h/start reminders for "going" RSVPs).
-/// - Remote notification token registration ready, but the corresponding
-///   server-side dispatch (send-event-notification edge function) is stubbed
-///   until APNs cert is configured. See Plans/EventLayerV1.md §1.2.
+/// - Remote notification token registration ready. Server-side flow is
+///   outbox-first: edge functions write to `notifications_outbox`; a
+///   `dispatch-notifications` cron (pending) reads pending rows and
+///   sends APNs once creds are configured. See Plans/Audit-2026-05-06.md
+///   §9 (APNs sprint).
 @MainActor @Observable
 final class NotificationService: NSObject {
     enum AuthorizationStatus: Sendable, Hashable {

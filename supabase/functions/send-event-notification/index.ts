@@ -1,16 +1,28 @@
-// send-event-notification: dispatch APNs push notifications for event lifecycle.
+// send-event-notification: write event-lifecycle push intentions to the
+// outbox.
 //
-// V1 STUB — APNs cert is not configured per Plans/EventLayerV1.md §1.2.
-// This function logs the intended push but does NOT send anything to APNs.
-// When you wire APNs:
-//   1. Get APNs Auth Key (.p8) from Apple Developer.
-//   2. Configure in Supabase Dashboard → Settings → Auth → APNs.
-//   3. Replace the `sendAPNs` stub below with a real fetch to APNs HTTP/2.
+// **V2 (outbox-first)**. Composes target list + payload + deep_link for
+// an event lifecycle kind (created / host_reminder / deadline_warning /
+// cancelled), then inserts one row per recipient into
+// `notifications_outbox` with `dispatch_status='pending'`.
+//
+// **Does NOT dispatch**. APNs delivery is the responsibility of the
+// `dispatch-notifications` cron (separate function) which reads pending
+// outbox rows and sends. Until that cron + APNs creds are wired, rows
+// pile up as 'pending' and are observable via SQL.
+//
+// Why outbox-first:
+//   - Coherente con principio "toda intención de notificar produce un
+//     row" (espejo del SystemEvent log para mutaciones).
+//   - Idempotency for free: parcial failures retryable.
+//   - Debug en prod = SQL query, no logs.
+//   - Consistente con start_vote, finalize_vote, finalize-fine-reviews
+//     que ya escriben directo al outbox.
 //
 // Request: { event_id, kind, target_user_ids? }
 //   kind ∈ "created" | "host_reminder" | "deadline_warning" | "cancelled"
 //   target_user_ids: optional override; defaults derived from kind.
-// Response: { sent: number, kind, stubbed: true }
+// Response: { outbox_count, outbox_ids, kind }
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
@@ -20,6 +32,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 type Kind = "created" | "host_reminder" | "deadline_warning" | "cancelled";
+
+interface OutboxRowId { id: string }
 
 serve(withSentry(async (req) => {
   if (req.method === "OPTIONS") {
@@ -48,37 +62,58 @@ serve(withSentry(async (req) => {
     .single();
   if (eventErr || !event) return jsonError(404, "event not found");
 
-  // Resolve targets per kind.
-  let targets: string[] = target_user_ids ?? [];
-  if (targets.length === 0) {
-    targets = await resolveTargets(supabase, event, kind);
+  // Resolve targets (user_ids) per kind.
+  let targetUserIds: string[] = target_user_ids ?? [];
+  if (targetUserIds.length === 0) {
+    targetUserIds = await resolveTargets(supabase, event, kind);
   }
 
-  // Look up tokens for those users.
-  const { data: tokens } = await supabase
-    .from("notification_tokens")
-    .select("token, platform")
-    .in("user_id", targets);
+  if (targetUserIds.length === 0) {
+    return ok({ outbox_count: 0, outbox_ids: [], kind });
+  }
+
+  // Outbox keys recipients by group_members.id, not user_id, so recipient
+  // identity survives if the auth user is later deleted.
+  const { data: members, error: memberErr } = await supabase
+    .from("group_members")
+    .select("id, user_id")
+    .eq("group_id", event.group_id)
+    .in("user_id", targetUserIds);
+
+  if (memberErr) return jsonError(500, `member lookup failed: ${memberErr.message}`);
+
+  const memberIds = (members ?? []).map((m: { id: string }) => m.id);
+  if (memberIds.length === 0) {
+    return ok({ outbox_count: 0, outbox_ids: [], kind });
+  }
 
   const payload = buildPayload(event, kind);
+  const deepLink = `ruul://event/${event_id}`;
 
-  // STUB: log only. Replace with real APNs sender below.
-  console.log(`[STUB] would send ${tokens?.length ?? 0} push(es)`, {
-    event_id,
-    kind,
-    targets: targets.length,
+  // One outbox row per recipient. The dispatcher cron picks up
+  // dispatch_status='pending', looks up notification_tokens, sends APNs,
+  // and marks status sent / failed / skipped.
+  const rows = memberIds.map((member_id) => ({
+    group_id: event.group_id,
+    recipient_member_id: member_id,
+    notification_type: kind,
     payload,
-  });
+    deep_link: deepLink,
+  }));
 
-  // for (const t of tokens ?? []) await sendAPNs(t.token, payload);
+  const { data: inserted, error: insertErr } = await supabase
+    .from("notifications_outbox")
+    .insert(rows)
+    .select("id");
 
-  return new Response(JSON.stringify({
-    sent: tokens?.length ?? 0,
+  if (insertErr) return jsonError(500, `outbox insert failed: ${insertErr.message}`);
+
+  const outboxIds = ((inserted as OutboxRowId[] | null) ?? []).map((r) => r.id);
+
+  return ok({
+    outbox_count: outboxIds.length,
+    outbox_ids: outboxIds,
     kind,
-    stubbed: true,
-  }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
   });
 }, { functionName: "send-event-notification" }));
 
@@ -88,38 +123,30 @@ async function resolveTargets(
   kind: Kind,
 ): Promise<string[]> {
   const groupId = event.group_id as string;
-  const hostId = event.host_id as string | null;
 
   switch (kind) {
     case "created":
     case "cancelled": {
-      // All active members except creator.
+      // All active members except the creator.
       const { data } = await supabase
         .from("group_members")
         .select("user_id")
         .eq("group_id", groupId)
         .eq("active", true);
-      return (data ?? [])
-        .map((r: { user_id: string }) => r.user_id)
+      return ((data ?? []) as Array<{ user_id: string }>)
+        .map((r) => r.user_id)
         .filter((id) => id !== event.created_by);
     }
-    case "host_reminder": {
-      // Members who haven't RSVP'd yet ('pending').
-      const { data } = await supabase
-        .from("event_attendance")
-        .select("user_id")
-        .eq("event_id", event.id)
-        .eq("rsvp_status", "pending");
-      return (data ?? []).map((r: { user_id: string }) => r.user_id);
-    }
+    case "host_reminder":
     case "deadline_warning": {
-      // Same as host_reminder — pending RSVPs near deadline.
+      // Pending RSVPs for this event.
+      const eventId = event.id as string;
       const { data } = await supabase
         .from("event_attendance")
         .select("user_id")
-        .eq("event_id", event.id)
+        .eq("event_id", eventId)
         .eq("rsvp_status", "pending");
-      return (data ?? []).map((r: { user_id: string }) => r.user_id);
+      return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
     }
   }
 }
@@ -131,34 +158,28 @@ function buildPayload(event: Record<string, unknown>, kind: Kind): Record<string
 
   switch (kind) {
     case "created":
-      return {
-        title: `Nuevo ${vocab}`,
-        body: `${groupName}: "${title}"`,
-        deep_link: `ruul://event/${event.id}`,
-      };
+      return { title: `Nuevo ${vocab}`, body: `${groupName}: "${title}"` };
     case "host_reminder":
-      return {
-        title: "¿Confirmas?",
-        body: `Falta tu RSVP para "${title}"`,
-        deep_link: `ruul://event/${event.id}`,
-      };
+      return { title: "¿Confirmas?", body: `Falta tu RSVP para "${title}"` };
     case "deadline_warning":
       return {
         title: "Te queda 1h para confirmar",
         body: `"${title}" empieza pronto. Confirma o cancela.`,
-        deep_link: `ruul://event/${event.id}`,
       };
     case "cancelled":
-      return {
-        title: "Evento cancelado",
-        body: `"${title}" en ${groupName} fue cancelado.`,
-        deep_link: `ruul://event/${event.id}`,
-      };
+      return { title: "Evento cancelado", body: `"${title}" en ${groupName} fue cancelado.` };
   }
 }
 
 function capitalize(s: string): string {
   return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function ok(body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function jsonError(status: number, message: string) {

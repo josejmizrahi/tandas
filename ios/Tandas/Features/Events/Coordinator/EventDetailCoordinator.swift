@@ -265,7 +265,8 @@ final class EventDetailCoordinator {
     func sendHostReminders() async -> Int {
         guard viewerRole == .host else { return 0 }
         let pendingCount = rsvps.filter { $0.status == .pending }.count
-        // Real send happens via send-event-notification edge function (stub V1).
+        // Real send: send-event-notification writes outbox rows; dispatcher cron
+        // delivers APNs (outbox-first, dispatcher pending).
         await analytics.hostReminderSent(eventId: event.id, recipientCount: pendingCount)
         return pendingCount
     }

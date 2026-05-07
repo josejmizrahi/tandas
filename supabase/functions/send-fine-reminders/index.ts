@@ -5,9 +5,11 @@
 // Uses service_role to bypass RLS.
 //
 // V1 behaviour: identifies the candidate fines and emits a system event
-// per reminder so the history reflects the nudge. Push notification
-// delivery is delegated to `send-event-notification` (currently stub
-// until APNs is configured — see EventLayerV1-FollowUp #1).
+// per reminder so the history reflects the nudge. Push delivery follows
+// the outbox-first path: a `dispatch-notifications` cron (TBD) reads
+// `notifications_outbox` rows and sends APNs once creds are configured.
+// This function does NOT itself write to the outbox — that wiring is
+// pending (item APNs, Plans/Audit-2026-05-06.md §9).
 //
 // To prevent re-firing on the same day, we record the reminder in
 // fines.details.reminders[] (jsonb array). Records of the form:
@@ -92,8 +94,8 @@ serve(withSentry(async (_req) => {
       continue;
     }
 
-    // Emit a system event so the timeline reflects the nudge. Real push
-    // notifications are sent by send-event-notification once APNs is wired.
+    // Emit a system event so the timeline reflects the nudge. Push
+    // delivery is the dispatcher cron's job (outbox-first path, pending).
     const { error: evErr } = await supabase
       .from("system_events")
       .insert({
