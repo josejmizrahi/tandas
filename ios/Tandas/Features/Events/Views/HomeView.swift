@@ -260,6 +260,10 @@ struct HomeView: View {
     private func heroBottomBlock(_ event: Event) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                if coordinator.isCrossGroupsMode,
+                   let origin = coordinator.group(for: event) {
+                    RuulOriginTag(group: origin)
+                }
                 Text(heroDateLine(event))
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulOnImageSecondary)
@@ -414,7 +418,9 @@ struct HomeView: View {
                     ForEach(rest) { event in
                         EventRow(
                             event: event,
-                            groupName: nil,                                    // single-group context here
+                            originGroup: coordinator.isCrossGroupsMode
+                                ? coordinator.group(for: event)
+                                : nil,
                             myStatus: coordinator.myRSVPs[event.id]?.status
                         ) {
                             onOpenEvent(event)

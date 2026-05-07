@@ -17,6 +17,10 @@ struct EventPatch: Sendable, Equatable {
 
 protocol EventRepository: Actor {
     func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event]
+    /// Cross-group fetch: returns upcoming events across N groups, ordered by
+    /// startsAt ascending, capped at `limit`. Used by Home in multi-group mode
+    /// (DS v3 §4.1-4.6) so each item can carry a `RuulOriginTag` for context.
+    func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event]
     func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event]
     /// Cross-group feed: every active event the caller is a member of, future
     /// + recent past, ordered by `starts_at` ascending. RLS on `events`
@@ -45,6 +49,16 @@ actor MockEventRepository: EventRepository {
         if let err = nextFetchError { nextFetchError = nil; throw err }
         return events
             .filter { $0.groupId == groupId && $0.status.isActive && $0.startsAt >= .now }
+            .sorted { $0.startsAt < $1.startsAt }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event] {
+        if let err = nextFetchError { nextFetchError = nil; throw err }
+        let ids = Set(groupIds)
+        return events
+            .filter { ids.contains($0.groupId) && $0.status.isActive && $0.startsAt >= .now }
             .sorted { $0.startsAt < $1.startsAt }
             .prefix(limit)
             .map { $0 }
@@ -187,6 +201,25 @@ actor LiveEventRepository: EventRepository {
                 .from("events")
                 .select("*")
                 .eq("group_id", value: groupId.uuidString.lowercased())
+                .in("status", values: ["scheduled", "in_progress"])
+                .gte("starts_at", value: ISO8601DateFormatter().string(from: .now))
+                .order("starts_at", ascending: true)
+                .limit(limit)
+                .execute()
+                .value
+        } catch {
+            throw EventError.fetchFailed(error.localizedDescription)
+        }
+    }
+
+    func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event] {
+        guard !groupIds.isEmpty else { return [] }
+        let ids = groupIds.map { $0.uuidString.lowercased() }
+        do {
+            return try await client
+                .from("events")
+                .select("*")
+                .in("group_id", values: ids)
                 .in("status", values: ["scheduled", "in_progress"])
                 .gte("starts_at", value: ISO8601DateFormatter().string(from: .now))
                 .order("starts_at", ascending: true)

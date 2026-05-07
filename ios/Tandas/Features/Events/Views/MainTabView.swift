@@ -770,6 +770,7 @@ struct MainTabView: View {
         let userId = app.session?.user.id ?? UUID()
         homeCoordinator = HomeCoordinator(
             group: group,
+            allGroups: app.groups,
             userId: userId,
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo

@@ -16,9 +16,32 @@ import SwiftUI
 /// - Whole cell is `.ruulPress` so tap haptic + scale feedback come for free.
 struct EventRow: View {
     let event: Event
+    /// Origin group for cross-grupos surfaces (Home multi-group, MyFeed).
+    /// When non-nil, an inline `RuulOriginTag` (avatar + group name) renders
+    /// above the title so the row carries its group identity. Per DS v3
+    /// §3.12 / §4.5.
+    let originGroup: Group?
+    /// Legacy plain-text group label. Deprecated — prefer `originGroup` so
+    /// the row gets the full DS v3 origin tag (avatar + name + tracking).
+    /// Honored only when `originGroup` is nil so callers can migrate
+    /// incrementally without losing context.
     let groupName: String?
     let myStatus: RSVPStatus?
     let onTap: () -> Void
+
+    init(
+        event: Event,
+        originGroup: Group? = nil,
+        groupName: String? = nil,
+        myStatus: RSVPStatus?,
+        onTap: @escaping () -> Void
+    ) {
+        self.event = event
+        self.originGroup = originGroup
+        self.groupName = groupName
+        self.myStatus = myStatus
+        self.onTap = onTap
+    }
 
     var body: some View {
         Button(action: onTap) {
@@ -75,6 +98,9 @@ struct EventRow: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if let originGroup {
+                RuulOriginTag(group: originGroup)
+            }
             Text(metaLine)
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(metaColor)
@@ -97,11 +123,13 @@ struct EventRow: View {
         }
     }
 
-    /// Meta line composes group name (if cross-group) + date language.
-    /// "LOS CUATES · HOY 9:00 PM" or "MAÑANA 9:00 PM" (single-group).
+    /// Meta line composes group name (if cross-group, legacy path) + date
+    /// language. When `originGroup` is set, the dedicated `RuulOriginTag`
+    /// already carries identity, so we drop the textual prefix to avoid
+    /// duplication. "LOS CUATES · HOY 9:00 PM" or "MAÑANA 9:00 PM".
     private var metaLine: String {
         var parts: [String] = []
-        if let groupName, !groupName.isEmpty {
+        if originGroup == nil, let groupName, !groupName.isEmpty {
             parts.append(groupName.uppercased())
         }
         parts.append(dateLabel.uppercased())
@@ -171,7 +199,8 @@ struct EventRow: View {
 
     private var accessibilityLabel: String {
         var parts: [String] = []
-        if let groupName { parts.append(groupName) }
+        if let originGroup { parts.append(originGroup.name) }
+        else if let groupName { parts.append(groupName) }
         parts.append(event.title)
         parts.append(event.startsAt.ruulRelativeDescription)
         if event.status == .cancelled { parts.append("cancelado") }
