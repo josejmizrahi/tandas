@@ -135,29 +135,35 @@ struct MainTabView: View {
     @ViewBuilder
     private var rulesTab: some View {
         NavigationStack {
-            if let coord = rulesCoordinator {
-                RulesView(
-                    coordinator: coord,
-                    voteRepo: app.voteRepo,
-                    userActionRepo: app.userActionRepo,
-                    onSeeOpenVotes: {
-                        if let group = app.activeGroup {
-                            openVotesRoute = OpenVotesRouteContext(id: group.id)
-                        }
-                    }
+            VStack(spacing: 0) {
+                GroupContextHeader(
+                    group: app.activeGroup,
+                    onTap: { groupSwitcherPresented = true }
                 )
-                .navigationDestination(item: $openVotesRoute) { _ in
-                    openVotesDestination
-                }
-                .navigationDestination(item: $voteDetailRoute) { ctx in
-                    voteDetailDestination(for: ctx)
-                }
-            } else {
-                ZStack {
-                    Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    LoadingStateView(.list)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s7)
+                if let coord = rulesCoordinator {
+                    RulesView(
+                        coordinator: coord,
+                        voteRepo: app.voteRepo,
+                        userActionRepo: app.userActionRepo,
+                        onSeeOpenVotes: {
+                            if let group = app.activeGroup {
+                                openVotesRoute = OpenVotesRouteContext(id: group.id)
+                            }
+                        }
+                    )
+                    .navigationDestination(item: $openVotesRoute) { _ in
+                        openVotesDestination
+                    }
+                    .navigationDestination(item: $voteDetailRoute) { ctx in
+                        voteDetailDestination(for: ctx)
+                    }
+                } else {
+                    ZStack {
+                        Color.ruulBackgroundCanvas.ignoresSafeArea()
+                        LoadingStateView(.list)
+                            .padding(.horizontal, RuulSpacing.s5)
+                            .padding(.top, RuulSpacing.s7)
+                    }
                 }
             }
         }
@@ -216,28 +222,34 @@ struct MainTabView: View {
     @ViewBuilder
     private var inboxTab: some View {
         NavigationStack {
-            if let coord = inboxCoordinator {
-                ActionInboxView(coordinator: coord) { action in
-                    Task { await handleInboxAction(action) }
-                }
-                .navigationDestination(item: $fineDetailRoute) { fine in
-                    fineDetailScreen(fine)
-                }
-                .navigationDestination(item: $reviewProposedRoute) { event in
-                    reviewProposedScreen(event)
-                }
-                .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
-                    voteDetailDestination(for: ctx)
-                }
-                .ruulSheet(item: $voteOnAppealRoute) { ctx in
-                    voteOnAppealSheet(ctx)
-                }
-            } else {
-                ZStack {
-                    Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    LoadingStateView(.list)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s7)
+            VStack(spacing: 0) {
+                GroupContextHeader(
+                    group: app.activeGroup,
+                    onTap: { groupSwitcherPresented = true }
+                )
+                if let coord = inboxCoordinator {
+                    ActionInboxView(coordinator: coord) { action in
+                        Task { await handleInboxAction(action) }
+                    }
+                    .navigationDestination(item: $fineDetailRoute) { fine in
+                        fineDetailScreen(fine)
+                    }
+                    .navigationDestination(item: $reviewProposedRoute) { event in
+                        reviewProposedScreen(event)
+                    }
+                    .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
+                        voteDetailDestination(for: ctx)
+                    }
+                    .ruulSheet(item: $voteOnAppealRoute) { ctx in
+                        voteOnAppealSheet(ctx)
+                    }
+                } else {
+                    ZStack {
+                        Color.ruulBackgroundCanvas.ignoresSafeArea()
+                        LoadingStateView(.list)
+                            .padding(.horizontal, RuulSpacing.s5)
+                            .padding(.top, RuulSpacing.s7)
+                    }
                 }
             }
         }
@@ -250,36 +262,42 @@ struct MainTabView: View {
     @ViewBuilder
     private var profileTab: some View {
         NavigationStack {
-            if let pCoord = profileCoordinator {
-                ProfileView(
-                    coordinator: pCoord,
-                    onOpenMyFines: { myFinesRoute = true },
-                    onOpenHistory: { historyRoute = true },
-                    onOpenSettings: { settingsRoute = true },
-                    onSignOut: {
-                        Task { try? await app.auth.signOut() }
-                    }
+            VStack(spacing: 0) {
+                GroupContextHeader(
+                    group: app.activeGroup,
+                    onTap: { groupSwitcherPresented = true }
                 )
-                .navigationDestination(isPresented: $myFinesRoute) {
-                    if let fCoord = myFinesCoordinator {
-                        MyFinesView(coordinator: fCoord) { fine in
-                            fineDetailRoute = fine
+                if let pCoord = profileCoordinator {
+                    ProfileView(
+                        coordinator: pCoord,
+                        onOpenMyFines: { myFinesRoute = true },
+                        onOpenHistory: { historyRoute = true },
+                        onOpenSettings: { settingsRoute = true },
+                        onSignOut: {
+                            Task { try? await app.auth.signOut() }
+                        }
+                    )
+                    .navigationDestination(isPresented: $myFinesRoute) {
+                        if let fCoord = myFinesCoordinator {
+                            MyFinesView(coordinator: fCoord) { fine in
+                                fineDetailRoute = fine
+                            }
                         }
                     }
+                    .navigationDestination(isPresented: $historyRoute) {
+                        groupHistoryScreen
+                    }
+                    .navigationDestination(item: $fineDetailRoute) { fine in
+                        fineDetailScreen(fine)
+                    }
+                    .sheet(isPresented: $settingsRoute) {
+                        SettingsSheet()
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                    }
+                } else {
+                    ProfileTabStub()
                 }
-                .navigationDestination(isPresented: $historyRoute) {
-                    groupHistoryScreen
-                }
-                .navigationDestination(item: $fineDetailRoute) { fine in
-                    fineDetailScreen(fine)
-                }
-                .sheet(isPresented: $settingsRoute) {
-                    SettingsSheet()
-                        .presentationDetents([.medium, .large])
-                        .presentationDragIndicator(.visible)
-                }
-            } else {
-                ProfileTabStub()
             }
         }
     }
