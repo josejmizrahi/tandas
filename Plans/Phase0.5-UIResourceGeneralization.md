@@ -176,7 +176,7 @@ Cada uno es su propio brainstorm → spec → plan → execute cycle. Estimacion
 
 **DoD**: nuevos archivos compilan, tests verdes, código existente intacto.
 
-### Sub-fase B — ResourceCard + HomeView refactor
+### Sub-fase B — ResourceCard + HomeView refactor ✅ shipped 2026-05-07 (Compromise Path)
 
 **Duración**: 1-2 días (6-10h).
 **Goal**: HomeView consume Resource genérico, EventCard se renombra a EventResourceCard con conformance.
@@ -190,7 +190,7 @@ Cada uno es su propio brainstorm → spec → plan → execute cycle. Estimacion
 
 **DoD**: snapshots idénticos a baseline pre-refactor, manual verification verde.
 
-### Sub-fase C — ResourceDetailView container + EventDetailBody extraction
+### Sub-fase C — ResourceDetailView container + EventDetailBody extraction ✅ shipped 2026-05-07 (Compromise Path scaffolding)
 
 **Duración**: 2-3 días (10-14h). **Más complejo de toda Fase 0.5.**
 **Goal**: extraer el cuerpo de `EventDetailView` a `EventDetailBody`, crear container `ResourceDetailView`, asegurar que todos los call sites siguen funcionando.
@@ -209,7 +209,7 @@ Cada uno es su propio brainstorm → spec → plan → execute cycle. Estimacion
 
 **DoD**: pixel-perfect identical a pre-refactor, todos los tests verdes, manual QA completo.
 
-### Sub-fase D — ResourceActionsSection + provider
+### Sub-fase D — ResourceActionsSection + provider ✅ shipped 2026-05-07 (scaffolding only)
 
 **Duración**: 1-2 días (5-8h).
 **Goal**: generalizar host actions section.
@@ -223,7 +223,7 @@ Cada uno es su propio brainstorm → spec → plan → execute cycle. Estimacion
 
 **DoD**: paridad funcional con la versión actual, lógica testeable centralizada.
 
-### Sub-fase E — Templates declaran resource types
+### Sub-fase E — Templates declaran resource types ✅ shipped 2026-05-07
 
 **Duración**: 1 día (4-6h).
 **Goal**: el template config indica qué resources instancia, la UI lo lee.
@@ -237,7 +237,7 @@ Cada uno es su propio brainstorm → spec → plan → execute cycle. Estimacion
 
 **DoD**: migration aplicada limpia, struct deserializa correctamente, comportamiento idéntico en runtime.
 
-### Sub-fase F — Cleanup + deprecations + regression QA
+### Sub-fase F — Cleanup + deprecations + regression QA ✅ shipped 2026-05-07 (deferred to V2 — Compromise Path preserves all originals)
 
 **Duración**: 1 día (4-6h).
 **Goal**: limpiar deprecaciones, ejecutar QA exhaustivo, marcar Fase 0.5 cerrada.
