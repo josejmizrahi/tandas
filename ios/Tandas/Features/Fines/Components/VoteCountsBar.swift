@@ -4,7 +4,7 @@ import SwiftUI
 /// en contra / pendientes), proportional widths, with totals on the right.
 /// Apple Sports flat — no tinted backgrounds, semantic dots only.
 struct VoteCountsBar: View {
-    let counts: AppealVoteCounts
+    let counts: VoteCounts
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.s2) {

@@ -205,7 +205,17 @@ struct FineDetailView: View {
                     .foregroundStyle(Color.ruulTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let counts = coordinator.voteCounts {
-                    VoteCountsBar(counts: counts)
+                    // VoteCountsBar consume canonical VoteCounts. FineDetailCoordinator
+                    // todavía expone AppealVoteCounts (legacy AppealRepository);
+                    // conversion local hasta que V2 cleanup unifique a VoteRepository.
+                    VoteCountsBar(counts: VoteCounts(
+                        inFavor:       counts.inFavor,
+                        against:       counts.against,
+                        abstained:     counts.abstained,
+                        pending:       counts.pending,
+                        totalEligible: counts.totalEligible,
+                        resolution:    nil
+                    ))
                 }
                 if appeal.isVotingOpen {
                     Button { onViewAppeal?(appeal) } label: {

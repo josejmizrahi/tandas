@@ -17,18 +17,7 @@ struct VoteCastSection: View {
 
             if let counts = coordinator.counts,
                !coordinator.vote.isAnonymous || coordinator.alreadyVoted {
-                // VoteCountsBar takes AppealVoteCounts (legacy type from
-                // pre-00020 votes). Bridge VoteCounts → AppealVoteCounts
-                // inline; the two have identical shape. Audit § 5.2
-                // tracks promoting VoteCountsBar to take canonical
-                // VoteCounts when appeal_votes legacy is cleaned up.
-                VoteCountsBar(counts: AppealVoteCounts(
-                    inFavor:       counts.inFavor,
-                    against:       counts.against,
-                    abstained:     counts.abstained,
-                    pending:       counts.pending,
-                    totalEligible: counts.totalEligible
-                ))
+                VoteCountsBar(counts: counts)
             }
         }
     }

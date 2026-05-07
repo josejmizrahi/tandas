@@ -21,7 +21,19 @@ struct VoteOnAppealSheet: View {
                 fineCard
                 appealReasonCard
                 if let counts = voteCounts {
-                    VoteCountsBar(counts: counts)
+                    // VoteCountsBar consume canonical VoteCounts. AppealRepository
+                    // sigue devolviendo AppealVoteCounts (server-side appeal_votes
+                    // legacy), así que convertimos en el call site. Cuando el
+                    // V2 cleanup migre AppealRepository a VoteRepository este
+                    // bridge desaparece.
+                    VoteCountsBar(counts: VoteCounts(
+                        inFavor:       counts.inFavor,
+                        against:       counts.against,
+                        abstained:     counts.abstained,
+                        pending:       counts.pending,
+                        totalEligible: counts.totalEligible,
+                        resolution:    nil
+                    ))
                 }
                 votingButtons
                 Text("Tu voto es anónimo. Solo se publican los conteos agregados.")
