@@ -157,6 +157,9 @@ struct MainTabView: View {
         .animation(.ruulGroupSwitch, value: app.activeGroupId)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        // iOS 26 §6.2: tab bar se minimiza al scroll down y re-expande al
+        // scroll up. Aprovecha la real estate y evita hide manual.
+        .tabBarMinimizeBehavior(.onScrollDown)
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }

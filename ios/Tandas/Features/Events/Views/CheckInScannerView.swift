@@ -74,7 +74,8 @@ struct CheckInScannerView: View {
             Color.clear.frame(width: 32, height: 32)  // spacer for symmetry
         }
         .padding(RuulSpacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        // DS v3 §13: header overlay sobre cámara — Liquid Glass real.
+        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular)
     }
 
     private var scanFrame: some View {
@@ -98,7 +99,8 @@ struct CheckInScannerView: View {
                         .foregroundStyle(Color.ruulPositive)
                 }
                 .padding(RuulSpacing.sm)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+                // DS v3 §13: recent check-in chip overlay — Liquid Glass real.
+                .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous), material: .regular)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

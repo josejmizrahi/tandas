@@ -43,6 +43,9 @@ public struct MainAppScreenTemplate<Value: Hashable & Sendable, Content: View>: 
         .tint(Color.ruulAccent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        // iOS 26 §6.2: tab bar minimiza al scroll down (gana real estate
+        // de contenido) y se expande al scroll up.
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
 

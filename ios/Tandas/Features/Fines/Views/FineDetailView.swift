@@ -301,7 +301,8 @@ struct FineDetailView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.vertical, RuulSpacing.sm)
-            .background(.regularMaterial)
+            // DS v3 §13: sticky CTA chrome — Liquid Glass real.
+            .ruulGlass(Rectangle(), material: .regular)
         }
     }
 
@@ -325,7 +326,8 @@ struct FineDetailView: View {
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.vertical, RuulSpacing.sm)
-                .background(.regularMaterial)
+                // DS v3 §13: sticky CTA chrome — Liquid Glass real.
+                .ruulGlass(Rectangle(), material: .regular)
             case .proposed:
                 Text("Esta multa se oficializa después de 24h. Si no aplica, espera a que el host la revise — o contacta directo.")
                     .ruulTextStyle(RuulTypography.caption)
@@ -334,7 +336,8 @@ struct FineDetailView: View {
                     .padding(.horizontal, RuulSpacing.lg)
                     .padding(.vertical, RuulSpacing.sm)
                     .frame(maxWidth: .infinity)
-                    .background(.regularMaterial)
+                    // DS v3 §13: sticky info chrome — Liquid Glass real.
+                    .ruulGlass(Rectangle(), material: .regular)
             case .paid, .voided, .inAppeal:
                 EmptyView()
             }

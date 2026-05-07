@@ -62,6 +62,9 @@ public struct ResourceTabBar<Value: Hashable & Sendable, Content: View>: View {
         .tint(Color.ruulTextPrimary)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        // iOS 26 §6.2: tab bar minimiza al scroll down (gana real estate)
+        // y reaparece al scroll up.
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
 

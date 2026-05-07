@@ -185,7 +185,8 @@ struct CreateEventView: View {
             .disabled(!coordinator.draft.isReadyToPublish)
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.vertical, RuulSpacing.sm)
-            .background(.ultraThinMaterial)
+            // DS v3 §13: sticky CTA chrome — Liquid Glass real.
+            .ruulGlass(Rectangle(), material: .regular)
         }
     }
 

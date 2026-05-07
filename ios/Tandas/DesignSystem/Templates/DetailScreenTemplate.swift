@@ -53,7 +53,8 @@ public struct DetailScreenTemplate<Content: View>: View {
         }
         .padding(.horizontal, RuulSpacing.lg)
         .padding(.vertical, RuulSpacing.md)
-        .background(.ultraThinMaterial)
+        // DS v3 §13: sticky CTA bar es chrome surface — Liquid Glass real.
+        .ruulGlass(Rectangle(), material: .regular)
     }
 }
 

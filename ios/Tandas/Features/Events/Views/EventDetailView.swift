@@ -433,7 +433,8 @@ struct EventDetailView: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 36, height: 36)
-                .background(.regularMaterial, in: Circle())
+                // DS v3 §13: pill nav chrome interactivo — Liquid Glass real.
+                .ruulGlass(Circle(), material: .regular, interactive: true)
                 .ruulElevation(.sm)
         }
         .buttonStyle(.ruulPress)
@@ -482,7 +483,8 @@ struct EventDetailView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
-                .background(.regularMaterial)
+                // DS v3 §13: bottom action chrome — Liquid Glass real.
+                .ruulGlass(Rectangle(), material: .regular)
             }
         }
         if coordinator.viewerRole == .host && isCloseable {
@@ -493,7 +495,8 @@ struct EventDetailView: View {
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.vertical, RuulSpacing.sm)
-                .background(.regularMaterial)
+                // DS v3 §13: sticky CTA chrome — Liquid Glass real.
+                .ruulGlass(Rectangle(), material: .regular)
             }
         }
     }
