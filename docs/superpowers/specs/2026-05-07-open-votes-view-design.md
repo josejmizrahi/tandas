@@ -4,7 +4,7 @@
 **Author**: Claude (session 2026-05-07, post-APNs sprint)
 **Roadmap item**: Plans/Audit-2026-05-06.md §5.2 #3 ("OpenVotesView — último P0; desbloquea general_proposal + rule_change")
 **Backend assumptions**: prod has 00022_notifications_outbox, 00023_appeal_voting_v2, 00031_claim_outbox_rpcs aplicadas (verificadas vía MCP 2026-05-07)
-**Scope**: V1 = list + cast + 2 creation sheets (`general_proposal`, `rule_change`). Refactor mínimo de `VoteOnAppealSheet` para extraer body. Cero cambios al rule engine, RPCs, o schema.
+**Scope**: V1 = list + cast + 2 creation sheets (`general_proposal`, `rule_change`). Refactor mínimo de `VoteOnAppealSheet` para extraer body. **Una migration nueva** (`finalize_vote` v3) para que rule_change resuelto con `passed` produzca `UserAction.ruleChangeApplyPending` en el inbox del founder. Cero cambios al rule engine ni a otros RPCs.
 
 ## Goal
 
@@ -22,7 +22,8 @@ Habilitar UI para los 7 `vote_type`s declarados en `Platform/Models/Vote.swift` 
 
 ## Out of scope
 
-- **EditRuleSheet → CreateRuleChangeSheet auto-route** cuando `GovernanceService.canPerform(.modifyRules) == .requiresVote` — V1.5 / V2. Toca el flow de edit existente y arriesga regresión que no vale para este sprint.
+- **EditRuleSheet → CreateRuleChangeSheet auto-route** cuando `GovernanceService.canPerform(.modifyRules) == .requiresVote` — V1.5 / V2. Toca el flow de edit existente y arriesga regresión que no vale para este sprint. (Pero sí incluye el flow inverso: vote pasa → founder recibe inbox row → tap → EditRuleSheet pre-loaded. Ver §3.)
+- **Server-side automatic application del rule_change cuando vote pasa** — V2 con governance flag `ruleChangeAutoApply: bool`. V1 = manual con friction de un solo tap (inbox row → EditRuleSheet pre-loaded → confirm).
 - **Vote results history** (votes con `status` ∈ `closed | resolved | quorum_failed | cancelled`) — `OpenVotesListView` solo muestra `status='open'`. Historial se ve en `GroupHistoryView` ya existente.
 - **Per-context creation entries** desde RulesView per-rule context menu, etc. — V2.
 - **Anonymity opt-out per-vote** — usa `governance.votesAreAnonymous` global.
@@ -32,7 +33,12 @@ Habilitar UI para los 7 `vote_type`s declarados en `Platform/Models/Vote.swift` 
 
 ## Backend assumptions verified
 
-V1 es **iOS-only**. Cero migrations nuevas, cero RPC changes, cero edge function changes. La infra de votes ya existe en prod.
+V1 es **iOS-mayormente** + 1 migration server-side. Cero edge function changes. La infra de votes ya existe en prod.
+
+**Una migration nueva** (`00032_finalize_vote_rule_change_action.sql`):
+extiende `finalize_vote(p_vote_id)` para que cuando `vote_type='rule_change'` AND `resolution='passed'`, inserte una row en `user_actions` con `action_type='ruleChangeApplyPending'`, `reference_id=vote_id`, `priority='high'`. Founder se identifica con `SELECT user_id FROM group_members WHERE group_id=v_vote.group_id AND roles ?| array['founder'] AND active=true LIMIT 1` (verificado en schema 2026-05-07: `groups` no tiene founder column, `group_members.roles` jsonb es el canonical desde 00027). Idempotente: si ya existe action con ese `reference_id`, skip insert. Body de la action incluye `rule_name` + `current_amount` + `proposed_amount` para visibility en inbox.
+
+`UserAction.ActionType` enum gana case nuevo `.ruleChangeApplyPending = "ruleChangeApplyPending"` (string raw, no codegen-managed — change Swift-only en `Models/UserAction.swift`).
 
 **`votes` table** (00020 + 00023): polimórfica vía `vote_type`, `payload jsonb`, `quorum_min_absolute`. Confirmado vía MCP `list_tables`.
 
@@ -302,6 +308,47 @@ User taps "+" en OpenVotesListView
   → background: same fan-out
 ```
 
+### Post-resolution flow para rule_change (low-friction manual application)
+
+Garantiza que si el vote `passed`, el founder no se olvida de aplicar el cambio. 3 pasos automatizados, 1 tap manual.
+
+```
+Cron finalize-votes corre cuando closes_at < now()
+  → finalize_vote(vote_id) RPC
+     → computa resolution='passed' (V1 caso de interés)
+     → emite voteResolved SystemEvent (existente)
+     → escribe N rows a notifications_outbox para todos los voters (existente)
+     → INSERT INTO user_actions (action_type='ruleChangeApplyPending', ...) [NUEVO en 00032]
+        target_user_id = founder del grupo
+        reference_id = vote_id
+        title = "Aplicar cambio aprobado: <rule_name>"
+        body = "Votado: $<current> → $<proposed>"
+        priority = 'high'
+     → escribe row adicional a notifications_outbox para founder con
+       notification_type='ruleChangeApplyPending' y deep_link
+       'ruul://rule/<rule_id>/edit?proposedAmount=<int>' [NUEVO en 00032]
+  → cron dispatch-notifications cada 1min:
+     → claim outbox rows pending
+     → APNs push al founder con el deep_link
+  → founder en iPhone:
+     → recibe push → tap → app abre via deep_link
+     → iOS routea ruul://rule/<rule_id>/edit?proposedAmount=<int>
+       a EditRuleSheet con amount pre-cargado
+     → founder revisa + tap "Guardar" → existing flow de EditRuleSheet
+     → user_action se marca resolved cuando founder guarda (resolveAction call al fin del save flow)
+  → si founder no abre el push:
+     → next time abre la app → ActionInboxView muestra row "Pendiente de aplicar — votado el [fecha]"
+     → mismo deep_link → mismo destino
+```
+
+**iOS deep-link extension** (mínima):
+- Existente `EventDeepLink` parsea `ruul://event/<uuid>` para abrir EventDetailView.
+- V1 agrega análogo para rule edit: parse `ruul://rule/<uuid>/edit?proposedAmount=<int>` → routea a EditRuleSheet inicializada con la regla y amount pre-cargado.
+
+**EditRuleSheet pre-load**: existing sheet acepta `Rule` por inicializador. V1 agrega init opcional `proposedAmount: Int?` que pre-llena el campo de monto. Si nil, comportamiento existente intacto.
+
+**Resolución del UserAction**: cuando el founder guarda el cambio en EditRuleSheet con `proposedAmount` aplicado, el coordinator llama `userActionRepo.resolve(actionId:)` para marcar el action como resuelto. Si el founder cambia el amount a otro valor (ignora el propuesto), también se resuelve — la decisión es del founder. Si el founder cancela el sheet sin guardar, action queda pending.
+
 ## §4 — Error handling
 
 ### Standard errors
@@ -340,6 +387,22 @@ UX: toast warning + automatic refresh. User ve resultado final inmediato sin per
 **Cuándo**: user tiene 2 devices, vota desde uno, abre detail en el otro antes de que se sincronice. Tap cast → `cast_vote` actualiza el row.
 
 **Server behavior**: idempotente. RPC permite re-cast (updates existing row). UX: nuestra cast wins. No special handling V1.
+
+### Edge case — founder edita la regla manualmente antes de que el vote resuelva
+
+**Cuándo**: vote rule_change abierto, mientras tanto founder abre EditRuleSheet (path normal, fuera del push) y cambia el amount. Vote pasa después.
+
+**Comportamiento V1**: el `user_action.ruleChangeApplyPending` se inserta igual, founder ve "Aplicar cambio aprobado" en su inbox. Tap → EditRuleSheet con `proposedAmount` pre-cargado (que puede coincidir o no con el current state). Founder decide.
+
+**No es bug** — es decisión consciente del founder en cada paso. El `user_action.body` incluye explícitamente `"Votado: $<current_at_time_of_vote_open> → $<proposed>"` para preservar contexto histórico aunque el current ya no sea el del momento del vote.
+
+### Edge case — la regla referenced_id se borró antes de finalize
+
+**Cuándo**: founder archiva la regla (`is_active=false` o delete) mientras un vote rule_change para esa regla está abierto.
+
+**Comportamiento V1**: vote sigue abierto, finalize lo resuelve normal, user_action se inserta con `reference_id=vote_id`. Cuando founder hace tap → deep_link intenta abrir EditRuleSheet con rule_id que ya no existe → coordinator surfacea "Esta regla ya no existe" + opción "Marcar action como resuelto". User_action se cierra manual.
+
+**Mitigación**: si V1 tiene tiempo, agregar trigger en `rules` table que cancela votes abiertos cuando una regla se archiva. Si no, doc como known limitation.
 
 ## §5 — Testing
 
@@ -394,6 +457,8 @@ Si snapshot fail, abortar refactor y reabrir conversación.
 
 ## §6 — DoD
 
+### UI (iOS)
+
 - [ ] `Features/Votes/` directory creado con 14 archivos según §1 (4 coordinators + 1 list view + 1 router + 4 bodies + 3 sheets + 1 shared cast section).
 - [ ] `OpenVotesListView` consume `voteRepo.openVotes(for:)`, sectioned por urgencia (closing-soon < 24h vs other).
 - [ ] `VoteDetailView` router dispatch funciona para los 4 vote_type cases (3 specific bodies + 1 generic fallback).
@@ -404,7 +469,29 @@ Si snapshot fail, abortar refactor y reabrir conversación.
 - [ ] `RulesView` muestra sección "Votos abiertos" con count + link a `OpenVotesListView`.
 - [ ] Tests verdes: 4 coordinator test files (Swift Testing) + snapshot tests del refactor `VoteOnAppealSheet`.
 - [ ] Build clean: `xcodebuild build` (main target) + `xcodebuild build-for-testing` (test target).
-- [ ] Manual smoke: founder crea general_proposal, otro miembro recibe push (verifica via outbox SQL `SELECT * FROM notifications_outbox WHERE notification_type='voteOpened'`), cast → counts update, finalize cron resuelve.
+
+### Server-side (1 migration)
+
+- [ ] Migration `00032_finalize_vote_rule_change_action.sql` aplicada en prod via MCP `apply_migration`. `finalize_vote(p_vote_id)` v3 inserta:
+  - `user_actions` row con `action_type='ruleChangeApplyPending'`, `reference_id=vote_id`, `priority='high'`, target = founder del grupo, body con `current/proposed amounts` y `rule_name`. Idempotente vía `ON CONFLICT (reference_id) DO NOTHING`.
+  - `notifications_outbox` row adicional con `notification_type='ruleChangeApplyPending'` y `deep_link='ruul://rule/<rule_id>/edit?proposedAmount=<int>'`, recipient = founder.
+- [ ] `00032_rollback.sql` shipped: revierte finalize_vote a v2 (00023). Idempotente.
+
+### iOS rule_change low-friction application (los 3 elementos garantizados)
+
+- [ ] **(1)** `ActionType.ruleChangeApplyPending` agregado al enum en `Models/UserAction.swift`. Inbox lo renderiza con `ActionCard` priority='high' style.
+- [ ] **(2)** `ActionInboxView` muestra row con copy "Pendiente de aplicar — votado el [date]" + subtitle "Cambio aprobado: <rule_name> ($X → $Y)". Visualmente prominente (high priority styling).
+- [ ] **(3)** Deep-link `ruul://rule/<rule_id>/edit?proposedAmount=<int>` parseable por iOS:
+  - `RuleChangeDeepLink` struct (análogo a existing `EventDeepLink`).
+  - `TandasApp.swift`/`AppState.handleIncomingNotification` routea a `EditRuleSheet(rule: …, proposedAmount: ...)`.
+  - Inbox row tap también routea al mismo destino (no solo push).
+  - `EditRuleSheet` acepta init opcional `proposedAmount: Int?` que pre-llena el campo de monto. Si nil, comportamiento existente intacto.
+  - Cuando founder guarda el sheet, coordinator llama `userActionRepo.resolve(actionId:)` para cerrar la action en inbox.
+
+### Manual smoke test (E2E, ejecutado al final del sprint)
+
+- [ ] Founder crea general_proposal, otro miembro recibe push (verifica via outbox SQL `SELECT * FROM notifications_outbox WHERE notification_type='voteOpened'`), cast → counts update, finalize cron resuelve.
+- [ ] Founder crea rule_change (rule X, $200 → $300, duration=0 para acelerar finalize), miembros votan in_favor, finalize cron resuelve passed → founder recibe push con deep_link → tap abre EditRuleSheet con $300 pre-cargado → save → user_action se marca resolved en inbox.
 
 ## §7 — Riesgos y mitigación
 
@@ -416,7 +503,24 @@ Si snapshot fail, abortar refactor y reabrir conversación.
 | Generic body con payload-as-JSON se ve feo | Baja | Es debug-style intencional para V1. V2 ships per-type bodies |
 | `governance.canPerform` no captura el caso "founder no, miembros sí" para createVotes | Media | Default per template es `.anyMember` para createVotes — verificado en `Platform/Models/GovernanceRules.swift:25-27`. Si user override governance a `.founder` only y try crear como member, surface clear error message |
 | `notifications_outbox` se llena con vote rows sin que la app las consuma | Baja | Dispatcher cron las dispatcha automáticamente. iOS recibe push. Si app está closed iOS guarda. No hay leak |
+| Migration `00032` rompe `finalize_vote` (RPC en hot path del cron `finalize-votes` cada 15min) | Alta | Plan apply via MCP con `apply_migration` (no destructive — solo extiende), 00032_rollback.sql probado, smoke test post-apply: invocar `finalize_vote(p_vote_id)` con vote test antes de mergear iOS |
+| Identificación del founder en migration 00032 | Resuelta | Schema verificado 2026-05-07 vía MCP: `groups` no tiene founder column, `group_members.roles` jsonb es canonical (desde 00027). Query: `SELECT user_id FROM group_members WHERE group_id=X AND roles ?| array['founder'] AND active=true LIMIT 1`. Si por alguna razón hay múltiples founders, query toma el primero (no determinístico pero acceptable V1) |
+| iOS `ActionType` enum y server `action_type` text drift | Media | `ActionType` no es codegen-managed, así que test E2E manual: insertar action_type='ruleChangeApplyPending' server-side y confirmar Inbox decodifica sin crash. Defensive `unknown` decoder en Swift evita crash si caso desconoce |
+| Deep-link parsing falla silently | Media | Test unitario para `RuleChangeDeepLink.init(url:)` con valid + invalid inputs. Fallback: si deep_link no parsea, abre app a Inbox (donde el user encuentra la action manualmente) |
+| User_action no se marca resolved cuando founder guarda EditRuleSheet | Media | Tests del coordinator verifican el resolve call. Si edit fail, el action permanece pending — correcto |
 
 ## §8 — Cómo arrancar
 
-Spec → user approval → invocar `superpowers:writing-plans` skill para producir el plan de implementación con tasks TDD-style. El plan dividirá las 13 archivos en tasks atómicos por commit, con tests primero donde aplique. Estimado 5-7h focused work.
+Spec → user approval → invocar `superpowers:writing-plans` skill para producir el plan de implementación con tasks TDD-style. El plan dividirá las 14 archivos iOS + 1 migration server-side en tasks atómicos por commit, con tests primero donde aplique. Estimado revisado: **6-8h** focused work (5-7h originales + 1h por la integración rule_change low-friction application).
+
+Orden recomendado del plan:
+1. Migration 00032 + rollback + smoke test SQL (server-side primero, no bloquea iOS)
+2. ActionType enum extension + RuleChangeDeepLink struct (foundation iOS)
+3. VoteCastSection shared + 4 bodies + VoteDetailView router (read flow)
+4. OpenVotesCoordinator + OpenVotesListView (list flow)
+5. CreateVoteSheet + 2 creation sheets (create flow)
+6. Inbox renderiza votePending + ruleChangeApplyPending (touches existentes)
+7. RulesView "Votos abiertos" section (touch existente)
+8. EditRuleSheet pre-load proposedAmount (touch existente, mínimo)
+9. Refactor VoteOnAppealSheet → FineAppealVoteBody (extracción + snapshot)
+10. Smoke test E2E manual (general_proposal + rule_change full flow)
