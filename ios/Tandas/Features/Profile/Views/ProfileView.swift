@@ -35,23 +35,35 @@ struct ProfileView: View {
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s7) {
-                    hero
-                    statusHero
-                    if !coordinator.isAllClear {
-                        statTiles
+            SwiftUI.Group {
+                if coordinator.profile == nil && coordinator.isLoading {
+                    LoadingStateView(.card)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                            hero
+                            statusHero
+                            if !coordinator.isAllClear {
+                                statTiles
+                            }
+                            activitySection
+                            settingsSection
+                            signOutButton
+                        }
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s2)
+                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    activitySection
-                    settingsSection
-                    signOutButton
+                    .scrollIndicators(.hidden)
+                    .refreshable { await coordinator.refresh() }
+                    .transition(.opacity)
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s2)
-                .padding(.bottom, RuulSpacing.s12)
             }
-            .scrollIndicators(.hidden)
-            .refreshable { await coordinator.refresh() }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
         }
         .task { await coordinator.refresh() }
         .navigationTitle("Yo")

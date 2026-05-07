@@ -11,38 +11,49 @@ struct OpenVotesListView: View {
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: RuulSpacing.s5) {
-                    if coordinator.openVotes.isEmpty && !coordinator.isLoading {
-                        EmptyStateView(
-                            systemImage: "hand.raised",
-                            title: "No hay votos abiertos",
-                            message: "Cuando el grupo abra una votación, aparecerá acá.",
-                            primaryAction: ("Crear votación", onCreateVote)
-                        )
-                        .padding(.top, RuulSpacing.s10)
-                    } else {
-                        ForEach(coordinator.sectioned(), id: \.0) { section, votes in
-                            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-                                Text(section.title.uppercased())
-                                    .ruulTextStyle(RuulTypography.sectionLabel)
-                                    .foregroundStyle(Color.ruulTextTertiary)
-                                ForEach(votes) { vote in
-                                    Button { onSelectVote(vote) } label: {
-                                        voteRow(vote)
+            SwiftUI.Group {
+                if coordinator.openVotes.isEmpty && coordinator.isLoading {
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.openVotes.isEmpty {
+                    EmptyStateView(
+                        systemImage: "hand.raised",
+                        title: "No hay votos abiertos",
+                        message: "Cuando el grupo abra una votación, aparecerá acá.",
+                        primaryAction: ("Crear votación", onCreateVote)
+                    )
+                    .padding(.top, RuulSpacing.s10)
+                    .transition(.opacity)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                            ForEach(coordinator.sectioned(), id: \.0) { section, votes in
+                                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                                    Text(section.title.uppercased())
+                                        .ruulTextStyle(RuulTypography.sectionLabel)
+                                        .foregroundStyle(Color.ruulTextTertiary)
+                                    ForEach(votes) { vote in
+                                        Button { onSelectVote(vote) } label: {
+                                            voteRow(vote)
+                                        }
+                                        .buttonStyle(.ruulPress)
                                     }
-                                    .buttonStyle(.ruulPress)
                                 }
                             }
                         }
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s4)
+                        .padding(.bottom, RuulSpacing.s12)
                     }
+                    .scrollIndicators(.hidden)
+                    .refreshable { await coordinator.refresh(force: true) }
+                    .transition(.opacity)
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s4)
-                .padding(.bottom, RuulSpacing.s12)
             }
-            .scrollIndicators(.hidden)
-            .refreshable { await coordinator.refresh(force: true) }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.openVotes.isEmpty)
         }
         .navigationTitle("Votos abiertos")
         .toolbar {

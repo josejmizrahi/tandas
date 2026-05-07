@@ -94,11 +94,21 @@ struct GroupHistoryView: View {
 
     @ViewBuilder
     private var content: some View {
-        if coordinator.events.isEmpty && !coordinator.isLoading {
-            emptyState
-        } else {
-            timelineList
+        SwiftUI.Group {
+            if coordinator.events.isEmpty && coordinator.isLoading {
+                LoadingStateView(.list)
+                    .padding(.top, RuulSpacing.s2)
+                    .transition(.opacity)
+            } else if coordinator.events.isEmpty {
+                emptyState
+                    .transition(.opacity)
+            } else {
+                timelineList
+                    .transition(.opacity)
+            }
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.events.isEmpty)
     }
 
     private var timelineList: some View {
@@ -123,6 +133,9 @@ struct GroupHistoryView: View {
                     }
                 }
             }
+            // loadMore footer: small inline spinner is intentional (not a
+            // full skeleton) — content is already on screen, this is just
+            // the next-page indicator.
             if coordinator.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)

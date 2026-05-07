@@ -183,19 +183,26 @@ struct HomeView: View {
 
     @ViewBuilder
     private var nextEventSection: some View {
-        if coordinator.isLoading && coordinator.nextEvent == nil {
-            HStack { Spacer(); ProgressView().tint(Color.ruulAccentPrimary); Spacer() }
-                .frame(height: 360)
-        } else if let next = coordinator.nextEvent {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-                Text("PRÓXIMO")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                heroTile(next)
+        SwiftUI.Group {
+            if coordinator.isLoading && coordinator.nextEvent == nil {
+                LoadingStateView(.card)
+                    .frame(minHeight: 360, alignment: .top)
+                    .transition(.opacity)
+            } else if let next = coordinator.nextEvent {
+                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                    Text("PRÓXIMO")
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                    heroTile(next)
+                }
+                .transition(.opacity)
+            } else {
+                emptyHero
+                    .transition(.opacity)
             }
-        } else {
-            emptyHero
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.nextEvent?.id)
     }
 
     private func heroTile(_ event: Event) -> some View {

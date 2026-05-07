@@ -11,18 +11,30 @@ struct MyFinesView: View {
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s7) {
-                    header
-                    pendingSection
-                    resolvedSection
+            SwiftUI.Group {
+                if coordinator.fines.isEmpty && coordinator.isLoading {
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                            header
+                            pendingSection
+                            resolvedSection
+                        }
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s2)
+                        .padding(.bottom, RuulSpacing.s12)
+                    }
+                    .scrollIndicators(.hidden)
+                    .refreshable { await coordinator.refresh() }
+                    .transition(.opacity)
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s2)
-                .padding(.bottom, RuulSpacing.s12)
             }
-            .scrollIndicators(.hidden)
-            .refreshable { await coordinator.refresh() }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.fines.isEmpty)
         }
         .task { await coordinator.refresh() }
         .navigationTitle("Mis multas")

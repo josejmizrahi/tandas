@@ -155,7 +155,9 @@ struct MainTabView: View {
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    ProgressView().tint(Color.ruulAccentPrimary)
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s7)
                 }
             }
         }
@@ -233,7 +235,9 @@ struct MainTabView: View {
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    ProgressView().tint(Color.ruulAccentPrimary)
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s7)
                 }
             }
         }
@@ -511,7 +515,9 @@ struct MainTabView: View {
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    ProgressView().tint(Color.ruulAccentPrimary)
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s7)
                 }
             }
         }

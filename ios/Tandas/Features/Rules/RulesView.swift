@@ -36,35 +36,44 @@ struct RulesView: View {
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            if coordinator.isLoading && coordinator.rules.isEmpty {
-                ProgressView().tint(Color.ruulAccentPrimary)
-            } else if coordinator.rules.isEmpty {
-                EmptyStateView(
-                    systemImage: "list.bullet.clipboard",
-                    title: "Sin reglas",
-                    message: "Este grupo aún no tiene reglas configuradas."
-                )
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RuulSpacing.s4) {
-                        header
-                        if coordinator.openVotesCount > 0 {
-                            openVotesSection
-                        }
-                        VStack(spacing: RuulSpacing.s3) {
-                            ForEach(coordinator.rules) { rule in
-                                ruleCard(rule)
+            SwiftUI.Group {
+                if coordinator.isLoading && coordinator.rules.isEmpty {
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.rules.isEmpty {
+                    EmptyStateView(
+                        systemImage: "list.bullet.clipboard",
+                        title: "Sin reglas",
+                        message: "Este grupo aún no tiene reglas configuradas."
+                    )
+                    .transition(.opacity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                            header
+                            if coordinator.openVotesCount > 0 {
+                                openVotesSection
                             }
+                            VStack(spacing: RuulSpacing.s3) {
+                                ForEach(coordinator.rules) { rule in
+                                    ruleCard(rule)
+                                }
+                            }
+                            footnote
                         }
-                        footnote
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s4)
+                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    .padding(.horizontal, RuulSpacing.s5)
-                    .padding(.top, RuulSpacing.s4)
-                    .padding(.bottom, RuulSpacing.s12)
+                    .scrollIndicators(.hidden)
+                    .refreshable { await coordinator.refresh() }
+                    .transition(.opacity)
                 }
-                .scrollIndicators(.hidden)
-                .refreshable { await coordinator.refresh() }
             }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
         }
         .task { await coordinator.refresh() }
         .navigationTitle("Reglas")

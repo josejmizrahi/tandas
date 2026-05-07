@@ -11,30 +11,41 @@ struct ActionInboxView: View {
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            if coordinator.actions.isEmpty && !coordinator.isLoading {
-                emptyState
-            } else {
-                ScrollView {
-                    VStack(spacing: RuulSpacing.s3) {
-                        ForEach(coordinator.actions) { action in
-                            ActionCard(
-                                icon: icon(for: action.actionType),
-                                meta: meta(for: action),
-                                title: action.title,
-                                subtitle: action.body,
-                                priority: priority(for: action.priority),
-                                timeRemaining: nil,
-                                onTap: { onOpenAction(action) }
-                            )
+            SwiftUI.Group {
+                if coordinator.actions.isEmpty && coordinator.isLoading {
+                    LoadingStateView(.list)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                        .transition(.opacity)
+                } else if coordinator.actions.isEmpty {
+                    emptyState
+                        .transition(.opacity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: RuulSpacing.s3) {
+                            ForEach(coordinator.actions) { action in
+                                ActionCard(
+                                    icon: icon(for: action.actionType),
+                                    meta: meta(for: action),
+                                    title: action.title,
+                                    subtitle: action.body,
+                                    priority: priority(for: action.priority),
+                                    timeRemaining: nil,
+                                    onTap: { onOpenAction(action) }
+                                )
+                            }
                         }
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s4)
+                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    .padding(.horizontal, RuulSpacing.s5)
-                    .padding(.top, RuulSpacing.s4)
-                    .padding(.bottom, RuulSpacing.s12)
+                    .scrollIndicators(.hidden)
+                    .refreshable { await coordinator.refresh() }
+                    .transition(.opacity)
                 }
-                .scrollIndicators(.hidden)
-                .refreshable { await coordinator.refresh() }
             }
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+            .animation(.linear(duration: RuulDuration.fast), value: coordinator.actions.isEmpty)
         }
         .task { await coordinator.refresh() }
         .navigationTitle("Inbox")
