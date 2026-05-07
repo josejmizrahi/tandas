@@ -100,6 +100,13 @@ struct MainTabView: View {
         }
     }
 
+    /// Native TabView badge for the Inbox tab (rendered via `.badge(_)`).
+    /// Returns 0 when there's nothing pending — SwiftUI hides the badge when
+    /// the count is 0.
+    private var inboxBadgeCount: Int {
+        inboxCoordinator?.actions.count ?? 0
+    }
+
     /// Binding bridge: `RuulTabBar` works on `Tab.ID` (String); the rest of
     /// the view holds `selectedTab: Tab`. The setter only updates if the
     /// raw value is a known case, so unrelated string mutations are safely
@@ -114,18 +121,32 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView(selection: $selectedTab) {
-                homeTab.tag(Tab.home)
-                inboxTab.tag(Tab.inbox)
-                rulesTab.tag(Tab.rules)
-                profileTab.tag(Tab.me)
-            }
-            .toolbar(.hidden, for: .tabBar)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
-
-            RuulTabBar(selected: selectedTabIDBinding, tabs: tabItems)
+        // iOS 26's native TabView already renders a Liquid Glass tab bar.
+        // DS doc §3.6 RuulTabBar was specced before iOS 26; under iOS 26 the
+        // native bar is the canonical Liquid Glass surface, and overlaying
+        // RuulTabBar created a visible duplicate (native bar at the bottom +
+        // floating capsule above). Per DS §13 ("La regla produce resultado
+        // peor que ignorarla en este caso específico"), we use the native
+        // bar with `.tabBarMinimizeBehavior(.onScrollDown)` (iOS 26) and
+        // glass material, plus per-tab badges via `.badge(_)`.
+        TabView(selection: $selectedTab) {
+            homeTab
+                .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
+                .tag(Tab.home)
+            inboxTab
+                .tabItem { Label(Tab.inbox.label, systemImage: Tab.inbox.symbol) }
+                .tag(Tab.inbox)
+                .badge(inboxBadgeCount)
+            rulesTab
+                .tabItem { Label(Tab.rules.label, systemImage: Tab.rules.symbol) }
+                .tag(Tab.rules)
+            profileTab
+                .tabItem { Label(Tab.me.label, systemImage: Tab.me.symbol) }
+                .tag(Tab.me)
         }
+        .tint(Color.ruulTextPrimary)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }
