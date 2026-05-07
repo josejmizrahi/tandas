@@ -1,0 +1,217 @@
+# Beta 1 — Real-cena observation period
+
+> Status: **active** — arrancando 2026-05-07.
+> Stop arquitectura grande. Correr V1 como producto vivo con 4–6 cenas
+> reales. El propósito es comportamiento humano, no correctness técnica.
+
+---
+
+## 1. Goal
+
+Validar **adopción social**, no estabilidad técnica. La pregunta:
+
+> Cuando 4–6 grupos reales cenan con ruul varias veces, ¿qué hacen,
+> qué ignoran, qué resuelven en WhatsApp en lugar de en la app?
+
+Cosas a comprobar:
+
+- ¿Las reglas que el grupo activó se usan o las apagan?
+- ¿Las multas se cobran, se waivean, o se ignoran?
+- ¿Las apelaciones se votan o "se arregla por WhatsApp"?
+- ¿Los recordatorios automatizados ayudan o molestan?
+- ¿La transparencia (history, votos públicos) genera confianza o conflicto?
+- ¿Aparecen requests de features no previstos?
+
+Solo después de Beta 1 se decide qué primitiva de Fase 2 priorizar:
+**Rotation universal**, **Slot/Booking**, **Asset**, **Fund**, o mezcla mínima.
+
+---
+
+## 2. Architecture freeze
+
+A partir del 2026-05-07, **no se mete trabajo estructural nuevo**.
+
+### Permitido durante Beta 1
+- Bugs críticos (crashes, corrupción de datos, pérdida de auth).
+- Estabilidad (rate limits, retries, recovery).
+- Polish UX no-estructural (copy, alineación, typo).
+- Analytics mínimos (eventos PostHog para preguntas observables).
+- Logging útil (Sentry breadcrumbs, structured logs).
+
+### NO permitido durante Beta 1
+- Nuevas primitivas (Slot, Rotation, Asset, Fund, Position).
+- Refactors arquitectónicos.
+- Templates nuevos.
+- Cambios al rule engine (triggers/conditions/consequences).
+- Removals que la otra sesión no pidió explícitamente.
+- Phase2 work — esperar journal data.
+
+### Excepciones (requieren tu OK explícito)
+Si una fricción real recurrente bloquea uso, se evalúa caso por caso.
+Pero el default es **anotar el journal y seguir**.
+
+---
+
+## 3. Cena journal template
+
+Una entrada por cena. Plantilla canónica:
+
+```markdown
+## Cena #N — YYYY-MM-DD — <Grupo>
+
+**Asistentes**: <lista>
+**Anfitrión asignado**: <nombre>
+**Reglas activas en el grupo**: <lista de slugs>
+
+### Lo que pasó
+- <evento social, no logs técnicos>
+
+### Reglas que se activaron
+- <slug — qué pasó — se aplicó / se waiveó / se ignoró>
+
+### Conflictos sociales
+- <discusión que generó la app o que la app no resolvió>
+
+### Workarounds
+- <cosas que el grupo resolvió fuera de la app — WhatsApp, voz, etc.>
+
+### Notificaciones
+- <cuáles llegaron, cuáles ayudaron, cuáles molestaron>
+- <cuáles deberían haber llegado y no llegaron>
+
+### Feedback verbal
+- <"esto está padre" / "esto sobra" / "qué pena que..." — verbatim si posible>
+
+### Ideas nuevas (no implementar todavía)
+- <feature requests orgánicos del grupo>
+
+### Bugs encontrados
+- <descripción + repro steps si aplican>
+
+### Observaciones sociales
+- <quién lideró, quién resistió, dinámicas de grupo, jerarquías
+  implícitas, cosas que la app cambió en el grupo>
+
+### Veredicto del founder
+- <una línea: "vale la pena" / "fricción inaceptable" / "neutral">
+```
+
+Append al final de [§5 Journal entries](#5-journal-entries).
+
+---
+
+## 4. Observable questions (analytics minimal)
+
+Mínimo viable de telemetría para evitar dependencia 100% del journal
+manual. PostHog events + algunos counts SQL:
+
+| Pregunta | Métrica | Source |
+|---|---|---|
+| ¿Las reglas se usan? | fines_emitted_per_rule_slug | `select count(*) from fines group by rule_id` |
+| ¿Las multas se pagan? | paid_rate, waived_rate, in_appeal_rate | `fines` status distribution |
+| ¿Las apelaciones se votan? | votes_per_appeal_avg | `vote_casts` join `votes` |
+| ¿Las notificaciones llegan? | apns_delivery_rate | Sentry breadcrumbs |
+| ¿Los onboarding terminan? | onboarding_completion_funnel | PostHog ya conectado |
+| ¿La gente vuelve? | DAU, sessions per user, days since last open | PostHog |
+
+Implementación de estas métricas: **solo si requieren < 1d de trabajo**.
+Si requiere refactor, anotar en `Plans/Active/Beta1Followups.md` (a
+crear cuando aparezca el primer item) y diferir.
+
+---
+
+## 5. Journal entries
+
+> Append nuevas cenas abajo. Mantener orden cronológico.
+
+### Cena #0 — placeholder
+
+Aún no hay cenas. Esta sección se llena durante Beta 1.
+
+---
+
+## 6. Exit criteria → decisión Phase 2
+
+Beta 1 se cierra cuando se cumple **una** de:
+
+- 4–6 cenas reales documentadas en §5.
+- 2 grupos distintos completaron al menos 2 cenas cada uno.
+- Pasaron 6 semanas calendar (lo que cierre primero — evitar perfecto-enemigo-bueno).
+
+**Output al cerrar**:
+
+1. Resumen de §5 en sección 7 (abajo).
+2. Top 3 fricciones recurrentes.
+3. Top 3 features pedidas orgánicamente.
+4. Decisión documentada: **¿qué primitiva de Phase 2 prioriza?**
+   - Rotation universal (si hosts/turnos fueron el centro del valor)
+   - Slot/Booking (si surge demanda de "ese pedazo es mío en X")
+   - Asset (si el grupo tiene algo físico/digital que rota)
+   - Fund (si pidieron mover dinero de verdad — alta probabilidad
+     pero alto riesgo regulatorio, ver Roadmap §3 Fase 3 D3)
+   - Mezcla mínima de 2 primitivas.
+5. Crear `Plans/Active/Phase2.md` basado en la decisión + frictions reales.
+
+---
+
+## 7. Beta 1 retrospective
+
+> A llenar al cerrar.
+
+### Top 3 fricciones recurrentes
+1. ⏳
+2. ⏳
+3. ⏳
+
+### Top 3 features pedidas orgánicamente
+1. ⏳
+2. ⏳
+3. ⏳
+
+### Decisión Phase 2
+⏳
+
+---
+
+## 8. Anti-objetivos de Beta 1
+
+Cosas que **no** se hacen en Beta 1, aunque el bug-itch tienta:
+
+- No optimizar antes de tiempo. Si una query es lenta pero el grupo
+  no la nota, no se toca.
+- No agregar primitivas "porque sería fácil". El propósito es saber
+  cuál vale la pena, no cuál es fácil.
+- No re-pintar la UI con cada cena. La sesión paralela del DS ya
+  está iterando v3; las observaciones de Beta 1 alimentan v4 después
+  del retrospectivo.
+- No expandir el grupo de testers. 4–6 cenas reales > 50 cenas
+  superficiales. Si el founder no participa o no observa de cerca,
+  no es Beta 1, es noise.
+- No publicar en App Store. TestFlight con grupos invitados.
+
+---
+
+## 9. Operación durante Beta 1
+
+- Founder participa **en cada cena** o entrevista al grupo en las 24h
+  siguientes mientras la memoria está fresca.
+- Cada entrada de journal se escribe en las 48h post-cena. Pasada esa
+  ventana, la observación pierde fidelidad — anotar lo que se recuerde
+  pero marcar `[memoria parcial]`.
+- Bugs críticos se atienden en pull-back-to-V1 mode: solo el bug, sin
+  refactor adyacente. Commit small, push fast.
+- Si un grupo abandona la app durante Beta 1, **eso es señal**. Anotar
+  con la mayor honestidad posible las razones — no es fracaso, es data.
+
+---
+
+## 10. Cómo se relaciona con otros docs
+
+- `Plans/Active/Roadmap.md` — north star de las 6 fases.
+- `Plans/Active/Audit-2026-05-06.md` — los 5 items pre-Fase 2 ya
+  cerrados (consolidación arquitectónica completa).
+- `docs/README.md` — mapa canónico de docs.
+- `docs/Ruul-Social-Primitives-and-Product-Logic.md` — referencia para
+  interpretar observaciones sociales del journal.
+- `Plans/Completed/Phase1.md` — qué shippeó V1 (lo que está en TestFlight
+  durante Beta 1).
