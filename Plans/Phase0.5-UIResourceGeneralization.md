@@ -162,7 +162,7 @@ public struct HomeView: View {
 
 Cada uno es su propio brainstorm → spec → plan → execute cycle. Estimaciones son focused-work hours, no calendar hours.
 
-### Sub-fase A — Resource UI protocols + EventResource wrapper
+### Sub-fase A — Resource UI protocols + EventResource wrapper ✅ shipped 2026-05-06
 
 **Duración**: 1 día (4-6h).
 **Goal**: introducir las primitivas de UI sin tocar nada existente.
