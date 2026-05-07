@@ -25,6 +25,7 @@ struct TandasApp: App {
             let invites = MockInviteRepository()
             let rules = MockRuleRepository()
             let votes = MockVoteRepository()
+            let voteCasts = MockVoteCastRepository()
             let governance = GovernanceService()
             let otp = MockOTPService()
             let events = MockEventRepository()
@@ -43,6 +44,7 @@ struct TandasApp: App {
                 inviteRepo: invites,
                 ruleRepo: rules,
                 voteRepo: votes,
+                voteCastRepo: voteCasts,
                 governance: governance,
                 otp: otp,
                 eventRepo: events,
@@ -65,6 +67,7 @@ struct TandasApp: App {
             let invites = LiveInviteRepository(client: client)
             let rules = LiveRuleRepository(client: client)
             let votes = LiveVoteRepository(client: client)
+            let voteCasts = LiveVoteCastRepository(client: client)
             let governance = GovernanceService()
             let otp = LiveOTPService(client: client)
             let events = LiveEventRepository(client: client)
@@ -83,6 +86,7 @@ struct TandasApp: App {
                 inviteRepo: invites,
                 ruleRepo: rules,
                 voteRepo: votes,
+                voteCastRepo: voteCasts,
                 governance: governance,
                 otp: otp,
                 eventRepo: events,

@@ -55,6 +55,7 @@ final class AppState {
     let inviteRepo: any InviteRepository
     let ruleRepo: any RuleRepository
     let voteRepo: any VoteRepository
+    let voteCastRepo: any VoteCastRepository
     let governance: any GovernanceServiceProtocol
     let otp: any OTPService
 
@@ -89,6 +90,7 @@ final class AppState {
         inviteRepo: any InviteRepository,
         ruleRepo: any RuleRepository,
         voteRepo: any VoteRepository,
+        voteCastRepo: any VoteCastRepository,
         governance: any GovernanceServiceProtocol,
         otp: any OTPService,
         eventRepo: any EventRepository,
@@ -110,6 +112,7 @@ final class AppState {
         self.inviteRepo = inviteRepo
         self.ruleRepo = ruleRepo
         self.voteRepo = voteRepo
+        self.voteCastRepo = voteCastRepo
         self.governance = governance
         self.otp = otp
         self.eventRepo = eventRepo

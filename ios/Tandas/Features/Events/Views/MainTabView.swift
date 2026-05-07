@@ -31,6 +31,17 @@ struct MainTabView: View {
     /// `ruleChangeApplyPending` inbox tap or a `RuleChangeDeepLink` push /
     /// universal link. Setting this presents the sheet via `.sheet(item:)`.
     @State private var ruleEditRoute: RuleEditRouteContext?
+    /// Phase G2 follow-up: route state for `OpenVotesListView` pushed from
+    /// the "Votos abiertos" section of `RulesView`. Lives on the rulesTab
+    /// `NavigationStack`.
+    @State private var openVotesRoute: OpenVotesRouteContext?
+    /// Phase G2 follow-up: route state for `VoteDetailView` pushed from a
+    /// vote row tap inside `OpenVotesListView` (rulesTab stack).
+    @State private var voteDetailRoute: VoteDetailRouteContext?
+    /// Phase G2 follow-up: route state for `VoteDetailView` pushed from an
+    /// inbox tap on a `.votePending` action. Lives on the inboxTab stack so
+    /// the destination resolves on the same NavigationStack the user is on.
+    @State private var voteDetailRouteFromInbox: VoteDetailRouteContext?
 
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
     // points), create (new group from scratch), join (with invite code).
@@ -128,8 +139,19 @@ struct MainTabView: View {
                 RulesView(
                     coordinator: coord,
                     voteRepo: app.voteRepo,
-                    userActionRepo: app.userActionRepo
+                    userActionRepo: app.userActionRepo,
+                    onSeeOpenVotes: {
+                        if let group = app.activeGroup {
+                            openVotesRoute = OpenVotesRouteContext(id: group.id)
+                        }
+                    }
                 )
+                .navigationDestination(item: $openVotesRoute) { _ in
+                    openVotesDestination
+                }
+                .navigationDestination(item: $voteDetailRoute) { ctx in
+                    voteDetailDestination(for: ctx)
+                }
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -137,6 +159,56 @@ struct MainTabView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var openVotesDestination: some View {
+        if let group = app.activeGroup {
+            OpenVotesListView(
+                coordinator: OpenVotesCoordinator(
+                    group: group,
+                    voteRepo: app.voteRepo
+                ),
+                onSelectVote: { vote in
+                    voteDetailRoute = VoteDetailRouteContext(vote: vote)
+                },
+                // Phase G2 follow-up: wiring CreateVoteSheet (general
+                // proposal + rule_change pickers) is its own task. For the
+                // dead-tap fix the "+" toolbar button is intentionally a
+                // no-op; an empty-state CTA in OpenVotesListView calls the
+                // same closure. Tracked separately.
+                onCreateVote: {}
+            )
+        } else {
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func voteDetailDestination(for ctx: VoteDetailRouteContext) -> some View {
+        if let group = app.activeGroup,
+           let userMemberId = resolveUserMemberId(in: group) {
+            VoteDetailView(
+                coordinator: VoteDetailCoordinator(
+                    vote: ctx.vote,
+                    group: group,
+                    userMemberId: userMemberId,
+                    voteRepo: app.voteRepo,
+                    castRepo: app.voteCastRepo
+                )
+            )
+        } else {
+            EmptyView()
+        }
+    }
+
+    /// Resolve the current user's `group_members.id` for the given group via
+    /// the cached `memberDirectory` populated on tab bootstrap. Returns nil
+    /// if the directory hasn't surfaced the row yet (rare edge — caller
+    /// renders EmptyView in that case).
+    private func resolveUserMemberId(in group: Group) -> UUID? {
+        guard let userId = app.session?.user.id else { return nil }
+        return memberDirectory[userId]?.member.id
     }
 
     @ViewBuilder
@@ -151,6 +223,9 @@ struct MainTabView: View {
                 }
                 .navigationDestination(item: $reviewProposedRoute) { event in
                     reviewProposedScreen(event)
+                }
+                .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
+                    voteDetailDestination(for: ctx)
                 }
                 .ruulSheet(item: $voteOnAppealRoute) { ctx in
                     voteOnAppealSheet(ctx)
@@ -375,7 +450,13 @@ struct MainTabView: View {
             // proposedAmount and the originating action id (so saving
             // resolves the inbox row).
             await openRuleEditFromInbox(action: action)
-        case .slotPending, .votePending, .contributionDue, .compensationDue:
+        case .votePending:
+            // action.referenceId is the vote id (see system events emitter
+            // for `votePending`). Push VoteDetailView on the inbox stack.
+            if let vote = try? await app.voteRepo.vote(id: action.referenceId) {
+                voteDetailRouteFromInbox = VoteDetailRouteContext(vote: vote)
+            }
+        case .slotPending, .contributionDue, .compensationDue:
             // Not used by V1 template — no-op for now.
             break
         }
@@ -766,6 +847,28 @@ struct RuleEditRouteContext: Identifiable, Hashable {
     let proposedAmount: Int
     let pendingActionId: UUID?
     var id: UUID { rule.id }
+}
+
+/// Identifiable wrapper for the `OpenVotesListView` push destination on
+/// the rulesTab stack. The id is the active group's id so SwiftUI rebuilds
+/// the destination on group switch.
+struct OpenVotesRouteContext: Identifiable, Hashable {
+    let id: UUID
+}
+
+/// Identifiable wrapper for the `VoteDetailView` push destination. Used on
+/// both the rulesTab stack (vote-row tap from `OpenVotesListView`) and the
+/// inboxTab stack (`.votePending` action tap). Identity is the vote id.
+struct VoteDetailRouteContext: Identifiable, Hashable {
+    let vote: Vote
+    var id: UUID { vote.id }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(vote.id)
+    }
+    static func == (lhs: VoteDetailRouteContext, rhs: VoteDetailRouteContext) -> Bool {
+        lhs.vote.id == rhs.vote.id
+    }
 }
 
 // CheckInScannerCoordinator must be Identifiable for fullScreenCover(item:).
