@@ -44,6 +44,18 @@ actor MockVoteRepository: VoteRepository {
     var nextFinalizeError: Error?
     var nextOpenVotesError: Error?
 
+    /// Recorded args for each `startVote(...)` call. Tests assert against
+    /// this to verify wiring (vote_type, title, payload, etc.).
+    struct StartVoteCall: Sendable {
+        let groupId: UUID
+        let voteType: VoteType
+        let referenceId: UUID
+        let title: String
+        let description: String?
+        let payload: JSONConfig
+    }
+    private(set) var startVoteCalls: [StartVoteCall] = []
+
     init(seed: [Vote] = []) { self.store = seed }
 
     func setNextStartError(_ error: Error?) { self.nextStartError = error }
@@ -77,6 +89,14 @@ actor MockVoteRepository: VoteRepository {
         description: String?,
         payload: JSONConfig
     ) async throws -> UUID {
+        startVoteCalls.append(StartVoteCall(
+            groupId: groupId,
+            voteType: voteType,
+            referenceId: referenceId,
+            title: title,
+            description: description,
+            payload: payload
+        ))
         if let err = nextStartError { nextStartError = nil; throw err }
         let v = Vote(
             id: UUID(),
