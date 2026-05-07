@@ -38,6 +38,20 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
     public let suggestedTabs: [TabConfig]?
     public let onboardingFlow: [OnboardingStepConfig]?
 
+    /// Resource types this template instantiates. V1 always `[.event]`
+    /// for backward compat. Phase 2+ templates (shared_resource,
+    /// rotating_savings) declare their own types. Optional so configs
+    /// seeded pre-Sub-fase E decode without errors — use
+    /// `effectiveResourceTypes` to read with the default fallback.
+    public let resourceTypes: [ResourceType]?
+
+    /// Effective resource types — defaults to `[.event]` if config
+    /// doesn't declare them (backward compat for templates seeded
+    /// pre-Sub-fase E).
+    public var effectiveResourceTypes: [ResourceType] {
+        resourceTypes ?? [.event]
+    }
+
     public init(
         id: String,
         availableInVersion: Int,
@@ -46,7 +60,8 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         defaultSettings: JSONConfig? = nil,
         defaultRules: [TemplateRule]? = nil,
         suggestedTabs: [TabConfig]? = nil,
-        onboardingFlow: [OnboardingStepConfig]? = nil
+        onboardingFlow: [OnboardingStepConfig]? = nil,
+        resourceTypes: [ResourceType]? = nil
     ) {
         self.id = id
         self.availableInVersion = availableInVersion
@@ -56,5 +71,6 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         self.defaultRules = defaultRules
         self.suggestedTabs = suggestedTabs
         self.onboardingFlow = onboardingFlow
+        self.resourceTypes = resourceTypes
     }
 }
