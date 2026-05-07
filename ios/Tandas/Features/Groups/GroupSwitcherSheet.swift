@@ -13,16 +13,16 @@ struct GroupSwitcherSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     section(title: "Tus grupos") {
-                        VStack(spacing: RuulSpacing.s2) {
+                        VStack(spacing: RuulSpacing.xs) {
                             ForEach(app.groups) { group in
                                 groupRow(group)
                             }
                         }
                     }
                     section(title: "Más opciones") {
-                        VStack(spacing: RuulSpacing.s2) {
+                        VStack(spacing: RuulSpacing.xs) {
                             actionRow(
                                 icon: "plus.circle.fill",
                                 title: "Crear nuevo grupo",
@@ -42,10 +42,10 @@ struct GroupSwitcherSheet: View {
                         }
                     }
                 }
-                .padding(.horizontal, RuulSpacing.s4)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+            .background(Color.ruulBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }
@@ -58,17 +58,17 @@ struct GroupSwitcherSheet: View {
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
     }
 
     @ViewBuilder
     private func section<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
                 .ruulTextStyle(RuulTypography.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.leading, RuulSpacing.s1)
+                .padding(.leading, RuulSpacing.xxs)
             content()
         }
     }
@@ -79,14 +79,14 @@ struct GroupSwitcherSheet: View {
             app.activeGroupId = group.id
             dismiss()
         } label: {
-            HStack(spacing: RuulSpacing.s3) {
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulAccentSubtle)
+            HStack(spacing: RuulSpacing.sm) {
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulAccentMuted)
                     .frame(width: 44, height: 44)
                     .overlay(
                         Text(initials(for: group.name))
                             .ruulTextStyle(RuulTypography.headline)
-                            .foregroundStyle(Color.ruulAccentPrimary)
+                            .foregroundStyle(Color.ruulAccent)
                     )
                 VStack(alignment: .leading, spacing: 2) {
                     Text(group.name)
@@ -101,18 +101,18 @@ struct GroupSwitcherSheet: View {
                 if isActive {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .foregroundStyle(Color.ruulAccent)
                 }
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(isActive ? Color.ruulBorderStrong : Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(isActive ? Color.ruulBorderStrong : Color.ruulSeparator, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -120,12 +120,12 @@ struct GroupSwitcherSheet: View {
 
     private func actionRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulAccent)
                     .frame(width: 44, height: 44)
-                    .background(Color.ruulAccentSubtle, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                    .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .ruulTextStyle(RuulTypography.body)
@@ -139,15 +139,15 @@ struct GroupSwitcherSheet: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

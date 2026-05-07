@@ -23,7 +23,7 @@ public struct DetailScreenTemplate<Content: View>: View {
     public var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     if let title {
                         Text(title)
                             .ruulTextStyle(RuulTypography.displayMedium)
@@ -31,19 +31,19 @@ public struct DetailScreenTemplate<Content: View>: View {
                     }
                     content()
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s4)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.xxl)
             }
             if primaryCTA != nil || secondaryCTA != nil {
                 stickyCTA
             }
         }
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
     }
 
     private var stickyCTA: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             if let secondaryCTA {
                 RuulButton(secondaryCTA.label, style: .secondary, size: .large) { secondaryCTA.perform() }
             }
@@ -51,8 +51,8 @@ public struct DetailScreenTemplate<Content: View>: View {
                 RuulButton(primaryCTA.label, style: .primary, size: .large, fillsWidth: true) { primaryCTA.perform() }
             }
         }
-        .padding(.horizontal, RuulSpacing.s5)
-        .padding(.vertical, RuulSpacing.s4)
+        .padding(.horizontal, RuulSpacing.lg)
+        .padding(.vertical, RuulSpacing.md)
         .background(.ultraThinMaterial)
     }
 }
@@ -65,7 +65,7 @@ public struct DetailScreenTemplate<Content: View>: View {
             primaryCTA: ("Confirmar", { }),
             secondaryCTA: ("Editar", { })
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 ForEach(0..<5, id: \.self) { i in
                     RuulCard(.glass) {
                         Text("Card \(i)").ruulTextStyle(RuulTypography.body)

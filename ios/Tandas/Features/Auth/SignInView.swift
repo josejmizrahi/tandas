@@ -29,9 +29,9 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     header
                     SwiftUI.Group {
                         switch step {
@@ -42,12 +42,12 @@ struct SignInView: View {
                         }
                     }
                     .animation(.ruulMorph, value: step)
-                    Spacer(minLength: RuulSpacing.s6)
+                    Spacer(minLength: RuulSpacing.xl)
                     createAccountLink
                 }
-                .padding(.horizontal, RuulSpacing.s5)
+                .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.s8)
-                .padding(.bottom, RuulSpacing.s6)
+                .padding(.bottom, RuulSpacing.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -55,7 +55,7 @@ struct SignInView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(step == .start ? "Bienvenido de vuelta" : "Confirma tu código")
                 .ruulTextStyle(RuulTypography.displayMedium)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -70,14 +70,14 @@ struct SignInView: View {
     // MARK: - Start step
 
     private var signInOptions: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             appleButton
             divider
             phoneSection
             if let error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
         }
     }
@@ -95,17 +95,17 @@ struct SignInView: View {
     }
 
     private var divider: some View {
-        HStack(spacing: RuulSpacing.s3) {
-            Rectangle().fill(Color.ruulBorderSubtle).frame(height: 1)
+        HStack(spacing: RuulSpacing.sm) {
+            Rectangle().fill(Color.ruulSeparator).frame(height: 1)
             Text("o")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
-            Rectangle().fill(Color.ruulBorderSubtle).frame(height: 1)
+            Rectangle().fill(Color.ruulSeparator).frame(height: 1)
         }
     }
 
     private var phoneSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             RuulPhoneField(
                 text: $phoneInput,
                 label: "Tu número",
@@ -126,16 +126,16 @@ struct SignInView: View {
     // MARK: - OTP step
 
     private var otpEntry: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             RuulOTPInput(code: $otpCode, hasError: $hasOTPError) { fullCode in
                 verifyOTP(fullCode)
             }
             if let error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 RuulButton("Atrás", style: .secondary, size: .medium) {
                     step = .start
                     otpCode = ""
@@ -159,7 +159,7 @@ struct SignInView: View {
     // MARK: - Create account link
 
     private var createAccountLink: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Text("¿No tienes cuenta?")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -168,7 +168,7 @@ struct SignInView: View {
             } label: {
                 Text("Crear nueva")
                     .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulAccent)
             }
             .buttonStyle(.plain)
         }

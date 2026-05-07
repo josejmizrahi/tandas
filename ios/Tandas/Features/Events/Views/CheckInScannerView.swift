@@ -48,7 +48,7 @@ struct CheckInScannerView: View {
             Spacer()
             recentsList
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
         .overlay(scanFeedbackOverlay)
     }
 
@@ -73,21 +73,21 @@ struct CheckInScannerView: View {
             Spacer()
             Color.clear.frame(width: 32, height: 32)  // spacer for symmetry
         }
-        .padding(RuulSpacing.s4)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
     }
 
     private var scanFrame: some View {
-        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             .strokeBorder(Color.ruulOnImage.opacity(0.6), lineWidth: 3)
             .frame(width: 240, height: 240)
             .background(Color.clear)
     }
 
     private var recentsList: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             ForEach(coordinator.recentCheckIns, id: \.memberId) { recent in
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     RuulAvatar(name: recent.name, size: .small, border: .glass)
                     Text(recent.name)
                         .ruulTextStyle(RuulTypography.body)
@@ -95,10 +95,10 @@ struct CheckInScannerView: View {
                     Spacer()
                     Text("✓ Llegó")
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticSuccess)
+                        .foregroundStyle(Color.ruulPositive)
                 }
-                .padding(RuulSpacing.s3)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+                .padding(RuulSpacing.sm)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -115,26 +115,26 @@ struct CheckInScannerView: View {
         case .success(_, let name):
             feedbackCard(
                 icon: "checkmark.circle.fill",
-                color: .ruulSemanticSuccess,
+                color: .ruulPositive,
                 title: "¡Bienvenido \(name)!"
             )
         case .alreadyCheckedIn(_, let name):
             feedbackCard(
                 icon: "exclamationmark.circle.fill",
-                color: .ruulSemanticWarning,
+                color: .ruulWarning,
                 title: "\(name) ya llegó"
             )
         case .invalid:
             feedbackCard(
                 icon: "xmark.circle.fill",
-                color: .ruulSemanticError,
+                color: .ruulNegative,
                 title: "QR inválido"
             )
         }
     }
 
     private func feedbackCard(icon: String, color: Color, title: String) -> some View {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 60, weight: .bold))
                 .foregroundStyle(Color.ruulOnImage, color)
@@ -142,8 +142,8 @@ struct CheckInScannerView: View {
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulOnImage)
         }
-        .padding(RuulSpacing.s7)
-        .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
+        .padding(RuulSpacing.xxl)
+        .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
         .transition(.scale.combined(with: .opacity))
         .animation(.ruulSnappy, value: coordinator.overlay)
     }
@@ -151,7 +151,7 @@ struct CheckInScannerView: View {
     // MARK: - Empty states
 
     private var permissionDeniedView: some View {
-        VStack(spacing: RuulSpacing.s5) {
+        VStack(spacing: RuulSpacing.lg) {
             Spacer()
             Image(systemName: "camera.fill")
                 .font(.system(size: 60))
@@ -171,11 +171,11 @@ struct CheckInScannerView: View {
             RuulButton("Cerrar", style: .glass, size: .medium) { dismiss() }
             Spacer()
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
 
     private func errorView(_ msg: String) -> some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             Spacer()
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 50))
@@ -187,7 +187,7 @@ struct CheckInScannerView: View {
             RuulButton("Cerrar", style: .glass, size: .medium) { dismiss() }
             Spacer()
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
 }
 

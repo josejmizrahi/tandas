@@ -28,15 +28,15 @@ struct GroupContextHeader<Trailing: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             Button(action: onTap) {
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     avatar
                     VStack(alignment: .leading, spacing: 0) {
                         Text("GRUPO ACTIVO")
                             .ruulTextStyle(RuulTypography.sectionLabel)
                             .foregroundStyle(Color.ruulTextTertiary)
-                        HStack(spacing: RuulSpacing.s1) {
+                        HStack(spacing: RuulSpacing.xxs) {
                             Text(group?.name ?? "—")
                                 .ruulTextStyle(RuulTypography.title)
                                 .foregroundStyle(Color.ruulTextPrimary)
@@ -54,18 +54,18 @@ struct GroupContextHeader<Trailing: View>: View {
             .buttonStyle(.plain)
             trailing()
         }
-        .padding(.horizontal, RuulSpacing.s4)
-        .padding(.vertical, RuulSpacing.s3)
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .fill(.regularMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .strokeBorder(Color.ruulBorderSubtle, lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                        .strokeBorder(Color.ruulSeparator, lineWidth: 0.5)
                 )
         )
-        .padding(.horizontal, RuulSpacing.s4)
-        .padding(.top, RuulSpacing.s2)
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.top, RuulSpacing.xs)
         .animation(.ruulSnappy, value: group?.id)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Grupo activo: \(group?.name ?? "ninguno"). Toca para cambiar.")
@@ -74,12 +74,12 @@ struct GroupContextHeader<Trailing: View>: View {
     private var avatar: some View {
         ZStack {
             Circle()
-                .fill(Color.ruulAccentSubtle)
+                .fill(Color.ruulAccentMuted)
                 .frame(width: 36, height: 36)
             Text(initial)
                 .ruulTextStyle(RuulTypography.callout)
                 .fontWeight(.bold)
-                .foregroundStyle(Color.ruulAccentPrimary)
+                .foregroundStyle(Color.ruulAccent)
                 .id(group?.id) // crossfade
                 .transition(.opacity)
         }
@@ -93,7 +93,7 @@ struct GroupContextHeader<Trailing: View>: View {
 
 #if DEBUG
 #Preview {
-    VStack(spacing: RuulSpacing.s5) {
+    VStack(spacing: RuulSpacing.lg) {
         GroupContextHeader(
             group: Group(
                 id: UUID(),
@@ -119,15 +119,15 @@ struct GroupContextHeader<Trailing: View>: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(width: 36, height: 36)
-                        .background(Color.ruulBackgroundElevated, in: Circle())
-                        .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                        .background(Color.ruulSurface, in: Circle())
+                        .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
             }
         )
         Spacer()
     }
-    .padding(.vertical, RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(.vertical, RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

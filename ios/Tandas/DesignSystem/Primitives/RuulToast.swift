@@ -16,7 +16,7 @@ public struct RuulToast: View {
     }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: iconName)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(tint)
@@ -32,9 +32,9 @@ public struct RuulToast: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .ruulGlass(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous),
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous),
             material: .thick,
             tint: tint.opacity(0.10)
         )
@@ -52,10 +52,10 @@ public struct RuulToast: View {
 
     private var tint: Color {
         switch style {
-        case .success: return .ruulSemanticSuccess
-        case .warning: return .ruulSemanticWarning
-        case .error:   return .ruulSemanticError
-        case .info:    return .ruulSemanticInfo
+        case .success: return .ruulPositive
+        case .warning: return .ruulWarning
+        case .error:   return .ruulNegative
+        case .info:    return .ruulInfo
         }
     }
 }
@@ -96,8 +96,8 @@ private struct ToastPresenter: ViewModifier {
             .overlay(alignment: .top) {
                 if let model {
                     RuulToast(model.title, message: model.message, style: model.style)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s3)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.sm)
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .id(model.id)
                         .task {
@@ -117,7 +117,7 @@ private struct RuulToastPreview: View {
     @State var toast: RuulToastModel?
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulToast("Inline static")
             RuulToast("Success", message: "Listo, tu RSVP fue confirmado.", style: .success)
             RuulToast("Warning", message: "Quedan 30 min antes del checkin.", style: .warning)
@@ -127,8 +127,8 @@ private struct RuulToastPreview: View {
                 toast = .init("Pago recibido", message: "Tu multa quedó saldada.", style: .success)
             }
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
         .ruulToast($toast)
     }
 }

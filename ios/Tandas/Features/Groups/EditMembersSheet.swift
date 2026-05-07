@@ -62,7 +62,7 @@ struct EditMembersSheet: View {
     var body: some View {
         NavigationStack {
             content
-                .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+                .background(Color.ruulBackground.ignoresSafeArea())
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cerrar") { dismiss() }
@@ -75,7 +75,7 @@ struct EditMembersSheet: View {
                     }
                 }
                 .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+                .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .task { await load() }
         .confirmationDialog(
@@ -99,10 +99,10 @@ struct EditMembersSheet: View {
     private var content: some View {
         if isLoading && rows.isEmpty {
             ProgressView()
-                .tint(Color.ruulAccentPrimary)
+                .tint(Color.ruulAccent)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let loadError, rows.isEmpty {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 Text("No pudimos cargar los miembros.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -110,9 +110,9 @@ struct EditMembersSheet: View {
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Button("Reintentar") { Task { await load() } }
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulAccent)
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             membersList
@@ -133,7 +133,7 @@ struct EditMembersSheet: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
         .environment(\.editMode, .constant(canReorderTurn ? EditMode.active : EditMode.inactive))
     }
 
@@ -141,7 +141,7 @@ struct EditMembersSheet: View {
     private var membersForEach: some View {
         ForEach(rows) { mwp in
             memberRow(mwp)
-                .listRowBackground(Color.ruulBackgroundElevated)
+                .listRowBackground(Color.ruulSurface)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     if canRemove(mwp) {
                         Button(role: .destructive) {
@@ -172,7 +172,7 @@ struct EditMembersSheet: View {
 
     @ViewBuilder
     private var listHeader: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("MIEMBROS \(rows.isEmpty ? "" : "(\(rows.count))")")
                 .ruulTextStyle(RuulTypography.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -183,21 +183,21 @@ struct EditMembersSheet: View {
             }
         }
         .textCase(nil)
-        .padding(.bottom, RuulSpacing.s1)
+        .padding(.bottom, RuulSpacing.xxs)
     }
 
     @ViewBuilder
     private var listFooter: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             if let rowError {
                 Text(rowError)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
             if let orderError {
                 Text(orderError)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
             if case .requiresVote = removeDecision {
                 Text("Quitar miembros requiere una votación. Vas a poder abrirla cuando esté lista la pantalla de votos genéricos.")
@@ -205,8 +205,8 @@ struct EditMembersSheet: View {
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             if isPersistingOrder {
-                HStack(spacing: RuulSpacing.s2) {
-                    ProgressView().scaleEffect(0.8).tint(Color.ruulAccentPrimary)
+                HStack(spacing: RuulSpacing.xs) {
+                    ProgressView().scaleEffect(0.8).tint(Color.ruulAccent)
                     Text("Guardando turno…")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
@@ -214,12 +214,12 @@ struct EditMembersSheet: View {
             }
         }
         .textCase(nil)
-        .padding(.top, RuulSpacing.s1)
+        .padding(.top, RuulSpacing.xxs)
     }
 
     private func memberRow(_ mwp: MemberWithProfile) -> some View {
         let isYou = mwp.member.userId == currentUserId
-        return HStack(spacing: RuulSpacing.s3) {
+        return HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: mwp.displayName, imageURL: mwp.avatarURL, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(isYou ? "\(mwp.displayName) (tú)" : mwp.displayName)
@@ -229,16 +229,16 @@ struct EditMembersSheet: View {
                 if mwp.member.isFounder {
                     Text("FOUNDER")
                         .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .foregroundStyle(Color.ruulAccent)
                 } else if mwp.member.role == "admin" {
                     Text("ADMIN")
                         .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .foregroundStyle(Color.ruulAccent)
                 }
             }
             Spacer()
         }
-        .padding(.vertical, RuulSpacing.s1)
+        .padding(.vertical, RuulSpacing.xxs)
         .accessibilityLabel(Text(mwp.displayName))
     }
 

@@ -35,7 +35,7 @@ struct CreateGeneralProposalSheet: View {
                 if let error = coordinator.error {
                     Section {
                         Text(error)
-                            .foregroundStyle(Color.ruulSemanticError)
+                            .foregroundStyle(Color.ruulNegative)
                     }
                 }
             }

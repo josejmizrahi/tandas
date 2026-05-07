@@ -21,7 +21,7 @@ public struct RuulActionableCard: View {
         icon: String,
         title: String,
         subtitle: String? = nil,
-        tint: Color = .ruulAccentPrimary,
+        tint: Color = .ruulAccent,
         accessory: AccessoryStyle = .chevron,
         action: @escaping () -> Void
     ) {
@@ -35,7 +35,7 @@ public struct RuulActionableCard: View {
 
     public var body: some View {
         Button(action: action) {
-            HStack(spacing: RuulSpacing.s4) {
+            HStack(spacing: RuulSpacing.md) {
                 RuulIconBadge(icon, tint: tint, size: .medium)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -51,14 +51,14 @@ public struct RuulActionableCard: View {
                 Spacer(minLength: 0)
                 accessoryView
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .background(
-                Color.ruulBackgroundElevated,
-                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -77,7 +77,7 @@ public struct RuulActionableCard: View {
             Text(text)
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.horizontal, RuulSpacing.s2)
+                .padding(.horizontal, RuulSpacing.xs)
                 .padding(.vertical, 2)
                 .background(Color.ruulBackgroundRecessed, in: Capsule())
         }
@@ -86,7 +86,7 @@ public struct RuulActionableCard: View {
 
 #if DEBUG
 #Preview("RuulActionableCard") {
-    VStack(spacing: RuulSpacing.s3) {
+    VStack(spacing: RuulSpacing.sm) {
         RuulActionableCard(
             icon: "link",
             title: "Compartir link",
@@ -106,7 +106,7 @@ public struct RuulActionableCard: View {
             accessory: .none
         ) { }
     }
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

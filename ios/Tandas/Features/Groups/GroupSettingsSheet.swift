@@ -29,23 +29,23 @@ struct GroupSettingsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     vocabularySection
                     finesSection
                     rotationSection
                     if let error {
                         Text(error)
                             .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulSemanticError)
+                            .foregroundStyle(Color.ruulNegative)
                     }
                     saveButton
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s5)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.lg)
+                .padding(.bottom, RuulSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+            .background(Color.ruulBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") { dismiss() }
@@ -58,7 +58,7 @@ struct GroupSettingsSheet: View {
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .onAppear { hydrateFromGroup() }
     }
@@ -66,7 +66,7 @@ struct GroupSettingsSheet: View {
     // MARK: - Sections
 
     private var vocabularySection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("VOCABULARIO")
             Text("Cómo le llamás a los eventos del grupo. Aparece en todos los textos.")
                 .ruulTextStyle(RuulTypography.caption)
@@ -80,7 +80,7 @@ struct GroupSettingsSheet: View {
     }
 
     private var finesSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("MULTAS")
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -96,22 +96,22 @@ struct GroupSettingsSheet: View {
                 Spacer()
                 Toggle("", isOn: $finesEnabled)
                     .labelsHidden()
-                    .tint(Color.ruulAccentPrimary)
+                    .tint(Color.ruulAccent)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
         }
     }
 
     private var rotationSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("ANFITRIÓN")
             RuulSegmentedControl(
                 selection: $rotationMode,
@@ -149,7 +149,7 @@ struct GroupSettingsSheet: View {
         Text(text)
             .ruulTextStyle(RuulTypography.footnote)
             .foregroundStyle(Color.ruulTextSecondary)
-            .padding(.leading, RuulSpacing.s1)
+            .padding(.leading, RuulSpacing.xxs)
     }
 
     private var hasChanges: Bool {

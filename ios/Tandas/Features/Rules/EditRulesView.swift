@@ -9,7 +9,7 @@ struct EditRulesView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             content
         }
         .task { await coordinator.refresh() }
@@ -30,7 +30,7 @@ struct EditRulesView: View {
     @ViewBuilder
     private var content: some View {
         if coordinator.isLoading && coordinator.rules.isEmpty {
-            ProgressView().tint(Color.ruulAccentPrimary)
+            ProgressView().tint(Color.ruulAccent)
         } else if coordinator.rules.isEmpty {
             emptyState
         } else {
@@ -40,9 +40,9 @@ struct EditRulesView: View {
 
     private var list: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 header
-                VStack(spacing: RuulSpacing.s3) {
+                VStack(spacing: RuulSpacing.sm) {
                     // Repo lists rules ordered by created_at ASC; toggle
                     // mutates in place via withEnabled, so order is stable.
                     ForEach(coordinator.rules) { rule in
@@ -51,8 +51,8 @@ struct EditRulesView: View {
                 }
                 footer
             }
-            .padding(.horizontal, RuulSpacing.s5)
-            .padding(.top, RuulSpacing.s4)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
@@ -60,7 +60,7 @@ struct EditRulesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(coordinator.group.name)
                 .ruulTextStyle(RuulTypography.sectionLabelLg)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -68,7 +68,7 @@ struct EditRulesView: View {
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
-        .padding(.top, RuulSpacing.s2)
+        .padding(.top, RuulSpacing.xs)
     }
 
     private var footer: some View {
@@ -77,7 +77,7 @@ struct EditRulesView: View {
             .foregroundStyle(Color.ruulTextTertiary)
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
-            .padding(.top, RuulSpacing.s4)
+            .padding(.top, RuulSpacing.md)
     }
 
     private var emptyState: some View {
@@ -95,8 +95,8 @@ struct EditRulesView: View {
         return Button {
             sheetRule = rule
         } label: {
-            HStack(alignment: .top, spacing: RuulSpacing.s3) {
-                VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+            HStack(alignment: .top, spacing: RuulSpacing.sm) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(rule.title)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
@@ -115,14 +115,14 @@ struct EditRulesView: View {
                 Spacer()
                 toggleColumn(rule, inFlight: inFlight, pending: pending)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
             .opacity(rule.enabled ? 1.0 : 0.55)
         }
@@ -146,7 +146,7 @@ struct EditRulesView: View {
     }
 
     private func toggleColumn(_ rule: GroupRule, inFlight: Bool, pending: PendingVote?) -> some View {
-        VStack(spacing: RuulSpacing.s1) {
+        VStack(spacing: RuulSpacing.xxs) {
             Toggle("", isOn: Binding(
                 get: { rule.enabled },
                 set: { newValue in
@@ -166,13 +166,13 @@ struct EditRulesView: View {
         formatter.unitsStyle = .abbreviated
         formatter.locale = Locale(identifier: "es_MX")
         let relative = formatter.localizedString(for: vote.closesAt, relativeTo: .now)
-        return HStack(spacing: RuulSpacing.s1) {
+        return HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: "hand.raised.fill")
             Text("Votación pendiente · cierra \(relative)")
         }
         .ruulTextStyle(RuulTypography.footnote)
-        .foregroundStyle(Color.ruulSemanticWarning)
-        .padding(.top, RuulSpacing.s1)
+        .foregroundStyle(Color.ruulWarning)
+        .padding(.top, RuulSpacing.xxs)
     }
 
     private func formatMXN(_ amount: Int) -> String {

@@ -11,14 +11,14 @@ struct ConfirmationView: View {
     var body: some View {
         ZStack {
             RuulMeshBackground(.violet)
-            VStack(spacing: RuulSpacing.s7) {
+            VStack(spacing: RuulSpacing.xxl) {
                 Spacer()
                 hero
                 Spacer()
                 ctaStack
-                Spacer().frame(height: RuulSpacing.s5)
+                Spacer().frame(height: RuulSpacing.lg)
             }
-            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
         }
         .toolbar(.hidden, for: .navigationBar)
         .sensoryFeedback(.success, trigger: feedback)
@@ -33,7 +33,7 @@ struct ConfirmationView: View {
     }
 
     private var hero: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             Text("Tu grupo está vivo")
                 .ruulTextStyle(RuulTypography.displayLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -48,7 +48,7 @@ struct ConfirmationView: View {
     }
 
     private var ctaStack: some View {
-        VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.xs) {
             RuulButton("Crear el primer evento", style: .primary, size: .large, fillsWidth: true, action: onCreateFirstEvent)
             RuulButton("Invitar más gente", style: .glass, size: .large, fillsWidth: true, action: onInviteMore)
             RuulButton("Ir al inicio", style: .plain, size: .medium, action: onGoHome)

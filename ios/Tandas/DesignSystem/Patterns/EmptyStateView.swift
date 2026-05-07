@@ -20,9 +20,9 @@ public struct EmptyStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: RuulSpacing.s5) {
-            RuulIconBadge(systemImage, tint: .ruulAccentPrimary, size: .large)
-            VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.lg) {
+            RuulIconBadge(systemImage, tint: .ruulAccent, size: .large)
+            VStack(spacing: RuulSpacing.xs) {
                 Text(title)
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -38,14 +38,14 @@ public struct EmptyStateView: View {
                 RuulButton(primaryAction.label, style: .primary, size: .medium, action: primaryAction.perform)
             }
         }
-        .padding(RuulSpacing.s7)
+        .padding(RuulSpacing.xxl)
         .frame(maxWidth: .infinity)
     }
 }
 
 #if DEBUG
 #Preview("EmptyStateView") {
-    VStack(spacing: RuulSpacing.s7) {
+    VStack(spacing: RuulSpacing.xxl) {
         EmptyStateView(
             systemImage: "person.2",
             title: "Aún no hay miembros",
@@ -59,7 +59,7 @@ public struct EmptyStateView: View {
             primaryAction: ("Crear evento", { })
         )
     }
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

@@ -86,9 +86,9 @@ public struct RuulAvatar: View {
         case .glass:
             Circle().stroke(Color.ruulBorderGlass, lineWidth: 2)
         case .accent:
-            Circle().stroke(Color.ruulAccentPrimary, lineWidth: 2)
+            Circle().stroke(Color.ruulAccent, lineWidth: 2)
         case .success:
-            Circle().stroke(Color.ruulSemanticSuccess, lineWidth: 2)
+            Circle().stroke(Color.ruulPositive, lineWidth: 2)
         }
     }
 
@@ -117,26 +117,26 @@ public struct RuulAvatar: View {
 
 #if DEBUG
 #Preview("RuulAvatar") {
-    VStack(spacing: RuulSpacing.s4) {
-        HStack(spacing: RuulSpacing.s3) {
+    VStack(spacing: RuulSpacing.md) {
+        HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: "Jose Mizrahi", size: .xs)
             RuulAvatar(name: "Jose Mizrahi", size: .small)
             RuulAvatar(name: "Jose Mizrahi", size: .medium)
             RuulAvatar(name: "Jose Mizrahi", size: .large)
             RuulAvatar(name: "Jose Mizrahi", size: .hero)
         }
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: "Ana Cohen", size: .large, border: .glass)
             RuulAvatar(name: "Ben Levi", size: .large, border: .accent)
             RuulAvatar(name: "Carla Roth", size: .large, border: .success)
         }
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             ForEach(["Ana", "Ben", "Carla", "David", "Eli", "Fer"], id: \.self) { n in
                 RuulAvatar(name: n, size: .medium)
             }
         }
     }
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

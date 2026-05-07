@@ -24,16 +24,16 @@ public struct RSVPStateView: View {
     }
 
     private var threeButtons: some View {
-        HStack(spacing: RuulSpacing.s3) {
-            stateButton(.going, label: "Voy", systemImage: "checkmark", tint: .ruulSemanticSuccess)
-            stateButton(.maybe, label: "Tal vez", systemImage: "questionmark", tint: .ruulSemanticWarning)
-            stateButton(.notGoing, label: "No voy", systemImage: "xmark", tint: .ruulSemanticError)
+        HStack(spacing: RuulSpacing.sm) {
+            stateButton(.going, label: "Voy", systemImage: "checkmark", tint: .ruulPositive)
+            stateButton(.maybe, label: "Tal vez", systemImage: "questionmark", tint: .ruulWarning)
+            stateButton(.notGoing, label: "No voy", systemImage: "xmark", tint: .ruulNegative)
         }
     }
 
     private func stateButton(_ s: EventCardData.RSVP, label: String, systemImage: String, tint: Color) -> some View {
         Button { onSelect(s) } label: {
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 Image(systemName: systemImage)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(tint)
@@ -42,14 +42,14 @@ public struct RSVPStateView: View {
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, RuulSpacing.s4)
-            .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular, interactive: true)
+            .padding(.vertical, RuulSpacing.md)
+            .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular, interactive: true)
         }
         .buttonStyle(.ruulPress)
     }
 
     private var confirmedCard: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             RuulIconBadge(confirmedIcon, tint: confirmedTint, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(confirmedTitle)
@@ -61,9 +61,9 @@ public struct RSVPStateView: View {
             }
             Spacer()
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .ruulGlass(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous),
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous),
             material: .regular,
             tint: confirmedTint.opacity(0.12)
         )
@@ -82,9 +82,9 @@ public struct RSVPStateView: View {
 
     private var confirmedTint: Color {
         switch state {
-        case .going: return .ruulSemanticSuccess
-        case .maybe: return .ruulSemanticWarning
-        case .notGoing: return .ruulSemanticError
+        case .going: return .ruulPositive
+        case .maybe: return .ruulWarning
+        case .notGoing: return .ruulNegative
         case .notResponded: return .ruulTextTertiary
         }
     }
@@ -104,11 +104,11 @@ private struct RSVPStateViewPreview: View {
     @State var state: EventCardData.RSVP = .notResponded
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s5) {
+        VStack(spacing: RuulSpacing.lg) {
             RSVPStateView(state: state, onSelect: { state = $0 })
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

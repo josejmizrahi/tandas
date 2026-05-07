@@ -18,7 +18,7 @@ struct OTPVerifyView: View {
             primaryCTA: ("Confirmar", coord.isLoading, submit),
             canContinue: code.count == 6
         ) {
-            VStack(spacing: RuulSpacing.s5) {
+            VStack(spacing: RuulSpacing.lg) {
                 RuulOTPInput(code: $code, hasError: $hasError) { fullCode in
                     Task {
                         await coord.submitOTP(code: fullCode)
@@ -31,12 +31,12 @@ struct OTPVerifyView: View {
                    attempts < 3 {
                     Text("Código incorrecto. Te quedan \(3 - attempts) intentos.")
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticError)
+                        .foregroundStyle(Color.ruulNegative)
                 }
                 if coord.error == .otpTooManyAttempts {
                     Text("Demasiados intentos. Pide otro código.")
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticError)
+                        .foregroundStyle(Color.ruulNegative)
                 }
             }
         }
@@ -67,7 +67,7 @@ struct OTPVerifyView: View {
         } label: {
             Text(resendCountdown > 0 ? "Reenviar (\(resendCountdown)s)" : "Reenviar código")
                 .ruulTextStyle(RuulTypography.callout)
-                .foregroundStyle(resendCountdown > 0 ? Color.ruulTextTertiary : Color.ruulAccentPrimary)
+                .foregroundStyle(resendCountdown > 0 ? Color.ruulTextTertiary : Color.ruulAccent)
         }
         .disabled(resendCountdown > 0)
         .buttonStyle(.plain)

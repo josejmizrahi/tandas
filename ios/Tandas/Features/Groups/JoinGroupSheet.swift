@@ -20,13 +20,13 @@ struct JoinGroupSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     header
                     codeField
                     if let error {
                         Text(error)
                             .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulSemanticError)
+                            .foregroundStyle(Color.ruulNegative)
                     }
                     RuulButton(
                         "Unirme",
@@ -38,12 +38,12 @@ struct JoinGroupSheet: View {
                     )
                     .disabled(code.trimmingCharacters(in: .whitespaces).count < 4)
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s5)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.lg)
+                .padding(.bottom, RuulSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+            .background(Color.ruulBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") { dismiss() }
@@ -56,12 +56,12 @@ struct JoinGroupSheet: View {
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Cuál es el código?")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)

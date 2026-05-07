@@ -54,28 +54,28 @@ struct EventRSVPStateView: View {
     // MARK: - Pending — 3 segment-style pills (capacity-aware) + plus-ones row
 
     private var pendingView: some View {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             if event.allowPlusOnes && event.maxPlusOnesPerMember > 0 {
                 plusOnesRow
             }
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 if isAtCapacity {
-                    choicePill(.going, label: "Lista", icon: "person.crop.circle.badge.clock", dot: .ruulSemanticWarning)
+                    choicePill(.going, label: "Lista", icon: "person.crop.circle.badge.clock", dot: .ruulWarning)
                 } else {
-                    choicePill(.going, label: "Voy", icon: "checkmark", dot: .ruulSemanticSuccess)
+                    choicePill(.going, label: "Voy", icon: "checkmark", dot: .ruulPositive)
                 }
-                choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .ruulSemanticWarning)
-                choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .ruulSemanticError)
+                choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .ruulWarning)
+                choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .ruulNegative)
             }
         }
     }
 
     private func choicePill(_ s: RSVPStatus, label: String, icon: String, dot: Color) -> some View {
         Button { onChange(s) } label: {
-            VStack(spacing: RuulSpacing.s1) {
+            VStack(spacing: RuulSpacing.xxs) {
                 ZStack {
                     Circle()
-                        .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                        .stroke(Color.ruulSeparator, lineWidth: 1)
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
                         .font(.system(size: 13, weight: .bold))
@@ -86,12 +86,12 @@ struct EventRSVPStateView: View {
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, RuulSpacing.s4)
-            .background(Color.ruulBackgroundElevated)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .padding(.vertical, RuulSpacing.md)
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -100,7 +100,7 @@ struct EventRSVPStateView: View {
     // MARK: - Plus-ones stepper (inline row, shown when event allows it)
 
     private var plusOnesRow: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.2.fill")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -110,13 +110,13 @@ struct EventRSVPStateView: View {
             Spacer()
             stepperControl
         }
-        .padding(.horizontal, RuulSpacing.s4)
-        .padding(.vertical, RuulSpacing.s3)
-        .background(Color.ruulBackgroundElevated)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+        .background(Color.ruulSurface)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
@@ -141,9 +141,9 @@ struct EventRSVPStateView: View {
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                 .frame(width: 26, height: 26)
-                .background(Color.ruulBackgroundCanvas)
+                .background(Color.ruulBackground)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
         }
         .buttonStyle(.ruulPress)
         .disabled(!enabled)
@@ -154,11 +154,11 @@ struct EventRSVPStateView: View {
     private var goingView: some View {
         confirmedCard(
             statusLabel: "VAS",
-            statusDot: .ruulSemanticSuccess,
+            statusDot: .ruulPositive,
             title: plusOnes > 0 ? "Confirmado · +\(plusOnes)" : "Confirmado",
             subtitle: arrivalLine
         ) {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 if event.allowPlusOnes && event.maxPlusOnesPerMember > 0 {
                     plusOnesRow
                 }
@@ -169,7 +169,7 @@ struct EventRSVPStateView: View {
 
     @ViewBuilder
     private var confirmedActions: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             if walletAvailable {
                 actionButton("Wallet", icon: "wallet.bifold.fill", primary: true, action: onAddToWallet)
             }
@@ -185,7 +185,7 @@ struct EventRSVPStateView: View {
     private var maybeView: some View {
         confirmedCard(
             statusLabel: "TAL VEZ",
-            statusDot: .ruulSemanticWarning,
+            statusDot: .ruulWarning,
             title: "Por decidir",
             subtitle: "Confirma o cancela cuando puedas"
         ) { maybeActions }
@@ -193,7 +193,7 @@ struct EventRSVPStateView: View {
 
     @ViewBuilder
     private var maybeActions: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             actionButton(
                 isAtCapacity ? "Lista" : "Voy",
                 icon: isAtCapacity ? "person.crop.circle.badge.clock" : "checkmark",
@@ -208,7 +208,7 @@ struct EventRSVPStateView: View {
     private var waitlistedView: some View {
         confirmedCard(
             statusLabel: "EN LISTA",
-            statusDot: .ruulSemanticWarning,
+            statusDot: .ruulWarning,
             title: "En lista de espera",
             subtitle: "Te avisamos si se libera lugar"
         ) {
@@ -221,9 +221,9 @@ struct EventRSVPStateView: View {
     // MARK: - Declined — slim neutral row, "Cambiar" inline link
 
     private var declinedView: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             Circle()
-                .fill(Color.ruulSemanticError)
+                .fill(Color.ruulNegative)
                 .frame(width: 8, height: 8)
             Text("NO VAS")
                 .ruulTextStyle(RuulTypography.sectionLabel)
@@ -236,13 +236,13 @@ struct EventRSVPStateView: View {
             }
             .buttonStyle(.ruulPress)
         }
-        .padding(.horizontal, RuulSpacing.s4)
-        .padding(.vertical, RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.md)
+        .background(Color.ruulSurface)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
@@ -256,8 +256,8 @@ struct EventRSVPStateView: View {
         subtitle: String,
         @ViewBuilder actions: () -> Actions
     ) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-            HStack(spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            HStack(spacing: RuulSpacing.xs) {
                 Circle()
                     .fill(statusDot)
                     .frame(width: 8, height: 8)
@@ -276,12 +276,12 @@ struct EventRSVPStateView: View {
             }
             actions()
         }
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
@@ -300,22 +300,22 @@ struct EventRSVPStateView: View {
 
     private func actionButton(_ label: String, icon: String, primary: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: RuulSpacing.s1) {
+            HStack(spacing: RuulSpacing.xxs) {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .bold))
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.vertical, RuulSpacing.sm)
             .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
             .background(
-                primary ? Color.ruulTextPrimary : Color.ruulBackgroundCanvas
+                primary ? Color.ruulTextPrimary : Color.ruulBackground
             )
             .clipShape(Capsule())
             .overlay(
                 primary ? nil :
-                Capsule().stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)

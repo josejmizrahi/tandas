@@ -14,7 +14,7 @@ struct ShowcaseSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(title)
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -24,10 +24,10 @@ struct ShowcaseSection<Content: View>: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             content()
-                .padding(.top, RuulSpacing.s2)
+                .padding(.top, RuulSpacing.xs)
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
     }
 }
 #endif

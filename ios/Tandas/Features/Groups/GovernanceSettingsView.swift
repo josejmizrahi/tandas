@@ -27,7 +27,7 @@ struct GovernanceSettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
                     modifyRulesCard
                     createVotesCard
                     removeMembersCard
@@ -36,14 +36,14 @@ struct GovernanceSettingsView: View {
                     if let error {
                         Text(error)
                             .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulSemanticError)
+                            .foregroundStyle(Color.ruulNegative)
                     }
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s5)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.lg)
+                .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+            .background(Color.ruulBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") { dismiss() }
@@ -58,12 +58,12 @@ struct GovernanceSettingsView: View {
                     Button(isSaving ? "Guardando…" : "Guardar") {
                         Task { await save() }
                     }
-                    .foregroundStyle(hasChanges ? Color.ruulAccentPrimary : Color.ruulTextTertiary)
+                    .foregroundStyle(hasChanges ? Color.ruulAccent : Color.ruulTextTertiary)
                     .disabled(!hasChanges || isSaving)
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .onAppear { hydrate() }
     }
@@ -108,7 +108,7 @@ struct GovernanceSettingsView: View {
 
     private var votingConfigCard: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Configuración de votación")
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -122,7 +122,7 @@ struct GovernanceSettingsView: View {
     }
 
     private var quorumRow: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Quórum")
                     .ruulTextStyle(RuulTypography.body)
@@ -140,7 +140,7 @@ struct GovernanceSettingsView: View {
                 in: 25...100,
                 step: 5
             )
-            .tint(Color.ruulAccentPrimary)
+            .tint(Color.ruulAccent)
             Text("Mínimo del grupo que debe votar para que la votación cuente.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -148,7 +148,7 @@ struct GovernanceSettingsView: View {
     }
 
     private var thresholdRow: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Mayoría requerida")
                     .ruulTextStyle(RuulTypography.body)
@@ -166,7 +166,7 @@ struct GovernanceSettingsView: View {
                 in: 50...75,
                 step: 5
             )
-            .tint(Color.ruulAccentPrimary)
+            .tint(Color.ruulAccent)
             Text("% de votos a favor para aprobar.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -174,7 +174,7 @@ struct GovernanceSettingsView: View {
     }
 
     private var durationRow: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Duración")
                     .ruulTextStyle(RuulTypography.body)
@@ -194,13 +194,13 @@ struct GovernanceSettingsView: View {
     }
 
     private var anonymousToggle: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Toggle(isOn: $rules.votesAreAnonymous) {
                 Text("Votos anónimos")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
-            .tint(Color.ruulAccentPrimary)
+            .tint(Color.ruulAccent)
             Text("Solo los conteos agregados son visibles. Recomendado.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -216,7 +216,7 @@ struct GovernanceSettingsView: View {
         options: [PermissionLevel]
     ) -> some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(title)
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)

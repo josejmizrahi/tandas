@@ -179,7 +179,7 @@ private struct InvitedFlow: View {
             InvitedOTPView()
         case .tour:
             ZStack {
-                Color.ruulBackgroundCanvas.ignoresSafeArea()
+                Color.ruulBackground.ignoresSafeArea()
                 GroupTourOverlay(walletGen: walletGen, onDismiss: onCompleted)
             }
         }

@@ -76,7 +76,7 @@ private struct UnknownResourceCard: View {
     let resource: any ResourceProtocol
 
     var body: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Image(systemName: "questionmark.square.dashed")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -84,12 +84,12 @@ private struct UnknownResourceCard: View {
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 }

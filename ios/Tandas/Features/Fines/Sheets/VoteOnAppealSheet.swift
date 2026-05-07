@@ -17,7 +17,7 @@ struct VoteOnAppealSheet: View {
             title: "Votar apelación",
             dismissAction: { isPresented = false }
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 fineCard
                 appealReasonCard
                 if let counts = voteCounts {
@@ -46,7 +46,7 @@ struct VoteOnAppealSheet: View {
     }
 
     private var fineCard: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("MULTA APELADA")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -63,17 +63,17 @@ struct VoteOnAppealSheet: View {
                 )
             }
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
     private var appealReasonCard: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("ARGUMENTO DE \(appellantName.uppercased())")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -82,27 +82,27 @@ struct VoteOnAppealSheet: View {
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
     private var votingButtons: some View {
-        VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.xs) {
             voteButton(
                 label: "A favor — anular la multa",
-                dotColor: .ruulSemanticSuccess,
+                dotColor: .ruulPositive,
                 choice: .inFavor,
                 primary: true
             )
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 voteButton(
                     label: "En contra",
-                    dotColor: .ruulSemanticError,
+                    dotColor: .ruulNegative,
                     choice: .against,
                     primary: false
                 )
@@ -121,20 +121,20 @@ struct VoteOnAppealSheet: View {
             onCast(choice)
             isPresented = false
         } label: {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Circle().fill(dotColor).frame(width: 8, height: 8)
                 Text(label)
                     .ruulTextStyle(RuulTypography.headline)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, RuulSpacing.s4)
-            .padding(.horizontal, RuulSpacing.s4)
+            .padding(.vertical, RuulSpacing.md)
+            .padding(.horizontal, RuulSpacing.md)
             .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
-            .background(primary ? Color.ruulTextPrimary : Color.ruulBackgroundElevated, in: Capsule())
+            .background(primary ? Color.ruulTextPrimary : Color.ruulSurface, in: Capsule())
             .overlay(
                 primary ? nil :
-                Capsule().stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)

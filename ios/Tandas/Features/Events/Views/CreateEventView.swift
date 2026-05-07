@@ -11,7 +11,7 @@ struct CreateEventView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     coverSection
                     titleSection
                     dateSection
@@ -26,8 +26,8 @@ struct CreateEventView: View {
                     descriptionSection
                     rulesToggleSection
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s4)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.s10)  // room for sticky CTA
             }
             .navigationTitle("Nuevo evento")
@@ -45,7 +45,7 @@ struct CreateEventView: View {
             .safeAreaInset(edge: .bottom) {
                 publishButton
             }
-            .background(Color.ruulBackgroundCanvas)
+            .background(Color.ruulBackground)
             .onChange(of: coordinator.createdEvent) { _, newValue in
                 if newValue != nil { dismiss() }
             }
@@ -71,7 +71,7 @@ struct CreateEventView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 180)
-                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 } else {
                     defaultCover
                         .frame(maxWidth: .infinity)
@@ -80,9 +80,9 @@ struct CreateEventView: View {
                 Image(systemName: "camera.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulOnImage)
-                    .padding(RuulSpacing.s2)
+                    .padding(RuulSpacing.xs)
                     .background(Color.ruulImageBadge, in: Circle())
-                    .padding(RuulSpacing.s3)
+                    .padding(RuulSpacing.sm)
             }
         }
         .buttonStyle(.ruulPress)
@@ -95,14 +95,14 @@ struct CreateEventView: View {
     }
 
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             RuulTextField(
                 placeholder,
                 text: $coordinator.draft.title,
                 label: "Título"
             )
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: RuulSpacing.s2) {
+                HStack(spacing: RuulSpacing.xs) {
                     ForEach(suggestions, id: \.self) { sug in
                         RuulChip(sug, style: .suggestion) {
                             coordinator.draft.title = sug
@@ -132,12 +132,12 @@ struct CreateEventView: View {
     @ViewBuilder
     private var hostSection: some View {
         if coordinator.group.rotationMode != .noHost {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Host")
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextSecondary)
                 RuulCard(.glass) {
-                    HStack(spacing: RuulSpacing.s3) {
+                    HStack(spacing: RuulSpacing.sm) {
                         RuulIconBadge("person.fill", size: .small)
                         Text(hostLabel)
                             .ruulTextStyle(RuulTypography.body)
@@ -183,8 +183,8 @@ struct CreateEventView: View {
                 Task { await coordinator.publish() }
             }
             .disabled(!coordinator.draft.isReadyToPublish)
-            .padding(.horizontal, RuulSpacing.s5)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.vertical, RuulSpacing.sm)
             .background(.ultraThinMaterial)
         }
     }
@@ -195,11 +195,11 @@ struct CreateEventView: View {
             title: "Elegir cover",
             dismissAction: { coverPickerPresented = false }
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 Text("Galería")
                     .ruulTextStyle(RuulTypography.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.s3) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.sm) {
                     ForEach(RuulCoverCatalog.all) { cover in
                         Button {
                             coordinator.draft.coverImageName = cover.id
@@ -209,8 +209,8 @@ struct CreateEventView: View {
                             RuulCoverView(cover)
                                 .frame(height: 80)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                                        .stroke(coordinator.draft.coverImageName == cover.id ? Color.ruulAccentPrimary : .clear, lineWidth: 3)
+                                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                                        .stroke(coordinator.draft.coverImageName == cover.id ? Color.ruulAccent : .clear, lineWidth: 3)
                                 )
                         }
                         .buttonStyle(.ruulPress)
@@ -226,16 +226,16 @@ struct CreateEventView: View {
     }
 
     private var photosPickerLabel: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "photo.on.rectangle")
-                .foregroundStyle(Color.ruulAccentPrimary)
+                .foregroundStyle(Color.ruulAccent)
             Text("Subir foto propia")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer()
         }
-        .padding(RuulSpacing.s4)
-        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular, interactive: true)
+        .padding(RuulSpacing.md)
+        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular, interactive: true)
     }
 
     // MARK: - Computed

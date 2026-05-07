@@ -13,7 +13,7 @@ struct LocationAutocompletePicker: View {
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             RuulTextField(
                 "Buscar ubicación",
                 text: $query,
@@ -33,14 +33,14 @@ struct LocationAutocompletePicker: View {
     }
 
     private var suggestionList: some View {
-        VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.xs) {
             ForEach(search.suggestions, id: \.self) { suggestion in
                 Button {
                     Task { await select(suggestion) }
                 } label: {
-                    HStack(spacing: RuulSpacing.s3) {
+                    HStack(spacing: RuulSpacing.sm) {
                         Image(systemName: "mappin")
-                            .foregroundStyle(Color.ruulAccentPrimary)
+                            .foregroundStyle(Color.ruulAccent)
                             .frame(width: 22)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.title)
@@ -56,14 +56,14 @@ struct LocationAutocompletePicker: View {
                         }
                         Spacer(minLength: 0)
                     }
-                    .padding(RuulSpacing.s3)
+                    .padding(RuulSpacing.sm)
                     .background(
-                        Color.ruulBackgroundElevated,
-                        in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                        Color.ruulSurface,
+                        in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                            .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                            .stroke(Color.ruulSeparator, lineWidth: 0.5)
                     )
                 }
                 .buttonStyle(.ruulPress)
@@ -72,9 +72,9 @@ struct LocationAutocompletePicker: View {
     }
 
     private func selectedRow(name: String) -> some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
-                .foregroundStyle(Color.ruulSemanticSuccess)
+                .foregroundStyle(Color.ruulPositive)
             Text(name)
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -90,8 +90,8 @@ struct LocationAutocompletePicker: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(RuulSpacing.s3)
-        .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .padding(RuulSpacing.sm)
+        .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
     }
 
     private func select(_ suggestion: MKLocalSearchCompletion) async {

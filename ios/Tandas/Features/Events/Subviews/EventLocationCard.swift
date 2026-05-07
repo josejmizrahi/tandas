@@ -18,13 +18,13 @@ struct EventLocationCard: View {
                     mapView(coordinate: coordinate)
                 }
                 addressRow
-                    .padding(RuulSpacing.s4)
+                    .padding(RuulSpacing.md)
             }
             .background(Color.ruulBackgroundRecessed)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -51,12 +51,12 @@ struct EventLocationCard: View {
     }
 
     private var addressRow: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 32, height: 32)
-                .background(Color.ruulBackgroundElevated, in: Circle())
+                .background(Color.ruulSurface, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(locationName)
                     .ruulTextStyle(RuulTypography.headline)

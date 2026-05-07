@@ -12,7 +12,7 @@ struct VoteDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 VoteHeader(vote: coordinator.vote)
                 SwiftUI.Group {
                     if let error = coordinator.error, coordinator.counts == nil {
@@ -25,12 +25,12 @@ struct VoteDetailView: View {
                 }
                 .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
             }
-            .padding(.horizontal, RuulSpacing.s5)
-            .padding(.top, RuulSpacing.s2)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
-        .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+        .background(Color.ruulBackground.ignoresSafeArea())
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
     }
@@ -56,16 +56,16 @@ private struct VoteHeader: View {
     let vote: Vote
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(typeLabel.uppercased())
                 .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulAccentPrimary)
+                .foregroundStyle(Color.ruulAccent)
             Text(vote.title)
                 .ruulTextStyle(RuulTypography.titleLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, RuulSpacing.s4)
+        .padding(.top, RuulSpacing.md)
     }
 
     private var typeLabel: String {

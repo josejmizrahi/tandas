@@ -20,10 +20,10 @@ public struct RuulTimelineItem: View {
         var dotColor: Color {
             switch self {
             case .neutral:  return .ruulTextTertiary
-            case .positive: return .ruulSemanticSuccess
-            case .warning:  return .ruulSemanticWarning
-            case .negative: return .ruulSemanticError
-            case .info:     return .ruulSemanticInfo
+            case .positive: return .ruulPositive
+            case .warning:  return .ruulWarning
+            case .negative: return .ruulNegative
+            case .info:     return .ruulInfo
             }
         }
     }
@@ -55,10 +55,10 @@ public struct RuulTimelineItem: View {
     }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             railColumn
             contentColumn
-                .padding(.bottom, isLast ? 0 : RuulSpacing.s5)
+                .padding(.bottom, isLast ? 0 : RuulSpacing.lg)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -72,7 +72,7 @@ public struct RuulTimelineItem: View {
             // for endpoints. Hidden when the row is both first AND last.
             if !(isFirst && isLast) {
                 Rectangle()
-                    .fill(Color.ruulBorderSubtle)
+                    .fill(Color.ruulSeparator)
                     .frame(width: 1)
                     .padding(.top, isFirst ? 24 : 0)
                     .padding(.bottom, isLast ? 0 : 0)
@@ -80,9 +80,9 @@ public struct RuulTimelineItem: View {
             }
             ZStack {
                 Circle()
-                    .fill(Color.ruulBackgroundCanvas)
+                    .fill(Color.ruulBackground)
                     .frame(width: 28, height: 28)
-                    .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                    .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -163,8 +163,8 @@ public struct RuulTimelineItem: View {
                 isLast: true
             )
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

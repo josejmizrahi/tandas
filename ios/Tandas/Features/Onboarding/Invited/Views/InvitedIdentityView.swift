@@ -18,7 +18,7 @@ struct InvitedIdentityView: View {
             primaryCTA: ("Continuar", coord.isLoading, { Task { await coord.advanceFromIdentity() } }),
             canContinue: !coord.displayName.trimmingCharacters(in: .whitespaces).isEmpty
         ) {
-            VStack(spacing: RuulSpacing.s5) {
+            VStack(spacing: RuulSpacing.lg) {
                 avatarSection
                 RuulTextField("Tu nombre", text: $bindable.displayName, label: "Nombre")
                     .focused($nameFocused)
@@ -53,9 +53,9 @@ struct InvitedIdentityView: View {
                 Image(systemName: "camera.fill")
                     .font(.system(size: RuulSize.iconSmall, weight: .semibold))
                     .foregroundStyle(Color.ruulTextInverse)
-                    .padding(RuulSpacing.s2)
+                    .padding(RuulSpacing.xs)
                     .background(Color.ruulTextPrimary, in: Circle())
-                    .offset(x: RuulSpacing.s7, y: RuulSpacing.s7)
+                    .offset(x: RuulSpacing.xxl, y: RuulSpacing.xxl)
             }
         }
         .buttonStyle(.plain)

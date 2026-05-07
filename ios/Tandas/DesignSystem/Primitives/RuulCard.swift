@@ -27,7 +27,7 @@ public struct RuulCard<Content: View>: View {
         _ style: RuulCardStyle = .tile,
         tint: Color? = nil,
         interactive: Bool = false,
-        padding: CGFloat = RuulSpacing.s5,
+        padding: CGFloat = RuulSpacing.lg,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.style = style
@@ -52,24 +52,24 @@ private struct RuulCardStyleModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
         switch style {
         case .tile:
             // Apple Sports tile: solid + 0.5pt border, NO shadow.
             content
-                .background(tint ?? Color.ruulBackgroundElevated, in: shape)
-                .overlay(shape.stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                .background(tint ?? Color.ruulSurface, in: shape)
+                .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
         case .glass:
             content
                 .ruulGlass(shape, material: .regular, tint: tint, interactive: interactive)
                 .ruulElevation(.glass)
         case .solid:
             content
-                .background(Color.ruulBackgroundElevated, in: shape)
+                .background(Color.ruulSurface, in: shape)
                 .ruulElevation(.sm)
         case .outlined:
             content
-                .overlay(shape.stroke(Color.ruulBorderDefault, lineWidth: 1))
+                .overlay(shape.stroke(Color.ruulSeparatorOpaque, lineWidth: 1))
         }
     }
 }
@@ -77,9 +77,9 @@ private struct RuulCardStyleModifier: ViewModifier {
 #if DEBUG
 #Preview("RuulCard") {
     ScrollView {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulCard(.glass) {
-                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text("Glass card")
                         .ruulTextStyle(RuulTypography.title)
                         .foregroundStyle(Color.ruulTextPrimary)
@@ -88,7 +88,7 @@ private struct RuulCardStyleModifier: ViewModifier {
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
             }
-            RuulCard(.glass, tint: .ruulAccentPrimary) {
+            RuulCard(.glass, tint: .ruulAccent) {
                 Text("Glass tinted")
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -104,8 +104,8 @@ private struct RuulCardStyleModifier: ViewModifier {
                     .foregroundStyle(Color.ruulTextPrimary)
             }
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

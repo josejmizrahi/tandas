@@ -54,10 +54,10 @@ struct EventCard: View {
                 bottomContentOverlay
             }
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -88,25 +88,25 @@ struct EventCard: View {
 
     private var topBadgesOverlay: some View {
         VStack(alignment: .leading) {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 if event.status == .inProgress {
                     livePill
                 }
                 if event.status == .cancelled {
-                    overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.ruulSemanticError)
+                    overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.ruulNegative)
                 }
                 if event.status == .closed {
                     overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.ruulImageBadge)
                 }
                 if isAtCapacity && event.status == .upcoming {
-                    overlayBadge(icon: "person.fill.checkmark", text: "Lleno", tint: Color.ruulSemanticError)
+                    overlayBadge(icon: "person.fill.checkmark", text: "Lleno", tint: Color.ruulNegative)
                 }
                 Spacer()
                 if isHostedByMe {
                     overlayBadge(icon: "star.fill", text: "Hosteas", tint: Color.ruulImageBadge)
                 }
             }
-            .padding(RuulSpacing.s3)
+            .padding(RuulSpacing.sm)
             Spacer()
         }
     }
@@ -114,7 +114,7 @@ struct EventCard: View {
     // MARK: - Bottom content (date / title / meta / footer all in white)
 
     private var bottomContentOverlay: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
@@ -128,7 +128,7 @@ struct EventCard: View {
                     .shadow(color: Color.ruulImageTextShadow, radius: 2, x: 0, y: 1)
             }
 
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 if let location = event.locationName, !location.isEmpty {
                     Label(location, systemImage: "mappin.and.ellipse")
                         .ruulTextStyle(RuulTypography.caption)
@@ -146,7 +146,7 @@ struct EventCard: View {
                 }
             }
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
     }
 
     // MARK: - Helpers
@@ -163,20 +163,20 @@ struct EventCard: View {
     }
 
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: RuulSpacing.s1) {
+        HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
             Text(text)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, RuulSpacing.s2)
-        .padding(.vertical, RuulSpacing.s1 + 1)
+        .padding(.horizontal, RuulSpacing.xs)
+        .padding(.vertical, RuulSpacing.xxs + 1)
         .background(tint, in: Capsule())
     }
 
     private var livePill: some View {
-        HStack(spacing: RuulSpacing.s1 + 1) {
+        HStack(spacing: RuulSpacing.xxs + 1) {
             Circle()
                 .fill(Color.ruulOnImage)
                 .frame(width: 6, height: 6)
@@ -184,9 +184,9 @@ struct EventCard: View {
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, RuulSpacing.s2)
-        .padding(.vertical, RuulSpacing.s1 + 1)
-        .background(Color.ruulSemanticError, in: Capsule())
+        .padding(.horizontal, RuulSpacing.xs)
+        .padding(.vertical, RuulSpacing.xxs + 1)
+        .background(Color.ruulNegative, in: Capsule())
     }
 
     private func myRSVPPill(_ status: RSVPStatus) -> some View {
@@ -199,15 +199,15 @@ struct EventCard: View {
             case .pending:    return ("circle", "")
             }
         }()
-        return HStack(spacing: RuulSpacing.s1) {
+        return HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
             Text(label)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, RuulSpacing.s2)
-        .padding(.vertical, RuulSpacing.s1)
+        .padding(.horizontal, RuulSpacing.xs)
+        .padding(.vertical, RuulSpacing.xxs)
         .background(Color.ruulImagePill, in: Capsule())
         .overlay(Capsule().stroke(Color.ruulImagePillBorder, lineWidth: 0.5))
     }

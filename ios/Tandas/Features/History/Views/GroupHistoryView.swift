@@ -11,14 +11,14 @@ struct GroupHistoryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 header
                 if coordinator.hasAnyFilter {
                     activeFilterBar
                 }
                 content
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
         }
         .navigationTitle("Historia")
         .navigationBarTitleDisplayMode(.large)
@@ -46,7 +46,7 @@ struct GroupHistoryView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("\(coordinator.events.count) eventos")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -54,7 +54,7 @@ struct GroupHistoryView: View {
     }
 
     private var activeFilterBar: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             if let t = coordinator.filter.eventType {
                 filterChip(label: t.rawString) {
                     coordinator.setEventType(nil)
@@ -82,10 +82,10 @@ struct GroupHistoryView: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }
-        .padding(.horizontal, RuulSpacing.s2)
+        .padding(.horizontal, RuulSpacing.xs)
         .padding(.vertical, 4)
         .background(
-            Capsule().fill(Color.ruulBackgroundElevated)
+            Capsule().fill(Color.ruulSurface)
         )
     }
 
@@ -139,7 +139,7 @@ struct GroupHistoryView: View {
             if coordinator.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, RuulSpacing.s4)
+                    .padding(.vertical, RuulSpacing.md)
             }
         }
     }
@@ -169,7 +169,7 @@ struct HistoryFilterSheet: View {
             title: "Filtrar",
             primaryCTA: ("Aplicar", dismiss)
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 typeSection
                 dateSection
                 Button("Limpiar filtros") {
@@ -179,14 +179,14 @@ struct HistoryFilterSheet: View {
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextAccent)
                 .frame(maxWidth: .infinity)
-                .padding(RuulSpacing.s3)
+                .padding(RuulSpacing.sm)
             }
         }
     }
 
     private var typeSection: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Tipo de evento")
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -206,7 +206,7 @@ struct HistoryFilterSheet: View {
 
     private var dateSection: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Rango de fecha")
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)

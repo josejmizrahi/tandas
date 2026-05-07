@@ -122,7 +122,7 @@ public struct RuulCoverView: View {
             }
             decorationLayer
         }
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
     }
 
     /// 4x4 = 16 control points. Corners + edge midpoints stay locked; the four
@@ -220,7 +220,7 @@ private struct RaysOverlay: View {
 #if DEBUG
 #Preview("RuulCoverCatalog") {
     ScrollView {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.s3) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.sm) {
             ForEach(RuulCoverCatalog.all) { cover in
                 VStack(spacing: 4) {
                     RuulCoverView(cover)
@@ -231,8 +231,8 @@ private struct RaysOverlay: View {
                 }
             }
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

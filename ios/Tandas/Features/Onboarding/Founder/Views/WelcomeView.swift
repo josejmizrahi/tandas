@@ -5,11 +5,11 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
-            VStack(spacing: RuulSpacing.s7) {
+            Color.ruulBackground.ignoresSafeArea()
+            VStack(spacing: RuulSpacing.xxl) {
                 Spacer()
                 wordmark
-                VStack(spacing: RuulSpacing.s3) {
+                VStack(spacing: RuulSpacing.sm) {
                     Text("Bienvenido a ruul")
                         .ruulTextStyle(RuulTypography.displayLarge)
                         .foregroundStyle(Color.ruulTextPrimary)
@@ -23,8 +23,8 @@ struct WelcomeView: View {
                 RuulButton("Empezar", style: .primary, size: .large, fillsWidth: true) {
                     Task { await coord.advanceFromWelcome() }
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.bottom, RuulSpacing.s5)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.bottom, RuulSpacing.lg)
             }
         }
         .toolbar(.hidden, for: .navigationBar)

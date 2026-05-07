@@ -9,7 +9,7 @@ struct AttendeesListSection: View {
     @State private var expanded: Set<RSVPStatus> = [.going]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             avatarStack
             ForEach(RSVPStatus.allCases, id: \.self) { status in
                 section(for: status)
@@ -36,14 +36,14 @@ struct AttendeesListSection: View {
     private func section(for status: RSVPStatus) -> some View {
         let filtered = rsvps.filter { $0.status == status }
         if !filtered.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Button {
                     withAnimation(.ruulSnappy) {
                         if expanded.contains(status) { expanded.remove(status) }
                         else { expanded.insert(status) }
                     }
                 } label: {
-                    HStack(spacing: RuulSpacing.s2) {
+                    HStack(spacing: RuulSpacing.xs) {
                         sectionIcon(for: status)
                         Text(sectionLabel(for: status).uppercased())
                             .ruulTextStyle(RuulTypography.sectionLabelLg)
@@ -60,7 +60,7 @@ struct AttendeesListSection: View {
                 }
                 .buttonStyle(.plain)
                 if expanded.contains(status) {
-                    VStack(spacing: RuulSpacing.s2) {
+                    VStack(spacing: RuulSpacing.xs) {
                         ForEach(filtered, id: \.id) { rsvp in
                             attendeeRow(rsvp)
                         }
@@ -73,7 +73,7 @@ struct AttendeesListSection: View {
 
     private func attendeeRow(_ rsvp: RSVP) -> some View {
         let info = memberLookup(rsvp.userId)
-        return HStack(spacing: RuulSpacing.s3) {
+        return HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: info.name, imageURL: info.avatarURL, size: .small)
             VStack(alignment: .leading, spacing: 2) {
                 Text(info.name)
@@ -82,21 +82,21 @@ struct AttendeesListSection: View {
                 if rsvp.isCheckedIn, let arrived = rsvp.arrivedAt {
                     Text("Llegó \(arrived.ruulShortTime)")
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticSuccess)
+                        .foregroundStyle(Color.ruulPositive)
                 }
             }
             Spacer()
         }
-        .padding(.vertical, RuulSpacing.s1)
+        .padding(.vertical, RuulSpacing.xxs)
     }
 
     private func sectionIcon(for status: RSVPStatus) -> some View {
         let (icon, color): (String, Color) = {
             switch status {
-            case .going:      return ("checkmark.circle.fill", .ruulSemanticSuccess)
-            case .maybe:      return ("questionmark.circle.fill", .ruulSemanticWarning)
-            case .declined:   return ("xmark.circle.fill", .ruulSemanticError)
-            case .waitlisted: return ("person.crop.circle.badge.clock", .ruulSemanticWarning)
+            case .going:      return ("checkmark.circle.fill", .ruulPositive)
+            case .maybe:      return ("questionmark.circle.fill", .ruulWarning)
+            case .declined:   return ("xmark.circle.fill", .ruulNegative)
+            case .waitlisted: return ("person.crop.circle.badge.clock", .ruulWarning)
             case .pending:    return ("clock", .ruulTextTertiary)
             }
         }()

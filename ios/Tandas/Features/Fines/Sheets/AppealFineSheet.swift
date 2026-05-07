@@ -16,7 +16,7 @@ struct AppealFineSheet: View {
             title: "Apelar multa",
             dismissAction: { isPresented = false }
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Cuéntale al grupo por qué crees que esta multa no aplica. Tendrán 72 horas para votar.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -42,7 +42,7 @@ struct AppealFineSheet: View {
     }
 
     private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack {
                 Text(fine.reason)
                     .ruulTextStyle(RuulTypography.callout)
@@ -56,12 +56,12 @@ struct AppealFineSheet: View {
                 )
             }
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 

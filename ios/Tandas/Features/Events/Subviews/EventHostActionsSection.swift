@@ -17,7 +17,7 @@ struct EventHostActionsSection: View {
     let onIssueManualFine: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("COMO HOST")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -37,7 +37,7 @@ struct EventHostActionsSection: View {
 
     private var statsCard: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack(alignment: .lastTextBaseline) {
                     HStack(spacing: 6) {
                         Text("\(totalConfirmed)")
@@ -58,7 +58,7 @@ struct EventHostActionsSection: View {
     }
 
     private var actionsCard: some View {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             RuulActionableCard(
                 icon: "bell.badge",
                 title: "Mandar recordatorio",
@@ -84,7 +84,7 @@ struct EventHostActionsSection: View {
                 icon: "xmark.circle",
                 title: "Cancelar evento",
                 subtitle: "Avisamos a todos los confirmados.",
-                tint: .ruulSemanticError,
+                tint: .ruulNegative,
                 accessory: .none,
                 action: onCancelEvent
             )
@@ -107,7 +107,7 @@ struct EventHostActionsSection: View {
 
     private var autoGenerateToggleCard: some View {
         RuulCard(.tile) {
-            HStack(alignment: .top, spacing: RuulSpacing.s3) {
+            HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 RuulIconBadge("arrow.triangle.2.circlepath", size: .small)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Generación automática")
@@ -126,7 +126,7 @@ struct EventHostActionsSection: View {
                     }
                 ))
                 .labelsHidden()
-                .tint(Color.ruulAccentPrimary)
+                .tint(Color.ruulAccent)
             }
         }
     }

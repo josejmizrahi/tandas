@@ -9,23 +9,23 @@ struct GenericVoteBody: View {
     @Bindable var coordinator: VoteDetailCoordinator
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 Text(desc)
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
 
-            VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text("PAYLOAD")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text(payloadJSON)
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(Color.ruulTextSecondary)
-                    .padding(RuulSpacing.s3)
+                    .padding(RuulSpacing.sm)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous))
+                    .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous))
             }
         }
     }

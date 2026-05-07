@@ -6,7 +6,7 @@ import SwiftUI
 /// pasado").
 ///
 /// Designed to compose in dashboards (group health, host stats) without
-/// adding chrome — the surface is `ruulBackgroundElevated` with the
+/// adding chrome — the surface is `ruulSurface` with the
 /// signature 0.5pt subtle border.
 public struct RuulMetricCard: View {
     public enum Size: Sendable, Hashable {
@@ -30,8 +30,8 @@ public struct RuulMetricCard: View {
 
         var color: Color {
             switch self {
-            case .up:   return .ruulSemanticSuccess
-            case .down: return .ruulSemanticError
+            case .up:   return .ruulPositive
+            case .down: return .ruulNegative
             case .flat: return .ruulTextTertiary
             }
         }
@@ -67,7 +67,7 @@ public struct RuulMetricCard: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -77,15 +77,15 @@ public struct RuulMetricCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: shape)
-        .overlay(shape.stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: shape)
+        .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
     }
 
     private var valueRow: some View {
@@ -107,7 +107,7 @@ public struct RuulMetricCard: View {
     }
 
     private func trendRow(_ trend: Trend) -> some View {
-        HStack(spacing: RuulSpacing.s1) {
+        HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: trend.icon)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(trend.color)
@@ -144,7 +144,7 @@ public struct RuulMetricCard: View {
 #if DEBUG
 #Preview("RuulMetricCard") {
     ScrollView {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             RuulMetricCard(
                 label: "ASISTENCIA PROMEDIO",
                 value: "87",
@@ -152,7 +152,7 @@ public struct RuulMetricCard: View {
                 trend: .up("+5% vs mes pasado"),
                 size: .hero
             )
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 RuulMetricCard(
                     label: "MULTAS DEL MES",
                     value: "1240",
@@ -174,8 +174,8 @@ public struct RuulMetricCard: View {
                 size: .regular
             )
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

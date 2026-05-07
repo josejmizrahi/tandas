@@ -94,14 +94,14 @@ private struct RuulContactsPreview: View {
     @State var picks: [RuulContactPick] = []
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulButton("Pick contacts") { presented = true }
             ForEach(picks) { pick in
                 Text("\(pick.name) — \(pick.phoneRaw)")
                     .ruulTextStyle(RuulTypography.body)
             }
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
         .ruulContactsPicker(isPresented: $presented) { newPicks in
             picks = newPicks
         }

@@ -28,7 +28,7 @@ struct AddManualFineSheet: View {
                 if let error = coordinator.error {
                     Text(error)
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticError)
+                        .foregroundStyle(Color.ruulNegative)
                 }
                 submitButton
             }
@@ -41,11 +41,11 @@ struct AddManualFineSheet: View {
     // MARK: - Member picker
 
     private var memberPickerSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿A QUIÉN?")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 ForEach(coordinator.members) { mwp in
                     memberRow(mwp)
                 }
@@ -59,7 +59,7 @@ struct AddManualFineSheet: View {
         return Button {
             coordinator.selectedMemberId = mwp.member.userId
         } label: {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 RuulAvatar(name: mwp.displayName, imageURL: mwp.avatarURL, size: .medium)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mwp.displayName)
@@ -69,25 +69,25 @@ struct AddManualFineSheet: View {
                     if mwp.member.isFounder {
                         Text("ADMIN")
                             .ruulTextStyle(RuulTypography.footnote)
-                            .foregroundStyle(Color.ruulAccentPrimary)
+                            .foregroundStyle(Color.ruulAccent)
                     }
                 }
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .foregroundStyle(Color.ruulAccent)
                 }
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(isSelected ? Color.ruulAccentSubtle : Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(isSelected ? Color.ruulAccentMuted : Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(isSelected ? Color.ruulAccentPrimary : Color.ruulBorderSubtle,
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparator,
                             lineWidth: isSelected ? 1.5 : 0.5)
             )
         }

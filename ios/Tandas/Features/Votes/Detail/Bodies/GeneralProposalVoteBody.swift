@@ -7,7 +7,7 @@ struct GeneralProposalVoteBody: View {
     @Bindable var coordinator: VoteDetailCoordinator
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 Text(desc)
                     .ruulTextStyle(RuulTypography.body)
@@ -19,7 +19,7 @@ struct GeneralProposalVoteBody: View {
                     .foregroundStyle(Color.ruulTextTertiary)
             }
 
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")

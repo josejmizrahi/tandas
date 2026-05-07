@@ -9,8 +9,8 @@ struct RecurrenceOptionsCard: View {
 
     var body: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-                HStack(spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                HStack(spacing: RuulSpacing.sm) {
                     RuulIconBadge("arrow.triangle.2.circlepath", size: .small)
                     Text("¿Crear los siguientes automáticamente?")
                         .ruulTextStyle(RuulTypography.headline)

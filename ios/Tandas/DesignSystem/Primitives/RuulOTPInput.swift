@@ -24,7 +24,7 @@ public struct RuulOTPInput: View {
 
     public var body: some View {
         ZStack {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 ForEach(0..<length, id: \.self) { index in
                     OTPSlot(
                         char: char(at: index),
@@ -101,13 +101,13 @@ private struct OTPSlot: View {
         }
         .frame(width: 46, height: 56)
         .ruulGlass(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous),
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous),
             material: .regular,
             tint: tintColor,
             interactive: false
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .stroke(strokeColor, lineWidth: 1.5)
         )
         .animation(.ruulSnappy, value: isFocused)
@@ -115,15 +115,15 @@ private struct OTPSlot: View {
     }
 
     private var tintColor: Color? {
-        if hasError { return Color.ruulSemanticError.opacity(0.25) }
-        if isFocused { return Color.ruulAccentPrimary.opacity(0.20) }
+        if hasError { return Color.ruulNegative.opacity(0.25) }
+        if isFocused { return Color.ruulAccent.opacity(0.20) }
         return nil
     }
 
     private var strokeColor: Color {
-        if hasError { return .ruulSemanticError }
-        if isFocused { return .ruulAccentPrimary }
-        return .ruulBorderSubtle
+        if hasError { return .ruulNegative }
+        if isFocused { return .ruulAccent }
+        return .ruulSeparator
     }
 }
 
@@ -133,7 +133,7 @@ private struct RuulOTPInputPreview: View {
     @State var hasError = false
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s7) {
+        VStack(spacing: RuulSpacing.xxl) {
             Spacer()
             Text("Código de verificación").ruulTextStyle(RuulTypography.headline)
             RuulOTPInput(code: $code, hasError: $hasError) { _ in
@@ -142,8 +142,8 @@ private struct RuulOTPInputPreview: View {
             RuulButton("Trigger error") { hasError = true }
             Spacer()
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

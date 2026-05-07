@@ -23,10 +23,10 @@ struct RuleChangeVoteBody: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             // Razón del cambio (description del vote).
             if let desc = coordinator.vote.description, !desc.isEmpty {
-                VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("RAZÓN")
                         .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
@@ -38,19 +38,19 @@ struct RuleChangeVoteBody: View {
             }
 
             // Diff visual.
-            VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text("CAMBIO PROPUESTO")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                HStack(spacing: RuulSpacing.s4) {
+                HStack(spacing: RuulSpacing.md) {
                     amountChip(label: "Actual",  value: currentAmount,  tint: Color.ruulTextTertiary)
                     Image(systemName: "arrow.right")
                         .foregroundStyle(Color.ruulTextTertiary)
-                    amountChip(label: "Nuevo",   value: proposedAmount, tint: Color.ruulSemanticSuccess)
+                    amountChip(label: "Nuevo",   value: proposedAmount, tint: Color.ruulPositive)
                 }
             }
 
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
@@ -70,8 +70,8 @@ struct RuleChangeVoteBody: View {
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(tint)
         }
-        .padding(RuulSpacing.s3)
+        .padding(RuulSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous))
     }
 }

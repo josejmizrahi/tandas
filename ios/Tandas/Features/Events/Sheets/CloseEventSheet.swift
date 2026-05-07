@@ -14,7 +14,7 @@ struct CloseEventSheet: View {
                 isPresented = false
             })
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Después de cerrar, no se podrán hacer más check-ins.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)

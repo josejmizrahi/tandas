@@ -55,7 +55,7 @@ public struct RuulButton: View {
                 .controlSize(.small)
                 .tint(foreground)
         } else {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 if let systemImage { Image(systemName: systemImage) }
                 Text(title).ruulTextStyle(textStyle)
             }
@@ -65,10 +65,10 @@ public struct RuulButton: View {
     private var foreground: Color {
         switch style {
         case .primary:     return .ruulTextInverse
-        case .secondary:   return .ruulAccentPrimary
+        case .secondary:   return .ruulAccent
         case .glass:       return .ruulTextPrimary
         case .destructive: return .ruulTextInverse
-        case .plain:       return .ruulAccentPrimary
+        case .plain:       return .ruulAccent
         }
     }
 
@@ -90,9 +90,9 @@ public struct RuulButton: View {
 
     private var horizontalPadding: CGFloat {
         switch size {
-        case .small:  return RuulSpacing.s3
-        case .medium: return RuulSpacing.s5
-        case .large:  return RuulSpacing.s7
+        case .small:  return RuulSpacing.sm
+        case .medium: return RuulSpacing.lg
+        case .large:  return RuulSpacing.xxl
         }
     }
 }
@@ -105,7 +105,7 @@ private struct StyleBackground: ViewModifier {
         switch style {
         case .primary:
             content
-                .background(Capsule().fill(Color.ruulAccentPrimary))
+                .background(Capsule().fill(Color.ruulAccent))
                 .ruulElevation(.sm)
         case .secondary:
             content
@@ -115,7 +115,7 @@ private struct StyleBackground: ViewModifier {
                 .ruulGlass(Capsule(), material: .regular, interactive: true)
         case .destructive:
             content
-                .background(Capsule().fill(Color.ruulSemanticError))
+                .background(Capsule().fill(Color.ruulNegative))
                 .ruulElevation(.sm)
         case .plain:
             content
@@ -126,14 +126,14 @@ private struct StyleBackground: ViewModifier {
 #if DEBUG
 #Preview("RuulButton") {
     ScrollView {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             ForEach([RuulButton.Size.small, .medium, .large], id: \.self) { size in
                 Text("\(String(describing: size))").ruulTextStyle(RuulTypography.footnote)
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     RuulButton("Primary", style: .primary, size: size) {}
                     RuulButton("Secondary", style: .secondary, size: size) {}
                 }
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     RuulButton("Glass", style: .glass, size: size) {}
                     RuulButton("Destruct", style: .destructive, size: size) {}
                     RuulButton("Plain", style: .plain, size: size) {}
@@ -145,8 +145,8 @@ private struct StyleBackground: ViewModifier {
                 .disabled(true)
             RuulButton("Full width", style: .primary, size: .large, fillsWidth: true) {}
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

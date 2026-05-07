@@ -29,11 +29,11 @@ public struct RuulDatePicker: View {
             }
         }
         .datePickerStyle(.compact)
-        .tint(Color.ruulAccentPrimary)
-        .padding(.horizontal, RuulSpacing.s4)
-        .padding(.vertical, RuulSpacing.s2)
+        .tint(Color.ruulAccent)
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.xs)
         .ruulGlass(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous),
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous),
             material: .regular
         )
     }
@@ -45,12 +45,12 @@ private struct RuulDatePickerPreview: View {
     @State var datetime = Date()
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulDatePicker("Fecha", date: $date)
             RuulDatePicker("Fecha y hora", date: $datetime, components: [.date, .hourAndMinute])
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

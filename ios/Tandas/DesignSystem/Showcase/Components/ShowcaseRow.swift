@@ -14,7 +14,7 @@ struct ShowcaseRow<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack {
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)

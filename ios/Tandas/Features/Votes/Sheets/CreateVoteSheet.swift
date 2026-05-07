@@ -12,11 +12,11 @@ struct CreateVoteSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+                VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                     Text("¿Qué quieres proponer?")
                         .ruulTextStyle(RuulTypography.title)
                         .foregroundStyle(Color.ruulTextPrimary)
-                        .padding(.bottom, RuulSpacing.s2)
+                        .padding(.bottom, RuulSpacing.xs)
 
                     voteTypeCard(
                         title: "Propuesta general",
@@ -37,7 +37,7 @@ struct CreateVoteSheet: View {
                     Text("PRÓXIMAMENTE")
                         .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.lg)
 
                     voteTypeCard(title: "Archivar regla",       subtitle: "Quitar una regla del grupo.",            icon: "trash",                              enabled: false, onTap: {})
                     voteTypeCard(title: "Remover miembro",      subtitle: "Sacar a alguien del grupo.",             icon: "person.fill.xmark",                  enabled: false, onTap: {})
@@ -45,10 +45,10 @@ struct CreateVoteSheet: View {
                     voteTypeCard(title: "Asignar rol",          subtitle: "Promover a alguien a treasurer/etc.",    icon: "person.badge.shield.checkmark",      enabled: false, onTap: {})
                     voteTypeCard(title: "Disputa de slot",      subtitle: "Resolver disputa sobre un boleto/cupo.", icon: "ticket",                              enabled: false, onTap: {})
                 }
-                .padding(RuulSpacing.s5)
+                .padding(RuulSpacing.lg)
             }
             .scrollIndicators(.hidden)
-            .background(Color.ruulBackgroundCanvas)
+            .background(Color.ruulBackground)
             .navigationTitle("Nueva votación")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -61,12 +61,12 @@ struct CreateVoteSheet: View {
 
     private func voteTypeCard(title: String, subtitle: String, icon: String, enabled: Bool, onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(enabled ? Color.ruulAccentPrimary : Color.ruulTextTertiary)
+                    .foregroundStyle(enabled ? Color.ruulAccent : Color.ruulTextTertiary)
                     .frame(width: 44, height: 44)
-                    .background(Color.ruulBackgroundElevated, in: Circle())
+                    .background(Color.ruulSurface, in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .ruulTextStyle(RuulTypography.headline)
@@ -83,11 +83,11 @@ struct CreateVoteSheet: View {
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }
-            .padding(RuulSpacing.s4)
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .padding(RuulSpacing.md)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
             .opacity(enabled ? 1.0 : 0.6)
         }

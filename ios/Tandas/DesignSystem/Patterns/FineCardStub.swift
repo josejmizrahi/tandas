@@ -35,7 +35,7 @@ public struct FineCardStub: View {
 
     public var body: some View {
         RuulCard(.glass) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(data.reason)
@@ -52,7 +52,7 @@ public struct FineCardStub: View {
                     .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulTextPrimary)
                 if data.status == .pending {
-                    HStack(spacing: RuulSpacing.s2) {
+                    HStack(spacing: RuulSpacing.xs) {
                         if onPay != nil {
                             RuulButton("Pagar", style: .primary, size: .medium, fillsWidth: true) { onPay?() }
                         }
@@ -69,11 +69,11 @@ public struct FineCardStub: View {
     private var statusChip: some View {
         switch data.status {
         case .pending:
-            chip("Pendiente", tint: .ruulSemanticWarning)
+            chip("Pendiente", tint: .ruulWarning)
         case .paid:
-            chip("Pagada", tint: .ruulSemanticSuccess)
+            chip("Pagada", tint: .ruulPositive)
         case .appealed:
-            chip("Apelada", tint: .ruulSemanticInfo)
+            chip("Apelada", tint: .ruulInfo)
         case .waived:
             chip("Condonada", tint: .ruulTextTertiary)
         }
@@ -83,7 +83,7 @@ public struct FineCardStub: View {
         Text(label)
             .ruulTextStyle(RuulTypography.caption)
             .foregroundStyle(tint)
-            .padding(.horizontal, RuulSpacing.s2)
+            .padding(.horizontal, RuulSpacing.xs)
             .padding(.vertical, 4)
             .background(tint.opacity(0.15), in: Capsule())
     }
@@ -100,7 +100,7 @@ public struct FineCardStub: View {
 #if DEBUG
 #Preview("FineCardStub") {
     ScrollView {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             FineCardStub(
                 .init(id: "1", reason: "Llegaste 30 min tarde a la cena", amount: 50, dateText: "Mié 7 may", status: .pending),
                 onPay: { },
@@ -110,8 +110,8 @@ public struct FineCardStub: View {
             FineCardStub(.init(id: "3", reason: "RSVP cambiado tarde", amount: 75, dateText: "Lun 28 abr", status: .appealed))
             FineCardStub(.init(id: "4", reason: "Multa condonada (amnesty)", amount: 50, dateText: "Lun 21 abr", status: .waived))
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

@@ -22,11 +22,11 @@ public struct RuulSegmentedControl<Value: Hashable & Sendable>: View {
                         .ruulTextStyle(RuulTypography.callout)
                         .foregroundStyle(isSelected ? Color.ruulTextInverse : Color.ruulTextPrimary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.s2)
+                        .padding(.vertical, RuulSpacing.xs)
                         .background {
                             if isSelected {
                                 Capsule()
-                                    .fill(Color.ruulAccentPrimary)
+                                    .fill(Color.ruulAccent)
                                     .matchedGeometryEffect(id: "selection", in: namespace)
                             }
                         }
@@ -34,7 +34,7 @@ public struct RuulSegmentedControl<Value: Hashable & Sendable>: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(RuulSpacing.s1)
+        .padding(RuulSpacing.xxs)
         .ruulGlass(Capsule(), material: .regular)
         .ruulHaptic(.selection, trigger: selection)
     }
@@ -48,14 +48,14 @@ private struct RuulSegmentedControlPreview: View {
     @State var sel: Tab = .events
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s5) {
+        VStack(spacing: RuulSpacing.lg) {
             RuulSegmentedControl(
                 selection: $sel,
                 segments: Tab.allCases.map { ($0, $0.rawValue) }
             )
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

@@ -32,7 +32,7 @@ public struct MemberRowStub: View {
     }
 
     public var body: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: data.name, imageURL: data.avatarURL, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(data.name)
@@ -55,7 +55,7 @@ public struct MemberRowStub: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .contentShape(Rectangle())
         .onTapGesture { action?() }
     }
@@ -70,8 +70,8 @@ public struct MemberRowStub: View {
         Divider()
         MemberRowStub(.init(id: "3", name: "Ben Levi", subtitle: "miembro · grace", metaText: "—"))
     }
-    .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

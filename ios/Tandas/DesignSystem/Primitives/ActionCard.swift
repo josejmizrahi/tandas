@@ -19,9 +19,9 @@ public struct ActionCard: View {
         var dotColor: Color {
             switch self {
             case .low:    return .ruulTextTertiary
-            case .medium: return .ruulSemanticInfo
-            case .high:   return .ruulSemanticWarning
-            case .urgent: return .ruulSemanticError
+            case .medium: return .ruulInfo
+            case .high:   return .ruulWarning
+            case .urgent: return .ruulNegative
             }
         }
 
@@ -63,16 +63,16 @@ public struct ActionCard: View {
 
     public var body: some View {
         Button(action: onTap) {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 iconBadge
                 contentColumn
                 Spacer(minLength: 0)
                 trailingColumn
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity)
-            .background(Color.ruulBackgroundElevated, in: shape)
-            .overlay(shape.stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+            .background(Color.ruulSurface, in: shape)
+            .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
         }
         .buttonStyle(.ruulPress)
         .accessibilityElement(children: .combine)
@@ -81,15 +81,15 @@ public struct ActionCard: View {
     }
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
     }
 
     private var iconBadge: some View {
         ZStack {
             Circle()
-                .fill(Color.ruulBackgroundCanvas)
+                .fill(Color.ruulBackground)
                 .frame(width: 40, height: 40)
-                .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -104,7 +104,7 @@ public struct ActionCard: View {
                     .foregroundStyle(Color.ruulTextAccent)
                     .lineLimit(1)
             }
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Circle()
                     .fill(priority.dotColor)
                     .frame(width: 8, height: 8)
@@ -125,7 +125,7 @@ public struct ActionCard: View {
     }
 
     private var trailingColumn: some View {
-        VStack(alignment: .trailing, spacing: RuulSpacing.s1) {
+        VStack(alignment: .trailing, spacing: RuulSpacing.xxs) {
             if let timeRemaining {
                 Text(timeRemaining)
                     .ruulTextStyle(RuulTypography.statSmall)
@@ -151,7 +151,7 @@ public struct ActionCard: View {
 #if DEBUG
 #Preview("ActionCard") {
     ScrollView {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             ActionCard(
                 icon: "exclamationmark.triangle.fill",
                 title: "Multa pendiente: $300",
@@ -191,8 +191,8 @@ public struct ActionCard: View {
                 onTap: {}
             )
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

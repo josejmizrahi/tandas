@@ -17,7 +17,7 @@ struct PrimitivesShowcaseView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: RuulSpacing.s4) {
+            VStack(spacing: RuulSpacing.md) {
                 buttonsSection
                 textFieldSection
                 otpSection
@@ -38,15 +38,15 @@ struct PrimitivesShowcaseView: View {
                 metricCardSection
                 timelineSection
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
         .ruulToast($toast)
     }
 
     private var buttonsSection: some View {
         ShowcaseSection("RuulButton", subtitle: "5 styles × 3 sizes + loading + disabled") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack {
                     RuulButton("Primary", style: .primary) {}
                     RuulButton("Secondary", style: .secondary) {}
@@ -64,7 +64,7 @@ struct PrimitivesShowcaseView: View {
 
     private var textFieldSection: some View {
         ShowcaseSection("RuulTextField") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuulTextField("Tu nombre", text: $name, label: "Nombre")
                 RuulTextField("Buscar", text: .constant(""), style: .search)
                 RuulTextField("Email", text: .constant("bad@"), label: "Email", style: .email, error: "Email inválido")
@@ -74,7 +74,7 @@ struct PrimitivesShowcaseView: View {
 
     private var otpSection: some View {
         ShowcaseSection("RuulOTPInput") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuulOTPInput(code: $otp, hasError: $otpError)
                 RuulButton("Trigger error", style: .secondary, size: .small) { otpError = true }
             }
@@ -83,7 +83,7 @@ struct PrimitivesShowcaseView: View {
 
     private var cardSection: some View {
         ShowcaseSection("RuulCard") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuulCard(.glass) { Text("Glass card").ruulTextStyle(RuulTypography.body) }
                 RuulCard(.solid) { Text("Solid card").ruulTextStyle(RuulTypography.body) }
                 RuulCard(.outlined) { Text("Outlined card").ruulTextStyle(RuulTypography.body) }
@@ -93,17 +93,17 @@ struct PrimitivesShowcaseView: View {
 
     private var progressSection: some View {
         ShowcaseSection("RuulProgressBar") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 RuulProgressBar(value: sliderValue)
                 RuulProgressBar(value: sliderValue, style: .steps(5))
-                Slider(value: $sliderValue, in: 0...1).tint(Color.ruulAccentPrimary)
+                Slider(value: $sliderValue, in: 0...1).tint(Color.ruulAccent)
             }
         }
     }
 
     private var avatarSection: some View {
         ShowcaseSection("RuulAvatar / RuulAvatarStack") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack {
                     RuulAvatar(name: "Jose", size: .small)
                     RuulAvatar(name: "Ana", size: .medium)
@@ -138,7 +138,7 @@ struct PrimitivesShowcaseView: View {
 
     private var toggleSection: some View {
         ShowcaseSection("RuulToggle") {
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 RuulToggle("Notificaciones", isOn: $toggleOn)
                 RuulToggle("Auto-RSVP", isOn: .constant(false), description: "Confirma automáticamente.")
             }
@@ -157,7 +157,7 @@ struct PrimitivesShowcaseView: View {
 
     private var datePickerSection: some View {
         ShowcaseSection("RuulDatePicker") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuulDatePicker("Fecha", date: $date)
                 RuulDatePicker("Fecha y hora", date: $date, components: [.date, .hourAndMinute])
             }
@@ -170,15 +170,15 @@ struct PrimitivesShowcaseView: View {
                 RuulIconBadge("calendar", size: .small)
                 RuulIconBadge("calendar", size: .medium)
                 RuulIconBadge("calendar", size: .large)
-                RuulIconBadge("checkmark", tint: .ruulSemanticSuccess)
-                RuulIconBadge("xmark", tint: .ruulSemanticError)
+                RuulIconBadge("checkmark", tint: .ruulPositive)
+                RuulIconBadge("xmark", tint: .ruulNegative)
             }
         }
     }
 
     private var meshSection: some View {
         ShowcaseSection("RuulMeshBackground", subtitle: "3 variants") {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 meshThumbnail(.cool, label: "cool")
                 meshThumbnail(.violet, label: "violet")
                 meshThumbnail(.aqua, label: "aqua")
@@ -192,14 +192,14 @@ struct PrimitivesShowcaseView: View {
                 RuulMeshBackground(variant)
             }
             .frame(width: 100, height: 80)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium))
             Text(label).ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
         }
     }
 
     private var presentationSection: some View {
         ShowcaseSection("RuulSheet / RuulFullScreenCover") {
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 RuulButton("Show sheet", style: .secondary) { sheetPresented = true }
                 RuulButton("Show full-screen cover", style: .secondary) { coverPresented = true }
             }
@@ -222,7 +222,7 @@ struct PrimitivesShowcaseView: View {
 
     private var toastSection: some View {
         ShowcaseSection("RuulToast") {
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 ForEach([RuulToast.Style.success, .warning, .error, .info], id: \.self) { style in
                     RuulButton("\(String(describing: style))", style: .secondary, size: .small) {
                         toast = .init("Toast", message: "\(String(describing: style)) example", style: style)
@@ -236,7 +236,7 @@ struct PrimitivesShowcaseView: View {
 
     private var templatePickerSection: some View {
         ShowcaseSection("TemplatePickerCard", subtitle: "single-select template tile, supports coming-soon variant") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 TemplatePickerCard(
                     icon: "fork.knife.circle.fill",
                     title: "Cena recurrente",
@@ -259,7 +259,7 @@ struct PrimitivesShowcaseView: View {
 
     private var actionCardSection: some View {
         ShowcaseSection("ActionCard", subtitle: "inbox row — type icon + priority dot + time-remaining") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 ActionCard(
                     icon: "exclamationmark.triangle.fill",
                     title: "Multa pendiente: $300",
@@ -288,7 +288,7 @@ struct PrimitivesShowcaseView: View {
 
     private var metricCardSection: some View {
         ShowcaseSection("RuulMetricCard", subtitle: "stat tile — compact / regular / hero with trend deltas") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuulMetricCard(
                     label: "ASISTENCIA PROMEDIO",
                     value: "87",
@@ -296,7 +296,7 @@ struct PrimitivesShowcaseView: View {
                     trend: .up("+5% vs mes pasado"),
                     size: .hero
                 )
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     RuulMetricCard(label: "MULTAS DEL MES", value: "1240", unitPrefix: "$", trend: .down("-15%"), size: .compact)
                     RuulMetricCard(label: "EVENTOS", value: "4", trend: .flat("igual"), size: .compact)
                 }

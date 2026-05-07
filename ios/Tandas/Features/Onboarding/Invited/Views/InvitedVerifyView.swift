@@ -14,7 +14,7 @@ struct InvitedVerifyView: View {
             primaryCTA: ("Enviar código", coord.isLoading, sendCode),
             canContinue: !phoneInput.trimmingCharacters(in: .whitespaces).isEmpty
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 RuulPhoneField(
                     text: $phoneInput,
                     label: "Tu número",

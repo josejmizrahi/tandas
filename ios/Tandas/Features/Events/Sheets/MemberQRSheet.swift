@@ -14,15 +14,15 @@ struct MemberQRSheet: View {
             dismissAction: { isPresented = false },
             primaryCTA: ("Listo", { isPresented = false })
         ) {
-            VStack(spacing: RuulSpacing.s5) {
+            VStack(spacing: RuulSpacing.lg) {
                 Text("Muestra este código al host para marcar tu llegada.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
                 qrImage
                     .frame(width: 240, height: 240)
-                    .padding(RuulSpacing.s4)
-                    .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                    .padding(RuulSpacing.md)
+                    .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 Text(eventTitle)
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)

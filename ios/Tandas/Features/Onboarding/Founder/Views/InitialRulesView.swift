@@ -15,7 +15,7 @@ struct InitialRulesView: View {
             secondaryCTA: ("Mi grupo no usa multas", { Task { await coord.skipRules() } }),
             canContinue: true
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 ForEach(coord.draft.rules.indices, id: \.self) { idx in
                     ruleCard(at: idx)
                 }
@@ -23,16 +23,16 @@ struct InitialRulesView: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticError)
-                        .padding(RuulSpacing.s3)
+                        .foregroundStyle(Color.ruulNegative)
+                        .padding(RuulSpacing.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                                .fill(Color.ruulSemanticError.opacity(0.08))
+                            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                                .fill(Color.ruulNegative.opacity(0.08))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                                .stroke(Color.ruulSemanticError.opacity(0.4), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                                .stroke(Color.ruulNegative.opacity(0.4), lineWidth: 1)
                         )
                 }
             }
@@ -54,9 +54,9 @@ struct InitialRulesView: View {
     private func ruleCard(at idx: Int) -> some View {
         let rule = coord.draft.rules[idx]
         return RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+                    VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                         Text(rule.title)
                             .ruulTextStyle(RuulTypography.headline)
                             .foregroundStyle(Color.ruulTextPrimary)
@@ -75,7 +75,7 @@ struct InitialRulesView: View {
                         set: { coord.draft.rules[idx].enabled = $0 }
                     ))
                     .labelsHidden()
-                    .tint(Color.ruulAccentPrimary)
+                    .tint(Color.ruulAccent)
                 }
                 if rule.enabled {
                     HStack {
@@ -101,7 +101,7 @@ struct InitialRulesView: View {
 
     private var rotationSection: some View {
         @Bindable var b = coord
-        return VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        return VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Tu grupo rota anfitrión?")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -128,16 +128,16 @@ struct InitialRulesView: View {
             title: rule.title,
             primaryCTA: ("Entendido", { infoRule = nil })
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text(rule.description)
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(exampleText(for: rule))
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
-                    .padding(RuulSpacing.s4)
+                    .padding(RuulSpacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                    .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             }
         }
     }

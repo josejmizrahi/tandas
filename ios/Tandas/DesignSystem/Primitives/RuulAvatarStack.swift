@@ -68,14 +68,14 @@ public struct RuulAvatarStack: View {
     let crowd = (1...12).map { i in
         RuulAvatarStack.Person(id: "\(i)", name: "Person \(i)")
     }
-    return VStack(spacing: RuulSpacing.s5) {
+    return VStack(spacing: RuulSpacing.lg) {
         RuulAvatarStack(people: Array(crowd.prefix(3)))
         RuulAvatarStack(people: Array(crowd.prefix(5)))
         RuulAvatarStack(people: crowd, maxVisible: 5)
         RuulAvatarStack(people: crowd, size: .large, maxVisible: 4)
         RuulAvatarStack(people: Array(crowd.prefix(4)), size: .small)
     }
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

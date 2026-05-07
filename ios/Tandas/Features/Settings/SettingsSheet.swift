@@ -17,9 +17,9 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     profileHeader
-                        .padding(.top, RuulSpacing.s2)
+                        .padding(.top, RuulSpacing.xs)
 
                     section(title: "Apariencia") {
                         appearancePicker
@@ -29,10 +29,10 @@ struct SettingsSheet: View {
                         signOutButton
                     }
                 }
-                .padding(.horizontal, RuulSpacing.s4)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+            .background(Color.ruulBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }
@@ -45,12 +45,12 @@ struct SettingsSheet: View {
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
     }
 
     private var profileHeader: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: app.profile?.displayName ?? "?", size: .large)
             VStack(alignment: .leading, spacing: 2) {
                 Text(app.profile?.displayName ?? "—")
@@ -67,48 +67,48 @@ struct SettingsSheet: View {
 
     @ViewBuilder
     private func section<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
                 .ruulTextStyle(RuulTypography.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.leading, RuulSpacing.s1)
+                .padding(.leading, RuulSpacing.xxs)
             content()
         }
     }
 
     private var appearancePicker: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             ForEach(AppearanceOption.allCases) { option in
                 Button {
                     appearance.wrappedValue = option
                 } label: {
-                    VStack(spacing: RuulSpacing.s1) {
+                    VStack(spacing: RuulSpacing.xxs) {
                         Image(systemName: option.systemImage)
                             .font(.system(size: 22, weight: .medium))
                         Text(option.label)
                             .ruulTextStyle(RuulTypography.callout)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, RuulSpacing.s4)
+                    .padding(.vertical, RuulSpacing.md)
                     .foregroundStyle(
                         appearance.wrappedValue == option
                             ? Color.ruulTextPrimary
                             : Color.ruulTextSecondary
                     )
                     .background(
-                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                        RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                             .fill(
                                 appearance.wrappedValue == option
                                     ? Color.ruulBackgroundRecessed
-                                    : Color.ruulBackgroundElevated
+                                    : Color.ruulSurface
                             )
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                        RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                             .stroke(
                                 appearance.wrappedValue == option
                                     ? Color.ruulBorderStrong
-                                    : Color.ruulBorderSubtle,
+                                    : Color.ruulSeparator,
                                 lineWidth: 1
                             )
                     )
@@ -133,16 +133,16 @@ struct SettingsSheet: View {
                     .ruulTextStyle(RuulTypography.body)
                 Spacer()
             }
-            .foregroundStyle(Color.ruulSemanticError)
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s4)
+            .foregroundStyle(Color.ruulNegative)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

@@ -26,7 +26,7 @@ public struct RuulIconBadge: View {
     private let tint: Color
     private let size: Size
 
-    public init(_ systemImage: String, tint: Color = .ruulAccentPrimary, size: Size = .medium) {
+    public init(_ systemImage: String, tint: Color = .ruulAccent, size: Size = .medium) {
         self.systemImage = systemImage
         self.tint = tint
         self.size = size
@@ -43,19 +43,19 @@ public struct RuulIconBadge: View {
 
 #if DEBUG
 #Preview("RuulIconBadge") {
-    HStack(spacing: RuulSpacing.s4) {
-        VStack(spacing: RuulSpacing.s3) {
+    HStack(spacing: RuulSpacing.md) {
+        VStack(spacing: RuulSpacing.sm) {
             RuulIconBadge("calendar", size: .small)
             RuulIconBadge("calendar", size: .medium)
             RuulIconBadge("calendar", size: .large)
         }
-        VStack(spacing: RuulSpacing.s3) {
-            RuulIconBadge("checkmark", tint: .ruulSemanticSuccess)
-            RuulIconBadge("exclamationmark.triangle", tint: .ruulSemanticWarning)
-            RuulIconBadge("xmark", tint: .ruulSemanticError)
+        VStack(spacing: RuulSpacing.sm) {
+            RuulIconBadge("checkmark", tint: .ruulPositive)
+            RuulIconBadge("exclamationmark.triangle", tint: .ruulWarning)
+            RuulIconBadge("xmark", tint: .ruulNegative)
         }
     }
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

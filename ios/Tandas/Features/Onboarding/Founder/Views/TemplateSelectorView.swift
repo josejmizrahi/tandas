@@ -18,7 +18,7 @@ struct TemplateSelectorView: View {
             title: "¿Qué tipo de grupo es?",
             subtitle: "Elige el template — define cómo se comporta. Después puedes personalizar todo."
         ) {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 TemplatePickerCard(
                     icon: "fork.knife.circle.fill",
                     title: "Cena recurrente",

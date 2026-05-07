@@ -40,7 +40,7 @@ public struct MainAppScreenTemplate<Value: Hashable & Sendable, Content: View>: 
                     .tag(tab.id)
             }
         }
-        .tint(Color.ruulAccentPrimary)
+        .tint(Color.ruulAccent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
     }
@@ -63,7 +63,7 @@ private struct MainAppScreenTemplatePreview: View {
             selection: $selection
         ) { tab in
             ZStack {
-                Color.ruulBackgroundCanvas.ignoresSafeArea()
+                Color.ruulBackground.ignoresSafeArea()
                 Text("Tab: \(String(describing: tab))")
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)

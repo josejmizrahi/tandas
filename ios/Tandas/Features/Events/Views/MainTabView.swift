@@ -231,7 +231,7 @@ struct MainTabView: View {
                     }
                 } else {
                     ZStack {
-                        Color.ruulBackgroundCanvas.ignoresSafeArea()
+                        Color.ruulBackground.ignoresSafeArea()
                         RuulLoadingState()
                     }
                 }
@@ -316,7 +316,7 @@ struct MainTabView: View {
                     }
                 } else {
                     ZStack {
-                        Color.ruulBackgroundCanvas.ignoresSafeArea()
+                        Color.ruulBackground.ignoresSafeArea()
                         RuulLoadingState()
                     }
                 }
@@ -604,7 +604,7 @@ struct MainTabView: View {
                     }
                 } else {
                     ZStack {
-                        Color.ruulBackgroundCanvas.ignoresSafeArea()
+                        Color.ruulBackground.ignoresSafeArea()
                         RuulLoadingState()
                     }
                 }

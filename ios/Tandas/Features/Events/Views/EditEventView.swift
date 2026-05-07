@@ -16,7 +16,7 @@ struct EditEventView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     coverSection
                     titleSection
                     dateSection
@@ -27,11 +27,11 @@ struct EditEventView: View {
                     if let error = coordinator.error {
                         Text(error.localizedDescription)
                             .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulSemanticError)
+                            .foregroundStyle(Color.ruulNegative)
                     }
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s4)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.s10)
             }
             .navigationTitle("Editar evento")
@@ -44,7 +44,7 @@ struct EditEventView: View {
             .safeAreaInset(edge: .bottom) {
                 saveButton
             }
-            .background(Color.ruulBackgroundCanvas)
+            .background(Color.ruulBackground)
             .onChange(of: coordinator.updatedEvent) { _, newValue in
                 if newValue != nil { dismiss() }
             }
@@ -70,7 +70,7 @@ struct EditEventView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 180)
-                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 } else {
                     defaultCover
                         .frame(maxWidth: .infinity)
@@ -79,9 +79,9 @@ struct EditEventView: View {
                 Image(systemName: "camera.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulOnImage)
-                    .padding(RuulSpacing.s2)
+                    .padding(RuulSpacing.xs)
                     .background(Color.ruulImageBadge, in: Circle())
-                    .padding(RuulSpacing.s3)
+                    .padding(RuulSpacing.sm)
             }
         }
         .buttonStyle(.ruulPress)
@@ -120,12 +120,12 @@ struct EditEventView: View {
     @ViewBuilder
     private var hostSection: some View {
         if coordinator.group.rotationMode != .noHost {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("HOST")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
                 RuulCard(.tile) {
-                    HStack(spacing: RuulSpacing.s3) {
+                    HStack(spacing: RuulSpacing.sm) {
                         RuulIconBadge("person.fill", size: .small)
                         Text(coordinator.draft.hostId == nil ? "Sin asignar" : "Asignado")
                             .ruulTextStyle(RuulTypography.body)
@@ -166,8 +166,8 @@ struct EditEventView: View {
                 Task { await coordinator.save() }
             }
             .disabled(!coordinator.draft.isReadyToPublish)
-            .padding(.horizontal, RuulSpacing.s5)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.vertical, RuulSpacing.sm)
             .background(.regularMaterial)
         }
     }
@@ -178,11 +178,11 @@ struct EditEventView: View {
             title: "Elegir cover",
             dismissAction: { coverPickerPresented = false }
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 Text("GALERÍA")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.s3) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.sm) {
                     ForEach(RuulCoverCatalog.all) { cover in
                         Button {
                             coordinator.draft.coverImageName = cover.id
@@ -192,8 +192,8 @@ struct EditEventView: View {
                             RuulCoverView(cover)
                                 .frame(height: 80)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                                        .stroke(coordinator.draft.coverImageName == cover.id ? Color.ruulAccentPrimary : .clear, lineWidth: 3)
+                                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                                        .stroke(coordinator.draft.coverImageName == cover.id ? Color.ruulAccent : .clear, lineWidth: 3)
                                 )
                         }
                         .buttonStyle(.ruulPress)

@@ -20,7 +20,7 @@ struct SystemEventDetailView: View {
             title: titleText,
             primaryCTA: ("Cerrar", dismiss)
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 metadataCard
                 if !payloadEntries.isEmpty {
                     payloadCard
@@ -31,7 +31,7 @@ struct SystemEventDetailView: View {
 
     private var metadataCard: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 row("Tipo", event.eventType.rawString)
                 row("Cuándo", Self.absoluteFormatter.string(from: event.occurredAt))
                 if let name = memberName {
@@ -48,7 +48,7 @@ struct SystemEventDetailView: View {
 
     private var payloadCard: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Datos")
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)

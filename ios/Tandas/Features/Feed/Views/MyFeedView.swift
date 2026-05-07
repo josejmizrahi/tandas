@@ -18,9 +18,9 @@ struct MyFeedView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                     if let err = coordinator.loadError {
                         errorBanner(err)
                     }
@@ -30,8 +30,8 @@ struct MyFeedView: View {
                         contentSections
                     }
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s2)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.xs)
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
@@ -58,7 +58,7 @@ struct MyFeedView: View {
         events: [Event],
         isFirst: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             sectionHeader(section: section, count: events.count)
 
             // Hero treatment: first event of the FIRST non-empty section
@@ -131,23 +131,23 @@ struct MyFeedView: View {
     }
 
     private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.ruulSemanticError)
+                .foregroundStyle(Color.ruulNegative)
             Text(message)
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .lineLimit(2)
         }
-        .padding(RuulSpacing.s3)
+        .padding(RuulSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .fill(Color.ruulSemanticError.opacity(0.08))
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(Color.ruulNegative.opacity(0.08))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.ruulSemanticError.opacity(0.3), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulNegative.opacity(0.3), lineWidth: 0.5)
         )
     }
 }

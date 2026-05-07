@@ -13,7 +13,7 @@ struct CheckInSection: View {
     let onHostMarkCheckIn: (UUID) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             if isVisible {
                 Text("CHECK-IN")
                     .ruulTextStyle(RuulTypography.sectionLabel)
@@ -39,11 +39,11 @@ struct CheckInSection: View {
 
     private var notYetCheckedInCard: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Marca tu llegada")
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
-                HStack(spacing: RuulSpacing.s2) {
+                HStack(spacing: RuulSpacing.xs) {
                     RuulButton("Ya llegué", systemImage: "checkmark", style: .primary, size: .medium, fillsWidth: true, action: onSelfCheckIn)
                     RuulButton("Mi QR", systemImage: "qrcode", style: .glass, size: .medium, action: onShowQR)
                 }
@@ -52,11 +52,11 @@ struct CheckInSection: View {
     }
 
     private func checkedInCard(arrivedAt: Date) -> some View {
-        RuulCard(.tile, tint: .ruulSemanticSuccess) {
-            HStack(spacing: RuulSpacing.s3) {
+        RuulCard(.tile, tint: .ruulPositive) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(Color.ruulSemanticSuccess)
+                    .foregroundStyle(Color.ruulPositive)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Llegaste a las \(arrivedAt.ruulShortTime)")
                         .ruulTextStyle(RuulTypography.headline)
@@ -74,7 +74,7 @@ struct CheckInSection: View {
     private var hostSection: some View {
         let confirmedNotCheckedIn = confirmedRSVPs.filter { !$0.isCheckedIn }
         if !confirmedNotCheckedIn.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("MARCA LLEGADAS")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
@@ -86,15 +86,15 @@ struct CheckInSection: View {
                         }
                     }
                 }
-                .padding(RuulSpacing.s3)
-                .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .padding(RuulSpacing.sm)
+                .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             }
         }
     }
 
     private func hostRow(for rsvp: RSVP) -> some View {
         let info = memberLookup(rsvp.userId)
-        return HStack(spacing: RuulSpacing.s3) {
+        return HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: info.name, imageURL: info.avatarURL, size: .small)
             Text(info.name)
                 .ruulTextStyle(RuulTypography.body)
@@ -104,9 +104,9 @@ struct CheckInSection: View {
                 if newValue { onHostMarkCheckIn(rsvp.userId) }
             }))
             .labelsHidden()
-            .tint(Color.ruulSemanticSuccess)
+            .tint(Color.ruulPositive)
         }
-        .padding(.vertical, RuulSpacing.s2)
+        .padding(.vertical, RuulSpacing.xs)
     }
 
     /// Visible from 2h before start until 12h after.

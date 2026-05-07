@@ -28,13 +28,13 @@ public struct RuulPhoneField: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let label {
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 countryButton
                 Divider().frame(height: 22)
                 TextField("Tu número", text: $text)
@@ -44,11 +44,11 @@ public struct RuulPhoneField: View {
                     .focused($isFocused)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
-            .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
+            .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(borderColor, lineWidth: borderWidth)
             )
             .animation(.ruulSnappy, value: isFocused)
@@ -57,7 +57,7 @@ public struct RuulPhoneField: View {
             if let error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
         }
     }
@@ -85,9 +85,9 @@ public struct RuulPhoneField: View {
     }
 
     private var borderColor: Color {
-        if error != nil { return .ruulSemanticError }
-        if isFocused    { return .ruulAccentPrimary }
-        return .ruulBorderSubtle
+        if error != nil { return .ruulNegative }
+        if isFocused    { return .ruulAccent }
+        return .ruulSeparator
     }
 
     private var borderWidth: CGFloat {
@@ -120,15 +120,15 @@ private struct RuulPhoneFieldPreview: View {
     @State var withError = "555"
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulPhoneField(text: $phone, label: "Tu número")
             Text(verbatim: "E.164: \(RuulPhoneField(text: .constant(phone)).e164 ?? "—")")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             RuulPhoneField(text: $withError, defaultCountry: .usa, label: "Con error", error: "Número muy corto")
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

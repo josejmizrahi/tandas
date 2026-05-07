@@ -16,7 +16,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.s8) {
                     header
@@ -24,8 +24,8 @@ struct HomeView: View {
                     upcomingListSection
                     pastEventsLink
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s2)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.xs)
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
@@ -61,7 +61,7 @@ struct HomeView: View {
                 groupNameLabel
             }
             Spacer()
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 // Calendar icon removed: redundant with HomeView itself
                 // (this view IS events). Cross-group feed now lives inside
                 // the group Menu below ("Ver todos mis eventos").
@@ -80,7 +80,7 @@ struct HomeView: View {
                 }
             }
         }
-        .padding(.top, RuulSpacing.s4)
+        .padding(.top, RuulSpacing.md)
     }
 
     private func headerIconButton(
@@ -93,8 +93,8 @@ struct HomeView: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 40, height: 40)
-                .background(Color.ruulBackgroundElevated, in: Circle())
-                .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                .background(Color.ruulSurface, in: Circle())
+                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
@@ -144,7 +144,7 @@ struct HomeView: View {
                 }
             }
         } label: {
-            HStack(alignment: .center, spacing: RuulSpacing.s2) {
+            HStack(alignment: .center, spacing: RuulSpacing.xs) {
                 Text(coordinator.group.name)
                     .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -193,7 +193,7 @@ struct HomeView: View {
                     .frame(minHeight: 360, alignment: .top)
                     .transition(.opacity)
             } else if let next = coordinator.nextEvent {
-                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text("PRÓXIMO")
                         .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
@@ -232,10 +232,10 @@ struct HomeView: View {
                 heroBottomBlock(event)
             }
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -243,7 +243,7 @@ struct HomeView: View {
 
     private func heroTopBadges(_ event: Event) -> some View {
         VStack {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 if event.hostId == userId {
                     overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.ruulImageBadge)
                 }
@@ -252,14 +252,14 @@ struct HomeView: View {
                     overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.ruulImageBadge)
                 }
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             Spacer()
         }
     }
 
     private func heroBottomBlock(_ event: Event) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(heroDateLine(event))
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulOnImageSecondary)
@@ -291,7 +291,7 @@ struct HomeView: View {
                 inlineCTAButton(for: event)
             }
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
 
     private func heroDateLine(_ event: Event) -> String {
@@ -320,24 +320,24 @@ struct HomeView: View {
                     .font(.system(size: 14, weight: .bold))
             }
             .foregroundStyle(Color.ruulOnImageInverse)
-            .padding(RuulSpacing.s4)
-            .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .padding(RuulSpacing.md)
+            .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         }
         .buttonStyle(.ruulPress)
-        .padding(.top, RuulSpacing.s2)
+        .padding(.top, RuulSpacing.xs)
     }
 
     private func rsvpStatusOverlay(for status: RSVPStatus) -> some View {
         let (dotColor, text): (Color, String) = {
             switch status {
-            case .going:      return (.ruulSemanticSuccess, "Vas")
-            case .maybe:      return (.ruulSemanticWarning, "Estás considerando")
-            case .declined:   return (.ruulSemanticError,   "No vas")
-            case .waitlisted: return (.ruulSemanticWarning, "En lista de espera")
+            case .going:      return (.ruulPositive, "Vas")
+            case .maybe:      return (.ruulWarning, "Estás considerando")
+            case .declined:   return (.ruulNegative,   "No vas")
+            case .waitlisted: return (.ruulWarning, "En lista de espera")
             case .pending:    return (.ruulTextTertiary,    "Pendiente")
             }
         }()
-        return HStack(spacing: RuulSpacing.s2) {
+        return HStack(spacing: RuulSpacing.xs) {
             Circle()
                 .fill(dotColor)
                 .frame(width: 8, height: 8)
@@ -349,29 +349,29 @@ struct HomeView: View {
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(Color.ruulOnImageSecondary)
         }
-        .padding(.vertical, RuulSpacing.s3)
-        .padding(.horizontal, RuulSpacing.s4)
-        .background(Color.ruulImagePill, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .padding(.vertical, RuulSpacing.sm)
+        .padding(.horizontal, RuulSpacing.md)
+        .background(Color.ruulImagePill, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .stroke(Color.ruulImagePillBorder, lineWidth: 0.5)
         )
-        .padding(.top, RuulSpacing.s2)
+        .padding(.top, RuulSpacing.xs)
     }
 
     // MARK: - Empty state
 
     private var emptyHero: some View {
-        VStack(spacing: RuulSpacing.s5) {
+        VStack(spacing: RuulSpacing.lg) {
             ZStack {
                 Circle()
-                    .fill(Color.ruulBackgroundElevated)
+                    .fill(Color.ruulSurface)
                     .frame(width: 80, height: 80)
                 Image(systemName: "calendar.badge.plus")
                     .font(.system(size: 32, weight: .semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
             }
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 Text("Aún no hay eventos")
                     .ruulTextStyle(RuulTypography.titleLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -383,11 +383,11 @@ struct HomeView: View {
             RuulButton("Crear evento", systemImage: "plus", style: .primary, size: .large, action: onCreateEvent)
         }
         .frame(maxWidth: .infinity)
-        .padding(RuulSpacing.s7)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
+        .padding(RuulSpacing.xxl)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
@@ -397,7 +397,7 @@ struct HomeView: View {
     private var upcomingListSection: some View {
         let rest = Array(coordinator.upcomingEvents.dropFirst())
         if !rest.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("PRÓXIMOS")
                         .ruulTextStyle(RuulTypography.sectionLabel)
@@ -410,7 +410,7 @@ struct HomeView: View {
                 // Apple Invites pattern: hero anchors the eye, rest are
                 // compact rows so the screen breathes. Heavy EventCards
                 // here would compete with the hero for attention.
-                VStack(spacing: RuulSpacing.s2) {
+                VStack(spacing: RuulSpacing.xs) {
                     ForEach(rest) { event in
                         EventRow(
                             event: event,
@@ -431,7 +431,7 @@ struct HomeView: View {
     private var pastEventsLink: some View {
         if !coordinator.upcomingEvents.isEmpty {
             Button(action: onOpenPastEvents) {
-                HStack(spacing: RuulSpacing.s2) {
+                HStack(spacing: RuulSpacing.xs) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 14, weight: .semibold))
                     Text("Ver historial")
@@ -441,7 +441,7 @@ struct HomeView: View {
                         .font(.system(size: 12, weight: .bold))
                 }
                 .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.vertical, RuulSpacing.s4)
+                .padding(.vertical, RuulSpacing.md)
             }
             .buttonStyle(.plain)
         }
@@ -460,7 +460,7 @@ struct HomeView: View {
                 .ruulElevation(.lg)
         }
         .buttonStyle(.ruulPress)
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
         .accessibilityLabel("Crear evento")
     }
 
@@ -486,15 +486,15 @@ struct HomeView: View {
     }
 
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: RuulSpacing.s1) {
+        HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
             Text(text)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }
         .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, RuulSpacing.s2)
-        .padding(.vertical, RuulSpacing.s1 + 1)
+        .padding(.horizontal, RuulSpacing.xs)
+        .padding(.vertical, RuulSpacing.xxs + 1)
         .background(tint, in: Capsule())
     }
 }

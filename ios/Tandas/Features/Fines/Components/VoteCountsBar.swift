@@ -7,17 +7,17 @@ struct VoteCountsBar: View {
     let counts: VoteCounts
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: 2) {
-                segment(width: ratio(counts.inFavor), color: .ruulSemanticSuccess)
-                segment(width: ratio(counts.against), color: .ruulSemanticError)
+                segment(width: ratio(counts.inFavor), color: .ruulPositive)
+                segment(width: ratio(counts.against), color: .ruulNegative)
                 segment(width: ratio(counts.pending + counts.abstained), color: .ruulTextTertiary)
             }
             .frame(height: 6)
             .clipShape(Capsule())
-            HStack(spacing: RuulSpacing.s4) {
-                legendItem(color: .ruulSemanticSuccess, label: "A favor", count: counts.inFavor)
-                legendItem(color: .ruulSemanticError,   label: "En contra", count: counts.against)
+            HStack(spacing: RuulSpacing.md) {
+                legendItem(color: .ruulPositive, label: "A favor", count: counts.inFavor)
+                legendItem(color: .ruulNegative,   label: "En contra", count: counts.against)
                 Spacer()
                 legendItem(color: .ruulTextTertiary,    label: "Pendiente", count: counts.pending)
             }
@@ -38,7 +38,7 @@ struct VoteCountsBar: View {
     }
 
     private func legendItem(color: Color, label: String, count: Int) -> some View {
-        HStack(spacing: RuulSpacing.s1) {
+        HStack(spacing: RuulSpacing.xxs) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(label)
                 .ruulTextStyle(RuulTypography.caption)

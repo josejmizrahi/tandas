@@ -23,7 +23,7 @@ struct GroupVocabularyView: View {
             onSkip: { Task { await coord.skipVocabulary() } },
             canContinue: true
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 vocabularySection
                 frequencySection
                 if coord.draft.frequencyType != nil && coord.draft.frequencyType != .unscheduled {
@@ -38,7 +38,7 @@ struct GroupVocabularyView: View {
     }
 
     private var vocabularySection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Cómo le dicen?")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -59,7 +59,7 @@ struct GroupVocabularyView: View {
     }
 
     private var frequencySection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Cada cuánto?")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -76,7 +76,7 @@ struct GroupVocabularyView: View {
     }
 
     private var dayTimeSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text("Día y hora")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)

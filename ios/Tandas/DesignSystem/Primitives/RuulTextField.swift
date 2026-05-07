@@ -41,13 +41,13 @@ public struct RuulTextField: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let label {
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 if style == .search {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(Color.ruulTextTertiary)
@@ -64,11 +64,11 @@ public struct RuulTextField: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
-            .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
+            .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(borderColor, lineWidth: borderWidth)
             )
             .animation(.ruulSnappy, value: isFocused)
@@ -77,7 +77,7 @@ public struct RuulTextField: View {
             if let error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             } else if let description {
                 Text(description)
                     .ruulTextStyle(RuulTypography.caption)
@@ -129,9 +129,9 @@ public struct RuulTextField: View {
     }
 
     private var borderColor: Color {
-        if error != nil { return .ruulSemanticError }
-        if isFocused    { return .ruulAccentPrimary }
-        return .ruulBorderSubtle
+        if error != nil { return .ruulNegative }
+        if isFocused    { return .ruulAccent }
+        return .ruulSeparator
     }
 
     private var borderWidth: CGFloat {
@@ -150,7 +150,7 @@ private struct RuulTextFieldPreview: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 RuulTextField("Tu nombre", text: $name, label: "Nombre", description: "Visible para tu grupo.")
                 RuulTextField("tu@email.com", text: $email, label: "Email", style: .email, error: email.contains("@") && email.contains(".") ? nil : "Email inválido")
                 RuulTextField("+5215555551234", text: $phone, label: "Teléfono", style: .phone)
@@ -158,9 +158,9 @@ private struct RuulTextFieldPreview: View {
                 RuulTextField("Contraseña", text: $password, label: "Password", style: .password)
                 RuulTextField("Disabled", text: .constant("read only"), label: "Disabled", isDisabled: true)
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
     }
 }
 

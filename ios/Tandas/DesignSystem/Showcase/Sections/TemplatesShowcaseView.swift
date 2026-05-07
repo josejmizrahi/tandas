@@ -9,16 +9,16 @@ struct TemplatesShowcaseView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: RuulSpacing.s4) {
+            VStack(spacing: RuulSpacing.md) {
                 onboardingTemplateSection
                 mainAppTemplateSection
                 resourceTabBarSection
                 detailTemplateSection
                 modalTemplateSection
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
     }
 
     private var onboardingTemplateSection: some View {
@@ -32,7 +32,7 @@ struct TemplatesShowcaseView: View {
                     subtitle: "Mesh background + step container.",
                     primaryCTA: ("Continuar", false, { })
                 ) {
-                    Color.ruulBackgroundElevated.frame(height: 120)
+                    Color.ruulSurface.frame(height: 120)
                 }
             }
             .frame(height: 460)
@@ -50,7 +50,7 @@ struct TemplatesShowcaseView: View {
                 selection: $demoTab
             ) { tab in
                 ZStack {
-                    Color.ruulBackgroundCanvas.ignoresSafeArea()
+                    Color.ruulBackground.ignoresSafeArea()
                     Text("Tab \(String(describing: tab))").ruulTextStyle(RuulTypography.title)
                 }
             }
@@ -70,7 +70,7 @@ struct TemplatesShowcaseView: View {
                 selection: $resourceTab
             ) { tab in
                 ZStack {
-                    Color.ruulBackgroundCanvas.ignoresSafeArea()
+                    Color.ruulBackground.ignoresSafeArea()
                     Text("\(String(describing: tab))").ruulTextStyle(RuulTypography.title)
                 }
             }
@@ -105,7 +105,7 @@ struct TemplatesShowcaseView: View {
                 RuulTextField("Demo input", text: .constant(""))
             }
             .frame(height: 320)
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.xl))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge))
         }
     }
 }

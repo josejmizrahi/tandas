@@ -38,8 +38,8 @@ public struct RuulFlowChips<Value: Hashable & Sendable>: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-            FlowLayout(spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            FlowLayout(spacing: RuulSpacing.xs) {
                 ForEach(options) { option in
                     chip(label: option.label, isSelected: selection == option.value) {
                         selection = option.value
@@ -121,7 +121,7 @@ private struct RuulFlowChipsPreview: View {
     @State var custom: String = ""
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s5) {
+        VStack(spacing: RuulSpacing.lg) {
             RuulFlowChips(
                 selection: $selection,
                 options: [
@@ -137,8 +137,8 @@ private struct RuulFlowChipsPreview: View {
                 customValue: $custom
             )
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

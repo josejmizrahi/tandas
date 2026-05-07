@@ -37,15 +37,15 @@ public struct TemplatePickerCard: View {
 
     public var body: some View {
         Button(action: { if !isComingSoon { onSelect() } }) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 header
                 if !bullets.isEmpty {
                     bulletList
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(RuulSpacing.s5)
-            .background(Color.ruulBackgroundElevated, in: shape)
+            .padding(RuulSpacing.lg)
+            .background(Color.ruulSurface, in: shape)
             .overlay(borderOverlay)
             .overlay(alignment: .topTrailing) { selectionBadge }
             .opacity(isComingSoon ? 0.55 : 1.0)
@@ -60,18 +60,18 @@ public struct TemplatePickerCard: View {
     // MARK: - Header (icon + title + subtitle)
 
     private var header: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             ZStack {
                 Circle()
-                    .fill(Color.ruulBackgroundCanvas)
+                    .fill(Color.ruulBackground)
                     .frame(width: 44, height: 44)
-                    .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                    .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: RuulSpacing.s2) {
+                HStack(spacing: RuulSpacing.xs) {
                     Text(title)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
@@ -79,11 +79,11 @@ public struct TemplatePickerCard: View {
                         Text("PRÓXIMAMENTE")
                             .ruulTextStyle(RuulTypography.sectionLabel)
                             .foregroundStyle(Color.ruulTextTertiary)
-                            .padding(.horizontal, RuulSpacing.s2)
+                            .padding(.horizontal, RuulSpacing.xs)
                             .padding(.vertical, 2)
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
                             )
                     }
                 }
@@ -99,9 +99,9 @@ public struct TemplatePickerCard: View {
     // MARK: - Bullet list (feature highlights)
 
     private var bulletList: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             ForEach(bullets, id: \.self) { bullet in
-                HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.s2) {
+                HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                     Circle()
                         .fill(Color.ruulTextTertiary)
                         .frame(width: 4, height: 4)
@@ -118,7 +118,7 @@ public struct TemplatePickerCard: View {
     // MARK: - Selection chrome
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
     }
 
     @ViewBuilder
@@ -126,7 +126,7 @@ public struct TemplatePickerCard: View {
         if isSelected {
             shape.stroke(Color.ruulTextPrimary, lineWidth: 2)
         } else {
-            shape.stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            shape.stroke(Color.ruulSeparator, lineWidth: 0.5)
         }
     }
 
@@ -141,7 +141,7 @@ public struct TemplatePickerCard: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.ruulTextInverse)
             }
-            .padding(RuulSpacing.s3)
+            .padding(RuulSpacing.sm)
             .transition(.scale.combined(with: .opacity))
         }
     }
@@ -161,7 +161,7 @@ public struct TemplatePickerCard: View {
         @State var selected: String = "dinner"
         var body: some View {
             ScrollView {
-                VStack(spacing: RuulSpacing.s3) {
+                VStack(spacing: RuulSpacing.sm) {
                     TemplatePickerCard(
                         icon: "fork.knife.circle.fill",
                         title: "Cena recurrente",
@@ -191,9 +191,9 @@ public struct TemplatePickerCard: View {
                         onSelect: {}
                     )
                 }
-                .padding(RuulSpacing.s5)
+                .padding(RuulSpacing.lg)
             }
-            .background(Color.ruulBackgroundCanvas)
+            .background(Color.ruulBackground)
         }
     }
     return Demo()

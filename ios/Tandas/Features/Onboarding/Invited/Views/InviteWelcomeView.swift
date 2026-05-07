@@ -23,17 +23,17 @@ struct InviteWelcomeView: View {
                 message: "Pídele a tu amigo que te mande una nueva.",
                 retryAction: nil
             )
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         } else if let preview = coord.preview {
             previewLayout(for: preview)
         }
     }
 
     private func previewLayout(for preview: InvitePreview) -> some View {
-        VStack(spacing: RuulSpacing.s7) {
+        VStack(spacing: RuulSpacing.xxl) {
             Spacer()
             cover(for: preview)
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 Text("Te invitaron a \(preview.groupName)")
                     .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -45,14 +45,14 @@ struct InviteWelcomeView: View {
             }
             avatarStack(for: preview)
             Spacer()
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 RuulButton("Ahorita no", style: .glass, size: .large, fillsWidth: true, action: onDecline)
                 RuulButton("Unirme", style: .primary, size: .large, fillsWidth: true) {
                     Task { await coord.acceptInvitation() }
                 }
             }
-            .padding(.horizontal, RuulSpacing.s5)
-            .padding(.bottom, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.bottom, RuulSpacing.lg)
         }
     }
 
@@ -60,7 +60,7 @@ struct InviteWelcomeView: View {
         let cover = RuulCoverCatalog.cover(named: preview.coverImageName)
         return RuulCoverView(cover)
             .frame(height: RuulSize.heroBanner)
-            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
     }
 
     private func metaCopy(for preview: InvitePreview) -> String {

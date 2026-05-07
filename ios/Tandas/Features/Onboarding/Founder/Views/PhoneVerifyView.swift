@@ -18,7 +18,7 @@ struct PhoneVerifyView: View {
             primaryCTA: ("Enviar código", coord.isLoading, sendCode),
             canContinue: !phoneInput.trimmingCharacters(in: .whitespaces).isEmpty
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 appleSignInSection
                 divider
                 phoneSection
@@ -27,7 +27,7 @@ struct PhoneVerifyView: View {
     }
 
     private var appleSignInSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SignInWithAppleButton(.continue) { request in
                 request.requestedScopes = [.fullName, .email]
                 request.nonce = AppleNonceGen.sha256(nonce)
@@ -41,23 +41,23 @@ struct PhoneVerifyView: View {
             if let appleError {
                 Text(appleError)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
         }
     }
 
     private var divider: some View {
-        HStack(spacing: RuulSpacing.s3) {
-            Rectangle().fill(Color.ruulBorderSubtle).frame(height: 1)
+        HStack(spacing: RuulSpacing.sm) {
+            Rectangle().fill(Color.ruulSeparator).frame(height: 1)
             Text("o")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
-            Rectangle().fill(Color.ruulBorderSubtle).frame(height: 1)
+            Rectangle().fill(Color.ruulSeparator).frame(height: 1)
         }
     }
 
     private var phoneSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             RuulPhoneField(
                 text: $phoneInput,
                 label: "Tu número",

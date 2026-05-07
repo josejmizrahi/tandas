@@ -16,7 +16,7 @@ struct InviteMembersView: View {
             secondaryCTA: ("Saltar", { Task { await coord.skipInvite() } }),
             canContinue: true
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 if let group = coord.createdGroup {
                     shareLinkCard(group: group)
                     RuulActionableCard(
@@ -54,7 +54,7 @@ struct InviteMembersView: View {
     private func shareLinkCard(group: Group) -> some View {
         let message = InviteLinkGenerator.shareMessage(groupName: group.name, code: group.inviteCode)
         return ShareLink(item: message) {
-            HStack(spacing: RuulSpacing.s4) {
+            HStack(spacing: RuulSpacing.md) {
                 RuulIconBadge("link", size: .medium)
                 VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text("Compartir link")
@@ -69,21 +69,21 @@ struct InviteMembersView: View {
                 Image(systemName: "square.and.arrow.up")
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .background(
-                Color.ruulBackgroundElevated,
-                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
     }
 
     private var pendingList: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Por invitar (\(coord.pendingInvites.count))")
                 .ruulTextStyle(RuulTypography.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -107,7 +107,7 @@ struct InviteMembersView: View {
                         Spacer()
                         if pending.sentAt != nil {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.ruulSemanticSuccess)
+                                .foregroundStyle(Color.ruulPositive)
                         } else {
                             Button { remove(pending) } label: {
                                 Image(systemName: "xmark.circle.fill")
@@ -116,7 +116,7 @@ struct InviteMembersView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.vertical, RuulSpacing.s2)
+                    .padding(.vertical, RuulSpacing.xs)
                     if pending.id != coord.pendingInvites.last?.id {
                         Divider()
                     }
@@ -147,7 +147,7 @@ struct InviteMembersView: View {
                 }
             })
         ) {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuulTextField("Nombre (opcional)", text: $manualName, label: "Nombre")
                 RuulPhoneField(text: $manualPhone, label: "Teléfono")
             }

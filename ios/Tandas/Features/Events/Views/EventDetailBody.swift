@@ -13,7 +13,7 @@ struct EventDetailBody: View {
 
     var body: some View {
         // V1: minimal stub. Phase 2 expands con structure real.
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Event detail body — Phase 2 will wire this up")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextSecondary)

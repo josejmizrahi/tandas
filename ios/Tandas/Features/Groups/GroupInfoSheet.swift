@@ -59,7 +59,7 @@ struct GroupInfoSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     profileHeader
                     governanceSection
                     if isCurrentUserAdmin {
@@ -72,11 +72,11 @@ struct GroupInfoSheet: View {
                     membersSection
                     leaveSection
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s4)
-                .padding(.bottom, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackgroundCanvas.ignoresSafeArea())
+            .background(Color.ruulBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }
@@ -90,7 +90,7 @@ struct GroupInfoSheet: View {
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackgroundCanvas, for: .navigationBar)
+            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .task { await loadMembers() }
         .sheet(isPresented: $settingsPresented) {
@@ -134,7 +134,7 @@ struct GroupInfoSheet: View {
     // MARK: - Profile header
 
     private var profileHeader: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             // Cover or solid placeholder. Cover edit is P1 #10 — for V1
             // we render whatever was set at onboarding (if any) and show
             // a subtle accent gradient when nothing is configured.
@@ -147,7 +147,7 @@ struct GroupInfoSheet: View {
                         .clipped()
                 } else {
                     LinearGradient(
-                        colors: [Color.ruulAccentPrimary.opacity(0.65), Color.ruulAccentPrimary.opacity(0.15)],
+                        colors: [Color.ruulAccent.opacity(0.65), Color.ruulAccent.opacity(0.15)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -155,10 +155,10 @@ struct GroupInfoSheet: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -186,17 +186,17 @@ struct GroupInfoSheet: View {
     private var governanceSection: some View {
         let g = currentGroup.effectiveGovernance
         let canEdit = isCurrentUserAdmin && g.whoCanModifyGovernance == .founder
-        return VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        return VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack(alignment: .firstTextBaseline) {
                 sectionLabel("GOBIERNO")
                 Spacer()
                 if canEdit {
                     Button("Editar") { governancePresented = true }
                         .ruulTextStyle(RuulTypography.callout)
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .foregroundStyle(Color.ruulAccent)
                 }
             }
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 governanceRow(label: "Modifica reglas",  value: permissionLabel(g.whoCanModifyRules))
                 governanceRow(label: "Inicia votaciones", value: permissionLabel(g.whoCanCreateVotes))
                 governanceRow(label: "Quita miembros",   value: permissionLabel(g.whoCanRemoveMembers))
@@ -209,21 +209,21 @@ struct GroupInfoSheet: View {
                     value: g.votesAreAnonymous ? "Votos anónimos" : "Votos públicos"
                 )
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
 
             if !canEdit && g.whoCanModifyGovernance != .founder {
                 Text("Para cambiar el gobierno, abrí una votación.")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
-                    .padding(.leading, RuulSpacing.s1)
+                    .padding(.leading, RuulSpacing.xxs)
             }
         }
     }
@@ -259,12 +259,12 @@ struct GroupInfoSheet: View {
         Button {
             settingsPresented = true
         } label: {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulAccent)
                     .frame(width: 36, height: 36)
-                    .background(Color.ruulAccentSubtle, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                    .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Editar grupo")
                         .ruulTextStyle(RuulTypography.body)
@@ -278,15 +278,15 @@ struct GroupInfoSheet: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -299,12 +299,12 @@ struct GroupInfoSheet: View {
         Button {
             editMembersPresented = true
         } label: {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "person.2.badge.gearshape")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulAccent)
                     .frame(width: 36, height: 36)
-                    .background(Color.ruulAccentSubtle, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                    .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Editar miembros")
                         .ruulTextStyle(RuulTypography.body)
@@ -318,15 +318,15 @@ struct GroupInfoSheet: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(.horizontal, RuulSpacing.s4)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -336,7 +336,7 @@ struct GroupInfoSheet: View {
     // MARK: - Invite
 
     private var inviteSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             sectionLabel("INVITAR")
             codeCard
             linkRow
@@ -361,17 +361,17 @@ struct GroupInfoSheet: View {
                 Spacer()
                 Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(copied ? Color.ruulSemanticSuccess : Color.ruulTextSecondary)
+                    .foregroundStyle(copied ? Color.ruulPositive : Color.ruulTextSecondary)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -384,10 +384,10 @@ struct GroupInfoSheet: View {
             .ruulTextStyle(RuulTypography.callout)
             .foregroundStyle(Color.ruulTextSecondary)
             .lineLimit(2)
-            .padding(RuulSpacing.s3)
+            .padding(RuulSpacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .fill(Color.ruulBackgroundRecessed)
             )
     }
@@ -407,7 +407,7 @@ struct GroupInfoSheet: View {
             .foregroundStyle(Color.ruulTextInverse)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 52)
-            .background(Capsule().fill(Color.ruulAccentPrimary))
+            .background(Capsule().fill(Color.ruulAccent))
         }
         .buttonStyle(.plain)
     }
@@ -415,21 +415,21 @@ struct GroupInfoSheet: View {
     // MARK: - Members
 
     private var membersSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             sectionLabel("MIEMBROS \(memberCountSuffix)")
             if isLoadingMembers && members.isEmpty {
                 HStack {
                     Spacer()
-                    ProgressView().tint(Color.ruulAccentPrimary)
+                    ProgressView().tint(Color.ruulAccent)
                     Spacer()
                 }
-                .padding(.vertical, RuulSpacing.s4)
+                .padding(.vertical, RuulSpacing.md)
             } else if members.isEmpty {
                 Text("No pudimos cargar los miembros.")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             } else {
-                VStack(spacing: RuulSpacing.s2) {
+                VStack(spacing: RuulSpacing.xs) {
                     ForEach(members) { mwp in
                         memberRow(mwp)
                     }
@@ -444,7 +444,7 @@ struct GroupInfoSheet: View {
 
     private func memberRow(_ mwp: MemberWithProfile) -> some View {
         let isYou = mwp.member.userId == currentUserId
-        return HStack(spacing: RuulSpacing.s3) {
+        return HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: mwp.displayName, imageURL: mwp.avatarURL, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(isYou ? "\(mwp.displayName) (tú)" : mwp.displayName)
@@ -454,38 +454,38 @@ struct GroupInfoSheet: View {
                 if mwp.member.role == "admin" {
                     Text("ADMIN")
                         .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulAccentPrimary)
+                        .foregroundStyle(Color.ruulAccent)
                 }
             }
             Spacer()
         }
-        .padding(.horizontal, RuulSpacing.s4)
-        .padding(.vertical, RuulSpacing.s3)
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .fill(Color.ruulBackgroundElevated)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(Color.ruulSurface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 1)
         )
     }
 
     // MARK: - Leave
 
     private var leaveSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let leaveError {
                 Text(leaveError)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
             Button {
                 leaveConfirmPresented = true
             } label: {
                 HStack {
                     if isLeaving {
-                        ProgressView().tint(Color.ruulSemanticError)
+                        ProgressView().tint(Color.ruulNegative)
                     } else {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                             .font(.system(size: 16, weight: .medium))
@@ -494,16 +494,16 @@ struct GroupInfoSheet: View {
                     }
                     Spacer()
                 }
-                .foregroundStyle(Color.ruulSemanticError)
-                .padding(.horizontal, RuulSpacing.s4)
-                .padding(.vertical, RuulSpacing.s4)
+                .foregroundStyle(Color.ruulNegative)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.vertical, RuulSpacing.md)
                 .background(
-                    RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                        .fill(Color.ruulBackgroundElevated)
+                    RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                        .fill(Color.ruulSurface)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                        .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                        .stroke(Color.ruulSeparator, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -517,7 +517,7 @@ struct GroupInfoSheet: View {
         Text(text)
             .ruulTextStyle(RuulTypography.footnote)
             .foregroundStyle(Color.ruulTextSecondary)
-            .padding(.leading, RuulSpacing.s1)
+            .padding(.leading, RuulSpacing.xxs)
     }
 
     private func copyFeedback() {

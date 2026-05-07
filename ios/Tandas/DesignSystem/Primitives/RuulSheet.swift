@@ -12,7 +12,7 @@ public extension View {
             content(wrapped)
                 .presentationDetents(detents)
                 .presentationDragIndicator(.visible)
-                .presentationCornerRadius(RuulRadius.xl)
+                .presentationCornerRadius(RuulRadius.extraLarge)
                 .presentationBackground(.ultraThinMaterial)
         }
     }
@@ -26,7 +26,7 @@ public extension View {
             content()
                 .presentationDetents(detents)
                 .presentationDragIndicator(.visible)
-                .presentationCornerRadius(RuulRadius.xl)
+                .presentationCornerRadius(RuulRadius.extraLarge)
                 .presentationBackground(.ultraThinMaterial)
         }
     }
@@ -38,15 +38,15 @@ private struct RuulSheetPreview: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
-            VStack(spacing: RuulSpacing.s4) {
+            Color.ruulBackground.ignoresSafeArea()
+            VStack(spacing: RuulSpacing.md) {
                 RuulButton("Show sheet") { showSheet = true }
             }
         }
         .ruulSheet(isPresented: $showSheet) {
-            VStack(spacing: RuulSpacing.s4) {
+            VStack(spacing: RuulSpacing.md) {
                 Capsule()
-                    .fill(Color.ruulBorderDefault)
+                    .fill(Color.ruulSeparatorOpaque)
                     .frame(width: 36, height: 4)
                 Text("Sheet content")
                     .ruulTextStyle(RuulTypography.title)
@@ -56,7 +56,7 @@ private struct RuulSheetPreview: View {
                 RuulButton("Close", style: .secondary) {}
                 Spacer()
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
     }
 }

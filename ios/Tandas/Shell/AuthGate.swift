@@ -273,10 +273,10 @@ struct BootstrappingView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             ProgressView()
                 .controlSize(.large)
-                .tint(Color.ruulAccentPrimary)
+                .tint(Color.ruulAccent)
         }
     }
 }

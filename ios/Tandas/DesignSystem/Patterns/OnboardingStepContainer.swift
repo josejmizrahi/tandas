@@ -40,11 +40,11 @@ public struct OnboardingStepContainer<Content: View>: View {
     public var body: some View {
         VStack(spacing: 0) {
             progressBar
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s3)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.sm)
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s6) {
-                    VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                    VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                         Text(title)
                             .ruulTextStyle(RuulTypography.displayMedium)
                             .foregroundStyle(Color.ruulTextPrimary)
@@ -56,12 +56,12 @@ public struct OnboardingStepContainer<Content: View>: View {
                     }
                     content()
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.top, RuulSpacing.s7)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.xxl)
             }
             ctaStack
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.bottom, RuulSpacing.s4)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.bottom, RuulSpacing.md)
         }
     }
 
@@ -76,7 +76,7 @@ public struct OnboardingStepContainer<Content: View>: View {
 
     @ViewBuilder
     private var ctaStack: some View {
-        VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.xs) {
             if let primaryCTA {
                 RuulButton(primaryCTA.label, style: .primary, size: .large, isLoading: primaryCTA.isLoading, fillsWidth: true, action: primaryCTA.perform)
                     .disabled(!canContinue)
@@ -97,10 +97,10 @@ public struct OnboardingStepContainer<Content: View>: View {
         subtitle: "Así te van a ver tus grupos.",
         primaryCTA: ("Continuar", false, { })
     ) {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulTextField("Tu nombre", text: .constant("Jose"), label: "Nombre")
         }
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

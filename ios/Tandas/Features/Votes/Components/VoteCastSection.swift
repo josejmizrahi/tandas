@@ -12,7 +12,7 @@ struct VoteCastSection: View {
     @Bindable var coordinator: VoteDetailCoordinator
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             stateView
 
             if let counts = coordinator.counts,
@@ -40,9 +40,9 @@ private struct VoteCastButtons: View {
     @Bindable var coordinator: VoteDetailCoordinator
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s2) {
-            castButton(.inFavor,    label: "A favor",      systemImage: "checkmark.circle.fill", tint: .ruulSemanticSuccess)
-            castButton(.against,    label: "En contra",    systemImage: "xmark.circle.fill",     tint: .ruulSemanticError)
+        VStack(spacing: RuulSpacing.xs) {
+            castButton(.inFavor,    label: "A favor",      systemImage: "checkmark.circle.fill", tint: .ruulPositive)
+            castButton(.against,    label: "En contra",    systemImage: "xmark.circle.fill",     tint: .ruulNegative)
             castButton(.abstained,  label: "Me abstengo",  systemImage: "minus.circle.fill",     tint: .ruulTextTertiary)
         }
         .disabled(coordinator.isCasting)
@@ -53,18 +53,18 @@ private struct VoteCastButtons: View {
         Button {
             Task { await coordinator.cast(choice) }
         } label: {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: systemImage)
                     .foregroundStyle(tint)
                 Text(label)
                     .ruulTextStyle(RuulTypography.headline)
                 Spacer()
             }
-            .padding(RuulSpacing.s4)
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .padding(RuulSpacing.md)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -77,7 +77,7 @@ private struct VoteAlreadyCastView: View {
 
     var body: some View {
         let (text, tint, icon) = display(for: myChoice)
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Image(systemName: icon)
                 .foregroundStyle(tint)
             Text("Tu voto: \(text)")
@@ -85,14 +85,14 @@ private struct VoteAlreadyCastView: View {
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
         }
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
     }
 
     private func display(for choice: VoteChoice?) -> (String, Color, String) {
         switch choice {
-        case .inFavor:    return ("a favor",     .ruulSemanticSuccess, "checkmark.circle.fill")
-        case .against:    return ("en contra",   .ruulSemanticError,   "xmark.circle.fill")
+        case .inFavor:    return ("a favor",     .ruulPositive, "checkmark.circle.fill")
+        case .against:    return ("en contra",   .ruulNegative,   "xmark.circle.fill")
         case .abstained:  return ("abstención",  .ruulTextTertiary,    "minus.circle.fill")
         case .pending, .none: return ("pendiente", .ruulTextTertiary, "clock")
         }
@@ -105,8 +105,8 @@ private struct VoteResolvedView: View {
 
     var body: some View {
         let displayed = display()
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-            HStack(spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "flag.checkered")
                     .foregroundStyle(displayed.tint)
                 Text(displayed.label)
@@ -119,8 +119,8 @@ private struct VoteResolvedView: View {
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
     }
 
     private struct Displayed {
@@ -144,8 +144,8 @@ private struct VoteResolvedView: View {
             return Displayed(label: "Voto cerrado",    tint: .ruulTextTertiary)
         case .closed, .resolved:
             switch counts?.resolution {
-            case .passed:        return Displayed(label: "Voto aprobado",    tint: .ruulSemanticSuccess)
-            case .failed:        return Displayed(label: "Voto rechazado",   tint: .ruulSemanticError)
+            case .passed:        return Displayed(label: "Voto aprobado",    tint: .ruulPositive)
+            case .failed:        return Displayed(label: "Voto rechazado",   tint: .ruulNegative)
             case .quorumFailed:  return Displayed(label: "Voto sin quórum",  tint: .ruulTextTertiary)
             case nil:            return Displayed(label: "Voto cerrado",     tint: .ruulTextTertiary)  // resolver pending
             }

@@ -10,12 +10,12 @@ struct ActionInboxView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.actions.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                         .transition(.opacity)
                 } else if coordinator.actions.isEmpty && coordinator.isLoading {
                     RuulLoadingState()
@@ -25,7 +25,7 @@ struct ActionInboxView: View {
                         .transition(.opacity)
                 } else {
                     ScrollView {
-                        VStack(spacing: RuulSpacing.s3) {
+                        VStack(spacing: RuulSpacing.sm) {
                             ForEach(coordinator.actions) { action in
                                 ActionCard(
                                     icon: icon(for: action.actionType),
@@ -38,8 +38,8 @@ struct ActionInboxView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s4)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
                         .padding(.bottom, RuulSpacing.s12)
                     }
                     .scrollIndicators(.hidden)

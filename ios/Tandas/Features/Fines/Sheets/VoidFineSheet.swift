@@ -17,7 +17,7 @@ struct VoidFineSheet: View {
             if let error = coordinator.error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulSemanticError)
+                    .foregroundStyle(Color.ruulNegative)
             }
             submitButton
         }
@@ -30,12 +30,12 @@ struct VoidFineSheet: View {
 
     @ViewBuilder
     private var multaContextSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("MULTA")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-            VStack(alignment: .leading, spacing: RuulSpacing.s1) {
-                HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                     Text(coordinator.targetMemberName)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
@@ -51,15 +51,15 @@ struct VoidFineSheet: View {
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                Color.ruulBackgroundElevated,
-                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
     }
@@ -68,7 +68,7 @@ struct VoidFineSheet: View {
 
     @ViewBuilder
     private var reasonSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("MOTIVO DEL ANULADO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)

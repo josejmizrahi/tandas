@@ -35,7 +35,7 @@ private struct UnknownResourceDetailBody: View {
     let label: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("Resource detail (\(label)) — V1 stub")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -43,6 +43,6 @@ private struct UnknownResourceDetailBody: View {
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
     }
 }

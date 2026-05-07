@@ -10,25 +10,25 @@ struct MyFinesView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.fines.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                         .transition(.opacity)
                 } else if coordinator.fines.isEmpty && coordinator.isLoading {
                     RuulLoadingState()
                         .transition(.opacity)
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             header
                             pendingSection
                             resolvedSection
                         }
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s2)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.xs)
                         .padding(.bottom, RuulSpacing.s12)
                     }
                     .scrollIndicators(.hidden)
@@ -46,7 +46,7 @@ struct MyFinesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("PENDIENTE DE PAGO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -57,7 +57,7 @@ struct MyFinesView: View {
                 color: coordinator.totalOutstanding > 0 ? .negative : .neutral
             )
         }
-        .padding(.top, RuulSpacing.s4)
+        .padding(.top, RuulSpacing.md)
     }
 
     @ViewBuilder
@@ -81,7 +81,7 @@ struct MyFinesView: View {
                 title: "Sin multas",
                 message: "No tienes multas en este momento. Sigue así."
             )
-            .padding(.top, RuulSpacing.s5)
+            .padding(.top, RuulSpacing.lg)
         }
     }
 
@@ -105,7 +105,7 @@ struct MyFinesView: View {
 
     @ViewBuilder
     private func section<Content: View>(title: String, count: Int, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
                     .ruulTextStyle(RuulTypography.sectionLabel)
@@ -115,7 +115,7 @@ struct MyFinesView: View {
                     .ruulTextStyle(RuulTypography.statSmall)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            VStack(spacing: RuulSpacing.s3) { content() }
+            VStack(spacing: RuulSpacing.sm) { content() }
         }
     }
 

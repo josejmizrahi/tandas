@@ -36,11 +36,11 @@ struct EventDetailView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
 
             if coordinator.hasInitialLoadError, let error = coordinator.error {
                 ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                    .padding(.horizontal, RuulSpacing.s5)
+                    .padding(.horizontal, RuulSpacing.lg)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
             } else {
@@ -183,7 +183,7 @@ struct EventDetailView: View {
     // MARK: - Content
 
     private var contentSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
             titleBlock
             EventRSVPStateView(
                 status: coordinator.myRSVP?.status ?? .pending,
@@ -199,7 +199,7 @@ struct EventDetailView: View {
                 },
                 onShowQR: { qrSheetPresented = true }
             )
-            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
             attendeesSection
             checkInSectionView
             if coordinator.viewerRole == .host {
@@ -219,39 +219,39 @@ struct EventDetailView: View {
                     canIssueManualFine: canIssueManualFine,
                     onIssueManualFine: { addManualFinePresented = true }
                 )
-                .padding(.horizontal, RuulSpacing.s5)
+                .padding(.horizontal, RuulSpacing.lg)
             }
             descriptionSection
         }
-        .padding(.top, RuulSpacing.s6)
+        .padding(.top, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.s12)
         .background(
             UnevenRoundedRectangle(
-                topLeadingRadius: RuulRadius.xl,
-                topTrailingRadius: RuulRadius.xl,
+                topLeadingRadius: RuulRadius.extraLarge,
+                topTrailingRadius: RuulRadius.extraLarge,
                 style: .continuous
             )
-            .fill(Color.ruulBackgroundCanvas)
-            .offset(y: -RuulRadius.xl)
+            .fill(Color.ruulBackground)
+            .offset(y: -RuulRadius.extraLarge)
         )
     }
 
     // MARK: - Title block (sits in canvas right below cover)
 
     private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
-            HStack(spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            HStack(spacing: RuulSpacing.xs) {
                 if coordinator.event.status == .inProgress {
                     livePill
                 }
                 if coordinator.event.status == .cancelled {
-                    statusPill("Cancelado", icon: "xmark.circle.fill", tint: .ruulSemanticError)
+                    statusPill("Cancelado", icon: "xmark.circle.fill", tint: .ruulNegative)
                 }
                 if coordinator.event.status == .closed {
                     statusPill("Cerrado", icon: "checkmark.circle.fill", tint: .ruulTextSecondary)
                 }
                 if coordinator.event.isRecurringGenerated {
-                    statusPill("Recurrente", icon: "arrow.triangle.2.circlepath", tint: .ruulAccentPrimary)
+                    statusPill("Recurrente", icon: "arrow.triangle.2.circlepath", tint: .ruulAccent)
                 }
             }
 
@@ -277,7 +277,7 @@ struct EventDetailView: View {
                 )
             }
         }
-        .padding(.horizontal, RuulSpacing.s5)
+        .padding(.horizontal, RuulSpacing.lg)
     }
 
     /// Apple Invites signature: prominent countdown ("EMPIEZA EN 2 DÍAS") shown
@@ -286,10 +286,10 @@ struct EventDetailView: View {
     @ViewBuilder
     private var countdownLine: some View {
         if let countdown = countdownText {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock.fill")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.ruulSemanticWarning)
+                    .foregroundStyle(Color.ruulWarning)
                 Text(countdown)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -350,9 +350,9 @@ struct EventDetailView: View {
                     }
                     Spacer()
                     if seatsTaken >= capacityMax {
-                        HStack(spacing: RuulSpacing.s2) {
+                        HStack(spacing: RuulSpacing.xs) {
                             Circle()
-                                .fill(Color.ruulSemanticError)
+                                .fill(Color.ruulNegative)
                                 .frame(width: 8, height: 8)
                             Text("LLENO")
                                 .ruulTextStyle(RuulTypography.sectionLabel)
@@ -374,7 +374,7 @@ struct EventDetailView: View {
             rsvps: coordinator.rsvps,
             memberLookup: memberLookup
         )
-        .padding(.horizontal, RuulSpacing.s5)
+        .padding(.horizontal, RuulSpacing.lg)
     }
 
     private var checkInSectionView: some View {
@@ -392,13 +392,13 @@ struct EventDetailView: View {
                 Task { await coordinator.hostMarkCheckIn(memberId: memberId) }
             }
         )
-        .padding(.horizontal, RuulSpacing.s5)
+        .padding(.horizontal, RuulSpacing.lg)
     }
 
     @ViewBuilder
     private var descriptionSection: some View {
         if let description = coordinator.event.description, !description.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("DESCRIPCIÓN")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
@@ -406,14 +406,14 @@ struct EventDetailView: View {
                     .ruulTextStyle(RuulTypography.bodyLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
-            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
         }
     }
 
     // MARK: - Top nav (transparent → glass on scroll)
 
     private var topNav: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             navCircleButton(icon: "xmark", label: "Cerrar") { dismiss() }
             Spacer()
             navCircleButton(icon: "square.and.arrow.up", label: "Compartir") {
@@ -423,7 +423,7 @@ struct EventDetailView: View {
                 navCircleButton(icon: "pencil", label: "Editar") { onEdit() }
             }
         }
-        .padding(.horizontal, RuulSpacing.s4)
+        .padding(.horizontal, RuulSpacing.md)
         .padding(.top, statusBarTopPadding)
     }
 
@@ -478,7 +478,7 @@ struct EventDetailView: View {
                     Text("No voy a poder ir")
                         .ruulTextStyle(RuulTypography.callout)
                         .foregroundStyle(Color.ruulTextSecondary)
-                        .padding(.vertical, RuulSpacing.s4)
+                        .padding(.vertical, RuulSpacing.md)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
@@ -491,8 +491,8 @@ struct EventDetailView: View {
                 RuulButton("Cerrar evento", style: .primary, size: .large, fillsWidth: true) {
                     closeSheet = true
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.vertical, RuulSpacing.s3)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.vertical, RuulSpacing.sm)
                 .background(.regularMaterial)
             }
         }
@@ -572,7 +572,7 @@ struct EventDetailView: View {
     // MARK: - Pills (Apple Sports / Luma flat: dot + uppercase label, no tint bg)
 
     private func statusPill(_ text: String, icon: String, tint: Color) -> some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Circle()
                 .fill(tint)
                 .frame(width: 8, height: 8)
@@ -583,9 +583,9 @@ struct EventDetailView: View {
     }
 
     private var livePill: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Circle()
-                .fill(Color.ruulSemanticError)
+                .fill(Color.ruulNegative)
                 .frame(width: 8, height: 8)
             Text("EN VIVO")
                 .ruulTextStyle(RuulTypography.sectionLabel)

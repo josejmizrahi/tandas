@@ -35,12 +35,12 @@ struct RulesView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.rules.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                         .transition(.opacity)
                 } else if coordinator.isLoading && coordinator.rules.isEmpty {
                     RuulLoadingState()
@@ -54,20 +54,20 @@ struct RulesView: View {
                     .transition(.opacity)
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                        VStack(alignment: .leading, spacing: RuulSpacing.md) {
                             header
                             if coordinator.openVotesCount > 0 {
                                 openVotesSection
                             }
-                            VStack(spacing: RuulSpacing.s3) {
+                            VStack(spacing: RuulSpacing.sm) {
                                 ForEach(coordinator.rules) { rule in
                                     ruleCard(rule)
                                 }
                             }
                             footnote
                         }
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s4)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
                         .padding(.bottom, RuulSpacing.s12)
                     }
                     .scrollIndicators(.hidden)
@@ -98,8 +98,8 @@ struct RulesView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(coordinator.group.name)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -116,14 +116,14 @@ struct RulesView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(width: 36, height: 36)
-                        .background(Color.ruulBackgroundElevated, in: Circle())
-                        .overlay(Circle().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                        .background(Color.ruulSurface, in: Circle())
+                        .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Editar reglas")
             }
         }
-        .padding(.top, RuulSpacing.s2)
+        .padding(.top, RuulSpacing.xs)
     }
 
     private var activeCount: Int {
@@ -136,11 +136,11 @@ struct RulesView: View {
     /// vista en el body.
     private var openVotesSection: some View {
         Button(action: onSeeOpenVotes) {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "hand.raised.fill")
-                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .foregroundStyle(Color.ruulAccent)
                     .frame(width: 32, height: 32)
-                    .background(Color.ruulBackgroundElevated, in: Circle())
+                    .background(Color.ruulSurface, in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Votos abiertos")
                         .ruulTextStyle(RuulTypography.headline)
@@ -158,22 +158,22 @@ struct RulesView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulBackgroundElevated)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
     }
 
     private func ruleCard(_ rule: GroupRule) -> some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(rule.title)
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
@@ -193,14 +193,14 @@ struct RulesView: View {
             Spacer()
             amountBadge(rule)
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .fill(Color.ruulBackgroundElevated)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(Color.ruulSurface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 1)
         )
         .opacity(rule.isLive ? 1.0 : 0.55)
     }
@@ -231,6 +231,6 @@ struct RulesView: View {
         Text("Las reglas se aplican automáticamente cuando ocurre el evento que las dispara. Pronto vas a poder editarlas y agregar más.")
             .ruulTextStyle(RuulTypography.caption)
             .foregroundStyle(Color.ruulTextTertiary)
-            .padding(.top, RuulSpacing.s3)
+            .padding(.top, RuulSpacing.sm)
     }
 }

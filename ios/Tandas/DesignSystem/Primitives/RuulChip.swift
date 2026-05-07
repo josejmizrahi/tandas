@@ -24,7 +24,7 @@ public struct RuulChip: View {
 
     public var body: some View {
         Button(action: action) {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 if let systemImage {
                     Image(systemName: systemImage)
                         .font(.system(size: 12, weight: .semibold))
@@ -43,8 +43,8 @@ public struct RuulChip: View {
                 }
             }
             .foregroundStyle(foreground)
-            .padding(.horizontal, RuulSpacing.s3)
-            .padding(.vertical, RuulSpacing.s2)
+            .padding(.horizontal, RuulSpacing.sm)
+            .padding(.vertical, RuulSpacing.xs)
             .modifier(ChipBackground(style: style))
         }
         .buttonStyle(.ruulPress)
@@ -66,11 +66,11 @@ private struct ChipBackground: ViewModifier {
         let shape = Capsule()
         switch style {
         case .selectable(let isSelected) where isSelected:
-            content.background(Color.ruulAccentPrimary, in: shape)
+            content.background(Color.ruulAccent, in: shape)
         case .suggestion:
             content
-                .background(Color.ruulAccentSubtle, in: shape)
-                .overlay(shape.stroke(Color.ruulAccentPrimary.opacity(0.3), lineWidth: 1))
+                .background(Color.ruulAccentMuted, in: shape)
+                .overlay(shape.stroke(Color.ruulAccent.opacity(0.3), lineWidth: 1))
         default:
             content.ruulGlass(shape, material: .regular)
         }
@@ -82,7 +82,7 @@ private struct RuulChipPreview: View {
     @State var selection: Set<String> = ["Eventos"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("Selectable").ruulTextStyle(RuulTypography.footnote)
             HStack {
                 ForEach(["Eventos", "Reglas", "Multas"], id: \.self) { tag in
@@ -106,8 +106,8 @@ private struct RuulChipPreview: View {
                 RuulChip("Cena de los miércoles", systemImage: "sparkles", style: .suggestion)
             }
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

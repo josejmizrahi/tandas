@@ -21,7 +21,7 @@ struct GroupTourOverlay: View {
             if visible {
                 card
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
-                    .padding(RuulSpacing.s5)
+                    .padding(RuulSpacing.lg)
             }
         }
         .onAppear {
@@ -31,7 +31,7 @@ struct GroupTourOverlay: View {
 
     private var card: some View {
         RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Bienvenido a \(coord.preview?.groupName ?? "tu grupo")")
                     .ruulTextStyle(RuulTypography.titleLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -42,14 +42,14 @@ struct GroupTourOverlay: View {
                 RuulButton("Entendido", style: .primary, size: .large, fillsWidth: true) {
                     Task { await dismiss() }
                 }
-                .padding(.top, RuulSpacing.s2)
+                .padding(.top, RuulSpacing.xs)
             }
         }
         .ruulElevation(.lg)
     }
 
     private var bulletList: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             bullet(icon: "calendar", text: nextEventCopy)
             bullet(icon: "list.bullet.clipboard", text: "Las reglas del grupo viven aquí. Léelas cuando puedas.")
             bullet(icon: "shield.checkered", text: "Tienes período de gracia: las primeras 3 \(coord.preview?.eventLabel ?? "reuniones") no aplican multas.")
@@ -57,7 +57,7 @@ struct GroupTourOverlay: View {
     }
 
     private func bullet(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             RuulIconBadge(icon, size: .small)
             Text(text)
                 .ruulTextStyle(RuulTypography.body)

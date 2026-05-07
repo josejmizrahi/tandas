@@ -41,7 +41,7 @@ struct FineAppealVoteBody: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             fineCard
             appealReasonCard
             closesAtRow
@@ -49,7 +49,7 @@ struct FineAppealVoteBody: View {
     }
 
     private var fineCard: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("MULTA APELADA")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -63,7 +63,7 @@ struct FineAppealVoteBody: View {
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
-                Spacer(minLength: RuulSpacing.s3)
+                Spacer(minLength: RuulSpacing.sm)
                 if let amount = fineAmount {
                     Text("$\(amount)")
                         .ruulTextStyle(RuulTypography.statMedium)
@@ -71,19 +71,19 @@ struct FineAppealVoteBody: View {
                 }
             }
         }
-        .padding(RuulSpacing.s4)
+        .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
     @ViewBuilder
     private var appealReasonCard: some View {
         if let reason = appealReason, !reason.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ARGUMENTO DE APELACIÓN")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
@@ -92,18 +92,18 @@ struct FineAppealVoteBody: View {
                     .foregroundStyle(Color.ruulTextPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
     }
 
     private var closesAtRow: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Image(systemName: "clock")
                 .foregroundStyle(Color.ruulTextTertiary)
             Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")

@@ -56,7 +56,7 @@ struct CreateRuleChangeSheet: View {
 
                 if let error = coordinator.error {
                     Section {
-                        Text(error).foregroundStyle(Color.ruulSemanticError)
+                        Text(error).foregroundStyle(Color.ruulNegative)
                     }
                 }
             }

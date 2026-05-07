@@ -30,7 +30,7 @@ public struct RuulProgressBar: View {
                     .fill(Color.ruulBackgroundRecessed)
                 Capsule()
                     .fill(LinearGradient(
-                        colors: [Color.ruulAccentPrimary, Color.ruulAccentSecondary],
+                        colors: [Color.ruulAccent, Color.ruulAccentSecondary],
                         startPoint: .leading,
                         endPoint: .trailing
                     ))
@@ -43,10 +43,10 @@ public struct RuulProgressBar: View {
 
     private func steppedBar(count: Int) -> some View {
         let activeCount = max(0, min(count, Int((Double(count) * value).rounded())))
-        return HStack(spacing: RuulSpacing.s1) {
+        return HStack(spacing: RuulSpacing.xxs) {
             ForEach(0..<count, id: \.self) { index in
                 Capsule()
-                    .fill(index < activeCount ? Color.ruulAccentPrimary : Color.ruulBackgroundRecessed)
+                    .fill(index < activeCount ? Color.ruulAccent : Color.ruulBackgroundRecessed)
                     .frame(height: height)
                     .animation(.ruulSmooth.delay(Double(index) * 0.04), value: activeCount)
             }
@@ -59,7 +59,7 @@ private struct RuulProgressBarPreview: View {
     @State var value = 0.4
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Linear")
                 .ruulTextStyle(RuulTypography.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -75,8 +75,8 @@ private struct RuulProgressBarPreview: View {
 
             Slider(value: $value, in: 0...1)
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

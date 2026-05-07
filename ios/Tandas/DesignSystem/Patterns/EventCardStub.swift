@@ -34,7 +34,7 @@ public struct EventCardStub: View {
 
     public var body: some View {
         Button { action?() } label: {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(data.title)
@@ -61,13 +61,13 @@ public struct EventCardStub: View {
                     }
                 }
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
         .buttonStyle(.ruulPress)
         .background {
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .fill(Color.clear)
-                .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular)
+                .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular)
         }
     }
 
@@ -77,15 +77,15 @@ public struct EventCardStub: View {
         case .going:
             Label("Voy", systemImage: "checkmark.circle.fill")
                 .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulSemanticSuccess)
+                .foregroundStyle(Color.ruulPositive)
         case .maybe:
             Label("Tal vez", systemImage: "questionmark.circle.fill")
                 .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulSemanticWarning)
+                .foregroundStyle(Color.ruulWarning)
         case .notGoing:
             Label("No voy", systemImage: "xmark.circle.fill")
                 .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulSemanticError)
+                .foregroundStyle(Color.ruulNegative)
         case .notResponded:
             Text("Pendiente")
                 .ruulTextStyle(RuulTypography.caption)
@@ -98,7 +98,7 @@ public struct EventCardStub: View {
 #Preview("EventCardStub") {
     let attendees = (1...8).map { RuulAvatarStack.Person(id: "\($0)", name: "P\($0)") }
     return ScrollView {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             EventCardStub(.init(
                 id: "1",
                 title: "Cena de los miércoles",
@@ -124,8 +124,8 @@ public struct EventCardStub: View {
                 attendees: []
             ))
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

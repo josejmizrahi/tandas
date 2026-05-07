@@ -20,9 +20,9 @@ public struct ErrorStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: RuulSpacing.s5) {
-            RuulIconBadge(systemImage, tint: .ruulSemanticError, size: .large)
-            VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.lg) {
+            RuulIconBadge(systemImage, tint: .ruulNegative, size: .large)
+            VStack(spacing: RuulSpacing.xs) {
                 Text(title)
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -38,14 +38,14 @@ public struct ErrorStateView: View {
                 RuulButton(retryAction.label, systemImage: "arrow.clockwise", style: .secondary, size: .medium, action: retryAction.perform)
             }
         }
-        .padding(RuulSpacing.s7)
+        .padding(RuulSpacing.xxl)
         .frame(maxWidth: .infinity)
     }
 }
 
 #if DEBUG
 #Preview("ErrorStateView") {
-    VStack(spacing: RuulSpacing.s7) {
+    VStack(spacing: RuulSpacing.xxl) {
         ErrorStateView(
             title: "No pudimos cargar tus grupos",
             message: "Verifica tu conexión y vuelve a intentar.",
@@ -58,7 +58,7 @@ public struct ErrorStateView: View {
             message: "Reconecta para sincronizar."
         )
     }
-    .padding(RuulSpacing.s5)
-    .background(Color.ruulBackgroundCanvas)
+    .padding(RuulSpacing.lg)
+    .background(Color.ruulBackground)
 }
 #endif

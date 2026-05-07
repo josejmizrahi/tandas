@@ -25,16 +25,16 @@ public struct ModalSheetTemplate<Content: View>: View {
         VStack(spacing: 0) {
             header
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
                     content()
                 }
-                .padding(.horizontal, RuulSpacing.s5)
-                .padding(.bottom, RuulSpacing.s5)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.bottom, RuulSpacing.lg)
             }
             if let primaryCTA {
                 RuulButton(primaryCTA.label, style: .primary, size: .large, fillsWidth: true) { primaryCTA.perform() }
-                    .padding(.horizontal, RuulSpacing.s5)
-                    .padding(.bottom, RuulSpacing.s4)
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.bottom, RuulSpacing.md)
             }
         }
     }
@@ -58,9 +58,9 @@ public struct ModalSheetTemplate<Content: View>: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, RuulSpacing.s5)
-            .padding(.top, RuulSpacing.s4)
-            .padding(.bottom, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.sm)
         }
     }
 }
@@ -70,7 +70,7 @@ private struct ModalSheetTemplatePreview: View {
     @State var presented = true
 
     var body: some View {
-        ZStack { Color.ruulBackgroundCanvas.ignoresSafeArea() }
+        ZStack { Color.ruulBackground.ignoresSafeArea() }
             .ruulSheet(isPresented: $presented) {
                 ModalSheetTemplate(
                     title: "Nueva regla",

@@ -34,19 +34,19 @@ struct ProfileView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.profile == nil {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                         .transition(.opacity)
                 } else if coordinator.profile == nil && coordinator.isLoading {
                     RuulLoadingState()
                         .transition(.opacity)
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             hero
                             statusHero
                             if !coordinator.isAllClear {
@@ -56,8 +56,8 @@ struct ProfileView: View {
                             settingsSection
                             signOutButton
                         }
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s2)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.xs)
                         .padding(.bottom, RuulSpacing.s12)
                     }
                     .scrollIndicators(.hidden)
@@ -75,7 +75,7 @@ struct ProfileView: View {
     // MARK: - Hero (avatar + name + group meta)
 
     private var hero: some View {
-        HStack(spacing: RuulSpacing.s4) {
+        HStack(spacing: RuulSpacing.md) {
             RuulAvatar(
                 name: coordinator.profile?.displayName ?? "?",
                 imageURL: coordinator.profile?.avatarUrl.flatMap(URL.init(string:)),
@@ -92,7 +92,7 @@ struct ProfileView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.top, RuulSpacing.s4)
+        .padding(.top, RuulSpacing.md)
     }
 
     private var membershipMeta: String {
@@ -105,10 +105,10 @@ struct ProfileView: View {
     // MARK: - Status hero (the big "you're caught up" or "you owe X")
 
     private var statusHero: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
-            HStack(spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            HStack(spacing: RuulSpacing.xs) {
                 Circle()
-                    .fill(coordinator.isAllClear ? Color.ruulSemanticSuccess : Color.ruulSemanticWarning)
+                    .fill(coordinator.isAllClear ? Color.ruulPositive : Color.ruulWarning)
                     .frame(width: 8, height: 8)
                 Text(coordinator.isAllClear ? "TODO AL CORRIENTE" : "PENDIENTE DE PAGO")
                     .ruulTextStyle(RuulTypography.sectionLabel)
@@ -123,7 +123,7 @@ struct ProfileView: View {
     // MARK: - Stat tiles (only when there's something to track)
 
     private var statTiles: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             statTile(
                 value: amountFormatted(coordinator.totalOutstanding),
                 label: "Pendiente"
@@ -140,7 +140,7 @@ struct ProfileView: View {
     }
 
     private func statTile(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(value)
                 .ruulTextStyle(RuulTypography.statMedium)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -153,11 +153,11 @@ struct ProfileView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
@@ -182,7 +182,7 @@ struct ProfileView: View {
         if !coordinator.isAllClear {
             Text(amountFormatted(coordinator.totalOutstanding))
                 .ruulTextStyle(RuulTypography.statSmall)
-                .foregroundStyle(Color.ruulSemanticWarning)
+                .foregroundStyle(Color.ruulWarning)
         }
     }
 
@@ -190,13 +190,13 @@ struct ProfileView: View {
         Button(action: onSignOut) {
             Text("Cerrar sesión")
                 .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulSemanticError)
+                .foregroundStyle(Color.ruulNegative)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, RuulSpacing.s4)
-                .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .padding(.vertical, RuulSpacing.md)
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
                 )
         }
         .buttonStyle(.ruulPress)
@@ -209,18 +209,18 @@ struct ProfileView: View {
         title: String,
         @ViewBuilder _ content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-                .padding(.leading, RuulSpacing.s1)
+                .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) {
                 content()
             }
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
     }
@@ -233,7 +233,7 @@ struct ProfileView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -247,7 +247,7 @@ struct ProfileView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -255,7 +255,7 @@ struct ProfileView: View {
 
     private var divider: some View {
         Divider()
-            .background(Color.ruulBorderSubtle)
+            .background(Color.ruulSeparator)
             .padding(.leading, 56)  // align with text after icon column
     }
 

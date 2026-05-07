@@ -6,7 +6,7 @@ struct PatternsShowcaseView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: RuulSpacing.s4) {
+            VStack(spacing: RuulSpacing.md) {
                 emptyStateSection
                 loadingStateSection
                 errorStateSection
@@ -17,9 +17,9 @@ struct PatternsShowcaseView: View {
                 ruleCardSection
                 fineCardSection
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
     }
 
     private var emptyStateSection: some View {
@@ -35,7 +35,7 @@ struct PatternsShowcaseView: View {
 
     private var loadingStateSection: some View {
         ShowcaseSection("RuulLoadingState") {
-            VStack(spacing: RuulSpacing.s4) {
+            VStack(spacing: RuulSpacing.md) {
                 RuulLoadingState()
                     .frame(height: 120)
                 RuulLoadingState(message: "Cargando…")
@@ -76,13 +76,13 @@ struct PatternsShowcaseView: View {
                 Divider()
                 MemberRowStub(.init(id: "2", name: "Ana Cohen", subtitle: "miembro", metaText: "$0"), trailingIcon: "chevron.right") {}
             }
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         }
     }
 
     private var eventCardSection: some View {
         ShowcaseSection("EventCardStub") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 let attendees = (1...6).map { RuulAvatarStack.Person(id: "\($0)", name: "P\($0)") }
                 EventCardStub(.init(
                     id: "1",
@@ -112,7 +112,7 @@ struct PatternsShowcaseView: View {
 
     private var ruleCardSection: some View {
         ShowcaseSection("RuleCardStub") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 RuleCardStub(.init(id: "1", name: "Llegar tarde", description: "Más de 15 min.", amount: 50))
                 RuleCardStub(.init(id: "2", name: "Pausada", amount: 25, isActive: false))
             }
@@ -121,7 +121,7 @@ struct PatternsShowcaseView: View {
 
     private var fineCardSection: some View {
         ShowcaseSection("FineCardStub") {
-            VStack(spacing: RuulSpacing.s3) {
+            VStack(spacing: RuulSpacing.sm) {
                 FineCardStub(
                     .init(id: "1", reason: "Llegaste tarde", amount: 50, dateText: "Mié 7 may", status: .pending),
                     onPay: { },

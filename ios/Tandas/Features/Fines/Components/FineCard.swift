@@ -16,7 +16,7 @@ struct FineCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 if let groupName {
                     Text(groupName)
                         .ruulTextStyle(RuulTypography.sectionLabel)
@@ -24,13 +24,13 @@ struct FineCard: View {
                         .textCase(.uppercase)
                 }
                 statusRow
-                Divider().background(Color.ruulBorderSubtle)
+                Divider().background(Color.ruulSeparator)
                 contentRow
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity)
-            .background(Color.ruulBackgroundElevated, in: shape)
-            .overlay(shape.stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+            .background(Color.ruulSurface, in: shape)
+            .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
         }
         .buttonStyle(.ruulPress)
         .accessibilityElement(children: .combine)
@@ -38,11 +38,11 @@ struct FineCard: View {
     }
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
     }
 
     private var statusRow: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             Circle()
                 .fill(statusColor)
                 .frame(width: 8, height: 8)
@@ -59,7 +59,7 @@ struct FineCard: View {
     }
 
     private var contentRow: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ruleName ?? fine.reason)
                     .ruulTextStyle(RuulTypography.headline)
@@ -94,11 +94,11 @@ struct FineCard: View {
 
     private var statusColor: Color {
         switch fine.status {
-        case .proposed:     return .ruulSemanticWarning
-        case .officialized: return .ruulSemanticError
-        case .paid:         return .ruulSemanticSuccess
+        case .proposed:     return .ruulWarning
+        case .officialized: return .ruulNegative
+        case .paid:         return .ruulPositive
         case .voided:       return .ruulTextTertiary
-        case .inAppeal:     return .ruulSemanticInfo
+        case .inAppeal:     return .ruulInfo
         }
     }
 

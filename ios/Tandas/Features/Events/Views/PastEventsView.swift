@@ -12,7 +12,7 @@ struct PastEventsView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             content
         }
         .navigationTitle("Historial")
@@ -31,17 +31,17 @@ struct PastEventsView: View {
                 message: error.localizedDescription,
                 retryAction: ("Reintentar", { Task { await load() } })
             )
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         } else if events.isEmpty {
             EmptyStateView(
                 systemImage: "clock",
                 title: "Sin eventos pasados",
                 message: "Aquí aparecen los eventos cerrados o cancelados."
             )
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         } else {
             ScrollView {
-                VStack(spacing: RuulSpacing.s3) {
+                VStack(spacing: RuulSpacing.sm) {
                     ForEach(events) { event in
                         EventCard(
                             event: event,
@@ -50,7 +50,7 @@ struct PastEventsView: View {
                         ) { onOpenEvent(event) }
                     }
                 }
-                .padding(RuulSpacing.s5)
+                .padding(RuulSpacing.lg)
             }
         }
     }

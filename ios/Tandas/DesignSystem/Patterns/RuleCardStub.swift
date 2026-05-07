@@ -40,7 +40,7 @@ public struct RuleCardStub: View {
 
     public var body: some View {
         RuulCard(.glass) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack {
                     Text(data.name)
                         .ruulTextStyle(RuulTypography.headline)
@@ -58,7 +58,7 @@ public struct RuleCardStub: View {
                         set: { onToggleActive?($0) }
                     ))
                     .labelsHidden()
-                    .tint(Color.ruulAccentPrimary)
+                    .tint(Color.ruulAccent)
                 }
                 if let description = data.description {
                     Text(description)
@@ -92,13 +92,13 @@ public struct RuleCardStub: View {
 #if DEBUG
 #Preview("RuleCardStub") {
     ScrollView {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             RuleCardStub(.init(id: "1", name: "Llegar tarde", description: "Si llegas más de 15 min después.", amount: 50))
             RuleCardStub(.init(id: "2", name: "No avisar", description: "Si cancelas el mismo día.", amount: 100))
             RuleCardStub(.init(id: "3", name: "Pausada", amount: 25, isActive: false))
         }
-        .padding(RuulSpacing.s5)
+        .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackgroundCanvas)
+    .background(Color.ruulBackground)
 }
 #endif

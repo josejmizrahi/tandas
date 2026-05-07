@@ -4,7 +4,7 @@ import SwiftUI
 struct TokensShowcaseView: View {
     var body: some View {
         ScrollView {
-            VStack(spacing: RuulSpacing.s4) {
+            VStack(spacing: RuulSpacing.md) {
                 colors
                 typography
                 spacing
@@ -13,17 +13,17 @@ struct TokensShowcaseView: View {
                 motion
                 haptics
             }
-            .padding(RuulSpacing.s5)
+            .padding(RuulSpacing.lg)
         }
-        .background(Color.ruulBackgroundCanvas)
+        .background(Color.ruulBackground)
     }
 
     private var colors: some View {
         ShowcaseSection("Colors", subtitle: "Tap any swatch to copy its name to clipboard") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 colorGroup("Backgrounds", entries: [
-                    ("ruulBackgroundCanvas", .ruulBackgroundCanvas),
-                    ("ruulBackgroundElevated", .ruulBackgroundElevated),
+                    ("ruulBackground", .ruulBackground),
+                    ("ruulSurface", .ruulSurface),
                     ("ruulBackgroundRecessed", .ruulBackgroundRecessed)
                 ])
                 colorGroup("Text", entries: [
@@ -33,19 +33,19 @@ struct TokensShowcaseView: View {
                     ("ruulTextAccent", .ruulTextAccent)
                 ])
                 colorGroup("Accent", entries: [
-                    ("ruulAccentPrimary", .ruulAccentPrimary),
+                    ("ruulAccent", .ruulAccent),
                     ("ruulAccentSecondary", .ruulAccentSecondary),
-                    ("ruulAccentSubtle", .ruulAccentSubtle)
+                    ("ruulAccentMuted", .ruulAccentMuted)
                 ])
                 colorGroup("Semantic", entries: [
-                    ("ruulSemanticSuccess", .ruulSemanticSuccess),
-                    ("ruulSemanticWarning", .ruulSemanticWarning),
-                    ("ruulSemanticError", .ruulSemanticError),
-                    ("ruulSemanticInfo", .ruulSemanticInfo)
+                    ("ruulPositive", .ruulPositive),
+                    ("ruulWarning", .ruulWarning),
+                    ("ruulNegative", .ruulNegative),
+                    ("ruulInfo", .ruulInfo)
                 ])
                 colorGroup("Borders", entries: [
-                    ("ruulBorderSubtle", .ruulBorderSubtle),
-                    ("ruulBorderDefault", .ruulBorderDefault),
+                    ("ruulSeparator", .ruulSeparator),
+                    ("ruulSeparatorOpaque", .ruulSeparatorOpaque),
                     ("ruulBorderStrong", .ruulBorderStrong),
                     ("ruulBorderGlass", .ruulBorderGlass)
                 ])
@@ -54,7 +54,7 @@ struct TokensShowcaseView: View {
     }
 
     private func colorGroup(_ title: String, entries: [(String, Color)]) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title).ruulTextStyle(RuulTypography.footnote).foregroundStyle(Color.ruulTextTertiary)
             VStack(spacing: 4) {
                 ForEach(entries, id: \.0) { entry in
@@ -62,7 +62,7 @@ struct TokensShowcaseView: View {
                         HStack {
                             RoundedRectangle(cornerRadius: 6)
                                 .fill(entry.1)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.ruulSeparator, lineWidth: 0.5))
                                 .frame(width: 32, height: 32)
                             Text(entry.0)
                                 .ruulTextStyle(RuulTypography.callout)
@@ -82,7 +82,7 @@ struct TokensShowcaseView: View {
 
     private var typography: some View {
         ShowcaseSection("Typography") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 typographyRow("displayHero", style: RuulTypography.displayHero)
                 typographyRow("displayLarge", style: RuulTypography.displayLarge)
                 typographyRow("displayMedium", style: RuulTypography.displayMedium)
@@ -110,11 +110,11 @@ struct TokensShowcaseView: View {
     private var spacing: some View {
         ShowcaseSection("Spacing", subtitle: "4pt grid") {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach([("s1", RuulSpacing.s1), ("s2", RuulSpacing.s2), ("s3", RuulSpacing.s3), ("s4", RuulSpacing.s4), ("s5", RuulSpacing.s5), ("s6", RuulSpacing.s6), ("s7", RuulSpacing.s7), ("s8", RuulSpacing.s8), ("s9", RuulSpacing.s9), ("s10", RuulSpacing.s10)], id: \.0) { item in
+                ForEach([("xxs", RuulSpacing.xxs), ("xs", RuulSpacing.xs), ("sm", RuulSpacing.sm), ("md", RuulSpacing.md), ("lg", RuulSpacing.lg), ("xl", RuulSpacing.xl), ("xxl", RuulSpacing.xxl), ("s8", RuulSpacing.s8), ("xxxl", RuulSpacing.xxxl), ("s10", RuulSpacing.s10)], id: \.0) { item in
                     HStack {
                         Text(item.0).ruulTextStyle(RuulTypography.caption).frame(width: 36, alignment: .leading)
                         Rectangle()
-                            .fill(Color.ruulAccentPrimary.opacity(0.7))
+                            .fill(Color.ruulAccent.opacity(0.7))
                             .frame(width: item.1, height: 8)
                         Text("\(Int(item.1))pt").ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
                     }
@@ -125,11 +125,11 @@ struct TokensShowcaseView: View {
 
     private var radius: some View {
         ShowcaseSection("Radius") {
-            HStack(spacing: RuulSpacing.s3) {
-                ForEach([("sm", RuulRadius.sm), ("md", RuulRadius.md), ("lg", RuulRadius.lg), ("xl", RuulRadius.xl)], id: \.0) { item in
+            HStack(spacing: RuulSpacing.sm) {
+                ForEach([("small", RuulRadius.small), ("medium", RuulRadius.medium), ("large", RuulRadius.large), ("extraLarge", RuulRadius.extraLarge)], id: \.0) { item in
                     VStack {
                         RoundedRectangle(cornerRadius: item.1)
-                            .fill(Color.ruulAccentSubtle)
+                            .fill(Color.ruulAccentMuted)
                             .frame(width: 60, height: 60)
                         Text(item.0).ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
                     }
@@ -140,7 +140,7 @@ struct TokensShowcaseView: View {
 
     private var elevation: some View {
         ShowcaseSection("Elevation") {
-            HStack(spacing: RuulSpacing.s4) {
+            HStack(spacing: RuulSpacing.md) {
                 elevationCard("none", level: .none)
                 elevationCard("sm", level: .sm)
                 elevationCard("md", level: .md)
@@ -151,8 +151,8 @@ struct TokensShowcaseView: View {
 
     private func elevationCard(_ label: String, level: RuulElevation) -> some View {
         VStack {
-            RoundedRectangle(cornerRadius: RuulRadius.md)
-                .fill(Color.ruulBackgroundElevated)
+            RoundedRectangle(cornerRadius: RuulRadius.medium)
+                .fill(Color.ruulSurface)
                 .frame(width: 60, height: 60)
                 .ruulElevation(level)
             Text(label).ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
@@ -161,7 +161,7 @@ struct TokensShowcaseView: View {
 
     private var motion: some View {
         ShowcaseSection("Motion") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 MotionDemo(label: "ruulSnappy", animation: .ruulSnappy)
                 MotionDemo(label: "ruulSmooth", animation: .ruulSmooth)
                 MotionDemo(label: "ruulBouncy", animation: .ruulBouncy)
@@ -172,7 +172,7 @@ struct TokensShowcaseView: View {
 
     private var haptics: some View {
         ShowcaseSection("Haptics") {
-            VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 ForEach([RuulHaptic.selection, .soft, .light, .medium, .heavy, .success, .warning, .error], id: \.self) { haptic in
                     HapticDemo(haptic: haptic)
                 }
@@ -191,7 +191,7 @@ private struct MotionDemo: View {
             Text(label).ruulTextStyle(RuulTypography.callout).frame(width: 110, alignment: .leading)
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.ruulBackgroundRecessed).frame(width: 200, height: 32)
-                Capsule().fill(Color.ruulAccentPrimary).frame(width: 32, height: 32)
+                Capsule().fill(Color.ruulAccent).frame(width: 32, height: 32)
                     .offset(x: toggled ? 168 : 0)
             }
             Spacer()

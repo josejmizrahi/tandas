@@ -12,9 +12,9 @@ struct ReviewProposedFinesView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s6) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     header
                     if !coordinator.proposed.isEmpty {
                         proposedSection
@@ -25,7 +25,7 @@ struct ReviewProposedFinesView: View {
                         resolvedSection
                     }
                 }
-                .padding(.horizontal, RuulSpacing.s5)
+                .padding(.horizontal, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
@@ -40,7 +40,7 @@ struct ReviewProposedFinesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("EVENTO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
@@ -51,9 +51,9 @@ struct ReviewProposedFinesView: View {
                 .ruulTextStyle(RuulTypography.callout)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, RuulSpacing.s2)
+                .padding(.top, RuulSpacing.xs)
         }
-        .padding(.top, RuulSpacing.s4)
+        .padding(.top, RuulSpacing.md)
     }
 
     private var emptyState: some View {
@@ -62,11 +62,11 @@ struct ReviewProposedFinesView: View {
             title: "Nada que revisar",
             message: "No hay multas propuestas pendientes para este evento."
         )
-        .padding(.top, RuulSpacing.s5)
+        .padding(.top, RuulSpacing.lg)
     }
 
     private var proposedSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack {
                 Text("PROPUESTAS")
                     .ruulTextStyle(RuulTypography.sectionLabel)
@@ -90,7 +90,7 @@ struct ReviewProposedFinesView: View {
     }
 
     private func proposedFineRow(_ fine: Fine) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(memberLookup(fine.userId))
@@ -109,7 +109,7 @@ struct ReviewProposedFinesView: View {
                     color: .neutral
                 )
             }
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 Button {
                     voidConfirmFor = fine
                 } label: {
@@ -117,9 +117,9 @@ struct ReviewProposedFinesView: View {
                         .ruulTextStyle(RuulTypography.callout)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.s3)
-                        .background(Color.ruulBackgroundCanvas, in: Capsule())
-                        .overlay(Capsule().stroke(Color.ruulBorderSubtle, lineWidth: 0.5))
+                        .padding(.vertical, RuulSpacing.sm)
+                        .background(Color.ruulBackground, in: Capsule())
+                        .overlay(Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 }
                 .buttonStyle(.ruulPress)
                 Button {
@@ -129,22 +129,22 @@ struct ReviewProposedFinesView: View {
                         .ruulTextStyle(RuulTypography.callout)
                         .foregroundStyle(Color.ruulTextInverse)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.s3)
+                        .padding(.vertical, RuulSpacing.sm)
                         .background(Color.ruulTextPrimary, in: Capsule())
                 }
                 .buttonStyle(.ruulPress)
             }
         }
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
     private var resolvedSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack {
                 Text("YA RESUELTAS")
                     .ruulTextStyle(RuulTypography.sectionLabel)
@@ -181,7 +181,7 @@ struct ReviewProposedFinesView: View {
                 title: "Anular multa",
                 dismissAction: { voidConfirmFor = nil; voidReason = "" }
             ) {
-                VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
                     Text("Esta multa de \(fine.amountFormatted) para \(memberLookup(fine.userId)) se va a anular. Opcionalmente, deja una razón.")
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextSecondary)

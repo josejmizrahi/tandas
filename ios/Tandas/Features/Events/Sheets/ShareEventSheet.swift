@@ -31,7 +31,7 @@ struct ShareEventSheet: View {
             dismissAction: { isPresented = false },
             primaryCTA: ("Listo", { isPresented = false })
         ) {
-            VStack(spacing: RuulSpacing.s5) {
+            VStack(spacing: RuulSpacing.lg) {
                 Text("Quien escanee este código va directo al evento.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -40,7 +40,7 @@ struct ShareEventSheet: View {
                 qrCard
 
                 ShareLink(item: shareMessage) {
-                    HStack(spacing: RuulSpacing.s2) {
+                    HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 16, weight: .semibold))
                         Text("Compartir link")
@@ -48,8 +48,8 @@ struct ShareEventSheet: View {
                     }
                     .foregroundStyle(Color.ruulTextInverse)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, RuulSpacing.s4)
-                    .background(Color.ruulAccentPrimary, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                    .padding(.vertical, RuulSpacing.md)
+                    .background(Color.ruulAccent, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 }
                 .buttonStyle(.ruulPress)
 
@@ -57,7 +57,7 @@ struct ShareEventSheet: View {
                     Button {
                         onAddToCalendar()
                     } label: {
-                        HStack(spacing: RuulSpacing.s2) {
+                        HStack(spacing: RuulSpacing.xs) {
                             Image(systemName: "calendar.badge.plus")
                                 .font(.system(size: 16, weight: .semibold))
                             Text("Agregar a Calendario")
@@ -65,14 +65,14 @@ struct ShareEventSheet: View {
                         }
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.s4)
+                        .padding(.vertical, RuulSpacing.md)
                         .background(
-                            Color.ruulBackgroundElevated,
-                            in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                            Color.ruulSurface,
+                            in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                                .stroke(Color.ruulSeparator, lineWidth: 0.5)
                         )
                     }
                     .buttonStyle(.ruulPress)
@@ -82,11 +82,11 @@ struct ShareEventSheet: View {
     }
 
     private var qrCard: some View {
-        VStack(spacing: RuulSpacing.s3) {
+        VStack(spacing: RuulSpacing.sm) {
             qrImage
                 .frame(width: 220, height: 220)
-                .padding(RuulSpacing.s4)
-                .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .padding(RuulSpacing.md)
+                .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
 
             VStack(spacing: 2) {
                 Text(event.title)

@@ -14,7 +14,7 @@ struct CancelEventSheet: View {
                 isPresented = false
             })
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Esto avisa a todos los confirmados.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)

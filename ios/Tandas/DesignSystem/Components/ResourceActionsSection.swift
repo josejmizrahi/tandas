@@ -17,7 +17,7 @@ struct ResourceActionsSection: View {
         if actions.isEmpty {
             EmptyView()
         } else {
-            VStack(spacing: RuulSpacing.s2) {
+            VStack(spacing: RuulSpacing.xs) {
                 ForEach(actions) { action in
                     ResourceActionRow(action: action)
                 }
@@ -39,20 +39,20 @@ private struct ResourceActionRow: View {
                 isInvoking = false
             }
         } label: {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: action.icon)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(action.isDestructive
-                        ? Color.ruulSemanticError
-                        : Color.ruulAccentPrimary)
+                        ? Color.ruulNegative
+                        : Color.ruulAccent)
                     .frame(width: 32, height: 32)
-                    .background(Color.ruulBackgroundElevated, in: Circle())
+                    .background(Color.ruulSurface, in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(action.isDestructive
-                            ? Color.ruulSemanticError
+                            ? Color.ruulNegative
                             : Color.ruulTextPrimary)
                     if let subtitle = action.subtitle {
                         Text(subtitle)
@@ -71,11 +71,11 @@ private struct ResourceActionRow: View {
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }
-            .padding(RuulSpacing.s4)
-            .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .padding(RuulSpacing.md)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
             .opacity(isInvoking ? RuulOpacity.disabled : 1.0)
         }

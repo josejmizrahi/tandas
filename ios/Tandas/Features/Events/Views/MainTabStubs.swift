@@ -8,7 +8,7 @@ import SwiftUI
 struct InboxTabStub: View {
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             EmptyStateView(
                 systemImage: "tray.fill",
                 title: "Inbox",
@@ -21,7 +21,7 @@ struct InboxTabStub: View {
 struct RulesTabStub: View {
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             EmptyStateView(
                 systemImage: "list.bullet.clipboard.fill",
                 title: "Reglas",
@@ -36,8 +36,8 @@ struct ProfileTabStub: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
-            VStack(spacing: RuulSpacing.s5) {
+            Color.ruulBackground.ignoresSafeArea()
+            VStack(spacing: RuulSpacing.lg) {
                 if let profile = app.profile {
                     RuulAvatar(name: profile.displayName, imageURL: nil, size: .hero)
                     Text(profile.displayName)
@@ -53,9 +53,9 @@ struct ProfileTabStub: View {
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, RuulSpacing.s7)
+                    .padding(.horizontal, RuulSpacing.xxl)
             }
-            .padding(RuulSpacing.s7)
+            .padding(RuulSpacing.xxl)
         }
     }
 }

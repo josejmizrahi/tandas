@@ -22,19 +22,19 @@ struct EventRow: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: RuulSpacing.s4) {
+            HStack(spacing: RuulSpacing.md) {
                 cover
                 content
                 Spacer(minLength: 0)
                 trailing
             }
-            .padding(.vertical, RuulSpacing.s3)
-            .padding(.horizontal, RuulSpacing.s4)
-            .background(Color.ruulBackgroundElevated)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .padding(.vertical, RuulSpacing.sm)
+            .padding(.horizontal, RuulSpacing.md)
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -59,10 +59,10 @@ struct EventRow: View {
             }
         }
         .frame(width: 64, height: 64)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 
@@ -119,10 +119,10 @@ struct EventRow: View {
     /// Meta color carries status: cancelled is red, hosted-by-me + future is
     /// accent, in-progress is the live red, otherwise secondary.
     private var metaColor: Color {
-        if event.status == .cancelled { return .ruulSemanticError }
-        if event.status == .inProgress { return .ruulSemanticError }
+        if event.status == .cancelled { return .ruulNegative }
+        if event.status == .inProgress { return .ruulNegative }
         if event.startsAt < .now && event.status == .upcoming { return .ruulTextTertiary }
-        if Calendar.current.isDateInToday(event.startsAt) { return .ruulAccentPrimary }
+        if Calendar.current.isDateInToday(event.startsAt) { return .ruulAccent }
         return .ruulTextSecondary
     }
 
@@ -140,21 +140,21 @@ struct EventRow: View {
     private var livePill: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(Color.ruulSemanticError)
+                .fill(Color.ruulNegative)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulSemanticError)
+                .foregroundStyle(Color.ruulNegative)
         }
     }
 
     private func rsvpPill(_ status: RSVPStatus) -> some View {
         let (icon, label, color): (String, String, Color) = {
             switch status {
-            case .going:      return ("checkmark", "Vas",       .ruulSemanticSuccess)
-            case .maybe:      return ("questionmark", "Tal vez", .ruulSemanticWarning)
+            case .going:      return ("checkmark", "Vas",       .ruulPositive)
+            case .maybe:      return ("questionmark", "Tal vez", .ruulWarning)
             case .declined:   return ("xmark", "No vas",         .ruulTextTertiary)
-            case .waitlisted: return ("hourglass", "Lista",      .ruulAccentPrimary)
+            case .waitlisted: return ("hourglass", "Lista",      .ruulAccent)
             case .pending:    return ("circle", "",              .ruulTextTertiary)
             }
         }()

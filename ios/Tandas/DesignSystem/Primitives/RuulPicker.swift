@@ -26,7 +26,7 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
     }
 
     public var body: some View {
-        VStack(spacing: RuulSpacing.s2) {
+        VStack(spacing: RuulSpacing.xs) {
             ForEach(options) { option in
                 row(for: option)
             }
@@ -38,14 +38,14 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
         return Button {
             withAnimation(.ruulSnappy) { selection = option.value }
         } label: {
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? Color.ruulAccentPrimary : Color.ruulBorderDefault, lineWidth: 2)
+                        .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparatorOpaque, lineWidth: 2)
                         .frame(width: 22, height: 22)
                     if isSelected {
                         Circle()
-                            .fill(Color.ruulAccentPrimary)
+                            .fill(Color.ruulAccent)
                             .frame(width: 12, height: 12)
                             .transition(.scale)
                     }
@@ -62,11 +62,11 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
                 }
                 Spacer()
             }
-            .padding(RuulSpacing.s4)
+            .padding(RuulSpacing.md)
             .ruulGlass(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous),
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous),
                 material: .regular,
-                tint: isSelected ? Color.ruulAccentSubtle : nil
+                tint: isSelected ? Color.ruulAccentMuted : nil
             )
         }
         .buttonStyle(.ruulPress)
@@ -80,15 +80,15 @@ private struct RuulPickerPreview: View {
     @State var cadence: Cadence = .weekly
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s5) {
+        VStack(spacing: RuulSpacing.lg) {
             RuulPicker(selection: $cadence, options: [
                 .init(value: .weekly, label: "Semanal", subtitle: "Cada miércoles"),
                 .init(value: .biweekly, label: "Quincenal", subtitle: "Cada 2 semanas"),
                 .init(value: .monthly, label: "Mensual", subtitle: "Una vez al mes")
             ])
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

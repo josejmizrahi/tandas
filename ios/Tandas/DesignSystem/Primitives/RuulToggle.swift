@@ -26,7 +26,7 @@ public struct RuulToggle: View {
                 }
             }
         }
-        .tint(Color.ruulAccentPrimary)
+        .tint(Color.ruulAccent)
         .ruulHaptic(.selection, trigger: isOn)
     }
 }
@@ -38,13 +38,13 @@ private struct RuulTogglePreview: View {
     @State var detail = true
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             RuulToggle("Notificaciones", isOn: $notif)
             RuulToggle("Auto-RSVP", isOn: $auto, description: "Confirma asistencia automáticamente.")
             RuulToggle("Mostrar detalles", isOn: $detail, description: "Sumas, miembros activos, etc.")
         }
-        .padding(RuulSpacing.s5)
-        .background(Color.ruulBackgroundCanvas)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
     }
 }
 

@@ -10,12 +10,12 @@ struct OpenVotesListView: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.openVotes.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                         .transition(.opacity)
                 } else if coordinator.openVotes.isEmpty && coordinator.isLoading {
                     RuulLoadingState()
@@ -31,9 +31,9 @@ struct OpenVotesListView: View {
                     .transition(.opacity)
                 } else {
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: RuulSpacing.s5) {
+                        LazyVStack(alignment: .leading, spacing: RuulSpacing.lg) {
                             ForEach(coordinator.sectioned(), id: \.0) { section, votes in
-                                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                                     Text(section.title.uppercased())
                                         .ruulTextStyle(RuulTypography.sectionLabel)
                                         .foregroundStyle(Color.ruulTextTertiary)
@@ -46,8 +46,8 @@ struct OpenVotesListView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s4)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
                         .padding(.bottom, RuulSpacing.s12)
                     }
                     .scrollIndicators(.hidden)
@@ -72,12 +72,12 @@ struct OpenVotesListView: View {
     }
 
     private func voteRow(_ vote: Vote) -> some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             voteTypeIcon(vote.voteType)
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Color.ruulAccentPrimary)
+                .foregroundStyle(Color.ruulAccent)
                 .frame(width: 32, height: 32)
-                .background(Color.ruulBackgroundElevated, in: Circle())
+                .background(Color.ruulSurface, in: Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(vote.title)
@@ -93,11 +93,11 @@ struct OpenVotesListView: View {
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(Color.ruulTextTertiary)
         }
-        .padding(RuulSpacing.s4)
-        .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
     }
 

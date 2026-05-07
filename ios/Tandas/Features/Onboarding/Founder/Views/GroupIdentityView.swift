@@ -17,7 +17,7 @@ struct GroupIdentityView: View {
             primaryCTA: ("Crear grupo", coord.isLoading, { Task { await coord.advanceFromGroupIdentity() } }),
             canContinue: coord.draft.isReadyToCreate
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s5) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 RuulTextField(
                     "Nombre del grupo",
                     text: $bindable.draft.name,
@@ -25,25 +25,25 @@ struct GroupIdentityView: View {
                 )
                 .focused($nameFocused)
 
-                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text("Sugerencias")
                         .ruulTextStyle(RuulTypography.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                     suggestionChips
                 }
 
-                VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text("Cover")
                         .ruulTextStyle(RuulTypography.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                     RuulCoverPicker(selectedCoverId: $bindable.draft.coverImageName)
-                        .padding(.horizontal, -RuulSpacing.s5) // bleed past container padding
+                        .padding(.horizontal, -RuulSpacing.lg) // bleed past container padding
                 }
 
                 if let error = coord.error, case .createGroupFailed = error {
                     Text(error.localizedDescription)
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulSemanticError)
+                        .foregroundStyle(Color.ruulNegative)
                 }
             }
         }
@@ -56,7 +56,7 @@ struct GroupIdentityView: View {
 
     private var suggestionChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: RuulSpacing.s2) {
+            HStack(spacing: RuulSpacing.xs) {
                 ForEach(Self.suggestions, id: \.self) { name in
                     RuulChip(name, style: .suggestion) {
                         coord.draft.name = name

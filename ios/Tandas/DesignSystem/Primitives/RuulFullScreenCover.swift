@@ -9,7 +9,7 @@ public extension View {
     ) -> some View {
         self.fullScreenCover(item: item) { wrapped in
             content(wrapped)
-                .background(Color.ruulBackgroundCanvas)
+                .background(Color.ruulBackground)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
@@ -20,7 +20,7 @@ public extension View {
     ) -> some View {
         self.fullScreenCover(isPresented: isPresented) {
             content()
-                .background(Color.ruulBackgroundCanvas)
+                .background(Color.ruulBackground)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
@@ -32,13 +32,13 @@ private struct RuulFullScreenCoverPreview: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            Color.ruulBackground.ignoresSafeArea()
             RuulButton("Show full-screen cover") { presented = true }
         }
         .ruulFullScreenCover(isPresented: $presented) {
             ZStack {
                 RuulMeshBackground(.violet)
-                VStack(spacing: RuulSpacing.s4) {
+                VStack(spacing: RuulSpacing.md) {
                     Text("Full screen")
                         .ruulTextStyle(RuulTypography.displayLarge)
                         .foregroundStyle(Color.ruulTextPrimary)

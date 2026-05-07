@@ -106,7 +106,7 @@ private struct ResourceTabBarPreview: View {
             selection: $selection
         ) { tab in
             ZStack {
-                Color.ruulBackgroundCanvas.ignoresSafeArea()
+                Color.ruulBackground.ignoresSafeArea()
                 Text("Tab: \(String(describing: tab))")
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)

@@ -15,20 +15,20 @@ struct CancelAttendanceSheet: View {
                 isPresented = false
             })
         ) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s3) {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 if isAfterDeadline {
-                    HStack(spacing: RuulSpacing.s2) {
+                    HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Color.ruulSemanticWarning)
+                            .foregroundStyle(Color.ruulWarning)
                         Text("Esto puede generar multa según las reglas del grupo.")
                             .ruulTextStyle(RuulTypography.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
-                    .padding(RuulSpacing.s3)
-                    .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+                    .padding(RuulSpacing.sm)
+                    .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                            .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                            .stroke(Color.ruulSeparator, lineWidth: 0.5)
                     )
                 }
                 RuulTextField("¿Por qué no puedes?", text: $reason, label: "Razón (opcional)")
