@@ -128,13 +128,32 @@ struct VoteDetailCoordinatorTests {
         #expect(coord.voteIsClosed == true)
     }
 
-    @Test("cast updates myCast optimistically then refreshes")
+    @Test("cast updates myCast and clears error")
     func castFlow() async throws {
-        let (coord, _, _) = makeCoordinator()
+        let voteId = UUID()
+        let memberId = UUID()
+        let pendingCast = VoteCast(
+            id: UUID(), voteId: voteId, memberId: memberId,
+            choice: .pending, castAt: nil, createdAt: .now, updatedAt: .now
+        )
+        let v = makeVote(id: voteId)
+        let coord = VoteDetailCoordinator(
+            vote: v,
+            group: makeGroup(id: v.groupId),
+            userMemberId: memberId,
+            voteRepo: MockVoteRepository(seed: [v]),
+            castRepo: MockVoteCastRepository(seed: [pendingCast])
+        )
+
         await coord.refresh()
+        #expect(coord.myCast?.choice == .pending)
+
         await coord.cast(.inFavor)
+
         #expect(coord.error == nil)
         #expect(coord.isCasting == false)
+        #expect(coord.myCast?.choice == .inFavor)
+        #expect(coord.alreadyVoted == true)
     }
 
     @Test("cast surfaces error when RPC throws")
@@ -142,10 +161,10 @@ struct VoteDetailCoordinatorTests {
         let (coord, _, castRepo) = makeCoordinator()
         await castRepo.setNextCastError(NSError(
             domain: "test", code: 42501,
-            userInfo: [NSLocalizedDescriptionKey: "vote closed"]
+            userInfo: [NSLocalizedDescriptionKey: "vote is not open"]
         ))
         await coord.cast(.inFavor)
         #expect(coord.error != nil)
-        #expect(coord.error?.contains("cerró") == true || coord.error?.contains("closed") == true)
+        #expect(coord.error?.contains("cerró") == true)
     }
 }
