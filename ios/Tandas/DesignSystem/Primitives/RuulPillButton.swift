@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Pill icon button con `.regularMaterial`. Usado para back nav y header
-/// actions. Per DS doc §3.3.
+/// Pill icon button con Liquid Glass (`.ruulGlass`). Usado para back nav y
+/// header actions. Per DS doc §3.3.
 public struct RuulPillButton: View {
     public enum Size: Sendable, Hashable {
         case small, regular, large
@@ -43,9 +43,7 @@ public struct RuulPillButton: View {
                 .font(.system(size: size.symbolSize, weight: .medium))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: size.dimension, height: size.dimension)
-                // TODO v3 §13: replace .regularMaterial → .glassBackground() / .glassMaterial()
-                //             cuando SwiftUI iOS 26 SDK los exponga.
-                .background(Circle().fill(.regularMaterial))
+                .ruulGlass(Circle(), material: .regular, interactive: true)
         }
         .buttonStyle(.plain)
         .ruulHaptic(.light, trigger: triggerCount)

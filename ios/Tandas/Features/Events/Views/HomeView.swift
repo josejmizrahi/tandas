@@ -12,12 +12,9 @@ struct HomeView: View {
     var onCreateEvent: () -> Void
     var onOpenEvent: (Event) -> Void
     var onOpenPastEvents: () -> Void
-    var onSwitchGroup: (() -> Void)? = nil
     var onInvitePeople: (() -> Void)? = nil
-    var onOpenFeed: (() -> Void)? = nil
 
     @State private var showSettings: Bool = false
-    @State private var pendingCountsByGroup: [UUID: Int] = [:]
 
     var body: some View {
         ZStack {
@@ -39,15 +36,6 @@ struct HomeView: View {
             .overlay(alignment: .bottomTrailing) { fab }
         }
         .task { await coordinator.refresh() }
-        .task {
-            // 14.5 — load pending counts for badge per group chip.
-            // Re-runs on appear; cheap (one column SELECT).
-            if app.groups.count > 1, let userId = app.session?.user.id {
-                if let counts = try? await app.userActionRepo.pendingCountsByGroup(userId: userId) {
-                    pendingCountsByGroup = counts
-                }
-            }
-        }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .presentationDetents([.medium, .large])
@@ -64,13 +52,12 @@ struct HomeView: View {
                 Text(greeting)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextSecondary)
-                groupNameLabel
+                Text("Inicio")
+                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .foregroundStyle(Color.ruulTextPrimary)
             }
             Spacer()
             HStack(spacing: RuulSpacing.xs) {
-                // Calendar icon removed: redundant with HomeView itself
-                // (this view IS events). Cross-group feed now lives inside
-                // the group Menu below ("Ver todos mis eventos").
                 if let onInvitePeople {
                     headerIconButton(
                         systemName: "person.badge.plus",
@@ -104,75 +91,6 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
-    }
-
-    /// Group context selector — single source of truth for switching groups,
-    /// seeing pendings per group, accessing the cross-group feed, and
-    /// managing groups (create/join). Replaces the previous chip strip and
-    /// header calendar icon (both were redundant with this Menu).
-    ///
-    /// iOS-native pattern: tap the group name (with chevron) → contextual
-    /// menu floats from the tap point. Same affordance Calendar.app uses
-    /// for its calendar selector and Mail.app for mailboxes.
-    @ViewBuilder
-    private var groupNameLabel: some View {
-        Menu {
-            // Switch between groups. Active group has a checkmark; pending
-            // count appended inline so users see at a glance which group
-            // has activity waiting.
-            ForEach(app.groups) { group in
-                Button {
-                    if app.activeGroup?.id != group.id {
-                        app.activeGroupId = group.id
-                    }
-                } label: {
-                    let count = pendingCountsByGroup[group.id] ?? 0
-                    let display = count > 0 ? "\(group.name) · \(count)" : group.name
-                    if app.activeGroup?.id == group.id {
-                        Label(display, systemImage: "checkmark")
-                    } else {
-                        Text(display)
-                    }
-                }
-            }
-
-            if app.groups.count > 1, let onOpenFeed {
-                Divider()
-                Button(action: onOpenFeed) {
-                    Label("Ver todos mis eventos", systemImage: "calendar.badge.clock")
-                }
-            }
-
-            if let onSwitchGroup {
-                Divider()
-                Button(action: onSwitchGroup) {
-                    Label("Administrar grupos", systemImage: "person.2.gobackward")
-                }
-            }
-        } label: {
-            HStack(alignment: .center, spacing: RuulSpacing.xs) {
-                Text(coordinator.group.name)
-                    .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                if menuShouldShowChevron {
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .accessibilityLabel("Cambiar de grupo")
-    }
-
-    /// Hide the chevron when there's nothing for the menu to do (single
-    /// group + no manage/feed callbacks). In practice MainTabView always
-    /// provides the callbacks so this is mostly defensive.
-    private var menuShouldShowChevron: Bool {
-        app.groups.count > 1 || onSwitchGroup != nil || onOpenFeed != nil
     }
 
     private var greeting: String {

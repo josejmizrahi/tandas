@@ -48,8 +48,7 @@ public struct RuulGroupSwitcher: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Capsule().fill(.regularMaterial))
-            // TODO v3 §13: replace .regularMaterial → .glassMaterial() cuando exista en SDK
+            .ruulGlass(Capsule(), material: .regular, interactive: true)
             .animation(.ruulGroupSwitch, value: activeGroupName)
         }
         .buttonStyle(.plain)

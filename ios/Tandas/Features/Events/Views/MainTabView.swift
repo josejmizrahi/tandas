@@ -588,9 +588,7 @@ struct MainTabView: View {
                         onCreateEvent: { creationRoute = true },
                         onOpenEvent: { event in detailRoute = event },
                         onOpenPastEvents: { pastRoute = true },
-                        onSwitchGroup: { groupSwitcherPresented = true },
-                        onInvitePeople: { inviteSharePresented = true },
-                        onOpenFeed: { feedRoute = true }
+                        onInvitePeople: { inviteSharePresented = true }
                     )
                     .navigationDestination(isPresented: $pastRoute) {
                         if let group = app.activeGroup {

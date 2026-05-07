@@ -88,7 +88,7 @@ Verificable en el código actual (post Fases A-E):
 - ⏳ `GroupCategory` + `GroupColorRamp` (parte de v2 architecture, requires backend migration)
 - ⏳ `RuulGroupAvatar / RuulGroupSwitcher / RuulGroupSwitcherSheet / RuulSubTabBar / RuulOriginTag` (parte de v2 architecture)
 - ⏳ `RuulPersonAvatar` rename de `RuulAvatar` (parte de v2 architecture)
-- ⏳ Liquid Glass APIs nativas check (Sprint 1: **NO existen aún en iOS 26.4 SDK** — `glassBackground` / `glassMaterial` no se encuentran en SwiftUI headers. Mantenemos `.regularMaterial` en chrome surfaces con `TODO v3 §13` en `RuulPillButton`, `RuulHeaderActions`, `GroupContextHeader`, `RuulTabBar`. Re-evaluar en próximas betas.)
+- ✅ Liquid Glass APIs nativas (Sprint 3 Fase 5 fix 2026-05-07: `.glassEffect()` SÍ existe en iOS 26 SDK; wrapper `.ruulGlass(shape:)` ya estaba en DesignSystem/Modifiers/GlassEffect+Ruul.swift. Aplicado en RuulPillButton, RuulHeaderActions, RuulGroupSwitcher chrome surfaces. Audit inicial Sprint 1 fue erróneo — buscó nombres viejos `glassBackground`/`glassMaterial` que no existen, en lugar de `glassEffect` que sí.)
 - ⏳ Tab restructure Inicio/Grupo/Historial/Ajustes (Sprint 3)
 - ⏳ SPM 3 packages split (Sprint 2)
 - ⏳ Snapshot testing (Sprint 4)

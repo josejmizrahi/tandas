@@ -15,9 +15,7 @@ public struct RuulHeaderActions<Content: View>: View {
         }
         .padding(.horizontal, 4)
         .frame(height: 40)
-        // TODO v3 §13: replace .regularMaterial → .glassBackground() / .glassMaterial()
-        //             cuando SwiftUI iOS 26 SDK los exponga.
-        .background(Capsule().fill(.regularMaterial))
+        .ruulGlass(Capsule(), material: .regular)
     }
 }
 
