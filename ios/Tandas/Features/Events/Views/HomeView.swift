@@ -3,6 +3,11 @@ import SwiftUI
 struct HomeView: View {
     @Bindable var coordinator: HomeCoordinator
     @Environment(AppState.self) private var app
+    /// Fase 4b: Inbox content vive embebido en Home como sección "Pendientes".
+    /// `nil` durante bootstrap (igual que homeCoordinator). El callback
+    /// dispatch al `handleInboxAction` del padre — mismo handler que antes.
+    var inboxCoordinator: InboxCoordinator?
+    var onInboxActionTap: (UserAction) async -> Void = { _ in }
     let userId: UUID
     var onCreateEvent: () -> Void
     var onOpenEvent: (Event) -> Void
@@ -21,6 +26,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.s8) {
                     header
                     nextEventSection
+                    pendingsSection
                     upcomingListSection
                     pastEventsLink
                 }
@@ -393,6 +399,78 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
+    }
+
+    // MARK: - Pendings — Fase 4b: Inbox content embedded como sección.
+    //
+    // Renders top 3 UserActions del `inboxCoordinator`. Tap dispatch al
+    // `onInboxActionTap` del padre (MainTabView.handleInboxAction). Cuando
+    // hay >3 pendings podemos agregar un "Ver todas" link en una iteración
+    // posterior — V1 corta a 3 para no canibalizar el hero del próximo evento.
+
+    @ViewBuilder
+    private var pendingsSection: some View {
+        if let coord = inboxCoordinator, !coord.actions.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("PENDIENTES")
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                    Spacer()
+                    Text("\(coord.actions.count)")
+                        .ruulTextStyle(RuulTypography.statSmall)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
+                VStack(spacing: RuulSpacing.xs) {
+                    ForEach(coord.actions.prefix(3)) { action in
+                        ActionCard(
+                            icon: pendingIcon(for: action.actionType),
+                            meta: pendingMeta(for: action, coordinator: coord),
+                            title: action.title,
+                            subtitle: action.body,
+                            priority: pendingPriority(for: action.priority),
+                            timeRemaining: nil,
+                            onTap: {
+                                Task { await onInboxActionTap(action) }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func pendingIcon(for type: ActionType) -> String {
+        switch type {
+        case .finePending:             return "exclamationmark.triangle.fill"
+        case .fineVoided:              return "xmark.circle"
+        case .appealVotePending:       return "hand.raised.fill"
+        case .rsvpPending:             return "checkmark.circle.fill"
+        case .fineProposalReview:      return "doc.text.magnifyingglass"
+        case .ruleChangeApplyPending:  return "list.bullet.clipboard.fill"
+        case .slotPending:             return "ticket.fill"
+        case .votePending:             return "hand.raised.fill"
+        case .contributionDue:         return "banknote.fill"
+        case .compensationDue:         return "arrow.up.right"
+        }
+    }
+
+    private func pendingMeta(for action: UserAction, coordinator: InboxCoordinator) -> String? {
+        switch action.actionType {
+        case .ruleChangeApplyPending:
+            return "Votado \(action.createdAt.ruulRelativeDescription)"
+        default:
+            return coordinator.groupName(for: action)
+        }
+    }
+
+    private func pendingPriority(for raw: ActionPriority) -> ActionCard.Priority {
+        switch raw {
+        case .low:    return .low
+        case .medium: return .medium
+        case .high:   return .high
+        case .urgent: return .urgent
+        }
     }
 
     // MARK: - Upcoming list — section header + tile cards.

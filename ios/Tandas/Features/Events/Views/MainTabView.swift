@@ -26,6 +26,11 @@ struct MainTabView: View {
     @State private var myFinesCoordinator: MyFinesCoordinator?
     @State private var profileCoordinator: ProfileCoordinator?
     @State private var rulesCoordinator: RulesCoordinator?
+    /// Fase 4b: history es ahora tab top-level. El coordinator se construye
+    /// junto al resto en `rebuildCoordinators(for:)` para que el filtro y
+    /// la paginación sobrevivan al cambio de tab (antes se construía lazy
+    /// adentro de Profile.onOpenHistory).
+    @State private var groupHistoryCoordinator: GroupHistoryCoordinator?
     @State private var fineDetailRoute: Fine?
     @State private var reviewProposedRoute: Event?
     @State private var voteOnAppealRoute: AppealRouteContext?
@@ -35,15 +40,15 @@ struct MainTabView: View {
     /// universal link. Setting this presents the sheet via `.sheet(item:)`.
     @State private var ruleEditRoute: RuleEditRouteContext?
     /// Phase G2 follow-up: route state for `OpenVotesListView` pushed from
-    /// the "Votos abiertos" section of `RulesView`. Lives on the rulesTab
-    /// `NavigationStack`.
+    /// the "Votos abiertos" section of `RulesView`. Post-Fase 4b vive en el
+    /// groupTab `NavigationStack` (Rules sub-tab adentro de GroupTabView).
     @State private var openVotesRoute: OpenVotesRouteContext?
     /// Phase G2 follow-up: route state for `VoteDetailView` pushed from a
-    /// vote row tap inside `OpenVotesListView` (rulesTab stack).
+    /// vote row tap inside `OpenVotesListView` (groupTab stack post-Fase 4b).
     @State private var voteDetailRoute: VoteDetailRouteContext?
-    /// Phase G2 follow-up: route state for `VoteDetailView` pushed from an
-    /// inbox tap on a `.votePending` action. Lives on the inboxTab stack so
-    /// the destination resolves on the same NavigationStack the user is on.
+    /// Phase G2 follow-up: route state for `VoteDetailView` pushed from un
+    /// inbox tap on a `.votePending` action. Post-Fase 4b vive en el homeTab
+    /// stack (inbox content embebido en HomeView como sección "Pendientes").
     @State private var voteDetailRouteFromInbox: VoteDetailRouteContext?
 
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
@@ -54,23 +59,23 @@ struct MainTabView: View {
     @State private var inviteSharePresented: Bool = false
 
     enum Tab: String, RuulTabItem, CaseIterable {
-        case home, inbox, rules, me
+        case home, group, history, settings
 
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .home:  return "Inicio"
-            case .inbox: return "Inbox"
-            case .rules: return "Reglas"
-            case .me:    return "Yo"
+            case .home:     return "Inicio"
+            case .group:    return "Grupo"
+            case .history:  return "Historial"
+            case .settings: return "Ajustes"
             }
         }
         var symbol: String {
             switch self {
-            case .home:  return "house.fill"
-            case .inbox: return "tray.fill"
-            case .rules: return "list.bullet.clipboard.fill"
-            case .me:    return "person.crop.circle.fill"
+            case .home:     return "house.fill"
+            case .group:    return "person.3.fill"
+            case .history:  return "clock.arrow.circlepath"
+            case .settings: return "gear"
             }
         }
         /// Default `nil` from the protocol extension; runtime badge counts
@@ -95,12 +100,13 @@ struct MainTabView: View {
         Tab.allCases.map { tab in
             TabBadged(
                 base: tab,
-                badgeCount: tab == .inbox ? (inboxCoordinator?.actions.count ?? 0) : nil
+                badgeCount: tab == .home ? (inboxCoordinator?.actions.count ?? 0) : nil
             )
         }
     }
 
-    /// Native TabView badge for the Inbox tab (rendered via `.badge(_)`).
+    /// Native TabView badge for the Home tab (post-Fase 4b: pending inbox
+    /// actions surface as a badge on Inicio since Inbox content lives there).
     /// Returns 0 when there's nothing pending — SwiftUI hides the badge when
     /// the count is 0.
     private var inboxBadgeCount: Int {
@@ -133,16 +139,16 @@ struct MainTabView: View {
             homeTab
                 .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
                 .tag(Tab.home)
-            inboxTab
-                .tabItem { Label(Tab.inbox.label, systemImage: Tab.inbox.symbol) }
-                .tag(Tab.inbox)
                 .badge(inboxBadgeCount)
-            rulesTab
-                .tabItem { Label(Tab.rules.label, systemImage: Tab.rules.symbol) }
-                .tag(Tab.rules)
-            profileTab
-                .tabItem { Label(Tab.me.label, systemImage: Tab.me.symbol) }
-                .tag(Tab.me)
+            groupTab
+                .tabItem { Label(Tab.group.label, systemImage: Tab.group.symbol) }
+                .tag(Tab.group)
+            historyTab
+                .tabItem { Label(Tab.history.label, systemImage: Tab.history.symbol) }
+                .tag(Tab.history)
+            settingsTab
+                .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
+                .tag(Tab.settings)
         }
         .tint(Color.ruulTextPrimary)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
@@ -202,24 +208,30 @@ struct MainTabView: View {
         }
     }
 
-    // MARK: - Inbox tab
+    // MARK: - Tabs (v3): Grupo / Historial / Ajustes
 
+    /// Tab "Grupo" — composite con sub-tabs Events/Rules/Fines via `GroupTabView`.
+    /// Reemplaza `rulesTab` y absorbe la sub-tab Eventos del antiguo Inicio.
     @ViewBuilder
-    private var rulesTab: some View {
+    private var groupTab: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                GroupContextHeader(
-                    group: app.activeGroup,
-                    onTap: { groupSwitcherPresented = true }
-                )
-                if let coord = rulesCoordinator {
-                    RulesView(
-                        coordinator: coord,
+            SwiftUI.Group {
+                if let rulesCoord = rulesCoordinator,
+                   let group = app.activeGroup {
+                    GroupTabView(
+                        rulesCoordinator: rulesCoord,
+                        myFinesCoordinator: myFinesCoordinator,
+                        activeGroup: group,
+                        upcomingEvents: homeCoordinator?.upcomingEvents ?? [],
+                        myRSVPs: homeCoordinator?.myRSVPs ?? [:],
+                        onSwitchGroup: { groupSwitcherPresented = true },
+                        onOpenEvent: { event in detailRoute = event },
+                        onOpenFine: { fine in fineDetailRoute = fine },
                         voteRepo: app.voteRepo,
                         userActionRepo: app.userActionRepo,
                         onSeeOpenVotes: {
-                            if let group = app.activeGroup {
-                                openVotesRoute = OpenVotesRouteContext(id: group.id)
+                            if let g = app.activeGroup {
+                                openVotesRoute = OpenVotesRouteContext(id: g.id)
                             }
                         }
                     )
@@ -229,11 +241,81 @@ struct MainTabView: View {
                     .navigationDestination(item: $voteDetailRoute) { ctx in
                         voteDetailDestination(for: ctx)
                     }
+                    .navigationDestination(item: $fineDetailRoute) { fine in
+                        fineDetailScreen(fine)
+                    }
                 } else {
                     ZStack {
                         Color.ruulBackground.ignoresSafeArea()
                         RuulLoadingState()
                     }
+                }
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    /// Tab "Historial" — timeline de SystemEvents del grupo activo via
+    /// `HistoryTabView`. Antes vivía como push desde Profile.
+    @ViewBuilder
+    private var historyTab: some View {
+        NavigationStack {
+            SwiftUI.Group {
+                if let coord = groupHistoryCoordinator,
+                   let group = app.activeGroup {
+                    HistoryTabView(
+                        activeGroup: group,
+                        onSwitchGroup: { groupSwitcherPresented = true },
+                        coordinator: coord
+                    )
+                } else {
+                    ZStack {
+                        Color.ruulBackground.ignoresSafeArea()
+                        RuulLoadingState()
+                    }
+                }
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    /// Tab "Ajustes" — dual scope (cuenta global + este grupo) via
+    /// `SettingsTabView`. `onOpenHistory` ahora salta a la tab Historial
+    /// directamente en lugar de pushear adentro de la stack de Ajustes.
+    @ViewBuilder
+    private var settingsTab: some View {
+        NavigationStack {
+            SwiftUI.Group {
+                if let pCoord = profileCoordinator,
+                   let group = app.activeGroup {
+                    SettingsTabView(
+                        activeGroup: group,
+                        onSwitchGroup: { groupSwitcherPresented = true },
+                        profileCoordinator: pCoord,
+                        onOpenMyFines: { myFinesRoute = true },
+                        onOpenHistory: { selectedTab = .history },
+                        onOpenSettings: { settingsRoute = true },
+                        onSignOut: {
+                            Task { try? await app.auth.signOut() }
+                        }
+                    )
+                    .navigationDestination(isPresented: $myFinesRoute) {
+                        if let fCoord = myFinesCoordinator {
+                            MyFinesView(coordinator: fCoord) { fine in
+                                fineDetailRoute = fine
+                            }
+                        }
+                    }
+                    .navigationDestination(item: $fineDetailRoute) { fine in
+                        fineDetailScreen(fine)
+                    }
+                    .sheet(isPresented: $settingsRoute) {
+                        SettingsSheet()
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                    }
+                } else {
+                    ProfileTabStub()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -290,88 +372,8 @@ struct MainTabView: View {
         return memberDirectory[userId]?.member.id
     }
 
-    @ViewBuilder
-    private var inboxTab: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                GroupContextHeader(
-                    group: app.activeGroup,
-                    onTap: { groupSwitcherPresented = true }
-                )
-                if let coord = inboxCoordinator {
-                    ActionInboxView(coordinator: coord) { action in
-                        Task { await handleInboxAction(action) }
-                    }
-                    .navigationDestination(item: $fineDetailRoute) { fine in
-                        fineDetailScreen(fine)
-                    }
-                    .navigationDestination(item: $reviewProposedRoute) { event in
-                        reviewProposedScreen(event)
-                    }
-                    .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
-                        voteDetailDestination(for: ctx)
-                    }
-                    .ruulSheet(item: $voteOnAppealRoute) { ctx in
-                        voteOnAppealSheet(ctx)
-                    }
-                } else {
-                    ZStack {
-                        Color.ruulBackground.ignoresSafeArea()
-                        RuulLoadingState()
-                    }
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-        }
-    }
-
     @State private var myFinesRoute: Bool = false
-    @State private var historyRoute: Bool = false
     @State private var settingsRoute: Bool = false
-
-    @ViewBuilder
-    private var profileTab: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                GroupContextHeader(
-                    group: app.activeGroup,
-                    onTap: { groupSwitcherPresented = true }
-                )
-                if let pCoord = profileCoordinator {
-                    ProfileView(
-                        coordinator: pCoord,
-                        onOpenMyFines: { myFinesRoute = true },
-                        onOpenHistory: { historyRoute = true },
-                        onOpenSettings: { settingsRoute = true },
-                        onSignOut: {
-                            Task { try? await app.auth.signOut() }
-                        }
-                    )
-                    .navigationDestination(isPresented: $myFinesRoute) {
-                        if let fCoord = myFinesCoordinator {
-                            MyFinesView(coordinator: fCoord) { fine in
-                                fineDetailRoute = fine
-                            }
-                        }
-                    }
-                    .navigationDestination(isPresented: $historyRoute) {
-                        groupHistoryScreen
-                    }
-                    .navigationDestination(item: $fineDetailRoute) { fine in
-                        fineDetailScreen(fine)
-                    }
-                    .sheet(isPresented: $settingsRoute) {
-                        SettingsSheet()
-                            .presentationDetents([.medium, .large])
-                            .presentationDragIndicator(.visible)
-                    }
-                } else {
-                    ProfileTabStub()
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-        }
-    }
 
     @ViewBuilder
     private var feedScreen: some View {
@@ -386,18 +388,6 @@ struct MainTabView: View {
             app.activeGroupId = group.id
             feedRoute = false
             detailRoute = event
-        }
-    }
-
-    @ViewBuilder
-    private var groupHistoryScreen: some View {
-        if let group = app.activeGroup {
-            GroupHistoryView(coordinator: GroupHistoryCoordinator(
-                groupId: group.id,
-                repo: app.systemEventRepo
-            ))
-        } else {
-            EmptyView()
         }
     }
 
@@ -562,6 +552,10 @@ struct MainTabView: View {
                 if let coord = homeCoordinator {
                     HomeView(
                         coordinator: coord,
+                        inboxCoordinator: inboxCoordinator,
+                        onInboxActionTap: { action in
+                            await handleInboxAction(action)
+                        },
                         userId: app.session?.user.id ?? UUID(),
                         onCreateEvent: { creationRoute = true },
                         onOpenEvent: { event in detailRoute = event },
@@ -581,6 +575,21 @@ struct MainTabView: View {
                     }
                     .navigationDestination(isPresented: $feedRoute) {
                         feedScreen
+                    }
+                    // Fase 4b: route destinations migradas desde inboxTab.
+                    // Inbox content vive en HomeView ahora (sección "Pendientes")
+                    // así que sus pushes resuelven en este NavigationStack.
+                    .navigationDestination(item: $fineDetailRoute) { fine in
+                        fineDetailScreen(fine)
+                    }
+                    .navigationDestination(item: $reviewProposedRoute) { event in
+                        reviewProposedScreen(event)
+                    }
+                    .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
+                        voteDetailDestination(for: ctx)
+                    }
+                    .ruulSheet(item: $voteOnAppealRoute) { ctx in
+                        voteOnAppealSheet(ctx)
                     }
                     .fullScreenCover(item: $detailRoute) { event in
                         eventDetailScreen(event)
@@ -803,6 +812,12 @@ struct MainTabView: View {
             ruleRepo: app.ruleRepo,
             voteRepo: app.voteRepo
         )
+        // Fase 4b: history es tab top-level. Construimos su coordinator en el
+        // mismo rebuild para que el cambio de grupo refresque el filtro.
+        groupHistoryCoordinator = GroupHistoryCoordinator(
+            groupId: group.id,
+            repo: app.systemEventRepo
+        )
     }
 
     /// Synthetic inactive member used when the directory hasn't surfaced
@@ -947,15 +962,15 @@ struct RuleEditRouteContext: Identifiable, Hashable {
 }
 
 /// Identifiable wrapper for the `OpenVotesListView` push destination on
-/// the rulesTab stack. The id is the active group's id so SwiftUI rebuilds
-/// the destination on group switch.
+/// the groupTab stack (post-Fase 4b). The id is the active group's id so
+/// SwiftUI rebuilds the destination on group switch.
 struct OpenVotesRouteContext: Identifiable, Hashable {
     let id: UUID
 }
 
-/// Identifiable wrapper for the `VoteDetailView` push destination. Used on
-/// both the rulesTab stack (vote-row tap from `OpenVotesListView`) and the
-/// inboxTab stack (`.votePending` action tap). Identity is the vote id.
+/// Identifiable wrapper for the `VoteDetailView` push destination. Post-Fase
+/// 4b vive en groupTab stack (vote-row tap from `OpenVotesListView`) y en
+/// homeTab stack (`.votePending` desde sección Pendientes). Identity es vote id.
 struct VoteDetailRouteContext: Identifiable, Hashable {
     let vote: Vote
     var id: UUID { vote.id }
