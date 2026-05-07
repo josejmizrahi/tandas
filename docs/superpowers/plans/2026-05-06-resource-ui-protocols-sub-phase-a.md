@@ -378,16 +378,16 @@ import Foundation
 /// (útil para analytics, logs y futuro re-check). V1 NO re-chequea
 /// en `onTap`. Sub-fase D puede expandir a defense-in-depth con UI
 /// fallback ("La gobernanza cambió, refrescá") si decide.
-public struct ResourceAction: Identifiable, Sendable {
-    public let id: String
-    public let icon: String
-    public let title: String
-    public let subtitle: String?
-    public let isDestructive: Bool
-    public let governanceAction: GovernanceAction
-    public let onTap: @Sendable () async -> Void
+struct ResourceAction: Identifiable, Sendable {
+    let id: String
+    let icon: String
+    let title: String
+    let subtitle: String?
+    let isDestructive: Bool
+    let governanceAction: GovernanceAction
+    let onTap: @Sendable () async -> Void
 
-    public init(
+    init(
         id: String,
         icon: String,
         title: String,
@@ -464,7 +464,7 @@ import Foundation
 /// Trade-off: consumers no pueden tener `[any ResourceActionsProvider]`.
 /// V1 no lo necesita — cada resource type tiene su provider concreto
 /// inyectado donde corresponde, accedido por switch en `resource.resourceType`.
-public protocol ResourceActionsProvider: Sendable {
+protocol ResourceActionsProvider: Sendable {
     associatedtype R: ResourceProtocol
 
     func actions(
