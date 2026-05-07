@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Per DS v3 §4.7: el color del avatar es **automático según categoría**.
 /// NO se puede customizar por founder.
-public enum GroupCategory: String, Sendable, CaseIterable, Codable {
+public enum GroupCategory: String, Sendable, CaseIterable, Codable, Hashable {
     case socialRecurring        // Cenas recurrentes, clubes de lectura, tertulias
     case sharedResource         // Palcos, cabañas, yates, suscripciones
     case rotatingSavings        // Tandas, susu, hui, vaquitas
