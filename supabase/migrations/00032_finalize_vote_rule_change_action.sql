@@ -143,18 +143,33 @@ begin
 
   -- NUEVO V3: rule_change resuelto passed → user_action al founder + outbox push.
   if v_vote.vote_type = 'rule_change' and v_resolution = 'passed' then
+    -- Read amounts first; skip v3 emit if payload malformed (defensive
+    -- against rule_change votes whose payload didn't include amounts —
+    -- e.g. future non-amount rule changes, or a propose_rule bug).
+    v_current_amount  := nullif(v_vote.payload->>'current_amount', '')::int;
+    v_proposed_amount := nullif(v_vote.payload->>'proposed_amount', '')::int;
+
+    if v_current_amount is null or v_proposed_amount is null then
+      -- Don't emit ruleChangeApplyPending if we can't render the deep_link
+      -- or body amounts. The voteResolved fan-out (above) still notifies
+      -- voters; the founder just won't get the specific apply-pending row.
+      return v_resolution;
+    end if;
+
+    -- If a group has multiple co-founders, pick the earliest-joined
+    -- (deterministic). v4 may fan out to all founders if co-founder
+    -- groups become common.
     select gm.id, gm.user_id
       into v_founder_member_id, v_founder_user_id
       from public.group_members gm
      where gm.group_id = v_vote.group_id
        and gm.roles ?| array['founder']
        and gm.active = true
+     order by gm.created_at asc
      limit 1;
 
     if v_founder_user_id is not null then
       v_rule_id         := v_vote.reference_id;
-      v_current_amount  := nullif(v_vote.payload->>'current_amount', '')::int;
-      v_proposed_amount := nullif(v_vote.payload->>'proposed_amount', '')::int;
 
       select coalesce(name, title, 'Regla #' || left(v_rule_id::text, 8))
         into v_rule_name

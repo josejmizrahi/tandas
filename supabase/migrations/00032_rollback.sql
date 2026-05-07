@@ -127,3 +127,6 @@ begin
   return v_resolution;
 end;
 $function$;
+
+comment on function public.finalize_vote is
+  'Closes vote, computes resolution. Quorum = greatest(ceil(total_eligible * quorum_percent / 100), quorum_min_absolute). Emits voteResolved event + writes notifications_outbox rows for all eligible voters (and the appellant for fine_appeal).';
