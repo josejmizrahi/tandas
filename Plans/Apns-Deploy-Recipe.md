@@ -5,6 +5,10 @@
 > nueva uploaded como `APNS_AUTH_KEY`, `APNS_KEY_ID`, `APNS_TEAM_ID`,
 > `APNS_BUNDLE_ID` cargados en Supabase) y que el target Xcode tiene
 > Push Notifications + Background Modes (Remote notifications) habilitados.
+>
+> **Estado al 2026-05-07**: §1-§4 ejecutados via MCP de Supabase. Cron
+> respondiendo 200 con outbox vacía. Falta §5 (smoke test en device).
+> §6-§8 quedan como referencia para troubleshooting + rollback.
 
 ---
 

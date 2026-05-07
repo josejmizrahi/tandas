@@ -71,20 +71,14 @@ serve(withSentry(async (_req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Atomic claim: UPDATE returns the rows we now own. Without
-  // FOR UPDATE SKIP LOCKED via the JS client, we rely on Postgres
-  // row-level locks — concurrent UPDATEs on the same rows serialize,
-  // and the second sees `dispatched_at IS NULL` no longer matching.
-  const nowIso = new Date().toISOString();
-  const { data: claimed, error: claimErr } = await supabase
-    .from("notifications_outbox")
-    .update({ dispatched_at: nowIso })
-    .is("dispatched_at", null)
-    .lte("scheduled_for", nowIso)
-    .eq("dispatch_status", "pending")
-    .order("scheduled_for", { ascending: true })
-    .limit(BATCH_LIMIT)
-    .select("id, group_id, recipient_member_id, notification_type, payload, deep_link");
+  // Atomic claim via SECURITY DEFINER RPC. The function uses
+  // FOR UPDATE SKIP LOCKED so concurrent invocations don't double-claim.
+  // Going through RPC instead of `.from(...)` table reads bypasses
+  // PostgREST's schema cache (which can lag behind DDL changes).
+  const { data: claimed, error: claimErr } = await supabase.rpc(
+    "claim_pending_outbox",
+    { p_limit: BATCH_LIMIT },
+  );
 
   if (claimErr) return jsonError(500, `claim failed: ${claimErr.message}`);
 
@@ -133,10 +127,10 @@ serve(withSentry(async (_req) => {
     const userTokens = userId ? (tokensByUser.get(userId) ?? []) : [];
 
     if (userTokens.length === 0) {
-      await supabase
-        .from("notifications_outbox")
-        .update({ dispatch_status: "skipped", dispatch_error: "no token registered" })
-        .eq("id", row.id);
+      await supabase.rpc("mark_outbox_skipped", {
+        p_outbox_id: row.id,
+        p_reason: "no token registered",
+      });
       summary.skipped += 1;
       continue;
     }
@@ -160,17 +154,14 @@ serve(withSentry(async (_req) => {
     }
 
     if (anySuccess) {
-      await supabase
-        .from("notifications_outbox")
-        .update({ dispatch_status: "sent" })
-        .eq("id", row.id);
+      await supabase.rpc("mark_outbox_sent", { p_outbox_id: row.id });
       summary.sent += 1;
     } else {
       const reason = lastErr ?? "unknown apns error";
-      await supabase
-        .from("notifications_outbox")
-        .update({ dispatch_status: "failed", dispatch_error: reason })
-        .eq("id", row.id);
+      await supabase.rpc("mark_outbox_failed", {
+        p_outbox_id: row.id,
+        p_error: reason,
+      });
       summary.failed += 1;
       summary.errors.push({ outbox_id: row.id, reason });
     }
