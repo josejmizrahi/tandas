@@ -215,6 +215,7 @@ struct MainTabView: View {
                     }
                 }
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -299,6 +300,7 @@ struct MainTabView: View {
                     }
                 }
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -346,6 +348,7 @@ struct MainTabView: View {
                     ProfileTabStub()
                 }
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -534,55 +537,58 @@ struct MainTabView: View {
     @ViewBuilder
     private var homeTab: some View {
         NavigationStack {
-            if let coord = homeCoordinator {
-                HomeView(
-                    coordinator: coord,
-                    userId: app.session?.user.id ?? UUID(),
-                    onCreateEvent: { creationRoute = true },
-                    onOpenEvent: { event in detailRoute = event },
-                    onOpenPastEvents: { pastRoute = true },
-                    onSwitchGroup: { groupSwitcherPresented = true },
-                    onInvitePeople: { inviteSharePresented = true },
-                    onOpenFeed: { feedRoute = true }
-                )
-                .navigationDestination(isPresented: $pastRoute) {
-                    if let group = app.activeGroup {
-                        PastEventsView(
-                            group: group,
-                            userId: app.session?.user.id ?? UUID(),
-                            eventRepo: app.eventRepo
-                        ) { event in detailRoute = event }
+            SwiftUI.Group {
+                if let coord = homeCoordinator {
+                    HomeView(
+                        coordinator: coord,
+                        userId: app.session?.user.id ?? UUID(),
+                        onCreateEvent: { creationRoute = true },
+                        onOpenEvent: { event in detailRoute = event },
+                        onOpenPastEvents: { pastRoute = true },
+                        onSwitchGroup: { groupSwitcherPresented = true },
+                        onInvitePeople: { inviteSharePresented = true },
+                        onOpenFeed: { feedRoute = true }
+                    )
+                    .navigationDestination(isPresented: $pastRoute) {
+                        if let group = app.activeGroup {
+                            PastEventsView(
+                                group: group,
+                                userId: app.session?.user.id ?? UUID(),
+                                eventRepo: app.eventRepo
+                            ) { event in detailRoute = event }
+                        }
                     }
-                }
-                .navigationDestination(isPresented: $feedRoute) {
-                    feedScreen
-                }
-                .fullScreenCover(item: $detailRoute) { event in
-                    eventDetailScreen(event)
-                }
-                .fullScreenCover(isPresented: $creationRoute) {
-                    eventCreationScreen
-                }
-                .onChange(of: creationRoute) { wasOpen, isOpen in
-                    // Refresh on cover dismissal regardless of source.
-                    // Refreshing inside the dismissed subview's onChange races
-                    // with view teardown and sometimes drops the Task.
-                    if wasOpen && !isOpen {
-                        Task { await homeCoordinator?.refresh(force: true) }
+                    .navigationDestination(isPresented: $feedRoute) {
+                        feedScreen
                     }
-                }
-                .fullScreenCover(item: $scannerRoute) { scannerCoord in
-                    CheckInScannerView(coordinator: scannerCoord)
-                }
-                .fullScreenCover(item: $editRoute) { event in
-                    eventEditScreen(event)
-                }
-            } else {
-                ZStack {
-                    Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    RuulLoadingState()
+                    .fullScreenCover(item: $detailRoute) { event in
+                        eventDetailScreen(event)
+                    }
+                    .fullScreenCover(isPresented: $creationRoute) {
+                        eventCreationScreen
+                    }
+                    .onChange(of: creationRoute) { wasOpen, isOpen in
+                        // Refresh on cover dismissal regardless of source.
+                        // Refreshing inside the dismissed subview's onChange races
+                        // with view teardown and sometimes drops the Task.
+                        if wasOpen && !isOpen {
+                            Task { await homeCoordinator?.refresh(force: true) }
+                        }
+                    }
+                    .fullScreenCover(item: $scannerRoute) { scannerCoord in
+                        CheckInScannerView(coordinator: scannerCoord)
+                    }
+                    .fullScreenCover(item: $editRoute) { event in
+                        eventEditScreen(event)
+                    }
+                } else {
+                    ZStack {
+                        Color.ruulBackgroundCanvas.ignoresSafeArea()
+                        RuulLoadingState()
+                    }
                 }
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
