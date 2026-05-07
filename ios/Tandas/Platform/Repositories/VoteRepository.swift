@@ -42,15 +42,21 @@ actor MockVoteRepository: VoteRepository {
     private var store: [Vote] = []
     var nextStartError: Error?
     var nextFinalizeError: Error?
+    var nextOpenVotesError: Error?
 
     init(seed: [Vote] = []) { self.store = seed }
+
+    func setNextStartError(_ error: Error?) { self.nextStartError = error }
+    func setNextFinalizeError(_ error: Error?) { self.nextFinalizeError = error }
+    func setNextOpenVotesError(_ error: Error?) { self.nextOpenVotesError = error }
 
     func votes(for groupId: UUID) async throws -> [Vote] {
         store.filter { $0.groupId == groupId }.sorted { $0.openedAt > $1.openedAt }
     }
 
     func openVotes(for groupId: UUID) async throws -> [Vote] {
-        store.filter { $0.groupId == groupId && $0.status == .open }.sorted { $0.openedAt > $1.openedAt }
+        if let err = nextOpenVotesError { nextOpenVotesError = nil; throw err }
+        return store.filter { $0.groupId == groupId && $0.status == .open }.sorted { $0.openedAt > $1.openedAt }
     }
 
     func vote(id: UUID) async throws -> Vote? {
