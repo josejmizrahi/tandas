@@ -20,4 +20,8 @@ public extension Font {
 
     // Microcopy (legales, timestamps muy pequeños).
     static var ruulMicro: Font             { .system(.caption2, design: .default, weight: .regular) }
+
+    /// DS v3 §3.2 — para nombre del grupo en items cross-grupos (Home).
+    /// Caption + medium weight para legibilidad sin competir con título.
+    static var ruulGroupLabel: Font        { .system(.caption, design: .default, weight: .medium) }
 }

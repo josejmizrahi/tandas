@@ -9,4 +9,8 @@ public extension Animation {
     static let ruulAppear      = Animation.smooth(duration: 0.40)
     static let ruulSuccess     = Animation.spring(response: 0.40, dampingFraction: 0.60)
     static let ruulSubtle      = Animation.easeInOut(duration: 0.20)
+
+    /// DS v3 §2.6 — animación específica para cambio de grupo activo.
+    /// Smoother que `ruulStateChange` para acompañar crossfade de avatar+nombre.
+    static let ruulGroupSwitch = Animation.smooth(duration: 0.40)
 }
