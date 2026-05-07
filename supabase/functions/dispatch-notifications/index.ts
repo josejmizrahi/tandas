@@ -201,7 +201,7 @@ async function sendApns(
   token: string,
   body: Record<string, unknown>,
   jwt: string,
-): Promise<{ ok: true; status: 200 } | { ok: false; status: number; error: string }> {
+): Promise<{ ok: true; status: 200; apnsId: string | null } | { ok: false; status: number; error: string }> {
   const url = `${APNS_HOST}/3/device/${token}`;
   let res: Response;
   try {
@@ -220,7 +220,20 @@ async function sendApns(
     return { ok: false, status: 0, error: `fetch threw: ${(e as Error).message}` };
   }
 
-  if (res.status === 200) return { ok: true, status: 200 };
+  // Log diagnostic info on every send — apns-id is the trace id Apple
+  // uses in their Push Notification Console; topic confirms what bundle
+  // we targeted; first chars of token confirm we sent to the right device.
+  const apnsId = res.headers.get("apns-id");
+  console.log(JSON.stringify({
+    code: "apns.send",
+    status: res.status,
+    apns_id: apnsId,
+    topic: APNS_BUNDLE_ID,
+    host: APNS_HOST,
+    token_prefix: token.slice(0, 12),
+  }));
+
+  if (res.status === 200) return { ok: true, status: 200, apnsId };
 
   let errText = "";
   try {

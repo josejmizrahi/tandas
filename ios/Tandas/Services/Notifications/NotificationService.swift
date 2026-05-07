@@ -35,6 +35,16 @@ final class NotificationService: NSObject {
     func refreshAuthorizationStatus() async {
         let settings = await center.notificationSettings()
         authorizationStatus = mapStatus(settings.authorizationStatus)
+        // iOS conserva el grant entre instalaciones del mismo bundle id.
+        // Si ya está granted, requestAuthorization() no se vuelve a llamar
+        // y registerForRemoteNotifications() tampoco — pero la build nueva
+        // necesita un fresh APNs token. Re-registrar cada launch lo
+        // resuelve. registerForRemoteNotifications es idempotente (Apple
+        // docs) — llamarla múltiples veces sólo dispara
+        // didRegisterForRemoteNotificationsWithDeviceToken otra vez.
+        if authorizationStatus == .granted {
+            registerForRemoteNotifications()
+        }
     }
 
     /// Lazy permission: called on first "Voy" RSVP per the spec.
