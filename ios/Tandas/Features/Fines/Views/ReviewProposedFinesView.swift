@@ -102,9 +102,12 @@ struct ReviewProposedFinesView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
-                Text(fine.amountFormatted)
-                    .ruulTextStyle(RuulTypography.statMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                RuulMoneyView(
+                    amount: fine.amount,
+                    currency: "MXN",
+                    size: .medium,
+                    color: .neutral
+                )
             }
             HStack(spacing: RuulSpacing.s2) {
                 Button {

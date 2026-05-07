@@ -50,9 +50,12 @@ struct MyFinesView: View {
             Text("PENDIENTE DE PAGO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-            Text(amountFormatted(coordinator.totalOutstanding))
-                .ruulTextStyle(RuulTypography.displayLarge)
-                .foregroundStyle(Color.ruulTextPrimary)
+            RuulMoneyView(
+                amount: coordinator.totalOutstanding,
+                currency: "MXN",
+                size: .large,
+                color: coordinator.totalOutstanding > 0 ? .negative : .neutral
+            )
         }
         .padding(.top, RuulSpacing.s4)
     }
@@ -116,11 +119,4 @@ struct MyFinesView: View {
         }
     }
 
-    private func amountFormatted(_ amount: Decimal) -> String {
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.currencyCode = "MXN"
-        nf.maximumFractionDigits = 0
-        return nf.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
 }

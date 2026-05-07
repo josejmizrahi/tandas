@@ -74,9 +74,21 @@ struct FineCard: View {
                 }
             }
             Spacer(minLength: 0)
-            Text(fine.amountFormatted)
-                .ruulTextStyle(RuulTypography.statMedium)
-                .foregroundStyle(Color.ruulTextPrimary)
+            RuulMoneyView(
+                amount: fine.amount,
+                currency: "MXN",
+                size: .medium,
+                color: amountSemanticColor
+            )
+        }
+    }
+
+    private var amountSemanticColor: RuulMoneyView.SemanticColor {
+        switch fine.status {
+        case .officialized:        return .negative
+        case .paid:                return .positive
+        case .voided:              return .neutral
+        case .proposed, .inAppeal: return .neutral
         }
     }
 

@@ -35,9 +35,18 @@ struct VoidFineSheet: View {
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             VStack(alignment: .leading, spacing: RuulSpacing.s1) {
-                Text("\(coordinator.targetMemberName) — \(coordinator.fine.amountFormatted)")
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.s2) {
+                    Text(coordinator.targetMemberName)
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Spacer()
+                    RuulMoneyView(
+                        amount: coordinator.fine.amount,
+                        currency: "MXN",
+                        size: .medium,
+                        color: .negative
+                    )
+                }
                 Text("\u{201C}\(coordinator.fine.reason)\u{201D}")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)

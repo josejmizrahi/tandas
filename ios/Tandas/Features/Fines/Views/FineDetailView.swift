@@ -84,11 +84,23 @@ struct FineDetailView: View {
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }
-            Text(coordinator.fine.amountFormatted)
-                .ruulTextStyle(RuulTypography.displayHero)
-                .foregroundStyle(Color.ruulTextPrimary)
+            RuulMoneyView(
+                amount: coordinator.fine.amount,
+                currency: "MXN",
+                size: .large,
+                color: heroAmountColor
+            )
         }
         .padding(.top, RuulSpacing.s5)
+    }
+
+    private var heroAmountColor: RuulMoneyView.SemanticColor {
+        switch coordinator.fine.status {
+        case .officialized:        return .negative
+        case .paid:                return .positive
+        case .voided:              return .neutral
+        case .proposed, .inAppeal: return .neutral
+        }
     }
 
     // MARK: - Reason card

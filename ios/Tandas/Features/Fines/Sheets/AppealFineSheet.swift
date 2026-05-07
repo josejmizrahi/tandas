@@ -48,9 +48,12 @@ struct AppealFineSheet: View {
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
-                Text(fine.amountFormatted)
-                    .ruulTextStyle(RuulTypography.statMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                RuulMoneyView(
+                    amount: fine.amount,
+                    currency: "MXN",
+                    size: .large,
+                    color: .negative
+                )
             }
         }
         .padding(RuulSpacing.s4)

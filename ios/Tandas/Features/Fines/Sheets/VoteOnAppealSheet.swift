@@ -55,9 +55,12 @@ struct VoteOnAppealSheet: View {
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
-                Text(fine.amountFormatted)
-                    .ruulTextStyle(RuulTypography.statMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                RuulMoneyView(
+                    amount: fine.amount,
+                    currency: "MXN",
+                    size: .medium,
+                    color: .neutral
+                )
             }
         }
         .padding(RuulSpacing.s4)
