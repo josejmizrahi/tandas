@@ -189,7 +189,7 @@ struct HomeView: View {
                     .frame(minHeight: 360, alignment: .top)
                     .transition(.opacity)
             } else if coordinator.isLoading && coordinator.nextEvent == nil {
-                LoadingStateView(.card)
+                RuulLoadingState()
                     .frame(minHeight: 360, alignment: .top)
                     .transition(.opacity)
             } else if let next = coordinator.nextEvent {

@@ -34,10 +34,12 @@ struct PatternsShowcaseView: View {
     }
 
     private var loadingStateSection: some View {
-        ShowcaseSection("LoadingStateView") {
+        ShowcaseSection("RuulLoadingState") {
             VStack(spacing: RuulSpacing.s4) {
-                LoadingStateView(.list)
-                LoadingStateView(.card)
+                RuulLoadingState()
+                    .frame(height: 120)
+                RuulLoadingState(message: "Cargando…")
+                    .frame(height: 120)
             }
         }
     }

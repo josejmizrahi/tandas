@@ -42,9 +42,7 @@ struct ProfileView: View {
                         .padding(.top, RuulSpacing.s5)
                         .transition(.opacity)
                 } else if coordinator.profile == nil && coordinator.isLoading {
-                    LoadingStateView(.card)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                    RuulLoadingState()
                         .transition(.opacity)
                 } else {
                     ScrollView {

@@ -14,7 +14,7 @@ struct AddManualFineSheet: View {
             dismissAction: { isPresented = false }
         ) {
             if coordinator.isLoadingMembers {
-                LoadingStateView(.list)
+                RuulLoadingState()
             } else if coordinator.members.isEmpty {
                 EmptyStateView(
                     systemImage: "person.2",

@@ -96,8 +96,7 @@ struct GroupHistoryView: View {
                 ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
                     .transition(.opacity)
             } else if coordinator.events.isEmpty && coordinator.isLoading {
-                LoadingStateView(.list)
-                    .padding(.top, RuulSpacing.s2)
+                RuulLoadingState()
                     .transition(.opacity)
             } else if coordinator.events.isEmpty {
                 emptyState

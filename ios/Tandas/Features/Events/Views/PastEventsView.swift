@@ -23,7 +23,7 @@ struct PastEventsView: View {
     @ViewBuilder
     private var content: some View {
         if isLoading {
-            LoadingStateView(.list).padding(RuulSpacing.s5)
+            RuulLoadingState()
         } else if let error {
             ErrorStateView(
                 systemImage: "wifi.exclamationmark",

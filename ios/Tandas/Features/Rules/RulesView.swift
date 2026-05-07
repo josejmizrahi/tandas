@@ -43,9 +43,7 @@ struct RulesView: View {
                         .padding(.top, RuulSpacing.s5)
                         .transition(.opacity)
                 } else if coordinator.isLoading && coordinator.rules.isEmpty {
-                    LoadingStateView(.list)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                    RuulLoadingState()
                         .transition(.opacity)
                 } else if coordinator.rules.isEmpty {
                     EmptyStateView(

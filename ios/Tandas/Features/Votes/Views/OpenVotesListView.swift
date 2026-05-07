@@ -18,9 +18,7 @@ struct OpenVotesListView: View {
                         .padding(.top, RuulSpacing.s5)
                         .transition(.opacity)
                 } else if coordinator.openVotes.isEmpty && coordinator.isLoading {
-                    LoadingStateView(.list)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                    RuulLoadingState()
                         .transition(.opacity)
                 } else if coordinator.openVotes.isEmpty {
                     EmptyStateView(

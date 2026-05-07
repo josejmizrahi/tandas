@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Loading state simple — ProgressView + mensaje opcional.
-/// Per DS doc §3.13. **Reemplaza el shimmer LoadingStateView** (anti-pattern §13).
+/// Per DS doc §3.13. Skeleton screens animados son anti-pattern §13 en V1.
 public struct RuulLoadingState: View {
     private let message: String?
 

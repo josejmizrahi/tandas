@@ -18,9 +18,7 @@ struct MyFinesView: View {
                         .padding(.top, RuulSpacing.s5)
                         .transition(.opacity)
                 } else if coordinator.fines.isEmpty && coordinator.isLoading {
-                    LoadingStateView(.list)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                    RuulLoadingState()
                         .transition(.opacity)
                 } else {
                     ScrollView {

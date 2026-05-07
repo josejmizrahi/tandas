@@ -15,8 +15,7 @@ struct InviteWelcomeView: View {
     @ViewBuilder
     private var content: some View {
         if coord.isLoading {
-            LoadingStateView(.detail)
-                .padding(RuulSpacing.s5)
+            RuulLoadingState()
         } else if coord.error == .inviteCodeInvalid {
             ErrorStateView(
                 systemImage: "link.badge.plus",
