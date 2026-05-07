@@ -48,6 +48,29 @@ final class ProfileCoordinator {
 
     func clearError() { error = nil }
 
+    /// Saves the new display name. On success refreshes profile to surface
+    /// the updated display name in dependent views (Home greeting, etc.).
+    /// Throws are caught — error surfaces via `error: CoordinatorError?`.
+    func updateDisplayName(_ newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            error = CoordinatorError(
+                title: "Nombre vacío",
+                message: "Tu nombre no puede estar vacío.",
+                isRetryable: false
+            )
+            return
+        }
+        guard trimmed != profile?.displayName else { return }  // no-op if unchanged
+        do {
+            try await profileRepo.updateDisplayName(trimmed)
+            await refresh()
+        } catch {
+            log.warning("updateDisplayName failed: \(error.localizedDescription, privacy: .public)")
+            self.error = CoordinatorError.from(error, fallback: "No pudimos guardar tu nombre")
+        }
+    }
+
     // MARK: - Derived stats
 
     /// Sum of outstanding (officialized + unpaid + un-waived) fines.

@@ -18,6 +18,7 @@ struct SettingsTabView: View {
     let onOpenMyFines: () -> Void
     let onOpenHistory: () -> Void
     let onOpenSettings: () -> Void
+    let onEditProfile: () -> Void
     let onSignOut: () -> Void
     /// DS v3 §6.2 — sección "Este grupo". Si los callbacks vienen, ProfileView
     /// renderiza la sección al final del scroll. Default = empty no-op para
@@ -34,6 +35,7 @@ struct SettingsTabView: View {
                 onOpenMyFines: onOpenMyFines,
                 onOpenHistory: onOpenHistory,
                 onOpenSettings: onOpenSettings,
+                onEditProfile: onEditProfile,
                 onSignOut: onSignOut,
                 groupScope: ProfileView.GroupScopeContext(
                     onOpenMembers: onOpenMembers,

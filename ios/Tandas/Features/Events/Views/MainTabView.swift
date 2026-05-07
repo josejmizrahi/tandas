@@ -312,6 +312,7 @@ struct MainTabView: View {
                         onOpenMyFines: { myFinesRoute = true },
                         onOpenHistory: { selectedTab = .history },
                         onOpenSettings: { settingsRoute = true },
+                        onEditProfile: { editProfilePresented = true },
                         onSignOut: {
                             Task { try? await app.auth.signOut() }
                         },
@@ -333,6 +334,15 @@ struct MainTabView: View {
                         SettingsSheet()
                             .presentationDetents([.medium, .large])
                             .presentationDragIndicator(.visible)
+                    }
+                    .sheet(isPresented: $editProfilePresented, onDismiss: {
+                        Task { await profileCoordinator?.refresh() }
+                    }) {
+                        if let pCoord = profileCoordinator {
+                            EditProfileSheet(coordinator: pCoord)
+                                .presentationDetents([.medium, .large])
+                                .presentationDragIndicator(.visible)
+                        }
                     }
                     .sheet(isPresented: $membersSheetPresented) {
                         if let activeGroup = app.activeGroup {
@@ -486,6 +496,10 @@ struct MainTabView: View {
 
     @State private var myFinesRoute: Bool = false
     @State private var settingsRoute: Bool = false
+    /// Sheet for `EditProfileSheet` (Settings → "Editar perfil"). Refresca el
+    /// ProfileCoordinator on dismiss para que el displayName actualizado se
+    /// propague al hero, greeting de Home, etc.
+    @State private var editProfilePresented: Bool = false
     /// Fase 5: route state para `EditMembersSheet` (Settings → Este grupo →
     /// Miembros) y la alerta de "Salir del grupo" (placeholder, RPC futuro).
     @State private var membersSheetPresented: Bool = false

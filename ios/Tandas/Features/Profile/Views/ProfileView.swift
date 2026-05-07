@@ -30,6 +30,7 @@ struct ProfileView: View {
     let onOpenMyFines: () -> Void
     let onOpenHistory: () -> Void
     let onOpenSettings: () -> Void
+    let onEditProfile: () -> Void
     let onSignOut: () -> Void
 
     /// DS v3 §6.2 — sección "Este grupo" (group-active scope). Cuando estos
@@ -186,6 +187,8 @@ struct ProfileView: View {
 
     private var settingsSection: some View {
         sectionContainer(title: "AJUSTES") {
+            navRow(icon: "pencil", label: "Editar perfil", trailing: { EmptyView() }, action: onEditProfile)
+            divider
             navRow(icon: "gearshape", label: "Ajustes", trailing: { EmptyView() }, action: onOpenSettings)
         }
     }
