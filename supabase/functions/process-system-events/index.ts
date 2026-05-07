@@ -201,10 +201,14 @@ async function buildContext(
         throw new Error(`proposeFine: member ${args.member_id} not found in group ${args.group_id}`);
       }
 
+      // Idempotency check: scope by resource_id (polymorphic, post-00041)
+      // rather than event_id so the dedup also applies to Phase 2 fines
+      // attached to non-event resources. For V1 events resource_id ==
+      // event_id so behavior is unchanged.
       const { data: existing } = await supabase
         .from("fines")
         .select("id")
-        .eq("event_id", args.event_id)
+        .eq("resource_id", args.resource_id)
         .eq("user_id", userId)
         .eq("rule_id", args.rule_id)
         .in("status", ["proposed", "officialized", "in_appeal"])
@@ -214,7 +218,11 @@ async function buildContext(
       const { data, error } = await supabase
         .from("fines")
         .insert({
+          // V1 cohabitation: write both columns. event_id is the legacy
+          // event-locked FK, resource_id (00041) is the polymorphic FK.
+          // For V1 events both carry the same UUID.
           event_id: args.event_id,
+          resource_id: args.resource_id,
           group_id: args.group_id,
           user_id: userId,
           rule_id: args.rule_id,

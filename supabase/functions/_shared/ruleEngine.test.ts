@@ -113,9 +113,14 @@ Deno.test("eventClosed + responseStatusIs(pending) → fines pending members", a
   // 2 pending members → 2 fines proposed
   assertEquals(results.length, 2);
   assertEquals(captured.length, 2);
-  for (const fine of captured as Array<{ amount: number; member_id: string }>) {
+  for (const fine of captured as Array<{ amount: number; member_id: string; event_id: string; resource_id: string }>) {
     assertEquals(fine.amount, 200);
     assertEquals([memberBob.id, memberCarla.id].includes(fine.member_id), true);
+    // Audit § 5.3 items 9+11 contract: sink receives both event_id (legacy)
+    // and resource_id (polymorphic, 00041). For V1 events both === target
+    // resource id (resources mirror events 1:1 post-00040).
+    assertEquals(fine.event_id, eventId);
+    assertEquals(fine.resource_id, eventId);
   }
 });
 

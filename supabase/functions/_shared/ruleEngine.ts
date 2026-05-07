@@ -143,12 +143,20 @@ export interface CheckInLike {
 /**
  * Side-effect interface so the engine stays pure. The cron function passes a
  * Supabase-backed implementation; tests pass an in-memory recorder.
+ *
+ * `resource_id` is the polymorphic FK introduced by migration 00041 (audit
+ * doc § 5.3 items 9+11). For V1 events `resource_id == event_id` (resources.id
+ * mirrors events.id post-00040 backfill). For Phase 2 non-event resources
+ * (slot decline, fund non-contribution), `event_id` is null and only
+ * `resource_id` carries the reference. Sinks write both during cohabitation;
+ * `event_id` drops out post-Phase 2 cleanup.
  */
 export interface ConsequenceSink {
   proposeFine(args: {
     rule_id: UUID;
     group_id: UUID;
-    event_id: UUID;
+    event_id: UUID | null;
+    resource_id: UUID;
     member_id: UUID;
     amount: number;
     reason: string;
@@ -324,7 +332,13 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
     const fineId = await context.sink.proposeFine({
       rule_id: rule.id,
       group_id: rule.group_id,
+      // V1 cohabitation: every event resource is mirrored to a row in
+      // `resources` with the same UUID, so passing the same id to both
+      // legacy `event_id` and new `resource_id` (00041) keeps the
+      // existing event-locked queries valid while populating the
+      // polymorphic column for Phase 2.
       event_id: target.resource_id,
+      resource_id: target.resource_id,
       member_id: target.member_id,
       amount,
       reason: rule.name,

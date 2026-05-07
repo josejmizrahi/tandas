@@ -213,10 +213,15 @@ async function buildContext(
 
   const sink: ConsequenceSink = {
     proposeFine: async (args) => {
+      // V1 cohabitation: write both event_id (legacy event-locked FK)
+      // and resource_id (polymorphic FK from 00041). For V1 events
+      // both columns carry the same UUID since resources mirror events
+      // 1:1 (00040).
       const { data, error } = await supabase
         .from("fines")
         .insert({
           event_id: args.event_id,
+          resource_id: args.resource_id,
           group_id: args.group_id,
           member_id: args.member_id,
           rule_id: args.rule_id,
