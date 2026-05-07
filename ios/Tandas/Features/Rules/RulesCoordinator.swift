@@ -12,6 +12,12 @@ final class RulesCoordinator {
     private(set) var isLoading: Bool = false
     private(set) var error: String?
     private(set) var canEditRules: Bool = false
+    /// Number of votes with `status='open'` for `group`. Refreshed alongside
+    /// the rule list so `RulesView` can surface a "Votos abiertos" section
+    /// proactively (vs Inbox which only fires when the user has a
+    /// `votePending` action). Best-effort: failures keep the previous
+    /// value and log; the section just stays hidden when count is 0.
+    private(set) var openVotesCount: Int = 0
 
     let group: Group
     /// The current actor's `Member` row in `group`. Used by the governance
@@ -20,18 +26,21 @@ final class RulesCoordinator {
     let currentMember: Member
     let governance: any GovernanceServiceProtocol
     let ruleRepo: any RuleRepository
+    private let voteRepo: any VoteRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "rules")
 
     init(
         group: Group,
         currentMember: Member,
         governance: any GovernanceServiceProtocol,
-        ruleRepo: any RuleRepository
+        ruleRepo: any RuleRepository,
+        voteRepo: any VoteRepository
     ) {
         self.group = group
         self.currentMember = currentMember
         self.governance = governance
         self.ruleRepo = ruleRepo
+        self.voteRepo = voteRepo
     }
 
     func refresh() async {
@@ -65,6 +74,16 @@ final class RulesCoordinator {
         } catch {
             log.warning("rules load failed: \(error.localizedDescription)")
             self.error = error.localizedDescription
+        }
+
+        // Best-effort fetch for the "Votos abiertos" surface. Don't surface
+        // errors to the user — the section just stays hidden when the count
+        // is 0, which is also the failure mode here.
+        do {
+            let votes = try await voteRepo.openVotes(for: group.id)
+            openVotesCount = votes.count
+        } catch {
+            log.warning("openVotes count load failed: \(error.localizedDescription)")
         }
     }
 }

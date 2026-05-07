@@ -12,6 +12,10 @@ struct RulesView: View {
     /// `RulesCoordinator` itself doesn't use it, so the view holds it
     /// directly to avoid leaking the dependency into the read-side coord.
     let voteRepo: any VoteRepository
+    /// Tap callback for the "Votos abiertos" section. Wired by the parent
+    /// (MainTabView) in G3 to push `OpenVotesListView`. For G2 it can be
+    /// a no-op closure.
+    var onSeeOpenVotes: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -28,6 +32,9 @@ struct RulesView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: RuulSpacing.s4) {
                         header
+                        if coordinator.openVotesCount > 0 {
+                            openVotesSection
+                        }
                         VStack(spacing: RuulSpacing.s3) {
                             ForEach(coordinator.rules) { rule in
                                 ruleCard(rule)
@@ -88,6 +95,47 @@ struct RulesView: View {
 
     private var activeCount: Int {
         coordinator.rules.filter(\.isLive).count
+    }
+
+    /// Surface proactivo: muestra count de votes abiertos del grupo y linkea
+    /// a `OpenVotesListView`. Solo se renderiza si hay 1+ votes abiertos —
+    /// el caller ya verifica `openVotesCount > 0` antes de incluir esta
+    /// vista en el body.
+    private var openVotesSection: some View {
+        Button(action: onSeeOpenVotes) {
+            HStack(spacing: RuulSpacing.s3) {
+                Image(systemName: "hand.raised.fill")
+                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .frame(width: 32, height: 32)
+                    .background(Color.ruulBackgroundElevated, in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Votos abiertos")
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text(
+                        coordinator.openVotesCount == 1
+                        ? "1 votación pendiente"
+                        : "\(coordinator.openVotesCount) votaciones pendientes"
+                    )
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .padding(RuulSpacing.s4)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .fill(Color.ruulBackgroundElevated)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.ruulPress)
     }
 
     private func ruleCard(_ rule: GroupRule) -> some View {

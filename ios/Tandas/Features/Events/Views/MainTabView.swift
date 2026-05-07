@@ -599,7 +599,8 @@ struct MainTabView: View {
             group: group,
             currentMember: currentMember,
             governance: app.governance,
-            ruleRepo: app.ruleRepo
+            ruleRepo: app.ruleRepo,
+            voteRepo: app.voteRepo
         )
     }
 
