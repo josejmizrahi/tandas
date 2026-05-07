@@ -57,7 +57,7 @@ private struct VoteCastButtons: View {
             castButton(.abstained,  label: "Me abstengo",  systemImage: "minus.circle.fill",     tint: .ruulTextTertiary)
         }
         .disabled(coordinator.isCasting)
-        .opacity(coordinator.isCasting ? 0.5 : 1.0)
+        .opacity(coordinator.isCasting ? RuulOpacity.disabled : 1.0)
     }
 
     private func castButton(_ choice: VoteChoice, label: String, systemImage: String, tint: Color) -> some View {
@@ -115,13 +115,12 @@ private struct VoteResolvedView: View {
     let vote: Vote
 
     var body: some View {
-        let resolution = counts?.resolution ?? .quorumFailed
-        let (label, tint) = display(for: resolution)
+        let displayed = display()
         VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             HStack(spacing: RuulSpacing.s2) {
                 Image(systemName: "flag.checkered")
-                    .foregroundStyle(tint)
-                Text("Voto \(label)")
+                    .foregroundStyle(displayed.tint)
+                Text(displayed.label)
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
@@ -135,11 +134,32 @@ private struct VoteResolvedView: View {
         .background(Color.ruulBackgroundElevated, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
     }
 
-    private func display(for resolution: VoteResolution) -> (String, Color) {
-        switch resolution {
-        case .passed:        return ("aprobado",     .ruulSemanticSuccess)
-        case .failed:        return ("rechazado",    .ruulSemanticError)
-        case .quorumFailed:  return ("sin quórum",   .ruulTextTertiary)
+    private struct Displayed {
+        let label: String
+        let tint: Color
+    }
+
+    /// Vote status is the canonical source of truth. counts.resolution is
+    /// a denormalized convenience but may be nil during refresh-in-flight.
+    /// Switch on status first; fall back to counts.resolution only when
+    /// status is .resolved (positive resolution required, success or fail).
+    private func display() -> Displayed {
+        switch vote.status {
+        case .quorumFailed:
+            return Displayed(label: "Voto sin quórum", tint: .ruulTextTertiary)
+        case .cancelled:
+            return Displayed(label: "Voto cancelado",  tint: .ruulTextTertiary)
+        case .open:
+            // voteIsClosed should have prevented us reaching this branch,
+            // but defensively render a neutral state.
+            return Displayed(label: "Voto cerrado",    tint: .ruulTextTertiary)
+        case .closed, .resolved:
+            switch counts?.resolution {
+            case .passed:        return Displayed(label: "Voto aprobado",    tint: .ruulSemanticSuccess)
+            case .failed:        return Displayed(label: "Voto rechazado",   tint: .ruulSemanticError)
+            case .quorumFailed:  return Displayed(label: "Voto sin quórum",  tint: .ruulTextTertiary)
+            case nil:            return Displayed(label: "Voto cerrado",     tint: .ruulTextTertiary)  // resolver pending
+            }
         }
     }
 }
