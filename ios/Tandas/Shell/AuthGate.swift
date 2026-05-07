@@ -41,6 +41,14 @@ final class AppState {
     /// notification tap. MainTabView picks this up and routes to detail.
     var pendingEventDeepLink: EventDeepLink?
 
+    /// Pending rule_change deep link (Phase G3). Source: APNs push payload
+    /// `deep_link` field written by `finalize_vote` v3 (migration 00032)
+    /// when a rule_change vote resolves passed, or any URL of the form
+    /// `ruul://rule/<UUID>/edit?proposedAmount=<Int>`. MainTabView picks
+    /// this up and presents `EditRuleSheet` pre-loaded with the proposed
+    /// amount + the originating UserAction id (when reachable from inbox).
+    var pendingRuleChangeDeepLink: RuleChangeDeepLink?
+
     let auth: any AuthService
     let profileRepo: any ProfileRepository
     let groupsRepo: any GroupsRepository
@@ -173,6 +181,12 @@ final class AppState {
     func handleIncomingURL(_ url: URL) {
         if let code = InviteLinkGenerator.parseInviteCode(from: url) {
             pendingInviteCode = code
+        } else if let ruleLink = RuleChangeDeepLink(url: url) {
+            // Try rule_change first — its scheme is `ruul://rule/...` so it
+            // can't collide with `ruul://event/...`. Both inits are
+            // null-returning for non-matching URLs, so order is just
+            // a small tail-latency win.
+            pendingRuleChangeDeepLink = ruleLink
         } else if let link = EventDeepLink(url: url) {
             pendingEventDeepLink = link
         }
@@ -190,6 +204,10 @@ final class AppState {
 
     func consumeEventDeepLink() {
         pendingEventDeepLink = nil
+    }
+
+    func consumeRuleChangeDeepLink() {
+        pendingRuleChangeDeepLink = nil
     }
 }
 

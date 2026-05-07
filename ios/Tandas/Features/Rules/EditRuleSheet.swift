@@ -15,12 +15,38 @@ import SwiftUI
 struct EditRuleSheet: View {
     let rule: GroupRule
     let pending: PendingVote?
+    /// Phase G3: when the sheet is opened from a deep link (push tap or
+    /// inbox `ruleChangeApplyPending`), seed the draft amount with the
+    /// vote-approved value so Save is one tap away. Defaults to nil for
+    /// the existing pencil → tap rule flow which seeds from `rule.fineShape`.
+    let prefilledAmount: Int?
+    /// Phase G3: when the sheet is opened from an inbox row, this is the
+    /// `UserAction.id` that surfaced it. After a successful save the
+    /// coordinator resolves the action so the inbox row disappears. nil
+    /// for any non-inbox entry path (deep link without inbox, pencil flow).
+    let pendingActionId: UUID?
     @Bindable var coordinator: EditRulesCoordinator
     let onDismiss: () -> Void
 
     @State private var draftAmount: String = ""
     @FocusState private var amountFocused: Bool
     @State private var showArchiveConfirm: Bool = false
+
+    init(
+        rule: GroupRule,
+        pending: PendingVote?,
+        prefilledAmount: Int? = nil,
+        pendingActionId: UUID? = nil,
+        coordinator: EditRulesCoordinator,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.rule = rule
+        self.pending = pending
+        self.prefilledAmount = prefilledAmount
+        self.pendingActionId = pendingActionId
+        self.coordinator = coordinator
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         Form {
@@ -111,13 +137,24 @@ struct EditRuleSheet: View {
     }
 
     private func seedDraft() {
-        if let current = currentFlatAmount { draftAmount = String(current) }
+        // Deep-link / inbox entry: prefilled value wins. Falls back to the
+        // current flat amount for the pencil → tap-rule path.
+        if let prefilledAmount {
+            draftAmount = String(prefilledAmount)
+        } else if let current = currentFlatAmount {
+            draftAmount = String(current)
+        }
     }
 
     private func commitAmount() async {
         guard let drafted = Int(draftAmount.filter(\.isNumber)),
               drafted > 0 && drafted <= 1_000_000 else { return }
         await coordinator.setFlatFineAmount(rule: rule, amount: drafted)
+        // Phase G3: when entered from inbox `ruleChangeApplyPending`,
+        // resolve the action so the row disappears on next refresh.
+        if let pendingActionId {
+            await coordinator.resolvePendingAction(pendingActionId)
+        }
         amountFocused = false
         onDismiss()
     }

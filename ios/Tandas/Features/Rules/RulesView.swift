@@ -12,10 +12,26 @@ struct RulesView: View {
     /// `RulesCoordinator` itself doesn't use it, so the view holds it
     /// directly to avoid leaking the dependency into the read-side coord.
     let voteRepo: any VoteRepository
+    /// Phase G3: forwarded into `EditRulesCoordinator` so saves of an
+    /// inbox-reached rule can resolve the originating `UserAction`. nil
+    /// for previews / call sites that don't need inbox integration.
+    let userActionRepo: (any UserActionRepository)?
     /// Tap callback for the "Votos abiertos" section. Wired by the parent
     /// (MainTabView) in G3 to push `OpenVotesListView`. For G2 it can be
     /// a no-op closure.
     var onSeeOpenVotes: () -> Void = {}
+
+    init(
+        coordinator: RulesCoordinator,
+        voteRepo: any VoteRepository,
+        userActionRepo: (any UserActionRepository)? = nil,
+        onSeeOpenVotes: @escaping () -> Void = {}
+    ) {
+        self.coordinator = coordinator
+        self.voteRepo = voteRepo
+        self.userActionRepo = userActionRepo
+        self.onSeeOpenVotes = onSeeOpenVotes
+    }
 
     var body: some View {
         ZStack {
@@ -77,7 +93,8 @@ struct RulesView: View {
             currentMember: coordinator.currentMember,
             governance: coordinator.governance,
             ruleRepo: coordinator.ruleRepo,
-            voteRepo: voteRepo
+            voteRepo: voteRepo,
+            userActionRepo: userActionRepo
         )
     }
 

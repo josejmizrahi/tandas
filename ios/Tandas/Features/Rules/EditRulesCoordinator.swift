@@ -29,6 +29,11 @@ final class EditRulesCoordinator {
     private let governance: any GovernanceServiceProtocol
     private let ruleRepo: any RuleRepository
     private let voteRepo: any VoteRepository
+    /// Phase G3: optional dependency. Only required when the sheet is
+    /// reached from an inbox row (`ruleChangeApplyPending`); the pencil
+    /// flow doesn't pass one. Nil-safe — `resolvePendingAction` no-ops if
+    /// the repo wasn't injected.
+    private let userActionRepo: (any UserActionRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "rules.edit")
 
     init(
@@ -36,13 +41,15 @@ final class EditRulesCoordinator {
         currentMember: Member,
         governance: any GovernanceServiceProtocol,
         ruleRepo: any RuleRepository,
-        voteRepo: any VoteRepository
+        voteRepo: any VoteRepository,
+        userActionRepo: (any UserActionRepository)? = nil
     ) {
         self.group = group
         self.currentMember = currentMember
         self.governance = governance
         self.ruleRepo = ruleRepo
         self.voteRepo = voteRepo
+        self.userActionRepo = userActionRepo
     }
 
     /// Refreshes governance, rules, and pending votes. Fail-closed: any
@@ -145,6 +152,20 @@ final class EditRulesCoordinator {
         } catch {
             log.warning("startVote failed: \(error.localizedDescription)")
             self.error = mapMutationError(error)
+        }
+    }
+
+    /// Phase G3: resolves the inbox `UserAction` that opened this sheet.
+    /// Called from `EditRuleSheet.commitAmount` after a successful save.
+    /// Idempotent on the repo side — already-resolved actions are no-ops.
+    /// Errors are logged but not surfaced; the rule edit already succeeded
+    /// and inbox refresh will retry resolution on next load.
+    func resolvePendingAction(_ id: UUID) async {
+        guard let userActionRepo else { return }
+        do {
+            try await userActionRepo.resolve(actionId: id)
+        } catch {
+            log.warning("resolvePendingAction failed: \(error.localizedDescription)")
         }
     }
 

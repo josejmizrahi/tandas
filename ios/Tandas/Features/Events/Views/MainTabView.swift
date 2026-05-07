@@ -27,6 +27,10 @@ struct MainTabView: View {
     @State private var reviewProposedRoute: Event?
     @State private var voteOnAppealRoute: AppealRouteContext?
     @State private var feedRoute: Bool = false
+    /// Phase G3: route state for `EditRuleSheet` opened pre-loaded from a
+    /// `ruleChangeApplyPending` inbox tap or a `RuleChangeDeepLink` push /
+    /// universal link. Setting this presents the sheet via `.sheet(item:)`.
+    @State private var ruleEditRoute: RuleEditRouteContext?
 
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
     // points), create (new group from scratch), join (with invite code).
@@ -58,6 +62,9 @@ struct MainTabView: View {
         .task { await bootstrap() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }
+        }
+        .onChange(of: app.pendingRuleChangeDeepLink) { _, link in
+            Task { await handleRuleChangeDeepLink(link) }
         }
         .onChange(of: app.activeGroupId) { _, _ in
             // User switched groups via the group switcher. Rebuild all
@@ -98,6 +105,13 @@ struct MainTabView: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .sheet(item: $ruleEditRoute, onDismiss: {
+            // Phase G3: refresh the inbox so a resolved
+            // `ruleChangeApplyPending` row disappears.
+            Task { await inboxCoordinator?.refresh() }
+        }) { ctx in
+            ruleEditSheet(ctx)
+        }
     }
 
     private var badgeForInbox: ResourceTabBadge? {
@@ -111,7 +125,11 @@ struct MainTabView: View {
     private var rulesTab: some View {
         NavigationStack {
             if let coord = rulesCoordinator {
-                RulesView(coordinator: coord, voteRepo: app.voteRepo)
+                RulesView(
+                    coordinator: coord,
+                    voteRepo: app.voteRepo,
+                    userActionRepo: app.userActionRepo
+                )
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -350,8 +368,13 @@ struct MainTabView: View {
                 selectedTab = .home
             }
         case .ruleChangeApplyPending:
-            // Routing to EditRuleSheet pre-loaded llega en Phase G (Task G3).
-            break
+            // Phase G3: action.referenceId === vote_id (see migration 00032).
+            // Load vote → extract rule_id (vote.referenceId) + proposed
+            // amount (vote.payload.proposed_amount), then locate the rule
+            // and present `EditRuleSheet` pre-loaded with both the
+            // proposedAmount and the originating action id (so saving
+            // resolves the inbox row).
+            await openRuleEditFromInbox(action: action)
         case .slotPending, .votePending, .contributionDue, .compensationDue:
             // Not used by V1 template — no-op for now.
             break
@@ -640,6 +663,109 @@ struct MainTabView: View {
         }
         app.consumeEventDeepLink()
     }
+
+    // MARK: - Rule change deep link / inbox routing (Phase G3)
+
+    /// Builds the sheet for `ruleEditRoute`. Constructs a fresh
+    /// `EditRulesCoordinator` scoped to the route's group so the rule list
+    /// + governance gate match. The `prefilledAmount` skips the empty seed
+    /// path; `pendingActionId` causes Save to resolve the inbox row.
+    @ViewBuilder
+    private func ruleEditSheet(_ ctx: RuleEditRouteContext) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let currentMember = memberDirectory[userId]?.member
+            ?? Self.fallbackMember(userId: userId, groupId: ctx.group.id)
+        let editCoord = EditRulesCoordinator(
+            group: ctx.group,
+            currentMember: currentMember,
+            governance: app.governance,
+            ruleRepo: app.ruleRepo,
+            voteRepo: app.voteRepo,
+            userActionRepo: app.userActionRepo
+        )
+        NavigationStack {
+            EditRuleSheet(
+                rule: ctx.rule,
+                pending: nil,
+                prefilledAmount: ctx.proposedAmount,
+                pendingActionId: ctx.pendingActionId,
+                coordinator: editCoord,
+                onDismiss: { ruleEditRoute = nil }
+            )
+        }
+    }
+
+    /// Inbox tap on `.ruleChangeApplyPending`. Loads the vote (referenced
+    /// by `action.referenceId`), pulls the proposed amount from
+    /// `vote.payload`, switches active group if needed, locates the rule
+    /// by id, and presents `EditRuleSheet` pre-loaded.
+    @MainActor
+    private func openRuleEditFromInbox(action: UserAction) async {
+        guard let vote = try? await app.voteRepo.vote(id: action.referenceId) else { return }
+        guard case .object(let payload) = vote.payload,
+              case .int(let proposedAmount) = payload["proposed_amount"] ?? .null
+        else { return }
+
+        let ruleId = vote.referenceId
+        // Active group is already switched in `handleInboxAction` before
+        // this method is called (`if app.activeGroup?.id != action.groupId`),
+        // so we just need the Group instance for the sheet builder.
+        guard let group = app.groups.first(where: { $0.id == action.groupId }) else { return }
+
+        guard let rules = try? await app.ruleRepo.list(groupId: group.id),
+              let rule = rules.first(where: { $0.id == ruleId })
+        else { return }
+
+        ruleEditRoute = RuleEditRouteContext(
+            rule: rule,
+            group: group,
+            proposedAmount: proposedAmount,
+            pendingActionId: action.id
+        )
+    }
+
+    /// Push / Universal Link entry. Same end state as the inbox path but
+    /// the action id is unknown — the inbox refresh on dismiss will reap
+    /// any resolved-server-side row regardless. Iterates the user's groups
+    /// and asks each `ruleRepo.list(...)` until one returns the rule id;
+    /// silently no-ops if none match (rule archived, group left, etc.).
+    @MainActor
+    private func handleRuleChangeDeepLink(_ link: RuleChangeDeepLink?) async {
+        guard let link else { return }
+        defer { app.consumeRuleChangeDeepLink() }
+
+        for group in app.groups {
+            guard let rules = try? await app.ruleRepo.list(groupId: group.id),
+                  let rule = rules.first(where: { $0.id == link.ruleId })
+            else { continue }
+
+            // Switch active group if this rule lives elsewhere.
+            if app.activeGroup?.id != group.id {
+                app.activeGroupId = group.id
+            }
+            ruleEditRoute = RuleEditRouteContext(
+                rule: rule,
+                group: group,
+                proposedAmount: link.proposedAmount,
+                pendingActionId: nil
+            )
+            return
+        }
+    }
+}
+
+// MARK: - Route context wrappers
+
+/// Identifiable wrapper for `EditRuleSheet` route state. Combines the
+/// resolved rule + group + the deep-link-supplied proposed amount so the
+/// sheet can pre-load draftAmount in one render. `pendingActionId` is
+/// non-nil only on the inbox-tap path; nil on push / URL deep-links.
+struct RuleEditRouteContext: Identifiable, Hashable {
+    let rule: GroupRule
+    let group: Group
+    let proposedAmount: Int
+    let pendingActionId: UUID?
+    var id: UUID { rule.id }
 }
 
 // CheckInScannerCoordinator must be Identifiable for fullScreenCover(item:).
