@@ -220,4 +220,12 @@ actor StubGroupsRepository: GroupsRepository {
     func fetchPreview(byInviteCode code: String) async throws -> InvitePreview {
         fatalError("not used in AddManualFineCoordinatorTests")
     }
+
+    func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func removeMember(memberId: UUID) async throws {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
 }

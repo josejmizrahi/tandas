@@ -25,6 +25,11 @@ struct GroupInfoSheet: View {
     @State private var leaveError: String?
     @State private var settingsPresented: Bool = false
     @State private var governancePresented: Bool = false
+    @State private var editMembersPresented: Bool = false
+    /// Cached "can the current user remove members in this group?" — used to
+    /// gate the entry point to `EditMembersSheet`. We resolve it once after
+    /// the members list loads (so we have the actor's `Member` row).
+    @State private var canManageMembers: Bool = false
     /// Locally tracked override for the group used to render this sheet —
     /// we keep it in sync after governance edits so the summary refreshes
     /// without a parent re-render.
@@ -59,6 +64,9 @@ struct GroupInfoSheet: View {
                     governanceSection
                     if isCurrentUserAdmin {
                         editButton
+                    }
+                    if canManageMembers {
+                        editMembersButton
                     }
                     inviteSection
                     membersSection
@@ -98,6 +106,16 @@ struct GroupInfoSheet: View {
             .environment(app)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $editMembersPresented, onDismiss: {
+            // Refresh the read-only list under the entry button so removed
+            // rows or reorders show up immediately.
+            Task { await loadMembers() }
+        }) {
+            EditMembersSheet(group: currentGroup)
+                .environment(app)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .confirmationDialog(
             "¿Salir de \(currentGroup.name)?",
@@ -273,6 +291,46 @@ struct GroupInfoSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Editar configuración del grupo")
+    }
+
+    // MARK: - Edit members entry (F0 #4)
+
+    private var editMembersButton: some View {
+        Button {
+            editMembersPresented = true
+        } label: {
+            HStack(spacing: RuulSpacing.s3) {
+                Image(systemName: "person.2.badge.gearshape")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color.ruulAccentPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.ruulAccentSubtle, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Editar miembros")
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Quitar y reordenar turno")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .padding(.horizontal, RuulSpacing.s4)
+            .padding(.vertical, RuulSpacing.s3)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .fill(Color.ruulBackgroundElevated)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .stroke(Color.ruulBorderSubtle, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Editar miembros del grupo")
     }
 
     // MARK: - Invite
@@ -481,8 +539,41 @@ struct GroupInfoSheet: View {
                 }
                 return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
             }
+            await refreshCanManageMembers()
         } catch {
             log.warning("members load failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Determines whether the entry-point button to `EditMembersSheet`
+    /// should be visible. We surface it whenever the current user can
+    /// remove members per governance rules — the sheet itself re-checks
+    /// before performing destructive actions.
+    private func refreshCanManageMembers() async {
+        guard let uid = currentUserId,
+              let me = members.first(where: { $0.member.userId == uid })?.member else {
+            await MainActor.run { canManageMembers = false }
+            return
+        }
+        do {
+            let decision = try await app.governance.canPerform(
+                .removeMembers,
+                member: me,
+                in: currentGroup,
+                context: nil
+            )
+            // Show the entry whenever the action is `.allowed`. For
+            // `.requiresVote` we hide the button in V1 — opening a
+            // member_removal vote is V2 and there's nothing else useful
+            // the sheet can do yet (reorder is also founder-only).
+            if case .allowed = decision {
+                await MainActor.run { canManageMembers = true }
+            } else {
+                await MainActor.run { canManageMembers = false }
+            }
+        } catch {
+            log.debug("governance.canPerform threw: \(error.localizedDescription)")
+            await MainActor.run { canManageMembers = false }
         }
     }
 

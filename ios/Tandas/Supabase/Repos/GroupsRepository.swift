@@ -22,6 +22,18 @@ protocol GroupsRepository: Actor {
     func updateConfig(groupId: UUID, patch: GroupConfigPatch) async throws -> Group
     func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group
     func fetchPreview(byInviteCode code: String) async throws -> InvitePreview
+
+    // F0 #4 — Member management (EditMembersSheet)
+    /// Reorders the rotating-host queue. Server RPC `set_turn_order` (00004)
+    /// is admin-only and only touches active members; pass user_ids in the
+    /// desired turn order. Caller is expected to have already gated by
+    /// GovernanceService for the relevant action (host rotation reorder).
+    func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws
+    /// Hard-deletes a `group_members` row. RLS policy `members_delete` (00002)
+    /// allows this if the caller is the same user (self-leave) OR a group
+    /// admin. UI callers should gate destructive actions through
+    /// `GovernanceService.canPerform(.removeMembers, ...)` first.
+    func removeMember(memberId: UUID) async throws
 }
 
 /// Partial update payload for `update_group_config` RPC. All optional —
@@ -185,6 +197,27 @@ actor MockGroupsRepository: GroupsRepository {
             memberCount: _members[g.id]?.count ?? 1,
             recentMemberNames: nil
         )
+    }
+
+    // MARK: - F0 #4 (member management)
+
+    /// Persisted turn orders captured by the most recent `setTurnOrder` call.
+    /// Tests can read this via `lastTurnOrder(for:)` to assert UI wiring.
+    private var _turnOrders: [UUID: [UUID]] = [:]
+
+    func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
+        _turnOrders[groupId] = userIds
+    }
+
+    func lastTurnOrder(for groupId: UUID) -> [UUID]? { _turnOrders[groupId] }
+
+    func removeMember(memberId: UUID) async throws {
+        // Strip from any seeded `_members` entry and from
+        // `_membersWithProfiles` so the next fetch reflects the deletion.
+        for (gid, list) in _members {
+            _members[gid] = list.filter { $0.id != memberId }
+        }
+        _membersWithProfiles.removeAll { $0.member.id == memberId }
     }
 }
 
@@ -453,6 +486,43 @@ actor LiveGroupsRepository: GroupsRepository {
             return preview
         } catch {
             throw GroupsError.inviteCodeNotFound
+        }
+    }
+
+    // MARK: - F0 #4 (member management)
+
+    func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_user_ids: [String]
+        }
+        do {
+            _ = try await client
+                .rpc(
+                    "set_turn_order",
+                    params: Params(
+                        p_group_id: groupId.uuidString.lowercased(),
+                        p_user_ids: userIds.map { $0.uuidString.lowercased() }
+                    )
+                )
+                .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    func removeMember(memberId: UUID) async throws {
+        // RLS policy `members_delete` (00002) gates this: the caller must be
+        // the same user (`user_id = auth.uid()`) OR a group admin. We don't
+        // re-check role here; UI callers gate via GovernanceService first.
+        do {
+            try await client
+                .from("group_members")
+                .delete()
+                .eq("id", value: memberId.uuidString.lowercased())
+                .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
         }
     }
 }
