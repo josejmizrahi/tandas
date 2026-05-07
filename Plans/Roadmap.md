@@ -214,6 +214,46 @@ después. Sin esto, Fase 2 cuesta 3x.
 
 ---
 
+### Fase 0.5 — UI Resource Generalization
+
+**Duración**: 1.5–2 semanas (6–9 días focused work).
+**Goal**: Refactorizar la UI iOS para que sea resource-typed en lugar
+de event-locked. Pre-condition para que Fase 2/3 sean aditivas.
+
+**Decidida 2026-05-06** después de identificar que la UI heredó
+event-centricity del template `recurring_dinner` aunque el platform
+layer ya soporta 6 resource types. Doc completo:
+[Plans/Phase0.5-UIResourceGeneralization.md](Phase0.5-UIResourceGeneralization.md).
+
+**Trabajos** (6 sub-fases A→F, cada una su propio brainstorm→spec→plan→execute):
+- A. `ResourceProtocol` + `EventResource` wrapper (1 día)
+- B. `ResourceCard` + `HomeView` refactor (1–2 días)
+- C. `ResourceDetailView` container + `EventDetailBody` extraction (2–3 días) — **el más complejo**
+- D. `ResourceActionsSection` + provider pattern (1–2 días)
+- E. Templates declaran `resourceTypes` en config (1 día)
+- F. Cleanup + deprecations + regression QA (1 día)
+
+**DoD**:
+- [ ] `HomeView` consume `any ResourceProtocol`
+- [ ] `ResourceDetailView` es el container; `EventDetailBody` el body V1
+- [ ] `EventDetailView` y `EventHostActionsSection` borrados
+- [ ] Snapshot tests pixel-identical pre/post refactor
+- [ ] 20 flows manual QA verdes
+- [ ] Push notifications (Fase 1 WS1) usan payloads resource-typed
+
+**Riesgos**:
+- Refactor de `EventDetailView` (Sub-fase C) toca muchos componentes;
+  snapshot tests + QA obligatorios.
+- Abstracción wrong-shape descubierta cuando llegue `slot`. Mitigación:
+  protocol minimal, bodies con libertad concreta.
+
+**Métrica de éxito**: paridad total con baseline (UI invisible al user)
++ Fase 2 estimada cae de 8–12 sem a 4–6 sem.
+
+**Arranca cuando**: OpenVotesView (último P0 de Fase 0) merge en main.
+
+---
+
 ### Fase 1 — V1 launch sobre `recurring_dinner`
 
 **Duración**: 4–6 semanas.
@@ -271,7 +311,7 @@ cerrado, ≥ 1 multa generada o explícitamente waived).
 
 ### Fase 2 — Template #2: `shared_resource`
 
-**Duración**: 8–12 semanas.
+**Duración**: 4–6 semanas (reducida de 8–12 por trabajo previo en Fase 0.5).
 **Goal**: Demostrar que la plataforma es realmente template-agnostic.
 Esta es **la prueba** del 70% de trabajo arquitectónico ya hecho.
 Mercado objetivo: palcos, cabañas, casas de playa, yates compartidos —
@@ -335,7 +375,7 @@ en `Platform/`. Si requiere más, la arquitectura no es lo que pretende.
 
 ### Fase 3 — Template #3: `pool` (tandas)
 
-**Duración**: 10–14 semanas.
+**Duración**: 3–4 semanas (reducida de 10–14 por trabajo previo en Fase 0.5).
 **Goal**: Abrir categoría completamente diferente — dinero rotativo.
 Mercado: tandas LatAm, susus africano-caribeños, hui asiáticos, comités
 centroamericanos. Categoría 3 de la conversación, 5 sub-casos
