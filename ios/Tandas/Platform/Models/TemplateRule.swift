@@ -7,7 +7,14 @@ import Foundation
 /// Stored inside `templates.config.defaultRules`. The body mirrors `Rule`'s
 /// shape (trigger / conditions / consequences) so the rule engine can run
 /// it without translation.
+///
+/// `slug` is the stable identifier referenced by `GroupModule.providedRules`.
+/// Optional for back-compat with seeds shipped before slugs were
+/// introduced (recurring_dinner placeholder rows). Templates shipped V1+
+/// MUST declare a slug per rule; runtime fallback is to skip the
+/// providedRules link silently.
 public struct TemplateRule: Sendable, Codable, Hashable {
+    public let slug: String?
     public let name: String
     public let description: String
     public let module: String
@@ -17,6 +24,7 @@ public struct TemplateRule: Sendable, Codable, Hashable {
     public let consequences: [RuleConsequence]
 
     public init(
+        slug: String? = nil,
         name: String,
         description: String,
         module: String,
@@ -25,6 +33,7 @@ public struct TemplateRule: Sendable, Codable, Hashable {
         conditions: [RuleCondition],
         consequences: [RuleConsequence]
     ) {
+        self.slug = slug
         self.name = name
         self.description = description
         self.module = module

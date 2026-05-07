@@ -12,6 +12,18 @@ import Foundation
 /// which inserts these rules atomically.
 public enum DinnerRecurringTemplate {
 
+    /// Canonical stable slugs for the 5 dinner_recurring rules.
+    /// Mirror the `code` column written by `seed_dinner_template_rules`
+    /// (migration 00015). Referenced by `GroupModule.providedRules` so
+    /// the link survives display rename + i18n.
+    public enum RuleSlug {
+        public static let lateArrival       = "dinner_late_arrival"
+        public static let noResponse        = "dinner_no_response"
+        public static let sameDayCancel     = "dinner_same_day_cancel"
+        public static let noShow            = "dinner_no_show"
+        public static let hostNoMenu        = "dinner_host_no_menu"
+    }
+
     /// The 5 default rules for "Cena recurrente". All MXN amounts; the
     /// template-specific UI in Sprint 1c will let founders edit amounts +
     /// toggle activeness before the group goes live.
@@ -23,6 +35,7 @@ public enum DinnerRecurringTemplate {
             //   action:    fine(base 200 + step 50 every 30 min late)
             Rule(
                 groupId: groupId,
+                slug: RuleSlug.lateArrival,
                 name: "Llegada tardía",
                 isActive: true,
                 trigger: RuleTrigger(eventType: .checkInRecorded),
@@ -50,6 +63,7 @@ public enum DinnerRecurringTemplate {
             //   action:    fine(200)
             Rule(
                 groupId: groupId,
+                slug: RuleSlug.noResponse,
                 name: "No confirmó a tiempo",
                 isActive: true,
                 trigger: RuleTrigger(eventType: .eventClosed),
@@ -73,6 +87,7 @@ public enum DinnerRecurringTemplate {
             //   action:    fine(200)
             Rule(
                 groupId: groupId,
+                slug: RuleSlug.sameDayCancel,
                 name: "Cancelación mismo día",
                 isActive: true,
                 trigger: RuleTrigger(eventType: .rsvpChangedSameDay),
@@ -91,6 +106,7 @@ public enum DinnerRecurringTemplate {
             //   action:     fine(300)
             Rule(
                 groupId: groupId,
+                slug: RuleSlug.noShow,
                 name: "No-show",
                 isActive: true,
                 trigger: RuleTrigger(eventType: .eventClosed),
@@ -118,6 +134,7 @@ public enum DinnerRecurringTemplate {
             //   action:    fine(200)
             Rule(
                 groupId: groupId,
+                slug: RuleSlug.hostNoMenu,
                 name: "Anfitrión sin menú",
                 isActive: false,  // off by default
                 trigger: RuleTrigger(

@@ -3,10 +3,12 @@ import Foundation
 /// V1 platform modules. Each is a static `GroupModule` declaring what it
 /// provides + what it depends on. Loaded by `ModuleRegistry` at app boot.
 ///
-/// `providedRules` lists the canonical rule names from the
-/// `recurring_dinner` template (migration 00021). Used by the rule engine
-/// to know which module a rule belongs to (for analytics + future
-/// per-module enable/disable toggles).
+/// `providedRules` lists the canonical **stable slugs** of the rules this
+/// module ships (template-rule slugs, e.g. `dinner_late_arrival`). The
+/// slug survives display rename + i18n, so the link remains valid even
+/// when the rule's `name` is edited per-group.
+/// Used by the rule engine to know which module a rule belongs to (for
+/// analytics + future per-module enable/disable toggles).
 ///
 /// `providedSystemEventTypes` lists ONLY events the platform actually emits
 /// today via this module's flows. Future events (e.g. fine_proposed,
@@ -21,11 +23,11 @@ extension GroupModule {
         name: "Multas básicas",
         description: "Multas monetarias automáticas por reglas violadas: llegar tarde, no avisar, no presentarse.",
         providedRules: [
-            "Llegada tardía",
-            "No confirmó a tiempo",
-            "Cancelación mismo día",
-            "No se presentó",
-            "Anfitrión sin descripción",
+            DinnerRecurringTemplate.RuleSlug.lateArrival,
+            DinnerRecurringTemplate.RuleSlug.noResponse,
+            DinnerRecurringTemplate.RuleSlug.sameDayCancel,
+            DinnerRecurringTemplate.RuleSlug.noShow,
+            DinnerRecurringTemplate.RuleSlug.hostNoMenu,
         ],
         providedResourceTypes: [],
         providedSystemEventTypes: [
@@ -74,7 +76,7 @@ extension GroupModule {
     )
 
     /// Check-in: members mark arrival at events (self, manual, or QR).
-    /// Drives the `Llegada tardía` rule.
+    /// Drives the `dinner_late_arrival` rule.
     static let checkIn = GroupModule(
         id: "check_in",
         name: "Check-in",

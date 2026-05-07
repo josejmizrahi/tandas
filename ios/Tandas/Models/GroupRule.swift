@@ -7,6 +7,7 @@ import Foundation
 public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
     public let groupId: UUID
+    public let slug: String?
     public let code: String?
     public let title: String
     public let description: String?
@@ -14,6 +15,30 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let isActive: Bool
     public let action: ActionEnvelope?
     public let consequences: [ConsequenceEnvelope]
+
+    public init(
+        id: UUID,
+        groupId: UUID,
+        slug: String? = nil,
+        code: String?,
+        title: String,
+        description: String?,
+        enabled: Bool,
+        isActive: Bool,
+        action: ActionEnvelope?,
+        consequences: [ConsequenceEnvelope]
+    ) {
+        self.id = id
+        self.groupId = groupId
+        self.slug = slug
+        self.code = code
+        self.title = title
+        self.description = description
+        self.enabled = enabled
+        self.isActive = isActive
+        self.action = action
+        self.consequences = consequences
+    }
 
     public struct ActionEnvelope: Codable, Sendable, Hashable {
         public let type: String?
@@ -49,6 +74,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id
         case groupId      = "group_id"
+        case slug
         case code, title, description, enabled
         case isActive     = "is_active"
         case action

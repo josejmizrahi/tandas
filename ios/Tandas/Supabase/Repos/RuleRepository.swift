@@ -21,6 +21,7 @@ struct PendingVote: Sendable, Hashable {
 struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
     let id: UUID
     let groupId: UUID
+    let slug: String?
     let code: String?
     let title: String
     let description: String?
@@ -30,7 +31,7 @@ struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id
         case groupId     = "group_id"
-        case code, title, description, enabled, status
+        case slug, code, title, description, enabled, status
     }
 }
 
@@ -73,6 +74,7 @@ actor MockRuleRepository: RuleRepository {
             OnboardingRule(
                 id: UUID(),
                 groupId: groupId,
+                slug: nil,
                 code: d.code,
                 title: d.title,
                 description: d.description,
@@ -88,6 +90,7 @@ actor MockRuleRepository: RuleRepository {
             OnboardingRule(
                 id: $0.id,
                 groupId: groupId,
+                slug: $0.slug,
                 code: nil,
                 title: $0.name,
                 description: nil,
@@ -183,7 +186,7 @@ actor LiveRuleRepository: RuleRepository {
     func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,code,title,description,enabled,is_active,action,consequences")
+            .select("id,group_id,slug,code,title,description,enabled,is_active,action,consequences")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()

@@ -8,9 +8,16 @@ import Foundation
 /// Persisted in `public.rules`. The legacy columns (`code`, `title`,
 /// `trigger`, `action`, `enabled`, `status`) are kept for backwards compat
 /// and dropped in a posterior sprint after migration paridad.
+///
+/// `slug` is the stable cross-group identifier inherited from the
+/// originating template rule (e.g. `dinner_late_arrival`). It survives
+/// rename of `name` (display copy) and i18n. Modules reference rules
+/// by slug in `GroupModule.providedRules`. Per-group user-authored rules
+/// have `slug = nil`.
 public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public let id: UUID
     public let groupId: UUID
+    public var slug: String?
     public var name: String
     public var isActive: Bool
     public var trigger: RuleTrigger
@@ -22,6 +29,7 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public init(
         id: UUID = UUID(),
         groupId: UUID,
+        slug: String? = nil,
         name: String,
         isActive: Bool,
         trigger: RuleTrigger,
@@ -32,6 +40,7 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
     ) {
         self.id = id
         self.groupId = groupId
+        self.slug = slug
         self.name = name
         self.isActive = isActive
         self.trigger = trigger
@@ -44,6 +53,7 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case groupId      = "group_id"
+        case slug
         case name
         case isActive     = "is_active"
         case trigger

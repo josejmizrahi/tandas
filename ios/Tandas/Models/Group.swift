@@ -30,8 +30,21 @@ struct Group: Identifiable, Codable, Sendable, Hashable {
     /// remain populated during the 2-week paridad window.
     let settings: GroupSettings?
 
+    // MARK: - DS v3 multi-group fields (migration 00036)
+
+    /// Categoría per `docs/DesignSystem.md` v3 §4.7. Determina color ramp
+    /// del avatar. Backend backfilled desde `group_type`. Default
+    /// `.socialRecurring` para nuevos grupos sin override.
+    let category: GroupCategory
+    /// Iniciales 1-3 chars para avatar fallback. Backend backfilled desde
+    /// `name`. Founder puede override en V2 (Phase pending).
+    let initials: String
+    /// URL opcional al avatar custom del grupo. NULL = usar fallback con
+    /// iniciales + color ramp.
+    let avatarUrl: String?
+
     enum CodingKeys: String, CodingKey {
-        case id, name, description, governance, settings
+        case id, name, description, governance, settings, category, initials
         case groupType        = "group_type"
         case inviteCode       = "invite_code"
         case coverImageName   = "cover_image_name"
@@ -44,6 +57,7 @@ struct Group: Identifiable, Codable, Sendable, Hashable {
         case activeModules    = "active_modules"
         case createdBy        = "created_by"
         case createdAt        = "created_at"
+        case avatarUrl        = "avatar_url"
     }
 
     init(
@@ -62,6 +76,9 @@ struct Group: Identifiable, Codable, Sendable, Hashable {
         activeModules: [String]? = nil,
         governance: GovernanceRules? = nil,
         settings: GroupSettings? = nil,
+        category: GroupCategory = .socialRecurring,
+        initials: String = "",
+        avatarUrl: String? = nil,
         createdBy: UUID,
         createdAt: Date
     ) {
@@ -80,6 +97,9 @@ struct Group: Identifiable, Codable, Sendable, Hashable {
         self.activeModules = activeModules
         self.governance = governance
         self.settings = settings
+        self.category = category
+        self.initials = initials.isEmpty ? Self.derivedInitials(from: name) : initials
+        self.avatarUrl = avatarUrl
         self.createdBy = createdBy
         self.createdAt = createdAt
     }
@@ -103,6 +123,11 @@ struct Group: Identifiable, Codable, Sendable, Hashable {
         self.activeModules   = try c.decodeIfPresent([String].self, forKey: .activeModules)
         self.governance      = try c.decodeIfPresent(GovernanceRules.self, forKey: .governance)
         self.settings        = try c.decodeIfPresent(GroupSettings.self,  forKey: .settings)
+        self.category        = (try? c.decode(GroupCategory.self, forKey: .category)) ?? .socialRecurring
+        let decodedInitials  = try c.decodeIfPresent(String.self, forKey: .initials) ?? ""
+        let nameForInitials  = (try? c.decode(String.self, forKey: .name)) ?? ""
+        self.initials        = decodedInitials.isEmpty ? Self.derivedInitials(from: nameForInitials) : decodedInitials
+        self.avatarUrl       = try c.decodeIfPresent(String.self, forKey: .avatarUrl)
         self.createdBy       = try c.decode(UUID.self, forKey: .createdBy)
         self.createdAt       = try c.decode(Date.self, forKey: .createdAt)
     }
@@ -125,6 +150,34 @@ struct Group: Identifiable, Codable, Sendable, Hashable {
     /// none are configured (legacy rows pre-migration 00019).
     public var effectiveActiveModules: [String] {
         activeModules ?? ["basic_fines", "rotating_host", "rsvp", "check_in", "appeal_voting"]
+    }
+
+    /// Avatar URL convertida desde el `avatar_url` string del backend.
+    /// nil cuando no hay imagen custom — el render usa fallback con
+    /// initials + color ramp.
+    public var avatarURL: URL? {
+        avatarUrl.flatMap(URL.init(string:))
+    }
+
+    /// Helper estático: deriva iniciales 1-2 chars del nombre. Usado por
+    /// init() y decoder cuando el backend no envía `initials` (e.g. row
+    /// pre-migration 00036). Mismo algoritmo que el SQL backfill —
+    /// primer letra de las primeras 2 palabras.
+    static func derivedInitials(from name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return "?" }
+        let words = trimmed
+            .split(separator: " ")
+            .map(String.init)
+            .filter { !$0.isEmpty }
+        guard !words.isEmpty else { return "?" }
+        if words.count >= 2 {
+            let first = words[0].first.map(String.init) ?? ""
+            let second = words[1].first.map(String.init) ?? ""
+            return (first + second).uppercased()
+        } else {
+            return String(trimmed.prefix(2)).uppercased()
+        }
     }
 }
 
