@@ -150,7 +150,11 @@ struct MainTabView: View {
                 .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
                 .tag(Tab.settings)
         }
-        .tint(Color.ruulTextPrimary)
+        // DS v3 §13.4: tab bar selected-state tint reflects el accent del
+        // grupo activo (subtle on-brand cue). Falls back a textPrimary cuando
+        // todavía no hay grupo cargado.
+        .tint(app.activeGroup?.category.ramp.accent ?? Color.ruulTextPrimary)
+        .animation(.ruulGroupSwitch, value: app.activeGroupId)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .task { await bootstrap() }
@@ -297,7 +301,10 @@ struct MainTabView: View {
                         onOpenSettings: { settingsRoute = true },
                         onSignOut: {
                             Task { try? await app.auth.signOut() }
-                        }
+                        },
+                        onOpenMembers: { membersSheetPresented = true },
+                        onOpenGovernance: { /* Fase 6 placeholder */ },
+                        onLeaveGroup: { leaveGroupConfirmation = true }
                     )
                     .navigationDestination(isPresented: $myFinesRoute) {
                         if let fCoord = myFinesCoordinator {
@@ -313,6 +320,23 @@ struct MainTabView: View {
                         SettingsSheet()
                             .presentationDetents([.medium, .large])
                             .presentationDragIndicator(.visible)
+                    }
+                    .sheet(isPresented: $membersSheetPresented) {
+                        if let activeGroup = app.activeGroup {
+                            EditMembersSheet(group: activeGroup)
+                                .environment(app)
+                                .presentationDetents([.large])
+                                .presentationDragIndicator(.visible)
+                        }
+                    }
+                    .alert("¿Salir del grupo?", isPresented: $leaveGroupConfirmation) {
+                        Button("Cancelar", role: .cancel) {}
+                        Button("Salir", role: .destructive) {
+                            // Fase 6: implementar RPC `leave_group` + refresh
+                            // de AppState.groups. Por ahora placeholder.
+                        }
+                    } message: {
+                        Text("Esta acción es permanente. Solo el founder puede agregarte de vuelta.")
                     }
                 } else {
                     ProfileTabStub()
@@ -374,6 +398,10 @@ struct MainTabView: View {
 
     @State private var myFinesRoute: Bool = false
     @State private var settingsRoute: Bool = false
+    /// Fase 5: route state para `EditMembersSheet` (Settings → Este grupo →
+    /// Miembros) y la alerta de "Salir del grupo" (placeholder, RPC futuro).
+    @State private var membersSheetPresented: Bool = false
+    @State private var leaveGroupConfirmation: Bool = false
 
     @ViewBuilder
     private var feedScreen: some View {

@@ -32,10 +32,16 @@ public struct RuulGroupSwitcher: View {
                     category: activeCategory,
                     size: .sm
                 )
+                // Crossfade key: SwiftUI re-rendea avatar cuando el id cambia,
+                // y .transition(.opacity) hace fade entre old/new identity.
+                .id("\(activeGroupName)-\(activeCategory.rawValue)")
+                .transition(.opacity)
                 Text(activeGroupName)
                     .font(.ruulTitleSmall)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
+                    .id(activeGroupName)
+                    .transition(.opacity)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -44,6 +50,7 @@ public struct RuulGroupSwitcher: View {
             .padding(.vertical, 6)
             .background(Capsule().fill(.regularMaterial))
             // TODO v3 §13: replace .regularMaterial → .glassMaterial() cuando exista en SDK
+            .animation(.ruulGroupSwitch, value: activeGroupName)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

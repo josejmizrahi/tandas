@@ -32,6 +32,18 @@ struct ProfileView: View {
     let onOpenSettings: () -> Void
     let onSignOut: () -> Void
 
+    /// DS v3 §6.2 — sección "Este grupo" (group-active scope). Cuando estos
+    /// callbacks vienen non-nil, ProfileView renderiza la sección al final.
+    /// Se mantienen opcionales para que ProfileView siga usable en contextos
+    /// donde no haya grupo activo (auth bootstrap, anon stub).
+    var groupScope: GroupScopeContext? = nil
+
+    struct GroupScopeContext {
+        let onOpenMembers: () -> Void
+        let onOpenGovernance: () -> Void
+        let onLeaveGroup: () -> Void
+    }
+
     var body: some View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
@@ -54,6 +66,7 @@ struct ProfileView: View {
                             }
                             activitySection
                             settingsSection
+                            if let groupScope { groupScopeSection(groupScope) }
                             signOutButton
                         }
                         .padding(.horizontal, RuulSpacing.lg)
@@ -225,38 +238,88 @@ struct ProfileView: View {
         }
     }
 
+    private var divider: some View {
+        Divider()
+            .background(Color.ruulSeparator)
+            .padding(.leading, 56)  // align with text after icon column
+    }
+
+    // MARK: - Group scope section (DS v3 §6.2 "Este grupo")
+
+    @ViewBuilder
+    private func groupScopeSection(_ scope: GroupScopeContext) -> some View {
+        sectionContainer(title: "ESTE GRUPO") {
+            navRow(
+                icon: "person.2",
+                label: "Miembros",
+                trailing: { EmptyView() },
+                action: scope.onOpenMembers
+            )
+            divider
+            navRow(
+                icon: "scale.3d",
+                label: "Gobernanza",
+                trailing: { soonPill },
+                action: scope.onOpenGovernance,
+                disabled: true
+            )
+            divider
+            navRow(
+                icon: "rectangle.portrait.and.arrow.right",
+                label: "Salir del grupo",
+                trailing: { EmptyView() },
+                action: scope.onLeaveGroup,
+                destructive: true
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var soonPill: some View {
+        Text("PRONTO")
+            .ruulTextStyle(RuulTypography.footnote)
+            .foregroundStyle(Color.ruulTextTertiary)
+    }
+
     @ViewBuilder
     private func navRow<Trailing: View>(
         icon: String,
         label: String,
         @ViewBuilder trailing: () -> Trailing,
-        action: @escaping () -> Void
+        action: @escaping () -> Void,
+        disabled: Bool = false,
+        destructive: Bool = false
     ) -> some View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(
+                        disabled
+                            ? Color.ruulTextTertiary
+                            : (destructive ? Color.ruulNegative : Color.ruulTextSecondary)
+                    )
                     .frame(width: 24)
                 Text(label)
                     .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(
+                        disabled
+                            ? Color.ruulTextTertiary
+                            : (destructive ? Color.ruulNegative : Color.ruulTextPrimary)
+                    )
                 Spacer()
                 trailing()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                if !disabled {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
             }
             .padding(RuulSpacing.md)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private var divider: some View {
-        Divider()
-            .background(Color.ruulSeparator)
-            .padding(.leading, 56)  // align with text after icon column
+        .disabled(disabled)
     }
 
     private func amountFormatted(_ amount: Decimal) -> String {
