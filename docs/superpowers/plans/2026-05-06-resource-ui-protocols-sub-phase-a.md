@@ -93,7 +93,7 @@ Expected: `** BUILD SUCCEEDED **` on the last line. No `error:` lines for `Resou
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/jj/code/tandas && git add ios/Tandas/Platform/Resources/ResourceProtocol.swift ios/Tandas.xcodeproj
+cd /Users/jj/code/tandas && git add ios/Tandas/Platform/Resources/ResourceProtocol.swift
 git commit -m "$(cat <<'EOF'
 feat(resources): add ResourceProtocol UI-layer skeleton (Sub-fase A 1/5)
 
@@ -243,8 +243,7 @@ Expected: `Test Suite 'EventResourceTests' passed.` with 4 tests executed, 0 fai
 ```bash
 cd /Users/jj/code/tandas && git add \
   ios/Tandas/Platform/Resources/EventResource.swift \
-  ios/TandasTests/Platform/Resources/EventResourceTests.swift \
-  ios/Tandas.xcodeproj
+  ios/TandasTests/Platform/Resources/EventResourceTests.swift
 git commit -m "$(cat <<'EOF'
 feat(resources): add EventResource wrapper + 4 tests (Sub-fase A 2/5)
 
@@ -426,8 +425,7 @@ Expected: `Test Suite 'ResourceActionTests' passed.` with 3 tests executed, 0 fa
 ```bash
 cd /Users/jj/code/tandas && git add \
   ios/Tandas/Platform/Resources/ResourceAction.swift \
-  ios/TandasTests/Platform/Resources/ResourceActionTests.swift \
-  ios/Tandas.xcodeproj
+  ios/TandasTests/Platform/Resources/ResourceActionTests.swift
 git commit -m "$(cat <<'EOF'
 feat(resources): add ResourceAction struct + 3 tests (Sub-fase A 3/5)
 
@@ -498,8 +496,7 @@ Expected: `** BUILD SUCCEEDED **`. If `Member` or `Group` are not in scope, fix 
 
 ```bash
 cd /Users/jj/code/tandas && git add \
-  ios/Tandas/Platform/Resources/ResourceActionsProvider.swift \
-  ios/Tandas.xcodeproj
+  ios/Tandas/Platform/Resources/ResourceActionsProvider.swift
 git commit -m "$(cat <<'EOF'
 feat(resources): add ResourceActionsProvider protocol skeleton (Sub-fase A 4/5)
 
