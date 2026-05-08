@@ -70,6 +70,9 @@ public final class AppState {
     public let userActionRepo: any UserActionRepository
     public let appealRepo: any AppealRepository
     public let fineRepo: any FineRepository
+    /// Polymorphic gateway to `public.resources` (Plan 1, Task 11).
+    /// Read-only V1; writes still flow through resource-type-specific repos.
+    public let resourceRepo: any ResourceRepository
     public let systemEventEmitter: SystemEventEmitter
 
     /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
@@ -95,6 +98,7 @@ public final class AppState {
         userActionRepo: any UserActionRepository,
         appealRepo: any AppealRepository,
         fineRepo: any FineRepository,
+        resourceRepo: any ResourceRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
@@ -118,6 +122,7 @@ public final class AppState {
         self.userActionRepo = userActionRepo
         self.appealRepo = appealRepo
         self.fineRepo = fineRepo
+        self.resourceRepo = resourceRepo
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService
