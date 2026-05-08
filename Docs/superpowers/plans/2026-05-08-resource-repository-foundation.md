@@ -14,6 +14,11 @@
 
 **Tech Stack:** Swift 6 strict concurrency, SwiftUI, Swift Testing (`import Testing`, `@Suite`, `@Test`, `#expect`), Supabase Swift SDK, Xcode 16, xcodegen, iOS 26 deployment target.
 
+**Build/test commands (read this BEFORE running any verification step):**
+- Always use `xcodebuild build` or `xcodebuild test` from repo root (`/Users/jj/code/tandas`) against the iOS Simulator scheme.
+- **Do NOT use `swift build`** from inside `ios/Packages/RuulCore/` or `ios/Packages/RuulUI/`. `Package.swift` only declares `platforms: [.iOS("26.0")]`, so a CLI `swift build` resolves to host macOS and trips a pre-existing platform constraint with Supabase (`'Supabase' which requires macos 10.15`). xcodebuild on the iOS Simulator scheme has no such issue. Wherever a step below originally said `swift build`, **use the xcodebuild equivalent shown alongside it instead**.
+- **Simulator destination**: this dev box has `iPhone 17 Pro` (iOS 26.4.1) but not `iPhone 17 Pro`. Use `name=iPhone 17 Pro` locally; CI runners may have `iPhone 17 Pro` only. The commands below use `iPhone 17 Pro` — if a step fails with `Unable to find a device matching the provided destination specifier`, list available simulators with `xcrun simctl list devices available 'iOS 26'` and substitute one.
+
 **Audit references:**
 - `Plans/Active/Audit-2026-05-06.md` §3.10 (ResourceRepository genérico — gap), §4.7 (dos ResourceProtocol — convergencia decidida).
 - `supabase/migrations/00014_platform_foundation.sql` (resources table DDL + RLS policy `resources_read_member`).
@@ -102,7 +107,11 @@ public enum ResourceRowError: Error, Sendable, Equatable {
 - [ ] **Step 3: Build the package to confirm it compiles**
 
 ```bash
-cd /Users/jj/code/tandas/ios/Packages/RuulCore && swift build 2>&1 | tail -10
+cd /Users/jj/code/tandas && set -o pipefail && xcodebuild build \
+  -project ios/Tandas.xcodeproj \
+  -scheme Tandas \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
 Expected: `Build complete!` (no errors).
@@ -204,7 +213,7 @@ struct ResourceRowTests {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/ResourceRowTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -317,7 +326,7 @@ Expected: `Loaded project ... Generated project successfully`.
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/ResourceRowTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -422,7 +431,7 @@ struct ResourceRowEventDecoderTests {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/ResourceRowEventDecoderTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -549,7 +558,7 @@ public extension ResourceRow {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/ResourceRowEventDecoderTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -616,7 +625,11 @@ self.updatedAt = (try? c.decode(Date.self, forKey: .updatedAt)) ?? self.createdA
 - [ ] **Step 2: Build the package to confirm it compiles**
 
 ```bash
-cd /Users/jj/code/tandas/ios/Packages/RuulCore && swift build 2>&1 | tail -10
+cd /Users/jj/code/tandas && set -o pipefail && xcodebuild build \
+  -project ios/Tandas.xcodeproj \
+  -scheme Tandas \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
 Expected: `Build complete!`. (If errors mention call sites in `LiveEventRepository` or `MockEventRepository`, those constructors don't pass `updatedAt` — the default `nil` falls back to `createdAt`, so the existing call sites should still compile.)
@@ -627,7 +640,7 @@ Expected: `Build complete!`. (If errors mention call sites in `LiveEventReposito
 cd /Users/jj/code/tandas && xcodebuild build \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
@@ -689,7 +702,11 @@ public protocol Resource: Identifiable, Sendable {
 - [ ] **Step 2: Build the package to confirm it compiles**
 
 ```bash
-cd /Users/jj/code/tandas/ios/Packages/RuulCore && swift build 2>&1 | tail -10
+cd /Users/jj/code/tandas && set -o pipefail && xcodebuild build \
+  -project ios/Tandas.xcodeproj \
+  -scheme Tandas \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
 Expected: `Build complete!`. The `ResourceRow: Resource, Codable` conformance from Task 3 already satisfies this — Codable is now an additional conformance on the concrete type, not protocol-mandated.
@@ -773,7 +790,7 @@ struct EventResourceConformanceTests {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/EventResourceConformanceTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -848,7 +865,7 @@ public extension Event {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/EventResourceConformanceTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -861,7 +878,7 @@ Expected: 4 tests pass — `conforms`, `statusBridge`, `updatedAtFallback`, `col
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -20
 ```
 
@@ -983,7 +1000,7 @@ struct ResourceRepositoryTests {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/ResourceRepositoryTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -1162,7 +1179,7 @@ public extension ResourceType {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/ResourceRepositoryTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -30
 ```
@@ -1236,7 +1253,7 @@ For each, add `resourceRepo: MockResourceRepository()` to the constructor call. 
 cd /Users/jj/code/tandas && xcodebuild build \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
@@ -1248,7 +1265,7 @@ Expected: `BUILD SUCCEEDED`.
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -20
 ```
 
@@ -1370,7 +1387,7 @@ private struct UnknownResourceCard: View {
 cd /Users/jj/code/tandas && xcodebuild build \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
@@ -1458,7 +1475,7 @@ private struct UnknownResourceDetailBody: View {
 cd /Users/jj/code/tandas && xcodebuild build \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
@@ -1504,7 +1521,7 @@ Ensure the file imports `RuulCore` (it already does — verify the line `import 
 cd /Users/jj/code/tandas && xcodebuild build \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
@@ -1573,7 +1590,11 @@ public protocol ResourceActionsProvider: Sendable {
 - [ ] **Step 3: Build the package**
 
 ```bash
-cd /Users/jj/code/tandas/ios/Packages/RuulUI && swift build 2>&1 | tail -10
+cd /Users/jj/code/tandas && set -o pipefail && xcodebuild build \
+  -project ios/Tandas.xcodeproj \
+  -scheme Tandas \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
 Expected: `Build complete!`. Existing references to `ResourceProtocol` keep compiling (typealias), but with deprecation warnings.
@@ -1618,7 +1639,7 @@ rm /Users/jj/code/tandas/ios/Packages/RuulUI/Sources/RuulUI/Resources/EventResou
 cd /Users/jj/code/tandas && xcodebuild build \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -10
 ```
 
@@ -1630,7 +1651,7 @@ Expected: `BUILD SUCCEEDED`.
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -20
 ```
 
@@ -1740,7 +1761,7 @@ struct EventRepositoryRowDecodingTests {
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   -only-testing:TandasTests/EventRepositoryRowDecodingTests \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -20
 ```
@@ -1753,7 +1774,7 @@ Expected: 1 test passes — `mockDecodes`.
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -20
 ```
 
@@ -1854,7 +1875,7 @@ Expected: zero matches in production code outside the typealias declaration. Tes
 cd /Users/jj/code/tandas && set -o pipefail && xcodebuild test \
   -project ios/Tandas.xcodeproj \
   -scheme Tandas \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
   CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | tail -25
 ```
 
@@ -1870,7 +1891,11 @@ Total: 14 new tests.
 - [ ] **Step 4: Verify the deprecation warning shows up**
 
 ```bash
-cd /Users/jj/code/tandas/ios/Packages/RuulUI && swift build 2>&1 | grep -i "deprecated"
+cd /Users/jj/code/tandas && xcodebuild build \
+  -project ios/Tandas.xcodeproj \
+  -scheme Tandas \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' 2>&1 | grep -i "deprecated"
 ```
 
 Expected: at most warnings about `ResourceProtocol` being deprecated wherever it's still referenced. These warnings document follow-up cleanup work (not blockers).
