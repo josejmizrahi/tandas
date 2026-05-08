@@ -912,7 +912,8 @@ struct MainTabView: View {
                         groupsRepo: groupsRepo
                     )
                 },
-                currentUserId: userId
+                currentUserId: userId,
+                onClose: { detailRoute = nil }
             )
         )
     }

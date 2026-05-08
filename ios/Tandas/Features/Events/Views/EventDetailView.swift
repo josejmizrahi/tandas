@@ -26,6 +26,13 @@ struct EventDetailView: View {
     let makeAddManualFineCoordinator: () -> AddManualFineCoordinator
     /// Current user id, needed by the sheet to filter members.
     let currentUserId: UUID
+    /// Optional explicit close handler. Called by the X button BEFORE
+    /// `dismiss()`. Lets the parent set `detailRoute = nil` directly so the
+    /// dismissal doesn't rely on `@Environment(\.dismiss)` propagating through
+    /// `AnyView` + `fullScreenCover` + nested sheets, which has been observed
+    /// to no-op when a sheet binding was momentarily true earlier in the
+    /// session (the dismiss target resolves to the sheet, not the cover).
+    var onClose: (() -> Void)? = nil
 
     @State private var qrSheetPresented = false
     @State private var shareSheetPresented = false
@@ -444,7 +451,13 @@ struct EventDetailView: View {
 
     private var topNav: some View {
         HStack(spacing: RuulSpacing.xs) {
-            navCircleButton(icon: "xmark", label: "Cerrar") { dismiss() }
+            navCircleButton(icon: "xmark", label: "Cerrar") {
+                if let onClose {
+                    onClose()
+                } else {
+                    dismiss()
+                }
+            }
             Spacer()
             navCircleButton(icon: "square.and.arrow.up", label: "Compartir") {
                 shareSheetPresented = true
