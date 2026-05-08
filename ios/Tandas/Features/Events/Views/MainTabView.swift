@@ -39,6 +39,13 @@ struct MainTabView: View {
     /// `ruleChangeApplyPending` inbox tap or a `RuleChangeDeepLink` push /
     /// universal link. Setting this presents the sheet via `.sheet(item:)`.
     @State private var ruleEditRoute: RuleEditRouteContext?
+    /// Push destination state para `RuleDetailView` desde el rule card tap
+    /// adentro de `RulesView` (groupTab stack). DS v3 §6.4.
+    @State private var ruleDetailRoute: GroupRule?
+    /// Pre-selected rule para `CreateRuleChangeSheet` cuando el sheet se
+    /// abre desde el botón "Proponer cambio" de `RuleDetailView`. nil
+    /// cuando se abre desde el picker general (user pickea adentro).
+    @State private var ruleChangeInitialRule: GroupRule?
     /// Phase G2 follow-up: route state for `OpenVotesListView` pushed from
     /// the "Votos abiertos" section of `RulesView`. Post-Fase 4b vive en el
     /// groupTab `NavigationStack` (Rules sub-tab adentro de GroupTabView).
@@ -1080,13 +1087,16 @@ struct MainTabView: View {
 // MARK: - Route context wrappers
 
 /// Identifiable wrapper for `EditRuleSheet` route state. Combines the
-/// resolved rule + group + the deep-link-supplied proposed amount so the
-/// sheet can pre-load draftAmount in one render. `pendingActionId` is
-/// non-nil only on the inbox-tap path; nil on push / URL deep-links.
+/// resolved rule + group + (optional) deep-link-supplied proposed amount
+/// so the sheet can pre-load draftAmount in one render. `pendingActionId`
+/// is non-nil only on the inbox-tap path; nil on push / URL deep-links y
+/// en el flow desde `RuleDetailView` (donde no hay action que resolver).
+/// `proposedAmount` es nil cuando el push viene desde el detail view (el
+/// sheet siembra con el flat actual de la rule).
 struct RuleEditRouteContext: Identifiable, Hashable {
     let rule: GroupRule
     let group: Group
-    let proposedAmount: Int
+    let proposedAmount: Int?
     let pendingActionId: UUID?
     var id: UUID { rule.id }
 }

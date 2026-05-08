@@ -19,6 +19,7 @@ struct GroupTabView: View {
     let onSwitchGroup: () -> Void
     let onOpenEvent: (Event) -> Void
     let onOpenFine: (Fine) -> Void
+    let onOpenRule: (GroupRule) -> Void
     let voteRepo: any VoteRepository
     let userActionRepo: (any UserActionRepository)?
     let onSeeOpenVotes: () -> Void
@@ -34,6 +35,7 @@ struct GroupTabView: View {
         onSwitchGroup: @escaping () -> Void,
         onOpenEvent: @escaping (Event) -> Void,
         onOpenFine: @escaping (Fine) -> Void,
+        onOpenRule: @escaping (GroupRule) -> Void = { _ in },
         voteRepo: any VoteRepository,
         userActionRepo: (any UserActionRepository)?,
         onSeeOpenVotes: @escaping () -> Void
@@ -46,6 +48,7 @@ struct GroupTabView: View {
         self.onSwitchGroup = onSwitchGroup
         self.onOpenEvent = onOpenEvent
         self.onOpenFine = onOpenFine
+        self.onOpenRule = onOpenRule
         self.voteRepo = voteRepo
         self.userActionRepo = userActionRepo
         self.onSeeOpenVotes = onSeeOpenVotes
@@ -95,7 +98,8 @@ struct GroupTabView: View {
                 coordinator: rulesCoordinator,
                 voteRepo: voteRepo,
                 userActionRepo: userActionRepo,
-                onSeeOpenVotes: onSeeOpenVotes
+                onSeeOpenVotes: onSeeOpenVotes,
+                onSelectRule: onOpenRule
             )
         case .fines:
             if let coord = myFinesCoordinator {

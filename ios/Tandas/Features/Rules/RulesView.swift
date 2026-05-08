@@ -20,17 +20,23 @@ struct RulesView: View {
     /// (MainTabView) in G3 to push `OpenVotesListView`. For G2 it can be
     /// a no-op closure.
     var onSeeOpenVotes: () -> Void = {}
+    /// Tap callback for a rule card. Wired by the parent
+    /// (GroupTabView → MainTabView) para pushear `RuleDetailView` en el
+    /// groupTab `NavigationStack`. Default no-op para callsites legacy.
+    var onSelectRule: (GroupRule) -> Void = { _ in }
 
     init(
         coordinator: RulesCoordinator,
         voteRepo: any VoteRepository,
         userActionRepo: (any UserActionRepository)? = nil,
-        onSeeOpenVotes: @escaping () -> Void = {}
+        onSeeOpenVotes: @escaping () -> Void = {},
+        onSelectRule: @escaping (GroupRule) -> Void = { _ in }
     ) {
         self.coordinator = coordinator
         self.voteRepo = voteRepo
         self.userActionRepo = userActionRepo
         self.onSeeOpenVotes = onSeeOpenVotes
+        self.onSelectRule = onSelectRule
     }
 
     var body: some View {
@@ -172,37 +178,45 @@ struct RulesView: View {
     }
 
     private func ruleCard(_ rule: GroupRule) -> some View {
-        HStack(alignment: .top, spacing: RuulSpacing.sm) {
-            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                Text(rule.title)
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
-                    .lineLimit(2)
-                if let desc = rule.description, !desc.isEmpty {
-                    Text(desc)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                        .lineLimit(3)
+        Button(action: { onSelectRule(rule) }) {
+            HStack(alignment: .top, spacing: RuulSpacing.sm) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                    Text(rule.title)
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if let desc = rule.description, !desc.isEmpty {
+                        Text(desc)
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                    }
+                    if !rule.isLive {
+                        Text("INACTIVA")
+                            .ruulTextStyle(RuulTypography.footnote)
+                            .foregroundStyle(Color.ruulTextTertiary)
+                    }
                 }
-                if !rule.isLive {
-                    Text("INACTIVA")
-                        .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
+                Spacer()
+                amountBadge(rule)
             }
-            Spacer()
-            amountBadge(rule)
+            .padding(RuulSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .fill(Color.ruulSurface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
+            )
+            .opacity(rule.isLive ? 1.0 : 0.55)
+            .contentShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
-        .padding(RuulSpacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulSurface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
-        )
-        .opacity(rule.isLive ? 1.0 : 0.55)
+        .buttonStyle(.ruulPress)
+        .accessibilityHint("Abre el detalle de la regla")
     }
 
     @ViewBuilder
