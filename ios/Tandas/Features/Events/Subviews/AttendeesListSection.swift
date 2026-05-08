@@ -5,6 +5,10 @@ import SwiftUI
 struct AttendeesListSection: View {
     let rsvps: [RSVP]
     let memberLookup: (UUID) -> (name: String, avatarURL: URL?)
+    /// Tap callback opcional. Cuando set, cada attendee row se vuelve un
+    /// Button que dispatch con el userId. Default nil = filas display-only
+    /// (preserva back-compat con previews/tests sin nav stack).
+    var onSelectAttendee: ((UUID) -> Void)? = nil
 
     @State private var expanded: Set<RSVPStatus> = [.going]
 
@@ -71,9 +75,23 @@ struct AttendeesListSection: View {
         }
     }
 
+    @ViewBuilder
     private func attendeeRow(_ rsvp: RSVP) -> some View {
         let info = memberLookup(rsvp.userId)
-        return HStack(spacing: RuulSpacing.sm) {
+        if let onSelectAttendee {
+            Button { onSelectAttendee(rsvp.userId) } label: {
+                attendeeRowContent(rsvp: rsvp, info: info)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } else {
+            attendeeRowContent(rsvp: rsvp, info: info)
+        }
+    }
+
+    @ViewBuilder
+    private func attendeeRowContent(rsvp: RSVP, info: (name: String, avatarURL: URL?)) -> some View {
+        HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: info.name, imageURL: info.avatarURL, size: .small)
             VStack(alignment: .leading, spacing: 2) {
                 Text(info.name)

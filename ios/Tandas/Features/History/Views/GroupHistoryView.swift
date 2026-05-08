@@ -33,7 +33,9 @@ struct GroupHistoryView: View {
                     Image(systemName: coordinator.hasAnyFilter
                         ? "line.3.horizontal.decrease.circle.fill"
                         : "line.3.horizontal.decrease.circle")
+                        .accessibilityHidden(true)
                 }
+                .accessibilityLabel("Filtrar")
             }
         }
         .task { await coordinator.refresh() }
@@ -100,7 +102,9 @@ struct GroupHistoryView: View {
             Button { onClear() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(Color.ruulTextSecondary)
+                    .accessibilityHidden(true)
             }
+            .accessibilityLabel("Quitar filtro \(label)")
         }
         .padding(.horizontal, RuulSpacing.xs)
         .padding(.vertical, 4)

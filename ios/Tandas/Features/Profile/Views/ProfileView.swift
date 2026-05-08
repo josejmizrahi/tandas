@@ -325,6 +325,7 @@ struct ProfileView: View {
                             : (destructive ? Color.ruulNegative : Color.ruulTextSecondary)
                     )
                     .frame(width: 24)
+                    .accessibilityHidden(true)
                 Text(label)
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(
@@ -338,6 +339,7 @@ struct ProfileView: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(RuulSpacing.md)

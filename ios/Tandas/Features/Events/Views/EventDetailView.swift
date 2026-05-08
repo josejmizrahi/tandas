@@ -8,6 +8,11 @@ struct EventDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var coordinator: EventDetailCoordinator
     let memberLookup: (UUID) -> (name: String, avatarURL: URL?)
+    /// Optional rich lookup. Cuando set + un attendee row tap dispara, se
+    /// resuelve el `MemberWithProfile` correspondiente y se presenta el
+    /// `MemberDetailView` en sheet. Si nil, los taps son no-op (back-compat
+    /// con call sites legacy / previews que solo tienen el lookup display).
+    var memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil
     var onScannerOpen: () -> Void
     var calendarService: CalendarExportService?
     var onEdit: () -> Void = {}
@@ -31,6 +36,11 @@ struct EventDetailView: View {
     @State private var canIssueManualFine: Bool = false
     @State private var scrollOffset: CGFloat = 0
     @State private var pendingPlusOnes: Int = 0
+    /// Sheet route — set cuando un attendee row es tapped y el rich lookup
+    /// resuelve un MemberWithProfile. Sheet binding usa `.sheet(item:)` para
+    /// que el push desde dentro del fullScreenCover funcione sin requerir
+    /// NavigationStack outer.
+    @State private var attendeeMemberRoute: MemberWithProfile?
 
     private let coverHeight: CGFloat = 380
 
@@ -132,6 +142,17 @@ struct EventDetailView: View {
                 coordinator: makeAddManualFineCoordinator(),
                 currentUserId: currentUserId
             )
+        }
+        .sheet(item: $attendeeMemberRoute) { mwp in
+            NavigationStack {
+                MemberDetailView(
+                    memberWithProfile: mwp,
+                    group: coordinator.group,
+                    isCurrentUser: mwp.member.userId == currentUserId
+                )
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -373,7 +394,14 @@ struct EventDetailView: View {
     private var attendeesSection: some View {
         AttendeesListSection(
             rsvps: coordinator.rsvps,
-            memberLookup: memberLookup
+            memberLookup: memberLookup,
+            onSelectAttendee: memberWithProfileLookup.map { lookup in
+                { userId in
+                    if let mwp = lookup(userId) {
+                        attendeeMemberRoute = mwp
+                    }
+                }
+            }
         )
         .padding(.horizontal, RuulSpacing.lg)
     }

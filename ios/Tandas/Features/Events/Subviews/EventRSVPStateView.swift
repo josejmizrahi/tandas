@@ -80,6 +80,7 @@ struct EventRSVPStateView: View {
                     Image(systemName: icon)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.ruulTextPrimary)
+                        .accessibilityHidden(true)
                 }
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)
@@ -104,6 +105,7 @@ struct EventRSVPStateView: View {
             Image(systemName: "person.2.fill")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Color.ruulTextTertiary)
+                .accessibilityHidden(true)
             Text("Llevo a más gente")
                 .ruulTextStyle(RuulTypography.callout)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -144,9 +146,11 @@ struct EventRSVPStateView: View {
                 .background(Color.ruulBackground)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                .accessibilityHidden(true)
         }
         .buttonStyle(.ruulPress)
         .disabled(!enabled)
+        .accessibilityLabel(icon == "plus" ? "Agregar invitado" : "Quitar invitado")
     }
 
     // MARK: - Going (confirmed) — flat monochrome card
@@ -303,6 +307,7 @@ struct EventRSVPStateView: View {
             HStack(spacing: RuulSpacing.xxs) {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .bold))
+                    .accessibilityHidden(true)
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)
             }

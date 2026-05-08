@@ -64,6 +64,7 @@ struct OpenVotesListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: onCreateVote) {
                     Image(systemName: "plus")
+                        .accessibilityHidden(true)
                 }
                 .accessibilityLabel("Crear votación")
             }
@@ -78,6 +79,7 @@ struct OpenVotesListView: View {
                 .foregroundStyle(Color.ruulAccent)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(vote.title)
@@ -92,6 +94,7 @@ struct OpenVotesListView: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(Color.ruulTextTertiary)
+                .accessibilityHidden(true)
         }
         .padding(RuulSpacing.md)
         .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))

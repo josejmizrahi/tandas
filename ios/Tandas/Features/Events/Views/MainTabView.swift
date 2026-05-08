@@ -882,6 +882,7 @@ struct MainTabView: View {
             EventDetailView(
                 coordinator: coord,
                 memberLookup: lookupMember,
+                memberWithProfileLookup: { userId in memberDirectorySnapshot[userId] },
                 onScannerOpen: { openScanner(for: coord) },
                 calendarService: calendarService,
                 onEdit: { editRoute = coord.event },
