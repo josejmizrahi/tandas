@@ -34,6 +34,15 @@ public protocol GroupsRepository: Actor {
     /// admin. UI callers should gate destructive actions through
     /// `GovernanceService.canPerform(.removeMembers, ...)` first.
     func removeMember(memberId: UUID) async throws
+
+    // Primitives § 3 slice 3 — module write-path
+    /// Toggles module slug membership in `groups.active_modules`. Admin-gated
+    /// at the RPC layer (`set_group_module`, mig 00055). The trigger from
+    /// mig 00049 keeps `fines_enabled` derived when `slug == "basic_fines"`,
+    /// so callers do not need to also patch the legacy column. Idempotent —
+    /// enabling an already-on module (or disabling an already-off one) is a
+    /// no-op on the underlying jsonb.
+    func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group
 }
 
 /// Partial update payload for `update_group_config` RPC. All optional —
@@ -235,6 +244,50 @@ public actor MockGroupsRepository: GroupsRepository {
             _members[gid] = list.filter { $0.id != memberId }
         }
         _membersWithProfiles.removeAll { $0.member.id == memberId }
+    }
+
+    // MARK: - Primitives § 3 slice 3 (module write-path)
+
+    /// Mirrors `set_group_module` RPC + the mig 00049 trigger client-side so
+    /// tests using `MockGroupsRepository` see the same invariants the DB
+    /// enforces: `fines_enabled = ('basic_fines' = ANY(active_modules))`.
+    public func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let g = _groups[idx]
+        var modules = g.effectiveActiveModules
+        if enabled {
+            if !modules.contains(slug) { modules.append(slug) }
+        } else {
+            modules.removeAll { $0 == slug }
+        }
+        let derivedFinesEnabled: Bool = (slug == GroupModule.basicFines.id)
+            ? modules.contains(GroupModule.basicFines.id)
+            : g.finesEnabled
+        let updated = Group(
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            inviteCode: g.inviteCode,
+            coverImageName: g.coverImageName,
+            eventVocabulary: g.eventVocabulary,
+            frequencyType: g.frequencyType,
+            frequencyConfig: g.frequencyConfig,
+            finesEnabled: derivedFinesEnabled,
+            rotationMode: g.rotationMode,
+            baseTemplate: g.baseTemplate,
+            activeModules: modules,
+            governance: g.governance,
+            settings: g.settings,
+            category: g.category,
+            initials: g.initials,
+            avatarUrl: g.avatarUrl,
+            createdBy: g.createdBy,
+            createdAt: g.createdAt
+        )
+        _groups[idx] = updated
+        return updated
     }
 }
 
@@ -527,6 +580,32 @@ public actor LiveGroupsRepository: GroupsRepository {
                 .delete()
                 .eq("id", value: memberId.uuidString.lowercased())
                 .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Primitives § 3 slice 3 (module write-path)
+
+    public func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_module_slug: String
+            let p_enabled: Bool
+        }
+        do {
+            let g: Group = try await client
+                .rpc(
+                    "set_group_module",
+                    params: Params(
+                        p_group_id: groupId.uuidString.lowercased(),
+                        p_module_slug: slug,
+                        p_enabled: enabled
+                    )
+                )
+                .execute()
+                .value
+            return g
         } catch {
             throw GroupsError.rpcFailed(error.localizedDescription)
         }

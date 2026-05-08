@@ -180,13 +180,14 @@ grupo con `fines_enabled=false` desde antes de 00019 ahora tiene
 feature code (5 callsites) lee la column y dice "off". Divergencia
 silenciosa.
 
-**Callsites legacy** (todos leen `group.finesEnabled` directo, no via
-resolver):
+**Callsites legacy** (originalmente leían `group.finesEnabled` directo;
+todos migrados a resolver en Slice 2 — read-path — y a `setModule` en
+Slice 3 — write-path):
 
-- `RuulFeatures/.../Group/Views/GroupTabView.swift:137` — visibilidad de tab fines.
-- `RuulFeatures/.../Groups/GroupSettingsSheet.swift:165, 171` — toggle de settings.
-- `RuulFeatures/.../Events/Coordinator/EventCreationCoordinator.swift:44` — `draft.applyRules`.
-- `RuulFeatures/.../Onboarding/Founder/Coordinator/FounderOnboardingCoordinator.swift:268, 439` — flujo onboarding.
+- `RuulFeatures/.../Group/Views/GroupTabView.swift:145` — read via resolver ✅
+- `RuulFeatures/.../Groups/GroupSettingsSheet.swift:165, 171` — read via resolver ✅; write via `setModule` ✅
+- `RuulFeatures/.../Events/Coordinator/EventCreationCoordinator.swift:44` — read via resolver ✅
+- `RuulFeatures/.../Onboarding/Founder/Coordinator/FounderOnboardingCoordinator.swift` — write via `setModule` ✅; analytics read via resolver ✅
 
 ### Acción canónica (multi-slice)
 
@@ -199,9 +200,20 @@ resolver):
 - Cambiar 5 callsites a `appState.capabilityResolver.finesEnabled(in: group)`.
 - `Group.finesEnabled` se mantiene como propiedad almacenada (decoder + write path) hasta Slice 3.
 
-**Slice 3 — Migración de write-path**
-- `GroupSettingsSheet` y `FounderOnboardingCoordinator` mutan `active_modules` directamente (no `fines_enabled`).
-- Trigger del Slice 1 mantiene `fines_enabled` derivado.
+**Slice 3 — Migración de write-path** ✅ **done 2026-05-08**
+- `GroupSettingsSheet` y `FounderOnboardingCoordinator` mutan
+  `active_modules` directamente vía nuevo RPC
+  `set_group_module(p_group_id, p_module_slug, p_enabled)` (mig 00055).
+- Trigger del Slice 1 deriva `fines_enabled` automáticamente.
+- iOS: `GroupsRepository.setModule(groupId:slug:enabled:)` añadido a
+  protocolo + Mock + Live. Mock espeja la lógica del trigger para que
+  los tests del coordinator sigan pasando con `g.finesEnabled`.
+- 5 nuevos tests en `MockGroupsRepositoryTests` cubren add/remove/
+  idempotencia/no-cross-effect/notFound.
+- RPC verificado end-to-end contra prod (smoke test transaccional sin
+  side-effects). 0 rows divergent post-slice.
+- `GroupConfigPatch.finesEnabled` queda como deprecated-pero-funcional
+  para callers internos. Slice 4 lo elimina junto con la columna.
 
 **Slice 4 — Drop column** (post-paridad de 2 semanas con triggers verdes)
 - `alter table groups drop column fines_enabled`.
