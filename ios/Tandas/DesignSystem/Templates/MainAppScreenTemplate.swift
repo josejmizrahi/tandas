@@ -41,8 +41,9 @@ public struct MainAppScreenTemplate<Value: Hashable & Sendable, Content: View>: 
             }
         }
         .tint(Color.ruulAccent)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        // DS v3 §13.2: iOS 26 TabView ya renderiza Liquid Glass nativo.
+        // No usar `.toolbarBackground(.ultraThinMaterial)` — overridería
+        // el glass con un material plano (antipatrón explícito del DS doc).
         // iOS 26 §6.2: tab bar minimiza al scroll down (gana real estate
         // de contenido) y se expande al scroll up.
         .tabBarMinimizeBehavior(.onScrollDown)

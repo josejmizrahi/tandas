@@ -76,7 +76,13 @@ struct GroupSwitcherSheet: View {
     private func groupRow(_ group: Group) -> some View {
         let isActive = app.activeGroup?.id == group.id
         return Button {
-            app.activeGroupId = group.id
+            // DS v3 §4.3: haptic feedback al cambiar grupo activo. Solo
+            // dispara cuando hay cambio real (idempotente si ya es el
+            // activo). Bootstrap y push deep-links no pasan por aquí.
+            if !isActive {
+                app.activeGroupId = group.id
+                RuulHaptic.groupSwitch.trigger()
+            }
             dismiss()
         } label: {
             HStack(spacing: RuulSpacing.sm) {

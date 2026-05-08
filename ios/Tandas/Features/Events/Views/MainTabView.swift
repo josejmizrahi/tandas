@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// Top-level tab container shown after onboarding. Sprint 1b expandió de
-/// 1 → 4 tabs (Inicio, Inbox, Reglas, Yo). Fase C (DS alignment) reemplaza
-/// el chrome de `ResourceTabBar` (TabView default + ultraThinMaterial) por
-/// el patrón overlay del DS doc §3.6: TabView nativo invisible
-/// (`.toolbar(.hidden, for: .tabBar)`) + `RuulTabBar` capsule glass
-/// flotando encima. Esto preserva el state per-tab (cada tab se queda
-/// con su `NavigationStack` viva al cambiar) y entrega el look real de
-/// Liquid Glass.
+/// Top-level tab container shown after onboarding. Tabs (Inicio, Grupo,
+/// Historial, Ajustes) corresponden al patrón híbrido de scope DS v3 §4.2.
+///
+/// Chrome: iOS 26 native TabView. La razón está dentro del `body` (líneas
+/// ~150): `RuulTabBar` overlay produjo un duplicate visual (native bar +
+/// floating capsule) bajo iOS 26, así que la canonical Liquid Glass surface
+/// es el TabView nativo + `.tabBarMinimizeBehavior(.onScrollDown)`. La
+/// `.tint(...)` aplica el accent del grupo activo (DS §13.4).
 struct MainTabView: View {
     @Environment(AppState.self) private var app
     @State private var homeCoordinator: HomeCoordinator?
@@ -172,8 +172,9 @@ struct MainTabView: View {
         // todavía no hay grupo cargado.
         .tint(app.activeGroup?.category.ramp.accent ?? Color.ruulTextPrimary)
         .animation(.ruulGroupSwitch, value: app.activeGroupId)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        // DS v3 §13.2: el TabView nativo de iOS 26 ya renderiza Liquid Glass
+        // por default. Aplicar `.toolbarBackground(.ultraThinMaterial, ...)`
+        // overridería ese glass con un material plano — antipatrón explícito.
         // iOS 26 §6.2: tab bar se minimiza al scroll down y re-expande al
         // scroll up. Aprovecha la real estate y evita hide manual.
         .tabBarMinimizeBehavior(.onScrollDown)

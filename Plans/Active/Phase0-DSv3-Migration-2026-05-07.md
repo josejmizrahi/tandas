@@ -82,19 +82,30 @@ Verificable en el código actual (post Fases A-E):
 
 ## 3. Lo que falta para v3 fully-aligned
 
+### ✅ Completado
+
 - ✅ `tabBarBottomSafeArea` 80 → 100 (Sprint 1, 2026-05-07)
-- ⏳ `RuulHaptic.groupSwitch` semantic case (parte de v2 architecture)
-- ⏳ `Animation.ruulGroupSwitch` (parte de v2 architecture)
-- ⏳ `GroupCategory` + `GroupColorRamp` (parte de v2 architecture, requires backend migration)
-- ⏳ `RuulGroupAvatar / RuulGroupSwitcher / RuulGroupSwitcherSheet / RuulSubTabBar / RuulOriginTag` (parte de v2 architecture)
-- ⏳ `RuulPersonAvatar` rename de `RuulAvatar` (parte de v2 architecture)
-- ✅ Liquid Glass APIs nativas (Sprint 3 Fase 5 fix 2026-05-07: `.glassEffect()` SÍ existe en iOS 26 SDK; wrapper `.ruulGlass(shape:)` ya estaba en DesignSystem/Modifiers/GlassEffect+Ruul.swift. Aplicado en RuulPillButton, RuulHeaderActions, RuulGroupSwitcher chrome surfaces. Audit inicial Sprint 1 fue erróneo — buscó nombres viejos `glassBackground`/`glassMaterial` que no existen, en lugar de `glassEffect` que sí.)
-- ⏳ Tab restructure Inicio/Grupo/Historial/Ajustes (Sprint 3)
-- ⏳ SPM 3 packages split (Sprint 2)
-- ⏳ Snapshot testing (Sprint 4)
-- ⏳ `#Preview` macros completos en componentes (Sprint 1 audit: solo falta en `RuulStatePatterns+Aliases.swift` — file de aliases puros, no necesita preview. Resto de DS Primitives/Patterns conformes.)
-- ✅ `Sendable` en models (Sprint 1 audit 2026-05-07: 100% de structs en `Models/` y `Platform/Models/` ya conforman `Sendable`. Sin acción necesaria.)
-- ✅ `@Observable @MainActor` coordinators (Sprint 1 audit 2026-05-07: cero usos de `ObservableObject`/`@Published` en `Features/`. Migración completa.)
+- ✅ `RuulHaptic.groupSwitch` semantic case (`Tokens/RuulHaptics.swift:24`)
+- ✅ `Animation.ruulGroupSwitch` (`Tokens/RuulMotion+DSAliases.swift:15`)
+- ✅ `GroupCategory` + `GroupColorRamp` (`Tokens/GroupColorRamp.swift`, `Platform/Models/Template.swift`)
+- ✅ `RuulGroupAvatar / RuulGroupSwitcher / RuulGroupSwitcherSheet / RuulSubTabBar / RuulOriginTag` (todos en `Primitives/`)
+- ✅ `RuulPersonAvatar` (`Primitives/RuulPersonAvatar.swift`; `RuulAvatar` mantenido por compatibilidad)
+- ✅ Liquid Glass nativo: wrapper `.ruulGlass(shape:)` (`Modifiers/GlassEffect+Ruul.swift`) sobre `.glassEffect()` con fallback de `accessibilityReduceTransparency` → 31 callsites en producción.
+- ✅ Tab restructure Inicio/Grupo/Historial/Ajustes (Sprint 3, `MainTabView.swift:78-97`)
+- ✅ `Sendable` en models (Sprint 1 audit 2026-05-07: 100% de structs en `Models/` y `Platform/Models/` conforman.)
+- ✅ `@Observable @MainActor` coordinators (cero usos de `ObservableObject`/`@Published` en `Features/`.)
+- ✅ `#Preview` macros en DS Primitives/Patterns. Solo `RuulStatePatterns+Aliases.swift` queda sin preview (file de aliases puros, intencional.)
+- ✅ Anti-pattern de DS §13.2 erradicado: cero `.background(.ultraThinMaterial/.regularMaterial/...)` en código (audit 2026-05-07).
+- ✅ `toolbarBackground(.ultraThinMaterial, for: .tabBar)` removido de `MainTabView`, `MainAppScreenTemplate`, `ResourceTabBar` (overrideaba el Liquid Glass nativo del TabView iOS 26 con material plano — antipatrón explícito DS §13.2).
+- ✅ Haptic `groupSwitch` cableado en `GroupSwitcherSheet` (gesto user-driven; bootstrap y push silenciosos por design DS §4.10).
+
+### ⏳ Diferido (decisión de scope, no bloqueantes)
+
+- ⏳ **SPM 3 packages split** (Sprint 2): `RuulCore` / `RuulUI` / `RuulFeatures`. 3-6 sesiones, requiere análisis de deps cíclicas. Sin Package.swift hoy. Refactor invisible — no aporta a usuario, sí a maintainability.
+- ⏳ **Snapshot testing infra** (Sprint 4): requiere agregar SPM dep `pointfreeco/swift-snapshot-testing`. Hoy solo existe `TandasTests/DesignSystem/TokenResolutionTests.swift`. Roadmap línea 240 pendiente: snapshot pixel-identical pre/post refactor.
+- ⏳ **Preview matrix completo** (DS §17.1): hoy la mayoría de primitives tiene `#Preview("Default")`. Faltan variantes Dark / AX5 / Reduce Motion sistemáticas. Cosmetic, no bloquea producción.
+- ⏳ **Sheet glass parity** (DS §13.1): `RuulSheet` mantiene `.presentationBackground(.ultraThinMaterial)` con TODO. iOS 26 no expone glass para `presentationBackground` aún (solo acepta `ShapeStyle`). Esperar SDK update.
+- ⏳ **Componentes diferidos** (`Plans/Active/DSFutureComponents.md`): rule builder primitives, slot/rotation visualizers, health indicator. Gated por features de producto que aún no shippean.
 
 ---
 
@@ -173,7 +184,8 @@ Listar componentes sin `#Preview`. Agregar previews mínimos para cada uno.
 
 ## 7. Estado de implementación
 
-- [ ] Sprint 1: v3 additive low-risk
-- [ ] Sprint 2: SPM packages split
-- [ ] Sprint 3: Multi-group arquitectura (Inicio/Grupo/Historial/Ajustes)
-- [ ] Sprint 4: Testing visual
+- [x] Sprint 1: v3 additive low-risk (2026-05-07)
+- [ ] Sprint 2: SPM packages split (diferido — no bloqueante)
+- [x] Sprint 3: Multi-group arquitectura (Inicio/Grupo/Historial/Ajustes)
+- [ ] Sprint 4: Testing visual (diferido — requiere decisión de tooling)
+- [x] DS v3 cleanup 2026-05-07: glass override removido del TabView, haptic groupSwitch cableado

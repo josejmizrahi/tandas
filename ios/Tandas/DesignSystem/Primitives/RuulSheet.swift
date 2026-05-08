@@ -13,6 +13,12 @@ public extension View {
                 .presentationDetents(detents)
                 .presentationDragIndicator(.visible)
                 .presentationCornerRadius(RuulRadius.extraLarge)
+                // DS v3 §13.1: sheets son chrome, deben usar Liquid Glass.
+                // iOS 26 no expone una variante glass de `presentationBackground`
+                // (solo acepta ShapeStyle: `.regularMaterial`/`.ultraThinMaterial`).
+                // `.ultraThinMaterial` es el material más translúcido disponible
+                // y produce el efecto deseado para sheets sobre el contenido.
+                // TODO DS §13: swap a glass nativo cuando SwiftUI lo exponga.
                 .presentationBackground(.ultraThinMaterial)
         }
     }
@@ -27,6 +33,12 @@ public extension View {
                 .presentationDetents(detents)
                 .presentationDragIndicator(.visible)
                 .presentationCornerRadius(RuulRadius.extraLarge)
+                // DS v3 §13.1: sheets son chrome, deben usar Liquid Glass.
+                // iOS 26 no expone una variante glass de `presentationBackground`
+                // (solo acepta ShapeStyle: `.regularMaterial`/`.ultraThinMaterial`).
+                // `.ultraThinMaterial` es el material más translúcido disponible
+                // y produce el efecto deseado para sheets sobre el contenido.
+                // TODO DS §13: swap a glass nativo cuando SwiftUI lo exponga.
                 .presentationBackground(.ultraThinMaterial)
         }
     }
