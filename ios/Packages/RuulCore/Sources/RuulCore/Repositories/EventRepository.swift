@@ -48,6 +48,10 @@ public protocol EventRepository: Actor {
     func cancelEvent(_ id: UUID, reason: String?) async throws -> Event
     func closeEvent(_ id: UUID) async throws -> Event
     func setAutoGenerate(groupId: UUID, enabled: Bool) async throws
+    /// Decodes a batch of resource rows whose `resource_type == .event`
+    /// into typed `Event` values. Rows with mismatched type are skipped.
+    /// Used by polymorphic feeds that already hold rows.
+    func eventsFromResourceRows(_ rows: [ResourceRow]) async throws -> [Event]
 }
 
 // MARK: - Mock
@@ -200,6 +204,10 @@ public actor MockEventRepository: EventRepository {
 
     public func setAutoGenerate(groupId: UUID, enabled: Bool) async throws {
         // No-op in mock; coordinator tests verify the call shape via spy.
+    }
+
+    public func eventsFromResourceRows(_ rows: [ResourceRow]) async throws -> [Event] {
+        rows.compactMap { try? $0.decodeAsEvent() }
     }
 }
 
@@ -412,5 +420,9 @@ public actor LiveEventRepository: EventRepository {
         } catch {
             throw EventError.updateFailed(error.localizedDescription)
         }
+    }
+
+    public func eventsFromResourceRows(_ rows: [ResourceRow]) async throws -> [Event] {
+        rows.compactMap { try? $0.decodeAsEvent() }
     }
 }
