@@ -28,6 +28,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
     public let allowPlusOnes: Bool
     public let maxPlusOnesPerMember: Int
     public let createdAt: Date
+    public let updatedAt: Date
 
     public enum CodingKeys: String, CodingKey {
         case id, title, description, status
@@ -50,6 +51,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         case closedAt              = "closed_at"
         case createdBy             = "created_by"
         case createdAt             = "created_at"
+        case updatedAt             = "updated_at"
         case capacityMax           = "capacity_max"
         case allowPlusOnes         = "allow_plus_ones"
         case maxPlusOnesPerMember  = "max_plus_ones_per_member"
@@ -79,6 +81,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         closedAt: Date? = nil,
         createdBy: UUID? = nil,
         createdAt: Date,
+        updatedAt: Date? = nil,
         capacityMax: Int? = nil,
         allowPlusOnes: Bool = false,
         maxPlusOnesPerMember: Int = 0
@@ -106,6 +109,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         self.closedAt = closedAt
         self.createdBy = createdBy
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
         self.capacityMax = capacityMax
         self.allowPlusOnes = allowPlusOnes
         self.maxPlusOnesPerMember = maxPlusOnesPerMember
@@ -137,7 +141,9 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         self.rsvpDeadline         = try c.decodeIfPresent(Date.self,   forKey: .rsvpDeadline)
         self.closedAt             = try c.decodeIfPresent(Date.self,   forKey: .closedAt)
         self.createdBy            = try c.decodeIfPresent(UUID.self,   forKey: .createdBy)
-        self.createdAt            = try c.decode(Date.self,   forKey: .createdAt)
+        let createdAt             = try c.decode(Date.self,   forKey: .createdAt)
+        self.createdAt            = createdAt
+        self.updatedAt            = (try? c.decode(Date.self, forKey: .updatedAt)) ?? createdAt
         self.capacityMax          = try c.decodeIfPresent(Int.self,    forKey: .capacityMax)
         self.allowPlusOnes        = (try? c.decode(Bool.self, forKey: .allowPlusOnes)) ?? false
         self.maxPlusOnesPerMember = (try? c.decode(Int.self,  forKey: .maxPlusOnesPerMember)) ?? 0
