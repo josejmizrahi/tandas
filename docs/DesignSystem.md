@@ -132,60 +132,90 @@ ruul es **infraestructura de autogobierno para grupos**. La UI debe transmitir:
 ### §2.1 Estructura de packages (SPM)
 
 ```
-ruul/
-├── App/                        # Xcode app target
-│   ├── ruulApp.swift          # @main entry point
-│   ├── AppCoordinator.swift   # Top-level navigation
+ios/
+├── Tandas/                          # Xcode app target (ultra-thin)
+│   ├── TandasApp.swift             # @main entry, Sentry init, Supabase wiring
+│   ├── Shell/AuthGate.swift        # Top-level routing (imports RuulFeatures)
+│   ├── DesignSystem/
+│   │   ├── Components/             # ResourceCard, ResourceActionsSection
+│   │   └── Showcase/               # Preview matrix (DEBUG only)
+│   ├── Models/Events/              # @Model SwiftData entities
 │   └── Resources/
-│       ├── Assets.xcassets    # Colors, images
-│       ├── Localizable.strings
-│       └── Info.plist
+│       ├── Assets.xcassets
+│       ├── Info.plist
+│       └── Tandas.entitlements
 │
 ├── Packages/
-│   ├── RuulCore/              # Models, business logic, networking
-│   │   ├── Sources/
-│   │   │   ├── Models/        # Group, Member, Resource, etc
-│   │   │   ├── Repositories/  # Supabase clients
-│   │   │   ├── Services/      # Business logic
-│   │   │   └── Extensions/
-│   │   └── Tests/
+│   ├── RuulCore/                   # Models, repos, services, platform
+│   │   ├── Package.swift           # deps: supabase-swift
+│   │   └── Sources/RuulCore/
+│   │       ├── *.swift             # Top-level models (Group, Member, Profile, ...)
+│   │       ├── AppState.swift      # Top-level @Observable
+│   │       ├── OnboardingProgress.swift  # @Model SwiftData (Founder/InvitedStep)
+│   │       ├── OnboardingCompletion.swift  # Keychain wrapper
+│   │       ├── Events/             # Event-layer models
+│   │       ├── PlatformModels/
+│   │       ├── PlatformServices/   # GovernanceService, SystemEventEmitter
+│   │       ├── PlatformModules/    # ModuleRegistry, V1Modules
+│   │       ├── Repositories/       # Mock + Supabase impls
+│   │       ├── Supabase/           # Client + Auth + concrete repos
+│   │       ├── Services/           # Analytics, Notifications, OTP, QR, Realtime, Wallet, ...
+│   │       ├── Coordinators/       # LoadingCoordinator (cross-feature)
+│   │       ├── Templates/          # TemplateRegistry, DinnerRecurringTemplate
+│   │       └── Utilities/          # PhoneFormatter, InviteLinkGenerator, ...
 │   │
-│   ├── RuulUI/                # Design system + reusable components
-│   │   ├── Sources/
-│   │   │   ├── Tokens/        # Spacing, Typography, Color
-│   │   │   ├── Components/    # All Ruul* views
-│   │   │   ├── Modifiers/     # Reusable view modifiers
-│   │   │   └── Previews/      # Catalog views for testing
-│   │   └── Tests/
+│   ├── RuulUI/                     # Tokens + DS primitives + UI helpers
+│   │   ├── Package.swift           # deps: RuulCore (for domain-coupled views)
+│   │   └── Sources/RuulUI/
+│   │       ├── AppearanceOption.swift
+│   │       ├── Tokens/             # Spacing, Typography, Colors, Radius, Motion, GroupColorRamp
+│   │       ├── Modifiers/
+│   │       ├── Primitives/         # RuulButton, RuulCard, RuulGroupSwitcher, ...
+│   │       ├── Patterns/           # EventCardStub, RSVPStateView, ErrorStateView+CoordinatorError
+│   │       ├── Templates/          # ModalSheetTemplate, ...
+│   │       ├── Theme/
+│   │       └── Resources/
 │   │
-│   └── RuulFeatures/          # Feature modules
-│       ├── Sources/
-│       │   ├── Home/
-│       │   ├── Group/
-│       │   ├── History/
-│       │   └── Settings/
-│       └── Tests/
+│   └── RuulFeatures/               # Per-domain feature modules
+│       ├── Package.swift           # deps: RuulCore + RuulUI + supabase-swift
+│       └── Sources/RuulFeatures/Features/
+│           ├── Auth/               # SignInView, AppleNonceGen
+│           ├── Events/             # MainTabView, HomeView, EventDetailView, CheckInScanner, ...
+│           ├── Feed/               # MyFeedView + Coordinator
+│           ├── Fines/              # MyFinesView, FineDetailView, sheets, coordinators
+│           ├── Group/Groups/Members/  # Group settings, info, switcher, members
+│           ├── History/            # GroupHistoryView, HistoryTabView
+│           ├── Inbox/              # ActionInboxView
+│           ├── Onboarding/         # Founder + Invited flows + shared
+│           ├── Profile/            # ProfileView + Coordinator
+│           ├── Resources/          # MyResourcesView
+│           ├── Rules/              # RulesView + EditRulesSheet + coordinators
+│           ├── Settings/           # SettingsTabView, SettingsSheet
+│           └── Votes/              # OpenVotesListView + sheets + coordinators
 ```
 
 ### §2.2 Dependencias
 
 ```swift
-// Package.swift de RuulUI
-dependencies: [],  // Cero deps externas — solo Foundation + SwiftUI
-
 // Package.swift de RuulCore
 dependencies: [
-    .package(url: "https://github.com/supabase/supabase-swift", from: "2.0.0"),
+    .package(url: "https://github.com/supabase/supabase-swift", from: "2.20.0"),
+],
+
+// Package.swift de RuulUI
+dependencies: [
+    .package(path: "../RuulCore"),  // Domain-coupled views need RuulCore types
 ],
 
 // Package.swift de RuulFeatures
 dependencies: [
     .package(path: "../RuulCore"),
     .package(path: "../RuulUI"),
+    .package(url: "https://github.com/supabase/supabase-swift", from: "2.20.0"),
 ],
 ```
 
-**Regla**: RuulUI no depende de nada externo. Si necesitás una lib, hacelo en RuulFeatures.
+**Regla**: RuulUI puede depender de RuulCore (ej. `RuulGroupSwitcher` toma `Group`) pero ni RuulUI ni RuulCore dependen de RuulFeatures (cero ciclos).
 
 ### §2.3 Reglas de organización
 

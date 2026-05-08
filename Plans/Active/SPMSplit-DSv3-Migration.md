@@ -286,14 +286,14 @@ Cada step:
 
 ## 8. Estado de implementación
 
-- [ ] Sprint 2.1a — RuulCore + Models
-- [ ] Sprint 2.1b — RuulCore + Repositories + Supabase
-- [ ] Sprint 2.1c — RuulCore + Services + Utilities + Coordinators
+- [x] Sprint 2.1a — RuulCore + Models (2026-05-07, commit `aa99ac7`)
+- [x] Sprint 2.1b — RuulCore + Repositories + Supabase + Templates (2026-05-07, commit `0614145`)
+- [x] Sprint 2.1c — RuulCore + Services + Utilities + Platform (2026-05-08, commit `4c8a257`)
 - [x] Sprint 2.2a — RuulUI + Tokens (2026-05-07, commit `971f8da`)
 - [x] Sprint 2.2b — RuulUI + Modifiers + Primitives (35) + Patterns (8) + Templates + Theme (2026-05-07, commits `9168192` + `447b905`)
-- [ ] Sprint 2.2c — Move 11 deferred domain-coupled DS files into RuulUI (depends on RuulCore existing)
-- [ ] Sprint 2.3a — RuulFeatures + Features
-- [ ] Sprint 2.3b — Cleanup + docs
+- [x] Sprint 2.2c — Move 11 deferred domain-coupled DS files into RuulUI (2026-05-07, commit `3791377`)
+- [x] Sprint 2.3 — RuulFeatures + Features + AppState/OnboardingProgress extraction (2026-05-08, commit `7c71deb`)
+- [ ] Sprint 2.4 — Final cleanup: docs/DesignSystem.md §2 update, incremental build verification
 
 **Estimado total**: 7 commits, 8-10 horas de trabajo focused. Mejor hacer 1 step por día para evitar fatigue + permitir review.
 
