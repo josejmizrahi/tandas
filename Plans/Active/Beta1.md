@@ -1,8 +1,11 @@
 # Beta 1 — Real-cena observation period
 
-> Status: **active** — arrancando 2026-05-07.
-> Stop arquitectura grande. Correr V1 como producto vivo con 4–6 cenas
-> reales. El propósito es comportamiento humano, no correctness técnica.
+> Status: **active**, freeze arquitectónico **levantado el 2026-05-08**.
+> Arrancado 2026-05-07. Las cenas siguen documentándose en § 5 como
+> señal cualitativa, pero ya no bloquean Phase 2 — el founder decidió
+> arrancar refactor de primitives directo (`Plans/Active/Primitives.md`).
+> El propósito original era comportamiento humano sobre correctness
+> técnica; ahora corren en paralelo.
 
 ---
 
@@ -28,6 +31,15 @@ Solo después de Beta 1 se decide qué primitiva de Fase 2 priorizar:
 ---
 
 ## 2. Architecture freeze
+
+> **2026-05-08 — Freeze levantado.** El founder decidió saltar el
+> journal-of-cenas como gating de Phase 2 y arrancar refactor de
+> primitives según `Plans/Active/Primitives.md`. Trabajo arquitectónico
+> nuevo permitido a partir de hoy. Las cenas reales siguen siendo
+> señal cualitativa útil pero ya no bloquean nada. Las reglas
+> originales abajo se conservan como referencia histórica del intento.
+
+### Original (efectivo 2026-05-07 → 2026-05-08)
 
 A partir del 2026-05-07, **no se mete trabajo estructural nuevo**.
 
@@ -160,6 +172,13 @@ Beta 1 se cierra cuando se cumple **una** de:
 - 2 grupos distintos completaron al menos 2 cenas cada uno.
 - Pasaron 6 semanas calendar (lo que cierre primero — evitar perfecto-enemigo-bueno).
 
+**Insumo arquitectónico para esta decisión**: ver
+`Plans/Active/Primitives.md` — documento canónico que ubica cada
+candidata (Rotation, Slot, Asset, Fund, Booking, Contribution…) en
+niveles L1–L5 y aplica la regla de Resource (§5). **No abrir
+primitives nuevas sin chequear contra ese doc.** El journal manda
+qué; Primitives.md manda dónde encaja.
+
 **Output al cerrar**:
 
 1. Resumen de §5 en sección 7 (abajo).
@@ -172,6 +191,8 @@ Beta 1 se cierra cuando se cumple **una** de:
    - Fund (si pidieron mover dinero de verdad — alta probabilidad
      pero alto riesgo regulatorio, ver Roadmap §3 Fase 3 D3)
    - Mezcla mínima de 2 primitivas.
+   - Cualquiera que sea, mapearla contra `Primitives.md` antes de
+     diseñar implementación.
 5. Crear `Plans/Active/Phase2.md` basado en la decisión + frictions reales.
 
 ---
@@ -191,7 +212,28 @@ Beta 1 se cierra cuando se cumple **una** de:
 3. ⏳
 
 ### Decisión Phase 2
-⏳
+
+**Estado al 2026-05-08**: no decidida. §5 todavía no contiene cenas
+reales documentadas (`Cena #0` es placeholder), así que no hay evidencia
+suficiente para elegir primitiva sin sesgar el roadmap.
+
+**Gate de decisión**: cerrar una de las condiciones de §6 y elegir la
+primitiva dominante con esta regla:
+
+1. **Rotation universal** si 2+ entradas muestran fricción en turnos,
+   anfitrión, orden o rotación.
+2. **Slot/Booking** si 2+ entradas piden reservar/asignar un cupo,
+   fecha, acceso o "pedazo" específico.
+3. **Asset** si 2+ entradas giran alrededor de un objeto, lugar o
+   acceso físico/digital compartido.
+4. **Fund** si 2+ entradas piden mover, custodiar o auditar dinero
+   común. Requiere nota explícita de riesgo regulatorio antes de planear.
+5. **Mezcla mínima** solo si dos señales aparecen empatadas y el E2E
+   necesita ambas para demostrar valor.
+
+**Siguiente acción**: documentar la primera cena real en §5 dentro de
+las 48h posteriores. No crear `Plans/Active/Phase2.md` hasta que este
+gate tenga evidencia suficiente.
 
 ---
 

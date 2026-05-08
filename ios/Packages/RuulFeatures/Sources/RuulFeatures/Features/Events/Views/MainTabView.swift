@@ -264,6 +264,8 @@ public struct MainTabView: View {
                         onOpenFine: { fine in fineDetailRoute = fine },
                         onOpenRule: { rule in ruleDetailRoute = rule },
                         voteRepo: app.voteRepo,
+                        voteCastRepo: app.voteCastRepo,
+                        userMemberId: resolveUserMemberId(in: group),
                         userActionRepo: app.userActionRepo,
                         onSeeOpenVotes: {
                             if let g = app.activeGroup {
@@ -559,15 +561,17 @@ public struct MainTabView: View {
     private func voteDetailDestination(for ctx: VoteDetailRouteContext) -> some View {
         if let group = app.activeGroup,
            let userMemberId = resolveUserMemberId(in: group) {
-            VoteDetailView(
-                coordinator: VoteDetailCoordinator(
-                    vote: ctx.vote,
-                    group: group,
-                    userMemberId: userMemberId,
-                    voteRepo: app.voteRepo,
-                    castRepo: app.voteCastRepo,
-                    analytics: app.analytics
-                )
+            // Wrap in a @State-holding container so re-renders of MainTabView
+            // (triggered by inboxCoordinator/groupHistoryCoordinator refresh
+            // chains) don't cancel the in-flight `.task { coord.refresh() }`
+            // by instantiating a new coordinator on each pass.
+            VoteDetailDestinationContainer(
+                vote: ctx.vote,
+                group: group,
+                userMemberId: userMemberId,
+                voteRepo: app.voteRepo,
+                castRepo: app.voteCastRepo,
+                analytics: app.analytics
             )
         } else {
             EmptyView()
@@ -711,9 +715,11 @@ public struct MainTabView: View {
     }
 
     private func reviewProposedScreen(_ event: Event) -> some View {
-        let coord = ReviewProposedFinesCoordinator(event: event, fineRepo: app.fineRepo)
-        return ReviewProposedFinesView(
-            coordinator: coord,
+        // Same pattern as voteDetailDestination: keep coord in @State so
+        // it survives parent re-renders (inboxCoordinator/groupHistory chains).
+        ReviewProposedDestinationContainer(
+            event: event,
+            fineRepo: app.fineRepo,
             memberLookup: { userId in
                 memberDirectory[userId]?.displayName ?? "Miembro"
             },
@@ -1323,4 +1329,84 @@ public struct AppealRouteContext: Identifiable, Hashable {
         self.fine = fine
     }
     public var id: UUID { appeal.id }
+}
+
+// MARK: - Destination containers (preserve coord across re-renders)
+
+/// Holds a `VoteDetailCoordinator` in @State so the navigationDestination's
+/// `.task { coord.refresh() }` doesn't get cancelled mid-flight when the
+/// parent (MainTabView) re-renders due to refresh chains.
+@MainActor
+private struct VoteDetailDestinationContainer: View {
+    let vote: Vote
+    let group: RuulCore.Group
+    let userMemberId: UUID
+    let voteRepo: any VoteRepository
+    let castRepo: any VoteCastRepository
+    let analytics: any AnalyticsService
+
+    @State private var coord: VoteDetailCoordinator
+
+    init(
+        vote: Vote,
+        group: RuulCore.Group,
+        userMemberId: UUID,
+        voteRepo: any VoteRepository,
+        castRepo: any VoteCastRepository,
+        analytics: any AnalyticsService
+    ) {
+        self.vote = vote
+        self.group = group
+        self.userMemberId = userMemberId
+        self.voteRepo = voteRepo
+        self.castRepo = castRepo
+        self.analytics = analytics
+        self._coord = State(wrappedValue: VoteDetailCoordinator(
+            vote: vote,
+            group: group,
+            userMemberId: userMemberId,
+            voteRepo: voteRepo,
+            castRepo: castRepo,
+            analytics: analytics
+        ))
+    }
+
+    var body: some View {
+        VoteDetailView(coordinator: coord)
+    }
+}
+
+/// Same wrapper pattern for ReviewProposedFinesCoordinator.
+@MainActor
+private struct ReviewProposedDestinationContainer: View {
+    let event: Event
+    let fineRepo: any FineRepository
+    let memberLookup: (UUID) -> String
+    let onSelectFine: (Fine) -> Void
+
+    @State private var coord: ReviewProposedFinesCoordinator
+
+    init(
+        event: Event,
+        fineRepo: any FineRepository,
+        memberLookup: @escaping (UUID) -> String,
+        onSelectFine: @escaping (Fine) -> Void
+    ) {
+        self.event = event
+        self.fineRepo = fineRepo
+        self.memberLookup = memberLookup
+        self.onSelectFine = onSelectFine
+        self._coord = State(wrappedValue: ReviewProposedFinesCoordinator(
+            event: event,
+            fineRepo: fineRepo
+        ))
+    }
+
+    var body: some View {
+        ReviewProposedFinesView(
+            coordinator: coord,
+            memberLookup: memberLookup,
+            onSelectFine: onSelectFine
+        )
+    }
 }

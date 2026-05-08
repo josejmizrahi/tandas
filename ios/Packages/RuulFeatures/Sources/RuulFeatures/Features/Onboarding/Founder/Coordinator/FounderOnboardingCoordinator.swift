@@ -436,7 +436,7 @@ public final class FounderOnboardingCoordinator {
         await analytics.track(.groupCreated(
             hasVocabulary: draft.eventVocabulary != "evento",
             hasFrequency: draft.frequencyType != nil,
-            finesEnabled: group?.finesEnabled ?? draft.finesEnabled,
+            finesEnabled: group.map { CapabilityResolver().finesEnabled(in: $0) } ?? draft.finesEnabled,
             rotationMode: (group?.rotationMode ?? draft.rotationMode).rawValue,
             rulesCount: draft.rules.filter(\.enabled).count
         ))

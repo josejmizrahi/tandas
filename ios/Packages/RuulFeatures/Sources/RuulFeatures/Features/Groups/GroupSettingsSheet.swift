@@ -162,13 +162,13 @@ public struct GroupSettingsSheet: View {
     private var hasChanges: Bool {
         let trimmed = eventLabel.trimmingCharacters(in: .whitespaces)
         return trimmed != group.eventVocabulary
-            || finesEnabled != group.finesEnabled
+            || finesEnabled != app.capabilityResolver.finesEnabled(in: group)
             || rotationMode != group.rotationMode
     }
 
     private func hydrateFromGroup() {
         eventLabel = group.eventVocabulary
-        finesEnabled = group.finesEnabled
+        finesEnabled = app.capabilityResolver.finesEnabled(in: group)
         rotationMode = group.rotationMode
     }
 

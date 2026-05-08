@@ -23,6 +23,8 @@ public struct GroupTabView: View {
     public let onOpenFine: (Fine) -> Void
     public let onOpenRule: (GroupRule) -> Void
     public let voteRepo: any VoteRepository
+    public let voteCastRepo: (any VoteCastRepository)?
+    public let userMemberId: UUID?
     public let userActionRepo: (any UserActionRepository)?
     public let onSeeOpenVotes: () -> Void
     public let onSelectVote: (Vote) -> Void
@@ -41,6 +43,8 @@ public struct GroupTabView: View {
         onOpenFine: @escaping (Fine) -> Void,
         onOpenRule: @escaping (GroupRule) -> Void = { _ in },
         voteRepo: any VoteRepository,
+        voteCastRepo: (any VoteCastRepository)? = nil,
+        userMemberId: UUID? = nil,
         userActionRepo: (any UserActionRepository)?,
         onSeeOpenVotes: @escaping () -> Void,
         onSelectVote: @escaping (Vote) -> Void = { _ in },
@@ -56,6 +60,8 @@ public struct GroupTabView: View {
         self.onOpenFine = onOpenFine
         self.onOpenRule = onOpenRule
         self.voteRepo = voteRepo
+        self.voteCastRepo = voteCastRepo
+        self.userMemberId = userMemberId
         self.userActionRepo = userActionRepo
         self.onSeeOpenVotes = onSeeOpenVotes
         self.onSelectVote = onSelectVote
@@ -110,11 +116,13 @@ public struct GroupTabView: View {
                 onSelectRule: onOpenRule
             )
         case .votes:
-            OpenVotesListView(
-                coordinator: OpenVotesCoordinator(
-                    group: activeGroup,
-                    voteRepo: voteRepo
-                ),
+            // Wrap in @State container so coord survives parent re-renders
+            // (same pattern used for ReviewProposed + VoteDetail).
+            VotesSubTabContainer(
+                group: activeGroup,
+                voteRepo: voteRepo,
+                castRepo: voteCastRepo,
+                userMemberId: userMemberId,
                 onSelectVote: onSelectVote,
                 onCreateVote: onCreateVote
             )
@@ -134,7 +142,7 @@ public struct GroupTabView: View {
         // V1: assume all templates have events + rules + votes.
         // Future: branch on group.effectiveActiveModules / group.effectiveBaseTemplate.
         var tabs: [GroupSubTab] = [.events, .rules, .votes]
-        if hasFines && group.finesEnabled {
+        if hasFines && CapabilityResolver().finesEnabled(in: group) {
             tabs.append(.fines)
         }
         return tabs
@@ -193,6 +201,51 @@ private struct EventsSubTabContent: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
+    }
+}
+
+/// @State-holding container so the OpenVotesCoordinator survives parent
+/// re-renders (otherwise `.task { coord.refresh() }` gets cancelled with
+/// CancellationError before the fetch completes).
+@MainActor
+private struct VotesSubTabContainer: View {
+    let group: RuulCore.Group
+    let voteRepo: any VoteRepository
+    let castRepo: (any VoteCastRepository)?
+    let userMemberId: UUID?
+    let onSelectVote: (Vote) -> Void
+    let onCreateVote: () -> Void
+
+    @State private var coord: OpenVotesCoordinator
+
+    init(
+        group: RuulCore.Group,
+        voteRepo: any VoteRepository,
+        castRepo: (any VoteCastRepository)?,
+        userMemberId: UUID?,
+        onSelectVote: @escaping (Vote) -> Void,
+        onCreateVote: @escaping () -> Void
+    ) {
+        self.group = group
+        self.voteRepo = voteRepo
+        self.castRepo = castRepo
+        self.userMemberId = userMemberId
+        self.onSelectVote = onSelectVote
+        self.onCreateVote = onCreateVote
+        self._coord = State(wrappedValue: OpenVotesCoordinator(
+            group: group,
+            voteRepo: voteRepo,
+            castRepo: castRepo,
+            userMemberId: userMemberId
+        ))
+    }
+
+    var body: some View {
+        OpenVotesListView(
+            coordinator: coord,
+            onSelectVote: onSelectVote,
+            onCreateVote: onCreateVote
+        )
     }
 }
 

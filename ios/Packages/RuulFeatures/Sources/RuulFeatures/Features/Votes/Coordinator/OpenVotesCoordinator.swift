@@ -12,18 +12,30 @@ import RuulCore
 public final class OpenVotesCoordinator {
     public let group: Group
     private let voteRepo: any VoteRepository
+    private let castRepo: (any VoteCastRepository)?
+    private let userMemberId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "votes")
 
     public private(set) var openVotes: [Vote] = []
+    /// IDs of votes the user has already cast their ballot on (cast_at != nil).
+    /// Empty when castRepo or userMemberId not provided (back-compat).
+    public private(set) var castedVoteIds: Set<UUID> = []
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
     public private(set) var lastRefreshedAt: Date?
 
     private let cacheTTL: TimeInterval = 60
 
-    public init(group: Group, voteRepo: any VoteRepository) {
+    public init(
+        group: Group,
+        voteRepo: any VoteRepository,
+        castRepo: (any VoteCastRepository)? = nil,
+        userMemberId: UUID? = nil
+    ) {
         self.group = group
         self.voteRepo = voteRepo
+        self.castRepo = castRepo
+        self.userMemberId = userMemberId
     }
 
     public func refresh(force: Bool = false) async {
@@ -35,7 +47,24 @@ public final class OpenVotesCoordinator {
         error = nil
         defer { isLoading = false }
         do {
-            openVotes = try await voteRepo.openVotes(for: group.id)
+            let votes = try await voteRepo.openVotes(for: group.id)
+            openVotes = votes
+            // Determine which of these I've already cast (cast_at != nil).
+            // Done sequentially to keep the implementation simple — V1 group
+            // size is small, # open votes is small. Phase 2 may switch to a
+            // single bulk RPC if N grows.
+            if let castRepo, let userMemberId {
+                var casted: Set<UUID> = []
+                for v in votes {
+                    if let myCast = try? await castRepo.myCast(voteId: v.id, userMemberId: userMemberId),
+                       myCast.castAt != nil {
+                        casted.insert(v.id)
+                    }
+                }
+                castedVoteIds = casted
+            } else {
+                castedVoteIds = []
+            }
             lastRefreshedAt = .now
         } catch {
             self.error = CoordinatorError.from(error, fallback: "No pudimos cargar los votos abiertos")
@@ -45,28 +74,35 @@ public final class OpenVotesCoordinator {
 
     public func clearError() { error = nil }
 
-    /// Sectioned: closing-soon (next 24h) vs other (≥24h until close).
+    /// Votos abiertos donde el user todavía no casteó. Estos requieren acción.
+    public var pending: [Vote] { openVotes.filter { !castedVoteIds.contains($0.id) } }
+    /// Votos abiertos donde el user ya casteó. Sigue abierto pero ya actuó.
+    public var voted: [Vote]   { openVotes.filter { castedVoteIds.contains($0.id) } }
+
+    /// Has the user cast a ballot on this vote? Used by row presentation
+    /// to render an "Ya votaste" check vs an "Pendiente de tu voto" CTA.
+    public func hasCast(_ voteId: UUID) -> Bool { castedVoteIds.contains(voteId) }
+
+    /// Sectioned by user-action status (Pendientes / Ya votaste). Replaces
+    /// the previous urgency-based sectioning — urgency surfaces inside each
+    /// row via "Cierra X" copy.
     public func sectioned() -> [(Section, [Vote])] {
-        let cutoff = Date.now.addingTimeInterval(24 * 3600)
-        var closingSoon: [Vote] = []
-        var open: [Vote] = []
-        for v in openVotes {
-            if v.closesAt <= cutoff { closingSoon.append(v) } else { open.append(v) }
-        }
         var result: [(Section, [Vote])] = []
-        if !closingSoon.isEmpty { result.append((.closingSoon, closingSoon)) }
-        if !open.isEmpty        { result.append((.open, open)) }
+        let p = pending
+        let v = voted
+        if !p.isEmpty { result.append((.pending, p)) }
+        if !v.isEmpty { result.append((.voted, v)) }
         return result
     }
 
     public enum Section: Hashable {
-        case closingSoon
-        case open
+        case pending
+        case voted
 
         var title: String {
             switch self {
-            case .closingSoon: return "Cierran pronto"
-            case .open:        return "Abiertos"
+            case .pending: return "Pendientes de tu voto"
+            case .voted:   return "Ya votaste"
             }
         }
     }

@@ -92,3 +92,7 @@ ios/Tandas.local.xcconfig
 
 # Codegen tooling — Deno lockfile is regenerated on demand
 scripts/codegen/deno.lock
+
+# SPM package build artifacts (post ios/Packages/ unignore — only ignore caches)
+ios/Packages/**/.build/
+ios/Packages/**/Package.resolved

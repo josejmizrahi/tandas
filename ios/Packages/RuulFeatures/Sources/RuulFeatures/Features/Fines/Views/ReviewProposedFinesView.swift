@@ -29,14 +29,34 @@ public struct ReviewProposedFinesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     header
+                    if let err = coordinator.error {
+                        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                            Text("ERROR AL CARGAR")
+                                .ruulTextStyle(RuulTypography.sectionLabel)
+                                .foregroundStyle(Color.ruulNegative)
+                            Text(err)
+                                .ruulTextStyle(RuulTypography.caption)
+                                .foregroundStyle(Color.ruulTextSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .textSelection(.enabled)
+                        }
+                        .padding(RuulSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+                    }
                     if !coordinator.proposed.isEmpty {
                         proposedSection
-                    } else if !coordinator.isLoading {
+                    } else if !coordinator.isLoading && coordinator.error == nil {
                         emptyState
                     }
                     if !coordinator.resolved.isEmpty {
                         resolvedSection
                     }
+                    Text("DEBUG eventId=\(coordinator.event.id.uuidString.prefix(8)) loaded=\(coordinator.fines.count) proposed=\(coordinator.proposed.count) resolved=\(coordinator.resolved.count)")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .textSelection(.enabled)
+                        .padding(.top, RuulSpacing.lg)
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.s12)

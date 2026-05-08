@@ -41,7 +41,7 @@ public final class EventCreationCoordinator {
 
         var draft = EventDraft.empty(suggestedDate: suggestedDate)
         draft.coverImageName = group.coverImageName ?? "sunset"
-        draft.applyRules = group.finesEnabled
+        draft.applyRules = CapabilityResolver().finesEnabled(in: group)
         self.draft = draft
         Task { await analytics.eventCreateStarted() }
     }

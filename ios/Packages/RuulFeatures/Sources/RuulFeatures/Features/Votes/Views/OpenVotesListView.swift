@@ -81,10 +81,11 @@ public struct OpenVotesListView: View {
     }
 
     private func voteRow(_ vote: Vote) -> some View {
-        HStack(spacing: RuulSpacing.sm) {
+        let alreadyCast = coordinator.hasCast(vote.id)
+        return HStack(spacing: RuulSpacing.sm) {
             voteTypeIcon(vote.voteType)
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Color.ruulAccent)
+                .foregroundStyle(alreadyCast ? Color.ruulTextTertiary : Color.ruulAccent)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
                 .accessibilityHidden(true)
@@ -94,9 +95,23 @@ public struct OpenVotesListView: View {
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
-                Text("Cierra \(vote.closesAt.ruulRelativeDescription)")
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                HStack(spacing: RuulSpacing.xs) {
+                    if alreadyCast {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.ruulPositive)
+                            .accessibilityHidden(true)
+                        Text("Ya votaste")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                        Text("·")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextTertiary)
+                    }
+                    Text("Cierra \(vote.closesAt.ruulRelativeDescription)")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
             }
             Spacer()
             Image(systemName: "chevron.right")

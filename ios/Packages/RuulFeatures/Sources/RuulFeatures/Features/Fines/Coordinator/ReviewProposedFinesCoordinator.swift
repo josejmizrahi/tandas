@@ -23,10 +23,14 @@ public final class ReviewProposedFinesCoordinator {
         isLoading = true
         defer { isLoading = false }
         do {
-            fines = try await fineRepo.fines(forEventId: event.id)
+            let result = try await fineRepo.fines(forEventId: event.id)
+            let statuses = result.map { $0.status.rawValue }.joined(separator: ",")
+            log.info("review fines loaded eventId=\(self.event.id.uuidString) count=\(result.count) statuses=\(statuses)")
+            fines = result
         } catch {
-            log.warning("review fines load failed: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            let detail = "\(type(of: error)): \(error)"
+            log.warning("review fines load failed eventId=\(self.event.id.uuidString) error=\(detail)")
+            self.error = detail
         }
     }
 
