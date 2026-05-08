@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import SwiftData
 import RuulCore
+import RuulFeatures
 @testable import Tandas
 
 @Suite("FounderOnboardingCoordinator")

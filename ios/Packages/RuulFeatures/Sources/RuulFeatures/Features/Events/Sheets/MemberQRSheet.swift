@@ -1,0 +1,62 @@
+import SwiftUI
+import RuulUI
+import RuulCore
+
+/// Full-sheet display of the user's personal check-in QR for a specific event.
+/// The same QR is encoded into the Apple Wallet pass when V1.x lands.
+public struct MemberQRSheet: View {
+    @Binding var isPresented: Bool
+    public let eventId: UUID
+    public let memberId: UUID
+    public let eventTitle: String
+
+    public init(isPresented: Binding<Bool>, eventId: UUID, memberId: UUID, eventTitle: String) {
+        self._isPresented = isPresented
+        self.eventId = eventId
+        self.memberId = memberId
+        self.eventTitle = eventTitle
+    }
+
+    public var body: some View {
+        ModalSheetTemplate(
+            title: "Tu código de check-in",
+            dismissAction: { isPresented = false },
+            primaryCTA: ("Listo", { isPresented = false })
+        ) {
+            VStack(spacing: RuulSpacing.lg) {
+                Text("Muestra este código al host para marcar tu llegada.")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .multilineTextAlignment(.center)
+                qrImage
+                    .frame(width: 240, height: 240)
+                    .padding(RuulSpacing.md)
+                    .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                Text(eventTitle)
+                    .ruulTextStyle(RuulTypography.headline)
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var qrImage: some View {
+        let payload = QRSignatureService.sign(
+            eventId: eventId,
+            memberId: memberId,
+            secret: QRSignatureService.sharedSecret
+        )
+        if let img = QRCodeGenerator.generate(payload, pointSize: 240) {
+            img
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: "qrcode")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.ruulTextTertiary)
+        }
+    }
+}

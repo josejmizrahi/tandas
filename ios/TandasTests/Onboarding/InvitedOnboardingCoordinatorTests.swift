@@ -3,6 +3,7 @@ import Foundation
 import SwiftData
 import RuulUI
 import RuulCore
+import RuulFeatures
 @testable import Tandas
 
 @Suite("InvitedOnboardingCoordinator")

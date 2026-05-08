@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 import RuulUI
 import RuulCore
+import RuulFeatures
 @testable import Tandas
 
 @MainActor

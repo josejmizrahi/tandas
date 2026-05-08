@@ -47,6 +47,8 @@ packages:
     path: Packages/RuulUI
   RuulCore:
     path: Packages/RuulCore
+  RuulFeatures:
+    path: Packages/RuulFeatures
 targets:
   Tandas:
     type: application
@@ -67,6 +69,8 @@ targets:
         product: RuulUI
       - package: RuulCore
         product: RuulCore
+      - package: RuulFeatures
+        product: RuulFeatures
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -83,6 +87,8 @@ targets:
         product: RuulUI
       - package: RuulCore
         product: RuulCore
+      - package: RuulFeatures
+        product: RuulFeatures
     settings:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"

@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import RuulUI
 import RuulCore
+import RuulFeatures
 @testable import Tandas
 
 @Suite("CreateGeneralProposalCoordinator")
