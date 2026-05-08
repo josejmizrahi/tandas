@@ -1,0 +1,68 @@
+import Foundation
+
+/// One row of `public.resources`. Polymorphic envelope: any concrete
+/// resource (event, slot, fund, position, asset, contribution) lands
+/// here with its domain-specific fields living in `metadata` jsonb.
+///
+/// The `resources` table is populated by the dual-write trigger
+/// `events_sync_to_resources` (migration 00039) for V1 events, and
+/// directly by future resource-type-specific creation paths in V2+.
+///
+/// `ResourceRow.id == public.resources.id`. For V1 events,
+/// `ResourceRow.id == events.id` by trigger design.
+public struct ResourceRow: Resource, Codable, Sendable, Hashable {
+    public let id: UUID
+    public let groupId: UUID
+    public let resourceType: ResourceType
+    public let status: String
+    public let metadata: JSONConfig
+    public let createdBy: UUID?
+    public let createdAt: Date
+    public let updatedAt: Date
+
+    public enum CodingKeys: String, CodingKey {
+        case id, status, metadata
+        case groupId        = "group_id"
+        case resourceType   = "resource_type"
+        case createdBy      = "created_by"
+        case createdAt      = "created_at"
+        case updatedAt      = "updated_at"
+    }
+
+    public init(
+        id: UUID,
+        groupId: UUID,
+        resourceType: ResourceType,
+        status: String,
+        metadata: JSONConfig = .empty,
+        createdBy: UUID? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.groupId = groupId
+        self.resourceType = resourceType
+        self.status = status
+        self.metadata = metadata
+        self.createdBy = createdBy
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    /// Tolerant decoder: missing `metadata` falls back to `.empty`,
+    /// missing `updated_at` falls back to `created_at` (e.g. a row
+    /// projected from a non-trigger source pre-cohabitation).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id            = try c.decode(UUID.self,   forKey: .id)
+        self.groupId       = try c.decode(UUID.self,   forKey: .groupId)
+        self.resourceType  = try c.decode(ResourceType.self, forKey: .resourceType)
+        self.status        = try c.decode(String.self, forKey: .status)
+        self.metadata      = (try? c.decode(JSONConfig.self, forKey: .metadata)) ?? .empty
+        self.createdBy     = try c.decodeIfPresent(UUID.self, forKey: .createdBy)
+        let createdAt      = try c.decode(Date.self, forKey: .createdAt)
+        self.createdAt     = createdAt
+        self.updatedAt     = (try? c.decode(Date.self, forKey: .updatedAt)) ?? createdAt
+    }
+}
+

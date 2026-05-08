@@ -300,17 +300,9 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
     }
 }
 
-// MARK: - Convenience metadata access
-
-public extension JSONConfig {
-    /// Subscript helper for object-shaped JSONConfig — used by
-    /// per-resource-type decoders (e.g. `decodeAsEvent`).
-    subscript(_ key: String) -> JSONConfig? {
-        if case .object(let dict) = self { return dict[key] }
-        return nil
-    }
-}
 ```
+
+**Note:** `JSONConfig` already ships a `subscript(key: String) -> JSONConfig?` at `ios/Packages/RuulCore/Sources/RuulCore/PlatformModels/JSONConfig.swift:51` — do not redeclare it here. The Task 2 test `row.metadata["title"]?.stringValue` works against the existing subscript.
 
 - [ ] **Step 2: Regenerate Xcode project**
 
