@@ -289,9 +289,24 @@ Cada step:
 - [ ] Sprint 2.1a — RuulCore + Models
 - [ ] Sprint 2.1b — RuulCore + Repositories + Supabase
 - [ ] Sprint 2.1c — RuulCore + Services + Utilities + Coordinators
-- [ ] Sprint 2.2a — RuulUI + Tokens
-- [ ] Sprint 2.2b — RuulUI + Modifiers + Primitives + Patterns + Templates
+- [x] Sprint 2.2a — RuulUI + Tokens (2026-05-07, commit `971f8da`)
+- [x] Sprint 2.2b — RuulUI + Modifiers + Primitives (35) + Patterns (8) + Templates + Theme (2026-05-07, commits `9168192` + `447b905`)
+- [ ] Sprint 2.2c — Move 11 deferred domain-coupled DS files into RuulUI (depends on RuulCore existing)
 - [ ] Sprint 2.3a — RuulFeatures + Features
 - [ ] Sprint 2.3b — Cleanup + docs
 
 **Estimado total**: 7 commits, 8-10 horas de trabajo focused. Mejor hacer 1 step por día para evitar fatigue + permitir review.
+
+**Deviación del orden original (2026-05-07)**: Empecé con RuulUI en lugar de RuulCore porque Tokens/Modifiers/most-Primitives son leaf-pure (cero domain refs) y validaban la mecánica del split sin tocar el alto-fanout `Group`/`Profile`/`Member`. RuulCore ahora es lo siguiente.
+
+**Files que quedan en `ios/Tandas/DesignSystem/` (11 domain-coupled, esperan RuulCore):**
+- `Components/`: ResourceCard.swift, ResourceActionsSection.swift (usan `ResourceProtocol`, `RSVPStatus`, `ResourceAction`)
+- `Patterns/`: ErrorStateView+CoordinatorError.swift, EventCardStub.swift, RSVPStateView.swift
+- `Primitives/`: RuulDatePicker.swift, RuulGroupAvatar.swift, RuulGroupComponents+Group.swift, RuulGroupSwitcher.swift, RuulGroupSwitcherSheet.swift, RuulOriginTag.swift
+- `Showcase/` (el catálogo de previews — ya importa RuulUI; puede irse a app target o a un test target dedicado)
+
+**Próximo paso (Sprint 2.1a) — fanout estimado:**
+- 88 files de Models a mover (`Models/*.swift` 8 + `Models/Events/*` 1 + `Platform/Models/*` 30, dejando `Models/Onboarding/` en app target porque tiene `@Model OnboardingProgress`)
+- ~63 files referencian `Group` solo, plus `Profile`, `Member`, etc. Probablemente >100 files necesitan `import RuulCore`.
+- Public-ifying: ~80 types (struct/enum) + sus inits + sus stored properties.
+- Riesgo medio-alto. Recomendado: una sesión focused, preferir muchos commits pequeños (uno por type group) sobre un big-bang.
