@@ -105,7 +105,7 @@ Verificable en el código actual (post Fases A-E):
 
 ### ⏳ Diferido (decisión de scope, no bloqueantes)
 
-- ⏳ **SPM 3 packages split** (Sprint 2): `RuulCore` / `RuulUI` / `RuulFeatures`. 3-6 sesiones, requiere análisis de deps cíclicas. Sin Package.swift hoy. Refactor invisible — no aporta a usuario, sí a maintainability. Plan detallado en `Plans/Active/SPMSplit-DSv3-Migration.md` (cuando se cree).
+- ⏳ **SPM 3 packages split** (Sprint 2): `RuulCore` / `RuulUI` / `RuulFeatures`. 7 commits estimados, 8-10h focused. Plan ejecutable bite-sized en `Plans/Active/SPMSplit-DSv3-Migration.md` (2026-05-07): dep graph verificado sin ciclos, 3 sub-sprints (RuulCore → RuulUI → RuulFeatures), per-step protocol con build+test verification.
 - ⏳ **Preview matrix completo** (DS §17.1): hoy la mayoría de primitives tiene `#Preview("Default")`. Faltan variantes Dark / AX5 / Reduce Motion sistemáticas. Cosmetic, no bloquea producción.
 - ⏳ **Sheet glass parity** (DS §13.1): `RuulSheet` mantiene `.presentationBackground(.ultraThinMaterial)` con TODO. iOS 26 no expone glass para `presentationBackground` aún (solo acepta `ShapeStyle`). Esperar SDK update.
 - ⏳ **Componentes diferidos** (`Plans/Active/DSFutureComponents.md`): rule builder primitives, slot/rotation visualizers, health indicator. Gated por features de producto que aún no shippean.
