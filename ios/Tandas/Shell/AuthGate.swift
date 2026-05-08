@@ -302,12 +302,25 @@ struct AuthGate: View {
         }
     }
 
-    /// Onboarding shows for first-time users. Returning users (hasOnboarded
-    /// flag set, session nil) see SignInView instead — handled above.
+    /// Onboarding shows only for first-time devices (no session AND no
+    /// completion flag). Once a user is authenticated we never route
+    /// back to onboarding:
+    ///   - Sending an authed user through `¿Cómo te llamas?` is the
+    ///     bounce-back loop the user hit. The most common reason
+    ///     `groups.isEmpty` is true post-sign-in is that the original
+    ///     onboarding created a group while still on an anonymous
+    ///     session and the anon → Apple link in `signInWithIdToken`
+    ///     orphaned the group. The user is the same person; they just
+    ///     don't own that anon-created group anymore.
+    ///   - Empty-groups + missing-profile are legitimate authed states
+    ///     handled inside MainTabView (empty home with "Crear grupo /
+    ///     Unirme con código" CTAs, profile editable from Settings).
+    /// Mid-flow founder onboarding is preserved by `hasActiveOnboarding`,
+    /// which gates the same branch separately — once an
+    /// `OnboardingProgress` row is persisted, AuthGate keeps rendering
+    /// the flow until it clears.
     private var shouldShowOnboarding: Bool {
-        app.session == nil
-            || (app.profile?.needsOnboarding ?? false)
-            || app.groups.isEmpty
+        app.session == nil && !hasOnboarded
     }
 
     @MainActor
