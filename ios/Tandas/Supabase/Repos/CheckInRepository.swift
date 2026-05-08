@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import RuulUI
+import RuulCore
 
 protocol CheckInRepository: Actor {
     func selfCheckIn(eventId: UUID, userId: UUID, locationVerified: Bool) async throws -> RSVP

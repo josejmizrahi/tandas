@@ -4,6 +4,8 @@ import Supabase
 import UIKit
 import OSLog
 import Sentry
+import RuulUI
+import RuulCore
 
 @main
 struct TandasApp: App {
@@ -29,6 +31,7 @@ struct TandasApp: App {
             let voteCasts = MockVoteCastRepository()
             let governance = GovernanceService()
             let otp = MockOTPService()
+            let templates = TemplateRegistry(repository: MockTemplateRepository())
             let events = MockEventRepository()
             let rsvps = MockRSVPRepository()
             let checkIns = MockCheckInRepository()
@@ -48,6 +51,7 @@ struct TandasApp: App {
                 voteCastRepo: voteCasts,
                 governance: governance,
                 otp: otp,
+                templateRegistry: templates,
                 eventRepo: events,
                 rsvpRepo: rsvps,
                 checkInRepo: checkIns,
@@ -71,6 +75,7 @@ struct TandasApp: App {
             let voteCasts = LiveVoteCastRepository(client: client)
             let governance = GovernanceService()
             let otp = LiveOTPService(client: client)
+            let templates = TemplateRegistry(repository: LiveTemplateRepository(client: client))
             let events = LiveEventRepository(client: client)
             let rsvps = LiveRSVPRepository(client: client)
             let checkIns = LiveCheckInRepository(client: client)
@@ -90,6 +95,7 @@ struct TandasApp: App {
                 voteCastRepo: voteCasts,
                 governance: governance,
                 otp: otp,
+                templateRegistry: templates,
                 eventRepo: events,
                 rsvpRepo: rsvps,
                 checkInRepo: checkIns,

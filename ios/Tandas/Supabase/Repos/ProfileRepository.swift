@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import RuulUI
+import RuulCore
 
 protocol ProfileRepository: Actor {
     func loadMine() async throws -> Profile

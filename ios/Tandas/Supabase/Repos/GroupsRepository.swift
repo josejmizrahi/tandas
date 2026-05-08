@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import RuulUI
+import RuulCore
 
 enum GroupsError: Error, Equatable {
     case inviteCodeNotFound
@@ -81,10 +83,10 @@ actor MockGroupsRepository: GroupsRepository {
             id: UUID(),
             name: p.name,
             description: p.description,
-            groupType: p.groupType,
             inviteCode: String(UUID().uuidString.prefix(8)).lowercased(),
             coverImageName: p.coverImageName,
             eventVocabulary: p.eventLabel,
+            baseTemplate: p.baseTemplate,
             createdBy: UUID(),
             createdAt: .now
         )
@@ -131,6 +133,7 @@ actor MockGroupsRepository: GroupsRepository {
             frequencyConfig: draft.frequencyConfig,
             finesEnabled: draft.finesEnabled,
             rotationMode: draft.rotationMode,
+            baseTemplate: draft.template,
             createdBy: UUID(),
             createdAt: .now
         )
@@ -147,7 +150,6 @@ actor MockGroupsRepository: GroupsRepository {
             id: g.id,
             name: g.name,
             description: g.description,
-            groupType: g.groupType,
             inviteCode: g.inviteCode,
             coverImageName: patch.coverImageName ?? g.coverImageName,
             eventVocabulary: patch.eventLabel ?? g.eventVocabulary,
@@ -155,6 +157,13 @@ actor MockGroupsRepository: GroupsRepository {
             frequencyConfig: patch.frequencyConfig ?? g.frequencyConfig,
             finesEnabled: patch.finesEnabled ?? g.finesEnabled,
             rotationMode: patch.rotationMode ?? g.rotationMode,
+            baseTemplate: g.baseTemplate,
+            activeModules: g.activeModules,
+            governance: g.governance,
+            settings: g.settings,
+            category: g.category,
+            initials: g.initials,
+            avatarUrl: g.avatarUrl,
             createdBy: g.createdBy,
             createdAt: g.createdAt
         )
@@ -169,12 +178,13 @@ actor MockGroupsRepository: GroupsRepository {
         let g = _groups[idx]
         let updated = Group(
             id: g.id, name: g.name, description: g.description,
-            groupType: g.groupType, inviteCode: g.inviteCode,
+            inviteCode: g.inviteCode,
             coverImageName: g.coverImageName, eventVocabulary: g.eventVocabulary,
             frequencyType: g.frequencyType, frequencyConfig: g.frequencyConfig,
             finesEnabled: g.finesEnabled, rotationMode: g.rotationMode,
             baseTemplate: g.baseTemplate, activeModules: g.activeModules,
             governance: rules, settings: g.settings,
+            category: g.category, initials: g.initials, avatarUrl: g.avatarUrl,
             createdBy: g.createdBy, createdAt: g.createdAt
         )
         _groups[idx] = updated
@@ -280,6 +290,7 @@ actor LiveGroupsRepository: GroupsRepository {
             let p_event_label: String?
             let p_currency: String?
             let p_timezone: String?
+            let p_base_template: String?
             let p_group_type: String?
             let p_cover_image_name: String?
         }
@@ -288,7 +299,8 @@ actor LiveGroupsRepository: GroupsRepository {
             p_event_label: p.eventLabel,
             p_currency: p.currency,
             p_timezone: "America/Mexico_City",
-            p_group_type: p.groupType.rawValue,
+            p_base_template: p.baseTemplate,
+            p_group_type: nil,
             p_cover_image_name: p.coverImageName
         )
         do {
@@ -387,15 +399,20 @@ actor LiveGroupsRepository: GroupsRepository {
             let p_event_label: String
             let p_currency: String
             let p_timezone: String
-            let p_group_type: String
+            let p_base_template: String
+            let p_group_type: String?
             let p_cover_image_name: String?
         }
+        let templateId = draft.template.isEmpty
+            ? TemplateRegistry.dinnerRecurringId
+            : draft.template
         let params = Params(
             p_name: draft.name,
             p_event_label: draft.resolvedVocabulary,
             p_currency: "MXN",
             p_timezone: "America/Mexico_City",
-            p_group_type: GroupType.recurringDinner.rawValue,
+            p_base_template: templateId,
+            p_group_type: nil,
             p_cover_image_name: draft.coverImageName
         )
 

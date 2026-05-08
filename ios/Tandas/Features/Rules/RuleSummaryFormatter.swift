@@ -1,4 +1,6 @@
 import Foundation
+import RuulUI
+import RuulCore
 
 /// Maps RuleTrigger / RuleCondition list into human-readable Spanish
 /// strings for the EditRuleSheet "CÓMO FUNCIONA" section. V1 ships

@@ -1,5 +1,7 @@
 import Foundation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Editor-side coordinator for the Reglas tab. Owns:
 ///

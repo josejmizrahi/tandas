@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Container del detail screen de cualquier resource. Switches por
 /// `resource.resourceType` y dispatch al body apropiado.

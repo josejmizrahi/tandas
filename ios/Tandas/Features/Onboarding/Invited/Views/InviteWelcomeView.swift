@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct InviteWelcomeView: View {
     @Environment(InvitedOnboardingCoordinator.self) private var coord

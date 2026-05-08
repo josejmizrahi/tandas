@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// RSVP control — Apple Sports / Luma aesthetic: monochrome surfaces with
 /// thin borders, status conveyed via small colored dot + uppercase label,

@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import RuulUI
+import RuulCore
 
 /// Minimal "join an existing group" flow for users who already have an
 /// account. Just asks for a 6-char invite code and calls join_group_by_code.
@@ -16,7 +17,7 @@ struct JoinGroupSheet: View {
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.join")
 
-    var onJoined: (Group) -> Void
+    var onJoined: (RuulCore.Group) -> Void
 
     var body: some View {
         NavigationStack {

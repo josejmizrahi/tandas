@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import RuulCore
 
 /// Reads `public.templates`. The registry caches results from this repo at
 /// boot. Mutation (create new templates, update version) is admin-only and

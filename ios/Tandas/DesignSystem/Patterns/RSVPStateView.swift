@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// RSVP state component. Renders 3 buttons when the user hasn't responded,
 /// or a confirmed card with the chosen state.

@@ -1,5 +1,7 @@
 import Foundation
 import OSLog
+import RuulUI
+import RuulCore
 
 @Observable @MainActor
 final class MyFinesCoordinator {

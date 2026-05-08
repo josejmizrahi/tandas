@@ -1,4 +1,6 @@
 import Foundation
+import RuulUI
+import RuulCore
 
 /// Estrategia para producir acciones contra un resource. Cada concrete
 /// resource type tiene su provider (V1: `EventActionsProvider`, deferido

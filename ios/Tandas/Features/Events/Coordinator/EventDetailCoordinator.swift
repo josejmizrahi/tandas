@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import OSLog
 import RuulUI
+import RuulCore
 
 @Observable @MainActor
 final class EventDetailCoordinator {

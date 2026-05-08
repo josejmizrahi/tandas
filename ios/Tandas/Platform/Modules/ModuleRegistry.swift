@@ -1,4 +1,6 @@
 import Foundation
+import RuulUI
+import RuulCore
 
 /// Static registry of platform modules. V1 ships 5 hardcoded modules that
 /// the `recurring_dinner` template activates by default. Fase 2+ adds

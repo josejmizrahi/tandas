@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Coordinator del CreateGeneralProposalSheet. Form state + governance gate
 /// + submit a `start_vote(vote_type=general_proposal)` con `referenceId`

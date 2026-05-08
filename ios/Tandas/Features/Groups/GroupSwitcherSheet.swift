@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Sheet shown when the user taps the group name in HomeView header.
 /// Lists every group the user belongs to (tap to switch active), plus
@@ -74,7 +75,7 @@ struct GroupSwitcherSheet: View {
         }
     }
 
-    private func groupRow(_ group: Group) -> some View {
+    private func groupRow(_ group: RuulCore.Group) -> some View {
         let isActive = app.activeGroup?.id == group.id
         return Button {
             // DS v3 §4.3: haptic feedback al cambiar grupo activo. Solo

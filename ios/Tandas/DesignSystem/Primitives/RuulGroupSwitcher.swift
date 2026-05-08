@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Pill button en header de tabs Grupo/Historial/Ajustes. Muestra grupo activo,
 /// abre `RuulGroupSwitcherSheet` al tap. Per DS v3 §3.13.

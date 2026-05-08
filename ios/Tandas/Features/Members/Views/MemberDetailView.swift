@@ -1,13 +1,14 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Detail view de un miembro del grupo. Per DS v3 §6.4. V1 muestra solo
-/// display data del MemberWithProfile + Group context — no fetch propio,
+/// display data del MemberWithProfile + RuulCore.Group context — no fetch propio,
 /// no stats. Cuando agreguemos MemberStatsCoordinator (Fase 2+), expander
 /// con: events attended, fines history, RSVP rate.
 struct MemberDetailView: View {
     let memberWithProfile: MemberWithProfile
-    let group: Group
+    let group: RuulCore.Group
     let isCurrentUser: Bool
 
     var body: some View {
@@ -172,7 +173,7 @@ struct MemberDetailView: View {
 
 #if DEBUG
 #Preview("MemberDetailView") {
-    Text("MemberDetailView preview requires Member + Profile + Group fixtures — see Showcase.")
+    Text("MemberDetailView preview requires Member + Profile + RuulCore.Group fixtures — see Showcase.")
         .padding(RuulSpacing.lg)
         .background(Color.ruulBackground)
 }

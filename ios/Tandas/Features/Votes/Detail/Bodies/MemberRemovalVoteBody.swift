@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Body para `VoteType.memberRemoval`. El miembro objetivo vive en
 /// `vote.referenceId` (= `auth.users.id`). El servidor V1 no tiene

@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Coordinator del detail view de un Vote. Fetcha myCast + counts en
 /// parallel, expone derived flags `alreadyVoted` y `voteIsClosed`,

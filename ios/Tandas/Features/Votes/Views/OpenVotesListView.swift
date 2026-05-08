@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// List view de votos abiertos del grupo activo. Sectiona por urgencia
 /// (closing-soon vs other). Botón "+" en toolbar abre CreateVoteSheet

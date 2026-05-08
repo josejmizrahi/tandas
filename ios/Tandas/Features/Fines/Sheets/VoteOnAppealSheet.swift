@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Modal where an eligible voter casts their ballot on an active appeal.
 /// 3 buttons: A favor (annulla la multa), En contra (queda), Abstenerse.

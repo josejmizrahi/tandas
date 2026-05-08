@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Anonymized vote counts visualization for an appeal. 3 segments (a favor /
 /// en contra / pendientes), proportional widths, with totals on the right.

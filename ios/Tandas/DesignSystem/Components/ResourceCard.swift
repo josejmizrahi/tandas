@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Generic resource card. Switches on `resource.resourceType` to dispatch
 /// to the appropriate concrete view body. V1 only `.event` is wired and

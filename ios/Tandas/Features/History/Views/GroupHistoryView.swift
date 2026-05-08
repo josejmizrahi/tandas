@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// History timeline for the active group. Reads paginated SystemEvents
 /// via `GroupHistoryCoordinator`. Filters: event type, date range.

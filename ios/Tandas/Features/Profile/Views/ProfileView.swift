@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// The "Yo" tab content. Replaces the old MyFinesView-as-tab pattern that
 /// surfaced fines under a "Profile" label (confusing UX). Now MyFinesView
@@ -270,7 +271,7 @@ struct ProfileView: View {
             .padding(.leading, 56)  // align with text after icon column
     }
 
-    // MARK: - Group scope section (DS v3 §6.2 "Este grupo")
+    // MARK: - RuulCore.Group scope section (DS v3 §6.2 "Este grupo")
 
     @ViewBuilder
     private func groupScopeSection(_ scope: GroupScopeContext) -> some View {

@@ -2,8 +2,10 @@ import SwiftUI
 import UIKit
 import OSLog
 import RuulUI
+import RuulCore
+import RuulCore
 
-/// Group info sheet shown from HomeView header (person.badge.plus icon).
+/// RuulCore.Group info sheet shown from HomeView header (person.badge.plus icon).
 /// Three sections in priority order:
 ///
 /// 1. Invite — code card (tap to copy) + universal link + system Share
@@ -16,7 +18,7 @@ struct GroupInfoSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    let group: Group
+    let group: RuulCore.Group
 
     @State private var members: [MemberWithProfile] = []
     @State private var isLoadingMembers: Bool = true
@@ -34,7 +36,8 @@ struct GroupInfoSheet: View {
     /// Locally tracked override for the group used to render this sheet —
     /// we keep it in sync after governance edits so the summary refreshes
     /// without a parent re-render.
-    @State private var liveGroup: Group?
+    @State private var liveGroup: RuulCore.Group?
+    @State private var templateDisplayName: String?
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.info")
 
@@ -55,7 +58,7 @@ struct GroupInfoSheet: View {
         return members.first(where: { $0.member.userId == uid })?.member.role == "admin"
     }
 
-    private var currentGroup: Group { liveGroup ?? group }
+    private var currentGroup: RuulCore.Group { liveGroup ?? group }
 
     var body: some View {
         NavigationStack {
@@ -93,7 +96,10 @@ struct GroupInfoSheet: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
-        .task { await loadMembers() }
+        .task {
+            await loadMembers()
+            await loadTemplateDisplayName()
+        }
         .sheet(isPresented: $settingsPresented) {
             GroupSettingsSheet(group: currentGroup)
                 .environment(app)
@@ -175,11 +181,20 @@ struct GroupInfoSheet: View {
     }
 
     private var headerSubtitle: String {
-        let typeLabel = currentGroup.groupType.displayName
+        let typeLabel = templateDisplayName ?? currentGroup.category.displayName
         let countLabel = members.isEmpty
             ? "Cargando miembros…"
             : "\(members.count) \(members.count == 1 ? "miembro" : "miembros")"
         return "\(typeLabel) · \(countLabel)"
+    }
+
+    private func loadTemplateDisplayName() async {
+        let templateId = currentGroup.effectiveBaseTemplate
+        guard let template = await app.templateRegistry.template(id: templateId) else {
+            templateDisplayName = nil
+            return
+        }
+        templateDisplayName = template.effectiveDisplayName
     }
 
     // MARK: - Governance summary

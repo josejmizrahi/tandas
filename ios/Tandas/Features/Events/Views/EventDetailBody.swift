@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Body component para `ResourceDetailView` cuando `resource.resourceType
 /// == .event`. V1 duplica intencionalmente la estructura de

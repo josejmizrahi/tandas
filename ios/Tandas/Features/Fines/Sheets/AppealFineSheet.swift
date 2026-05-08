@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Modal where a fined member writes their appeal reason. Submit triggers
 /// `start_appeal` RPC server-side, which seeds eligible voters and emits

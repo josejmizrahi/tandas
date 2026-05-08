@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import RuulUI
+import RuulCore
 
 struct EventPatch: Sendable, Equatable {
     var title: String?

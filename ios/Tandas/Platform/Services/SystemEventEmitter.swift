@@ -1,4 +1,5 @@
 import Foundation
+import RuulCore
 
 /// Convenience wrapper around `SystemEventRepository`. Sprint 1b/1c flows
 /// call `await emitter.emit(.eventClosed, group: ..., resource: ...)`

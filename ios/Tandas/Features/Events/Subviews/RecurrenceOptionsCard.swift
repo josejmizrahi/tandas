@@ -1,12 +1,13 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Inline card shown ONLY when CreateEventView's coordinator
 /// reports `recurrenceAvailable == true`. Lets the user opt in
 /// to recurrence at first-event-creation time.
 struct RecurrenceOptionsCard: View {
     @Binding var selection: RecurrenceOption
-    let group: Group
+    let group: RuulCore.Group
 
     var body: some View {
         RuulCard(.tile) {

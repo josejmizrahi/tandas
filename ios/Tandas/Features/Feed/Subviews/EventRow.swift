@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Compact list row for events. The workhorse cell across MyFeedView,
 /// PastEventsView, and any future "list of events" surface.
@@ -21,7 +22,7 @@ struct EventRow: View {
     /// When non-nil, an inline `RuulOriginTag` (avatar + group name) renders
     /// above the title so the row carries its group identity. Per DS v3
     /// §3.12 / §4.5.
-    let originGroup: Group?
+    let originGroup: RuulCore.Group?
     /// Legacy plain-text group label. Deprecated — prefer `originGroup` so
     /// the row gets the full DS v3 origin tag (avatar + name + tracking).
     /// Honored only when `originGroup` is nil so callers can migrate
@@ -32,7 +33,7 @@ struct EventRow: View {
 
     init(
         event: Event,
-        originGroup: Group? = nil,
+        originGroup: RuulCore.Group? = nil,
         groupName: String? = nil,
         myStatus: RSVPStatus?,
         onTap: @escaping () -> Void

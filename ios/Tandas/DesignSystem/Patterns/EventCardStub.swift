@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Generic data shape for an event card. Patterns receive this struct rather
 /// than the product's `Event` model so the design system stays decoupled.

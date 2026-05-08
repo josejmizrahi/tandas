@@ -1,5 +1,7 @@
 import Testing
 import Foundation
+import RuulUI
+import RuulCore
 @testable import Tandas
 
 @Suite("EventDetailCoordinator")

@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Sheet para editar el perfil propio del usuario. V1 permite cambiar
 /// solo el `displayName`. Avatar URL + phone reservados para fases futuras

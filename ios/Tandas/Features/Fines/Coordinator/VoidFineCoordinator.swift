@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import OSLog
+import RuulCore
 
 /// Coordinator backing `VoidFineSheet`. Resolves the target member's display
 /// name, validates the reason, calls `FineRepository.void`, and humanizes

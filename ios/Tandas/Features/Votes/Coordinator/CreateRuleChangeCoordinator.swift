@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Coordinator del CreateRuleChangeSheet. V1 solo permite cambiar el monto
 /// flat de una regla existente — trigger / conditions / consequences NO son

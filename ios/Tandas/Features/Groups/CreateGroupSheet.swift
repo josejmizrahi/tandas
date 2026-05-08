@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import RuulUI
+import RuulCore
 
 /// Minimal "create another group" flow for users who already have a group.
 /// Skips identity / templateSelect / vocabulary / rules / invite / OTP since
@@ -19,7 +20,7 @@ struct CreateGroupSheet: View {
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.create")
 
-    var onCreated: (Group) -> Void
+    var onCreated: (RuulCore.Group) -> Void
 
     var body: some View {
         NavigationStack {

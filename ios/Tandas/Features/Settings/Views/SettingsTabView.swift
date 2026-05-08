@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Tab "Ajustes" per DS v3 §6.2 — dual scope:
 ///   - Sección "Tu cuenta" (global): perfil personal, notificaciones
@@ -11,7 +12,7 @@ import RuulUI
 /// **No conectado a MainTabView todavía** — Fase 4b hará el swap.
 @MainActor
 struct SettingsTabView: View {
-    let activeGroup: Group
+    let activeGroup: RuulCore.Group
     let onSwitchGroup: () -> Void
     /// `ProfileView` usa `@State var coordinator`, no `@Bindable`, así que
     /// recibimos la instancia por valor y la pasamos al child.
@@ -64,7 +65,7 @@ struct SettingsTabView: View {
 
 #if DEBUG
 #Preview("SettingsTabView") {
-    Text("SettingsTabView preview requires Group + ProfileCoordinator fixtures.")
+    Text("SettingsTabView preview requires RuulCore.Group + ProfileCoordinator fixtures.")
         .padding(RuulSpacing.lg)
         .background(Color.ruulBackground)
 }

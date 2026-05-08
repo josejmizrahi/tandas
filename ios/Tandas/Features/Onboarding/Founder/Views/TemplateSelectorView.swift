@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Founder onboarding step 2: pick the platform template that the group
 /// will run. V1 only enables "Cena recurrente"; the Recurso compartido and

@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Top-level tab container shown after onboarding. Tabs (Inicio, Grupo,
 /// Historial, Ajustes) corresponden al patrón híbrido de scope DS v3 §4.2.
@@ -558,7 +559,7 @@ struct MainTabView: View {
     /// Resuelve el `Member` row del usuario actual en el grupo dado, vía
     /// el directorio cacheado por `refreshMemberDirectory(for:)`. Devuelve
     /// nil si todavía no hidrato — caller renderiza no-op.
-    private func currentGroupMember(in group: Group) -> Member? {
+    private func currentGroupMember(in group: RuulCore.Group) -> Member? {
         guard let userId = app.session?.user.id else { return nil }
         return memberDirectory[userId]?.member
     }
@@ -588,7 +589,7 @@ struct MainTabView: View {
         }
     }
 
-    private func resolveUserMemberId(in group: Group) -> UUID? {
+    private func resolveUserMemberId(in group: RuulCore.Group) -> UUID? {
         guard let userId = app.session?.user.id else { return nil }
         return memberDirectory[userId]?.member.id
     }
@@ -990,7 +991,7 @@ struct MainTabView: View {
         return (name: mwp.displayName, avatarURL: mwp.avatarURL)
     }
 
-    private func nextDefaultDate(for group: Group) -> Date {
+    private func nextDefaultDate(for group: RuulCore.Group) -> Date {
         // Default: tomorrow at 20:30 if group has no frequency.
         let calendar = Calendar.current
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now) ?? .now
@@ -1011,7 +1012,7 @@ struct MainTabView: View {
     }
 
     @MainActor
-    private func rebuildCoordinators(for group: Group) async {
+    private func rebuildCoordinators(for group: RuulCore.Group) async {
         let userId = app.session?.user.id ?? UUID()
         homeCoordinator = HomeCoordinator(
             group: group,
@@ -1138,7 +1139,7 @@ struct MainTabView: View {
         let ruleId = vote.referenceId
         // Active group is already switched in `handleInboxAction` before
         // this method is called (`if app.activeGroup?.id != action.groupId`),
-        // so we just need the Group instance for the sheet builder.
+        // so we just need the RuulCore.Group instance for the sheet builder.
         guard let group = app.groups.first(where: { $0.id == action.groupId }) else { return }
 
         guard let rules = try? await app.ruleRepo.list(groupId: group.id),
@@ -1194,7 +1195,7 @@ struct MainTabView: View {
 /// sheet siembra con el flat actual de la rule).
 struct RuleEditRouteContext: Identifiable, Hashable {
     let rule: GroupRule
-    let group: Group
+    let group: RuulCore.Group
     let proposedAmount: Int?
     let pendingActionId: UUID?
     var id: UUID { rule.id }

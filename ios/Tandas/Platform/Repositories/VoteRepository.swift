@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import RuulCore
 
 /// Generic vote operations. Wraps `public.votes` reads + the RPCs
 /// `start_vote`, `finalize_vote` (cast goes through `VoteCastRepository`).

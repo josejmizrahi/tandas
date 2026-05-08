@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Body para `VoteType.fineAppeal`. Renderiza fine context (amount,
 /// reason) + appeal reason + close-time hint. Diseñado para usar en

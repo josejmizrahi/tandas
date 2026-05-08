@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Loads the data shown by `ProfileView`: the user's own Profile, group
 /// memberships, and a thin slice of their fine stats. Reuses the existing

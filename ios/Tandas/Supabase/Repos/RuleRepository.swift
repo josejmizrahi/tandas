@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import RuulUI
+import RuulCore
 
 enum RuleError: Error, Equatable {
     case rpcFailed(String)

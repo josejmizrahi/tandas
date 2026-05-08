@@ -1,11 +1,12 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Host-only action panel inside `EventDetailView`. Surfaces stats +
 /// reminder + edit + check-in mode + cancel + auto-generation toggle.
 struct EventHostActionsSection: View {
     let event: Event
-    let group: Group
+    let group: RuulCore.Group
     let totalConfirmed: Int
     let totalMembers: Int
     let onSendReminders: () -> Void

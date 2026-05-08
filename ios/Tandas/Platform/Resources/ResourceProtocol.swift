@@ -1,4 +1,5 @@
 import Foundation
+import RuulCore
 
 /// UI-layer protocol — habilita dispatch genérico de resources en views,
 /// containers y providers. Distinta de `Platform/Models/Resource.swift`

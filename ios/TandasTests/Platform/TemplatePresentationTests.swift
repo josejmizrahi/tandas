@@ -1,10 +1,12 @@
 import Foundation
 import XCTest
+import RuulUI
+import RuulCore
 @testable import Tandas
 
 /// Tests that `Template.config.presentation` + `defaultCategory`
 /// round-trip cleanly against the jsonb shape written by migration 00037.
-/// These are the fields that absorb the legacy `GroupType` enum data
+/// These are the fields that absorb legacy group-type presentation data
 /// per audit doc § 5.3 item 7c.
 final class TemplatePresentationTests: XCTestCase {
 

@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Cross-group event feed. Loads events from every group the caller
 /// belongs to (RLS scopes the query) and groups them by temporal section

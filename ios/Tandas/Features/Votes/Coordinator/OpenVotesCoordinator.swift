@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Coordinator del OpenVotesListView. Lista cross-vote_type de votes
 /// con status='open' del grupo activo. Sectiona por urgencia

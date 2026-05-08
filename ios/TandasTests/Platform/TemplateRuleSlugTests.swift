@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import RuulCore
 @testable import Tandas
 
 /// Tests the slug field on `TemplateRule` and `Rule` round-trips correctly

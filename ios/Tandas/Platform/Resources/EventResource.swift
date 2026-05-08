@@ -1,4 +1,6 @@
 import Foundation
+import RuulUI
+import RuulCore
 
 /// Wrapper de `Event` que conforma a `ResourceProtocol` (UI dispatch).
 /// V1: el único concrete resource shippeado. Cuando llegue Slot/Fund,

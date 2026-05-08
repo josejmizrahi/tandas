@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import RuulCore
 
 /// In-memory cache of templates loaded from `TemplateRepository`. Boots
 /// once at app start (`refresh()`), thereafter serves lookups synchronously

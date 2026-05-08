@@ -1,14 +1,16 @@
 import SwiftUI
+import RuulUI
+import RuulCore
 
-// MARK: - Convenience inits sobre `Group`
+// MARK: - Convenience inits sobre `RuulCore.Group`
 //
 // DS v3 §3.11/3.12/3.13: los componentes multi-group toman params explícitos
 // para que funcionen en V1 antes que el backend (00036) los populate. Ahora
-// que `Group` tiene `category`/`initials`/`avatarURL`, exponemos inits que
-// aceptan `Group` directo.
+// que `RuulCore.Group` tiene `category`/`initials`/`avatarURL`, exponemos inits que
+// aceptan `RuulCore.Group` directo.
 
 extension RuulGroupAvatar {
-    init(group: Group, size: Size = .md) {
+    init(group: RuulCore.Group, size: Size = .md) {
         self.init(
             groupName: group.name,
             initials: group.initials,
@@ -20,7 +22,7 @@ extension RuulGroupAvatar {
 }
 
 extension RuulOriginTag {
-    init(group: Group) {
+    init(group: RuulCore.Group) {
         self.init(
             groupName: group.name,
             initials: group.initials,
@@ -30,7 +32,7 @@ extension RuulOriginTag {
 }
 
 extension RuulGroupSwitcher {
-    init(activeGroup: Group, onTap: @escaping () -> Void) {
+    init(activeGroup: RuulCore.Group, onTap: @escaping () -> Void) {
         self.init(
             activeGroupName: activeGroup.name,
             activeCategory: activeGroup.category,
@@ -41,7 +43,7 @@ extension RuulGroupSwitcher {
 }
 
 extension RuulGroupSwitcherSheet.GroupItem {
-    init(group: Group) {
+    init(group: RuulCore.Group) {
         self.init(
             id: group.id,
             name: group.name,

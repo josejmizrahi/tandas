@@ -1,4 +1,5 @@
 import Foundation
+import RuulCore
 
 /// Acción que un host puede ejecutar contra un resource. Producida por
 /// un `ResourceActionsProvider`, consumida por `ResourceActionsSection`

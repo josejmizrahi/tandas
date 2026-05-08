@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct HomeView: View {
     @Bindable var coordinator: HomeCoordinator

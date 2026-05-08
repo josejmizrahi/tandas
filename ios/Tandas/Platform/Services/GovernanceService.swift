@@ -1,5 +1,7 @@
 import Foundation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Abstraction over `GovernanceService` so coordinators can inject mocks in
 /// tests. The single requirement mirrors the actor's `canPerform` signature.

@@ -1,4 +1,6 @@
 import XCTest
+import RuulUI
+import RuulCore
 @testable import Tandas
 
 final class EventResourceTests: XCTestCase {

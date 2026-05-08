@@ -1,10 +1,11 @@
 import SwiftUI
 import OSLog
 import RuulUI
+import RuulCore
 
 /// Edits `groups.governance` for an existing group. Mirrors the cards in
 /// `GovernanceConfigView` (founder onboarding step 6) but works on a
-/// post-onboarding Group via `groupsRepo.updateGovernance`.
+/// post-onboarding RuulCore.Group via `groupsRepo.updateGovernance`.
 ///
 /// Reachable from `GroupInfoSheet` "Editar gobierno" for members whose
 /// permission level matches `governance.whoCanModifyGovernance`. When that
@@ -15,8 +16,8 @@ struct GovernanceSettingsView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    let group: Group
-    var onSaved: ((Group) -> Void)?
+    let group: RuulCore.Group
+    var onSaved: ((RuulCore.Group) -> Void)?
 
     @State private var rules: GovernanceRules = .recurringDinnerDefaults
     @State private var initialRules: GovernanceRules = .recurringDinnerDefaults

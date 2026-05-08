@@ -1,5 +1,7 @@
 import Foundation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Generates Apple Wallet `.pkpass` files for event RSVPs. V1 ships a stub
 /// because Apple Developer Pass Type ID + signing cert aren't configured.

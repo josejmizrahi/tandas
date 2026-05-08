@@ -1,4 +1,6 @@
 import SwiftUI
+import RuulUI
+import RuulCore
 
 /// Sheet presented from `EditRulesView` when the user taps a rule card.
 /// Shows the rule title + description (read-only "CÓMO FUNCIONA"), exposes

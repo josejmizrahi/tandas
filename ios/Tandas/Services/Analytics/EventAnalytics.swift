@@ -1,4 +1,6 @@
 import Foundation
+import RuulUI
+import RuulCore
 
 /// Event-layer-specific analytics. Wraps `AnalyticsService.track(_:)` with
 /// strongly-typed convenience methods so call sites don't construct the

@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Tab "Grupo" per DS v3 §5.3 — composite con header (RuulGroupSwitcher) +
 /// sub-tabs adaptativas según template del grupo activo. En V1 templates
@@ -13,7 +14,7 @@ struct GroupTabView: View {
     let rulesCoordinator: RulesCoordinator
     /// Puede ser nil; en ese caso la sub-tab Multas se omite.
     let myFinesCoordinator: MyFinesCoordinator?
-    let activeGroup: Group
+    let activeGroup: RuulCore.Group
     /// Próximos eventos del grupo activo (HomeCoordinator post-Fase 3 expone esto).
     let upcomingEvents: [Event]
     let myRSVPs: [UUID: RSVP]
@@ -30,7 +31,7 @@ struct GroupTabView: View {
     init(
         rulesCoordinator: RulesCoordinator,
         myFinesCoordinator: MyFinesCoordinator?,
-        activeGroup: Group,
+        activeGroup: RuulCore.Group,
         upcomingEvents: [Event],
         myRSVPs: [UUID: RSVP],
         onSwitchGroup: @escaping () -> Void,
@@ -114,7 +115,7 @@ struct GroupTabView: View {
     /// Sub-tabs available based on the group's template. V1 dinner-recurring
     /// has Events + Rules + Fines. Future templates expand this list.
     /// `hasFines` excluye la sub-tab de Multas cuando no hay coordinator.
-    static func subTabs(for group: Group, hasFines: Bool = true) -> [GroupSubTab] {
+    static func subTabs(for group: RuulCore.Group, hasFines: Bool = true) -> [GroupSubTab] {
         // V1: assume all templates have events + rules.
         // Future: branch on group.effectiveActiveModules / group.effectiveBaseTemplate.
         var tabs: [GroupSubTab] = [.events, .rules]
@@ -180,7 +181,7 @@ private struct EventsSubTabContent: View {
 
 #if DEBUG
 #Preview("GroupTabView") {
-    Text("GroupTabView preview requires Group + RulesCoordinator + MyFinesCoordinator fixtures — see Showcase.")
+    Text("GroupTabView preview requires RuulCore.Group + RulesCoordinator + MyFinesCoordinator fixtures — see Showcase.")
         .padding(RuulSpacing.lg)
         .background(Color.ruulBackground)
 }

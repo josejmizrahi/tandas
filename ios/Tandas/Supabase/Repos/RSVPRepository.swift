@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import RuulUI
+import RuulCore
 
 protocol RSVPRepository: Actor {
     func rsvps(for eventId: UUID) async throws -> [RSVP]

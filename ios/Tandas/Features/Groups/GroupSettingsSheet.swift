@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import RuulUI
+import RuulCore
 
 /// Admin-only sheet to edit a group's runtime configuration. Mirrors the
 /// fields the founder onboarding sets (vocabulary, fines on/off, rotation
@@ -15,7 +16,7 @@ struct GroupSettingsSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    let group: Group
+    let group: RuulCore.Group
 
     @State private var eventLabel: String = ""
     @State private var finesEnabled: Bool = true
@@ -25,7 +26,7 @@ struct GroupSettingsSheet: View {
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.settings")
 
-    var onSaved: ((Group) -> Void)?
+    var onSaved: ((RuulCore.Group) -> Void)?
 
     var body: some View {
         NavigationStack {

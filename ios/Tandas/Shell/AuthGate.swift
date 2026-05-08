@@ -1,12 +1,14 @@
 import SwiftUI
 import RuulUI
+import RuulCore
+import RuulCore
 
 @MainActor
 @Observable
 final class AppState {
     var session: AppSession?
     var profile: Profile?
-    var groups: [Group] = []
+    var groups: [RuulCore.Group] = []
     var isBootstrapping: Bool = true
     var bootstrapError: String?
 
@@ -25,7 +27,7 @@ final class AppState {
 
     /// Resolves to the active group if it's still in `groups`, otherwise
     /// falls back to the first group. nil only if the user has zero groups.
-    var activeGroup: Group? {
+    var activeGroup: RuulCore.Group? {
         if let id = activeGroupId, let g = groups.first(where: { $0.id == id }) {
             return g
         }
@@ -59,6 +61,7 @@ final class AppState {
     let voteCastRepo: any VoteCastRepository
     let governance: any GovernanceServiceProtocol
     let otp: any OTPService
+    let templateRegistry: TemplateRegistry
 
     // Event layer
     let eventRepo: any EventRepository
@@ -94,6 +97,7 @@ final class AppState {
         voteCastRepo: any VoteCastRepository,
         governance: any GovernanceServiceProtocol,
         otp: any OTPService,
+        templateRegistry: TemplateRegistry,
         eventRepo: any EventRepository,
         rsvpRepo: any RSVPRepository,
         checkInRepo: any CheckInRepository,
@@ -116,6 +120,7 @@ final class AppState {
         self.voteCastRepo = voteCastRepo
         self.governance = governance
         self.otp = otp
+        self.templateRegistry = templateRegistry
         self.eventRepo = eventRepo
         self.rsvpRepo = rsvpRepo
         self.checkInRepo = checkInRepo
@@ -182,7 +187,9 @@ final class AppState {
         do {
             async let pTask = profileRepo.loadMine()
             async let gTask = groupsRepo.listMine()
+            async let tTask: Void = templateRegistry.refresh()
             let (p, g) = try await (pTask, gTask)
+            await tTask
             self.profile = p
             self.groups = g
         } catch {

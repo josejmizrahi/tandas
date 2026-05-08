@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct InviteMembersView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord
@@ -52,7 +53,7 @@ struct InviteMembersView: View {
         FounderStep.invite.progressFraction
     }
 
-    private func shareLinkCard(group: Group) -> some View {
+    private func shareLinkCard(group: RuulCore.Group) -> some View {
         let message = InviteLinkGenerator.shareMessage(groupName: group.name, code: group.inviteCode)
         return ShareLink(item: message) {
             HStack(spacing: RuulSpacing.md) {

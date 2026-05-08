@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Tab "Historial" per DS v3 §6.2 — timeline de SystemEvents del grupo activo
 /// con header de RuulGroupSwitcher.
@@ -7,7 +8,7 @@ import RuulUI
 /// **No conectado a MainTabView todavía** — Fase 4b hará el swap.
 @MainActor
 struct HistoryTabView: View {
-    let activeGroup: Group
+    let activeGroup: RuulCore.Group
     let onSwitchGroup: () -> Void
     /// `GroupHistoryView` usa `@State var coordinator` (no `@Bindable`),
     /// así que se pasa por valor al child y este lo adopta como state propio.
@@ -41,7 +42,7 @@ struct HistoryTabView: View {
 
 #if DEBUG
 #Preview("HistoryTabView") {
-    Text("HistoryTabView preview requires Group + GroupHistoryCoordinator fixtures.")
+    Text("HistoryTabView preview requires RuulCore.Group + GroupHistoryCoordinator fixtures.")
         .padding(RuulSpacing.lg)
         .background(Color.ruulBackground)
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Bloque 6 — onboarding step where the founder configures who can do
 /// what in the group. Inserted between InitialRulesView (step 5) and

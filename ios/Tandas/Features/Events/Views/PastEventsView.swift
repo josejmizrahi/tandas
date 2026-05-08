@@ -1,8 +1,9 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct PastEventsView: View {
-    let group: Group
+    let group: RuulCore.Group
     let userId: UUID
     let eventRepo: any EventRepository
     var onOpenEvent: (Event) -> Void

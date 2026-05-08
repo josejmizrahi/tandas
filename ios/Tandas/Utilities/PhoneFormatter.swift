@@ -1,4 +1,6 @@
 import Foundation
+import RuulUI
+import RuulCore
 
 /// Tiny phone helpers — full E.164 validation lives in the country picker.
 enum PhoneFormatter {

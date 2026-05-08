@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import RuulCore
 @testable import Tandas
 
 final class CodableEnumsTests: XCTestCase {

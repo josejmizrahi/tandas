@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Coordinator for editing an existing event. Mirrors EventCreationCoordinator
 /// but seeds the draft from the current event and submits via

@@ -1,4 +1,5 @@
 import Foundation
+import RuulCore
 
 /// Computes future occurrences of a recurring event based on a frequency
 /// type + config. Pure function, no side effects.

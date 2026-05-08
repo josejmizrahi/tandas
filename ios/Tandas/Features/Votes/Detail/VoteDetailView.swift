@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Container del detail screen de un Vote. Header (title + meta) +
 /// body type-specific (router por vote.voteType) + cast section

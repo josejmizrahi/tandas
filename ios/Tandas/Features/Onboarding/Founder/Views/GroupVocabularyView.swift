@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct GroupVocabularyView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord

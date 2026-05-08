@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Unified inbox of pending UserActions: multas pendientes, apelaciones por
 /// votar, RSVPs por contestar, multas para revisar (host). Each row taps to

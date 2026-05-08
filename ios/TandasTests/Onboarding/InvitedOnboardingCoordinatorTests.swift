@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import SwiftData
+import RuulUI
+import RuulCore
 @testable import Tandas
 
 @Suite("InvitedOnboardingCoordinator")

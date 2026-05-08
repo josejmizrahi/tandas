@@ -45,6 +45,8 @@ packages:
     from: "8.40.0"
   RuulUI:
     path: Packages/RuulUI
+  RuulCore:
+    path: Packages/RuulCore
 targets:
   Tandas:
     type: application
@@ -63,6 +65,8 @@ targets:
         product: Sentry
       - package: RuulUI
         product: RuulUI
+      - package: RuulCore
+        product: RuulCore
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -77,6 +81,8 @@ targets:
         product: SnapshotTesting
       - package: RuulUI
         product: RuulUI
+      - package: RuulCore
+        product: RuulCore
     settings:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"

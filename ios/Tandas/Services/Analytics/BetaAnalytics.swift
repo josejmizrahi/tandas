@@ -1,4 +1,5 @@
 import Foundation
+import RuulCore
 
 /// Beta 1 instrumentation — minimal events to answer the 6 questions in
 /// `Plans/Active/Beta1.md` §4 without dragging in a heavy analytics

@@ -1,5 +1,7 @@
 import Testing
 import Foundation
+import RuulUI
+import RuulCore
 @testable import Tandas
 
 @Suite("MockGroupsRepository")
@@ -19,7 +21,7 @@ struct MockGroupsRepositoryTests {
             description: nil,
             eventLabel: "Cena",
             currency: "MXN",
-            groupType: .recurringDinner,
+            baseTemplate: "recurring_dinner",
             coverImageName: nil,
             defaultDayOfWeek: 2,
             defaultStartTime: "20:00:00",
@@ -27,7 +29,7 @@ struct MockGroupsRepositoryTests {
         )
         let g = try await repo.create(params)
         #expect(g.name == "Cena martes")
-        #expect(g.groupType == .recurringDinner)
+        #expect(g.effectiveBaseTemplate == "recurring_dinner")
         let all = try await repo.listMine()
         #expect(all.count == 1)
     }
@@ -38,8 +40,9 @@ struct MockGroupsRepositoryTests {
             id: UUID(),
             name: "Tanda viejos",
             description: nil,
-            groupType: .tandaSavings,
             inviteCode: "tandaaaa",
+            baseTemplate: "rotating_savings",
+            category: .rotatingSavings,
             createdBy: UUID(),
             createdAt: .now
         )

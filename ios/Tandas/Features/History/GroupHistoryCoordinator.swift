@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import OSLog
+import RuulCore
 
 /// Loads + paginates `SystemEvent`s for `GroupHistoryView`. Holds the
 /// active filter state; refilters by re-querying (no client-side

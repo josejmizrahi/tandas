@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Coordinator backing `AddManualFineSheet`. Loads the group's members,
 /// validates the form, calls `FineRepository.issueManual`, and humanizes

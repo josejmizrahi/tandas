@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import RuulUI
+import RuulCore
 
 /// Member-management surface presented from `GroupInfoSheet` (F0 #4).
 ///
@@ -26,7 +27,7 @@ struct EditMembersSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    let group: Group
+    let group: RuulCore.Group
 
     @State private var rows: [MemberWithProfile] = []
     @State private var isLoading: Bool = true

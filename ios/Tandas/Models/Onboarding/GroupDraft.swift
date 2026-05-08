@@ -1,4 +1,5 @@
 import Foundation
+import RuulCore
 
 /// In-memory mutable draft of a group during the founder onboarding flow.
 /// Persisted (via JSON encoding) inside `OnboardingProgress.draftJSON` so the

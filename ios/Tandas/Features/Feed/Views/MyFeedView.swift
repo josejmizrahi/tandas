@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Cross-group event feed. Apple Invites pattern: the first event of the
 /// nearest section gets hero treatment (full EventCard); the rest render
@@ -15,7 +16,7 @@ struct MyFeedView: View {
     @State var coordinator: MyFeedCoordinator
     @Environment(AppState.self) private var app
 
-    let onSelectEvent: (Event, Group) -> Void
+    let onSelectEvent: (Event, RuulCore.Group) -> Void
 
     var body: some View {
         ZStack {

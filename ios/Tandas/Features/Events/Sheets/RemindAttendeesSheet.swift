@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct RemindAttendeesSheet: View {
     @Binding var isPresented: Bool

@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import RuulCore
 
 /// Reads + casts ballots on a `Vote`. RLS allows each member to SELECT
 /// only their own row on `vote_casts` (anonymity). Aggregate counts come

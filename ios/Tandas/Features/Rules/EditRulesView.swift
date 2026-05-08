@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 /// Edit-mode counterpart to RulesView. Reachable via the conditional
 /// pencil button in RulesView nav (visible iff governance.canPerform(

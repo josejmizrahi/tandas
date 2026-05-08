@@ -1,6 +1,8 @@
 import Foundation
 import Supabase
 import OSLog
+import RuulUI
+import RuulCore
 
 /// Real-time subscription to `event_attendance` row changes for a specific
 /// event. When ANY user's RSVP changes, emits a typed `Change` event so the

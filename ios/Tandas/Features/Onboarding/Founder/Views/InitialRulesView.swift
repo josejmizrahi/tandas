@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct InitialRulesView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord
