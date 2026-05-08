@@ -239,7 +239,10 @@ struct CreateEventView: View {
             Spacer()
         }
         .padding(RuulSpacing.md)
-        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular, interactive: true)
+        // No `interactive: true` — iOS 26.x swallows taps; PhotosPicker
+        // already provides its own press feedback via `.buttonStyle(.plain)`
+        // wrapper at the call site.
+        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular)
     }
 
     // MARK: - Computed

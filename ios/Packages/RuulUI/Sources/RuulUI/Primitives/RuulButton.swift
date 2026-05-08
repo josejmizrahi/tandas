@@ -111,8 +111,13 @@ private struct StyleBackground: ViewModifier {
             content
                 .overlay(Capsule().stroke(Color.ruulBorderStrong, lineWidth: 1))
         case .glass:
+            // `interactive: true` was observed to swallow taps on iOS 26.x
+            // when combined with a Button action. The press deformation is
+            // already provided by `.buttonStyle(.ruulPress)`, so dropping the
+            // interactive flag preserves the visual feedback while keeping
+            // the tap reliable. See EventDetailView nav button regression.
             content
-                .ruulGlass(Capsule(), material: .regular, interactive: true)
+                .ruulGlass(Capsule(), material: .regular)
         case .destructive:
             content
                 .background(Capsule().fill(Color.ruulNegative))

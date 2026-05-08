@@ -37,7 +37,11 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
         // DS v3 §13: chrome surface — Liquid Glass auténtico iOS 26.
-        .ruulGlass(Capsule(), material: .regular, interactive: true)
+        // `interactive: true` no aplica acá: el bar es contenedor, los taps
+        // van a los `Button`s internos. Dejarlo en true intercepta los taps
+        // en iOS 26.x antes de que lleguen a los buttons (mismo bug que
+        // hizo no-op el X de EventDetailView).
+        .ruulGlass(Capsule(), material: .regular)
         .padding(.horizontal, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.sm)
     }

@@ -49,7 +49,8 @@ public struct RuulGroupSwitcher: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .ruulGlass(Capsule(), material: .regular, interactive: true)
+            // No `interactive: true` — iOS 26.x swallows taps in small frames.
+            .ruulGlass(Capsule(), material: .regular)
             .animation(.ruulGroupSwitch, value: activeGroupName)
         }
         .buttonStyle(.plain)

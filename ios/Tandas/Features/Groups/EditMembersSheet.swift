@@ -37,7 +37,10 @@ struct EditMembersSheet: View {
     @State private var actor: Member?
 
     @State private var pendingRemoval: MemberWithProfile?
+    @State private var pendingProposal: MemberWithProfile?
+    @State private var proposalSent: MemberWithProfile?
     @State private var isRemoving: Bool = false
+    @State private var isProposing: Bool = false
     @State private var rowError: String?
 
     @State private var isPersistingOrder: Bool = false
@@ -94,6 +97,33 @@ struct EditMembersSheet: View {
         } message: { mwp in
             Text("\(mwp.displayName) va a perder acceso al grupo, sus eventos y multas. Vas a tener que invitarla de nuevo si querés que vuelva.")
         }
+        .confirmationDialog(
+            proposalDialogTitle,
+            isPresented: proposalBinding,
+            titleVisibility: .visible,
+            presenting: pendingProposal
+        ) { mwp in
+            Button("Abrir votación") {
+                Task { await proposeRemoval(mwp) }
+            }
+            Button("Cancelar", role: .cancel) {
+                pendingProposal = nil
+            }
+        } message: { mwp in
+            // Governance returned `.requiresVote` for `.removeMembers` —
+            // explain the consequence so voters know what they're about
+            // to be asked, then start the vote on confirm.
+            Text("Tu nivel de gobernanza requiere votación. Si el grupo aprueba, \(mwp.displayName) sale automáticamente. Si rechaza, se queda.")
+        }
+        .alert(
+            "Votación abierta",
+            isPresented: proposalSentBinding,
+            presenting: proposalSent
+        ) { _ in
+            Button("Listo") { proposalSent = nil }
+        } message: { mwp in
+            Text("Vamos a avisarle al grupo. Cuando cierre la votación, si pasa, \(mwp.displayName) sale del grupo.")
+        }
     }
 
     @ViewBuilder
@@ -144,22 +174,10 @@ struct EditMembersSheet: View {
             memberRow(mwp)
                 .listRowBackground(Color.ruulSurface)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if canRemove(mwp) {
-                        Button(role: .destructive) {
-                            pendingRemoval = mwp
-                        } label: {
-                            Label("Quitar", systemImage: "person.fill.xmark")
-                        }
-                    }
+                    swipeActionFor(mwp)
                 }
                 .contextMenu {
-                    if canRemove(mwp) {
-                        Button(role: .destructive) {
-                            pendingRemoval = mwp
-                        } label: {
-                            Label("Quitar del grupo", systemImage: "person.fill.xmark")
-                        }
-                    }
+                    contextActionFor(mwp)
                 }
         }
         .onMove { source, destination in
@@ -201,7 +219,7 @@ struct EditMembersSheet: View {
                     .foregroundStyle(Color.ruulNegative)
             }
             if case .requiresVote = removeDecision {
-                Text("Quitar miembros requiere una votación. Vas a poder abrirla cuando esté lista la pantalla de votos genéricos.")
+                Text("Quitar miembros requiere votación. Deslizá la fila o tocá largo para proponer remoción al grupo.")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
@@ -272,14 +290,69 @@ struct EditMembersSheet: View {
 
     // MARK: - Removal
 
+    /// True when governance lets the actor remove the member directly
+    /// (admin-style flow: DELETE on group_members with no vote in
+    /// between).
     private func canRemove(_ mwp: MemberWithProfile) -> Bool {
         guard case .allowed = removeDecision else { return false }
-        // Self-removal goes through the regular "Salir del grupo" flow on
-        // the parent sheet — keep this destination focused on admin actions.
+        return canTargetForRemoval(mwp)
+    }
+
+    /// True when governance returned `.requiresVote`. The actor opens
+    /// a `member_removal` vote; the group decides. Server trigger
+    /// `remove_member_on_removal_pass` (migration 00035) applies the
+    /// deletion when the vote resolves passed.
+    private func canPropose(_ mwp: MemberWithProfile) -> Bool {
+        guard case .requiresVote = removeDecision else { return false }
+        return canTargetForRemoval(mwp)
+    }
+
+    /// Shared eligibility checks for both direct and vote-mediated
+    /// removal. Founder can never be removed (would orphan the group).
+    /// Self-removal goes through the regular "Salir del grupo" flow on
+    /// the parent sheet, so this destination stays focused on
+    /// other-people actions.
+    private func canTargetForRemoval(_ mwp: MemberWithProfile) -> Bool {
         if mwp.member.userId == currentUserId { return false }
-        // Founder can never be removed (would orphan the group).
         if mwp.member.isFounder { return false }
         return true
+    }
+
+    @ViewBuilder
+    private func swipeActionFor(_ mwp: MemberWithProfile) -> some View {
+        if canRemove(mwp) {
+            Button(role: .destructive) {
+                pendingRemoval = mwp
+            } label: {
+                Label("Quitar", systemImage: "person.fill.xmark")
+            }
+        } else if canPropose(mwp) {
+            // Tinted instead of destructive — opening a vote is not by
+            // itself destructive (the group still has to approve).
+            Button {
+                pendingProposal = mwp
+            } label: {
+                Label("Proponer", systemImage: "hand.raised")
+            }
+            .tint(Color.ruulAccent)
+        }
+    }
+
+    @ViewBuilder
+    private func contextActionFor(_ mwp: MemberWithProfile) -> some View {
+        if canRemove(mwp) {
+            Button(role: .destructive) {
+                pendingRemoval = mwp
+            } label: {
+                Label("Quitar del grupo", systemImage: "person.fill.xmark")
+            }
+        } else if canPropose(mwp) {
+            Button {
+                pendingProposal = mwp
+            } label: {
+                Label("Proponer remoción", systemImage: "hand.raised")
+            }
+        }
     }
 
     private var removalDialogTitle: String {
@@ -291,6 +364,25 @@ struct EditMembersSheet: View {
         Binding(
             get: { pendingRemoval != nil },
             set: { if !$0 { pendingRemoval = nil } }
+        )
+    }
+
+    private var proposalDialogTitle: String {
+        guard let p = pendingProposal else { return "Proponer remoción" }
+        return "¿Proponer remover a \(p.displayName)?"
+    }
+
+    private var proposalBinding: Binding<Bool> {
+        Binding(
+            get: { pendingProposal != nil },
+            set: { if !$0 { pendingProposal = nil } }
+        )
+    }
+
+    private var proposalSentBinding: Binding<Bool> {
+        Binding(
+            get: { proposalSent != nil },
+            set: { if !$0 { proposalSent = nil } }
         )
     }
 
@@ -315,6 +407,57 @@ struct EditMembersSheet: View {
                 self.rowError = "No pudimos quitar a \(mwp.displayName): \(error.localizedDescription)"
             }
         }
+    }
+
+    /// Opens a `member_removal` vote via `VoteRepository.startVote` so
+    /// the group decides instead of the actor. The vote's `reference_id`
+    /// is the target user's `auth.users.id`, matching the contract that
+    /// `remove_member_on_removal_pass` (migration 00035) keys off when
+    /// it deletes the `group_members` row on a passed resolution.
+    /// Payload is empty — no per-vote context beyond the title is
+    /// required for V1.
+    private func proposeRemoval(_ mwp: MemberWithProfile) async {
+        guard !isProposing else { return }
+        isProposing = true
+        rowError = nil
+        defer {
+            Task { @MainActor in
+                isProposing = false
+                pendingProposal = nil
+            }
+        }
+        do {
+            _ = try await app.voteRepo.startVote(
+                groupId: group.id,
+                voteType: .memberRemoval,
+                referenceId: mwp.member.userId,
+                title: "Quitar a \(mwp.displayName)",
+                description: nil,
+                payload: JSONConfig.empty
+            )
+            await MainActor.run {
+                proposalSent = mwp
+            }
+        } catch {
+            log.warning("startVote(memberRemoval) failed: \(error.localizedDescription)")
+            await MainActor.run {
+                self.rowError = "No pudimos abrir la votación: \(mapVoteError(error))"
+            }
+        }
+    }
+
+    /// Surfaces the most common server-side rejections in Spanish so
+    /// the swipe error doesn't leak raw Postgres text. Falls back to
+    /// the underlying message for unrecognized cases.
+    private func mapVoteError(_ error: Error) -> String {
+        let msg = error.localizedDescription.lowercased()
+        if msg.contains("unique") || msg.contains("already") {
+            return "Ya hay una votación abierta sobre este miembro."
+        }
+        if msg.contains("permission") || msg.contains("rls") || msg.contains("policy") {
+            return "No tenés permiso para abrir esta votación."
+        }
+        return error.localizedDescription
     }
 
     // MARK: - Loading

@@ -44,7 +44,9 @@ public struct RSVPStateView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.md)
-            .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular, interactive: true)
+            // `interactive: true` was observed to swallow taps on iOS 26.x;
+            // press deformation comes from `.ruulPress` below.
+            .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular)
         }
         .buttonStyle(.ruulPress)
     }

@@ -39,11 +39,28 @@ public struct RuulPillButton: View {
             triggerCount &+= 1
             action()
         } label: {
-            Image(systemName: symbol)
-                .font(.system(size: size.symbolSize, weight: .medium))
-                .foregroundStyle(Color.ruulTextPrimary)
-                .frame(width: size.dimension, height: size.dimension)
-                .ruulGlass(Circle(), material: .regular, interactive: true)
+            ZStack {
+                // Tap target ≥44pt (HIG), independent of visual size. iOS 26's
+                // `glassEffect(_:in:)` with `interactive: true` was observed
+                // to swallow taps inside circles smaller than 44pt — the
+                // press deformation stole the touch before the Button fired.
+                // Solution: outer transparent shape provides a stable 44pt
+                // hit area; the visual circle stays at the requested size and
+                // is marked `allowsHitTesting(false)` so it never intercepts.
+                Circle()
+                    .fill(.clear)
+                    .frame(
+                        width: max(size.dimension, 44),
+                        height: max(size.dimension, 44)
+                    )
+                    .contentShape(Circle())
+                Image(systemName: symbol)
+                    .font(.system(size: size.symbolSize, weight: .medium))
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .frame(width: size.dimension, height: size.dimension)
+                    .ruulGlass(Circle(), material: .regular)
+                    .allowsHitTesting(false)
+            }
         }
         .buttonStyle(.plain)
         .ruulHaptic(.light, trigger: triggerCount)

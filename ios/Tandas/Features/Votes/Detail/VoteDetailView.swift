@@ -47,9 +47,9 @@ struct VoteDetailView: View {
         case .fineAppeal:        FineAppealVoteBody(coordinator: coordinator)
         case .generalProposal:   GeneralProposalVoteBody(coordinator: coordinator)
         case .ruleChange:        RuleChangeVoteBody(coordinator: coordinator)
-        case .ruleRepeal,
-             .memberRemoval,
-             .fundWithdrawal,
+        case .ruleRepeal:        RuleRepealVoteBody(coordinator: coordinator)
+        case .memberRemoval:     MemberRemovalVoteBody(coordinator: coordinator)
+        case .fundWithdrawal,
              .roleAssignment,
              .slotDispute:       GenericVoteBody(coordinator: coordinator)
         }
