@@ -64,5 +64,10 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
         self.createdAt     = createdAt
         self.updatedAt     = (try? c.decode(Date.self, forKey: .updatedAt)) ?? createdAt
     }
+
+    /// `Resource.resourceStatus` requirement. The wire column is `status`;
+    /// this passthrough lets `ResourceRow` wear the polymorphic protocol
+    /// without duplicating storage.
+    public var resourceStatus: String { status }
 }
 
