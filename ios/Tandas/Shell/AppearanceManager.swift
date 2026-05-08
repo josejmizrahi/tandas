@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 enum AppearanceOption: String, CaseIterable, Identifiable {
     case system, light, dark

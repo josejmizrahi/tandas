@@ -1,4 +1,5 @@
 import Foundation
+import RuulUI
 
 /// One row in the unified inbox queue. The InboxView (Sprint 1c) renders
 /// these as `ActionCard`s. The action layer (template-specific) maps each

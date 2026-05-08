@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import RuulUI
 
 @Observable @MainActor
 final class FounderOnboardingCoordinator {
@@ -18,6 +19,7 @@ final class FounderOnboardingCoordinator {
     private let groupRepo: any GroupsRepository
     private let inviteRepo: any InviteRepository
     private let ruleRepo: any RuleRepository
+    private let profileRepo: (any ProfileRepository)?
     private let otp: any OTPService
     private let analytics: any AnalyticsService
     private let progress: OnboardingProgressManager
@@ -33,11 +35,13 @@ final class FounderOnboardingCoordinator {
         ruleRepo: any RuleRepository,
         otp: any OTPService,
         analytics: any AnalyticsService,
-        progress: OnboardingProgressManager
+        progress: OnboardingProgressManager,
+        profileRepo: (any ProfileRepository)? = nil
     ) {
         self.groupRepo = groupRepo
         self.inviteRepo = inviteRepo
         self.ruleRepo = ruleRepo
+        self.profileRepo = profileRepo
         self.otp = otp
         self.analytics = analytics
         self.progress = progress
@@ -60,15 +64,25 @@ final class FounderOnboardingCoordinator {
     func restore(from entity: OnboardingProgress) async {
         progressEntity = entity
         if let step = entity.founderStep {
-            // Beta 1 skip-by-default: project legacy persisted steps that
-            // are no longer visible (welcome / templateSelect / vocabulary
-            // / rules / governance) onto the closest visible step so the
-            // user doesn't land on a screen the new flow doesn't show.
+            // Beta 1 skip-by-default: project legacy persisted steps
+            // that are no longer reachable in the current flow onto
+            // the closest visible step so users mid-flow on an old
+            // build don't land on a screen the new flow doesn't show.
+            //
+            //   - welcome / templateSelect    → identity (no longer rendered)
+            //   - vocabulary / rules / governance → invite (defaults backfilled)
+            //   - phoneVerify / otp           → confirm (sign-in-first
+            //     architecture: auth happens before onboarding starts,
+            //     so these screens are unreachable; project them so an
+            //     interrupted user lands on the completion screen and
+            //     can finish the flow without re-doing work).
             switch step {
             case .welcome, .templateSelect:
                 currentStep = .identity
             case .vocabulary, .rules, .governance:
                 currentStep = .invite
+            case .phoneVerify, .otp:
+                currentStep = .confirm
             default:
                 currentStep = step
             }
@@ -126,6 +140,21 @@ final class FounderOnboardingCoordinator {
     func advanceFromIdentity() async {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        // Sign-in-first architecture: the user is already authenticated
+        // by the time they reach identity. Persist the typed name to
+        // their `profiles` row so it shows up everywhere
+        // (RuulAvatar fallbacks, member rows, group history). Without
+        // this the trigger-seeded default ('Usuario' for phone-only,
+        // email-prefix for Apple) would persist and the user would see
+        // 'jose' instead of 'Jose Luis' across the app. Soft-fail —
+        // the user can correct from EditProfileSheet later.
+        if let profileRepo {
+            do {
+                try await profileRepo.updateDisplayName(trimmed)
+            } catch {
+                log.warning("updateDisplayName failed: \(error.localizedDescription)")
+            }
+        }
         await complete(step: .identity)
         // Beta 1 skip-by-default: V1 only ships `recurring_dinner` so the
         // selector has nothing to choose. Auto-assign and skip directly to
@@ -294,13 +323,32 @@ final class FounderOnboardingCoordinator {
             }
         }
         await complete(step: .invite)
-        try? await transition(to: .phoneVerify)
+        // Sign-in-first architecture: the user is already authenticated
+        // by the time they reach this point in the founder flow (auth
+        // happens in SignInView before onboarding starts). The legacy
+        // phoneVerify / otp steps existed to promote an anon session to
+        // a real one — no longer needed. Mark hasOnboarded and jump
+        // straight to confirm. The .phoneVerify / .otp cases are still
+        // emitted by `complete(step:)` for analytics continuity so the
+        // funnel rate calc keeps working.
+        OnboardingCompletion.mark()
+        await complete(step: .phoneVerify)
+        await complete(step: .otp)
+        try? await transition(to: .confirm)
+        await trackOnboardingCompleted()
     }
 
     func skipInvite() async {
         pendingInvites.removeAll()
         await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.invite.rawValue))
-        try? await transition(to: .phoneVerify)
+        // Same skip-to-confirm path as advanceFromInvite — see comment
+        // there for the rationale (sign-in-first architecture; auth
+        // happened before onboarding, phoneVerify/otp redundant).
+        OnboardingCompletion.mark()
+        await complete(step: .phoneVerify)
+        await complete(step: .otp)
+        try? await transition(to: .confirm)
+        await trackOnboardingCompleted()
     }
 
     func advanceFromPhoneVerify() async {

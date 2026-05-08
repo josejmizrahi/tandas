@@ -374,10 +374,14 @@ actor LiveGroupsRepository: GroupsRepository {
     // MARK: - Onboarding V1
 
     func createInitial(_ draft: GroupDraft) async throws -> Group {
-        // The founder hasn't done OTP yet at this point of onboarding. The RPC
-        // create_group_with_admin requires auth.uid() — if there's no session,
-        // sign in anonymously so the group can be born and later promoted via
-        // OTP. Requires Supabase Auth → Anonymous sign-ins ENABLED.
+        // Sign-in-first architecture (post anon disable): the user must be
+        // authenticated by the time the founder reaches the group step.
+        // AuthGate gates onboarding behind a real session, and the
+        // Supabase project has anonymous sign-ins disabled at the
+        // provider level, so any "fall back to anon" retry would now
+        // surface as `anonymous_provider_disabled` and confuse the
+        // diagnosis. We let `create_group_with_admin` errors bubble up
+        // so we see the real failure (auth, RLS, or RPC validation).
         struct Params: Encodable {
             let p_name: String
             let p_event_label: String
@@ -395,31 +399,13 @@ actor LiveGroupsRepository: GroupsRepository {
             p_cover_image_name: draft.coverImageName
         )
 
-        func runRPC() async throws -> Group {
-            try await client
+        do {
+            return try await client
                 .rpc("create_group_with_admin", params: params)
                 .execute()
                 .value
-        }
-
-        // First attempt with whatever session we have.
-        do {
-            return try await runRPC()
         } catch {
-            // 'not authenticated' (RPC raises this when auth.uid() is null), or
-            // any other PostgREST error from a stale token. Sign out + anon
-            // signin + retry once.
-            try? await client.auth.signOut()
-            do {
-                _ = try await client.auth.signInAnonymously()
-            } catch {
-                throw GroupsError.rpcFailed("anon_signin_failed: \(error.localizedDescription)")
-            }
-            do {
-                return try await runRPC()
-            } catch {
-                throw GroupsError.rpcFailed(error.localizedDescription)
-            }
+            throw GroupsError.rpcFailed(error.localizedDescription)
         }
     }
 

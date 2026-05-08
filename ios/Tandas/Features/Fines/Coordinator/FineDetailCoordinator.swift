@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import RuulUI
 
 @Observable @MainActor
 final class FineDetailCoordinator {

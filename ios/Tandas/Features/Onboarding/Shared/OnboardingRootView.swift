@@ -56,7 +56,8 @@ struct OnboardingRootView: View {
                     ruleRepo: app.ruleRepo,
                     otp: app.otp,
                     analytics: analytics,
-                    progress: manager
+                    progress: manager,
+                    profileRepo: app.profileRepo
                 )
                 await coord.restore(from: progress)
                 coordinatorBundle = CoordinatorBundle(founder: coord)

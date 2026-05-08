@@ -140,34 +140,34 @@ final class AppState {
     }
 
     func start() async {
-        // No proactive anon sign-in. Anonymous sessions are an
-        // implementation detail of `GroupsRepository.createInitial`
-        // (it has a reactive sign-out + anon + retry path) — the app
-        // launch must NOT pre-create one, otherwise:
-        //   - Returning logged-out users get a fresh anon session and
-        //     AuthGate's `session != nil` short-circuits SignInView,
-        //     dragging them back into onboarding.
-        //   - First-time users on an old keychain (reinstall with a
-        //     stale-but-still-decryptable session) get the same.
+        // Sign-in-first architecture: the app never creates an
+        // anonymous session. AuthGate routes to SignInView for any
+        // unauthenticated launch, and the founder onboarding only
+        // runs AFTER the user has signed in with Apple or phone OTP.
         //
-        // First-time founders without a session get their anon at the
-        // moment they tap "Continuar" on GroupIdentityView, which is
-        // also the moment we have a real intent to create data.
+        // Why we removed the anon path:
+        //   - The previous "anon at launch + signInWithIdToken to
+        //     promote to Apple later" pattern relied on Supabase
+        //     reliably linking the anon user to the OAuth identity.
+        //     In practice the link could fail and the group created
+        //     during onboarding stayed orphaned to the anon user_id,
+        //     leaving the verified user with `groups.isEmpty` post-
+        //     sign-in and bouncing them back into onboarding forever.
+        //   - The Supabase project now disables anonymous sign-ins
+        //     entirely, so any attempt to fall back to anon would
+        //     fail with `anonymous_provider_disabled` anyway.
+        //
+        // `OnboardingCompletion.mark()` is still called explicitly at
+        // the end of the founder/invited flow and survives reinstall
+        // via Keychain. We deliberately do NOT auto-mark on every
+        // real session: that would short-circuit the first-time
+        // guided flow for a user signing in for the first time
+        // (a real session + empty groups would look "complete" and
+        // route them to MainTabView's empty state instead of the
+        // create-your-group flow).
         for await s in auth.sessionStream {
             self.session = s
-            if let s {
-                // Defensive: a real (email/phone) session means the
-                // user has authenticated at some point on this device.
-                // If the keychain restored a session but the
-                // `hasOnboarded` flag is missing (e.g. legacy device
-                // pre-keychain-migration, or a fresh install where
-                // keychain survived but UserDefaults didn't), promote
-                // it now so AuthGate routes to SignInView next time
-                // they sign out instead of founder onboarding.
-                let isReal = s.user.email != nil || s.user.phone != nil
-                if isReal && !OnboardingCompletion.hasOnboarded {
-                    OnboardingCompletion.mark()
-                }
+            if s != nil {
                 await refreshProfileAndGroups()
             } else {
                 self.profile = nil
@@ -257,22 +257,32 @@ struct AuthGate: View {
         SwiftUI.Group {
             if app.isBootstrapping || !hasCheckedOnboarding {
                 BootstrappingView()
-            } else if app.session == nil && hasOnboarded {
-                // Returning user logged out: ALWAYS go to SignInView.
-                // Above the onboarding branch so a stale
-                // OnboardingProgress row can't drag the user back
-                // into the flow.
+            } else if app.session == nil {
+                // Sign-in-first architecture: ANY unauthenticated state
+                // routes here, including a brand-new device. There is
+                // no anon-session entry into onboarding anymore — the
+                // pre-Apple founder flow created groups under the anon
+                // user_id and `signInWithIdToken` did not always link
+                // them to the verified account, leaving groups
+                // orphaned to a user nobody can sign back in as.
+                // SignInView handles both Apple Sign In and Phone OTP;
+                // both providers auto-create users on first-use, so
+                // there is no separate "create account" path.
                 SignInView()
-            } else if hasActiveOnboarding || shouldShowOnboarding {
+            } else if hasActiveOnboarding || isFirstTimeAuth {
+                // Authenticated branch: either we're mid-onboarding
+                // (entity persisted, restoring on relaunch) OR this is
+                // the user's first sign-in on this account and they
+                // need the guided "name your group / invite friends"
+                // flow.
+                //
                 // Single branch (consolidated): SwiftUI keeps the
-                // OnboardingRootView's @State coordinatorBundle
-                // alive across `hasActiveOnboarding` flicker (e.g.,
-                // when the entity gets persisted mid-flow flipping
-                // the flag from false → true). Splitting into two
-                // branches with the same content caused view-tree
-                // resets that re-ran bootstrap and recreated the
-                // coordinator at .identity, dropping the user back
-                // to "¿Cómo te llamas?" mid-flow.
+                // OnboardingRootView's @State coordinatorBundle alive
+                // across `hasActiveOnboarding` flicker (the flag
+                // flips false→true after the first persist). Splitting
+                // into two branches with the same content caused
+                // view-tree resets that dropped the user back to
+                // "¿Cómo te llamas?" mid-flow.
                 onboardingFlow
             } else {
                 MainTabView()
@@ -302,53 +312,44 @@ struct AuthGate: View {
         }
     }
 
-    /// Onboarding shows only for first-time devices (no session AND no
-    /// completion flag). Once a user is authenticated we never route
-    /// back to onboarding:
-    ///   - Sending an authed user through `¿Cómo te llamas?` is the
-    ///     bounce-back loop the user hit. The most common reason
-    ///     `groups.isEmpty` is true post-sign-in is that the original
-    ///     onboarding created a group while still on an anonymous
-    ///     session and the anon → Apple link in `signInWithIdToken`
-    ///     orphaned the group. The user is the same person; they just
-    ///     don't own that anon-created group anymore.
-    ///   - Empty-groups + missing-profile are legitimate authed states
-    ///     handled inside MainTabView (empty home with "Crear grupo /
-    ///     Unirme con código" CTAs, profile editable from Settings).
-    /// Mid-flow founder onboarding is preserved by `hasActiveOnboarding`,
-    /// which gates the same branch separately — once an
-    /// `OnboardingProgress` row is persisted, AuthGate keeps rendering
-    /// the flow until it clears.
-    private var shouldShowOnboarding: Bool {
-        app.session == nil && !hasOnboarded
+    /// True for an authenticated user landing on this device for the
+    /// first time: they have a real session but no record of having
+    /// finished onboarding (`hasOnboarded` flag) AND no groups loaded
+    /// for their account.
+    ///
+    /// Heuristic. The 100%-correct signal would be a server-side
+    /// `profiles.onboarded_at` column; the heuristic mis-classifies a
+    /// returning user whose groups vanished (left them all, or got
+    /// orphaned to an old anon user_id) as "first time". Acceptable
+    /// trade-off: those users land in the create-first-group flow,
+    /// recover by creating a fresh group under their real user_id,
+    /// and `OnboardingCompletion.mark()` at completion time prevents
+    /// any future re-entry.
+    private var isFirstTimeAuth: Bool {
+        app.session != nil && app.groups.isEmpty && !hasOnboarded
     }
 
     @MainActor
     private func refreshOnboardingState() async {
         let manager = OnboardingProgressManager(context: modelContext)
-        // Stale-entity policy. We only clear when we are confident no
-        // active onboarding could be in progress:
+        // Stale-entity policy under the sign-in-first architecture.
+        // We only persist an OnboardingProgress while a session exists
+        // and the user is genuinely in the create-first-group flow.
+        // Anything else is residue:
+        //   - `loggedOut`: session is nil → SignInView will take over,
+        //     so any leftover onboarding row is from an abandoned flow.
+        //   - `hasGroup`: at least one group loaded → the user is past
+        //     the only step that creates persisted state. They belong
+        //     in MainTabView, so the entity is residue.
         //
-        //   - `isCleanLoggedOut`: session is nil AND the device has
-        //     completed onboarding before. SignInView will take over.
-        //
-        //   - `hasUsableGroup`: a real (non-anon) auth session exists
-        //     AND at least one group is loaded. The user has finished
-        //     onboarding — any persisted entity is residue. We detect
-        //     "real session" via session.user.email/phone so an anon
-        //     session created mid-flow (groups still empty for ms)
-        //     does not trip this branch.
-        //
-        // We deliberately do NOT clear just because `hasOnboarded ==
-        // true`: a returning user starting a SECOND onboarding flow
-        // (after re-installing or "Crear cuenta nueva") still has the
-        // flag set from before, and clearing would wipe their fresh
-        // entity mid-flow → re-bootstrap → coord.start() → bounce
-        // back to identity.
-        let isCleanLoggedOut = app.session == nil && hasOnboarded
-        let isAnonSession = (app.session?.user.email == nil) && (app.session?.user.phone == nil)
-        let hasUsableGroup = app.session != nil && !isAnonSession && !app.groups.isEmpty
-        if isCleanLoggedOut || hasUsableGroup {
+        // We deliberately do NOT clear an entity for an authenticated
+        // user with `groups.isEmpty` and `!hasOnboarded`: that's the
+        // mid-flow first-time founder, whose entity is *exactly* what
+        // keeps the coordinator restoring at the right step on
+        // relaunch.
+        let loggedOut = app.session == nil
+        let hasGroup = app.session != nil && !app.groups.isEmpty
+        if loggedOut || hasGroup {
             try? manager.clear()
         }
         hasActiveOnboarding = (try? manager.loadActive()) != nil

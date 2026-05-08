@@ -1,5 +1,4 @@
 import SwiftUI
-import RuulUI
 
 /// Apply iOS 26 Liquid Glass with a ruul-flavored API.
 ///

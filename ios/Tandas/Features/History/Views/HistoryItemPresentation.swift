@@ -1,4 +1,5 @@
 import Foundation
+import RuulUI
 
 /// Maps a `SystemEvent` to display data for `RuulTimelineItem`. Decouples
 /// the timeline UI primitive (icon/title/subtitle/timestamp/tone) from the
