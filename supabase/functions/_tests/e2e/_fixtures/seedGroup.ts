@@ -70,7 +70,7 @@ export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
   const founderEntry = provisioned[0];
   const { data: groupId, error: groupErr } = await founderEntry.client.rpc(
     "create_group_with_admin",
-    { p_name: groupName, p_group_type: "recurring_dinner" },
+    { p_name: groupName, p_base_template: "recurring_dinner" },
   );
   if (groupErr) {
     throw new Error(`seedGroup: create_group_with_admin failed: ${groupErr.message}`);

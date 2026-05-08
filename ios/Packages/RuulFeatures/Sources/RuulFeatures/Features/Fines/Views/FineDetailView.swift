@@ -238,9 +238,10 @@ public struct FineDetailView: View {
                     .foregroundStyle(Color.ruulTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let counts = coordinator.voteCounts {
-                    // VoteCountsBar consume canonical VoteCounts. FineDetailCoordinator
-                    // todavía expone AppealVoteCounts (legacy AppealRepository);
-                    // conversion local hasta que V2 cleanup unifique a VoteRepository.
+                    // AppealRepository expone AppealVoteCounts por compat con el
+                    // protocol; el wire-shape ya es el genérico vote_casts (post-00047).
+                    // Conversión local hasta que el AppealRepository protocol se
+                    // colapse en VoteRepository (V2 follow-up).
                     VoteCountsBar(counts: VoteCounts(
                         inFavor:       counts.inFavor,
                         against:       counts.against,

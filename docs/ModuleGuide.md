@@ -78,6 +78,52 @@ extension GroupModule {
 Always validate before persisting `groups.active_modules`. The migration
 should refuse to seed a template with invalid combinations.
 
+## Module onboarding (post-creation activation)
+
+A group inherits `Template.config.defaultModules` at creation. Any
+later change requires explicit member action — modules are not auto-
+activated when an evaluator stub becomes implementing.
+
+**Activation flow** (Fase 2+; the UI for this lands with the first
+modular activation case):
+
+1. `GroupSettingsSheet → "Activar módulo"` lists all modules from
+   `ModuleRegistry.allModules` not already in `group.activeModules`,
+   filtered by `template.config.resourceTypes` compatibility.
+2. Tapping `slot_assignment` shows `ModuleOnboardingSheet`:
+   - Module presentation (name, description, what it adds — pulls
+     from manifest).
+   - Dependencies it will activate transitively (`appeal_voting`
+     auto-pulls `basic_fines`).
+   - Conflicts it will deactivate (`slot_assignment` removes
+     `rotating_host`, with confirmation).
+   - Default rules it will seed (jsonb preview).
+3. On confirm: `ModuleService.activate(moduleId, groupId)` —
+   - `ModuleRegistry.validate(activeModules + [moduleId])` — abort on
+     conflict without explicit override.
+   - Append to `groups.active_modules` jsonb (server-side RPC
+     `update_group_modules`).
+   - Insert default rules from `module.providedRules` into
+     `rules` table (status=`active`, source=`module-default`).
+   - Emit `SystemEvent.moduleActivated(moduleId)` so history shows
+     the change as a governance event.
+   - If `groups.governance.whoCanModifyGovernance ≠ founder`,
+     `ModuleService.activate` opens a `module_activation` vote
+     instead of writing directly. (vote_type pending.)
+
+**Deactivation flow**:
+
+- Symmetrical, but `ModuleService.deactivate(moduleId, groupId)`
+  preserves historical Resources of types provided by the module
+  (don't cascade-delete past Slots when `slot_assignment` deactivates).
+- Default rules from `providedRules` are marked `is_active=false`,
+  not deleted, so reactivation later picks up the same slugs.
+
+**V1 status**: NOT implemented. `groups.active_modules` is set at
+creation from `template.config.defaultModules` and never mutated.
+First implementation lands with the first non-default module case
+(likely Fase 2 `slot_assignment` or Fase 3 `common_fund`).
+
 ## Why modules vs. monolithic templates
 
 A grupo of friends might want "cena recurrente + fondo común" without

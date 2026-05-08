@@ -96,9 +96,14 @@ two Rules with the same trigger if you need OR.
 ## Editing rules at runtime
 
 `groups.governance.whoCanModifyRules` gates who can edit. V1 default:
-`founder`. The founder edits via a future EditRulesView (Bloque 6+
-follow-up); V2 templates can set `majorityVote` so changes require a
-group vote (uses generic Vote with `vote_type='rule_change'`).
+`founder`. The founder edits via `EditRulesView` (shipped 2026-05-05
+via plan `2026-05-05-edit-rules-view.md`). When governance is set to
+`majorityVote`, changes open a generic Vote with
+`vote_type='rule_change'`; on pass, `finalize_vote` (migration 00032)
+emits a `ruleChangeApplyPending` user_action with deep-link
+`ruul://rule/<uuid>/edit?proposedAmount=<int>` so the rule editor
+pre-loads the proposed delta — see plan
+`2026-05-07-open-votes-view.md` for the rule_change low-friction flow.
 
 ## Tests
 

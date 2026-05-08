@@ -32,11 +32,10 @@ public struct VoteOnAppealSheet: View {
                 fineCard
                 appealReasonCard
                 if let counts = voteCounts {
-                    // VoteCountsBar consume canonical VoteCounts. AppealRepository
-                    // sigue devolviendo AppealVoteCounts (server-side appeal_votes
-                    // legacy), así que convertimos en el call site. Cuando el
-                    // V2 cleanup migre AppealRepository a VoteRepository este
-                    // bridge desaparece.
+                    // AppealRepository devuelve AppealVoteCounts por compat con el
+                    // protocol; el wire-shape ya es el genérico vote_casts (post-00047).
+                    // Conversión local hasta que el AppealRepository protocol se
+                    // colapse en VoteRepository (V2 follow-up — todavía no priorizado).
                     VoteCountsBar(counts: VoteCounts(
                         inFavor:       counts.inFavor,
                         against:       counts.against,

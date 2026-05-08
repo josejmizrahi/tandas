@@ -20,16 +20,16 @@ Defined in `Platform/Models/ConditionType.swift`.
 
 | Case | Reason |
 |---|---|
-| `minutesAfterScheduled` | Time-based, future scheduler |
-| `hoursBeforeEvent` | Used as synthetic trigger config in V1, not a standalone condition |
-| `memberHasMultipleFines` | Behavioral history (V2+) |
+| `minutesAfterScheduled` | Time-based, requires generic time scheduler (Fase 4) |
+| `hoursBeforeEvent` | Hoy se usa como **trigger** sintético: el cron `emit-deadline-events` emite un `SystemEvent.hoursBeforeEvent` N horas antes del evento, y la regla matcheas por `trigger.eventType`, no por condición. Convertirlo en condición standalone requiere un trigger genérico de tiempo (mismo gap que `minutesAfterScheduled`). |
+| `memberHasMultipleFines` | Behavioral history (Fase 4 — necesita query agregado por miembro) |
 | `memberFinesAbove` | "" |
 | `memberMissedConsecutive` | "" |
-| `eventDayOfWeek` | Calendar conditions |
+| `eventDayOfWeek` | Calendar conditions (Fase 4) |
 | `eventTimeWindow` | "" |
-| `fundBalanceAbove` | Fase posterior — fund module |
+| `fundBalanceAbove` | Fase 3 — fund module |
 | `fundBalanceBelow` | "" |
-| `rotationPositionEquals` | Rotation-aware (Fase 2+) |
+| `rotationPositionEquals` | Fase 2 — rotation-aware |
 
 Conditions of these types throw `NotImplementedError` server-side. The
 engine logs structured + skips the rule. The architecture is V4-ready

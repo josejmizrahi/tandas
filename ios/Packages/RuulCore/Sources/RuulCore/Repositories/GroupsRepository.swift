@@ -298,7 +298,6 @@ public actor LiveGroupsRepository: GroupsRepository {
             let p_currency: String?
             let p_timezone: String?
             let p_base_template: String?
-            let p_group_type: String?
             let p_cover_image_name: String?
         }
         let params = Params(
@@ -307,7 +306,6 @@ public actor LiveGroupsRepository: GroupsRepository {
             p_currency: p.currency,
             p_timezone: "America/Mexico_City",
             p_base_template: p.baseTemplate,
-            p_group_type: nil,
             p_cover_image_name: p.coverImageName
         )
         do {
@@ -407,7 +405,6 @@ public actor LiveGroupsRepository: GroupsRepository {
             let p_currency: String
             let p_timezone: String
             let p_base_template: String
-            let p_group_type: String?
             let p_cover_image_name: String?
         }
         let templateId = draft.template.isEmpty
@@ -419,7 +416,6 @@ public actor LiveGroupsRepository: GroupsRepository {
             p_currency: "MXN",
             p_timezone: "America/Mexico_City",
             p_base_template: templateId,
-            p_group_type: nil,
             p_cover_image_name: draft.coverImageName
         )
 

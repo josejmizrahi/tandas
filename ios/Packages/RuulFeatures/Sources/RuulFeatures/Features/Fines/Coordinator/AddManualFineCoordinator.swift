@@ -117,7 +117,8 @@ public final class AddManualFineCoordinator {
                 userId: userId,
                 amount: amount,
                 reason: trimmedReason,
-                eventId: eventId
+                eventId: eventId,
+                resourceId: eventId  // V1: events-only entry; resource_id == event_id post-00039
             )
             return fine
         } catch {

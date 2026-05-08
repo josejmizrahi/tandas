@@ -54,6 +54,10 @@ public final class AppState {
     public let governance: any GovernanceServiceProtocol
     public let otp: any OTPService
     public let templateRegistry: TemplateRegistry
+    /// Resolves runtime capabilities for the active group based on its
+    /// template + activeModules. V1 callers can ignore (hardcoded surface
+    /// stays correct); Phase 2+ views consult this for module-aware gating.
+    public let capabilityResolver: CapabilityResolver
 
     // Event layer
     public let eventRepo: any EventRepository
@@ -90,6 +94,7 @@ public final class AppState {
         governance: any GovernanceServiceProtocol,
         otp: any OTPService,
         templateRegistry: TemplateRegistry,
+        capabilityResolver: CapabilityResolver = CapabilityResolver(),
         eventRepo: any EventRepository,
         rsvpRepo: any RSVPRepository,
         checkInRepo: any CheckInRepository,
@@ -114,6 +119,7 @@ public final class AppState {
         self.governance = governance
         self.otp = otp
         self.templateRegistry = templateRegistry
+        self.capabilityResolver = capabilityResolver
         self.eventRepo = eventRepo
         self.rsvpRepo = rsvpRepo
         self.checkInRepo = checkInRepo

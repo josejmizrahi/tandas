@@ -17,15 +17,23 @@ public protocol FineRepository: Actor {
     func void(fineId: UUID, reason: String?) async throws -> Fine
     /// Admin-only: issue an ad-hoc fine outside the rule engine. Server
     /// inserts with status='officialized' (post-00028) so the fined user
-    /// gets a finePending user_action immediately. `eventId` may be nil
-    /// when V2 cross-event entry is added; in V1 the only entry point is
-    /// EventDetailView so it's always provided.
+    /// gets a finePending user_action immediately.
+    ///
+    /// `eventId` is the V1 cohabitation FK to `events`. `resourceId` is the
+    /// polymorphic FK to `resources` (post-00041) — for V1 events the two
+    /// are the same UUID via dual-write trigger 00039. Phase 2+ callers
+    /// targeting non-event resources (slot, fund, position) pass
+    /// `resourceId` and leave `eventId` nil.
+    ///
+    /// V1 default: caller passes only `eventId`; server coalesces
+    /// `resource_id := coalesce(p_resource_id, p_event_id)`.
     func issueManual(
         groupId: UUID,
         userId: UUID,
         amount: Decimal,
         reason: String,
-        eventId: UUID?
+        eventId: UUID?,
+        resourceId: UUID?
     ) async throws -> Fine
     /// User pays their own fine (legacy `pay_fine` RPC).
     func pay(fineId: UUID) async throws -> Fine
@@ -105,7 +113,8 @@ public actor MockFineRepository: FineRepository {
         userId: UUID,
         amount: Decimal,
         reason: String,
-        eventId: UUID?
+        eventId: UUID?,
+        resourceId: UUID?
     ) async throws -> Fine {
         if throwOnIssueManual {
             throwOnIssueManual = false
@@ -117,6 +126,7 @@ public actor MockFineRepository: FineRepository {
             userId: userId,
             ruleId: nil,
             eventId: eventId,
+            resourceId: resourceId ?? eventId,
             reason: reason,
             amount: amount,
             status: .officialized,
@@ -223,7 +233,8 @@ public actor LiveFineRepository: FineRepository {
         userId: UUID,
         amount: Decimal,
         reason: String,
-        eventId: UUID?
+        eventId: UUID?,
+        resourceId: UUID?
     ) async throws -> Fine {
         struct Params: Encodable {
             let p_group_id: String
@@ -232,6 +243,7 @@ public actor LiveFineRepository: FineRepository {
             let p_reason: String
             let p_rule_id: String?
             let p_event_id: String?
+            let p_resource_id: String?
         }
         return try await client
             .rpc("issue_manual_fine", params: Params(
@@ -240,7 +252,8 @@ public actor LiveFineRepository: FineRepository {
                 p_amount: amount,
                 p_reason: reason,
                 p_rule_id: nil,
-                p_event_id: eventId?.uuidString.lowercased()
+                p_event_id: eventId?.uuidString.lowercased(),
+                p_resource_id: (resourceId ?? eventId)?.uuidString.lowercased()
             ))
             .execute()
             .value

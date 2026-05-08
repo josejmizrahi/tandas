@@ -8,14 +8,12 @@ import RuulCore
 ///
 /// **V1 duplicación con `VoteOnAppealSheet`**: el sheet existente
 /// (`Features/Fines/Sheets/VoteOnAppealSheet.swift`) preserva su entry
-/// point intacto con su propio rendering — no se refactoriza en V1
-/// para evitar regresión en el flow probado en producción
-/// (`cast_appeal_vote` legacy + `AppealVoteCounts` + `Fine`/`Appeal`
-/// domain inputs vs. el `VoteDetailCoordinator` genérico). Resultado:
-/// dos rendering paths para fine_appeal — sheet (legacy) + body (router).
-/// V2 cleanup: audit § 5.2 unificará removiendo `appeal_votes` legacy
-/// y migrando el sheet a usar este body. Ver
-/// `Plans/Phase0.5-UIResourceGeneralization.md` Sub-fase C/D.
+/// point intacto con su propio rendering. Ambos paths ya hablan el
+/// wire-shape genérico de votes/vote_casts (post-00047 drop de appeals
+/// legacy). Lo que sigue siendo duplicado es el chrome SwiftUI (sheet vs.
+/// body) — V2 cleanup unifica a un solo render via VoteDetailView →
+/// FineAppealVoteBody. Ver `Plans/Phase0.5-UIResourceGeneralization.md`
+/// Sub-fase C/D.
 ///
 /// **Payload shape esperado** (poblado por el caller del `start_vote`
 /// RPC para vote_type='fine_appeal' — migration 00023 sólo extrae

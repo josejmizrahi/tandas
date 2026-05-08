@@ -30,24 +30,45 @@ Emits `fineOfficialized` system event when the grace period ends (via the
 cron). Apple-pay / cash payment flow updates `fines.paid` and emits
 `finePaid`.
 
+### `startVote`
+
+Opens a generic Vote via `start_vote` RPC. Used today by:
+
+- **Fine appeals** — when a member appeals an officialized fine, the
+  appeal flow calls `start_vote(vote_type='fine_appeal', reference_id=fine_id, payload={member_id})`.
+  `start_vote` excludes the infractor from `vote_casts` (governance fix
+  00023) so a 2-member group can't auto-resolve against itself.
+- **Rule change proposals** — when governance is `majorityVote`,
+  `EditRulesView` calls `start_vote(vote_type='rule_change', reference_id=rule_id, payload={proposedAmount})`.
+  On pass, migration 00032 emits a `ruleChangeApplyPending` user_action
+  with deep-link to the rule editor.
+
+Config:
+
+```json
+{ "voteType": "fine_appeal" | "rule_change" | ..., "durationHoursOverride": 72 }
+```
+
+Other vote_types (member_removal, fund_withdrawal, etc.) ship with
+their respective primitives in later phases.
+
 ## Reserved for later phases
 
 | Case | Phase | Use case |
 |---|---|---|
-| `loseTurn` | V2 | Skip member's next host turn |
-| `losePriority` | V2 | Drop member's rotation priority |
-| `serviceCompensation` | V2 | Member owes a non-monetary service (host an extra event) |
-| `blockTemporary` | V2 | Temporarily block from action (e.g. RSVP) |
-| `reciprocity` | V2 | Create a non-monetary debt between members |
+| `loseTurn` | Fase 2 | Skip member's next host turn |
+| `losePriority` | Fase 2 | Drop member's rotation priority |
+| `serviceCompensation` | Fase 4 | Member owes a non-monetary service (host an extra event) |
+| `blockTemporary` | Fase 4 | Temporarily block from action (e.g. RSVP) |
+| `reciprocity` | Fase 4 | Create a non-monetary debt between members |
 | `logOnly` | V1+ | Pure audit consequence — emit log row, no side effects |
 | `sumPoints` | Fase posterior | Member points/karma |
 | `subtractPoints` | "" | "" |
-| `sendNotification` | V1+ | Push notif via send-event-notification (stub until APNs) |
-| `startVote` | V2 | Open a Vote with a referenceId — uses `start_vote` RPC |
-| `createEvent` | V2 | Auto-create another event |
+| `sendNotification` | V1+ | Push notif via send-event-notification (APNs shipped 2026-05-07) |
+| `createEvent` | Fase 4 | Auto-create another event |
 | `assignSlot` | Fase 2 | Assign a slot to a member |
 | `transferRight` | Fase 2 | Move a slot/asset between members |
-| `callWebhook` | V3 | External integration |
+| `callWebhook` | Fase 4 | External integration |
 
 Consequences of these types throw `NotImplementedError`. The rule using
 them is skipped with a structured log.
