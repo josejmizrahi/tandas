@@ -244,16 +244,21 @@ struct AuthGate: View {
             if app.isBootstrapping || !hasCheckedOnboarding {
                 BootstrappingView()
             } else if app.session == nil && hasOnboarded {
-                // Returning user logged out: ALWAYS go to SignInView,
-                // even if a stale OnboardingProgress row survived a
-                // prior incomplete attempt. Without this priority
-                // (above `hasActiveOnboarding`), logout could bounce
-                // the user back into onboarding because the SwiftData
-                // entity wasn't cleared.
+                // Returning user logged out: ALWAYS go to SignInView.
+                // Above the onboarding branch so a stale
+                // OnboardingProgress row can't drag the user back
+                // into the flow.
                 SignInView()
-            } else if hasActiveOnboarding {
-                onboardingFlow
-            } else if shouldShowOnboarding {
+            } else if hasActiveOnboarding || shouldShowOnboarding {
+                // Single branch (consolidated): SwiftUI keeps the
+                // OnboardingRootView's @State coordinatorBundle
+                // alive across `hasActiveOnboarding` flicker (e.g.,
+                // when the entity gets persisted mid-flow flipping
+                // the flag from false → true). Splitting into two
+                // branches with the same content caused view-tree
+                // resets that re-ran bootstrap and recreated the
+                // coordinator at .identity, dropping the user back
+                // to "¿Cómo te llamas?" mid-flow.
                 onboardingFlow
             } else {
                 MainTabView()
@@ -287,17 +292,29 @@ struct AuthGate: View {
     @MainActor
     private func refreshOnboardingState() async {
         let manager = OnboardingProgressManager(context: modelContext)
-        // Stale-entity policy: `hasOnboarded` (UserDefaults flag set by
-        // `OnboardingCompletion.mark()` after successful OTP / Apple
-        // auth) is the single source of truth for "has this device
-        // ever finished onboarding?". When true, any persisted
-        // `OnboardingProgress` row is residue from a cancelled / old-
-        // version flow and must not drag the user back into the flow.
+        // Stale-entity policy. We only clear when we are confident no
+        // active onboarding could be in progress:
         //
-        // When false, we leave the entity alone — the user is genuinely
-        // mid-onboarding and a crash recovery should restore them to
-        // their last persisted step.
-        if hasOnboarded {
+        //   - `isCleanLoggedOut`: session is nil AND the device has
+        //     completed onboarding before. SignInView will take over.
+        //
+        //   - `hasUsableGroup`: a real (non-anon) auth session exists
+        //     AND at least one group is loaded. The user has finished
+        //     onboarding — any persisted entity is residue. We detect
+        //     "real session" via session.user.email/phone so an anon
+        //     session created mid-flow (groups still empty for ms)
+        //     does not trip this branch.
+        //
+        // We deliberately do NOT clear just because `hasOnboarded ==
+        // true`: a returning user starting a SECOND onboarding flow
+        // (after re-installing or "Crear cuenta nueva") still has the
+        // flag set from before, and clearing would wipe their fresh
+        // entity mid-flow → re-bootstrap → coord.start() → bounce
+        // back to identity.
+        let isCleanLoggedOut = app.session == nil && hasOnboarded
+        let isAnonSession = (app.session?.user.email == nil) && (app.session?.user.phone == nil)
+        let hasUsableGroup = app.session != nil && !isAnonSession && !app.groups.isEmpty
+        if isCleanLoggedOut || hasUsableGroup {
             try? manager.clear()
         }
         hasActiveOnboarding = (try? manager.loadActive()) != nil
