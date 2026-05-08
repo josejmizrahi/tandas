@@ -250,10 +250,17 @@ public final class FounderOnboardingCoordinator {
         let enabledDrafts = draft.rules.filter(\.enabled)
         do {
             _ = try await ruleRepo.createInitialRules(groupId: group.id, drafts: enabledDrafts)
-            let patch = GroupConfigPatch(
-                finesEnabled: !enabledDrafts.isEmpty,
-                rotationMode: draft.rotationMode
+            // Primitives § 3 slice 3: write module membership directly. The
+            // `update_group_config` RPC keeps owning rotation_mode (still a
+            // first-class column on groups); fines toggle goes through the
+            // dedicated module write-path so active_modules stays canonical
+            // and the trigger derives fines_enabled.
+            createdGroup = try await groupRepo.setModule(
+                groupId: group.id,
+                slug: GroupModule.basicFines.id,
+                enabled: !enabledDrafts.isEmpty
             )
+            let patch = GroupConfigPatch(rotationMode: draft.rotationMode)
             createdGroup = try await groupRepo.updateConfig(groupId: group.id, patch: patch)
             await complete(step: .rules)
             try? await transition(to: .governance)
@@ -272,7 +279,18 @@ public final class FounderOnboardingCoordinator {
         guard let group = createdGroup else { return }
         isLoading = true
         defer { isLoading = false }
-        let patch = GroupConfigPatch(finesEnabled: false, rotationMode: draft.rotationMode)
+        // Primitives § 3 slice 3: same split as advanceFromRules — module
+        // toggle via setModule, rotation via updateConfig. Soft-fail on the
+        // module call (try?) preserves the prior skip behaviour: a network
+        // hiccup never dead-ends onboarding.
+        if let updated = try? await groupRepo.setModule(
+            groupId: group.id,
+            slug: GroupModule.basicFines.id,
+            enabled: false
+        ) {
+            createdGroup = updated
+        }
+        let patch = GroupConfigPatch(rotationMode: draft.rotationMode)
         if let updated = try? await groupRepo.updateConfig(groupId: group.id, patch: patch) {
             createdGroup = updated
         }

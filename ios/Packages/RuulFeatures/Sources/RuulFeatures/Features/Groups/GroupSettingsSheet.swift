@@ -179,13 +179,26 @@ public struct GroupSettingsSheet: View {
         Task {
             defer { Task { @MainActor in isSaving = false } }
             let trimmed = eventLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+            let priorFinesEnabled = app.capabilityResolver.finesEnabled(in: group)
             let patch = GroupConfigPatch(
                 eventLabel: trimmed.isEmpty ? nil : trimmed,
-                finesEnabled: finesEnabled,
                 rotationMode: rotationMode
             )
             do {
-                let updated = try await app.groupsRepo.updateConfig(groupId: group.id, patch: patch)
+                // Primitives § 3 slice 3: split the write-path. Vocabulary +
+                // rotation continue through `update_group_config`. The fines
+                // toggle is now a module-membership write so active_modules
+                // is canonical and the mig 00049 trigger derives the legacy
+                // boolean. Only call the module RPC if the toggle actually
+                // changed — keeps the save idempotent for vocab-only edits.
+                var updated = try await app.groupsRepo.updateConfig(groupId: group.id, patch: patch)
+                if finesEnabled != priorFinesEnabled {
+                    updated = try await app.groupsRepo.setModule(
+                        groupId: group.id,
+                        slug: GroupModule.basicFines.id,
+                        enabled: finesEnabled
+                    )
+                }
                 await app.refreshProfileAndGroups()
                 await MainActor.run {
                     onSaved?(updated)
