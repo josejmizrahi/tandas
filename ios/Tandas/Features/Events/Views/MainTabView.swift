@@ -208,12 +208,16 @@ struct MainTabView: View {
                 // .onChange hook above rebuilds coordinators automatically.
             }
             .environment(app)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $joinGroupPresented) {
             JoinGroupSheet { _ in
                 // same: activeGroupId is set inside the sheet, switch is reactive
             }
             .environment(app)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $inviteSharePresented) {
             if let group = app.activeGroup {
@@ -229,6 +233,8 @@ struct MainTabView: View {
             Task { await inboxCoordinator?.refresh() }
         }) { ctx in
             ruleEditSheet(ctx)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 

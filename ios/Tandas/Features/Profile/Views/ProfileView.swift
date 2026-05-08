@@ -118,7 +118,21 @@ struct ProfileView: View {
 
     // MARK: - Status hero (the big "you're caught up" or "you owe X")
 
+    @ViewBuilder
     private var statusHero: some View {
+        let isInteractive = !coordinator.isAllClear
+        if isInteractive {
+            Button(action: onOpenMyFines) {
+                statusHeroContent
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } else {
+            statusHeroContent
+        }
+    }
+
+    private var statusHeroContent: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: RuulSpacing.xs) {
                 Circle()
@@ -132,6 +146,7 @@ struct ProfileView: View {
                 .ruulTextStyle(RuulTypography.displayLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Stat tiles (only when there's something to track)
@@ -140,39 +155,46 @@ struct ProfileView: View {
         HStack(spacing: RuulSpacing.sm) {
             statTile(
                 value: amountFormatted(coordinator.totalOutstanding),
-                label: "Pendiente"
+                label: "Pendiente",
+                action: onOpenMyFines
             )
             statTile(
                 value: amountFormatted(coordinator.paidThisMonth),
-                label: "Pagaste este mes"
+                label: "Pagaste este mes",
+                action: onOpenMyFines
             )
             statTile(
                 value: "\(coordinator.totalFineCount)",
-                label: "Multas totales"
+                label: "Multas totales",
+                action: onOpenMyFines
             )
         }
     }
 
-    private func statTile(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text(value)
-                .ruulTextStyle(RuulTypography.statMedium)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+    private func statTile(value: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                Text(value)
+                    .ruulTextStyle(RuulTypography.statMedium)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(label.uppercased())
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(RuulSpacing.md)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
-        )
+        .buttonStyle(.plain)
     }
 
     // MARK: - Sections

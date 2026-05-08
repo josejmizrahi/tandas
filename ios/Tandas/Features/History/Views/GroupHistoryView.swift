@@ -37,11 +37,15 @@ struct GroupHistoryView: View {
             SystemEventDetailView(event: ev, memberName: nil) {
                 detailEvent = nil
             }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showFilters) {
             HistoryFilterSheet(coordinator: coordinator) {
                 showFilters = false
             }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
