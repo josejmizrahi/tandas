@@ -11,7 +11,7 @@ struct GroupIdentityView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.allCases.count,
+            stepCount: FounderStep.visibleSteps.count,
             title: "Crea tu grupo",
             subtitle: "Tu grupo se vuelve vivo en cuanto le pongas nombre.",
             primaryCTA: ("Crear grupo", coord.isLoading, { Task { await coord.advanceFromGroupIdentity() } }),
@@ -51,7 +51,7 @@ struct GroupIdentityView: View {
     }
 
     private var progressValue: Double {
-        Double(FounderStep.group.index) / Double(FounderStep.allCases.count - 1)
+        FounderStep.group.progressFraction
     }
 
     private var suggestionChips: some View {

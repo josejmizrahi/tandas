@@ -12,7 +12,7 @@ struct FounderIdentityView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.allCases.count,
+            stepCount: FounderStep.visibleSteps.count,
             title: "¿Cómo te llamas?",
             subtitle: "Así te van a ver tus grupos.",
             primaryCTA: ("Continuar", coord.isLoading, primaryAction),
@@ -36,7 +36,7 @@ struct FounderIdentityView: View {
     }
 
     private var progressValue: Double {
-        Double(FounderStep.identity.index) / Double(FounderStep.allCases.count - 1)
+        FounderStep.identity.progressFraction
     }
 
     private func primaryAction() {

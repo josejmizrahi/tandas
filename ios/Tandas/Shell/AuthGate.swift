@@ -279,6 +279,13 @@ struct AuthGate: View {
     @MainActor
     private func refreshOnboardingState() async {
         let manager = OnboardingProgressManager(context: modelContext)
+        // After signOut the session goes nil. If a stale OnboardingProgress
+        // row survived (e.g. user dropped out at OTP, then signed out from
+        // a later session), drop it here so AuthGate doesn't drag the user
+        // back into onboarding when they should land on SignInView.
+        if app.session == nil && hasOnboarded {
+            try? manager.clear()
+        }
         hasActiveOnboarding = (try? manager.loadActive()) != nil
         hasCheckedOnboarding = true
     }

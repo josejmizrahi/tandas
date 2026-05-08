@@ -73,6 +73,14 @@ final class InvitedOnboardingCoordinator {
         }
     }
 
+    /// Beta 1 skip-by-default: the welcome screen for invited users shows
+    /// the group preview ("Estás invitado a Cena de Los Cuates"). That's
+    /// useful info — but if the preview already loaded the user can tap
+    /// straight through. The view calls `acceptInvitation()` which is the
+    /// equivalent transition. Welcome stays visible (it's the moment the
+    /// user decides to accept) — only auto-skip happens via the founder
+    /// flow where the welcome screen has no information value.
+
     // MARK: - Transitions
 
     func acceptInvitation() async {

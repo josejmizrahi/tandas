@@ -48,7 +48,12 @@ final class FounderOnboardingCoordinator {
         try? progress.save(entity)
         progressEntity = entity
         await analytics.track(.onboardingStarted(flowType: .founder))
-        await trackStepStart(.welcome)
+        // Skip-by-default policy (Beta 1 polish): welcome is pure friction
+        // (just a "Hola + Empezar" screen). Land directly on identity so
+        // the user types their name as the first action. The welcome step
+        // is still emitted for analytics continuity.
+        await complete(step: .welcome)
+        try? await transition(to: .identity)
     }
 
     /// Restore from a previous in-progress entity. Reseats currentStep + draft.
@@ -111,13 +116,22 @@ final class FounderOnboardingCoordinator {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         await complete(step: .identity)
-        try? await transition(to: .templateSelect)
+        // Beta 1 skip-by-default: V1 only ships `recurring_dinner` so the
+        // selector has nothing to choose. Auto-assign and skip directly to
+        // group identity. When Phase 2 ships a second template, restore
+        // the visible templateSelect step.
+        draft.template = TemplateRegistry.dinnerRecurringId
+        await complete(step: .templateSelect)
+        try? await transition(to: .group)
     }
 
     func skipIdentity() async {
         displayName = ""
         await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.identity.rawValue))
-        try? await transition(to: .templateSelect)
+        // Mirror advanceFromIdentity: skip templateSelect (V1 has 1 option).
+        draft.template = TemplateRegistry.dinnerRecurringId
+        await complete(step: .templateSelect)
+        try? await transition(to: .group)
     }
 
     /// Sprint 1b: TemplateSelectorView auto-advances 600ms after selection.
@@ -137,9 +151,7 @@ final class FounderOnboardingCoordinator {
             createdGroup = group
             // Sprint 1b: seed the 5 default Platform rules for the chosen
             // template. Idempotent — safe to retry if the user re-enters
-            // this step after a connectivity blip. Failure here is non-fatal:
-            // the legacy rule step (.rules) still works; we just log so we
-            // can surface in analytics later.
+            // this step after a connectivity blip. Failure here is non-fatal.
             if draft.template == TemplateRegistry.dinnerRecurringId {
                 do {
                     _ = try await ruleRepo.seedDinnerTemplateRules(groupId: group.id)
@@ -148,7 +160,16 @@ final class FounderOnboardingCoordinator {
                 }
             }
             await complete(step: .group)
-            try? await transition(to: .vocabulary)
+            // Beta 1 skip-by-default: vocabulary / rules / governance all
+            // have sensible template defaults already on the row. Skip to
+            // invite (the next step that needs founder input). The skipped
+            // steps are still marked completed for analytics continuity;
+            // founder edits these post-onboarding via Settings → Reglas /
+            // Gobernanza if/when they need to.
+            await complete(step: .vocabulary)
+            await complete(step: .rules)
+            await complete(step: .governance)
+            try? await transition(to: .invite)
         } catch {
             self.error = .createGroupFailed(error.localizedDescription)
             await analytics.track(.stepFailed(flowType: .founder, stepID: FounderStep.group.rawValue, errorType: "create_group"))

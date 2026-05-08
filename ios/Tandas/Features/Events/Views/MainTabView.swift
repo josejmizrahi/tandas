@@ -257,6 +257,7 @@ struct MainTabView: View {
                         onSwitchGroup: { groupSwitcherPresented = true },
                         onOpenEvent: { event in detailRoute = event },
                         onOpenFine: { fine in fineDetailRoute = fine },
+                        onOpenRule: { rule in ruleDetailRoute = rule },
                         voteRepo: app.voteRepo,
                         userActionRepo: app.userActionRepo,
                         onSeeOpenVotes: {
@@ -273,6 +274,24 @@ struct MainTabView: View {
                     }
                     .navigationDestination(item: $fineDetailRoute) { fine in
                         fineDetailScreen(fine)
+                    }
+                    .navigationDestination(item: $ruleDetailRoute) { rule in
+                        RuleDetailView(
+                            rule: rule,
+                            canEditRules: rulesCoord.canEditRules,
+                            onEdit: {
+                                ruleEditRoute = RuleEditRouteContext(
+                                    rule: rule,
+                                    group: group,
+                                    proposedAmount: nil,
+                                    pendingActionId: nil
+                                )
+                            },
+                            onProposeChange: {
+                                ruleChangeInitialRule = rule
+                                createRuleChangePresented = true
+                            }
+                        )
                     }
                 } else {
                     ZStack {

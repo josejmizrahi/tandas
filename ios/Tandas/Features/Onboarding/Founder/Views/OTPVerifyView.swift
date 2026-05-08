@@ -12,7 +12,7 @@ struct OTPVerifyView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.allCases.count,
+            stepCount: FounderStep.visibleSteps.count,
             title: titleForChannel,
             subtitle: subtitleForChannel,
             primaryCTA: ("Confirmar", coord.isLoading, submit),
@@ -46,7 +46,7 @@ struct OTPVerifyView: View {
     }
 
     private var progressValue: Double {
-        Double(FounderStep.otp.index) / Double(FounderStep.allCases.count - 1)
+        FounderStep.otp.progressFraction
     }
 
     private var titleForChannel: String {

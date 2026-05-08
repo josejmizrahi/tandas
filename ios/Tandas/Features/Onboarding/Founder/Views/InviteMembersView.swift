@@ -9,7 +9,7 @@ struct InviteMembersView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.allCases.count,
+            stepCount: FounderStep.visibleSteps.count,
             title: "Invita a tu grupo",
             subtitle: "Mínimo 3 personas para empezar.",
             primaryCTA: ("Continuar", coord.isLoading, { Task { await coord.advanceFromInvite() } }),
@@ -48,7 +48,7 @@ struct InviteMembersView: View {
     }
 
     private var progressValue: Double {
-        Double(FounderStep.invite.index) / Double(FounderStep.allCases.count - 1)
+        FounderStep.invite.progressFraction
     }
 
     private func shareLinkCard(group: Group) -> some View {

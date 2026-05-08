@@ -12,7 +12,7 @@ struct PhoneVerifyView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.allCases.count,
+            stepCount: FounderStep.visibleSteps.count,
             title: "Confirma tu número",
             subtitle: "Verifica con Apple o teléfono para guardar todo.",
             primaryCTA: ("Enviar código", coord.isLoading, sendCode),
@@ -70,7 +70,7 @@ struct PhoneVerifyView: View {
     }
 
     private var progressValue: Double {
-        Double(FounderStep.phoneVerify.index) / Double(FounderStep.allCases.count - 1)
+        FounderStep.phoneVerify.progressFraction
     }
 
     private var errorMessage: String? {
