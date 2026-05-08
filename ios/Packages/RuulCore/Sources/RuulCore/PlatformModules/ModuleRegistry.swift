@@ -62,4 +62,48 @@ public enum ModuleRegistry {
         case missingDependency(module: String, requires: String)
         case conflict(module: String, conflictsWith: String)
     }
+
+    // MARK: - Transitive dep / dependent closures
+
+    /// Every module the given slug requires, transitively. Returns an
+    /// ordered, deduplicated set; iteration order is BFS from `id`'s
+    /// direct deps. Unknown ids return an empty set (matches the SQL
+    /// `set_group_module` cascade behaviour for forward-compat slugs).
+    /// Mirrors the closure table hardcoded in `mig 00057`.
+    public static func transitiveDependencies(of id: String) -> [String] {
+        var out: [String] = []
+        var seen = Set<String>([id])
+        var queue: [String] = byId[id]?.dependencies ?? []
+        while !queue.isEmpty {
+            let next = queue.removeFirst()
+            if seen.contains(next) { continue }
+            seen.insert(next)
+            out.append(next)
+            if let m = byId[next] {
+                queue.append(contentsOf: m.dependencies)
+            }
+        }
+        return out
+    }
+
+    /// Every module that requires the given slug, transitively. Used by
+    /// the `set_group_module` disable-cascade so dependent modules are
+    /// removed when their requirement disappears.
+    public static func transitiveDependents(of id: String) -> [String] {
+        var out: [String] = []
+        var seen = Set<String>([id])
+        var queue: [String] = directDependents(of: id)
+        while !queue.isEmpty {
+            let next = queue.removeFirst()
+            if seen.contains(next) { continue }
+            seen.insert(next)
+            out.append(next)
+            queue.append(contentsOf: directDependents(of: next))
+        }
+        return out
+    }
+
+    private static func directDependents(of id: String) -> [String] {
+        v1Modules.compactMap { $0.dependencies.contains(id) ? $0.id : nil }
+    }
 }

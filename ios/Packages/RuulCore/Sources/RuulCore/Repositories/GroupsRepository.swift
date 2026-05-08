@@ -251,6 +251,9 @@ public actor MockGroupsRepository: GroupsRepository {
     /// Mirrors `set_group_module` RPC + the mig 00049 trigger client-side so
     /// tests using `MockGroupsRepository` see the same invariants the DB
     /// enforces: `fines_enabled = ('basic_fines' = ANY(active_modules))`.
+    /// Also applies the same transitive dep/dependent cascade as the SQL
+    /// version (mig 00057): enabling a module pulls in its deps, disabling
+    /// a module also disables anything that requires it.
     public func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group {
         guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
             throw GroupsError.notFound
@@ -259,12 +262,16 @@ public actor MockGroupsRepository: GroupsRepository {
         var modules = g.effectiveActiveModules
         if enabled {
             if !modules.contains(slug) { modules.append(slug) }
+            for dep in ModuleRegistry.transitiveDependencies(of: slug)
+            where !modules.contains(dep) {
+                modules.append(dep)
+            }
         } else {
             modules.removeAll { $0 == slug }
+            let dependents = Set(ModuleRegistry.transitiveDependents(of: slug))
+            modules.removeAll { dependents.contains($0) }
         }
-        let derivedFinesEnabled: Bool = (slug == GroupModule.basicFines.id)
-            ? modules.contains(GroupModule.basicFines.id)
-            : g.finesEnabled
+        let derivedFinesEnabled: Bool = modules.contains(GroupModule.basicFines.id)
         let updated = Group(
             id: g.id,
             name: g.name,
