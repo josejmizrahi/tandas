@@ -64,9 +64,9 @@ public struct RulesView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RuulSpacing.md) {
                             header
-                            if coordinator.openVotesCount > 0 {
-                                openVotesSection
-                            }
+                            // "Votos abiertos" link removed — votes have their
+                                // own sub-tab post-Plan1 cleanup. RulesView stays
+                                // focused on rule list + governance.
                             VStack(spacing: RuulSpacing.sm) {
                                 ForEach(coordinator.rules) { rule in
                                     ruleCard(rule)
