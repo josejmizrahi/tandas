@@ -6,6 +6,15 @@ struct SystemEventDetailView: View {
     let event: SystemEvent
     let memberName: String?
     let dismiss: () -> Void
+    /// Optional: cuando set, agrega un CTA "Ver detalle" que dispara este
+    /// callback. La implementación del padre decide qué destination push
+    /// según el `event.eventType` (router en MainTabView/GroupHistory).
+    /// Cuando `nil`, el primary CTA queda como "Cerrar" (default).
+    var onOpenRelated: ((SystemEvent) -> Void)? = nil
+    /// Label custom si el padre quiere override del default ("Ver multa"
+    /// / "Ver voto" / etc., resuelto por `defaultRelatedLabel()` según
+    /// `event.eventType`).
+    var relatedActionLabel: String? = nil
 
     private static let absoluteFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -18,7 +27,7 @@ struct SystemEventDetailView: View {
     var body: some View {
         ModalSheetTemplate(
             title: titleText,
-            primaryCTA: ("Cerrar", dismiss)
+            primaryCTA: relatedCTA() ?? ("Cerrar", dismiss)
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 metadataCard
@@ -26,6 +35,35 @@ struct SystemEventDetailView: View {
                     payloadCard
                 }
             }
+        }
+    }
+
+    /// Returns a `(label, perform)` tuple cuando hay related detail
+    /// disponible. ModalSheetTemplate solo soporta un primaryCTA, así que
+    /// cuando hay related-detail prima el "Ver X" — la sheet hace dismiss
+    /// en el padre on push del navigationDestination.
+    private func relatedCTA() -> (String, () -> Void)? {
+        guard let onOpenRelated else { return nil }
+        let label = relatedActionLabel ?? defaultRelatedLabel()
+        return (label, { onOpenRelated(event) })
+    }
+
+    /// Default CTA label per event type. Mapped to the canonical
+    /// destination labels usadas en el resto de la app (es-MX).
+    private func defaultRelatedLabel() -> String {
+        switch event.eventType {
+        case .fineOfficialized, .fineVoided, .finePaid, .fineReminderSent:
+            return "Ver multa"
+        case .voteOpened, .voteCast, .voteResolved:
+            return "Ver voto"
+        case .appealCreated, .appealResolved:
+            return "Ver apelación"
+        case .eventClosed, .eventCreated, .checkInRecorded:
+            return "Ver evento"
+        case .ruleEnabledChanged, .ruleAmountChanged:
+            return "Ver regla"
+        default:
+            return "Ver detalle"
         }
     }
 

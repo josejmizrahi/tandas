@@ -290,6 +290,7 @@ struct EventDetailView: View {
                 Image(systemName: "clock.fill")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color.ruulWarning)
+                    .accessibilityHidden(true)
                 Text(countdown)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -436,6 +437,7 @@ struct EventDetailView: View {
                 // DS v3 §13: pill nav chrome interactivo — Liquid Glass real.
                 .ruulGlass(Circle(), material: .regular, interactive: true)
                 .ruulElevation(.sm)
+                .accessibilityHidden(true)
         }
         .buttonStyle(.ruulPress)
         .accessibilityLabel(label)

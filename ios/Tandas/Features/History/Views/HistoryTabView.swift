@@ -11,11 +11,15 @@ struct HistoryTabView: View {
     /// `GroupHistoryView` usa `@State var coordinator` (no `@Bindable`),
     /// así que se pasa por valor al child y este lo adopta como state propio.
     let coordinator: GroupHistoryCoordinator
+    /// Optional: forward al `GroupHistoryView` para mostrar CTA
+    /// "Ver multa / Ver voto / etc." en el detail sheet. El router real
+    /// vive en `MainTabView.routeFromHistoryEvent(_:)`.
+    var onOpenRelated: ((SystemEvent) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            GroupHistoryView(coordinator: coordinator)
+            GroupHistoryView(coordinator: coordinator, onOpenRelated: onOpenRelated)
         }
     }
 

@@ -287,6 +287,13 @@ struct MainTabView: View {
 
     /// Tab "Historial" — timeline de SystemEvents del grupo activo via
     /// `HistoryTabView`. Antes vivía como push desde Profile.
+    ///
+    /// Round 3: el detail sheet expone un CTA "Ver multa / Ver voto / Ver
+    /// evento / Ver regla" cuando el event tiene un detail relacionado.
+    /// El handler (`routeFromHistoryEvent`) decide qué tab activar y qué
+    /// route state setear. Como `fineDetailRoute` está declarado en
+    /// homeTab + groupTab + settingsTab stacks, el push ocurre en el tab
+    /// destino (switch antes del set para que el push sea visible).
     @ViewBuilder
     private var historyTab: some View {
         NavigationStack {
@@ -296,7 +303,10 @@ struct MainTabView: View {
                     HistoryTabView(
                         activeGroup: group,
                         onSwitchGroup: { groupSwitcherPresented = true },
-                        coordinator: coord
+                        coordinator: coord,
+                        onOpenRelated: { event in
+                            routeFromHistoryEvent(event)
+                        }
                     )
                 } else {
                     ZStack {
@@ -306,6 +316,60 @@ struct MainTabView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    /// Router para SystemEvent taps en el History timeline. Resuelve el
+    /// detail relacionado al event.eventType y dispara el push correcto.
+    /// Cambia `selectedTab` antes de setear el route porque los
+    /// `navigationDestination(item:)` viven en NavigationStacks específicos
+    /// (home / group / settings), no en historyTab.
+    ///
+    /// Convención de tabs:
+    /// - fines / appeals → groupTab (donde está el `fineDetailRoute` push)
+    /// - votes → groupTab (`voteDetailRoute`)
+    /// - events → homeTab (`detailRoute`)
+    /// - rules → groupTab (`ruleDetailRoute`)
+    @MainActor
+    private func routeFromHistoryEvent(_ event: SystemEvent) {
+        guard let resourceId = event.resourceId else { return }
+        Task {
+            switch event.eventType {
+            case .fineOfficialized, .fineVoided, .finePaid, .fineReminderSent:
+                if let fine = try? await app.fineRepo.fine(id: resourceId) {
+                    selectedTab = .group
+                    fineDetailRoute = fine
+                }
+            case .voteOpened, .voteCast, .voteResolved:
+                if let vote = try? await app.voteRepo.vote(id: resourceId) {
+                    selectedTab = .group
+                    voteDetailRoute = VoteDetailRouteContext(vote: vote)
+                }
+            case .appealCreated, .appealResolved:
+                // resourceId es appeal_id; resolver appeal → fine para
+                // routear al FineDetailView (que ya muestra appeal state).
+                if let appeal = try? await app.appealRepo.appeal(id: resourceId),
+                   let fine = try? await app.fineRepo.fine(id: appeal.fineId) {
+                    selectedTab = .group
+                    fineDetailRoute = fine
+                }
+            case .eventClosed, .eventCreated, .checkInRecorded:
+                if let evt = try? await app.eventRepo.event(resourceId) {
+                    selectedTab = .home
+                    detailRoute = evt
+                }
+            case .ruleEnabledChanged, .ruleAmountChanged:
+                // rulesCoordinator.rules es la fuente in-memory; no hay
+                // repo.rule(id:) — buscamos por id sobre la lista cacheada.
+                if let rules = rulesCoordinator?.rules,
+                   let rule = rules.first(where: { $0.id == resourceId }) {
+                    selectedTab = .group
+                    ruleDetailRoute = rule
+                }
+            default:
+                // Sin destination canónico — la sheet ya cerró, no-op.
+                break
+            }
         }
     }
 

@@ -8,6 +8,11 @@ struct GroupHistoryView: View {
     @State var coordinator: GroupHistoryCoordinator
     @State private var detailEvent: SystemEvent?
     @State private var showFilters: Bool = false
+    /// Optional: cuando set, el `SystemEventDetailView` muestra un CTA
+    /// "Ver detalle" que routea al destination real (multa / voto /
+    /// evento / regla). El forwarding pasa por `HistoryTabView` →
+    /// `MainTabView.routeFromHistoryEvent(_:)`.
+    var onOpenRelated: ((SystemEvent) -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -34,9 +39,20 @@ struct GroupHistoryView: View {
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
         .sheet(item: $detailEvent) { ev in
-            SystemEventDetailView(event: ev, memberName: nil) {
-                detailEvent = nil
-            }
+            SystemEventDetailView(
+                event: ev,
+                memberName: nil,
+                dismiss: { detailEvent = nil },
+                onOpenRelated: onOpenRelated.map { handler in
+                    { event in
+                        // Dismiss la sheet primero — el padre setea el route
+                        // en el siguiente runloop (Task) y SwiftUI puede
+                        // pushear sin overlap con la sheet.
+                        detailEvent = nil
+                        handler(event)
+                    }
+                }
+            )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }

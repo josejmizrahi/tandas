@@ -88,6 +88,7 @@ struct HomeView: View {
                 .frame(width: 40, height: 40)
                 .background(Color.ruulSurface, in: Circle())
                 .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                .accessibilityHidden(true)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
@@ -246,6 +247,7 @@ struct HomeView: View {
                 Spacer()
                 Image(systemName: "arrow.right")
                     .font(.system(size: 14, weight: .bold))
+                    .accessibilityHidden(true)
             }
             .foregroundStyle(Color.ruulOnImageInverse)
             .padding(RuulSpacing.md)
@@ -276,6 +278,7 @@ struct HomeView: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(Color.ruulOnImageSecondary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, RuulSpacing.sm)
         .padding(.horizontal, RuulSpacing.md)
@@ -298,6 +301,7 @@ struct HomeView: View {
                 Image(systemName: "calendar.badge.plus")
                     .font(.system(size: 32, weight: .semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
+                    .accessibilityHidden(true)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text("Aún no hay eventos")
@@ -436,11 +440,13 @@ struct HomeView: View {
                 HStack(spacing: RuulSpacing.xs) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 14, weight: .semibold))
+                        .accessibilityHidden(true)
                     Text("Ver historial")
                         .ruulTextStyle(RuulTypography.headline)
                     Spacer()
                     Image(systemName: "arrow.right")
                         .font(.system(size: 12, weight: .bold))
+                        .accessibilityHidden(true)
                 }
                 .foregroundStyle(Color.ruulTextSecondary)
                 .padding(.vertical, RuulSpacing.md)
@@ -460,6 +466,7 @@ struct HomeView: View {
                 .frame(width: 60, height: 60)
                 .background(Color.ruulTextPrimary, in: Circle())
                 .ruulElevation(.lg)
+                .accessibilityHidden(true)
         }
         .buttonStyle(.ruulPress)
         .padding(RuulSpacing.lg)
@@ -491,6 +498,7 @@ struct HomeView: View {
         HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
+                .accessibilityHidden(true)
             Text(text)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }
