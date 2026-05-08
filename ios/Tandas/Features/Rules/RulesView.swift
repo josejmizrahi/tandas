@@ -124,6 +124,7 @@ struct RulesView: View {
                         .frame(width: 36, height: 36)
                         .background(Color.ruulSurface, in: Circle())
                         .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                        .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Editar reglas")
@@ -147,6 +148,7 @@ struct RulesView: View {
                     .foregroundStyle(Color.ruulAccent)
                     .frame(width: 32, height: 32)
                     .background(Color.ruulSurface, in: Circle())
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Votos abiertos")
                         .ruulTextStyle(RuulTypography.headline)
@@ -163,6 +165,7 @@ struct RulesView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
             }
             .padding(RuulSpacing.md)
             .background(

@@ -43,6 +43,7 @@ struct ShareEventSheet: View {
                     HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 16, weight: .semibold))
+                            .accessibilityHidden(true)
                         Text("Compartir link")
                             .ruulTextStyle(RuulTypography.body)
                     }
@@ -60,6 +61,7 @@ struct ShareEventSheet: View {
                         HStack(spacing: RuulSpacing.xs) {
                             Image(systemName: "calendar.badge.plus")
                                 .font(.system(size: 16, weight: .semibold))
+                                .accessibilityHidden(true)
                             Text("Agregar a Calendario")
                                 .ruulTextStyle(RuulTypography.body)
                         }
@@ -113,6 +115,7 @@ struct ShareEventSheet: View {
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(Color.ruulTextTertiary)
+                .accessibilityHidden(true)
         }
     }
 }

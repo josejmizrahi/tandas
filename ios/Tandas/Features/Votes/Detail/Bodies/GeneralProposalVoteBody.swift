@@ -22,6 +22,7 @@ struct GeneralProposalVoteBody: View {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)

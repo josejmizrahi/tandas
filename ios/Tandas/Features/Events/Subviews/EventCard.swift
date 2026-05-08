@@ -166,6 +166,7 @@ struct EventCard: View {
         HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
+                .accessibilityHidden(true)
             Text(text)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }
@@ -202,6 +203,7 @@ struct EventCard: View {
         return HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .bold))
+                .accessibilityHidden(true)
             Text(label)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }

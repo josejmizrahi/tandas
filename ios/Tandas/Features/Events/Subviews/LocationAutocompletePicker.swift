@@ -42,6 +42,7 @@ struct LocationAutocompletePicker: View {
                         Image(systemName: "mappin")
                             .foregroundStyle(Color.ruulAccent)
                             .frame(width: 22)
+                            .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.title)
                                 .ruulTextStyle(RuulTypography.body)
@@ -75,6 +76,7 @@ struct LocationAutocompletePicker: View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
                 .foregroundStyle(Color.ruulPositive)
+                .accessibilityHidden(true)
             Text(name)
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -87,8 +89,10 @@ struct LocationAutocompletePicker: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Quitar ubicación")
         }
         .padding(RuulSpacing.sm)
         .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))

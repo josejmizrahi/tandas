@@ -46,6 +46,7 @@ struct RuleChangeVoteBody: View {
                     amountChip(label: "Actual",  value: currentAmount,  tint: Color.ruulTextTertiary)
                     Image(systemName: "arrow.right")
                         .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
                     amountChip(label: "Nuevo",   value: proposedAmount, tint: Color.ruulPositive)
                 }
             }
@@ -53,6 +54,7 @@ struct RuleChangeVoteBody: View {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)

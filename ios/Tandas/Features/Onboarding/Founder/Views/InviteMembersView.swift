@@ -68,6 +68,7 @@ struct InviteMembersView: View {
                 Spacer(minLength: 0)
                 Image(systemName: "square.and.arrow.up")
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
             }
             .padding(RuulSpacing.md)
             .background(
@@ -108,12 +109,15 @@ struct InviteMembersView: View {
                         if pending.sentAt != nil {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(Color.ruulPositive)
+                                .accessibilityLabel("Invitación enviada")
                         } else {
                             Button { remove(pending) } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(Color.ruulTextTertiary)
+                                    .accessibilityHidden(true)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("Quitar invitación")
                         }
                     }
                     .padding(.vertical, RuulSpacing.xs)

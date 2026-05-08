@@ -59,6 +59,7 @@ struct AttendeesListSection: View {
                         Image(systemName: expanded.contains(status) ? "chevron.up" : "chevron.down")
                             .font(.system(size: RuulSize.iconXS, weight: .bold))
                             .foregroundStyle(Color.ruulTextTertiary)
+                            .accessibilityHidden(true)
                     }
                     .contentShape(Rectangle())
                 }
@@ -120,6 +121,7 @@ struct AttendeesListSection: View {
         }()
         return Image(systemName: icon)
             .foregroundStyle(color)
+            .accessibilityHidden(true)
     }
 
     private func sectionLabel(for status: RSVPStatus) -> String {

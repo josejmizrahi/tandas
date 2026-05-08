@@ -175,6 +175,7 @@ struct RuleDetailView: View {
                 .foregroundStyle(Color.ruulNegative)
                 .frame(width: 24)
                 .padding(.top, 2)
+                .accessibilityHidden(true)
             Text(humanConsequence(cons))
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextPrimary)

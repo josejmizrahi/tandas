@@ -85,6 +85,7 @@ struct SettingsSheet: View {
                     VStack(spacing: RuulSpacing.xxs) {
                         Image(systemName: option.systemImage)
                             .font(.system(size: 22, weight: .medium))
+                            .accessibilityHidden(true)
                         Text(option.label)
                             .ruulTextStyle(RuulTypography.callout)
                     }
@@ -129,6 +130,7 @@ struct SettingsSheet: View {
             HStack {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                     .font(.system(size: 16, weight: .medium))
+                    .accessibilityHidden(true)
                 Text("Cerrar sesión")
                     .ruulTextStyle(RuulTypography.body)
                 Spacer()

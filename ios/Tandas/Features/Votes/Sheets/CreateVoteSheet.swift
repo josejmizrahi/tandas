@@ -67,6 +67,7 @@ struct CreateVoteSheet: View {
                     .foregroundStyle(enabled ? Color.ruulAccent : Color.ruulTextTertiary)
                     .frame(width: 44, height: 44)
                     .background(Color.ruulSurface, in: Circle())
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .ruulTextStyle(RuulTypography.headline)
@@ -81,6 +82,7 @@ struct CreateVoteSheet: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(RuulSpacing.md)

@@ -56,6 +56,7 @@ private struct VoteCastButtons: View {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: systemImage)
                     .foregroundStyle(tint)
+                    .accessibilityHidden(true)
                 Text(label)
                     .ruulTextStyle(RuulTypography.headline)
                 Spacer()
@@ -80,6 +81,7 @@ private struct VoteAlreadyCastView: View {
         HStack(spacing: RuulSpacing.xs) {
             Image(systemName: icon)
                 .foregroundStyle(tint)
+                .accessibilityHidden(true)
             Text("Tu voto: \(text)")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -109,6 +111,7 @@ private struct VoteResolvedView: View {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "flag.checkered")
                     .foregroundStyle(displayed.tint)
+                    .accessibilityHidden(true)
                 Text(displayed.label)
                     .ruulTextStyle(RuulTypography.headline)
                     .foregroundStyle(Color.ruulTextPrimary)

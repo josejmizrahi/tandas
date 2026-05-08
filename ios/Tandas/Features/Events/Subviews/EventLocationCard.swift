@@ -57,6 +57,7 @@ struct EventLocationCard: View {
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(locationName)
                     .ruulTextStyle(RuulTypography.headline)
@@ -71,6 +72,7 @@ struct EventLocationCard: View {
             Image(systemName: "arrow.up.right.square")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
+                .accessibilityHidden(true)
         }
     }
 }

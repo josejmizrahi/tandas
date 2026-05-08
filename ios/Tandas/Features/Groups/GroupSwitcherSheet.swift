@@ -102,6 +102,7 @@ struct GroupSwitcherSheet: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(Color.ruulAccent)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.horizontal, RuulSpacing.md)
@@ -126,6 +127,7 @@ struct GroupSwitcherSheet: View {
                     .foregroundStyle(Color.ruulAccent)
                     .frame(width: 44, height: 44)
                     .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .ruulTextStyle(RuulTypography.body)
@@ -138,6 +140,7 @@ struct GroupSwitcherSheet: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)

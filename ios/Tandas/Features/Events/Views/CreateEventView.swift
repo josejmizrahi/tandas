@@ -83,6 +83,7 @@ struct CreateEventView: View {
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulImageBadge, in: Circle())
                     .padding(RuulSpacing.sm)
+                    .accessibilityHidden(true)
             }
         }
         .buttonStyle(.ruulPress)
@@ -230,6 +231,7 @@ struct CreateEventView: View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "photo.on.rectangle")
                 .foregroundStyle(Color.ruulAccent)
+                .accessibilityHidden(true)
             Text("Subir foto propia")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextPrimary)

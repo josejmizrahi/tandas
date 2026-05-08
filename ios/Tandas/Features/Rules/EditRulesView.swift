@@ -168,6 +168,7 @@ struct EditRulesView: View {
         let relative = formatter.localizedString(for: vote.closesAt, relativeTo: .now)
         return HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: "hand.raised.fill")
+                .accessibilityHidden(true)
             Text("Votación pendiente · cierra \(relative)")
         }
         .ruulTextStyle(RuulTypography.footnote)
