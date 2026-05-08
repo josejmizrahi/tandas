@@ -653,7 +653,9 @@ Co-Authored-By: claude-flow <ruv@ruv.net>"
 
 ---
 
-### Task 7: Relax `Resource` data protocol — drop Codable requirement
+### Task 7: Relax `Resource` data protocol — drop Codable + rename status → resourceStatus
+
+**Why the rename:** The plan originally kept the protocol's status as `status: String` and used a `Mirror`-based workaround in Task 9 to avoid the name conflict with `Event.status: EventStatus` (typed enum). That Mirror trick doesn't actually work — Swift forbids stored property + extension-computed property of the same name. Cleaner: rename the protocol's requirement to `resourceStatus: String`. `Event` adds `var resourceStatus: String { status.rawValue }` via extension (no conflict). `ResourceRow` already has `let status: String` (the wire column); add a passthrough `var resourceStatus: String { status }`.
 
 **Files:**
 - Modify: `ios/Packages/RuulCore/Sources/RuulCore/PlatformModels/Resource.swift`
