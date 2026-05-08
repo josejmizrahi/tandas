@@ -40,6 +40,7 @@ struct TandasApp: App {
             let userActions = MockUserActionRepository()
             let appeals = MockAppealRepository()
             let fines = MockFineRepository()
+            let resources = MockResourceRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -60,6 +61,7 @@ struct TandasApp: App {
                 userActionRepo: userActions,
                 appealRepo: appeals,
                 fineRepo: fines,
+                resourceRepo: resources,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics
@@ -84,6 +86,7 @@ struct TandasApp: App {
             let userActions = LiveUserActionRepository(client: client)
             let appeals = LiveAppealRepository(client: client)
             let fines = LiveFineRepository(client: client)
+            let resources = LiveResourceRepository(client: client)
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -104,6 +107,7 @@ struct TandasApp: App {
                 userActionRepo: userActions,
                 appealRepo: appeals,
                 fineRepo: fines,
+                resourceRepo: resources,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics,

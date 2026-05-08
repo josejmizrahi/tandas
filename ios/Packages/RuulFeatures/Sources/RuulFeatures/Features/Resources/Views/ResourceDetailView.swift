@@ -13,16 +13,15 @@ import RuulCore
 /// existente como canonical entry point para events. ResourceDetailView
 /// se vuelve canonical en Phase 2 cuando llega Slot.
 public struct ResourceDetailView: View {
-    public let resource: any ResourceProtocol
+    public let resource: any Resource
 
-    public init(resource: any ResourceProtocol) {
+    public init(resource: any Resource) {
         self.resource = resource
     }
 
     public var body: some View {
         switch resource.resourceType {
         case .event:
-            // V1 stub. Phase 2: wire EventDetailCoordinator from injected env.
             UnknownResourceDetailBody(resource: resource, label: "Event")
         case .slot, .fund, .position, .asset, .contribution, .unknown:
             UnknownResourceDetailBody(
@@ -33,11 +32,8 @@ public struct ResourceDetailView: View {
     }
 }
 
-/// Fallback visual para resource types aún no implementados. Igual que
-/// `UnknownResourceCard`: existir hace el switch total y deja a QA
-/// detectar inmediatamente cuando un resource llega sin body.
 private struct UnknownResourceDetailBody: View {
-    public let resource: any ResourceProtocol
+    public let resource: any Resource
     public let label: String
 
     public var body: some View {

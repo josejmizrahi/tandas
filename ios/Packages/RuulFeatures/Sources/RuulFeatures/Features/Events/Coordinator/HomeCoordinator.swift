@@ -9,12 +9,13 @@ public final class HomeCoordinator {
     public private(set) var nextEvent: Event?
     public private(set) var upcomingEvents: [Event] = []
 
-    /// Resource-shaped accessor sobre `nextEvent`. V1 deriva trivialmente
-    /// envolviendo en `EventResource`; cuando un segundo resource type
-    /// shippee, este passa a ser canonical y `nextEvent` se elimina (Path B
-    /// additive de Sub-fase B — Phase 0.5 audit § 5.1 #8).
-    public var nextResource: (any ResourceProtocol)? {
-        nextEvent.map(EventResource.init)
+    /// Resource-shaped accessor sobre `nextEvent`. V1: el único concrete
+    /// resource es Event. Ya no se envuelve en un wrapper — Event conforma
+    /// a Resource directamente (Plan 1, Task 9). Cuando llegue Slot/Fund
+    /// en Phase 2, este accessor extiende para retornar un resource del
+    /// primer módulo activo cuyo type esté disponible.
+    public var nextResource: (any Resource)? {
+        nextEvent
     }
 
     public private(set) var myRSVPs: [UUID: RSVP] = [:]

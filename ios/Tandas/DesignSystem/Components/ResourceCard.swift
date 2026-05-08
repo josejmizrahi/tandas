@@ -10,17 +10,14 @@ import RuulFeatures
 /// same switch here.
 ///
 /// **Por qué scaffolding y no full HomeView swap V1**: HomeView's hero
-/// (`heroTile`) es un render bespoke (4/5 aspect, displayMedium typography,
-/// inline RSVP CTA) — no es EventCard. Forwarding 10+ params del hero a
-/// través de ResourceCard sería ruido. ResourceCard V1 es scaffolding +
-/// router para los consumers que SÍ usan EventCard hoy (`MyFeedView`,
-/// `PastEventsView`). HomeView gana acceso a `coordinator.nextResource`
-/// como handle resource-shaped, listo para cuando un segundo type llegue.
+/// es un render bespoke. ResourceCard V1 es scaffolding + router para
+/// los consumers que SÍ usan EventCard hoy (`MyFeedView`, `PastEventsView`).
 ///
-/// Mismo invariante que `EventResource`: `resource.resourceType == .event
-/// ⇒ resource is EventResource`. Cast con seguridad dentro del case.
+/// Invariante: `resource.resourceType == .event ⇒ resource is Event`
+/// (Event conforms to Resource directly post Plan 1; the EventResource
+/// wrapper is gone). Cast con seguridad dentro del case.
 struct ResourceCard: View {
-    let resource: any ResourceProtocol
+    let resource: any Resource
     let myStatus: RSVPStatus?
     let isHostedByMe: Bool
     let attendeeAvatars: [RuulAvatarStack.Person]
@@ -29,7 +26,7 @@ struct ResourceCard: View {
     let onTap: () -> Void
 
     init(
-        resource: any ResourceProtocol,
+        resource: any Resource,
         myStatus: RSVPStatus? = nil,
         isHostedByMe: Bool = false,
         attendeeAvatars: [RuulAvatarStack.Person] = [],
@@ -49,9 +46,9 @@ struct ResourceCard: View {
     var body: some View {
         switch resource.resourceType {
         case .event:
-            if let eventResource = resource as? EventResource {
+            if let event = resource as? Event {
                 EventCard(
-                    event: eventResource.event,
+                    event: event,
                     myStatus: myStatus,
                     isHostedByMe: isHostedByMe,
                     attendeeAvatars: attendeeAvatars,
@@ -60,13 +57,11 @@ struct ResourceCard: View {
                     onTap: onTap
                 )
             } else {
-                // Defensive — V1 invariant says EventResource is the only
-                // .event conformer. Si esto se rompe es bug, no UI fallback.
+                // Defensive — V1 invariant says Event is the only .event
+                // conformer. Si esto se rompe es bug, no UI fallback.
                 UnknownResourceCard(resource: resource)
             }
         case .slot, .fund, .position, .asset, .contribution, .unknown:
-            // Phase 2/3/4 bodies. V1 fallback hasta que cada type tenga
-            // su body concreto en este switch.
             UnknownResourceCard(resource: resource)
         }
     }
@@ -76,7 +71,7 @@ struct ResourceCard: View {
 /// que el switch sea total y para que QA spotee inmediatamente si un
 /// resource llega a UI sin body — no es un error silencioso.
 private struct UnknownResourceCard: View {
-    let resource: any ResourceProtocol
+    let resource: any Resource
 
     var body: some View {
         HStack(spacing: RuulSpacing.xs) {
