@@ -3,8 +3,10 @@ import PhotosUI
 
 struct FounderIdentityView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord
+    @Environment(AppState.self) private var app
     @State private var selectedItem: PhotosPickerItem?
     @State private var avatarImageData: Data?
+    @State private var isSwitchingToSignIn: Bool = false
     @FocusState private var nameFocused: Bool
 
     var body: some View {
@@ -27,11 +29,60 @@ struct FounderIdentityView: View {
                     label: "Nombre"
                 )
                 .focused($nameFocused)
+                signInEscape
+                    .padding(.top, RuulSpacing.lg)
             }
         }
         .onAppear { nameFocused = true }
         .onChange(of: selectedItem) { _, newValue in
             Task { await loadAvatar(from: newValue) }
+        }
+    }
+
+    /// Defensive escape hatch: a returning user whose `hasOnboarded` flag
+    /// was wiped (e.g. reinstall pre-Keychain-migration, or first-launch
+    /// race) lands here even though their account already exists. The
+    /// link signs out any anon session created mid-flow, marks
+    /// `hasOnboarded` so AuthGate routes to SignInView next render, and
+    /// clears the persisted onboarding entity. Mirrors SignInView's
+    /// "¿No tienes cuenta? Crear nueva" link.
+    private var signInEscape: some View {
+        HStack(spacing: RuulSpacing.xs) {
+            Text("¿Ya tienes cuenta?")
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextSecondary)
+            Button {
+                switchToSignIn()
+            } label: {
+                Text("Iniciar sesión")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulAccent)
+            }
+            .buttonStyle(.plain)
+            .disabled(isSwitchingToSignIn)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("¿Ya tienes cuenta? Iniciar sesión")
+    }
+
+    private func switchToSignIn() {
+        guard !isSwitchingToSignIn else { return }
+        isSwitchingToSignIn = true
+        Task {
+            // Sign out the anon session if `GroupsRepository.createInitial`
+            // already ran. Failure is fine — the worst case is the anon
+            // lingers until the user signs in for real, at which point
+            // signInWithIdToken / verifyOTP replaces it.
+            try? await app.auth.signOut()
+            // Mark the flag so AuthGate's `session==nil && hasOnboarded`
+            // gate routes to SignInView. The ".onReceive" subscriber on
+            // AuthGate picks up the notification synchronously.
+            OnboardingCompletion.mark()
+            // OnboardingProgress is cleared by AuthGate's
+            // `refreshOnboardingState` once it sees the new state
+            // (`isCleanLoggedOut == true`). No manual clear needed.
+            await MainActor.run { isSwitchingToSignIn = false }
         }
     }
 

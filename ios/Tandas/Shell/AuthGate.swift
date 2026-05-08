@@ -139,25 +139,34 @@ final class AppState {
     }
 
     func start() async {
-        // Proactive anon sign-in is ONLY for first-time devices. The
-        // founder onboarding needs an auth.uid() at step 2 to call
-        // `create_group_with_admin`. Returning users (the device
-        // already completed onboarding once — `hasOnboarded` flag set)
-        // must NOT get an automatic anon session, otherwise:
-        //   - AuthGate sees `session != nil` → never routes to
-        //     SignInView even though the user is effectively logged out
-        //   - The user is dragged into a fresh onboarding
+        // No proactive anon sign-in. Anonymous sessions are an
+        // implementation detail of `GroupsRepository.createInitial`
+        // (it has a reactive sign-out + anon + retry path) — the app
+        // launch must NOT pre-create one, otherwise:
+        //   - Returning logged-out users get a fresh anon session and
+        //     AuthGate's `session != nil` short-circuits SignInView,
+        //     dragging them back into onboarding.
+        //   - First-time users on an old keychain (reinstall with a
+        //     stale-but-still-decryptable session) get the same.
         //
-        // GroupsRepository.createInitial() still has its reactive retry
-        // (sign-out + anon + retry) so first-time users that hit a
-        // create-group call without a session get an anon there.
-        if !OnboardingCompletion.hasOnboarded {
-            try? await auth.signInAnonymouslyIfNeeded()
-        }
-
+        // First-time founders without a session get their anon at the
+        // moment they tap "Continuar" on GroupIdentityView, which is
+        // also the moment we have a real intent to create data.
         for await s in auth.sessionStream {
             self.session = s
-            if s != nil {
+            if let s {
+                // Defensive: a real (email/phone) session means the
+                // user has authenticated at some point on this device.
+                // If the keychain restored a session but the
+                // `hasOnboarded` flag is missing (e.g. legacy device
+                // pre-keychain-migration, or a fresh install where
+                // keychain survived but UserDefaults didn't), promote
+                // it now so AuthGate routes to SignInView next time
+                // they sign out instead of founder onboarding.
+                let isReal = s.user.email != nil || s.user.phone != nil
+                if isReal && !OnboardingCompletion.hasOnboarded {
+                    OnboardingCompletion.mark()
+                }
                 await refreshProfileAndGroups()
             } else {
                 self.profile = nil
@@ -235,7 +244,11 @@ final class AppState {
 struct AuthGate: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(OnboardingCompletion.userDefaultsKey) private var hasOnboarded: Bool = false
+    /// Mirrors `OnboardingCompletion.hasOnboarded` (Keychain-backed). We
+    /// can't use `@AppStorage` because the flag lives in Keychain so it
+    /// survives reinstalls; instead we re-read it on `.task` and on the
+    /// `OnboardingCompletion.didChangeNotification` published by mark/clear.
+    @State private var hasOnboarded: Bool = OnboardingCompletion.hasOnboarded
     @State private var hasActiveOnboarding: Bool = false
     @State private var hasCheckedOnboarding: Bool = false
 
@@ -268,6 +281,13 @@ struct AuthGate: View {
         .task { await refreshOnboardingState() }
         .onChange(of: app.session?.user.id) { _, _ in
             Task { await refreshOnboardingState() }
+        }
+        // Keychain has no Combine surface, so listen for the explicit
+        // mark/clear notification. Without this, SignInView's "Crear
+        // nueva" tap would mutate keychain but AuthGate wouldn't
+        // re-render until the next session change.
+        .onReceive(NotificationCenter.default.publisher(for: OnboardingCompletion.didChangeNotification)) { _ in
+            hasOnboarded = OnboardingCompletion.hasOnboarded
         }
     }
 

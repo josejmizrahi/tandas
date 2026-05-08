@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import AuthenticationServices
 import Supabase
 
@@ -16,6 +17,7 @@ import Supabase
 /// through to the founder onboarding flow.
 struct SignInView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.modelContext) private var modelContext
     @State private var phoneInput: String = ""
     @State private var phoneE164: String = ""
     @State private var otpCode: String = ""
@@ -164,7 +166,7 @@ struct SignInView: View {
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button {
-                OnboardingCompletion.clear()
+                createNewAccount()
             } label: {
                 Text("Crear nueva")
                     .ruulTextStyle(RuulTypography.body)
@@ -176,6 +178,18 @@ struct SignInView: View {
     }
 
     // MARK: - Actions
+
+    /// Opt out of "returning user" routing and start a fresh founder
+    /// onboarding. Clears the persisted hasOnboarded flag (so AuthGate
+    /// stops routing here) AND any stale `OnboardingProgress` row from
+    /// a previous flow that didn't complete — without this, tapping
+    /// "Crear nueva" can drop the user into a half-finished onboarding
+    /// from a prior install instead of a clean welcome.
+    private func createNewAccount() {
+        OnboardingCompletion.clear()
+        let manager = OnboardingProgressManager(context: modelContext)
+        try? manager.clear()
+    }
 
     private func sendOTP() {
         guard let e164 = PhoneFormatter.smartE164(phoneInput) else {
