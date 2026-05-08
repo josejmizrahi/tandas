@@ -29,6 +29,15 @@ struct FineDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     hero
+                    if let coordError = coordinator.error {
+                        RuulInlineMessage(
+                            coordError.message ?? coordError.title,
+                            style: .error,
+                            action: coordError.isRetryable
+                                ? .init(label: "Cerrar", handler: { coordinator.clearError() })
+                                : nil
+                        )
+                    }
                     reasonCard
                     evidenceSection
                     voidedSection

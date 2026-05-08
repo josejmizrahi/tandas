@@ -7,7 +7,13 @@ final class FineDetailCoordinator {
     private(set) var existingAppeal: Appeal?
     private(set) var voteCounts: AppealVoteCounts?
     private(set) var isMutating: Bool = false
-    private(set) var error: String?
+    private(set) var isRefreshing: Bool = false
+    /// Surfaces inline above las acciones cuando un mutating op (apelar /
+    /// pagar) o el refresh fallan. View consume vía `RuulInlineMessage`.
+    /// Per DS v3 §11.4 (CoordinatorError canonical pattern).
+    var error: CoordinatorError?
+
+    func clearError() { error = nil }
 
     let userId: UUID
     let isMine: Bool
@@ -47,6 +53,8 @@ final class FineDetailCoordinator {
     }
 
     func refresh() async {
+        isRefreshing = true
+        defer { isRefreshing = false }
         do {
             if let updated = try await fineRepo.fine(id: fine.id) {
                 fine = updated
@@ -57,12 +65,15 @@ final class FineDetailCoordinator {
             }
         } catch {
             log.warning("fine refresh failed: \(error.localizedDescription)")
+            // Refresh-only failures no entran al banner — el detalle sigue
+            // mostrando data cacheada. Mutating ops sí surface al banner.
         }
     }
 
     func startAppeal(reason: String) async {
         guard !isMutating, isMine else { return }
         isMutating = true
+        error = nil
         defer { isMutating = false }
         do {
             _ = try await appealRepo.startAppeal(fineId: fine.id, reason: reason)
@@ -72,13 +83,14 @@ final class FineDetailCoordinator {
             }
             await refresh()
         } catch {
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos abrir tu apelación")
         }
     }
 
     func payFine() async {
         guard !isMutating, isMine, fine.status == .officialized else { return }
         isMutating = true
+        error = nil
         defer { isMutating = false }
         do {
             fine = try await fineRepo.pay(fineId: fine.id)
@@ -88,7 +100,7 @@ final class FineDetailCoordinator {
                 await beta.finePaid(fineId: fine.id, amountMxn: amountInt)
             }
         } catch {
-            self.error = error.localizedDescription
+            self.error = CoordinatorError.from(error, fallback: "No pudimos marcar como pagada")
         }
     }
 }
