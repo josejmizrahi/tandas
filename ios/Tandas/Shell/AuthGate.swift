@@ -139,13 +139,21 @@ final class AppState {
     }
 
     func start() async {
-        // Proactive: ensure SOME session exists before we enter the
-        // sessionStream loop. If logged out, sign in anonymously so the
-        // founder onboarding can call create_group_with_admin at step 2
-        // (the RPC requires auth.uid()). If anon sign-ins are disabled in
-        // Supabase, this throws — GroupsRepository's reactive retry still
-        // handles the create-group case as a fallback.
-        try? await auth.signInAnonymouslyIfNeeded()
+        // Proactive anon sign-in is ONLY for first-time devices. The
+        // founder onboarding needs an auth.uid() at step 2 to call
+        // `create_group_with_admin`. Returning users (the device
+        // already completed onboarding once — `hasOnboarded` flag set)
+        // must NOT get an automatic anon session, otherwise:
+        //   - AuthGate sees `session != nil` → never routes to
+        //     SignInView even though the user is effectively logged out
+        //   - The user is dragged into a fresh onboarding
+        //
+        // GroupsRepository.createInitial() still has its reactive retry
+        // (sign-out + anon + retry) so first-time users that hit a
+        // create-group call without a session get an anon there.
+        if !OnboardingCompletion.hasOnboarded {
+            try? await auth.signInAnonymouslyIfNeeded()
+        }
 
         for await s in auth.sessionStream {
             self.session = s
@@ -279,11 +287,17 @@ struct AuthGate: View {
     @MainActor
     private func refreshOnboardingState() async {
         let manager = OnboardingProgressManager(context: modelContext)
-        // After signOut the session goes nil. If a stale OnboardingProgress
-        // row survived (e.g. user dropped out at OTP, then signed out from
-        // a later session), drop it here so AuthGate doesn't drag the user
-        // back into onboarding when they should land on SignInView.
-        if app.session == nil && hasOnboarded {
+        // Stale-entity policy: `hasOnboarded` (UserDefaults flag set by
+        // `OnboardingCompletion.mark()` after successful OTP / Apple
+        // auth) is the single source of truth for "has this device
+        // ever finished onboarding?". When true, any persisted
+        // `OnboardingProgress` row is residue from a cancelled / old-
+        // version flow and must not drag the user back into the flow.
+        //
+        // When false, we leave the entity alone — the user is genuinely
+        // mid-onboarding and a crash recovery should restore them to
+        // their last persisted step.
+        if hasOnboarded {
             try? manager.clear()
         }
         hasActiveOnboarding = (try? manager.loadActive()) != nil
