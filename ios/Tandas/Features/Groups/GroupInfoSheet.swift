@@ -431,7 +431,16 @@ struct GroupInfoSheet: View {
             } else {
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(members) { mwp in
-                        memberRow(mwp)
+                        NavigationLink {
+                            MemberDetailView(
+                                memberWithProfile: mwp,
+                                group: currentGroup,
+                                isCurrentUser: mwp.member.userId == currentUserId
+                            )
+                        } label: {
+                            memberRow(mwp)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
