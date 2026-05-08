@@ -593,9 +593,15 @@ struct MainTabView: View {
 
     private func reviewProposedScreen(_ event: Event) -> some View {
         let coord = ReviewProposedFinesCoordinator(event: event, fineRepo: app.fineRepo)
-        return ReviewProposedFinesView(coordinator: coord) { userId in
-            memberDirectory[userId]?.displayName ?? "Miembro"
-        }
+        return ReviewProposedFinesView(
+            coordinator: coord,
+            memberLookup: { userId in
+                memberDirectory[userId]?.displayName ?? "Miembro"
+            },
+            onSelectFine: { fine in
+                fineDetailRoute = fine
+            }
+        )
     }
 
     @ViewBuilder

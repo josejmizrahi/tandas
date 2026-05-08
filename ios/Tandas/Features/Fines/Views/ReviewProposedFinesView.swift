@@ -7,6 +7,11 @@ import SwiftUI
 struct ReviewProposedFinesView: View {
     @Bindable var coordinator: ReviewProposedFinesCoordinator
     let memberLookup: (UUID) -> String
+    /// Tap en cualquier FineCard (proposed o resolved) dispatch este
+    /// callback. El padre (MainTabView reviewProposedScreen) lo wireá a
+    /// `fineDetailRoute = fine` para push FineDetailView. Default no-op
+    /// preservado por back-compat con tests/previews.
+    var onSelectFine: (Fine) -> Void = { _ in }
     @State private var voidConfirmFor: Fine?
     @State private var voidReason: String = ""
 
@@ -159,7 +164,7 @@ struct ReviewProposedFinesView: View {
                     fine: fine,
                     ruleName: nil,
                     eventTitle: memberLookup(fine.userId),
-                    onTap: {}
+                    onTap: { onSelectFine(fine) }
                 )
             }
         }

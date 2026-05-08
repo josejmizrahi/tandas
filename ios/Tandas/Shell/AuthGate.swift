@@ -235,10 +235,16 @@ struct AuthGate: View {
         SwiftUI.Group {
             if app.isBootstrapping || !hasCheckedOnboarding {
                 BootstrappingView()
+            } else if app.session == nil && hasOnboarded {
+                // Returning user logged out: ALWAYS go to SignInView,
+                // even if a stale OnboardingProgress row survived a
+                // prior incomplete attempt. Without this priority
+                // (above `hasActiveOnboarding`), logout could bounce
+                // the user back into onboarding because the SwiftData
+                // entity wasn't cleared.
+                SignInView()
             } else if hasActiveOnboarding {
                 onboardingFlow
-            } else if app.session == nil && hasOnboarded {
-                SignInView()
             } else if shouldShowOnboarding {
                 onboardingFlow
             } else {
