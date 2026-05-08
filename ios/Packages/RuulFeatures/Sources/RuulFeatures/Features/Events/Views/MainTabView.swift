@@ -492,7 +492,11 @@ public struct MainTabView: View {
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $createGeneralProposalPresented, onDismiss: {
-                Task { await rulesCoordinator?.refresh() }
+                Task {
+                    async let r: Void? = rulesCoordinator?.refresh()
+                    async let i: Void? = inboxCoordinator?.refresh()
+                    _ = await (r, i)
+                }
             }) {
                 if let member = currentGroupMember(in: group) {
                     CreateGeneralProposalSheet(
@@ -503,7 +507,11 @@ public struct MainTabView: View {
                             governance: app.governance
                         ),
                         onCreated: { _ in
-                            Task { await rulesCoordinator?.refresh() }
+                            Task {
+                                async let r: Void? = rulesCoordinator?.refresh()
+                                async let i: Void? = inboxCoordinator?.refresh()
+                                _ = await (r, i)
+                            }
                         }
                     )
                     .presentationDetents([.large])
@@ -511,7 +519,11 @@ public struct MainTabView: View {
                 }
             }
             .sheet(isPresented: $createRuleChangePresented, onDismiss: {
-                Task { await rulesCoordinator?.refresh() }
+                Task {
+                    async let r: Void? = rulesCoordinator?.refresh()
+                    async let i: Void? = inboxCoordinator?.refresh()
+                    _ = await (r, i)
+                }
             }) {
                 if let member = currentGroupMember(in: group) {
                     CreateRuleChangeSheet(
@@ -523,7 +535,11 @@ public struct MainTabView: View {
                             governance: app.governance
                         ),
                         onCreated: { _ in
-                            Task { await rulesCoordinator?.refresh() }
+                            Task {
+                                async let r: Void? = rulesCoordinator?.refresh()
+                                async let i: Void? = inboxCoordinator?.refresh()
+                                _ = await (r, i)
+                            }
                         }
                     )
                     .presentationDetents([.large])
@@ -678,7 +694,12 @@ public struct MainTabView: View {
                     fine: fine,
                     fineRepo: fineRepo,
                     groupsRepo: groupsRepo,
-                    onSubmitted: { await coord.refresh() }
+                    onSubmitted: {
+                        async let d: Void = coord.refresh()
+                        async let m: Void? = myFinesCoordinator?.refresh()
+                        async let i: Void? = inboxCoordinator?.refresh()
+                        _ = await (d, m, i)
+                    }
                 )
             },
             currentUserId: userId
@@ -822,14 +843,46 @@ public struct MainTabView: View {
                     .navigationDestination(item: $reviewProposedRoute) { event in
                         reviewProposedScreen(event)
                     }
+                    .onChange(of: reviewProposedRoute) { wasSet, isNil in
+                        // After officializing/rejecting proposed fines and popping
+                        // back, refresh the founder's Pendientes (fineProposalReview
+                        // resolves) + MyFines list (status changes from proposed →
+                        // officialized/voided).
+                        if wasSet != nil && isNil == nil {
+                            Task {
+                                async let i: Void? = inboxCoordinator?.refresh()
+                                async let f: Void? = myFinesCoordinator?.refresh()
+                                _ = await (i, f)
+                            }
+                        }
+                    }
                     .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
                         voteDetailDestination(for: ctx)
+                    }
+                    .onChange(of: voteDetailRouteFromInbox) { wasSet, isNil in
+                        // After casting a vote and popping back, refresh Pendientes
+                        // so the votePending row resolves visually.
+                        if wasSet != nil && isNil == nil {
+                            Task { await inboxCoordinator?.refresh() }
+                        }
                     }
                     .ruulSheet(item: $voteOnAppealRoute) { ctx in
                         voteOnAppealSheet(ctx)
                     }
                     .fullScreenCover(item: $detailRoute) { event in
                         eventDetailScreen(event)
+                    }
+                    .onChange(of: detailRoute) { wasOpen, isOpen in
+                        // Refresh Home + Inbox after closing event detail —
+                        // RSVP changes, check-ins, and any rule-triggered fines
+                        // need to surface in the next-event hero + Pendientes.
+                        if wasOpen != nil && isOpen == nil {
+                            Task {
+                                async let h: Void = homeCoordinator?.refresh(force: true) ?? ()
+                                async let i: Void? = inboxCoordinator?.refresh()
+                                _ = await (h, i)
+                            }
+                        }
                     }
                     .fullScreenCover(isPresented: $creationRoute) {
                         eventCreationScreen
@@ -839,7 +892,11 @@ public struct MainTabView: View {
                         // Refreshing inside the dismissed subview's onChange races
                         // with view teardown and sometimes drops the Task.
                         if wasOpen && !isOpen {
-                            Task { await homeCoordinator?.refresh(force: true) }
+                            Task {
+                                async let h: Void = homeCoordinator?.refresh(force: true) ?? ()
+                                async let g: Void? = groupHistoryCoordinator?.refresh()
+                                _ = await (h, g)
+                            }
                         }
                     }
                     .fullScreenCover(item: $scannerRoute) { scannerCoord in
@@ -1057,6 +1114,13 @@ public struct MainTabView: View {
             groupId: group.id,
             repo: app.systemEventRepo
         )
+
+        // Fire initial refreshes for non-Home coordinators that don't have
+        // their own `.task { refresh() }` on view appear. HomeCoordinator
+        // refreshes via `HomeView.task`. InboxCoordinator was previously
+        // only refreshed on rule-edit dismiss + handleInboxAction — empty
+        // until then, which hid the Pendientes section despite real rows.
+        await inboxCoordinator?.refresh()
     }
 
     /// Synthetic inactive member used when the directory hasn't surfaced

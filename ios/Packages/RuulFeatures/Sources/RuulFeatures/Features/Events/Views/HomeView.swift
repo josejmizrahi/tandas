@@ -45,10 +45,18 @@ public struct HomeView: View {
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
-            .refreshable { await coordinator.refresh(force: true) }
+            .refreshable {
+                async let h: Void = coordinator.refresh(force: true)
+                async let i: Void? = inboxCoordinator?.refresh()
+                _ = await (h, i)
+            }
             .overlay(alignment: .bottomTrailing) { fab }
         }
-        .task { await coordinator.refresh() }
+        .task {
+            async let h: Void = coordinator.refresh()
+            async let i: Void? = inboxCoordinator?.refresh()
+            _ = await (h, i)
+        }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .presentationDetents([.medium, .large])
