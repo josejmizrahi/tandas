@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import RuulUI
 
 struct CreateEventView: View {
     @Environment(\.dismiss) private var dismiss

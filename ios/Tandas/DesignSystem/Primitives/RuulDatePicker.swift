@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Wrapper around `DatePicker` with ruul styling — compact mode by default,
 /// glass effect background.

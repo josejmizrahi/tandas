@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Loading state simple — ProgressView + mensaje opcional.
 /// Per DS doc §3.13. Skeleton screens animados son anti-pattern §13 en V1.

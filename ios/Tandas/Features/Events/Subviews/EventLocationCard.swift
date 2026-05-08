@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 import CoreLocation
+import RuulUI
 
 /// Apple Invites / Luma signature: an inline map snapshot with a pin and the
 /// location address overlaid below. Tapping anywhere opens Apple Maps in

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Flow-wrapping chip group with single-select + optional "other" escape hatch.
 ///

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Tag pequeño que muestra de qué grupo viene un item. Usado en Home (cross-grupos)
 /// arriba de cada `ActionCard` / item. Per DS v3 §3.12.

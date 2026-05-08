@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Template-driven tab bar — the same shape as `MainAppScreenTemplate` but
 /// with first-class support for unread/pending badges per tab. Used as the

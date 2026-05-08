@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Body para `VoteType.generalProposal`. Renderiza el description
 /// del vote como cuerpo principal del proposal. Sin payload structurado

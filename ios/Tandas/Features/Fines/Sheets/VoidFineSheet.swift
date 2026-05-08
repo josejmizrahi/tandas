@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Modal sheet for an admin to annul a fine. Caller is responsible for
 /// dismissing the sheet on success — coordinator returns the voided Fine

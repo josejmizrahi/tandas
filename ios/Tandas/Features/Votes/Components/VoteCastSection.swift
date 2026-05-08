@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// UI section compartida por todos los body components del VoteDetailView.
 /// Tres estados mutuamente exclusivos:

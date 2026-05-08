@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Picker de vote_type. V1 enabled = generalProposal + ruleChange.
 /// Los otros 5 visibles pero disabled con badge "próximamente".

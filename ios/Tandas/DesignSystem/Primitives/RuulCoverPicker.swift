@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Horizontal scroll cover picker. User taps to select; tapped cover scales
 /// up with a glass border highlight.

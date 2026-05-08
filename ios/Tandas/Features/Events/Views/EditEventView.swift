@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import RuulUI
 
 /// Edit an existing event. Mirrors CreateEventView's structure (cover, title,
 /// date, location, host, description, rules toggle) but seeds from the current

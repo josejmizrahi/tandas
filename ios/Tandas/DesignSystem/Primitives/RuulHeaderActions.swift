@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Container que agrupa N pill buttons en una sola pill compartida.
 /// Per DS doc §3.4.

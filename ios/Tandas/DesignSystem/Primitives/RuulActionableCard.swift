@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Large glass card with icon + title + description + tap action.
 /// Used for "pick one of N options" patterns in onboarding (invite methods,

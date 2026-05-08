@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Pills horizontales scrollables para sub-tabs. Usado dentro de la tab
 /// "Grupo" (Fase 4) para alternar entre Events / Rules / Fines / etc según

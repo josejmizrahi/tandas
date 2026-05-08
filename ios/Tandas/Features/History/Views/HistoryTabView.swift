@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Tab "Historial" per DS v3 §6.2 — timeline de SystemEvents del grupo activo
 /// con header de RuulGroupSwitcher.

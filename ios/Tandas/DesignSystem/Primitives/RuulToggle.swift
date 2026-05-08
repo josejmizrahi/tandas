@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Wrapper around `Toggle` with ruul styling: accent tint when active,
 /// optional inline label + description.

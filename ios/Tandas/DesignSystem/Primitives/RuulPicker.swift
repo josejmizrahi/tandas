@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// List-style picker rendered as a stack of glass rows with a leading radio
 /// indicator. Used when the segmented control isn't enough (long lists).

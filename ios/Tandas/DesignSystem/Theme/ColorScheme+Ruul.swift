@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Helpers around `ColorScheme` and accessibility contrast.
 public extension ColorScheme {

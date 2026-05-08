@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// The "Yo" tab content. Replaces the old MyFinesView-as-tab pattern that
 /// surfaced fines under a "Profile" label (confusing UX). Now MyFinesView

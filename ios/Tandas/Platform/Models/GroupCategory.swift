@@ -1,4 +1,5 @@
 import Foundation
+import RuulUI
 
 /// Categoría del grupo, deriva del template. Se persiste en `groups.category`
 /// (Fase 2 agrega el campo backend). Hoy se infiere por nombre del template

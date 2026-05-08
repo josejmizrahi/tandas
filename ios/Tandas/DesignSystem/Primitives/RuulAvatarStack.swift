@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Overlapping avatars with overflow indicator. Wraps participants in a
 /// `GlassEffectContainer` so the blur is consistent across multiple glass

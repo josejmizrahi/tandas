@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Full-tile event card. Apple Sports pattern: the cover IS the card —
 /// content is overlaid in white over a vignette gradient. No body section,

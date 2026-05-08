@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Welcome overlay shown after the invited flow completes. Renders a glass
 /// card centered on top of whatever main-app view is below; tapping

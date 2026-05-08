@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 struct PastEventsView: View {
     let group: Group

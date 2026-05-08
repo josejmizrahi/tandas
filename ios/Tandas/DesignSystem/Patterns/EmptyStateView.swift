@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Empty state — used when a list has no items, a search returns nothing, etc.
 public struct EmptyStateView: View {

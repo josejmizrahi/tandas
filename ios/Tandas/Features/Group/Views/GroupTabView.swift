@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Tab "Grupo" per DS v3 §5.3 — composite con header (RuulGroupSwitcher) +
 /// sub-tabs adaptativas según template del grupo activo. En V1 templates

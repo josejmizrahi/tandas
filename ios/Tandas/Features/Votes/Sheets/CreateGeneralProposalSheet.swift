@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Sheet para crear una vote de tipo `.generalProposal`. Renderiza el
 /// `CreateGeneralProposalCoordinator` con un Form: title, description

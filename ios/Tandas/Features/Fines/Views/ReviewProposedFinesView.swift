@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Host's grace-period dashboard. Lists all proposed fines for an event
 /// with quick actions: oficializar (skip the 24h wait) or anular (void).

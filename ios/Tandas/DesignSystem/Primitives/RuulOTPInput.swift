@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// 6-box OTP input with paste support, auto-fill from SMS, and shake-on-error.
 public struct RuulOTPInput: View {

@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import RuulUI
 
 /// Admin-only sheet to edit a group's runtime configuration. Mirrors the
 /// fields the founder onboarding sets (vocabulary, fines on/off, rotation

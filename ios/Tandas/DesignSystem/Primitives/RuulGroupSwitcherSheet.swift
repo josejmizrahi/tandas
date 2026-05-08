@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Bottom sheet que lista todos los grupos del usuario con visual ramp.
 /// Tap en grupo lo activa + dismiss. Per DS v3 §3.14.

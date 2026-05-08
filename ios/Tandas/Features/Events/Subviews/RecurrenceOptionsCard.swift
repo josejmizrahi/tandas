@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Inline card shown ONLY when CreateEventView's coordinator
 /// reports `recurrenceAvailable == true`. Lets the user opt in

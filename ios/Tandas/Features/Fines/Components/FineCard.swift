@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Single fine row — Apple Sports flat: monochrome surface, status via 8pt
 /// dot + uppercase tracked label, monospaced amount on the right. Tappable

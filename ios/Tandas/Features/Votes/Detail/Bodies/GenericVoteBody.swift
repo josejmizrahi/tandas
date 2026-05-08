@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Fallback body para vote_types sin UI dedicada (V1: rule_repeal,
 /// member_removal, fund_withdrawal, role_assignment, slot_dispute).

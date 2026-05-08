@@ -43,6 +43,8 @@ packages:
   Sentry:
     url: https://github.com/getsentry/sentry-cocoa
     from: "8.40.0"
+  RuulUI:
+    path: Packages/RuulUI
 targets:
   Tandas:
     type: application
@@ -59,6 +61,8 @@ targets:
         product: Supabase
       - package: Sentry
         product: Sentry
+      - package: RuulUI
+        product: RuulUI
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -71,6 +75,8 @@ targets:
       - target: Tandas
       - package: SnapshotTesting
         product: SnapshotTesting
+      - package: RuulUI
+        product: RuulUI
     settings:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"

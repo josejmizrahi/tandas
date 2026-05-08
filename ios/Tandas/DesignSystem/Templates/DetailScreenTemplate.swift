@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Detail-view template: scrollable content with a sticky CTA at the bottom.
 /// Used for "view/edit a single item" screens (event detail, rule detail, etc).

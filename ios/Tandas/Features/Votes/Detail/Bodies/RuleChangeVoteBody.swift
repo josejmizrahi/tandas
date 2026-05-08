@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Body para `VoteType.ruleChange`. Lee `vote.payload` con shape
 /// `{ "current_amount": int, "proposed_amount": int }` y renderiza

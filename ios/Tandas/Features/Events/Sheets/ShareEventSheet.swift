@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Shareable card for an event — QR + ShareLink + add-to-calendar.
 /// Used by both host (share the event with non-members) and any attendee

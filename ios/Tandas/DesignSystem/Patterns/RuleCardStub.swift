@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Generic data shape for a rule card.
 public struct RuleCardData: Identifiable, Sendable, Hashable {

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Display de monto con tabular digits + currency formatter + accessibility.
 /// Per DS doc §3.8.

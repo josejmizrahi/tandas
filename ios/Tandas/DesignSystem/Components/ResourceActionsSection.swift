@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Generic actions section consumiendo `[ResourceAction]`. Renderiza
 /// each action as a tappable row with icon + title + optional subtitle.

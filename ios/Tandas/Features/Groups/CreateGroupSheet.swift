@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import RuulUI
 
 /// Minimal "create another group" flow for users who already have a group.
 /// Skips identity / templateSelect / vocabulary / rules / invite / OTP since

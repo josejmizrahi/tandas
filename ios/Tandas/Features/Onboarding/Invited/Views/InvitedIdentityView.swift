@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import RuulUI
 
 struct InvitedIdentityView: View {
     @Environment(InvitedOnboardingCoordinator.self) private var coord

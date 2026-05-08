@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Container for a main-app screen with a tab bar and a transparent
 /// navigation bar. Pass an array of `MainAppTab` and a builder that returns

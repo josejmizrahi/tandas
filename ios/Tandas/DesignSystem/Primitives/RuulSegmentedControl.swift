@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Glass pill container with segmented selection. Animates the highlight
 /// capsule between segments with a spring.

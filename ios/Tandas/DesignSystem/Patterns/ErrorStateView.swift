@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Error state with retry CTA. Used for recoverable errors (network, etc.).
 public struct ErrorStateView: View {

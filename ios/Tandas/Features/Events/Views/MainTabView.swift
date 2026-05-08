@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Top-level tab container shown after onboarding. Tabs (Inicio, Grupo,
 /// Historial, Ajustes) corresponden al patrón híbrido de scope DS v3 §4.2.

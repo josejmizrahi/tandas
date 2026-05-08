@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Avatar primitive. Loads a remote image, falls back to gradient + initials.
 public struct RuulAvatar: View {

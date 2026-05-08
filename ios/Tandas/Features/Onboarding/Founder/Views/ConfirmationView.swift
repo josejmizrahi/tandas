@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 struct ConfirmationView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord

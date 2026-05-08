@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Sheet para crear una vote de tipo `.ruleChange`. V1 solo permite cambiar
 /// el monto flat de una regla existente — trigger/conditions/consequences

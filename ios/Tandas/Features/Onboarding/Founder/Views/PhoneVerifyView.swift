@@ -1,6 +1,7 @@
 import SwiftUI
 import AuthenticationServices
 import Supabase
+import RuulUI
 
 struct PhoneVerifyView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord

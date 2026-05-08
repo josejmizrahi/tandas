@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Read-only list of the active group's rules. Replaces RulesTabStub. Each
 /// rule shows its name, description, and fine amount badge. Inactive /

@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import RuulUI
 
 struct FounderIdentityView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Modal sheet to issue an ad-hoc fine. Caller is responsible for dismissing
 /// the sheet on success — coordinator returns the issued Fine and view sets

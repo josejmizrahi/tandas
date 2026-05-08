@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 public enum RuulCardStyle: Sendable, Hashable {
     /// Apple Sports tile — solid elevated bg, 0.5pt subtle border, no shadow.

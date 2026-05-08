@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Badge cápsula tinted para estados. Per DS doc §3.10.
 /// Coexiste con RuulChip por ahora — Fase D consolida si aplica.

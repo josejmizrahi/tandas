@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Full-sheet display of the user's personal check-in QR for a specific event.
 /// The same QR is encoded into the Apple Wallet pass when V1.x lands.

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Layout for content presented inside a modal sheet (already wrapped via
 /// `.ruulSheet(...)` by the caller). Provides drag indicator + title +

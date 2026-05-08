@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Cross-group event feed. Apple Invites pattern: the first event of the
 /// nearest section gets hero treatment (full EventCard); the rest render

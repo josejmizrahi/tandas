@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Generic data shape for a member row. Patterns receive this struct rather
 /// than the product's `Member` model so the design system stays decoupled.

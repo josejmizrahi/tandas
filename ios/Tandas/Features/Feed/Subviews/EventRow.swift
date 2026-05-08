@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Compact list row for events. The workhorse cell across MyFeedView,
 /// PastEventsView, and any future "list of events" surface.

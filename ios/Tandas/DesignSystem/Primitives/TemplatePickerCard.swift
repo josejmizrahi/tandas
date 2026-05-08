@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Large, single-select card used in onboarding to pick a group template
 /// (e.g. "Cena recurrente", "Recurso compartido", "Tanda de ahorro").

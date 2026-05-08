@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Mensaje contextual inline. Per DS doc §3.14.
 public struct RuulInlineMessage: View {

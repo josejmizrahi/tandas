@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Inbox row primitive. Renders a single pending user-action (multa por
 /// pagar, apelación por votar, RSVP por contestar, multas por revisar al

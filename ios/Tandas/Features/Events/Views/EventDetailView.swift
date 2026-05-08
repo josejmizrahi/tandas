@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import RuulUI
 
 /// Full-bleed event detail. Cover scrolls under a transparent nav that
 /// fades to a glass bar as the user scrolls past the cover. Title sits in

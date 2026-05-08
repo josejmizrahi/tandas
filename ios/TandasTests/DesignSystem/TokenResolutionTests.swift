@@ -1,5 +1,6 @@
 import Testing
 import SwiftUI
+import RuulUI
 @testable import Tandas
 
 @Suite("Design system token resolution")

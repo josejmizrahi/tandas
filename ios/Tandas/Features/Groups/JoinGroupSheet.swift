@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import RuulUI
 
 /// Minimal "join an existing group" flow for users who already have an
 /// account. Just asks for a 6-char invite code and calls join_group_by_code.

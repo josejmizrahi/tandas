@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Sectioned list of attendees by RSVP status. Avatar stack at top + 4
 /// expandable sections (going / maybe / declined / pending) with counts.

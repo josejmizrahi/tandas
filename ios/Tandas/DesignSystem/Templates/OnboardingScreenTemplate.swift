@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Full-screen template for an onboarding step. Combines mesh background +
 /// `OnboardingStepContainer` + optional skip toolbar item.

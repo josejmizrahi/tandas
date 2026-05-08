@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import AuthenticationServices
 import Supabase
+import RuulUI
 
 /// Sign-in surface for returning users (session is nil but the device has
 /// already completed onboarding). Two paths:

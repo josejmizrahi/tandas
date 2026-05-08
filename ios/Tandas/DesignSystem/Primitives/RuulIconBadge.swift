@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Glass container with an SF Symbol inside, color tint configurable.
 public struct RuulIconBadge: View {

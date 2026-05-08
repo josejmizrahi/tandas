@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Single row of a vertical timeline. Renders an icon-bearing dot anchored
 /// to a continuous rail (the rail is drawn by the row itself based on

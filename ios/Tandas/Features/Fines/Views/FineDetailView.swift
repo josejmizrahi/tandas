@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Single-fine detail screen. Hero amount on top, status pill underneath,
 /// reason + evidence in cards, action footer (Pagar / Apelar / Ver

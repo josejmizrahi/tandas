@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Check-in section for both guests and hosts. Visible from 2h before until
 /// 12h after the event start.

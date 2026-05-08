@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Curated catalog of programmatic event covers, Luma-style.
 ///

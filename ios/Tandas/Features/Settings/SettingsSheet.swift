@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Bottom sheet con theme picker + signout. Accesible desde el botón de
 /// settings en HomeView.

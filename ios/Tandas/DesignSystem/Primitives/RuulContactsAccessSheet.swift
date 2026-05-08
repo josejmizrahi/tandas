@@ -1,6 +1,7 @@
 import SwiftUI
 import ContactsUI
 import Contacts
+import RuulUI
 
 /// Wrapper around `CNContactPickerViewController` that returns contacts as
 /// E.164-friendly tuples. Apply via `.ruulContactsPicker(...)` to any view.

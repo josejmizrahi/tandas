@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Numeric stat tile — Apple Sports / Luma style monochrome card with a
 /// tracked-uppercase label and a big monospaced numeral. Optional unit

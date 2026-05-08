@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Lightweight toast notification. Aparece desde top con glass effect,
 /// auto-dismisses configurable.

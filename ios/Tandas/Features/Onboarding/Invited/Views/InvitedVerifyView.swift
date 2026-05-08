@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 struct InvitedVerifyView: View {
     @Environment(InvitedOnboardingCoordinator.self) private var coord

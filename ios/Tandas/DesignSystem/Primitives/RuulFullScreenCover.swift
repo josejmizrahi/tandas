@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Convenience wrapper around `.fullScreenCover(...)` that pre-applies the
 /// ruul-flavored slide-up transition and a glass-tinted background.

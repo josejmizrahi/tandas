@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import RuulUI
 
 struct CheckInScannerView: View {
     @Environment(\.dismiss) private var dismiss

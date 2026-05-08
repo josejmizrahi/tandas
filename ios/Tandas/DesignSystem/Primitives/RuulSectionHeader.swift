@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Section header con título + subtítulo opcional + trailing slot.
 /// Per DS doc §3.7.

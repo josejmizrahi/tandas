@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Avatar del **grupo**. Usa color ramp automático per `Group.category`.
 /// Distinto de `RuulPersonAvatar` (que es de un miembro). Per DS v3 §3.11.

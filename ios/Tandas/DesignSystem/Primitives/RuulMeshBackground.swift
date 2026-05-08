@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Animated mesh-gradient background. Three preset variants pulled from
 /// `RuulColors`: cool (azules), violet, aqua.

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Generic data shape for a fine card.
 public struct FineCardData: Identifiable, Sendable, Hashable {

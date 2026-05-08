@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Member-facing fine list. Two sections — outstanding (proposed,
 /// officialized, in-appeal) and resolved (paid, voided). Tapping a card

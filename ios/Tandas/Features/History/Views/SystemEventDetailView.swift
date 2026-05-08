@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Detail sheet for a single SystemEvent. Shows raw payload (formatted,
 /// not crude JSON) + metadata. Reached by tapping a `RuulTimelineItem`.

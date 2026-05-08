@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import RuulUI
 
 /// Member-management surface presented from `GroupInfoSheet` (F0 #4).
 ///

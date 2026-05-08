@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Chip primitive for selectable filters, removable tags, count badges,
 /// and suggestion pills.

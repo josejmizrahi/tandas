@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Progress bar primitive. Linear (continuous) or stepped variant.
 public struct RuulProgressBar: View {

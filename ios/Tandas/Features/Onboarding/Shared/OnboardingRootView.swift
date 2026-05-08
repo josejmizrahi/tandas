@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import RuulUI
 
 /// Root view for the onboarding feature. Routes to the appropriate flow
 /// (founder vs invited) based on `pendingInviteCode` and existing

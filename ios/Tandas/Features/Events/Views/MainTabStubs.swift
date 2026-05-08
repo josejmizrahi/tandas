@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Sprint 1b placeholders for the new tabs. Sprint 1c replaces these with
 /// `ActionInboxView`, `RulesView`, `ProfileView` respectively. Each stub

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Host-only action panel inside `EventDetailView`. Surfaces stats +
 /// reminder + edit + check-in mode + cancel + auto-generation toggle.

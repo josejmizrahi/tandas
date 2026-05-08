@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Text-field primitive with optional label, description, error, and icon.
 public struct RuulTextField: View {

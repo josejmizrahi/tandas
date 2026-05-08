@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Bundle of resolved design-system values keyed by the current scheme +
 /// contrast environment. Use sparingly — most callers should access tokens

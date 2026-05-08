@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Pill icon button con Liquid Glass (`.ruulGlass`). Usado para back nav y
 /// header actions. Per DS doc §3.3.

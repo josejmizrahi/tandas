@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Tab "Ajustes" per DS v3 §6.2 — dual scope:
 ///   - Sección "Tu cuenta" (global): perfil personal, notificaciones

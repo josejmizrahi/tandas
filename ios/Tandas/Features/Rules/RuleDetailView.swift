@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Detail view de una regla del grupo. Per DS v3 §6.4.
 ///

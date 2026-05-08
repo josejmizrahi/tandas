@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 public protocol RuulTabItem: Identifiable, Hashable, Sendable {
     var label: String { get }

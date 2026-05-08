@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Convenience wrapper around `.sheet(...)` that pre-applies ruul defaults:
 /// configurable detents, top corner radius, drag indicator visible.

@@ -1,4 +1,5 @@
 import SwiftUI
+import RuulUI
 
 /// Detail view de un miembro del grupo. Per DS v3 §6.4. V1 muestra solo
 /// display data del MemberWithProfile + Group context — no fetch propio,
