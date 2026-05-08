@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulUI
+import RuulCore
 
 struct OTPVerifyView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord

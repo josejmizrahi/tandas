@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 import RuulUI
+import RuulCore
 
 /// Glass-styled autocomplete picker backed by `LocationSearchService`.
 /// Suggestions appear as a list of solid tile rows below the field.

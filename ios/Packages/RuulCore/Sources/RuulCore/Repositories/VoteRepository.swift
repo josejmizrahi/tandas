@@ -47,12 +47,12 @@ public actor MockVoteRepository: VoteRepository {
     /// Recorded args for each `startVote(...)` call. Tests assert against
     /// this to verify wiring (vote_type, title, payload, etc.).
     public struct StartVoteCall: Sendable {
-        let groupId: UUID
-        let voteType: VoteType
-        let referenceId: UUID
-        let title: String
-        let description: String?
-        let payload: JSONConfig
+        public let groupId: UUID
+        public let voteType: VoteType
+        public let referenceId: UUID
+        public let title: String
+        public let description: String?
+        public let payload: JSONConfig
     }
     public private(set) var startVoteCalls: [StartVoteCall] = []
 
