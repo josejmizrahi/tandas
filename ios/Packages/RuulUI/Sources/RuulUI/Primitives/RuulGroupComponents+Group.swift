@@ -1,5 +1,4 @@
 import SwiftUI
-import RuulUI
 import RuulCore
 
 // MARK: - Convenience inits sobre `RuulCore.Group`
@@ -10,7 +9,7 @@ import RuulCore
 // aceptan `RuulCore.Group` directo.
 
 extension RuulGroupAvatar {
-    init(group: RuulCore.Group, size: Size = .md) {
+    public init(group: RuulCore.Group, size: Size = .md) {
         self.init(
             groupName: group.name,
             initials: group.initials,
@@ -22,7 +21,7 @@ extension RuulGroupAvatar {
 }
 
 extension RuulOriginTag {
-    init(group: RuulCore.Group) {
+    public init(group: RuulCore.Group) {
         self.init(
             groupName: group.name,
             initials: group.initials,
@@ -32,7 +31,7 @@ extension RuulOriginTag {
 }
 
 extension RuulGroupSwitcher {
-    init(activeGroup: RuulCore.Group, onTap: @escaping () -> Void) {
+    public init(activeGroup: RuulCore.Group, onTap: @escaping () -> Void) {
         self.init(
             activeGroupName: activeGroup.name,
             activeCategory: activeGroup.category,
@@ -43,7 +42,7 @@ extension RuulGroupSwitcher {
 }
 
 extension RuulGroupSwitcherSheet.GroupItem {
-    init(group: RuulCore.Group) {
+    public init(group: RuulCore.Group) {
         self.init(
             id: group.id,
             name: group.name,

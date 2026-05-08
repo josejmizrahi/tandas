@@ -18,16 +18,16 @@ import RuulCore
 /// (útil para analytics, logs y futuro re-check). V1 NO re-chequea
 /// en `onTap`. Sub-fase D puede expandir a defense-in-depth con UI
 /// fallback ("La gobernanza cambió, refrescá") si decide.
-struct ResourceAction: Identifiable, Sendable {
-    let id: String
-    let icon: String
-    let title: String
-    let subtitle: String?
-    let isDestructive: Bool
-    let governanceAction: GovernanceAction
-    let onTap: @Sendable () async -> Void
+public struct ResourceAction: Identifiable, Sendable {
+    public let id: String
+    public let icon: String
+    public let title: String
+    public let subtitle: String?
+    public let isDestructive: Bool
+    public let governanceAction: GovernanceAction
+    public let onTap: @Sendable () async -> Void
 
-    init(
+    public init(
         id: String,
         icon: String,
         title: String,

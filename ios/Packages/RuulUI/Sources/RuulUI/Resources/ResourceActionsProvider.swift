@@ -1,5 +1,4 @@
 import Foundation
-import RuulUI
 import RuulCore
 
 /// Estrategia para producir acciones contra un resource. Cada concrete
@@ -12,7 +11,7 @@ import RuulCore
 /// Trade-off: consumers no pueden tener `[any ResourceActionsProvider]`.
 /// V1 no lo necesita — cada resource type tiene su provider concreto
 /// inyectado donde corresponde, accedido por switch en `resource.resourceType`.
-protocol ResourceActionsProvider: Sendable {
+public protocol ResourceActionsProvider: Sendable {
     associatedtype R: ResourceProtocol
 
     func actions(

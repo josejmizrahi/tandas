@@ -1,5 +1,4 @@
 import SwiftUI
-import RuulUI
 import RuulCore
 
 /// Wrapper around `DatePicker` with ruul styling — compact mode by default,

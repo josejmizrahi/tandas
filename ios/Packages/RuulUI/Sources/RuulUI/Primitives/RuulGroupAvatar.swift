@@ -1,5 +1,4 @@
 import SwiftUI
-import RuulUI
 import RuulCore
 
 /// Avatar del **grupo**. Usa color ramp automático per `Group.category`.

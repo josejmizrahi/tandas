@@ -1,5 +1,5 @@
 import SwiftUI
-import RuulUI
+import RuulCore
 
 public extension ErrorStateView {
     /// Convenience init para coordinator-driven errors.

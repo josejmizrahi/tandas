@@ -1,5 +1,4 @@
 import Foundation
-import RuulUI
 import RuulCore
 
 /// Wrapper de `Event` que conforma a `ResourceProtocol` (UI dispatch).
@@ -13,12 +12,12 @@ import RuulCore
 /// Invariante: `EventResource` es el único conformer de `ResourceProtocol`
 /// con `resourceType == .event` en V1. Bodies concretos pueden hacer
 /// `(resource as! EventResource)` con seguridad dentro del case `.event`.
-struct EventResource: ResourceProtocol {
-    let event: Event
+public struct EventResource: ResourceProtocol {
+    public let event: Event
 
-    init(_ event: Event) { self.event = event }
+    public init(_ event: Event) { self.event = event }
 
-    var id: UUID { event.id }
-    var groupId: UUID { event.groupId }
-    var resourceType: ResourceType { .event }
+    public var id: UUID { event.id }
+    public var groupId: UUID { event.groupId }
+    public var resourceType: ResourceType { .event }
 }

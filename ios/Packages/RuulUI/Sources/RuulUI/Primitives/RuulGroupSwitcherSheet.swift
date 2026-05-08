@@ -1,5 +1,4 @@
 import SwiftUI
-import RuulUI
 import RuulCore
 
 /// Bottom sheet que lista todos los grupos del usuario con visual ramp.

@@ -1,4 +1,6 @@
 import XCTest
+import RuulCore
+import RuulUI
 @testable import Tandas
 
 final class ResourceActionTests: XCTestCase {

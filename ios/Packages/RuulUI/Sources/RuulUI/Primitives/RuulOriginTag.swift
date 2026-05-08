@@ -1,5 +1,4 @@
 import SwiftUI
-import RuulUI
 import RuulCore
 
 /// Tag pequeño que muestra de qué grupo viene un item. Usado en Home (cross-grupos)

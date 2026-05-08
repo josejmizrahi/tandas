@@ -1,7 +1,6 @@
 import SwiftUI
 import RuulUI
 import RuulCore
-import RuulCore
 
 @MainActor
 @Observable

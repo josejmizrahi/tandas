@@ -1,5 +1,4 @@
 import Foundation
-import RuulUI
 
 /// Sendable, equatable error envelope mostrado por `ErrorStateView`.
 public struct CoordinatorError: Equatable, Sendable {
