@@ -269,7 +269,11 @@ public struct MainTabView: View {
                             if let g = app.activeGroup {
                                 openVotesRoute = OpenVotesRouteContext(id: g.id)
                             }
-                        }
+                        },
+                        onSelectVote: { vote in
+                            voteDetailRoute = VoteDetailRouteContext(vote: vote)
+                        },
+                        onCreateVote: { createVoteSheetPresented = true }
                     )
                     .navigationDestination(item: $openVotesRoute) { _ in
                         openVotesDestination

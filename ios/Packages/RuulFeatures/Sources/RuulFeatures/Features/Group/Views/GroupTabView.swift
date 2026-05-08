@@ -25,6 +25,8 @@ public struct GroupTabView: View {
     public let voteRepo: any VoteRepository
     public let userActionRepo: (any UserActionRepository)?
     public let onSeeOpenVotes: () -> Void
+    public let onSelectVote: (Vote) -> Void
+    public let onCreateVote: () -> Void
 
     @State private var selectedSubTab: GroupSubTab
 
@@ -40,7 +42,9 @@ public struct GroupTabView: View {
         onOpenRule: @escaping (GroupRule) -> Void = { _ in },
         voteRepo: any VoteRepository,
         userActionRepo: (any UserActionRepository)?,
-        onSeeOpenVotes: @escaping () -> Void
+        onSeeOpenVotes: @escaping () -> Void,
+        onSelectVote: @escaping (Vote) -> Void = { _ in },
+        onCreateVote: @escaping () -> Void = { }
     ) {
         self.rulesCoordinator = rulesCoordinator
         self.myFinesCoordinator = myFinesCoordinator
@@ -54,6 +58,8 @@ public struct GroupTabView: View {
         self.voteRepo = voteRepo
         self.userActionRepo = userActionRepo
         self.onSeeOpenVotes = onSeeOpenVotes
+        self.onSelectVote = onSelectVote
+        self.onCreateVote = onCreateVote
         let resolved = GroupTabView.subTabs(for: activeGroup, hasFines: myFinesCoordinator != nil)
         self._selectedSubTab = State(initialValue: resolved.first ?? .rules)
     }
@@ -103,6 +109,15 @@ public struct GroupTabView: View {
                 onSeeOpenVotes: onSeeOpenVotes,
                 onSelectRule: onOpenRule
             )
+        case .votes:
+            OpenVotesListView(
+                coordinator: OpenVotesCoordinator(
+                    group: activeGroup,
+                    voteRepo: voteRepo
+                ),
+                onSelectVote: onSelectVote,
+                onCreateVote: onCreateVote
+            )
         case .fines:
             if let coord = myFinesCoordinator {
                 MyFinesView(coordinator: coord, onOpenFine: onOpenFine)
@@ -116,9 +131,9 @@ public struct GroupTabView: View {
     /// has Events + Rules + Fines. Future templates expand this list.
     /// `hasFines` excluye la sub-tab de Multas cuando no hay coordinator.
     public static func subTabs(for group: RuulCore.Group, hasFines: Bool = true) -> [GroupSubTab] {
-        // V1: assume all templates have events + rules.
+        // V1: assume all templates have events + rules + votes.
         // Future: branch on group.effectiveActiveModules / group.effectiveBaseTemplate.
-        var tabs: [GroupSubTab] = [.events, .rules]
+        var tabs: [GroupSubTab] = [.events, .rules, .votes]
         if hasFines && group.finesEnabled {
             tabs.append(.fines)
         }
@@ -130,6 +145,7 @@ public struct GroupTabView: View {
 public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
     case events
     case rules
+    case votes
     case fines
 
     public var id: String { rawValue }
@@ -137,6 +153,7 @@ public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
         switch self {
         case .events: return "Eventos"
         case .rules:  return "Reglas"
+        case .votes:  return "Votos"
         case .fines:  return "Multas"
         }
     }
