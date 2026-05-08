@@ -1,6 +1,5 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Read + lifecycle ops for fines. Sprint 1c uses this for MyFinesView,
 /// FineDetailView, ReviewProposedFinesView (host).

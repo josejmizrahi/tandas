@@ -1,33 +1,31 @@
 import Foundation
 import Supabase
-import RuulUI
-import RuulCore
 
-protocol ProfileRepository: Actor {
+public protocol ProfileRepository: Actor {
     func loadMine() async throws -> Profile
     func updateDisplayName(_ name: String) async throws
 }
 
-actor MockProfileRepository: ProfileRepository {
+public actor MockProfileRepository: ProfileRepository {
     private var _profile: Profile
 
-    init(seed: Profile = Profile(id: UUID(), displayName: "", avatarUrl: nil, phone: nil)) {
+    public init(seed: Profile = Profile(id: UUID(), displayName: "", avatarUrl: nil, phone: nil)) {
         self._profile = seed
     }
 
-    func loadMine() async throws -> Profile { _profile }
+    public func loadMine() async throws -> Profile { _profile }
 
-    func updateDisplayName(_ name: String) async throws {
+    public func updateDisplayName(_ name: String) async throws {
         _profile.displayName = name
     }
 }
 
-actor LiveProfileRepository: ProfileRepository {
+public actor LiveProfileRepository: ProfileRepository {
     private let client: SupabaseClient
 
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func loadMine() async throws -> Profile {
+    public func loadMine() async throws -> Profile {
         let userId = try await client.auth.session.user.id
         let row: Profile = try await client
             .from("profiles")
@@ -39,7 +37,7 @@ actor LiveProfileRepository: ProfileRepository {
         return row
     }
 
-    func updateDisplayName(_ name: String) async throws {
+    public func updateDisplayName(_ name: String) async throws {
         let userId = try await client.auth.session.user.id
         try await client
             .from("profiles")

@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import RuulCore
 
 @Observable @MainActor
 final class InvitedOnboardingCoordinator {

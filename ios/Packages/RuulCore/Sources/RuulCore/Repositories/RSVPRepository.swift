@@ -1,9 +1,7 @@
 import Foundation
 import Supabase
-import RuulUI
-import RuulCore
 
-protocol RSVPRepository: Actor {
+public protocol RSVPRepository: Actor {
     func rsvps(for eventId: UUID) async throws -> [RSVP]
     func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP?
     func setRSVP(eventId: UUID, status: RSVPStatus, plusOnes: Int, reason: String?) async throws -> RSVP
@@ -12,22 +10,22 @@ protocol RSVPRepository: Actor {
 
 // MARK: - Mock
 
-actor MockRSVPRepository: RSVPRepository {
-    private(set) var allRSVPs: [RSVP] = []
-    var nextSetError: EventError?
-    var nextPromoteError: EventError?
+public actor MockRSVPRepository: RSVPRepository {
+    public private(set) var allRSVPs: [RSVP] = []
+    public var nextSetError: EventError?
+    public var nextPromoteError: EventError?
 
-    init(seed: [RSVP] = []) { self.allRSVPs = seed }
+    public init(seed: [RSVP] = []) { self.allRSVPs = seed }
 
-    func rsvps(for eventId: UUID) async throws -> [RSVP] {
+    public func rsvps(for eventId: UUID) async throws -> [RSVP] {
         allRSVPs.filter { $0.eventId == eventId }
     }
 
-    func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP? {
+    public func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP? {
         allRSVPs.first { $0.eventId == eventId && $0.userId == userId }
     }
 
-    func setRSVP(eventId: UUID, status: RSVPStatus, plusOnes: Int, reason: String?) async throws -> RSVP {
+    public func setRSVP(eventId: UUID, status: RSVPStatus, plusOnes: Int, reason: String?) async throws -> RSVP {
         if let err = nextSetError { nextSetError = nil; throw err }
         let userId = UUID()  // mock current user
         let new = RSVP(
@@ -44,7 +42,7 @@ actor MockRSVPRepository: RSVPRepository {
         return new
     }
 
-    func promoteFromWaitlist(eventId: UUID) async throws -> RSVP {
+    public func promoteFromWaitlist(eventId: UUID) async throws -> RSVP {
         if let err = nextPromoteError { nextPromoteError = nil; throw err }
         guard let idx = allRSVPs.firstIndex(where: {
             $0.eventId == eventId && $0.status == .waitlisted
@@ -73,11 +71,11 @@ actor MockRSVPRepository: RSVPRepository {
 
 // MARK: - Live
 
-actor LiveRSVPRepository: RSVPRepository {
+public actor LiveRSVPRepository: RSVPRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func rsvps(for eventId: UUID) async throws -> [RSVP] {
+    public func rsvps(for eventId: UUID) async throws -> [RSVP] {
         do {
             return try await client
                 .from("event_attendance")
@@ -90,7 +88,7 @@ actor LiveRSVPRepository: RSVPRepository {
         }
     }
 
-    func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP? {
+    public func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP? {
         do {
             let row: RSVP? = try? await client
                 .from("event_attendance")
@@ -104,7 +102,7 @@ actor LiveRSVPRepository: RSVPRepository {
         }
     }
 
-    func setRSVP(eventId: UUID, status: RSVPStatus, plusOnes: Int, reason: String?) async throws -> RSVP {
+    public func setRSVP(eventId: UUID, status: RSVPStatus, plusOnes: Int, reason: String?) async throws -> RSVP {
         // .waitlisted is server-assigned (auto when at capacity); never sent
         // by client. Coerce to .going so the RPC can decide.
         let requested: RSVPStatus = (status == .waitlisted) ? .going : status
@@ -131,7 +129,7 @@ actor LiveRSVPRepository: RSVPRepository {
         }
     }
 
-    func promoteFromWaitlist(eventId: UUID) async throws -> RSVP {
+    public func promoteFromWaitlist(eventId: UUID) async throws -> RSVP {
         struct Params: Encodable { let p_event_id: String }
         do {
             return try await client

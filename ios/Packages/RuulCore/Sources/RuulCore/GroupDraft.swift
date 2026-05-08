@@ -1,27 +1,26 @@
 import Foundation
-import RuulCore
 
 /// In-memory mutable draft of a group during the founder onboarding flow.
 /// Persisted (via JSON encoding) inside `OnboardingProgress.draftJSON` so the
 /// flow can resume exactly where the user left off.
-struct GroupDraft: Codable, Sendable, Hashable {
-    var name: String
-    var coverImageName: String?
+public struct GroupDraft: Codable, Sendable, Hashable {
+    public var name: String
+    public var coverImageName: String?
     /// Platform template id picked at the TemplateSelector step. Stored as
     /// raw string so it round-trips through OnboardingProgress.draftJSON
     /// even if the enum changes shape later. Defaults to "recurring_dinner"
     /// (the only V1 template).
-    var template: String
-    var eventVocabulary: String          // maps to groups.event_label
-    var customVocabulary: String?
-    var frequencyType: FrequencyType?
-    var frequencyConfig: FrequencyConfig
-    var finesEnabled: Bool
-    var rotationMode: RotationMode
-    var rules: [RuleDraft]
+    public var template: String
+    public var eventVocabulary: String          // maps to groups.event_label
+    public var customVocabulary: String?
+    public var frequencyType: FrequencyType?
+    public var frequencyConfig: FrequencyConfig
+    public var finesEnabled: Bool
+    public var rotationMode: RotationMode
+    public var rules: [RuleDraft]
 
     /// Empty draft used at the start of the flow.
-    static let empty = GroupDraft(
+    public static let empty = GroupDraft(
         name: "",
         coverImageName: nil,
         template: "recurring_dinner",
@@ -34,11 +33,11 @@ struct GroupDraft: Codable, Sendable, Hashable {
         rules: RuleDraft.defaults
     )
 
-    var isReadyToCreate: Bool {
+    public var isReadyToCreate: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    var resolvedVocabulary: String {
+    public var resolvedVocabulary: String {
         if eventVocabulary == "otro", let custom = customVocabulary?.trimmingCharacters(in: .whitespaces),
            !custom.isEmpty {
             return custom
@@ -48,12 +47,12 @@ struct GroupDraft: Codable, Sendable, Hashable {
 
     // Tolerant decode so any draftJSON persisted before Sprint 1b (which
     // didn't have `template`) restores cleanly with the V1 default.
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case name, coverImageName, template, eventVocabulary, customVocabulary,
              frequencyType, frequencyConfig, finesEnabled, rotationMode, rules
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.name             = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         self.coverImageName   = try c.decodeIfPresent(String.self, forKey: .coverImageName)
@@ -67,7 +66,7 @@ struct GroupDraft: Codable, Sendable, Hashable {
         self.rules            = try c.decodeIfPresent([RuleDraft].self, forKey: .rules) ?? RuleDraft.defaults
     }
 
-    init(
+    public init(
         name: String,
         coverImageName: String?,
         template: String,

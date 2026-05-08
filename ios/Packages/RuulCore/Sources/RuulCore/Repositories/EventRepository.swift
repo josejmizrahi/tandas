@@ -1,23 +1,35 @@
 import Foundation
 import Supabase
-import RuulUI
-import RuulCore
 
-struct EventPatch: Sendable, Equatable {
-    var title: String?
-    var description: String?
-    var coverImageName: String?
-    var coverImageURL: URL?
-    var startsAt: Date?
-    var durationMinutes: Int?
-    var locationName: String?
-    var locationLat: Double?
-    var locationLng: Double?
-    var hostId: UUID?
-    var applyRules: Bool?
+public struct EventPatch: Sendable, Equatable {
+    public var title: String?
+    public var description: String?
+    public var coverImageName: String?
+    public var coverImageURL: URL?
+    public var startsAt: Date?
+    public var durationMinutes: Int?
+    public var locationName: String?
+    public var locationLat: Double?
+    public var locationLng: Double?
+    public var hostId: UUID?
+    public var applyRules: Bool?
+
+    public init(title: String? = nil, description: String? = nil, coverImageName: String? = nil, coverImageURL: URL? = nil, startsAt: Date? = nil, durationMinutes: Int? = nil, locationName: String? = nil, locationLat: Double? = nil, locationLng: Double? = nil, hostId: UUID? = nil, applyRules: Bool? = nil) {
+        self.title = title
+        self.description = description
+        self.coverImageName = coverImageName
+        self.coverImageURL = coverImageURL
+        self.startsAt = startsAt
+        self.durationMinutes = durationMinutes
+        self.locationName = locationName
+        self.locationLat = locationLat
+        self.locationLng = locationLng
+        self.hostId = hostId
+        self.applyRules = applyRules
+    }
 }
 
-protocol EventRepository: Actor {
+public protocol EventRepository: Actor {
     func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event]
     /// Cross-group fetch: returns upcoming events across N groups, ordered by
     /// startsAt ascending, capped at `limit`. Used by Home in multi-group mode
@@ -40,14 +52,14 @@ protocol EventRepository: Actor {
 
 // MARK: - Mock
 
-actor MockEventRepository: EventRepository {
-    private(set) var events: [Event] = []
-    var nextCreateError: EventError?
-    var nextFetchError: EventError?
+public actor MockEventRepository: EventRepository {
+    public private(set) var events: [Event] = []
+    public var nextCreateError: EventError?
+    public var nextFetchError: EventError?
 
-    init(seed: [Event] = []) { self.events = seed }
+    public init(seed: [Event] = []) { self.events = seed }
 
-    func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
+    public func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
         if let err = nextFetchError { nextFetchError = nil; throw err }
         return events
             .filter { $0.groupId == groupId && $0.status.isActive && $0.startsAt >= .now }
@@ -56,7 +68,7 @@ actor MockEventRepository: EventRepository {
             .map { $0 }
     }
 
-    func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event] {
+    public func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event] {
         if let err = nextFetchError { nextFetchError = nil; throw err }
         let ids = Set(groupIds)
         return events
@@ -66,7 +78,7 @@ actor MockEventRepository: EventRepository {
             .map { $0 }
     }
 
-    func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
+    public func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
         events
             .filter { $0.groupId == groupId && ($0.status == .closed || $0.status == .cancelled || $0.startsAt < .now) }
             .sorted { $0.startsAt > $1.startsAt }
@@ -74,7 +86,7 @@ actor MockEventRepository: EventRepository {
             .map { $0 }
     }
 
-    func feedAcrossGroups(limit: Int) async throws -> [Event] {
+    public func feedAcrossGroups(limit: Int) async throws -> [Event] {
         if let err = nextFetchError { nextFetchError = nil; throw err }
         let twoWeeksAgo = Date.now.addingTimeInterval(-14 * 86_400)
         return events
@@ -84,16 +96,16 @@ actor MockEventRepository: EventRepository {
             .map { $0 }
     }
 
-    func event(_ id: UUID) async throws -> Event {
+    public func event(_ id: UUID) async throws -> Event {
         guard let e = events.first(where: { $0.id == id }) else { throw EventError.notFound }
         return e
     }
 
-    func nextEvent(in groupId: UUID) async throws -> Event? {
+    public func nextEvent(in groupId: UUID) async throws -> Event? {
         try? await upcomingEvents(in: groupId, limit: 1).first
     }
 
-    func createEvent(_ draft: EventDraft, in groupId: UUID, isRecurringGenerated: Bool) async throws -> Event {
+    public func createEvent(_ draft: EventDraft, in groupId: UUID, isRecurringGenerated: Bool) async throws -> Event {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let event = Event(
             id: UUID(),
@@ -116,7 +128,7 @@ actor MockEventRepository: EventRepository {
         return event
     }
 
-    func updateEvent(_ id: UUID, patch: EventPatch) async throws -> Event {
+    public func updateEvent(_ id: UUID, patch: EventPatch) async throws -> Event {
         guard let idx = events.firstIndex(where: { $0.id == id }) else { throw EventError.notFound }
         let e = events[idx]
         let updated = Event(
@@ -148,7 +160,7 @@ actor MockEventRepository: EventRepository {
         return updated
     }
 
-    func cancelEvent(_ id: UUID, reason: String?) async throws -> Event {
+    public func cancelEvent(_ id: UUID, reason: String?) async throws -> Event {
         guard let idx = events.firstIndex(where: { $0.id == id }) else { throw EventError.notFound }
         let e = events[idx]
         let updated = Event(
@@ -167,7 +179,7 @@ actor MockEventRepository: EventRepository {
         return updated
     }
 
-    func closeEvent(_ id: UUID) async throws -> Event {
+    public func closeEvent(_ id: UUID) async throws -> Event {
         guard let idx = events.firstIndex(where: { $0.id == id }) else { throw EventError.notFound }
         let e = events[idx]
         let updated = Event(
@@ -186,18 +198,18 @@ actor MockEventRepository: EventRepository {
         return updated
     }
 
-    func setAutoGenerate(groupId: UUID, enabled: Bool) async throws {
+    public func setAutoGenerate(groupId: UUID, enabled: Bool) async throws {
         // No-op in mock; coordinator tests verify the call shape via spy.
     }
 }
 
 // MARK: - Live
 
-actor LiveEventRepository: EventRepository {
+public actor LiveEventRepository: EventRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
+    public func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
         do {
             return try await client
                 .from("events")
@@ -214,7 +226,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event] {
+    public func upcomingEventsAcrossGroups(groupIds: [UUID], limit: Int) async throws -> [Event] {
         guard !groupIds.isEmpty else { return [] }
         let ids = groupIds.map { $0.uuidString.lowercased() }
         do {
@@ -233,7 +245,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
+    public func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
         do {
             return try await client
                 .from("events")
@@ -249,7 +261,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func feedAcrossGroups(limit: Int) async throws -> [Event] {
+    public func feedAcrossGroups(limit: Int) async throws -> [Event] {
         // No group_id filter — RLS `events_select` returns only events the
         // caller is a member of. Pulls a 2-week window backward + all
         // upcoming so the home feed has both context and forecast.
@@ -269,7 +281,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func event(_ id: UUID) async throws -> Event {
+    public func event(_ id: UUID) async throws -> Event {
         do {
             return try await client
                 .from("events")
@@ -283,7 +295,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func nextEvent(in groupId: UUID) async throws -> Event? {
+    public func nextEvent(in groupId: UUID) async throws -> Event? {
         struct Params: Encodable { let p_group_id: String }
         do {
             let event: Event? = try? await client
@@ -294,7 +306,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func createEvent(_ draft: EventDraft, in groupId: UUID, isRecurringGenerated: Bool) async throws -> Event {
+    public func createEvent(_ draft: EventDraft, in groupId: UUID, isRecurringGenerated: Bool) async throws -> Event {
         struct Params: Encodable {
             let p_group_id: String
             let p_title: String
@@ -332,7 +344,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func updateEvent(_ id: UUID, patch: EventPatch) async throws -> Event {
+    public func updateEvent(_ id: UUID, patch: EventPatch) async throws -> Event {
         var payload: [String: AnyJSON] = [:]
         if let v = patch.title              { payload["title"] = .string(v) }
         if let v = patch.description        { payload["description"] = .string(v) }
@@ -360,7 +372,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func cancelEvent(_ id: UUID, reason: String?) async throws -> Event {
+    public func cancelEvent(_ id: UUID, reason: String?) async throws -> Event {
         struct Params: Encodable {
             let p_event_id: String
             let p_reason: String?
@@ -378,7 +390,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func closeEvent(_ id: UUID) async throws -> Event {
+    public func closeEvent(_ id: UUID) async throws -> Event {
         struct Params: Encodable { let p_event_id: String }
         do {
             return try await client
@@ -390,7 +402,7 @@ actor LiveEventRepository: EventRepository {
         }
     }
 
-    func setAutoGenerate(groupId: UUID, enabled: Bool) async throws {
+    public func setAutoGenerate(groupId: UUID, enabled: Bool) async throws {
         do {
             try await client
                 .from("groups")

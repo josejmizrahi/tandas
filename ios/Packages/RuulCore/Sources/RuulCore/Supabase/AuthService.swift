@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-enum AuthError: Error, Equatable {
+public enum AuthError: Error, Equatable {
     case invalidOTP
     case appleCancelled
     case appleNoToken
@@ -9,18 +9,29 @@ enum AuthError: Error, Equatable {
     case unknown(String)
 }
 
-struct AppSession: Sendable, Equatable {
-    let user: AppUser
-    let accessToken: String
+public struct AppSession: Sendable, Equatable {
+    public let user: AppUser
+    public let accessToken: String
+
+    public init(user: AppUser, accessToken: String) {
+        self.user = user
+        self.accessToken = accessToken
+    }
 }
 
-struct AppUser: Sendable, Equatable {
-    let id: UUID
-    let email: String?
-    let phone: String?
+public struct AppUser: Sendable, Equatable {
+    public let id: UUID
+    public let email: String?
+    public let phone: String?
+
+    public init(id: UUID, email: String?, phone: String?) {
+        self.id = id
+        self.email = email
+        self.phone = phone
+    }
 }
 
-protocol AuthService: Actor {
+public protocol AuthService: Actor {
     var session: AppSession? { get async }
     nonisolated var sessionStream: AsyncStream<AppSession?> { get }
 
@@ -41,21 +52,22 @@ protocol AuthService: Actor {
     func signInAnonymouslyIfNeeded() async throws
 }
 
-extension AuthService {
-    func signInAnonymouslyIfNeeded() async throws {
+public extension AuthService {
+    public func signInAnonymouslyIfNeeded() async throws {
         // No-op default. LiveAuthService overrides.
     }
 }
 
 // MARK: - Mock
 
-actor MockAuthService: AuthService {
+public actor MockAuthService: AuthService {
     private var _session: AppSession?
+    public init() {}
     private var continuations: [UUID: AsyncStream<AppSession?>.Continuation] = [:]
 
-    var session: AppSession? { _session }
+    public var session: AppSession? { _session }
 
-    nonisolated var sessionStream: AsyncStream<AppSession?> {
+    public nonisolated var sessionStream: AsyncStream<AppSession?> {
         AsyncStream { continuation in
             let id = UUID()
             continuation.onTermination = { @Sendable _ in
@@ -81,7 +93,7 @@ actor MockAuthService: AuthService {
         }
     }
 
-    func signInWithApple() async throws -> AppSession {
+    public func signInWithApple() async throws -> AppSession {
         let s = AppSession(
             user: AppUser(id: UUID(), email: "apple@example.com", phone: nil),
             accessToken: "mock-apple-token"
@@ -90,9 +102,9 @@ actor MockAuthService: AuthService {
         return s
     }
 
-    func sendPhoneOTP(_ phone: String) async throws { /* no-op */ }
+    public func sendPhoneOTP(_ phone: String) async throws { /* no-op */ }
 
-    func verifyPhoneOTP(_ phone: String, code: String) async throws -> AppSession {
+    public func verifyPhoneOTP(_ phone: String, code: String) async throws -> AppSession {
         guard code == "123456" else { throw AuthError.invalidOTP }
         let s = AppSession(
             user: AppUser(id: UUID(), email: nil, phone: phone),
@@ -102,9 +114,9 @@ actor MockAuthService: AuthService {
         return s
     }
 
-    func sendEmailOTP(_ email: String) async throws { /* no-op */ }
+    public func sendEmailOTP(_ email: String) async throws { /* no-op */ }
 
-    func verifyEmailOTP(_ email: String, code: String) async throws -> AppSession {
+    public func verifyEmailOTP(_ email: String, code: String) async throws -> AppSession {
         guard code == "123456" else { throw AuthError.invalidOTP }
         let s = AppSession(
             user: AppUser(id: UUID(), email: email, phone: nil),
@@ -114,27 +126,27 @@ actor MockAuthService: AuthService {
         return s
     }
 
-    func signOut() async throws {
+    public func signOut() async throws {
         applySession(nil)
     }
 }
 
 // MARK: - Live
 
-actor LiveAuthService: AuthService {
+public actor LiveAuthService: AuthService {
     private let client: SupabaseClient
     private var _session: AppSession?
     private var continuations: [UUID: AsyncStream<AppSession?>.Continuation] = [:]
     private var observerTask: Task<Void, Never>?
 
-    init(client: SupabaseClient) {
+    public init(client: SupabaseClient) {
         self.client = client
         Task { await self.bootstrap() }
     }
 
-    var session: AppSession? { _session }
+    public var session: AppSession? { _session }
 
-    nonisolated var sessionStream: AsyncStream<AppSession?> {
+    public nonisolated var sessionStream: AsyncStream<AppSession?> {
         AsyncStream { continuation in
             let id = UUID()
             continuation.onTermination = { @Sendable _ in
@@ -173,11 +185,11 @@ actor LiveAuthService: AuthService {
         }
     }
 
-    func signInWithApple() async throws -> AppSession {
+    public func signInWithApple() async throws -> AppSession {
         throw AuthError.unknown("Use signInWithApple(idToken:) on LiveAuthService directly.")
     }
 
-    func signInWithApple(idToken: String, nonce: String) async throws -> AppSession {
+    public func signInWithApple(idToken: String, nonce: String) async throws -> AppSession {
         do {
             let response = try await client.auth.signInWithIdToken(
                 credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken, nonce: nonce)
@@ -190,11 +202,11 @@ actor LiveAuthService: AuthService {
         }
     }
 
-    func sendPhoneOTP(_ phone: String) async throws {
+    public func sendPhoneOTP(_ phone: String) async throws {
         try await client.auth.signInWithOTP(phone: phone)
     }
 
-    func verifyPhoneOTP(_ phone: String, code: String) async throws -> AppSession {
+    public func verifyPhoneOTP(_ phone: String, code: String) async throws -> AppSession {
         do {
             let response = try await client.auth.verifyOTP(phone: phone, token: code, type: .sms)
             guard let session = response.session else { throw AuthError.invalidOTP }
@@ -206,11 +218,11 @@ actor LiveAuthService: AuthService {
         }
     }
 
-    func sendEmailOTP(_ email: String) async throws {
+    public func sendEmailOTP(_ email: String) async throws {
         try await client.auth.signInWithOTP(email: email, shouldCreateUser: true)
     }
 
-    func verifyEmailOTP(_ email: String, code: String) async throws -> AppSession {
+    public func verifyEmailOTP(_ email: String, code: String) async throws -> AppSession {
         do {
             let response = try await client.auth.verifyOTP(email: email, token: code, type: .email)
             guard let session = response.session else { throw AuthError.invalidOTP }
@@ -222,12 +234,12 @@ actor LiveAuthService: AuthService {
         }
     }
 
-    func signOut() async throws {
+    public func signOut() async throws {
         try await client.auth.signOut()
         applySession(nil)
     }
 
-    func signInAnonymouslyIfNeeded() async throws {
+    public func signInAnonymouslyIfNeeded() async throws {
         // Bail out if a session already exists (anon or otherwise) — never
         // wipe a user's session on app launch.
         if (try? await client.auth.session) != nil { return }
@@ -244,7 +256,7 @@ actor LiveAuthService: AuthService {
 }
 
 private extension Supabase.Session {
-    func toAppSession() -> AppSession {
+    public func toAppSession() -> AppSession {
         AppSession(
             user: AppUser(
                 id: user.id,

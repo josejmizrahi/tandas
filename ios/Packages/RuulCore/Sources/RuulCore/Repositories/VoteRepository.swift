@@ -1,6 +1,5 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Generic vote operations. Wraps `public.votes` reads + the RPCs
 /// `start_vote`, `finalize_vote` (cast goes through `VoteCastRepository`).
@@ -8,7 +7,7 @@ import RuulCore
 /// V1 only uses `vote_type = .fineAppeal`. V2+ adds rule_change /
 /// member_removal / fund_withdrawal / etc. without changing this protocol —
 /// the Vote model + `vote_type` enum already supports them.
-protocol VoteRepository: Actor {
+public protocol VoteRepository: Actor {
     /// All votes for a group (open + resolved), ordered by recency.
     func votes(for groupId: UUID) async throws -> [Vote]
     /// Open votes for a group (status = 'open').
@@ -39,15 +38,15 @@ protocol VoteRepository: Actor {
 
 // MARK: - Mock
 
-actor MockVoteRepository: VoteRepository {
+public actor MockVoteRepository: VoteRepository {
     private var store: [Vote] = []
-    var nextStartError: Error?
-    var nextFinalizeError: Error?
-    var nextOpenVotesError: Error?
+    public var nextStartError: Error?
+    public var nextFinalizeError: Error?
+    public var nextOpenVotesError: Error?
 
     /// Recorded args for each `startVote(...)` call. Tests assert against
     /// this to verify wiring (vote_type, title, payload, etc.).
-    struct StartVoteCall: Sendable {
+    public struct StartVoteCall: Sendable {
         let groupId: UUID
         let voteType: VoteType
         let referenceId: UUID
@@ -55,34 +54,34 @@ actor MockVoteRepository: VoteRepository {
         let description: String?
         let payload: JSONConfig
     }
-    private(set) var startVoteCalls: [StartVoteCall] = []
+    public private(set) var startVoteCalls: [StartVoteCall] = []
 
-    init(seed: [Vote] = []) { self.store = seed }
+    public init(seed: [Vote] = []) { self.store = seed }
 
-    func setNextStartError(_ error: Error?) { self.nextStartError = error }
-    func setNextFinalizeError(_ error: Error?) { self.nextFinalizeError = error }
-    func setNextOpenVotesError(_ error: Error?) { self.nextOpenVotesError = error }
+    public func setNextStartError(_ error: Error?) { self.nextStartError = error }
+    public func setNextFinalizeError(_ error: Error?) { self.nextFinalizeError = error }
+    public func setNextOpenVotesError(_ error: Error?) { self.nextOpenVotesError = error }
 
-    func votes(for groupId: UUID) async throws -> [Vote] {
+    public func votes(for groupId: UUID) async throws -> [Vote] {
         store.filter { $0.groupId == groupId }.sorted { $0.openedAt > $1.openedAt }
     }
 
-    func openVotes(for groupId: UUID) async throws -> [Vote] {
+    public func openVotes(for groupId: UUID) async throws -> [Vote] {
         if let err = nextOpenVotesError { nextOpenVotesError = nil; throw err }
         return store.filter { $0.groupId == groupId && $0.status == .open }.sorted { $0.openedAt > $1.openedAt }
     }
 
-    func vote(id: UUID) async throws -> Vote? {
+    public func vote(id: UUID) async throws -> Vote? {
         store.first { $0.id == id }
     }
 
-    func voteForReference(referenceId: UUID) async throws -> Vote? {
+    public func voteForReference(referenceId: UUID) async throws -> Vote? {
         store.filter { $0.referenceId == referenceId }
              .sorted { $0.openedAt > $1.openedAt }
              .first
     }
 
-    func startVote(
+    public func startVote(
         groupId: UUID,
         voteType: VoteType,
         referenceId: UUID,
@@ -121,7 +120,7 @@ actor MockVoteRepository: VoteRepository {
         return v.id
     }
 
-    func finalizeVote(voteId: UUID) async throws -> VoteResolution {
+    public func finalizeVote(voteId: UUID) async throws -> VoteResolution {
         if let err = nextFinalizeError { nextFinalizeError = nil; throw err }
         guard let idx = store.firstIndex(where: { $0.id == voteId }) else {
             throw NSError(domain: "MockVote", code: 404)
@@ -136,11 +135,11 @@ actor MockVoteRepository: VoteRepository {
 
 // MARK: - Live
 
-actor LiveVoteRepository: VoteRepository {
+public actor LiveVoteRepository: VoteRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func votes(for groupId: UUID) async throws -> [Vote] {
+    public func votes(for groupId: UUID) async throws -> [Vote] {
         try await client
             .from("votes")
             .select("*")
@@ -150,7 +149,7 @@ actor LiveVoteRepository: VoteRepository {
             .value
     }
 
-    func openVotes(for groupId: UUID) async throws -> [Vote] {
+    public func openVotes(for groupId: UUID) async throws -> [Vote] {
         try await client
             .from("votes")
             .select("*")
@@ -161,7 +160,7 @@ actor LiveVoteRepository: VoteRepository {
             .value
     }
 
-    func vote(id: UUID) async throws -> Vote? {
+    public func vote(id: UUID) async throws -> Vote? {
         let rows: [Vote] = try await client
             .from("votes")
             .select("*")
@@ -172,7 +171,7 @@ actor LiveVoteRepository: VoteRepository {
         return rows.first
     }
 
-    func voteForReference(referenceId: UUID) async throws -> Vote? {
+    public func voteForReference(referenceId: UUID) async throws -> Vote? {
         let rows: [Vote] = try await client
             .from("votes")
             .select("*")
@@ -184,7 +183,7 @@ actor LiveVoteRepository: VoteRepository {
         return rows.first
     }
 
-    func startVote(
+    public func startVote(
         groupId: UUID,
         voteType: VoteType,
         referenceId: UUID,
@@ -215,7 +214,7 @@ actor LiveVoteRepository: VoteRepository {
         return voteId
     }
 
-    func finalizeVote(voteId: UUID) async throws -> VoteResolution {
+    public func finalizeVote(voteId: UUID) async throws -> VoteResolution {
         struct Params: Encodable { let p_vote_id: String }
         let params = Params(p_vote_id: voteId.uuidString.lowercased())
         let resolutionRaw: String = try await client

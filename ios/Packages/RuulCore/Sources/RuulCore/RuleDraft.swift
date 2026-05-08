@@ -2,16 +2,16 @@ import Foundation
 
 /// Draft of a rule shown in the founder onboarding step 4. Mutable as the
 /// user toggles enable/disable and edits the amount.
-struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
-    let id: UUID
-    let code: String                  // matches Supabase rules.code: late, no_rsvp, etc.
-    var title: String
-    var description: String
-    var amountMXN: Int                // editable inline
-    var enabled: Bool
-    let trigger: RuleTriggerSpec      // immutable per code
+public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
+    public let id: UUID
+    public let code: String                  // matches Supabase rules.code: late, no_rsvp, etc.
+    public var title: String
+    public var description: String
+    public var amountMXN: Int                // editable inline
+    public var enabled: Bool
+    public let trigger: RuleTriggerSpec      // immutable per code
 
-    init(
+    public init(
         id: UUID = UUID(),
         code: String,
         title: String,
@@ -31,39 +31,44 @@ struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
 }
 
 /// Mirror of the existing rule engine's trigger jsonb shape.
-struct RuleTriggerSpec: Codable, Sendable, Hashable {
-    let type: String
-    var params: [String: AnyCodable]
+public struct RuleTriggerSpec: Codable, Sendable, Hashable {
+    public let type: String
+    public var params: [String: AnyCodable]
 
-    static let lateArrival = RuleTriggerSpec(
+    public init(type: String, params: [String: AnyCodable]) {
+        self.type = type
+        self.params = params
+    }
+
+    public static let lateArrival = RuleTriggerSpec(
         type: "late_arrival",
         params: ["per_30min_increment": AnyCodable(50)]
     )
 
-    static let noRSVP = RuleTriggerSpec(
+    public static let noRSVP = RuleTriggerSpec(
         type: "no_rsvp_by_deadline",
         params: ["deadline_offset_hours": AnyCodable(-4)]
     )
 
-    static let cancelSameDay = RuleTriggerSpec(
+    public static let cancelSameDay = RuleTriggerSpec(
         type: "cancel_same_day",
         params: [:]
     )
 
-    static let noShow = RuleTriggerSpec(
+    public static let noShow = RuleTriggerSpec(
         type: "no_show",
         params: [:]
     )
 
-    static let hostNoMenu = RuleTriggerSpec(
+    public static let hostNoMenu = RuleTriggerSpec(
         type: "host_no_menu_24h",
         params: [:]
     )
 }
 
 /// Default 5 rules for paste 4. 4 enabled + 1 disabled.
-extension RuleDraft {
-    static let defaults: [RuleDraft] = [
+public extension RuleDraft {
+    public static let defaults: [RuleDraft] = [
         RuleDraft(
             code: "late",
             title: "Llegar tarde",
@@ -109,14 +114,14 @@ extension RuleDraft {
 
 /// Lightweight Codable container so we can stash arbitrary JSON in trigger
 /// params without pulling a JSON library.
-struct AnyCodable: Codable, Sendable, Hashable {
-    let value: Sendable
+public struct AnyCodable: Codable, Sendable, Hashable {
+    public let value: Sendable
 
-    init(_ value: Sendable) {
+    public init(_ value: Sendable) {
         self.value = value
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if let v = try? c.decode(Int.self)    { self.value = v; return }
         if let v = try? c.decode(Double.self) { self.value = v; return }
@@ -126,7 +131,7 @@ struct AnyCodable: Codable, Sendable, Hashable {
         throw DecodingError.dataCorruptedError(in: c, debugDescription: "unsupported type")
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
         switch value {
         case let v as Int:    try c.encode(v)
@@ -142,7 +147,7 @@ struct AnyCodable: Codable, Sendable, Hashable {
         }
     }
 
-    static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
+    public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
         switch (lhs.value, rhs.value) {
         case (let l as Int, let r as Int):       return l == r
         case (let l as Double, let r as Double): return l == r
@@ -153,7 +158,7 @@ struct AnyCodable: Codable, Sendable, Hashable {
         }
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         switch value {
         case let v as Int:    hasher.combine(0); hasher.combine(v)
         case let v as Double: hasher.combine(1); hasher.combine(v)

@@ -1,5 +1,4 @@
 import Foundation
-import RuulCore
 
 /// Static configuration + factory for the V1 template "Cena recurrente".
 ///

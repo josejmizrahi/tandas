@@ -1,6 +1,5 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Read + resolve user actions for the inbox. Sprint 1c renders these via
 /// `ActionInboxView`. Inserts come from server-side rule executions, not

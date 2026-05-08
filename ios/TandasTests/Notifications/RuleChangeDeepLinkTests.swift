@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import RuulCore
 @testable import Tandas
 
 @Suite("RuleChangeDeepLink")

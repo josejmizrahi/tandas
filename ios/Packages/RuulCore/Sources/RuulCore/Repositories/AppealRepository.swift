@@ -1,6 +1,5 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Read + lifecycle for fine appeals + voting. Sprint 1c builds the UI.
 public protocol AppealRepository: Actor {

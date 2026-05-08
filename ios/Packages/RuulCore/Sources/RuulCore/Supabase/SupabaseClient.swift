@@ -1,17 +1,17 @@
 import Foundation
 import Supabase
 
-enum SupabaseConfigError: Error {
+public enum SupabaseConfigError: Error {
     case missingURL
     case missingAnonKey
     case malformedURL
 }
 
-enum SupabaseEnvironment {
+public enum SupabaseEnvironment {
     /// `SupabaseClient` is `Sendable`, so `shared` does not need actor isolation.
     /// Keeping it nonisolated lets the EnvironmentKey conformance below stay
     /// nonisolated under Swift 6 strict concurrency.
-    static let shared: SupabaseClient = {
+    public static let shared: SupabaseClient = {
         do {
             return try makeClient()
         } catch {
@@ -19,7 +19,7 @@ enum SupabaseEnvironment {
         }
     }()
 
-    static func makeClient() throws -> SupabaseClient {
+    public static func makeClient() throws -> SupabaseClient {
         let info = Bundle.main.infoDictionary ?? [:]
         guard let urlString = info["TandasSupabaseURL"] as? String, !urlString.isEmpty else {
             throw SupabaseConfigError.missingURL
@@ -45,7 +45,7 @@ enum SupabaseEnvironment {
     /// Host string read from the same Info.plist value the client was built from.
     /// Convenient for debug captions; `SupabaseClient.supabaseURL` is internal in
     /// supabase-swift 2.x.
-    static var configuredHost: String {
+    public static var configuredHost: String {
         let info = Bundle.main.infoDictionary ?? [:]
         guard let urlString = info["TandasSupabaseURL"] as? String,
               let url = URL(string: urlString),

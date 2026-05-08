@@ -1,6 +1,5 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Reads + casts ballots on a `Vote`. RLS allows each member to SELECT
 /// only their own row on `vote_casts` (anonymity). Aggregate counts come
@@ -9,7 +8,7 @@ import RuulCore
 /// `cast_vote` is a SECURITY DEFINER RPC that updates the caller's existing
 /// pending cast (seeded by `start_vote` for all eligible members at open
 /// time). It also emits the `voteCast` system event.
-protocol VoteCastRepository: Actor {
+public protocol VoteCastRepository: Actor {
     /// The caller's own ballot for a vote, if eligible. RLS returns nil
     /// when caller is not a member of the vote's group.
     func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast?
@@ -24,21 +23,21 @@ protocol VoteCastRepository: Actor {
 
 // MARK: - Mock
 
-actor MockVoteCastRepository: VoteCastRepository {
+public actor MockVoteCastRepository: VoteCastRepository {
     private var store: [VoteCast] = []
-    var nextCastError: Error?
+    public var nextCastError: Error?
 
-    init(seed: [VoteCast] = []) { self.store = seed }
+    public init(seed: [VoteCast] = []) { self.store = seed }
 
     /// Test helper: lets tests inject a one-shot error that the next `cast`
     /// call will throw. Mirrors the pattern used by `MockVoteRepository`.
-    func setNextCastError(_ error: Error?) { self.nextCastError = error }
+    public func setNextCastError(_ error: Error?) { self.nextCastError = error }
 
-    func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast? {
+    public func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast? {
         store.first { $0.voteId == voteId && $0.memberId == userMemberId }
     }
 
-    func counts(voteId: UUID) async throws -> VoteCounts? {
+    public func counts(voteId: UUID) async throws -> VoteCounts? {
         let rows = store.filter { $0.voteId == voteId }
         guard !rows.isEmpty else { return nil }
         let inFavor   = rows.filter { $0.choice == .inFavor }.count
@@ -55,7 +54,7 @@ actor MockVoteCastRepository: VoteCastRepository {
         )
     }
 
-    func cast(voteId: UUID, choice: VoteChoice) async throws {
+    public func cast(voteId: UUID, choice: VoteChoice) async throws {
         if let err = nextCastError { nextCastError = nil; throw err }
         // Mock: assume single test member; just append/update
         if let idx = store.firstIndex(where: { $0.voteId == voteId }) {
@@ -70,11 +69,11 @@ actor MockVoteCastRepository: VoteCastRepository {
 
 // MARK: - Live
 
-actor LiveVoteCastRepository: VoteCastRepository {
+public actor LiveVoteCastRepository: VoteCastRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast? {
+    public func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast? {
         let rows: [VoteCast] = try await client
             .from("vote_casts")
             .select("*")
@@ -86,7 +85,7 @@ actor LiveVoteCastRepository: VoteCastRepository {
         return rows.first
     }
 
-    func counts(voteId: UUID) async throws -> VoteCounts? {
+    public func counts(voteId: UUID) async throws -> VoteCounts? {
         struct Row: Decodable {
             let vote_id: UUID
             let in_favor: Int
@@ -113,7 +112,7 @@ actor LiveVoteCastRepository: VoteCastRepository {
         )
     }
 
-    func cast(voteId: UUID, choice: VoteChoice) async throws {
+    public func cast(voteId: UUID, choice: VoteChoice) async throws {
         struct Params: Encodable {
             let p_vote_id: String
             let p_choice: String

@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
+import RuulCore
 @testable import Tandas
 
 @Suite("FounderOnboardingCoordinator")

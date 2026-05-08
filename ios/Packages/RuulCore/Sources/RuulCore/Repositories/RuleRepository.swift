@@ -1,9 +1,7 @@
 import Foundation
 import Supabase
-import RuulUI
-import RuulCore
 
-enum RuleError: Error, Equatable {
+public enum RuleError: Error, Equatable {
     case rpcFailed(String)
 }
 
@@ -14,30 +12,47 @@ public enum RulesRepositoryError: Error {
 }
 
 /// Lightweight Vote projection for the pending-repeal badge.
-struct PendingVote: Sendable, Hashable {
-    let id: UUID
-    let referenceId: UUID
-    let closesAt: Date
+public struct PendingVote: Sendable, Hashable {
+    public let id: UUID
+    public let referenceId: UUID
+    public let closesAt: Date
+
+    public init(id: UUID, referenceId: UUID, closesAt: Date) {
+        self.id = id
+        self.referenceId = referenceId
+        self.closesAt = closesAt
+    }
 }
 
-struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
-    let id: UUID
-    let groupId: UUID
-    let slug: String?
-    let code: String?
-    let title: String
-    let description: String?
-    let enabled: Bool
-    let status: String
+public struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
+    public let id: UUID
+    public let groupId: UUID
+    public let slug: String?
+    public let code: String?
+    public let title: String
+    public let description: String?
+    public let enabled: Bool
+    public let status: String
 
-    enum CodingKeys: String, CodingKey {
+    public init(id: UUID, groupId: UUID, slug: String?, code: String?, title: String, description: String?, enabled: Bool, status: String) {
+        self.id = id
+        self.groupId = groupId
+        self.slug = slug
+        self.code = code
+        self.title = title
+        self.description = description
+        self.enabled = enabled
+        self.status = status
+    }
+
+    public enum CodingKeys: String, CodingKey {
         case id
         case groupId     = "group_id"
         case slug, code, title, description, enabled, status
     }
 }
 
-protocol RuleRepository: Actor {
+public protocol RuleRepository: Actor {
     /// Creates only the enabled drafts. Returns the created rules.
     func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
 
@@ -64,11 +79,12 @@ protocol RuleRepository: Actor {
 
 // MARK: - Mock
 
-actor MockRuleRepository: RuleRepository {
-    private(set) var lastCreatedDrafts: [RuleDraft] = []
-    var nextCreateError: RuleError?
+public actor MockRuleRepository: RuleRepository {
+    public private(set) var lastCreatedDrafts: [RuleDraft] = []
+    public init() {}
+    public var nextCreateError: RuleError?
 
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let enabled = drafts.filter(\.enabled)
         lastCreatedDrafts = enabled
@@ -86,7 +102,7 @@ actor MockRuleRepository: RuleRepository {
         }
     }
 
-    func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
+    public func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
         // Mock returns 5 fake rows so previews/tests see expected counts.
         return DinnerRecurringTemplate.defaultRules(groupId: groupId).map {
             OnboardingRule(
@@ -102,35 +118,35 @@ actor MockRuleRepository: RuleRepository {
         }
     }
 
-    func list(groupId: UUID) async throws -> [GroupRule] {
+    public func list(groupId: UUID) async throws -> [GroupRule] {
         // Empty in mock — RulesView shows the empty state.
         []
     }
 
-    private(set) var lastSetEnabled: (ruleId: UUID, enabled: Bool)?
-    private(set) var lastSetAmount: (ruleId: UUID, amount: Int)?
+    public private(set) var lastSetEnabled: (ruleId: UUID, enabled: Bool)?
+    public private(set) var lastSetAmount: (ruleId: UUID, amount: Int)?
 
-    func setEnabled(ruleId: UUID, enabled: Bool) async throws {
+    public func setEnabled(ruleId: UUID, enabled: Bool) async throws {
         lastSetEnabled = (ruleId, enabled)
     }
 
-    func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
+    public func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
         guard case .flat = rule.fineShape else { throw RulesRepositoryError.notFlatFine }
         lastSetAmount = (rule.id, amount)
     }
 
-    func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote? {
+    public func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote? {
         nil
     }
 }
 
 // MARK: - Live
 
-actor LiveRuleRepository: RuleRepository {
+public actor LiveRuleRepository: RuleRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
         struct Params: Encodable {
             let p_group_id: String
             let p_code: String
@@ -171,7 +187,7 @@ actor LiveRuleRepository: RuleRepository {
         return rules
     }
 
-    func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
+    public func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
         struct Params: Encodable { let p_group_id: String }
         do {
             return try await client
@@ -185,7 +201,7 @@ actor LiveRuleRepository: RuleRepository {
         }
     }
 
-    func list(groupId: UUID) async throws -> [GroupRule] {
+    public func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
             .select("id,group_id,slug,code,title,description,enabled,is_active,action,consequences")
@@ -195,7 +211,7 @@ actor LiveRuleRepository: RuleRepository {
             .value
     }
 
-    func setEnabled(ruleId: UUID, enabled: Bool) async throws {
+    public func setEnabled(ruleId: UUID, enabled: Bool) async throws {
         struct Body: Encodable { let enabled: Bool }
         do {
             _ = try await client.from("rules")
@@ -207,7 +223,7 @@ actor LiveRuleRepository: RuleRepository {
         }
     }
 
-    func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
+    public func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
         guard case .flat = rule.fineShape else { throw RulesRepositoryError.notFlatFine }
 
         struct ConsequenceBody: Encodable {
@@ -229,7 +245,7 @@ actor LiveRuleRepository: RuleRepository {
         }
     }
 
-    func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote? {
+    public func pendingRepealVote(ruleId: UUID, groupId: UUID) async throws -> PendingVote? {
         struct Row: Decodable {
             let id: UUID
             let reference_id: UUID

@@ -2,14 +2,14 @@ import Foundation
 import OSLog
 import Supabase
 
-enum InviteError: Error, Equatable {
+public enum InviteError: Error, Equatable {
     case notFound
     case expired
     case alreadyUsed
     case rpcFailed(String)
 }
 
-protocol InviteRepository: Actor {
+public protocol InviteRepository: Actor {
     /// Creates a pending invite. If `phoneE164` is provided, the invite is
     /// also sent via WhatsApp (best-effort) by the live impl.
     func createInvite(groupId: UUID, phoneE164: String?) async throws -> Invite
@@ -23,12 +23,13 @@ protocol InviteRepository: Actor {
 
 // MARK: - Mock
 
-actor MockInviteRepository: InviteRepository {
+public actor MockInviteRepository: InviteRepository {
     private var _invites: [Invite] = []
-    var nextCreateError: InviteError?
-    var nextMarkUsedError: InviteError?
+    public init() {}
+    public var nextCreateError: InviteError?
+    public var nextMarkUsedError: InviteError?
 
-    func createInvite(groupId: UUID, phoneE164: String?) async throws -> Invite {
+    public func createInvite(groupId: UUID, phoneE164: String?) async throws -> Invite {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let invite = Invite(
             id: UUID(),
@@ -44,7 +45,7 @@ actor MockInviteRepository: InviteRepository {
         return invite
     }
 
-    func markUsed(inviteId: UUID) async throws -> Invite {
+    public func markUsed(inviteId: UUID) async throws -> Invite {
         if let err = nextMarkUsedError { nextMarkUsedError = nil; throw err }
         guard let idx = _invites.firstIndex(where: { $0.id == inviteId }) else {
             throw InviteError.notFound
@@ -61,19 +62,19 @@ actor MockInviteRepository: InviteRepository {
         return updated
     }
 
-    func listPending(groupId: UUID) async throws -> [Invite] {
+    public func listPending(groupId: UUID) async throws -> [Invite] {
         _invites.filter { $0.groupId == groupId && $0.usedAt == nil }
     }
 }
 
 // MARK: - Live
 
-actor LiveInviteRepository: InviteRepository {
+public actor LiveInviteRepository: InviteRepository {
     private let client: SupabaseClient
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "invites")
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func createInvite(groupId: UUID, phoneE164: String?) async throws -> Invite {
+    public func createInvite(groupId: UUID, phoneE164: String?) async throws -> Invite {
         let userId = try await client.auth.session.user.id
         struct Payload: Encodable {
             let group_id: String
@@ -142,7 +143,7 @@ actor LiveInviteRepository: InviteRepository {
         }
     }
 
-    func markUsed(inviteId: UUID) async throws -> Invite {
+    public func markUsed(inviteId: UUID) async throws -> Invite {
         struct Params: Encodable { let p_invite_id: String }
         do {
             let invite: Invite = try await client
@@ -155,7 +156,7 @@ actor LiveInviteRepository: InviteRepository {
         }
     }
 
-    func listPending(groupId: UUID) async throws -> [Invite] {
+    public func listPending(groupId: UUID) async throws -> [Invite] {
         do {
             return try await client
                 .from("invites")
@@ -171,6 +172,6 @@ actor LiveInviteRepository: InviteRepository {
 }
 
 private struct WhatsAppInviteResponse: Decodable {
-    let sent: Bool?
-    let reason: String?
+    public let sent: Bool?
+    public let reason: String?
 }

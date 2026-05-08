@@ -1,11 +1,10 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Reads `public.templates`. The registry caches results from this repo at
 /// boot. Mutation (create new templates, update version) is admin-only and
 /// not exposed here in V1.
-protocol TemplateRepository: Actor {
+public protocol TemplateRepository: Actor {
     /// All templates, regardless of `available`. Order: available first,
     /// then by id.
     func templates() async throws -> [Template]
@@ -16,28 +15,28 @@ protocol TemplateRepository: Actor {
 
 // MARK: - Mock
 
-actor MockTemplateRepository: TemplateRepository {
+public actor MockTemplateRepository: TemplateRepository {
     private let store: [Template]
 
-    init(seed: [Template] = MockTemplateRepository.defaultSeed) {
+    public init(seed: [Template] = MockTemplateRepository.defaultSeed) {
         self.store = seed
     }
 
-    func templates() async throws -> [Template] {
+    public func templates() async throws -> [Template] {
         store.sorted { lhs, rhs in
             if lhs.available != rhs.available { return lhs.available }
             return lhs.id < rhs.id
         }
     }
 
-    func template(id: String) async throws -> Template? {
+    public func template(id: String) async throws -> Template? {
         store.first { $0.id == id }
     }
 
     /// Minimal in-memory fixture — only the recurring_dinner template with
     /// empty config. Tests that need a fuller config should pass their own
     /// seed.
-    static let defaultSeed: [Template] = [
+    public static let defaultSeed: [Template] = [
         Template(
             id: "recurring_dinner",
             version: 1,
@@ -57,11 +56,11 @@ actor MockTemplateRepository: TemplateRepository {
 
 // MARK: - Live
 
-actor LiveTemplateRepository: TemplateRepository {
+public actor LiveTemplateRepository: TemplateRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func templates() async throws -> [Template] {
+    public func templates() async throws -> [Template] {
         try await client
             .from("templates")
             .select("*")
@@ -71,7 +70,7 @@ actor LiveTemplateRepository: TemplateRepository {
             .value
     }
 
-    func template(id: String) async throws -> Template? {
+    public func template(id: String) async throws -> Template? {
         let rows: [Template] = try await client
             .from("templates")
             .select("*")

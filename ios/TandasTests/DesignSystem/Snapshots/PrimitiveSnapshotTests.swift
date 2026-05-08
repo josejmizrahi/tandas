@@ -2,6 +2,7 @@ import SnapshotTesting
 import SwiftUI
 import XCTest
 import RuulUI
+import RuulCore
 @testable import Tandas
 
 /// Visual baseline para los DS primitives core. Renderiza cada componente en

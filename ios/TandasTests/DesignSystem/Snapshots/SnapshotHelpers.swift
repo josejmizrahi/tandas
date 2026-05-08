@@ -2,6 +2,7 @@ import SnapshotTesting
 import SwiftUI
 import XCTest
 import RuulUI
+import RuulCore
 @testable import Tandas
 
 /// Shared helpers for DS primitive snapshot tests. Locks the rendered surface

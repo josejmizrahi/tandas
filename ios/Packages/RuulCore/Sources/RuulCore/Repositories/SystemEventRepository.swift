@@ -1,6 +1,5 @@
 import Foundation
 import Supabase
-import RuulCore
 
 /// Read + emit system events. Sprint 1a uses this from the Swift side only
 /// to EMIT events (via `record_system_event` RPC); the rule engine runs

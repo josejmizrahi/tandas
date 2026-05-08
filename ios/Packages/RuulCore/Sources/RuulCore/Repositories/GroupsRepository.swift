@@ -1,15 +1,13 @@
 import Foundation
 import Supabase
-import RuulUI
-import RuulCore
 
-enum GroupsError: Error, Equatable {
+public enum GroupsError: Error, Equatable {
     case inviteCodeNotFound
     case rpcFailed(String)
     case notFound
 }
 
-protocol GroupsRepository: Actor {
+public protocol GroupsRepository: Actor {
     // Phase 1
     func listMine() async throws -> [Group]
     func get(_ id: UUID) async throws -> GroupDetail
@@ -40,18 +38,27 @@ protocol GroupsRepository: Actor {
 
 /// Partial update payload for `update_group_config` RPC. All optional —
 /// only set fields are sent.
-struct GroupConfigPatch: Sendable, Equatable {
-    var eventLabel: String?
-    var frequencyType: FrequencyType?
-    var frequencyConfig: FrequencyConfig?
-    var finesEnabled: Bool?
-    var rotationMode: RotationMode?
-    var coverImageName: String?
+public struct GroupConfigPatch: Sendable, Equatable {
+    public var eventLabel: String?
+    public var frequencyType: FrequencyType?
+    public var frequencyConfig: FrequencyConfig?
+    public var finesEnabled: Bool?
+    public var rotationMode: RotationMode?
+    public var coverImageName: String?
+
+    public init(eventLabel: String? = nil, frequencyType: FrequencyType? = nil, frequencyConfig: FrequencyConfig? = nil, finesEnabled: Bool? = nil, rotationMode: RotationMode? = nil, coverImageName: String? = nil) {
+        self.eventLabel = eventLabel
+        self.frequencyType = frequencyType
+        self.frequencyConfig = frequencyConfig
+        self.finesEnabled = finesEnabled
+        self.rotationMode = rotationMode
+        self.coverImageName = coverImageName
+    }
 }
 
 // MARK: - Mock
 
-actor MockGroupsRepository: GroupsRepository {
+public actor MockGroupsRepository: GroupsRepository {
     private var _groups: [Group]
     private var _members: [UUID: [Member]] = [:]
     /// Optional preseeded `MemberWithProfile` rows so tests can control the
@@ -59,26 +66,26 @@ actor MockGroupsRepository: GroupsRepository {
     /// non-empty, takes precedence over `_members` (which only stores raw
     /// `Member` rows and synthesizes a stub Profile).
     private var _membersWithProfiles: [MemberWithProfile] = []
-    var nextCreateError: GroupsError?
-    var nextPreviewError: GroupsError?
+    public var nextCreateError: GroupsError?
+    public var nextPreviewError: GroupsError?
 
-    init(seed: [Group] = []) { self._groups = seed }
+    public init(seed: [Group] = []) { self._groups = seed }
 
     /// Test convenience: seed a flat list of `MemberWithProfile` rows.
     /// `membersWithProfiles(of:)` filters this list by `member.groupId`.
-    init(membersWithProfilesSeed: [MemberWithProfile]) {
+    public init(membersWithProfilesSeed: [MemberWithProfile]) {
         self._groups = []
         self._membersWithProfiles = membersWithProfilesSeed
     }
 
-    func listMine() async throws -> [Group] { _groups }
+    public func listMine() async throws -> [Group] { _groups }
 
-    func get(_ id: UUID) async throws -> GroupDetail {
+    public func get(_ id: UUID) async throws -> GroupDetail {
         guard let g = _groups.first(where: { $0.id == id }) else { throw GroupsError.notFound }
         return GroupDetail(group: g, memberCount: _members[id]?.count ?? 1, myRole: "admin")
     }
 
-    func create(_ p: CreateGroupParams) async throws -> Group {
+    public func create(_ p: CreateGroupParams) async throws -> Group {
         let g = Group(
             id: UUID(),
             name: p.name,
@@ -94,22 +101,22 @@ actor MockGroupsRepository: GroupsRepository {
         return g
     }
 
-    func joinByCode(_ code: String) async throws -> Group {
+    public func joinByCode(_ code: String) async throws -> Group {
         guard let g = _groups.first(where: { $0.inviteCode == code }) else {
             throw GroupsError.inviteCodeNotFound
         }
         return g
     }
 
-    func leave(_ id: UUID) async throws {
+    public func leave(_ id: UUID) async throws {
         _groups.removeAll { $0.id == id }
     }
 
-    func members(of groupId: UUID) async throws -> [Member] {
+    public func members(of groupId: UUID) async throws -> [Member] {
         _members[groupId] ?? []
     }
 
-    func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
+    public func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
         if !_membersWithProfiles.isEmpty {
             return _membersWithProfiles.filter { $0.member.groupId == groupId }
         }
@@ -121,7 +128,7 @@ actor MockGroupsRepository: GroupsRepository {
         }
     }
 
-    func createInitial(_ draft: GroupDraft) async throws -> Group {
+    public func createInitial(_ draft: GroupDraft) async throws -> Group {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let g = Group(
             id: UUID(),
@@ -141,7 +148,7 @@ actor MockGroupsRepository: GroupsRepository {
         return g
     }
 
-    func updateConfig(groupId: UUID, patch: GroupConfigPatch) async throws -> Group {
+    public func updateConfig(groupId: UUID, patch: GroupConfigPatch) async throws -> Group {
         guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
             throw GroupsError.notFound
         }
@@ -171,7 +178,7 @@ actor MockGroupsRepository: GroupsRepository {
         return updated
     }
 
-    func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group {
+    public func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group {
         guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
             throw GroupsError.notFound
         }
@@ -191,7 +198,7 @@ actor MockGroupsRepository: GroupsRepository {
         return updated
     }
 
-    func fetchPreview(byInviteCode code: String) async throws -> InvitePreview {
+    public func fetchPreview(byInviteCode code: String) async throws -> InvitePreview {
         if let err = nextPreviewError { nextPreviewError = nil; throw err }
         guard let g = _groups.first(where: { $0.inviteCode == code }) else {
             throw GroupsError.inviteCodeNotFound
@@ -215,13 +222,13 @@ actor MockGroupsRepository: GroupsRepository {
     /// Tests can read this via `lastTurnOrder(for:)` to assert UI wiring.
     private var _turnOrders: [UUID: [UUID]] = [:]
 
-    func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
+    public func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
         _turnOrders[groupId] = userIds
     }
 
-    func lastTurnOrder(for groupId: UUID) -> [UUID]? { _turnOrders[groupId] }
+    public func lastTurnOrder(for groupId: UUID) -> [UUID]? { _turnOrders[groupId] }
 
-    func removeMember(memberId: UUID) async throws {
+    public func removeMember(memberId: UUID) async throws {
         // Strip from any seeded `_members` entry and from
         // `_membersWithProfiles` so the next fetch reflects the deletion.
         for (gid, list) in _members {
@@ -233,11 +240,11 @@ actor MockGroupsRepository: GroupsRepository {
 
 // MARK: - Live
 
-actor LiveGroupsRepository: GroupsRepository {
+public actor LiveGroupsRepository: GroupsRepository {
     private let client: SupabaseClient
-    init(client: SupabaseClient) { self.client = client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    func listMine() async throws -> [Group] {
+    public func listMine() async throws -> [Group] {
         let userId = try await client.auth.session.user.id
         struct Row: Decodable { let groups: Group }
         let rows: [Row] = try await client
@@ -250,7 +257,7 @@ actor LiveGroupsRepository: GroupsRepository {
         return rows.map(\.groups)
     }
 
-    func get(_ id: UUID) async throws -> GroupDetail {
+    public func get(_ id: UUID) async throws -> GroupDetail {
         let group: Group = try await client
             .from("groups")
             .select("*")
@@ -283,7 +290,7 @@ actor LiveGroupsRepository: GroupsRepository {
         )
     }
 
-    func create(_ p: CreateGroupParams) async throws -> Group {
+    public func create(_ p: CreateGroupParams) async throws -> Group {
         // Legacy path used by Phase 1. New onboarding uses createInitial(_:).
         struct Params: Encodable {
             let p_name: String
@@ -314,7 +321,7 @@ actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    func joinByCode(_ code: String) async throws -> Group {
+    public func joinByCode(_ code: String) async throws -> Group {
         struct Params: Encodable { let p_code: String }
         do {
             let g: Group = try await client
@@ -327,7 +334,7 @@ actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    func leave(_ id: UUID) async throws {
+    public func leave(_ id: UUID) async throws {
         let userId = try await client.auth.session.user.id
         try await client
             .from("group_members")
@@ -337,7 +344,7 @@ actor LiveGroupsRepository: GroupsRepository {
             .execute()
     }
 
-    func members(of groupId: UUID) async throws -> [Member] {
+    public func members(of groupId: UUID) async throws -> [Member] {
         try await client
             .from("group_members")
             .select("id, group_id, user_id, display_name_override, role, active, joined_at")
@@ -352,7 +359,7 @@ actor LiveGroupsRepository: GroupsRepository {
     /// but that 400'd because `group_members.user_id` FKs to `auth.users.id`,
     /// not `public.profiles.id`, so PostgREST couldn't infer the embed
     /// relationship. Splitting is robust and only adds one round-trip.
-    func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
+    public func membersWithProfiles(of groupId: UUID) async throws -> [MemberWithProfile] {
         let members: [Member] = try await client
             .from("group_members")
             .select("*")
@@ -385,7 +392,7 @@ actor LiveGroupsRepository: GroupsRepository {
 
     // MARK: - Onboarding V1
 
-    func createInitial(_ draft: GroupDraft) async throws -> Group {
+    public func createInitial(_ draft: GroupDraft) async throws -> Group {
         // Sign-in-first architecture (post anon disable): the user must be
         // authenticated by the time the founder reaches the group step.
         // AuthGate gates onboarding behind a real session, and the
@@ -426,7 +433,7 @@ actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    func updateConfig(groupId: UUID, patch: GroupConfigPatch) async throws -> Group {
+    public func updateConfig(groupId: UUID, patch: GroupConfigPatch) async throws -> Group {
         struct Params: Encodable {
             let p_group_id: String
             let p_event_label: String?
@@ -456,7 +463,7 @@ actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group {
+    public func updateGovernance(groupId: UUID, rules: GovernanceRules) async throws -> Group {
         // Direct UPDATE on groups.governance jsonb. RLS policy
         // groups_update_admin gates this to founders / admins.
         struct Patch: Encodable {
@@ -477,7 +484,7 @@ actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    func fetchPreview(byInviteCode code: String) async throws -> InvitePreview {
+    public func fetchPreview(byInviteCode code: String) async throws -> InvitePreview {
         do {
             let preview: InvitePreview = try await client
                 .from("invite_preview")
@@ -494,7 +501,7 @@ actor LiveGroupsRepository: GroupsRepository {
 
     // MARK: - F0 #4 (member management)
 
-    func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
+    public func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws {
         struct Params: Encodable {
             let p_group_id: String
             let p_user_ids: [String]
@@ -514,7 +521,7 @@ actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    func removeMember(memberId: UUID) async throws {
+    public func removeMember(memberId: UUID) async throws {
         // RLS policy `members_delete` (00002) gates this: the caller must be
         // the same user (`user_id = auth.uid()`) OR a group admin. We don't
         // re-check role here; UI callers gate via GovernanceService first.
