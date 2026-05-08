@@ -221,6 +221,26 @@ Slice 3 — write-path):
 - `GroupConfigPatch.finesEnabled` queda como deprecated-pero-funcional
   para callers internos. Slice 4 lo elimina junto con la columna.
 
+**Slice 3 followup — server-side dep cascades** ✅ **done 2026-05-08**
+- iOS `ModuleRegistry.validate(ids:)` ya enforce el dep graph
+  client-side, pero el RPC `set_group_module` (mig 00055) flipea
+  cualquier slug sin checkear deps. Eso permite que admin termine
+  con `appeal_voting` activo y `basic_fines` apagado: el resolver
+  compensa pero la data state miente sobre la intención.
+- Mig 00057 reescribe `set_group_module` con cascade transitivo:
+  ENABLE X también activa `transitive_deps(X)`; DISABLE X también
+  apaga `transitive_dependents(X)`. Closures hardcoded en jsonb,
+  espejo de `ios/.../V1Modules.swift`. Slugs unknown se flipean
+  sin cascade (forward-compat).
+- iOS `ModuleRegistry.transitiveDependencies(of:)` +
+  `transitiveDependents(of:)` añadidas. `MockGroupsRepository.setModule`
+  espeja la cascade. Test `transitiveClosures_matchSqlTables` guarda
+  paridad iOS↔SQL.
+- 5 cascade smoke tests ejecutados contra prod: enable cascade,
+  disable cascade transitivo (rsvp → check_in/basic_fines/appeal_voting),
+  disable basic_fines (→appeal_voting), idempotencia, slug unknown.
+  Todos PASSED, prod state restaurado, invariante 00049 intacto.
+
 **Slice 3.5 — 3rd SoT cleanup** ✅ **done 2026-05-08**
 - Mig 00056 elimina la key `finesEnabled` del jsonb `groups.settings`
   para todos los grupos. Idempotente; en prod 0 rows la traían (la

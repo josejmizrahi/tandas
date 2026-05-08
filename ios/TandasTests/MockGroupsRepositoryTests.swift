@@ -95,14 +95,14 @@ struct MockGroupsRepositoryTests {
         #expect(updated.finesEnabled == false)
     }
 
-    @Test("setModule is idempotent on already-enabled slug")
+    @Test("setModule does not duplicate slug when re-enabling")
     func setModule_idempotentEnable() async throws {
         let seed = Group(
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
             finesEnabled: true,
-            activeModules: ["basic_fines"],
+            activeModules: ["basic_fines", "rsvp", "check_in"],
             createdBy: UUID(),
             createdAt: .now
         )
@@ -119,7 +119,7 @@ struct MockGroupsRepositoryTests {
             name: "G",
             inviteCode: "abc12345",
             finesEnabled: true,
-            activeModules: ["basic_fines"],
+            activeModules: ["basic_fines", "rsvp", "check_in"],
             createdBy: UUID(),
             createdAt: .now
         )
@@ -135,5 +135,85 @@ struct MockGroupsRepositoryTests {
         await #expect(throws: GroupsError.notFound) {
             _ = try await repo.setModule(groupId: UUID(), slug: "basic_fines", enabled: true)
         }
+    }
+
+    // MARK: - Cascade behaviour (mirrors mig 00057 SQL closures)
+
+    @Test("setModule enable cascades transitive dependencies in")
+    func setModule_enableCascadesDeps() async throws {
+        // Empty active set + enable basic_fines should pull in rsvp + check_in.
+        let seed = Group(
+            id: UUID(),
+            name: "G",
+            inviteCode: "abc12345",
+            finesEnabled: false,
+            activeModules: [],
+            createdBy: UUID(),
+            createdAt: .now
+        )
+        let repo = MockGroupsRepository(seed: [seed])
+        let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: true)
+        let active = Set(updated.activeModules ?? [])
+        #expect(active.isSuperset(of: ["basic_fines", "rsvp", "check_in"]))
+        #expect(!active.contains("rotating_host"), "enable cascade should not over-pull rotating_host")
+        #expect(updated.finesEnabled == true)
+    }
+
+    @Test("setModule disable cascades transitive dependents out")
+    func setModule_disableCascadesDependents() async throws {
+        // Disabling rsvp should remove check_in + basic_fines + appeal_voting.
+        let seed = Group(
+            id: UUID(),
+            name: "G",
+            inviteCode: "abc12345",
+            finesEnabled: true,
+            activeModules: ["basic_fines", "rsvp", "check_in", "appeal_voting", "rotating_host"],
+            createdBy: UUID(),
+            createdAt: .now
+        )
+        let repo = MockGroupsRepository(seed: [seed])
+        let updated = try await repo.setModule(groupId: seed.id, slug: "rsvp", enabled: false)
+        let active = Set(updated.activeModules ?? [])
+        #expect(active.isDisjoint(with: ["rsvp", "check_in", "basic_fines", "appeal_voting"]))
+        #expect(active.contains("rotating_host"), "disable cascade should leave unrelated rotating_host alone")
+        #expect(updated.finesEnabled == false)
+    }
+
+    @Test("setModule disable basic_fines also removes appeal_voting only")
+    func setModule_disableBasicFinesCascadesAppealVoting() async throws {
+        let seed = Group(
+            id: UUID(),
+            name: "G",
+            inviteCode: "abc12345",
+            finesEnabled: true,
+            activeModules: ["basic_fines", "rsvp", "check_in", "appeal_voting", "rotating_host"],
+            createdBy: UUID(),
+            createdAt: .now
+        )
+        let repo = MockGroupsRepository(seed: [seed])
+        let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: false)
+        let active = Set(updated.activeModules ?? [])
+        #expect(!active.contains("basic_fines"))
+        #expect(!active.contains("appeal_voting"), "appeal_voting depends on basic_fines and must cascade out")
+        #expect(active.isSuperset(of: ["rsvp", "check_in", "rotating_host"]))
+        #expect(updated.finesEnabled == false)
+    }
+
+    @Test("ModuleRegistry transitive closures match mig 00057 SQL hardcoded tables")
+    func transitiveClosures_matchSqlTables() async throws {
+        // These literal expectations mirror the jsonb closures hardcoded in
+        // mig 00057. If iOS ever drifts from SQL, this test catches it
+        // before a deploy goes live.
+        #expect(Set(ModuleRegistry.transitiveDependencies(of: "basic_fines")) == ["rsvp", "check_in"])
+        #expect(Set(ModuleRegistry.transitiveDependencies(of: "check_in")) == ["rsvp"])
+        #expect(Set(ModuleRegistry.transitiveDependencies(of: "appeal_voting")) == ["basic_fines", "rsvp", "check_in"])
+        #expect(ModuleRegistry.transitiveDependencies(of: "rsvp").isEmpty)
+        #expect(ModuleRegistry.transitiveDependencies(of: "rotating_host").isEmpty)
+
+        #expect(Set(ModuleRegistry.transitiveDependents(of: "rsvp")) == ["check_in", "basic_fines", "appeal_voting"])
+        #expect(Set(ModuleRegistry.transitiveDependents(of: "check_in")) == ["basic_fines", "appeal_voting"])
+        #expect(Set(ModuleRegistry.transitiveDependents(of: "basic_fines")) == ["appeal_voting"])
+        #expect(ModuleRegistry.transitiveDependents(of: "appeal_voting").isEmpty)
+        #expect(ModuleRegistry.transitiveDependents(of: "rotating_host").isEmpty)
     }
 }
