@@ -27,7 +27,6 @@ public struct GroupSettings: Sendable, Codable, Hashable {
 
     // MARK: - Fines
 
-    public var finesEnabled: Bool?
     public var gracePeriodEvents: Int?
     public var monthlyFineCapMxn: Decimal?
     public var noShowGraceMinutes: Int?

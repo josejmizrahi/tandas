@@ -164,14 +164,14 @@ Module = (declaración) + (registro) + (resolución de capabilities)
 ### Deuda real (no la que el doc original imaginaba)
 
 El antipatrón `activeModules.contains("basic_fines")` **no existe en
-iOS hoy**. Lo que sí existe es **divergencia entre tres fuentes de
+iOS hoy**. Lo que sí existió era **divergencia entre tres fuentes de
 verdad** para el mismo concepto:
 
-| Fuente | Tipo | Origen |
-|---|---|---|
-| `groups.fines_enabled` | boolean column | Migration 00011 (V1 onboarding). |
-| `groups.active_modules` contiene `"basic_fines"` | jsonb | Migration 00019 (Platform V2). |
-| `groups.governance.finesEnabled` | jsonb derivado | Migration 00019 línea 103, derivado de la column. |
+| Fuente | Tipo | Origen | Estado post-Slice 3 |
+|---|---|---|---|
+| `groups.fines_enabled` | boolean column | Migration 00011 (V1 onboarding). | derivada del trigger 00049, eliminable en Slice 4. |
+| `groups.active_modules` contiene `"basic_fines"` | jsonb | Migration 00019 (Platform V2). | **canónico**. |
+| `groups.settings ->> 'finesEnabled'` | jsonb dormant | Migration 00019 línea 103, write-only never read. | **eliminado en mig 00056**. |
 
 **Migration 00019 backfilleó `active_modules = [todos los 5 V1]` para
 todos los grupos sin filtrar por `fines_enabled`.** Resultado: cualquier
@@ -179,6 +179,12 @@ grupo con `fines_enabled=false` desde antes de 00019 ahora tiene
 `"basic_fines"` en `active_modules` igualmente. El resolver dice "on";
 feature code (5 callsites) lee la column y dice "off". Divergencia
 silenciosa.
+
+> **Nota correctiva**: la documentación inicial de mig 00049 nombró el
+> 3er SoT como `groups.governance ->> 'finesEnabled'`. La key real
+> vive en `groups.settings`, no en `governance`. La auditoría del Slice 3
+> confirmó que ningún edge function ni iOS callsite lee la key, así que
+> mig 00056 la eliminó completamente sin migración de readers necesaria.
 
 **Callsites legacy** (originalmente leían `group.finesEnabled` directo;
 todos migrados a resolver en Slice 2 — read-path — y a `setModule` en
@@ -214,6 +220,18 @@ Slice 3 — write-path):
   side-effects). 0 rows divergent post-slice.
 - `GroupConfigPatch.finesEnabled` queda como deprecated-pero-funcional
   para callers internos. Slice 4 lo elimina junto con la columna.
+
+**Slice 3.5 — 3rd SoT cleanup** ✅ **done 2026-05-08**
+- Mig 00056 elimina la key `finesEnabled` del jsonb `groups.settings`
+  para todos los grupos. Idempotente; en prod 0 rows la traían (la
+  backfill 00019 solo aplicaba a rows con `settings is null or '{}'`),
+  pero la migración deja el invariante explícito por si grupos
+  futuros entran con settings poblado.
+- iOS: drop del campo `GroupSettings.finesEnabled` (era write-only,
+  ningún reader). Decoder Codable sigue verde porque era opcional.
+- Resultado: solo quedan 2 SoT (column + jsonb membership), enlazados
+  por el trigger 00049. Slice 4 ya puede dropear la columna sin dejar
+  estado dormido detrás.
 
 **Slice 4 — Drop column** (post-paridad de 2 semanas con triggers verdes)
 - `alter table groups drop column fines_enabled`.
