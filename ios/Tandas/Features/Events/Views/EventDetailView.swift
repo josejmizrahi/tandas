@@ -230,7 +230,7 @@ struct EventDetailView: View {
                     totalConfirmed: coordinator.rsvps.filter { $0.status == .going }.count,
                     totalMembers: coordinator.rsvps.count,
                     onSendReminders: { remindSheet = true },
-                    onEdit: { /* wired by parent in V1.x */ },
+                    onEdit: onEdit,
                     onOpenScanner: onScannerOpen,
                     onCancelEvent: { cancelEventSheet = true },
                     onCloseEvent: { closeSheet = true },

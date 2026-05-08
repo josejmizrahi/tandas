@@ -320,7 +320,14 @@ struct FineDetailView: View {
             case .officialized:
                 HStack(spacing: RuulSpacing.sm) {
                     RuulButton("Apelar", style: .glass, size: .large, fillsWidth: true) {
-                        appealSheetPresented = true
+                        // Prefer parent-provided handler (e.g., navigation
+                        // to a dedicated screen). Fall back to local sheet
+                        // when callsite doesn't override.
+                        if let onAppeal {
+                            onAppeal()
+                        } else {
+                            appealSheetPresented = true
+                        }
                     }
                     RuulButton("Pagar", style: .primary, size: .large, fillsWidth: true) {
                         Task { await coordinator.payFine() }

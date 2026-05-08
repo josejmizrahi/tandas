@@ -18,12 +18,17 @@ struct VoteDetailView: View {
                     if let error = coordinator.error, coordinator.counts == nil {
                         ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
                             .transition(.opacity)
+                    } else if coordinator.isLoading && coordinator.counts == nil {
+                        RuulLoadingState()
+                            .frame(minHeight: 200)
+                            .transition(.opacity)
                     } else {
                         bodyForType
                         VoteCastSection(coordinator: coordinator)
                     }
                 }
                 .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
+                .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)
