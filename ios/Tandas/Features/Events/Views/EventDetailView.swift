@@ -472,14 +472,28 @@ struct EventDetailView: View {
 
     private func navCircleButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.ruulTextPrimary)
-                .frame(width: 36, height: 36)
-                // DS v3 §13: pill nav chrome interactivo — Liquid Glass real.
-                .ruulGlass(Circle(), material: .regular, interactive: true)
-                .ruulElevation(.sm)
-                .accessibilityHidden(true)
+            ZStack {
+                // Tap target ≥44pt (HIG). Apple's `glassEffect(_:in:)` with
+                // `interactive: true` was observed to swallow taps inside the
+                // circle on iOS 26.x — keeping the visual circle at 36pt but
+                // the actual hit area at 44pt with `contentShape` ensures the
+                // button receives the touch before the glass modifier.
+                Circle()
+                    .fill(.clear)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .frame(width: 36, height: 36)
+                    // DS v3 §13: pill nav chrome — Liquid Glass real, sin
+                    // `interactive` para no interferir con el hit test del
+                    // Button (la deformación al press la da `.ruulPress`).
+                    .ruulGlass(Circle(), material: .regular)
+                    .ruulElevation(.sm)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
         .buttonStyle(.ruulPress)
         .accessibilityLabel(label)
