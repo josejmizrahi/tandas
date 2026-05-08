@@ -60,7 +60,18 @@ final class FounderOnboardingCoordinator {
     func restore(from entity: OnboardingProgress) async {
         progressEntity = entity
         if let step = entity.founderStep {
-            currentStep = step
+            // Beta 1 skip-by-default: project legacy persisted steps that
+            // are no longer visible (welcome / templateSelect / vocabulary
+            // / rules / governance) onto the closest visible step so the
+            // user doesn't land on a screen the new flow doesn't show.
+            switch step {
+            case .welcome, .templateSelect:
+                currentStep = .identity
+            case .vocabulary, .rules, .governance:
+                currentStep = .invite
+            default:
+                currentStep = step
+            }
         }
         if let data = entity.draftJSON, let decoded = try? JSONDecoder().decode(GroupDraft.self, from: data) {
             draft = decoded
