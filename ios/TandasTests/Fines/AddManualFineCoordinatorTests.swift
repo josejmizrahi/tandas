@@ -231,4 +231,8 @@ actor StubGroupsRepository: GroupsRepository {
     func removeMember(memberId: UUID) async throws {
         fatalError("not used in AddManualFineCoordinatorTests")
     }
+
+    func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
 }
