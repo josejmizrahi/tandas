@@ -146,7 +146,7 @@ public final class EditRulesCoordinator {
                 groupId: group.id,
                 voteType: .ruleRepeal,
                 referenceId: rule.id,
-                title: "Archivar: \(rule.title)",
+                title: "Archivar: \(rule.name)",
                 description: nil,
                 payload: JSONConfig.empty
             )

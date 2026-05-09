@@ -84,6 +84,11 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         return action?.amount_mxn
     }
 
+    /// Platform-shape forwarder for views. `name` is the platform column
+    /// (`rules.name`); the legacy `title` column persists until
+    /// `RulesPlatformOnly.md` E.2 drops it. Decoders populate both today.
+    public var name: String { title }
+
     /// True when the rule is both `enabled` and `is_active` — the engine
     /// only fires rules where both are true.
     public var isLive: Bool { enabled && isActive }

@@ -1,8 +1,10 @@
 # Rules platform-only — drop legacy `rules` columns
 
-> Status: stub. Tracked en `Plans/Active/Audit-2026-05-06.md` § 5.2 item 6
-> (legacy rules columns drop) — fragmento que se posterga al sprint
-> Phase 4 (custom rule editor) por costo de refactor iOS.
+> Status: **Slice E.1 done 2026-05-09** (view rename + setEnabled
+> dual-write). Slice E.2 (model collapse + DB column drop) pending
+> macOS session — needs `xcodebuild` to verify the model field
+> renames don't regress before the column drop ships.
+> Tracked en `Plans/Active/Audit-2026-05-06.md` § 5.2 item 6.
 
 ## Por qué se posterga
 
@@ -56,18 +58,59 @@ Hallazgos que provocaron el deferral:
   habla platform shape; mejor unificar en ese punto.
 - **No antes** salvo que aparezca otro bug que requiera el drop.
 
-## Tareas (cuando se ejecute)
+## Slice E.1 — done 2026-05-09 (Linux session, no Xcode build)
 
-1. **iOS Models**:
-   - [ ] `OnboardingRule`: drop `code`, `title`, `description`, `enabled`,
-         `status`. Add `name`, `isActive`. Update CodingKeys.
-   - [ ] `GroupRule`: drop `code`, `title`, `description`, `enabled`,
-         `action`. Add `name`, `isActive`, `trigger` (RuleTrigger),
-         `conditions: [RuleCondition]`. Verify decoders.
-   - [ ] `RuleDraft`: drop `code` + `trigger: RuleTriggerSpec`. Add
-         `slug: String`, `trigger: RuleTrigger` (platform), `conditions`,
-         `consequences`. Update `defaults` array to canonical dinner
-         template values (matching `templates.config.defaultRules`).
+PR: `claude/rules-platform-only-cleanup` (TBD).
+
+What shipped:
+
+- **`OnboardingRule`** + **`RuleDraft`** + **`GroupRule`** gain
+  computed `name` / `isActive` forwarders mirroring the platform
+  shape. Mutable on `RuleDraft` (preserves the toggle binding in
+  `InitialRulesView`). The legacy stored fields stay so decoders
+  keep working during cohabitation.
+- **9 view callsites** renamed (`rule.title → rule.name`,
+  `rule.enabled → rule.isActive`, drop `rule.code` metadata row in
+  `RuleDetailView` since `slug` is the platform identifier):
+  - `RulesView`, `EditRulesView`, `EditRuleSheet`, `RuleDetailView`
+  - `EditRulesCoordinator`, `InitialRulesView`
+  - `CreateRuleChangeSheet`, `CreateRuleChangeCoordinator`
+  - `RuleRepealVoteBody` (comment only)
+- **`LiveRuleRepository.setEnabled`** dual-writes both `enabled`
+  and `is_active` columns. Pre-2026-05-09 this writer touched only
+  the legacy column, so toggling via `EditRulesView` left the
+  platform column stale; `GroupRule.isLive = enabled && isActive`
+  was masking the divergence with an AND. Post-fix the two columns
+  stay in lockstep until E.2 drops the legacy one.
+- **`RuleDetailView` "Estado" row** simplified from tristate
+  (Activa / Pausada por el grupo / Deshabilitada) to binary
+  (Activa / Deshabilitada). Tristate was a workaround for the
+  divergence the dual-write fix removes.
+
+Build verification: NOT run (Linux session, no `xcodebuild`).
+Renames are mechanical (only Text(...) callsites + bindings to a
+mutable computed property of the same type) so risk is low, but
+**E.2 must run a full `xcodebuild test` before shipping further
+changes**.
+
+## Slice E.2 — pending (macOS session required)
+
+1. **iOS Models** — drop legacy stored fields once views are stable:
+   - [ ] `OnboardingRule`: drop `code`, `title`, `description`,
+         `enabled`, `status` from CodingKeys + storage. Promote
+         `name` / `isActive` to stored fields.
+   - [ ] `GroupRule`: drop `code`, `title`, `description`,
+         `enabled`, `action` from storage. Add `trigger`
+         (RuleTrigger), `conditions: [RuleCondition]`. Verify
+         decoders. Drop the `name` forwarder (becomes stored).
+   - [ ] `RuleDraft`: drop `code` + `trigger: RuleTriggerSpec`.
+         Add `slug: String`, `trigger: RuleTrigger` (platform),
+         `conditions`, `consequences`. Update `defaults` array to
+         canonical dinner template values (matching
+         `templates.config.defaultRules`).
+   - [ ] Migrate `InitialRulesView.exampleText` switch from
+         `rule.code` to `rule.slug` (use
+         `DinnerRecurringTemplate.RuleSlug.*` constants).
 
 2. **iOS Repositories**:
    - [ ] `LiveRuleRepository.createInitialRules.Params`: send platform

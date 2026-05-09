@@ -50,6 +50,19 @@ public struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
         case groupId     = "group_id"
         case slug, code, title, description, enabled, status
     }
+
+    /// Platform-shape forwarder. Views read `name`; legacy `title` is kept
+    /// on the struct only until the column drop in `RulesPlatformOnly.md`
+    /// E.2. After E.2 this becomes a stored field decoded from the
+    /// platform `name` column.
+    public var name: String { title }
+
+    /// Platform-shape forwarder. The legacy `enabled` boolean and the
+    /// platform `is_active` boolean were equal until 2026-05-08 because
+    /// `LiveRuleRepository.setEnabled` only updated the legacy column.
+    /// That writer now dual-writes both, so the forwarder is safe to use
+    /// from views going forward.
+    public var isActive: Bool { enabled }
 }
 
 public protocol RuleRepository: Actor {
@@ -212,10 +225,19 @@ public actor LiveRuleRepository: RuleRepository {
     }
 
     public func setEnabled(ruleId: UUID, enabled: Bool) async throws {
-        struct Body: Encodable { let enabled: Bool }
+        // Dual-write the legacy `enabled` boolean and the platform
+        // `is_active` boolean so the two columns stay in lockstep until
+        // `RulesPlatformOnly.md` E.2 drops the legacy column. Pre-2026-05-09
+        // this writer only updated the legacy column, leaving the platform
+        // column stale on every toggle — `GroupRule.isLive = enabled &&
+        // isActive` then masked the divergence by AND-ing both.
+        struct Body: Encodable {
+            let enabled: Bool
+            let is_active: Bool
+        }
         do {
             _ = try await client.from("rules")
-                .update(Body(enabled: enabled))
+                .update(Body(enabled: enabled, is_active: enabled))
                 .eq("id", value: ruleId.uuidString.lowercased())
                 .execute()
         } catch {

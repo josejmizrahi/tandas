@@ -64,7 +64,7 @@ public struct RuleDetailView: View {
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
-            Text(rule.title)
+            Text(rule.name)
                 .ruulTextStyle(RuulTypography.titleLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
             if let desc = rule.description, !desc.isEmpty {
@@ -139,14 +139,9 @@ public struct RuleDetailView: View {
             if let slug = rule.slug, !slug.isEmpty {
                 metadataRow(label: "Slug", value: slug)
             }
-            if let code = rule.code, !code.isEmpty {
-                metadataRow(label: "Código", value: code)
-            }
             metadataRow(
                 label: "Estado",
-                value: rule.isLive
-                    ? "Activa"
-                    : (rule.enabled ? "Pausada por el grupo" : "Deshabilitada")
+                value: rule.isActive ? "Activa" : "Deshabilitada"
             )
         }
         .padding(.top, RuulSpacing.lg)

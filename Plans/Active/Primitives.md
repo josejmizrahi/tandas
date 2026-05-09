@@ -451,6 +451,9 @@ Con esas cinco bien hechas, el resto se deriva.
 
 ## 10. Referencias cruzadas
 
+- `Plans/Active/Phase2Readiness.md` — punto de control 2026-05-09:
+  qué está verde, qué falta cerrar, cómo arrancar Phase 2 cuando se
+  decida la primitiva.
 - `Plans/Active/Beta1.md` — freeze arquitectónico vigente, journal,
   exit criteria.
 - `Plans/Active/Roadmap.md` — fases temporales y features.

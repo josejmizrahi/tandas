@@ -84,7 +84,7 @@ public final class CreateRuleChangeCoordinator {
                 groupId: group.id,
                 voteType: .ruleChange,
                 referenceId: rule.id,
-                title: "Cambio: \(rule.title)",
+                title: "Cambio: \(rule.name)",
                 description: reason.trimmingCharacters(in: .whitespacesAndNewlines),
                 payload: payload
             )

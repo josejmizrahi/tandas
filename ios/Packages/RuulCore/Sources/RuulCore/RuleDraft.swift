@@ -28,6 +28,20 @@ public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
         self.enabled = enabled
         self.trigger = trigger
     }
+
+    /// Platform-shape forwarder for views. Tracks `title` 1:1 (mutable).
+    /// Stays as a forwarder until `RulesPlatformOnly.md` E.2 collapses
+    /// `RuleDraft` onto the platform shape.
+    public var name: String {
+        get { title }
+        set { title = newValue }
+    }
+
+    /// Platform-shape forwarder. Tracks `enabled` 1:1 (mutable).
+    public var isActive: Bool {
+        get { enabled }
+        set { enabled = newValue }
+    }
 }
 
 /// Mirror of the existing rule engine's trigger jsonb shape.
