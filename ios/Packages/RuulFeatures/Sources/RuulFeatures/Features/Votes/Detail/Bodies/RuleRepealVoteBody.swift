@@ -89,7 +89,7 @@ public struct RuleRepealVoteBody: View {
     }
 
     /// Extracts the rule title from `vote.title`. The convention set by
-    /// `EditRulesCoordinator.openRepealVote` is `"Archivar: <rule.title>"`;
+    /// `EditRulesCoordinator.openRepealVote` is `"Archivar: <rule.name>"`;
     /// we strip the prefix when present and fall back to the raw title
     /// for older rows or unconventional callers.
     private var ruleTitle: String {

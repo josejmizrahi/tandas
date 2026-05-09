@@ -52,7 +52,7 @@ public struct EditRuleSheet: View {
 
     public var body: some View {
         Form {
-            Section { Text(rule.title).font(.title3.weight(.semibold)) }
+            Section { Text(rule.name).font(.title3.weight(.semibold)) }
 
             if let desc = rule.description, !desc.isEmpty {
                 Section("CÓMO FUNCIONA") {
@@ -98,7 +98,7 @@ public struct EditRuleSheet: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Se abrirá una votación del grupo. Si pasa, '\(rule.title)' deja de aplicarse.")
+            Text("Se abrirá una votación del grupo. Si pasa, '\(rule.name)' deja de aplicarse.")
         }
     }
 

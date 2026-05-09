@@ -186,7 +186,7 @@ public struct RulesView: View {
         Button(action: { onSelectRule(rule) }) {
             HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                    Text(rule.title)
+                    Text(rule.name)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                         .lineLimit(2)

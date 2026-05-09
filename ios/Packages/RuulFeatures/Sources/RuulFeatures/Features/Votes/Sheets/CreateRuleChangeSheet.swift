@@ -30,7 +30,7 @@ public struct CreateRuleChangeSheet: View {
                     )) {
                         Text("(Ninguna)").tag(UUID?.none)
                         ForEach(coordinator.availableRules) { rule in
-                            Text(rule.title).tag(UUID?.some(rule.id))
+                            Text(rule.name).tag(UUID?.some(rule.id))
                         }
                     }
                 }

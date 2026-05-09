@@ -99,7 +99,7 @@ public struct EditRulesView: View {
         } label: {
             HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                    Text(rule.title)
+                    Text(rule.name)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(2)
@@ -126,7 +126,7 @@ public struct EditRulesView: View {
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 1)
             )
-            .opacity(rule.enabled ? 1.0 : 0.55)
+            .opacity(rule.isActive ? 1.0 : 0.55)
         }
         .buttonStyle(.plain)
     }
@@ -150,7 +150,7 @@ public struct EditRulesView: View {
     private func toggleColumn(_ rule: GroupRule, inFlight: Bool, pending: PendingVote?) -> some View {
         VStack(spacing: RuulSpacing.xxs) {
             Toggle("", isOn: Binding(
-                get: { rule.enabled },
+                get: { rule.isActive },
                 set: { newValue in
                     Task { await coordinator.setEnabled(rule: rule, enabled: newValue) }
                 }

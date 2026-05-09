@@ -59,7 +59,7 @@ public struct InitialRulesView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                        Text(rule.title)
+                        Text(rule.name)
                             .ruulTextStyle(RuulTypography.headline)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Text(rule.description)
@@ -73,13 +73,13 @@ public struct InitialRulesView: View {
                     }
                     .buttonStyle(.plain)
                     Toggle("", isOn: Binding(
-                        get: { coord.draft.rules[idx].enabled },
-                        set: { coord.draft.rules[idx].enabled = $0 }
+                        get: { coord.draft.rules[idx].isActive },
+                        set: { coord.draft.rules[idx].isActive = $0 }
                     ))
                     .labelsHidden()
                     .tint(Color.ruulAccent)
                 }
-                if rule.enabled {
+                if rule.isActive {
                     HStack {
                         Text("Multa")
                             .ruulTextStyle(RuulTypography.caption)
@@ -97,8 +97,8 @@ public struct InitialRulesView: View {
                 }
             }
         }
-        .opacity(rule.enabled ? 1.0 : 0.55)
-        .animation(.ruulSnappy, value: rule.enabled)
+        .opacity(rule.isActive ? 1.0 : 0.55)
+        .animation(.ruulSnappy, value: rule.isActive)
     }
 
     private var rotationSection: some View {
@@ -127,7 +127,7 @@ public struct InitialRulesView: View {
 
     private func ruleInfoSheet(for rule: RuleDraft) -> some View {
         ModalSheetTemplate(
-            title: rule.title,
+            title: rule.name,
             primaryCTA: ("Entendido", { infoRule = nil })
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
