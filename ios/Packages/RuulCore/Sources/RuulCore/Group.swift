@@ -147,6 +147,25 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         activeModules ?? ["basic_fines", "rotating_host", "rsvp", "check_in", "appeal_voting"]
     }
 
+    /// Returns `effectiveActiveModules` with `moduleId` toggled on/off.
+    /// Idempotent: enabling an already-active module returns the same
+    /// array; disabling an already-absent module is a no-op.
+    ///
+    /// Used by Slice 3 callers (settings sheet, founder onboarding) to
+    /// migrate write-path off the legacy `fines_enabled` column. After
+    /// the new array is sent via `update_group_config(p_active_modules)`,
+    /// the DB trigger from migration 00049 syncs `fines_enabled`. See
+    /// `Plans/Active/Primitives.md` § 3.
+    public func togglingModule(_ moduleId: String, enabled: Bool) -> [String] {
+        var ids = effectiveActiveModules
+        if enabled {
+            if !ids.contains(moduleId) { ids.append(moduleId) }
+        } else {
+            ids.removeAll { $0 == moduleId }
+        }
+        return ids
+    }
+
     /// Avatar URL convertida desde el `avatar_url` string del backend.
     /// nil cuando no hay imagen custom — el render usa fallback con
     /// initials + color ramp.

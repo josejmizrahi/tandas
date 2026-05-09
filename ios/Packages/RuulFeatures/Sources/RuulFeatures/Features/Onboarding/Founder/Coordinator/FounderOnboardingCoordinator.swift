@@ -250,9 +250,15 @@ public final class FounderOnboardingCoordinator {
         let enabledDrafts = draft.rules.filter(\.enabled)
         do {
             _ = try await ruleRepo.createInitialRules(groupId: group.id, drafts: enabledDrafts)
+            // Slice 3: mutate active_modules (canonical) instead of the
+            // legacy fines_enabled boolean. Trigger from 00049 keeps
+            // fines_enabled in sync until Slice 4 drops the column.
             let patch = GroupConfigPatch(
-                finesEnabled: !enabledDrafts.isEmpty,
-                rotationMode: draft.rotationMode
+                rotationMode: draft.rotationMode,
+                activeModules: group.togglingModule(
+                    GroupModule.basicFines.id,
+                    enabled: !enabledDrafts.isEmpty
+                )
             )
             createdGroup = try await groupRepo.updateConfig(groupId: group.id, patch: patch)
             await complete(step: .rules)
@@ -272,7 +278,12 @@ public final class FounderOnboardingCoordinator {
         guard let group = createdGroup else { return }
         isLoading = true
         defer { isLoading = false }
-        let patch = GroupConfigPatch(finesEnabled: false, rotationMode: draft.rotationMode)
+        // Slice 3: mutate active_modules (canonical) instead of legacy
+        // fines_enabled boolean. See Plans/Active/Primitives.md § 3.
+        let patch = GroupConfigPatch(
+            rotationMode: draft.rotationMode,
+            activeModules: group.togglingModule(GroupModule.basicFines.id, enabled: false)
+        )
         if let updated = try? await groupRepo.updateConfig(groupId: group.id, patch: patch) {
             createdGroup = updated
         }

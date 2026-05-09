@@ -42,17 +42,36 @@ public struct GroupConfigPatch: Sendable, Equatable {
     public var eventLabel: String?
     public var frequencyType: FrequencyType?
     public var frequencyConfig: FrequencyConfig?
+    /// Legacy boolean toggle for the basic_fines module. Slice 3 callers
+    /// should prefer `activeModules` instead; this field is kept for
+    /// backward compatibility through the Slice 4 transition window
+    /// (when `groups.fines_enabled` column gets dropped). See
+    /// `Plans/Active/Primitives.md` § 3.
     public var finesEnabled: Bool?
     public var rotationMode: RotationMode?
     public var coverImageName: String?
+    /// Canonical write-path for module activation (Slice 3+). When set,
+    /// `update_group_config` writes this directly to `groups.active_modules`
+    /// and the 00049 trigger derives `fines_enabled`. Use
+    /// `Group.togglingModule(_:enabled:)` to compute the new array.
+    public var activeModules: [String]?
 
-    public init(eventLabel: String? = nil, frequencyType: FrequencyType? = nil, frequencyConfig: FrequencyConfig? = nil, finesEnabled: Bool? = nil, rotationMode: RotationMode? = nil, coverImageName: String? = nil) {
+    public init(
+        eventLabel: String? = nil,
+        frequencyType: FrequencyType? = nil,
+        frequencyConfig: FrequencyConfig? = nil,
+        finesEnabled: Bool? = nil,
+        rotationMode: RotationMode? = nil,
+        coverImageName: String? = nil,
+        activeModules: [String]? = nil
+    ) {
         self.eventLabel = eventLabel
         self.frequencyType = frequencyType
         self.frequencyConfig = frequencyConfig
         self.finesEnabled = finesEnabled
         self.rotationMode = rotationMode
         self.coverImageName = coverImageName
+        self.activeModules = activeModules
     }
 }
 
@@ -153,6 +172,26 @@ public actor MockGroupsRepository: GroupsRepository {
             throw GroupsError.notFound
         }
         let g = _groups[idx]
+
+        // Mirror the prod trigger from migration 00049:
+        // active_modules is canonical; fines_enabled is derived.
+        // - If patch provides activeModules: take it, derive finesEnabled.
+        // - Else if patch provides finesEnabled: toggle basic_fines on the
+        //   current array, derive finesEnabled to match.
+        // - Else keep both as-is.
+        let resolvedActiveModules: [String]
+        let resolvedFinesEnabled: Bool
+        if let patchModules = patch.activeModules {
+            resolvedActiveModules = patchModules
+            resolvedFinesEnabled = patchModules.contains("basic_fines")
+        } else if let patchFinesEnabled = patch.finesEnabled {
+            resolvedActiveModules = g.togglingModule("basic_fines", enabled: patchFinesEnabled)
+            resolvedFinesEnabled = patchFinesEnabled
+        } else {
+            resolvedActiveModules = g.effectiveActiveModules
+            resolvedFinesEnabled = g.finesEnabled
+        }
+
         let updated = Group(
             id: g.id,
             name: g.name,
@@ -162,10 +201,10 @@ public actor MockGroupsRepository: GroupsRepository {
             eventVocabulary: patch.eventLabel ?? g.eventVocabulary,
             frequencyType: patch.frequencyType ?? g.frequencyType,
             frequencyConfig: patch.frequencyConfig ?? g.frequencyConfig,
-            finesEnabled: patch.finesEnabled ?? g.finesEnabled,
+            finesEnabled: resolvedFinesEnabled,
             rotationMode: patch.rotationMode ?? g.rotationMode,
             baseTemplate: g.baseTemplate,
-            activeModules: g.activeModules,
+            activeModules: resolvedActiveModules,
             governance: g.governance,
             settings: g.settings,
             category: g.category,
@@ -435,9 +474,15 @@ public actor LiveGroupsRepository: GroupsRepository {
             let p_event_label: String?
             let p_frequency_type: String?
             let p_frequency_config: FrequencyConfig?
+            // Legacy boolean — kept until Slice 4 drops the column; new
+            // call sites should pass `activeModules` via patch instead.
             let p_fines_enabled: Bool?
             let p_rotation_mode: String?
             let p_cover_image_name: String?
+            // Canonical write-path (Slice 3). Server applies directly to
+            // `groups.active_modules`; trigger from 00049 derives
+            // `fines_enabled`. See Plans/Active/Primitives.md § 3.
+            let p_active_modules: [String]?
         }
         let params = Params(
             p_group_id: groupId.uuidString.lowercased(),
@@ -446,7 +491,8 @@ public actor LiveGroupsRepository: GroupsRepository {
             p_frequency_config: patch.frequencyConfig,
             p_fines_enabled: patch.finesEnabled,
             p_rotation_mode: patch.rotationMode?.rawValue,
-            p_cover_image_name: patch.coverImageName
+            p_cover_image_name: patch.coverImageName,
+            p_active_modules: patch.activeModules
         )
         do {
             let g: Group = try await client

@@ -179,10 +179,17 @@ public struct GroupSettingsSheet: View {
         Task {
             defer { Task { @MainActor in isSaving = false } }
             let trimmed = eventLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Slice 3: mutate active_modules (canonical) instead of the
+            // legacy fines_enabled boolean. The DB trigger from 00049
+            // keeps fines_enabled in sync until Slice 4 drops the column.
+            // See Plans/Active/Primitives.md § 3.
             let patch = GroupConfigPatch(
                 eventLabel: trimmed.isEmpty ? nil : trimmed,
-                finesEnabled: finesEnabled,
-                rotationMode: rotationMode
+                rotationMode: rotationMode,
+                activeModules: group.togglingModule(
+                    GroupModule.basicFines.id,
+                    enabled: finesEnabled
+                )
             )
             do {
                 let updated = try await app.groupsRepo.updateConfig(groupId: group.id, patch: patch)
