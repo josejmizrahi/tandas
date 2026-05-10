@@ -1,8 +1,36 @@
 # Roles V2 — `MemberRole` configurable per group
 
-> Status: stub. Ejecución pre-Fase 5 (cuando proposals + roles configurables
-> sean parte del producto). Documentado ahora para no quedar olvidado.
+> Status: **foundation slice done 2026-05-09** (Gap 3 from the
+> post-Gap-2 audit). Schema + permission seam shipped — Phase 2
+> templates (`shared_resource`) can now declare custom roles in
+> `templates.config.defaultRoles` and iOS decodes them. Phase 2 of
+> RolesV2 (founder-managed UI + assign_role RPC + RLS rewire to
+> consult `has_permission`) deferred to pre-Phase-5.
 > Tracked en `Plans/Active/Audit-2026-05-06.md` § 4.5 Riesgo 5.
+
+## Phase 1 done (Gap 3)
+
+Migration `00063_groups_roles_jsonb.sql` shipped:
+- `groups.roles` jsonb default with `founder` + `member` system roles
+  seeded (founder gets the V1 admin permission set;
+  member gets only `createVotes` + `castVote`).
+- Validation trigger on `group_members.role` — permissive: unknown
+  roles raise `notice` but don't block. Strict mode lands in Phase 5.
+- `has_permission(p_group_id, p_user_id, p_permission)` SECURITY
+  DEFINER RPC consulting `roles[role].permissions`. Legacy `"admin"`
+  aliased to `"founder"`.
+
+iOS:
+- `Permission` enum with `@codegen:enum` marker covering V1 actions
+  + Phase 2/3 placeholders (`assignSlot`, `fundWithdraw`, etc.).
+- `RoleDefinition` struct + `Group.roles: [String: RoleDefinition]?`
+  with `effectiveRoles` fallback to `v1SystemRoles`.
+- `GovernanceServiceProtocol.hasPermission(_:member:in:)` with default
+  protocol extension reading from `group.roles` locally. Independent
+  of `canPerform` (governance jsonb) — composes. RLS rewire to
+  delegate to `has_permission()` deferred to Phase 5.
+
+## Phase 2 (pre-Fase 5)
 
 ## Por qué
 

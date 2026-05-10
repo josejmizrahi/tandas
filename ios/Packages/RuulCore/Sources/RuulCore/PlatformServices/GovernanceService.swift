@@ -13,6 +13,36 @@ public protocol GovernanceServiceProtocol: Sendable {
         in group: Group,
         context: GovernanceContext?
     ) async throws -> GovernanceDecision
+
+    /// Role-based permission check (RolesV2 foundation slice — Gap 3).
+    /// Consults `group.roles[member.role].permissions`. Independent of
+    /// `canPerform` (governance jsonb) — the two compose: an action may
+    /// be allowed via either the role permission OR the governance
+    /// `whoCan*` level. Phase 5 will rewire the RLS layer to delegate
+    /// to `has_permission()` (mig 00063); for now this is consultative
+    /// only and callers decide how to combine.
+    ///
+    /// Default implementation reads from `group.roles` locally — no I/O.
+    /// Fallback to `RoleDefinition.v1SystemRoles` if the row predates
+    /// mig 00063 (test fixtures, offline path).
+    func hasPermission(
+        _ permission: Permission,
+        member: Member,
+        in group: Group
+    ) async throws -> Bool
+}
+
+public extension GovernanceServiceProtocol {
+    func hasPermission(
+        _ permission: Permission,
+        member: Member,
+        in group: Group
+    ) async throws -> Bool {
+        guard let role = group.roleDefinition(for: member.role) else {
+            return false
+        }
+        return role.grants(permission)
+    }
 }
 
 /// Single point of decision for "can member X perform action Y in group Z?".

@@ -29,6 +29,13 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     /// remain populated during the 2-week paridad window.
     public let settings: GroupSettings?
 
+    /// Role catalog for this group: jsonb map id → RoleDefinition.
+    /// Always contains the system roles (`founder`, `member`); custom
+    /// roles come from `templates.config.defaultRoles` or — Phase 5+ —
+    /// founder edits. Nil only on rows decoded from a pre-mig-00063
+    /// snapshot (tests, fixtures); live prod always has it populated.
+    public let roles: [String: RoleDefinition]?
+
     // MARK: - DS v3 multi-group fields (migration 00036)
 
     /// Categoría per `docs/DesignSystem.md` v3 §4.7. Determina color ramp
@@ -43,7 +50,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     public let avatarUrl: String?
 
     public enum CodingKeys: String, CodingKey {
-        case id, name, description, governance, settings, category, initials
+        case id, name, description, governance, settings, category, initials, roles
         case inviteCode       = "invite_code"
         case coverImageName   = "cover_image_name"
         case eventVocabulary  = "event_label"
@@ -73,6 +80,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         activeModules: [String]? = nil,
         governance: GovernanceRules? = nil,
         settings: GroupSettings? = nil,
+        roles: [String: RoleDefinition]? = nil,
         category: GroupCategory = .socialRecurring,
         initials: String = "",
         avatarUrl: String? = nil,
@@ -93,6 +101,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         self.activeModules = activeModules
         self.governance = governance
         self.settings = settings
+        self.roles = roles
         self.category = category
         self.initials = initials.isEmpty ? Self.derivedInitials(from: name) : initials
         self.avatarUrl = avatarUrl
@@ -118,6 +127,22 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         self.activeModules   = try c.decodeIfPresent([String].self, forKey: .activeModules)
         self.governance      = try c.decodeIfPresent(GovernanceRules.self, forKey: .governance)
         self.settings        = try c.decodeIfPresent(GroupSettings.self,  forKey: .settings)
+        // Roles jsonb: keys are role ids, values follow RoleDefinition.
+        // Patch each value's `id` (role doesn't store its own key).
+        if let raw = try? c.decodeIfPresent([String: RoleDefinition].self, forKey: .roles) {
+            self.roles = raw.reduce(into: [String: RoleDefinition]()) { acc, kv in
+                let (key, def) = kv
+                acc[key] = RoleDefinition(
+                    id: key,
+                    label: def.label,
+                    permissions: def.permissions,
+                    maxHolders: def.maxHolders,
+                    system: def.system
+                )
+            }
+        } else {
+            self.roles = nil
+        }
         self.category        = (try? c.decode(GroupCategory.self, forKey: .category)) ?? .socialRecurring
         let decodedInitials  = try c.decodeIfPresent(String.self, forKey: .initials) ?? ""
         let nameForInitials  = (try? c.decode(String.self, forKey: .name)) ?? ""
@@ -145,6 +170,22 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     /// none are configured (legacy rows pre-migration 00019).
     public var effectiveActiveModules: [String] {
         activeModules ?? ["basic_fines", "rotating_host", "rsvp", "check_in", "appeal_voting"]
+    }
+
+    /// Returns the effective role catalog: server-provided when present,
+    /// otherwise the V1 system-roles baseline. Lets callers always
+    /// resolve permissions even on rows decoded from a fixture without
+    /// a `roles` field.
+    public var effectiveRoles: [String: RoleDefinition] {
+        roles ?? RoleDefinition.v1SystemRoles
+    }
+
+    /// Looks up a role definition by id (the `group_members.role` value).
+    /// Treats legacy `"admin"` as `"founder"` to mirror the server-side
+    /// alias in `has_permission()` (mig 00063).
+    public func roleDefinition(for roleId: String) -> RoleDefinition? {
+        let normalized = roleId == "admin" ? "founder" : roleId
+        return effectiveRoles[normalized]
     }
 
     /// Avatar URL convertida desde el `avatar_url` string del backend.
