@@ -103,6 +103,12 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
     public let defaultGovernance: GovernanceRules?
     public let defaultSettings: JSONConfig?
     public let defaultRules: [TemplateRule]?
+    /// Role catalog this template prescribes (Phase 2+). Keys are role
+    /// ids (`founder`, `member`, `seat_owner`, ...); values follow
+    /// `RoleDefinition`. Server-side `seed_template_roles` (mig 00067)
+    /// copies this into `groups.roles` at group creation. Optional so
+    /// V1 templates (no custom roles) decode without errors.
+    public let defaultRoles: [String: RoleDefinition]?
     public let suggestedTabs: [TabConfig]?
     public let onboardingFlow: [OnboardingStepConfig]?
 
@@ -140,6 +146,7 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         defaultGovernance: GovernanceRules? = nil,
         defaultSettings: JSONConfig? = nil,
         defaultRules: [TemplateRule]? = nil,
+        defaultRoles: [String: RoleDefinition]? = nil,
         suggestedTabs: [TabConfig]? = nil,
         onboardingFlow: [OnboardingStepConfig]? = nil,
         resourceTypes: [ResourceType]? = nil,
@@ -152,6 +159,7 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         self.defaultGovernance = defaultGovernance
         self.defaultSettings = defaultSettings
         self.defaultRules = defaultRules
+        self.defaultRoles = defaultRoles
         self.suggestedTabs = suggestedTabs
         self.onboardingFlow = onboardingFlow
         self.resourceTypes = resourceTypes
