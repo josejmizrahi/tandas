@@ -915,6 +915,18 @@ public struct MainTabView: View {
                     .fullScreenCover(item: $editRoute) { event in
                         eventEditScreen(event)
                     }
+                } else if app.groups.isEmpty {
+                    // Post-onboarding user with no groups: lost access (left
+                    // all of them, BigBang wipe, orphaned user_id) or just
+                    // hasn't joined any yet. Offer create / join CTAs
+                    // instead of a permanent loading spinner.
+                    ZStack {
+                        Color.ruulBackground.ignoresSafeArea()
+                        EmptyGroupsView(
+                            onCreate: { createGroupPresented = true },
+                            onJoin: { joinGroupPresented = true }
+                        )
+                    }
                 } else {
                     ZStack {
                         Color.ruulBackground.ignoresSafeArea()
@@ -923,6 +935,48 @@ public struct MainTabView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    /// Empty-state hero for users with no groups. Lives next to homeTab
+    /// since it shares the same NavigationStack and CTA bindings.
+    private struct EmptyGroupsView: View {
+        let onCreate: () -> Void
+        let onJoin: () -> Void
+
+        var body: some View {
+            VStack(spacing: RuulSpacing.lg) {
+                Spacer(minLength: RuulSpacing.xxl)
+                RuulIconBadge("person.3", size: .large)
+                VStack(spacing: RuulSpacing.xs) {
+                    Text("Aún no tienes grupos")
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Crea uno nuevo o únete a uno con código de invitación.")
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, RuulSpacing.lg)
+                }
+                VStack(spacing: RuulSpacing.sm) {
+                    RuulButton(
+                        "Crear grupo",
+                        style: .primary,
+                        size: .large,
+                        fillsWidth: true,
+                        action: onCreate
+                    )
+                    RuulButton(
+                        "Unirme con código",
+                        style: .glass,
+                        size: .large,
+                        fillsWidth: true,
+                        action: onJoin
+                    )
+                }
+                .padding(.horizontal, RuulSpacing.lg)
+                Spacer()
+            }
         }
     }
 

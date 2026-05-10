@@ -73,19 +73,17 @@ struct AuthGate: View {
         }
     }
 
-    /// True for an authenticated user with no groups: either landing on
-    /// this device for the first time, or returning after losing access
-    /// to all their groups (left all of them, BigBang wipe, or orphaned
-    /// to an old user_id).
+    /// True for an authenticated user landing on this device for the
+    /// first time: real session + no groups + has NOT completed
+    /// onboarding before (`hasOnboarded` keychain flag).
     ///
-    /// We deliberately do NOT gate on `!hasOnboarded`. The keychain flag
-    /// is sticky across uninstalls, so a returning user whose groups
-    /// vanished would otherwise land in `MainTabView` with no
-    /// `activeGroup` and the home tab would show a loading spinner
-    /// forever. Routing them through the onboarding's "create or join
-    /// a group" path lets them recover.
+    /// Returning users who lost access to all their groups (left all of
+    /// them, BigBang wipe, orphaned user_id) keep `hasOnboarded = true`
+    /// and route into `MainTabView`'s empty state, which lets them
+    /// create or join a new group without re-doing the onboarding flow
+    /// (name + vocabulary etc. they've already given).
     private var isFirstTimeAuth: Bool {
-        app.session != nil && app.groups.isEmpty
+        app.session != nil && app.groups.isEmpty && !hasOnboarded
     }
 
     @MainActor
