@@ -101,9 +101,13 @@ public struct CreateGroupSheet: View {
                 draft.template = TemplateRegistry.dinnerRecurringId
                 draft.coverImageName = coverImageName
                 let group = try await app.groupsRepo.createInitial(draft)
-                // Seed the 5 platform rules so the rule engine fires for this
-                // group too. Idempotent — skips if already platform-shape.
-                _ = try? await app.ruleRepo.seedDinnerTemplateRules(groupId: group.id)
+                // Seed platform rules from the chosen template so the engine
+                // fires for this group too. Idempotent — skips if already
+                // platform-shape. Generic since Gap 2 (mig 00062).
+                _ = try? await app.ruleRepo.seedTemplateRules(
+                    templateId: draft.template,
+                    groupId: group.id
+                )
                 await app.refreshProfileAndGroups()
                 await MainActor.run {
                     app.activeGroupId = group.id

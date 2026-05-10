@@ -190,15 +190,18 @@ public final class FounderOnboardingCoordinator {
         do {
             let group = try await groupRepo.createInitial(draft)
             createdGroup = group
-            // Sprint 1b: seed the 5 default Platform rules for the chosen
-            // template. Idempotent — safe to retry if the user re-enters
-            // this step after a connectivity blip. Failure here is non-fatal.
-            if draft.template == TemplateRegistry.dinnerRecurringId {
-                do {
-                    _ = try await ruleRepo.seedDinnerTemplateRules(groupId: group.id)
-                } catch {
-                    log.warning("seedDinnerTemplateRules failed: \(error.localizedDescription)")
-                }
+            // Sprint 1b: seed the platform-shape default rules for the
+            // chosen template. Generic since Gap 2 (mig 00062) — server
+            // reads templates.config.defaultRules. Idempotent — safe to
+            // retry if the user re-enters this step after a connectivity
+            // blip. Failure here is non-fatal.
+            do {
+                _ = try await ruleRepo.seedTemplateRules(
+                    templateId: draft.template,
+                    groupId: group.id
+                )
+            } catch {
+                log.warning("seedTemplateRules failed: \(error.localizedDescription)")
             }
             await complete(step: .group)
             // Beta 1 skip-by-default: vocabulary / rules / governance all
