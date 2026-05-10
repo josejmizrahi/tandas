@@ -118,14 +118,17 @@ export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
     m.memberId = insertedRow.id;
   }
 
-  // 5. Seed dinner template rules if requested
+  // 5. Seed template rules if requested. Post mig 00077 (Phase 0 cleanup of
+  //    OpenPlatform taxonomy), the legacy `seed_dinner_template_rules`
+  //    wrapper is gone. Use the generic orchestrator (mig 00075) which reads
+  //    groups.active_modules and delegates to seed_module_rules.
   if (opts.seedDinnerRules) {
     const { error: ruleErr } = await founderEntry.client.rpc(
-      "seed_dinner_template_rules",
-      { p_group_id: groupId },
+      "seed_template_rules",
+      { p_template_id: "recurring_dinner", p_group_id: groupId },
     );
     if (ruleErr) {
-      throw new Error(`seedGroup: seed_dinner_template_rules failed: ${ruleErr.message}`);
+      throw new Error(`seedGroup: seed_template_rules failed: ${ruleErr.message}`);
     }
   }
 
