@@ -88,7 +88,7 @@ struct TandasApp: App {
             let fines = LiveFineRepository(client: client)
             let resources = LiveResourceRepository(client: client)
             let analytics = LogAnalyticsService()
-            _appState = State(initialValue: AppState(
+            let state = AppState(
                 auth: auth,
                 profileRepo: profile,
                 groupsRepo: groups,
@@ -114,7 +114,9 @@ struct TandasApp: App {
                 realtimeFactory: { eventId in
                     RSVPRealtimeService(client: client, eventId: eventId)
                 }
-            ))
+            )
+            state.moduleRegistryLoader = LiveModuleRegistry(client: client)
+            _appState = State(initialValue: state)
         }
     }
 

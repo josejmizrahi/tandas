@@ -78,13 +78,25 @@ public actor MockGroupsRepository: GroupsRepository {
     public var nextCreateError: GroupsError?
     public var nextPreviewError: GroupsError?
 
-    public init(seed: [Group] = []) { self._groups = seed }
+    /// Module registry used by `setModule` to mirror the SQL cascade
+    /// closures locally. Defaults to `v1Fallback`; tests can pass a
+    /// custom registry to exercise Phase 2+ deps without seeding the DB.
+    private let modules: ModuleRegistry
+
+    public init(seed: [Group] = [], modules: ModuleRegistry = .v1Fallback) {
+        self._groups = seed
+        self.modules = modules
+    }
 
     /// Test convenience: seed a flat list of `MemberWithProfile` rows.
     /// `membersWithProfiles(of:)` filters this list by `member.groupId`.
-    public init(membersWithProfilesSeed: [MemberWithProfile]) {
+    public init(
+        membersWithProfilesSeed: [MemberWithProfile],
+        modules: ModuleRegistry = .v1Fallback
+    ) {
         self._groups = []
         self._membersWithProfiles = membersWithProfilesSeed
+        self.modules = modules
     }
 
     public func listMine() async throws -> [Group] { _groups }
@@ -262,13 +274,13 @@ public actor MockGroupsRepository: GroupsRepository {
         var modules = g.effectiveActiveModules
         if enabled {
             if !modules.contains(slug) { modules.append(slug) }
-            for dep in ModuleRegistry.transitiveDependencies(of: slug)
+            for dep in self.modules.transitiveDependencies(of: slug)
             where !modules.contains(dep) {
                 modules.append(dep)
             }
         } else {
             modules.removeAll { $0 == slug }
-            let dependents = Set(ModuleRegistry.transitiveDependents(of: slug))
+            let dependents = Set(self.modules.transitiveDependents(of: slug))
             modules.removeAll { dependents.contains($0) }
         }
         let derivedFinesEnabled: Bool = modules.contains(GroupModule.basicFines.id)

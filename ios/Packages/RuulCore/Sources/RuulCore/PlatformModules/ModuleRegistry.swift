@@ -1,44 +1,56 @@
 import Foundation
 
-/// Static registry of platform modules. V1 ships 5 hardcoded modules that
-/// the `recurring_dinner` template activates by default. Fase 2+ adds
-/// module manifests by extending the `v1Modules` array (minimalist by
-/// decision D in Plans/Phase1.md — no DB-driven plugin system in V1).
+/// Snapshot of the platform module catalog. Sendable struct so it can
+/// be passed around between actors / SwiftUI views safely.
 ///
-/// Reads on the hot path: `module(id:)` from `Group.activeModules` lookups.
-/// Modules are pure data (`GroupModule`) so the registry needs no actor —
-/// safe to read concurrently from any context.
-public enum ModuleRegistry {
-    /// All modules known to V1. Order is meaningful for default tab
-    /// composition: modules earlier in the list win on tab id collisions.
-    public static let v1Modules: [GroupModule] = [
+/// Source of truth lives server-side in `public.modules` (mig 00060).
+/// `LiveModuleRegistry.load()` pulls the catalog at app boot and the
+/// resulting `ModuleRegistry` replaces the `v1Fallback` baseline that
+/// boots cold. Tests, previews, and offline-only flows use
+/// `ModuleRegistry.v1Fallback` directly.
+///
+/// Reads are synchronous against an immutable snapshot — no actor
+/// hop on the hot path. Cascade closures are computed via BFS over
+/// the `dependencies` graph mirroring the recursive CTE in
+/// `set_group_module` (mig 00061).
+public struct ModuleRegistry: Sendable, Equatable {
+    public let modules: [GroupModule]
+    public let byId: [String: GroupModule]
+
+    public init(modules: [GroupModule]) {
+        self.modules = modules
+        self.byId = Dictionary(
+            uniqueKeysWithValues: modules.map { ($0.id, $0) }
+        )
+    }
+
+    /// V1 fallback used pre-`loadModuleRegistry()` and as the default
+    /// for tests/previews. Mirrors the seed in mig 00060 verbatim;
+    /// `LiveModuleRegistry` replaces it at app boot when the network
+    /// call succeeds.
+    public static let v1Fallback = ModuleRegistry(modules: [
         .basicFines,
         .rotatingHost,
         .rsvp,
         .checkIn,
         .appealVoting,
-    ]
+    ])
 
-    public static let byId: [String: GroupModule] = Dictionary(
-        uniqueKeysWithValues: v1Modules.map { ($0.id, $0) }
-    )
-
-    /// Lookup by id. Returns nil for module ids not registered (e.g. Fase 2
-    /// modules not yet shipped).
-    public static func module(id: String) -> GroupModule? {
+    /// Lookup by id. Returns nil for unknown ids.
+    public func module(id: String) -> GroupModule? {
         byId[id]
     }
 
     /// Resolve a list of ids (typically `Group.activeModules`) to module
     /// manifests, dropping unknown ids silently.
-    public static func resolve(ids: [String]) -> [GroupModule] {
+    public func resolve(ids: [String]) -> [GroupModule] {
         ids.compactMap { byId[$0] }
     }
 
     /// Validates that a set of module ids is internally consistent:
     /// dependencies present, no conflicts. Returns the issues found, or
     /// empty if valid.
-    public static func validate(ids: [String]) -> [ValidationIssue] {
+    public func validate(ids: [String]) -> [ValidationIssue] {
         var issues: [ValidationIssue] = []
         let present = Set(ids)
 
@@ -69,8 +81,8 @@ public enum ModuleRegistry {
     /// ordered, deduplicated set; iteration order is BFS from `id`'s
     /// direct deps. Unknown ids return an empty set (matches the SQL
     /// `set_group_module` cascade behaviour for forward-compat slugs).
-    /// Mirrors the closure table hardcoded in `mig 00057`.
-    public static func transitiveDependencies(of id: String) -> [String] {
+    /// Mirrors the recursive CTE in mig 00061.
+    public func transitiveDependencies(of id: String) -> [String] {
         var out: [String] = []
         var seen = Set<String>([id])
         var queue: [String] = byId[id]?.dependencies ?? []
@@ -89,7 +101,7 @@ public enum ModuleRegistry {
     /// Every module that requires the given slug, transitively. Used by
     /// the `set_group_module` disable-cascade so dependent modules are
     /// removed when their requirement disappears.
-    public static func transitiveDependents(of id: String) -> [String] {
+    public func transitiveDependents(of id: String) -> [String] {
         var out: [String] = []
         var seen = Set<String>([id])
         var queue: [String] = directDependents(of: id)
@@ -103,7 +115,7 @@ public enum ModuleRegistry {
         return out
     }
 
-    private static func directDependents(of id: String) -> [String] {
-        v1Modules.compactMap { $0.dependencies.contains(id) ? $0.id : nil }
+    private func directDependents(of id: String) -> [String] {
+        modules.compactMap { $0.dependencies.contains(id) ? $0.id : nil }
     }
 }

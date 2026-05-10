@@ -71,7 +71,7 @@ final class TemplateRuleSlugTests: XCTestCase {
         // V1Modules.basicFines.providedRules MUST be slugs (not display
         // strings). Each one MUST appear in DinnerRecurringTemplate's
         // declared slugs.
-        let mod = ModuleRegistry.module(id: "basic_fines")
+        let mod = ModuleRegistry.v1Fallback.module(id: "basic_fines")
         let provided = mod?.providedRules ?? []
         XCTAssertEqual(provided.count, 5)
 
