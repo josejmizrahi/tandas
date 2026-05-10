@@ -39,6 +39,14 @@ export interface SeedOpts {
   memberSpecs: MemberSpec[];
   /** Whether to call seed_dinner_template_rules after group creation. */
   seedDinnerRules?: boolean;
+  /**
+   * Base template id to pass to `create_group_with_admin`. Defaults to
+   * `recurring_dinner` (V1 dinner scenarios). Phase 2 tests pass
+   * `shared_resource` to exercise the palco/cabaña/casa lifecycle —
+   * `create_group_with_admin` auto-invokes `seed_template_rules` +
+   * `seed_template_roles` so the group lands fully configured.
+   */
+  baseTemplate?: string;
 }
 
 export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
@@ -70,7 +78,7 @@ export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
   const founderEntry = provisioned[0];
   const { data: groupId, error: groupErr } = await founderEntry.client.rpc(
     "create_group_with_admin",
-    { p_name: groupName, p_base_template: "recurring_dinner" },
+    { p_name: groupName, p_base_template: opts.baseTemplate ?? "recurring_dinner" },
   );
   if (groupErr) {
     throw new Error(`seedGroup: create_group_with_admin failed: ${groupErr.message}`);

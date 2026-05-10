@@ -383,15 +383,18 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       return failure(rule.id, target.member_id, "fine config missing amount / base+step");
     }
 
+    // event_id is the legacy V1 FK to events(id). For Phase 2 non-event
+    // resources (slots, bookings, etc.) the slot id isn't in events, so
+    // setting event_id = resource_id triggers the fines_event_id_fkey
+    // constraint. Send null instead — resource_id (mig 00041 polymorphic
+    // FK to resources) is the canonical Phase 2 reference. For V1 events
+    // both fields receive the same UUID since events mirror to resources
+    // 1:1 via trigger 00039.
+    const isEventResource = context.resource?.resource_type === "event";
     const fineId = await context.sink.proposeFine({
       rule_id: rule.id,
       group_id: rule.group_id,
-      // V1 cohabitation: every event resource is mirrored to a row in
-      // `resources` with the same UUID, so passing the same id to both
-      // legacy `event_id` and new `resource_id` (00041) keeps the
-      // existing event-locked queries valid while populating the
-      // polymorphic column for Phase 2.
-      event_id: target.resource_id,
+      event_id: isEventResource ? target.resource_id : null,
       resource_id: target.resource_id,
       member_id: target.member_id,
       amount,
