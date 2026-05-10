@@ -5,6 +5,10 @@
 > `setEnabled`. E.2 (this PR) collapsed the iOS models onto the
 > platform shape, rewrote the writer RPCs platform-only, and dropped
 > the legacy columns via migration `00058_drop_rules_legacy_columns`.
+> Migration `00059_restore_rules_trigger_column` re-added `trigger`
+> immediately after — `trigger jsonb` was the platform WHEN field
+> shared with the legacy shape, not legacy-only, and the rule engine
+> reads it. Backfilled from slug; column is NOT NULL going forward.
 > Tracked en `Plans/Active/Audit-2026-05-06.md` § 5.2 item 6.
 
 ## Por qué se posterga
