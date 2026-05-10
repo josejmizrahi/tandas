@@ -14,6 +14,9 @@ public extension SystemEventType {
             return true
         case .checkInMissed,
              .slotAssigned, .slotDeclined, .slotExpired,
+             .slotSwapRequested, .slotSwapApproved,
+             .bookingCreated, .bookingCancelled, .bookingExpired,
+             .assetCreated,
              .fundDeposit, .fundThresholdReached,
              .positionChanged,
              .ruleEnabledChanged, .ruleAmountChanged:

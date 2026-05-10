@@ -126,6 +126,30 @@ public struct HistoryItemPresentation {
             self.icon = "person.crop.circle.badge.minus"
             self.title = "\(actor) salió del grupo"
             self.tone = .neutral
+        case .slotSwapRequested:
+            self.icon = "arrow.left.arrow.right"
+            self.title = "\(actor) pidió cambiar un cupo"
+            self.tone = .info
+        case .slotSwapApproved:
+            self.icon = "arrow.left.arrow.right.circle.fill"
+            self.title = "Se aprobó un cambio de cupo"
+            self.tone = .positive
+        case .bookingCreated:
+            self.icon = "calendar.badge.plus"
+            self.title = "\(actor) reservó un cupo"
+            self.tone = .info
+        case .bookingCancelled:
+            self.icon = "calendar.badge.minus"
+            self.title = "\(actor) canceló una reserva"
+            self.tone = .neutral
+        case .bookingExpired:
+            self.icon = "calendar.badge.exclamationmark"
+            self.title = "Una reserva expiró"
+            self.tone = .warning
+        case .assetCreated:
+            self.icon = "house.fill"
+            self.title = "\(actor) registró un recurso"
+            self.tone = .info
         case .ruleEnabledChanged:
             self.icon = "switch.2"
             self.title = "\(actor) cambió el estado de una regla"

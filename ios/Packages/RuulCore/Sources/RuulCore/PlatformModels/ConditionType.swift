@@ -53,5 +53,13 @@ public enum ConditionType: Codable, Sendable, Hashable {
 
     case rotationPositionEquals
 
+    // MARK: - Slot / Asset / Booking (Fase 2 — shared_resource)
+
+    /// (Phase 2) Slot has no booking attached. Drives auto-assign rules.
+    case slotIsUnassigned
+    /// (Phase 2) Slot starts within X hours from now.
+    /// Config: `{ "hours": 24 }`
+    case slotExpiresInHours
+
     case unknown(String)
 }

@@ -11,16 +11,27 @@ public enum ResourceType: Codable, Sendable, Hashable {
     // throws a clear error if it sees one before the matching template
     // ships.
 
-    /// boleto, cupo, lugar — Fase 2 (Recurso compartido)
+    /// Boleto, cupo, lugar — Fase 2 (shared_resource template).
+    /// Una ventana de uso de un Asset.
     case slot
-    /// caja, fondo común
+    /// Reserva de un Slot por un Member — Fase 2.
+    case booking
+    /// Caja, fondo común — Fase 3.
     case fund
-    /// lugar en rotación
+    /// Lugar en rotación.
     case position
-    /// palco, cabaña — Fase 2
+    /// "A quién le toca" — Fase 2 (rotating_position module).
+    case assignment
+    /// Orden rotativo sobre Members o Resources — Fase 2.
+    case rotation
+    /// Palco, cabaña, casa — Fase 2 (recurso físico/digital compartido).
     case asset
-    /// aporte a tanda — Fase 3
+    /// Invitado temporal con permisos limitados — Fase 2 (guest_pass module).
+    case guestPass
+    /// Aporte a tanda — Fase 3.
     case contribution
+    /// Cambio sugerido a cualquier Resource/Rule/Policy — Fase 5.
+    case proposal
 
     case unknown(String)
 }

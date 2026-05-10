@@ -22,10 +22,16 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     case checkInMissed
     case eventDescriptionMissing
 
-    // MARK: - Slot resource (Fase 2)
+    // MARK: - Slot / Asset / Booking (Fase 2 — shared_resource)
     case slotAssigned
     case slotDeclined
     case slotExpired
+    case slotSwapRequested
+    case slotSwapApproved
+    case bookingCreated
+    case bookingCancelled
+    case bookingExpired
+    case assetCreated
 
     // MARK: - Fines + appeals
     case fineOfficialized
