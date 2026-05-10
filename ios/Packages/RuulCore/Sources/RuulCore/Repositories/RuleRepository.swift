@@ -55,10 +55,13 @@ public protocol RuleRepository: Actor {
     /// Creates only the active drafts. Returns the created rules.
     func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
 
-    /// Seeds the 5 default Platform rules for the "Cena recurrente" template
-    /// via the `seed_dinner_template_rules` RPC. Idempotent — re-running on a
-    /// group that already has Platform-shape rules is a no-op.
-    func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule]
+    /// Seeds the platform-shape default rules for `templateId` by reading
+    /// `templates.config.defaultRules` server-side and bulk-inserting into
+    /// `public.rules`. Idempotent — re-running on a group that already has
+    /// platform-shape rules is a no-op. Replaces the per-template
+    /// `seed_dinner_template_rules` flow (back-compat wrapper still exists
+    /// in mig 00062).
+    func seedTemplateRules(templateId: String, groupId: UUID) async throws -> [OnboardingRule]
 
     /// Read-only list of all rules for a group, ordered by creation time.
     /// Used by the Reglas tab to show the active group's rules.
@@ -98,8 +101,11 @@ public actor MockRuleRepository: RuleRepository {
         }
     }
 
-    public func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
+    public func seedTemplateRules(templateId: String, groupId: UUID) async throws -> [OnboardingRule] {
         // Mock returns 5 fake rows so previews/tests see expected counts.
+        // Only `recurring_dinner` has a known iOS-side mock catalog; other
+        // templates would require their own template files (Phase 2+).
+        guard templateId == "recurring_dinner" else { return [] }
         return DinnerRecurringTemplate.defaultRules(groupId: groupId).map {
             OnboardingRule(
                 id: $0.id,
@@ -174,11 +180,15 @@ public actor LiveRuleRepository: RuleRepository {
         return rules
     }
 
-    public func seedDinnerTemplateRules(groupId: UUID) async throws -> [OnboardingRule] {
-        struct Params: Encodable { let p_group_id: String }
+    public func seedTemplateRules(templateId: String, groupId: UUID) async throws -> [OnboardingRule] {
+        struct Params: Encodable {
+            let p_template_id: String
+            let p_group_id: String
+        }
         do {
             return try await client
-                .rpc("seed_dinner_template_rules", params: Params(
+                .rpc("seed_template_rules", params: Params(
+                    p_template_id: templateId,
                     p_group_id: groupId.uuidString.lowercased()
                 ))
                 .execute()
