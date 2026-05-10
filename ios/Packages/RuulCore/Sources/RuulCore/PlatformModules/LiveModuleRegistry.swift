@@ -37,6 +37,9 @@ private struct ModuleRow: Decodable, Sendable {
     let provided_resource_types: [String]
     let provided_system_event_types: [String]
     let provided_tabs: [String]
+    /// New in mig 00078. Optional decode for forward-compat with deployments
+    /// that haven't applied 00078 yet (would return null/missing).
+    let provided_capability_blocks: [String]?
     let dependencies: [String]
     let conflicts_with: [String]
 
@@ -49,6 +52,7 @@ private struct ModuleRow: Decodable, Sendable {
             providedResourceTypes: provided_resource_types.compactMap(decodeJSONString),
             providedSystemEventTypes: provided_system_event_types.compactMap(decodeJSONString),
             providedTabs: provided_tabs,
+            providedCapabilityBlocks: provided_capability_blocks ?? [],
             dependencies: dependencies,
             conflictsWith: conflicts_with
         )

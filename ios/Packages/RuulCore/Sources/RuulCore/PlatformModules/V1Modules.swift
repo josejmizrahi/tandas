@@ -37,6 +37,7 @@ public extension GroupModule {
             .appealResolved,
         ],
         providedTabs: [],
+        providedCapabilityBlocks: ["rules", "consequence", "ledger"],
         dependencies: ["rsvp", "check_in"],
         conflictsWith: []
     )
@@ -53,6 +54,7 @@ public extension GroupModule {
             .positionChanged,
         ],
         providedTabs: [],
+        providedCapabilityBlocks: ["rotation", "assignment"],
         dependencies: [],
         conflictsWith: []
     )
@@ -71,6 +73,7 @@ public extension GroupModule {
             .rsvpDeadlinePassed,
         ],
         providedTabs: [],
+        providedCapabilityBlocks: ["rsvp", "attendance", "deadline"],
         dependencies: [],
         conflictsWith: []
     )
@@ -88,6 +91,7 @@ public extension GroupModule {
             .checkInMissed,
         ],
         providedTabs: [],
+        providedCapabilityBlocks: ["check_in", "attendance"],
         dependencies: ["rsvp"],
         conflictsWith: []
     )
@@ -106,6 +110,7 @@ public extension GroupModule {
             .voteResolved,
         ],
         providedTabs: [],
+        providedCapabilityBlocks: ["appeal", "voting", "consequence"],
         dependencies: ["basic_fines"],
         conflictsWith: []
     )

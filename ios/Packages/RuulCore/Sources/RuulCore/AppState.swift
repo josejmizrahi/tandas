@@ -92,6 +92,16 @@ public final class AppState {
     /// assign_slot, book_slot, request_slot_swap). Polymorphic over
     /// `resources` table; consumed by Asset/Slot/Booking UI in Slice 2.4.
     public let slotLifecycleRepo: any SlotLifecycleRepository
+
+    // OpenPlatform Capability Foundation (post BigBang mig 00078)
+    public let resourceSeriesRepo: any ResourceSeriesRepository
+    public let resourceCapabilityRepo: any ResourceCapabilityRepository
+    public let ledgerRepo: any LedgerRepository
+    public let rsvpActionRepo: any RsvpActionRepository
+    /// Pilot ResourceBuilder for events. Phase 2+ adds builders for slot,
+    /// fund, asset following the same shape.
+    public let eventBuilder: EventResourceBuilder
+
     public let systemEventEmitter: SystemEventEmitter
 
     /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
@@ -120,6 +130,10 @@ public final class AppState {
         fineRepo: any FineRepository,
         resourceRepo: any ResourceRepository,
         slotLifecycleRepo: any SlotLifecycleRepository,
+        resourceSeriesRepo: any ResourceSeriesRepository,
+        resourceCapabilityRepo: any ResourceCapabilityRepository,
+        ledgerRepo: any LedgerRepository,
+        rsvpActionRepo: any RsvpActionRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
@@ -146,6 +160,11 @@ public final class AppState {
         self.fineRepo = fineRepo
         self.resourceRepo = resourceRepo
         self.slotLifecycleRepo = slotLifecycleRepo
+        self.resourceSeriesRepo = resourceSeriesRepo
+        self.resourceCapabilityRepo = resourceCapabilityRepo
+        self.ledgerRepo = ledgerRepo
+        self.rsvpActionRepo = rsvpActionRepo
+        self.eventBuilder = EventResourceBuilder(eventRepo: eventRepo, ruleRepo: ruleRepo)
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService

@@ -16,12 +16,15 @@ public struct GroupModule: Identifiable, Sendable, Codable, Hashable {
     public let id: String
     public let name: String
     public let description: String
-    public let providedRules: [String]               // rule template names
+    public let providedRules: [String]                  // rule template names
     public let providedResourceTypes: [ResourceType]
     public let providedSystemEventTypes: [SystemEventType]
-    public let providedTabs: [String]                // tab ids if module adds chrome
-    public let dependencies: [String]                // other module ids needed
-    public let conflictsWith: [String]               // mutually exclusive modules
+    public let providedTabs: [String]                   // tab ids if module adds chrome
+    /// Capability block ids this module provides (mig 00078). Drives the
+    /// expanded `CapabilityResolver` and the ResourceWizard surface.
+    public let providedCapabilityBlocks: [String]
+    public let dependencies: [String]                   // other module ids needed
+    public let conflictsWith: [String]                  // mutually exclusive modules
 
     public init(
         id: String,
@@ -31,6 +34,7 @@ public struct GroupModule: Identifiable, Sendable, Codable, Hashable {
         providedResourceTypes: [ResourceType] = [],
         providedSystemEventTypes: [SystemEventType] = [],
         providedTabs: [String] = [],
+        providedCapabilityBlocks: [String] = [],
         dependencies: [String] = [],
         conflictsWith: [String] = []
     ) {
@@ -41,6 +45,7 @@ public struct GroupModule: Identifiable, Sendable, Codable, Hashable {
         self.providedResourceTypes = providedResourceTypes
         self.providedSystemEventTypes = providedSystemEventTypes
         self.providedTabs = providedTabs
+        self.providedCapabilityBlocks = providedCapabilityBlocks
         self.dependencies = dependencies
         self.conflictsWith = conflictsWith
     }

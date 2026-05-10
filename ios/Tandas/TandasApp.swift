@@ -42,6 +42,10 @@ struct TandasApp: App {
             let fines = MockFineRepository()
             let resources = MockResourceRepository()
             let slotLifecycle = MockSlotLifecycleRepository()
+            let resourceSeries = MockResourceSeriesRepository()
+            let resourceCapabilities = MockResourceCapabilityRepository()
+            let ledger = MockLedgerRepository()
+            let rsvpActions = MockRsvpActionRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -64,6 +68,10 @@ struct TandasApp: App {
                 fineRepo: fines,
                 resourceRepo: resources,
                 slotLifecycleRepo: slotLifecycle,
+                resourceSeriesRepo: resourceSeries,
+                resourceCapabilityRepo: resourceCapabilities,
+                ledgerRepo: ledger,
+                rsvpActionRepo: rsvpActions,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics
@@ -90,6 +98,10 @@ struct TandasApp: App {
             let fines = LiveFineRepository(client: client)
             let resources = LiveResourceRepository(client: client)
             let slotLifecycle = LiveSlotLifecycleRepository(client: client)
+            let resourceSeries = LiveResourceSeriesRepository(client: client)
+            let resourceCapabilities = LiveResourceCapabilityRepository(client: client)
+            let ledger = LiveLedgerRepository(client: client)
+            let rsvpActions = LiveRsvpActionRepository(client: client)
             let analytics = LogAnalyticsService()
             let state = AppState(
                 auth: auth,
@@ -112,6 +124,10 @@ struct TandasApp: App {
                 fineRepo: fines,
                 resourceRepo: resources,
                 slotLifecycleRepo: slotLifecycle,
+                resourceSeriesRepo: resourceSeries,
+                resourceCapabilityRepo: resourceCapabilities,
+                ledgerRepo: ledger,
+                rsvpActionRepo: rsvpActions,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics,
