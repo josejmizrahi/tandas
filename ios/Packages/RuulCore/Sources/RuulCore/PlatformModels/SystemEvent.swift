@@ -6,7 +6,13 @@ import Foundation
 ///
 /// `payload` is opaque — different `eventType`s carry different keys. The
 /// rule engine destructures it inside each evaluator.
-public struct SystemEvent: Identifiable, Sendable, Hashable, Codable {
+///
+/// Conforms to `Atom` — `system_events` is the canonical append-only
+/// log. History views in iOS are projections on top of it
+/// (Plans/Active/AtomProjection.md).
+public struct SystemEvent: Atom, Hashable {
+    public static let atomTableName = "system_events"
+
     public let id: UUID
     public let groupId: UUID
     public let eventType: SystemEventType

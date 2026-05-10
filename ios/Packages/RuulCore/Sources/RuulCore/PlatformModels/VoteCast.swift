@@ -4,7 +4,14 @@ import Foundation
 /// `public.vote_casts`, unique on `(vote_id, member_id)`. Anonymity is
 /// enforced by RLS — only the casting member can SELECT their own row;
 /// aggregate counts come from `vote_counts_view` which bypasses RLS.
-public struct VoteCast: Identifiable, Sendable, Codable, Hashable {
+///
+/// Conforms to `Atom` — `vote_casts` is the authoritative ballot log.
+/// `vote_counts_view` is the matching `Projection` (tally is derived
+/// from casts, never stored independently). See
+/// Plans/Active/AtomProjection.md.
+public struct VoteCast: Atom, Hashable {
+    public static let atomTableName = "vote_casts"
+
     public let id: UUID
     public let voteId: UUID
     public let memberId: UUID
