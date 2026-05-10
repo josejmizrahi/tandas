@@ -459,11 +459,11 @@ Con esas cinco bien hechas, el resto se deriva.
 - `Plans/Active/Roadmap.md` — fases temporales y features.
 - `Plans/Active/RolesV2.md` — plan táctico para el stack
   Role/Permission/Policy (§ 4).
-- `Plans/Active/RulesPlatformOnly.md` — drop de columnas legacy de
+- `Plans/Completed/RulesPlatformOnly.md` — drop de columnas legacy de
   rules; pre-requisito para tratar Rule como primitive limpia.
 - `Plans/Active/GovernanceRulesJsonb.md` — migración de governance a
   jsonb (parte de Policy en § 4).
-- `Plans/Active/Audit-2026-05-06.md` — auditoría de cierre F0.
+- `Plans/Completed/Audit-2026-05-06.md` — auditoría de cierre F0.
 - `ios/Packages/RuulCore/Sources/RuulCore/PlatformModels/` — modelos
   Swift de las primitives L1/L2 vivas.
 - `ios/Packages/RuulCore/Sources/RuulCore/PlatformModules/` —

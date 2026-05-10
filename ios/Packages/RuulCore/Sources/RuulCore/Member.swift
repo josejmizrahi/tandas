@@ -5,8 +5,11 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public let groupId: UUID
     public let userId: UUID
     public let displayNameOverride: String?
-    /// Legacy single-role string ("admin" | "member"). Preserved during the
-    /// 2-week paridad window. New code should read `roles` (array).
+    /// Single-role string. Maps to `group_members.role` (text, validated
+    /// by the trigger added in mig 00063 against `groups.roles` keys).
+    /// Legacy `"admin"` is aliased to `"founder"` server-side by
+    /// `has_permission()`; new code should read `roles` (array of typed
+    /// `MemberRole`) for system-role checks.
     public let role: String
     /// Multi-role array. Backfilled by migration 00019: admins get
     /// `[founder, member]`, others `[member]`. V1 active values: founder,

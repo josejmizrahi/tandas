@@ -248,12 +248,9 @@ public final class EventDetailCoordinator {
         defer { isMutating = false }
         do {
             event = try await lifecycle.closeEvent(event, in: group, autoGenerateEnabled: autoGenerateEnabled)
-            // Sprint 1b: feed the rule engine. The platform's
-            // process-system-events cron will pick this up on the next
-            // minute; if the host wants the proposed fines NOW, the
-            // companion `evaluate-event-rules` edge function can be
-            // invoked from Sprint 1c's ReviewProposedFinesView with the
-            // event_id payload (it dedups against this same SystemEvent).
+            // Feed the rule engine. The platform's process-system-events
+            // cron picks this up on the next minute via the eventClosed
+            // SystemEvent emitted below.
             if let systemEvents {
                 await systemEvents.emit(
                     .eventClosed,

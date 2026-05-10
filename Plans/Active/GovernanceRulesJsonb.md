@@ -2,7 +2,7 @@
 
 > Status: stub. Ejecución pre-Fase 4 (cuando Fund + Contribution +
 > Cycle agreguen nuevos `whoCan*`). Tracked en
-> `Plans/Active/Audit-2026-05-06.md` § 4.3 Riesgo 3.
+> `Plans/Completed/Audit-2026-05-06.md` § 4.3 Riesgo 3.
 
 ## Por qué
 
