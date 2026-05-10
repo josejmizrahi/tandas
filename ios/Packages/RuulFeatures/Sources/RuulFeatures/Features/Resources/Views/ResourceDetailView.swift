@@ -23,7 +23,8 @@ public struct ResourceDetailView: View {
         switch resource.resourceType {
         case .event:
             UnknownResourceDetailBody(resource: resource, label: "Event")
-        case .slot, .fund, .position, .asset, .contribution, .unknown:
+        case .slot, .booking, .fund, .position, .assignment, .rotation,
+             .asset, .guestPass, .contribution, .proposal, .unknown:
             UnknownResourceDetailBody(
                 resource: resource,
                 label: String(describing: resource.resourceType)

@@ -19,7 +19,9 @@ const DEFAULT_REPO_ROOT = (() => {
   return here.replace(/\/scripts\/codegen\/?$/, "");
 })();
 
-const DEFAULT_SOURCE_DIR = `${DEFAULT_REPO_ROOT}/ios/Tandas/Platform/Models`;
+// Post-SPM-split paths. Source enums live in RuulCore package; generated
+// Codable extensions go to a sibling Generated/ subdir.
+const DEFAULT_SOURCE_DIR = `${DEFAULT_REPO_ROOT}/ios/Packages/RuulCore/Sources/RuulCore/PlatformModels`;
 const DEFAULT_SWIFT_OUT = `${DEFAULT_SOURCE_DIR}/Generated`;
 const DEFAULT_TS_OUT = `${DEFAULT_REPO_ROOT}/supabase/functions/_shared/types`;
 

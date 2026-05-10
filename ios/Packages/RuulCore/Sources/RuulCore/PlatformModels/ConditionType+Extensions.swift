@@ -10,7 +10,8 @@ public extension ConditionType {
              .memberHasMultipleFines, .memberFinesAbove,
              .memberMissedConsecutive, .eventDayOfWeek,
              .eventTimeWindow, .fundBalanceAbove,
-             .fundBalanceBelow, .rotationPositionEquals:
+             .fundBalanceBelow, .rotationPositionEquals,
+             .slotIsUnassigned, .slotExpiresInHours:
             return false
         case .unknown:
             return false
