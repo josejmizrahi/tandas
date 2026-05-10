@@ -164,7 +164,11 @@ public final class AppState {
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo
         self.rsvpActionRepo = rsvpActionRepo
-        self.eventBuilder = EventResourceBuilder(eventRepo: eventRepo, ruleRepo: ruleRepo)
+        self.eventBuilder = EventResourceBuilder(
+            eventRepo: eventRepo,
+            ruleRepo: ruleRepo,
+            capabilityRepo: resourceCapabilityRepo
+        )
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService

@@ -1070,19 +1070,17 @@ public struct MainTabView: View {
     private var eventCreationScreen: some View {
         if let group = app.activeGroup {
             let suggested = nextDefaultDate(for: group)
-            let creation = EventCreationCoordinator(
+            // OpenPlatform E.4: route event creation through the new
+            // ResourceWizard. The legacy CreateEventView remains in the
+            // codebase as a fallback / edit surface but is no longer the
+            // primary creation path.
+            ResourceWizardSheet(
                 group: group,
-                hasExistingEvents: !(homeCoordinator?.upcomingEvents.isEmpty ?? true),
                 suggestedDate: suggested,
-                eventRepo: app.eventRepo,
-                lifecycle: app.eventLifecycle,
-                analytics: EventAnalytics(analytics: app.analytics)
-            )
-            CreateEventView(coordinator: creation)
-                .onChange(of: creation.createdEvent) { _, newValue in
-                    guard newValue != nil else { return }
+                onCreated: { _ in
                     Task { await homeCoordinator?.refresh(force: true) }
                 }
+            )
         }
     }
 

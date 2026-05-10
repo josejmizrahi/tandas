@@ -22,11 +22,21 @@ public actor EventResourceBuilder: ResourceBuilder {
 
     private let eventRepo: any EventRepository
     private let ruleRepo: any RuleRepository
+    /// Optional. When injected, the builder persists each enabled
+    /// capability to `public.resource_capabilities` after the event row
+    /// lands. nil keeps backwards compat for callers that don't yet
+    /// pass the repo (mocks, previews, tests).
+    private let capabilityRepo: (any ResourceCapabilityRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.builder.event")
 
-    public init(eventRepo: any EventRepository, ruleRepo: any RuleRepository) {
+    public init(
+        eventRepo: any EventRepository,
+        ruleRepo: any RuleRepository,
+        capabilityRepo: (any ResourceCapabilityRepository)? = nil
+    ) {
         self.eventRepo = eventRepo
         self.ruleRepo = ruleRepo
+        self.capabilityRepo = capabilityRepo
     }
 
     public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
@@ -64,6 +74,27 @@ public actor EventResourceBuilder: ResourceBuilder {
             throw ResourceBuilderError.rpcFailed(error.localizedDescription)
         }
 
+        // Persist capability rows for the toggled blocks. This is the
+        // bridge between the wizard's "enable RSVP/check-in/rotation"
+        // toggles and the runtime resource_capabilities table the
+        // resolver + future feature gates read from.
+        var persistedCapabilityIds: [String] = []
+        if let capabilityRepo {
+            for blockId in draft.enabledCapabilities {
+                let config = draft.capabilityConfigs[blockId] ?? .object([:])
+                do {
+                    _ = try await capabilityRepo.enable(
+                        blockId,
+                        on: event.id,
+                        config: config
+                    )
+                    persistedCapabilityIds.append(blockId)
+                } catch {
+                    log.warning("enable capability \(blockId) failed: \(error.localizedDescription)")
+                }
+            }
+        }
+
         // Seed initial rules scoped to the resource. Rules table has
         // resource_id (post Phase A) so the engine can route them.
         var createdRuleIds: [UUID] = []
@@ -82,7 +113,9 @@ public actor EventResourceBuilder: ResourceBuilder {
         return ResourceCreationResult(
             resourceId: event.id,
             seriesId: nil,
-            enabledCapabilityIds: draft.enabledCapabilities,
+            enabledCapabilityIds: persistedCapabilityIds.isEmpty
+                ? draft.enabledCapabilities
+                : persistedCapabilityIds,
             createdRuleIds: createdRuleIds,
             cascadedModuleIds: []
         )
