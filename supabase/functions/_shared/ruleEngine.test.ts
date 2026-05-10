@@ -431,6 +431,132 @@ Deno.test("unimplemented condition → failure per target + structured warn log 
   }
 });
 
+// =============================================================================
+// Phase 2 conditions — slot evaluators
+// =============================================================================
+
+const slotId = "s00000000-0000-0000-0000-000000000001";
+const bookingId = "b00000000-0000-0000-0000-000000000001";
+
+function slotContext(extras: {
+  sink: ConsequenceSink;
+  bookingId?: string | null;
+  startsAt?: string;
+  now?: Date;
+}): RuleContext {
+  return {
+    now: extras.now ?? new Date("2026-05-04T22:00:00Z"),
+    members: [memberAlice, memberBob, memberCarla],
+    resource: {
+      id: slotId,
+      group_id: groupId,
+      resource_type: "slot",
+      status: extras.bookingId ? "booked" : "expired",
+      metadata: {
+        starts_at: extras.startsAt ?? "2026-05-05T20:30:00Z",
+        ends_at: "2026-05-05T22:30:00Z",
+        asset_id: "a00000000-0000-0000-0000-000000000001",
+        assigned_member_id: memberAlice.id,
+        booking_id: extras.bookingId ?? null,
+      },
+    },
+    rsvps: [],
+    checkIns: [],
+    finesThisMonthByMember: new Map(),
+    sink: extras.sink,
+  };
+}
+
+Deno.test("slotIsUnassigned (booking_id=null) → condition true, consequences fire", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_no_show",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "slotIsUnassigned", config: {} }],
+    [{ type: "fine", config: { amount: 200 } }],
+  );
+
+  // Use eventClosed as vehicle (slotExpired trigger lands in Slice 2.2).
+  // Each active member becomes a target; condition reads context.resource.
+  const ctx = slotContext({ sink, bookingId: null });
+  const results = await runRulesForEvent(makeEvent("eventClosed", { resource_id: slotId }), [rule], ctx);
+
+  // Condition true for every member → 3 fines proposed.
+  assertEquals(results.length, 3);
+  assertEquals(captured.length, 3);
+});
+
+Deno.test("slotIsUnassigned (booking_id present) → condition false, no fires", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_no_show",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "slotIsUnassigned", config: {} }],
+    [{ type: "fine", config: { amount: 200 } }],
+  );
+
+  const ctx = slotContext({ sink, bookingId });
+  const results = await runRulesForEvent(makeEvent("eventClosed", { resource_id: slotId }), [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
+
+Deno.test("slotExpiresInHours: starts within window → true", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_swap_warning",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "slotExpiresInHours", config: { hours: 24 } }],
+    [{ type: "fine", config: { amount: 50 } }],
+  );
+
+  // now = 2026-05-04T22:00, slot starts = 2026-05-05T20:30 → ~22.5h away → in window
+  const ctx = slotContext({ sink, bookingId: null });
+  const results = await runRulesForEvent(makeEvent("eventClosed", { resource_id: slotId }), [rule], ctx);
+
+  assertEquals(results.length, 3);
+  assertEquals(captured.length, 3);
+});
+
+Deno.test("slotExpiresInHours: outside window → false", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_swap_warning",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "slotExpiresInHours", config: { hours: 6 } }],
+    [{ type: "fine", config: { amount: 50 } }],
+  );
+
+  // 22.5h away with hours=6 → out of window → no fires
+  const ctx = slotContext({ sink, bookingId: null });
+  const results = await runRulesForEvent(makeEvent("eventClosed", { resource_id: slotId }), [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("slotExpiresInHours: slot already started → false (no retroactive fires)", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_swap_warning",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "slotExpiresInHours", config: { hours: 24 } }],
+    [{ type: "fine", config: { amount: 50 } }],
+  );
+
+  const ctx = slotContext({
+    sink,
+    bookingId: null,
+    now: new Date("2026-05-05T22:00:00Z"), // 1.5h after slot starts_at
+  });
+  const results = await runRulesForEvent(makeEvent("eventClosed", { resource_id: slotId }), [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
 Deno.test("unmapped reserved type → phase_target='unknown' (signals roadmap gap)", async () => {
   const { sink, captured } = captureSink();
   const { entries, restore } = captureLogs();

@@ -287,6 +287,36 @@ const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
     const description = target.context.description as string | null | undefined;
     return !description || description.trim().length === 0;
   },
+
+  // (Phase 2) Slot has no booking attached. Used by `shared_no_show`:
+  // fires after slotExpired to fine the assigned holder when nobody used
+  // their cupo. Reads `resources.metadata.booking_id` polymorphically —
+  // the slot resource carries the booking attachment in its metadata.
+  // Falls back to target.context.booking_id if the trigger evaluator
+  // already projected it (avoids re-reading when caller has the value).
+  slotIsUnassigned: async (_cond, target, context) => {
+    const fromTarget = target.context.booking_id;
+    if (fromTarget !== undefined) return fromTarget == null;
+    if (!context.resource) return false;
+    const bookingId = context.resource.metadata.booking_id;
+    return bookingId == null;
+  },
+
+  // (Phase 2) Slot is within X hours of expiring. "Expires" =
+  // `metadata.starts_at` (when the right-of-use lapses for the assigned
+  // holder). Config: `{ "hours": 24 }` — true when 0 < hoursUntilExpiry
+  // <= hours. Negative deltas (slot already started) return false so the
+  // condition behaves as a forward-looking warning gate.
+  slotExpiresInHours: async (cond, _target, context) => {
+    if (!context.resource) return false;
+    const hours = (cond.config.hours as number | undefined) ?? 24;
+    const startsAt = context.resource.metadata.starts_at as string | undefined;
+    if (!startsAt) return false;
+    const expiresAtMs = new Date(startsAt).getTime();
+    if (Number.isNaN(expiresAtMs)) return false;
+    const hoursUntilExpiry = (expiresAtMs - context.now.getTime()) / 3_600_000;
+    return hoursUntilExpiry > 0 && hoursUntilExpiry <= hours;
+  },
 };
 
 // =============================================================================
