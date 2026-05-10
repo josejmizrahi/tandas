@@ -247,9 +247,9 @@ public final class FounderOnboardingCoordinator {
         guard let group = createdGroup, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        let enabledDrafts = draft.rules.filter(\.enabled)
+        let activeDrafts = draft.rules.filter(\.isActive)
         do {
-            _ = try await ruleRepo.createInitialRules(groupId: group.id, drafts: enabledDrafts)
+            _ = try await ruleRepo.createInitialRules(groupId: group.id, drafts: activeDrafts)
             // Primitives § 3 slice 3: write module membership directly. The
             // `update_group_config` RPC keeps owning rotation_mode (still a
             // first-class column on groups); fines toggle goes through the
@@ -258,7 +258,7 @@ public final class FounderOnboardingCoordinator {
             createdGroup = try await groupRepo.setModule(
                 groupId: group.id,
                 slug: GroupModule.basicFines.id,
-                enabled: !enabledDrafts.isEmpty
+                enabled: !activeDrafts.isEmpty
             )
             let patch = GroupConfigPatch(rotationMode: draft.rotationMode)
             createdGroup = try await groupRepo.updateConfig(groupId: group.id, patch: patch)
@@ -274,7 +274,7 @@ public final class FounderOnboardingCoordinator {
     public func skipRules() async {
         draft.finesEnabled = false
         draft.rules = draft.rules.map {
-            var copy = $0; copy.enabled = false; return copy
+            var copy = $0; copy.isActive = false; return copy
         }
         guard let group = createdGroup else { return }
         isLoading = true
@@ -456,7 +456,7 @@ public final class FounderOnboardingCoordinator {
             hasFrequency: draft.frequencyType != nil,
             finesEnabled: group.map { CapabilityResolver().finesEnabled(in: $0) } ?? draft.finesEnabled,
             rotationMode: (group?.rotationMode ?? draft.rotationMode).rawValue,
-            rulesCount: draft.rules.filter(\.enabled).count
+            rulesCount: draft.rules.filter(\.isActive).count
         ))
         await analytics.track(.onboardingCompleted(flowType: .founder, totalTimeMs: elapsed))
     }

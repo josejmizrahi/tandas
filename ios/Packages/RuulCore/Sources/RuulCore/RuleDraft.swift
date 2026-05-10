@@ -1,185 +1,178 @@
 import Foundation
 
 /// Draft of a rule shown in the founder onboarding step 4. Mutable as the
-/// user toggles enable/disable and edits the amount.
+/// user toggles activeness and edits the amount. Slice E.2 collapsed this
+/// onto the platform shape — `slug`, `trigger`, `conditions`, and
+/// `consequences` are now stored fields and the LiveRuleRepository sends
+/// them straight to `create_initial_rule`.
 public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
-    public let code: String                  // matches Supabase rules.code: late, no_rsvp, etc.
-    public var title: String
+    /// Stable cross-group identifier (e.g. `dinner_late_arrival`). Persisted
+    /// in `rules.slug`. The 5 dinner-template values are defined under
+    /// `DinnerRecurringTemplate.RuleSlug.*`.
+    public let slug: String
+    public var name: String
+    /// Static description shown in the onboarding info sheet. Not persisted
+    /// per-rule (E.2 dropped `rules.description`); template-level copy lives
+    /// in `templates.config.defaultRules`.
     public var description: String
-    public var amountMXN: Int                // editable inline
-    public var enabled: Bool
-    public let trigger: RuleTriggerSpec      // immutable per code
+    public var isActive: Bool
+    public let trigger: RuleTrigger
+    public let conditions: [RuleCondition]
+    public var consequences: [RuleConsequence]
 
     public init(
         id: UUID = UUID(),
-        code: String,
-        title: String,
+        slug: String,
+        name: String,
         description: String,
-        amountMXN: Int,
-        enabled: Bool,
-        trigger: RuleTriggerSpec
+        isActive: Bool,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
+        consequences: [RuleConsequence]
     ) {
         self.id = id
-        self.code = code
-        self.title = title
+        self.slug = slug
+        self.name = name
         self.description = description
-        self.amountMXN = amountMXN
-        self.enabled = enabled
+        self.isActive = isActive
         self.trigger = trigger
+        self.conditions = conditions
+        self.consequences = consequences
     }
 
-    /// Platform-shape forwarder for views. Tracks `title` 1:1 (mutable).
-    /// Stays as a forwarder until `RulesPlatformOnly.md` E.2 collapses
-    /// `RuleDraft` onto the platform shape.
-    public var name: String {
-        get { title }
-        set { title = newValue }
-    }
-
-    /// Platform-shape forwarder. Tracks `enabled` 1:1 (mutable).
-    public var isActive: Bool {
-        get { enabled }
-        set { enabled = newValue }
+    /// Convenience read/write over the first `fine` consequence's amount.
+    /// Reads the flat `amount` first, falls back to escalating `baseAmount`.
+    /// Setter writes back to whichever key already exists; if neither is
+    /// present (no fine consequence), the setter is a no-op.
+    public var amountMXN: Int {
+        get {
+            guard
+                let cfg = consequences.first(where: { $0.type == .fine })?.config,
+                case .object(let dict) = cfg
+            else { return 0 }
+            if let v = dict["amount"]?.intValue { return v }
+            if let v = dict["baseAmount"]?.intValue { return v }
+            return 0
+        }
+        set {
+            guard
+                let idx = consequences.firstIndex(where: { $0.type == .fine }),
+                case .object(var dict) = consequences[idx].config
+            else { return }
+            if dict["amount"] != nil {
+                dict["amount"] = .int(newValue)
+            } else if dict["baseAmount"] != nil {
+                dict["baseAmount"] = .int(newValue)
+            } else {
+                dict["amount"] = .int(newValue)
+            }
+            consequences[idx] = RuleConsequence(type: .fine, config: .object(dict))
+        }
     }
 }
 
-/// Mirror of the existing rule engine's trigger jsonb shape.
-public struct RuleTriggerSpec: Codable, Sendable, Hashable {
-    public let type: String
-    public var params: [String: AnyCodable]
-
-    public init(type: String, params: [String: AnyCodable]) {
-        self.type = type
-        self.params = params
-    }
-
-    public static let lateArrival = RuleTriggerSpec(
-        type: "late_arrival",
-        params: ["per_30min_increment": AnyCodable(50)]
-    )
-
-    public static let noRSVP = RuleTriggerSpec(
-        type: "no_rsvp_by_deadline",
-        params: ["deadline_offset_hours": AnyCodable(-4)]
-    )
-
-    public static let cancelSameDay = RuleTriggerSpec(
-        type: "cancel_same_day",
-        params: [:]
-    )
-
-    public static let noShow = RuleTriggerSpec(
-        type: "no_show",
-        params: [:]
-    )
-
-    public static let hostNoMenu = RuleTriggerSpec(
-        type: "host_no_menu_24h",
-        params: [:]
-    )
-}
-
-/// Default 5 rules for paste 4. 4 enabled + 1 disabled.
+/// Default 5 rules for the founder onboarding step 4. 4 active + 1 off.
+/// Mirrors `templates.config.defaultRules` (the canonical jsonb seeded by
+/// migration 00038) and `seed_dinner_template_rules`. Consequences match
+/// the values the rule engine expects: rule 1 escalating, rules 2–5 flat.
 public extension RuleDraft {
-    public static let defaults: [RuleDraft] = [
+    static let defaults: [RuleDraft] = [
         RuleDraft(
-            code: "late",
-            title: "Llegar tarde",
+            slug: DinnerRecurringTemplate.RuleSlug.lateArrival,
+            name: "Llegar tarde",
             description: "$200 base + $50 por cada 30 min después.",
-            amountMXN: 200,
-            enabled: true,
-            trigger: .lateArrival
+            isActive: true,
+            trigger: RuleTrigger(eventType: .checkInRecorded),
+            conditions: [
+                RuleCondition(
+                    type: .checkInMinutesLate,
+                    config: .object(["thresholdMinutes": .int(0)])
+                )
+            ],
+            consequences: [
+                RuleConsequence(
+                    type: .fine,
+                    config: .object([
+                        "baseAmount":  .int(200),
+                        "stepAmount":  .int(50),
+                        "stepMinutes": .int(30)
+                    ])
+                )
+            ]
         ),
         RuleDraft(
-            code: "no_rsvp",
-            title: "No confirmar antes del día anterior",
+            slug: DinnerRecurringTemplate.RuleSlug.noResponse,
+            name: "No confirmar antes del día anterior",
             description: "Si no confirmas asistencia antes de las 20:00 del día anterior.",
-            amountMXN: 200,
-            enabled: true,
-            trigger: .noRSVP
+            isActive: true,
+            trigger: RuleTrigger(eventType: .eventClosed),
+            conditions: [
+                RuleCondition(
+                    type: .responseStatusIs,
+                    config: .object(["status": .string("pending")])
+                )
+            ],
+            consequences: [
+                RuleConsequence(
+                    type: .fine,
+                    config: .object(["amount": .int(200)])
+                )
+            ]
         ),
         RuleDraft(
-            code: "cancel_same_day",
-            title: "Cancelar el mismo día",
+            slug: DinnerRecurringTemplate.RuleSlug.sameDayCancel,
+            name: "Cancelar el mismo día",
             description: "Si cancelas tu asistencia el día del evento.",
-            amountMXN: 200,
-            enabled: true,
-            trigger: .cancelSameDay
+            isActive: true,
+            trigger: RuleTrigger(eventType: .rsvpChangedSameDay),
+            conditions: [RuleCondition(type: .alwaysTrue)],
+            consequences: [
+                RuleConsequence(
+                    type: .fine,
+                    config: .object(["amount": .int(200)])
+                )
+            ]
         ),
         RuleDraft(
-            code: "no_show",
-            title: "No-show",
+            slug: DinnerRecurringTemplate.RuleSlug.noShow,
+            name: "No-show",
             description: "Si confirmaste y no llegaste sin avisar.",
-            amountMXN: 300,
-            enabled: true,
-            trigger: .noShow
+            isActive: true,
+            trigger: RuleTrigger(eventType: .eventClosed),
+            conditions: [
+                RuleCondition(
+                    type: .responseStatusIs,
+                    config: .object(["status": .string("going")])
+                ),
+                RuleCondition(
+                    type: .checkInExists,
+                    config: .object(["exists": .bool(false)])
+                )
+            ],
+            consequences: [
+                RuleConsequence(
+                    type: .fine,
+                    config: .object(["amount": .int(300)])
+                )
+            ]
         ),
         RuleDraft(
-            code: "host_no_menu",
-            title: "Anfitrión sin avisar el menú",
+            slug: DinnerRecurringTemplate.RuleSlug.hostNoMenu,
+            name: "Anfitrión sin avisar el menú",
             description: "Si eres host y no avisas el menú con 24h de anticipación.",
-            amountMXN: 200,
-            enabled: false,
-            trigger: .hostNoMenu
+            isActive: false,
+            trigger: RuleTrigger(
+                eventType: .hoursBeforeEvent,
+                config: .object(["hours": .int(24)])
+            ),
+            conditions: [RuleCondition(type: .eventDescriptionMissing)],
+            consequences: [
+                RuleConsequence(
+                    type: .fine,
+                    config: .object(["amount": .int(200)])
+                )
+            ]
         )
     ]
-}
-
-/// Lightweight Codable container so we can stash arbitrary JSON in trigger
-/// params without pulling a JSON library.
-public struct AnyCodable: Codable, Sendable, Hashable {
-    public let value: Sendable
-
-    public init(_ value: Sendable) {
-        self.value = value
-    }
-
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.singleValueContainer()
-        if let v = try? c.decode(Int.self)    { self.value = v; return }
-        if let v = try? c.decode(Double.self) { self.value = v; return }
-        if let v = try? c.decode(Bool.self)   { self.value = v; return }
-        if let v = try? c.decode(String.self) { self.value = v; return }
-        if c.decodeNil()                       { self.value = NSNull(); return }
-        throw DecodingError.dataCorruptedError(in: c, debugDescription: "unsupported type")
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var c = encoder.singleValueContainer()
-        switch value {
-        case let v as Int:    try c.encode(v)
-        case let v as Double: try c.encode(v)
-        case let v as Bool:   try c.encode(v)
-        case let v as String: try c.encode(v)
-        case is NSNull:       try c.encodeNil()
-        default:
-            throw EncodingError.invalidValue(
-                value,
-                EncodingError.Context(codingPath: encoder.codingPath, debugDescription: "unsupported type")
-            )
-        }
-    }
-
-    public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
-        switch (lhs.value, rhs.value) {
-        case (let l as Int, let r as Int):       return l == r
-        case (let l as Double, let r as Double): return l == r
-        case (let l as Bool, let r as Bool):     return l == r
-        case (let l as String, let r as String): return l == r
-        case (is NSNull, is NSNull):             return true
-        default: return false
-        }
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        switch value {
-        case let v as Int:    hasher.combine(0); hasher.combine(v)
-        case let v as Double: hasher.combine(1); hasher.combine(v)
-        case let v as Bool:   hasher.combine(2); hasher.combine(v)
-        case let v as String: hasher.combine(3); hasher.combine(v)
-        case is NSNull:       hasher.combine(4)
-        default: break
-        }
-    }
 }

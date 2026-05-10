@@ -12,12 +12,11 @@ final class RuleFineShapeTests: XCTestCase {
         GroupRule(
             id: UUID(),
             groupId: UUID(),
-            code: nil,
-            title: "Test",
-            description: nil,
-            enabled: true,
+            slug: nil,
+            name: "Test",
             isActive: true,
-            action: nil,
+            trigger: RuleTrigger(eventType: .checkInRecorded),
+            conditions: [],
             consequences: consequences
         )
     }

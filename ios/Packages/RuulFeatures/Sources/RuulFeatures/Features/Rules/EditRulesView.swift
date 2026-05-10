@@ -46,7 +46,7 @@ public struct EditRulesView: View {
                 header
                 VStack(spacing: RuulSpacing.sm) {
                     // Repo lists rules ordered by created_at ASC; toggle
-                    // mutates in place via withEnabled, so order is stable.
+                    // mutates in place via withIsActive, so order is stable.
                     ForEach(coordinator.rules) { rule in
                         ruleCard(rule)
                     }
@@ -103,12 +103,6 @@ public struct EditRulesView: View {
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(2)
-                    if let desc = rule.description, !desc.isEmpty {
-                        Text(desc)
-                            .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
-                            .lineLimit(3)
-                    }
                     fineDisplay(rule)
                     if let pending {
                         pendingBadge(pending)
@@ -152,7 +146,7 @@ public struct EditRulesView: View {
             Toggle("", isOn: Binding(
                 get: { rule.isActive },
                 set: { newValue in
-                    Task { await coordinator.setEnabled(rule: rule, enabled: newValue) }
+                    Task { await coordinator.setIsActive(rule: rule, isActive: newValue) }
                 }
             ))
             .labelsHidden()

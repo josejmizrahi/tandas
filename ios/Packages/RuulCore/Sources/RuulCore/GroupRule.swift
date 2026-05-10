@@ -1,55 +1,44 @@
 import Foundation
 
 /// Read-only view of a rule for display in `RulesView`. Decodes the platform
-/// columns (name, is_active, consequences) and the legacy columns
-/// (title, action.amount_mxn) so it works for both legacy and platform-shape
-/// rows. The `amountMXN` resolver checks both shapes.
+/// columns (`name`, `is_active`, `slug`, `trigger`, `conditions`,
+/// `consequences`). Slice E.2 dropped the legacy columns
+/// (`title`/`code`/`description`/`enabled`/`action`); platform fields are
+/// the only persisted shape now.
 public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
     public let groupId: UUID
     public let slug: String?
-    public let code: String?
-    public let title: String
-    public let description: String?
-    public let enabled: Bool
+    public let name: String
     public let isActive: Bool
-    public let action: ActionEnvelope?
+    public let trigger: RuleTrigger
+    public let conditions: [RuleCondition]
     public let consequences: [ConsequenceEnvelope]
 
     public init(
         id: UUID,
         groupId: UUID,
         slug: String? = nil,
-        code: String?,
-        title: String,
-        description: String?,
-        enabled: Bool,
+        name: String,
         isActive: Bool,
-        action: ActionEnvelope?,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
         consequences: [ConsequenceEnvelope]
     ) {
         self.id = id
         self.groupId = groupId
         self.slug = slug
-        self.code = code
-        self.title = title
-        self.description = description
-        self.enabled = enabled
+        self.name = name
         self.isActive = isActive
-        self.action = action
+        self.trigger = trigger
+        self.conditions = conditions
         self.consequences = consequences
     }
 
-    public struct ActionEnvelope: Codable, Sendable, Hashable {
-        public let type: String?
-        public let amount_mxn: Int?
-
-        public init(type: String?, amount_mxn: Int?) {
-            self.type = type
-            self.amount_mxn = amount_mxn
-        }
-    }
-
+    /// Loosely-typed envelope used to read `rules.consequences[].config`.
+    /// Wraps the same fields the V1 fine evaluator understands so
+    /// `fineShape` can classify the rule without round-tripping through
+    /// `JSONConfig`.
     public struct ConsequenceEnvelope: Codable, Sendable, Hashable {
         public let type: String?
         public let config: Config?
@@ -74,32 +63,28 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         }
     }
 
-    /// Resolves the display amount (MXN). Tries platform consequences first,
-    /// then legacy action.amount_mxn. Returns nil if the rule isn't a fine.
+    /// Resolves the display amount (MXN) from the first `fine` consequence.
+    /// Returns nil if the rule isn't a fine.
     public var amountMXN: Int? {
-        if let cons = consequences.first(where: { $0.type == "fine" }) {
-            if let flat = cons.config?.amount { return flat }
-            if let base = cons.config?.baseAmount { return base }
-        }
-        return action?.amount_mxn
+        guard let cons = consequences.first(where: { $0.type == "fine" }) else { return nil }
+        if let flat = cons.config?.amount { return flat }
+        if let base = cons.config?.baseAmount { return base }
+        return nil
     }
 
-    /// Platform-shape forwarder for views. `name` is the platform column
-    /// (`rules.name`); the legacy `title` column persists until
-    /// `RulesPlatformOnly.md` E.2 drops it. Decoders populate both today.
-    public var name: String { title }
-
-    /// True when the rule is both `enabled` and `is_active` — the engine
-    /// only fires rules where both are true.
-    public var isLive: Bool { enabled && isActive }
+    /// True when the rule is active. Slice E.1 collapsed the previous
+    /// `enabled && isActive` AND once both columns stayed in lockstep;
+    /// E.2 dropped `enabled` entirely so `isActive` is the lone signal.
+    public var isLive: Bool { isActive }
 
     public enum CodingKeys: String, CodingKey {
         case id
         case groupId      = "group_id"
         case slug
-        case code, title, description, enabled
+        case name
         case isActive     = "is_active"
-        case action
+        case trigger
+        case conditions
         case consequences
     }
 }

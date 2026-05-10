@@ -38,12 +38,11 @@ struct CreateRuleChangeCoordinatorTests {
         GroupRule(
             id: UUID(),
             groupId: UUID(),
-            code: nil,
-            title: "Llegar tarde",
-            description: nil,
-            enabled: true,
+            slug: nil,
+            name: "Llegar tarde",
             isActive: true,
-            action: nil,
+            trigger: RuleTrigger(eventType: .checkInRecorded),
+            conditions: [],
             consequences: [
                 GroupRule.ConsequenceEnvelope(
                     type: "fine",

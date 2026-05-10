@@ -1,7 +1,7 @@
 // supabase/functions/_tests/db/rule_mutation_audit.test.ts
 //
-// Covers migration 00024_rule_mutation_audit.sql:
-//   - UPDATE rules.enabled flip → exactly 1 ruleEnabledChanged row.
+// Covers migration 00024_rule_mutation_audit.sql, post-Slice-E.2 (00058):
+//   - UPDATE rules.is_active flip → exactly 1 ruleEnabledChanged row.
 //   - UPDATE rules.consequences → exactly 1 ruleAmountChanged row.
 //   - Combined UPDATE → 2 rows.
 //   - UPDATE that touches neither column → 0 rows.
@@ -28,19 +28,19 @@ async function countRuleEvents(
   return count ?? 0;
 }
 
-Deno.test("trigger emits ruleEnabledChanged on enabled flip", async () => {
+Deno.test("trigger emits ruleEnabledChanged on is_active flip", async () => {
   let g: SeededGroup | null = null;
   try {
     g = await seedGroup({
       memberSpecs: [{ handle: "alice" }],
       seedDinnerRules: true,
     });
-    const { data: rules } = await admin.from("rules").select("id,enabled")
+    const { data: rules } = await admin.from("rules").select("id,is_active")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
-    const initial = rules![0].enabled as boolean;
+    const initial = rules![0].is_active as boolean;
 
-    await admin.from("rules").update({ enabled: !initial }).eq("id", ruleId);
+    await admin.from("rules").update({ is_active: !initial }).eq("id", ruleId);
 
     assertEquals(await countRuleEvents(g.groupId, ruleId, "ruleEnabledChanged"), 1);
     assertEquals(await countRuleEvents(g.groupId, ruleId, "ruleAmountChanged"), 0);
@@ -77,13 +77,13 @@ Deno.test("trigger emits both events on combined UPDATE", async () => {
       memberSpecs: [{ handle: "alice" }],
       seedDinnerRules: true,
     });
-    const { data: rules } = await admin.from("rules").select("id,enabled,consequences")
+    const { data: rules } = await admin.from("rules").select("id,is_active,consequences")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
-    const initial = rules![0].enabled as boolean;
+    const initial = rules![0].is_active as boolean;
 
     await admin.from("rules").update({
-      enabled: !initial,
+      is_active: !initial,
       consequences: [{ type: "fine", config: { amount: 555 } }],
     }).eq("id", ruleId);
 
@@ -101,11 +101,11 @@ Deno.test("trigger emits zero events on UPDATE that touches neither column", asy
       memberSpecs: [{ handle: "alice" }],
       seedDinnerRules: true,
     });
-    const { data: rules } = await admin.from("rules").select("id,title")
+    const { data: rules } = await admin.from("rules").select("id,name")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
 
-    await admin.from("rules").update({ title: "Renamed for test" }).eq("id", ruleId);
+    await admin.from("rules").update({ name: "Renamed for test" }).eq("id", ruleId);
 
     assertEquals(await countRuleEvents(g.groupId, ruleId, "ruleEnabledChanged"), 0);
     assertEquals(await countRuleEvents(g.groupId, ruleId, "ruleAmountChanged"), 0);
