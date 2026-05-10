@@ -47,7 +47,8 @@ const TRIGGER_PHASE: Partial<Record<SystemEventType, string>> = {
   // Phase 2: Recurso compartido
   slotAssigned: "phase_2",
   slotDeclined: "phase_2",
-  slotExpired: "phase_2",
+  // slotExpired evaluator implemented in Slice 2.2 — emit-slot-system-events
+  // cron drives it. Falls through to "unknown" if absent from this map.
   positionChanged: "phase_2",
   checkInMissed: "phase_2",
   // Phase 3: Tanda
@@ -242,6 +243,29 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
       context: {
         scheduled_hours: event.payload.hours,
         description: context.resource?.metadata?.description ?? null,
+      },
+    }];
+  },
+
+  // (Phase 2) Single target = the assigned holder of the expired slot.
+  // The cron `emit-slot-system-events` projects assigned_member_id +
+  // booking_id onto event.payload so the condition evaluators
+  // (`slotIsUnassigned`) can read them from target.context without a
+  // round-trip to the resource. If no member was assigned, no target —
+  // an unassigned slot expiring without booking is a no-op (you can't
+  // fine someone for not using a cupo they never held).
+  slotExpired: async (event, _rule, _context) => {
+    const assignedMemberId = (event.payload?.assigned_member_id as string | undefined) ?? null;
+    if (!assignedMemberId) return [];
+    if (!event.resource_id) return [];
+    return [{
+      member_id: assignedMemberId,
+      resource_id: event.resource_id,
+      context: {
+        booking_id: (event.payload?.booking_id as string | null | undefined) ?? null,
+        assigned_member_id: assignedMemberId,
+        ends_at: event.payload?.ends_at ?? null,
+        asset_id: event.payload?.asset_id ?? null,
       },
     }];
   },

@@ -537,6 +537,90 @@ Deno.test("slotExpiresInHours: outside window → false", async () => {
   assertEquals(captured.length, 0);
 });
 
+// =============================================================================
+// Phase 2 triggers — slotExpired evaluator
+// =============================================================================
+
+Deno.test("slotExpired (assigned + no booking) → fines the assigned holder", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_no_show",
+    { eventType: "slotExpired", config: {} },
+    [{ type: "slotIsUnassigned", config: {} }],
+    [{ type: "fine", config: { amount: 200 } }],
+  );
+
+  // The emitter projects assigned_member_id + booking_id onto payload.
+  // slotExpired returns 1 target = the assigned holder. slotIsUnassigned
+  // reads target.context.booking_id (null) → true → fine fires.
+  const ctx = slotContext({ sink, bookingId: null });
+  const event = makeEvent("slotExpired", {
+    resource_id: slotId,
+    payload: {
+      assigned_member_id: memberAlice.id,
+      booking_id: null,
+      ends_at: "2026-05-05T22:30:00Z",
+      asset_id: "a00000000-0000-0000-0000-000000000001",
+    },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(captured.length, 1);
+  assertEquals((captured[0] as { member_id: string }).member_id, memberAlice.id);
+  assertEquals((captured[0] as { amount: number }).amount, 200);
+});
+
+Deno.test("slotExpired (booked) → condition false → no fine", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_no_show",
+    { eventType: "slotExpired", config: {} },
+    [{ type: "slotIsUnassigned", config: {} }],
+    [{ type: "fine", config: { amount: 200 } }],
+  );
+
+  // Booking attached → condition false → no fines (the holder did use the slot).
+  const ctx = slotContext({ sink, bookingId });
+  const event = makeEvent("slotExpired", {
+    resource_id: slotId,
+    payload: {
+      assigned_member_id: memberAlice.id,
+      booking_id: bookingId,
+      ends_at: "2026-05-05T22:30:00Z",
+    },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("slotExpired (unassigned slot) → no targets, no fines", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "shared_no_show",
+    { eventType: "slotExpired", config: {} },
+    [{ type: "slotIsUnassigned", config: {} }],
+    [{ type: "fine", config: { amount: 200 } }],
+  );
+
+  // Slot expired without ever being assigned → can't fine anyone.
+  const ctx = slotContext({ sink, bookingId: null });
+  const event = makeEvent("slotExpired", {
+    resource_id: slotId,
+    payload: {
+      assigned_member_id: null,
+      booking_id: null,
+      ends_at: "2026-05-05T22:30:00Z",
+    },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
 Deno.test("slotExpiresInHours: slot already started → false (no retroactive fires)", async () => {
   const { sink, captured } = captureSink();
   const rule = makeRule(
