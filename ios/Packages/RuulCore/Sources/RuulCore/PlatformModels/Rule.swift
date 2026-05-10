@@ -14,6 +14,12 @@ import Foundation
 /// rename of `name` (display copy) and i18n. Modules reference rules
 /// by slug in `GroupModule.providedRules`. Per-group user-authored rules
 /// have `slug = nil`.
+///
+/// Three-level scope (mig 00071):
+///   - `moduleKey == nil && resourceId == nil` → group-level / template-seeded
+///   - `moduleKey != nil && resourceId == nil` → seeded by module activation;
+///     lifecycle bound to `set_group_module(slug, true/false)`
+///   - `resourceId != nil` → per-instance override (may also carry moduleKey)
 public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public let id: UUID
     public let groupId: UUID
@@ -23,6 +29,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public var trigger: RuleTrigger
     public var conditions: [RuleCondition]
     public var consequences: [RuleConsequence]
+    public var moduleKey: String?
+    public var resourceId: UUID?
     public let createdAt: Date
     public var updatedAt: Date
 
@@ -35,6 +43,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         trigger: RuleTrigger,
         conditions: [RuleCondition],
         consequences: [RuleConsequence],
+        moduleKey: String? = nil,
+        resourceId: UUID? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -46,6 +56,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         self.trigger = trigger
         self.conditions = conditions
         self.consequences = consequences
+        self.moduleKey = moduleKey
+        self.resourceId = resourceId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -59,6 +71,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         case trigger
         case conditions
         case consequences
+        case moduleKey    = "module_key"
+        case resourceId   = "resource_id"
         case createdAt    = "created_at"
         case updatedAt    = "updated_at"
     }

@@ -14,6 +14,13 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let trigger: RuleTrigger
     public let conditions: [RuleCondition]
     public let consequences: [ConsequenceEnvelope]
+    /// Module that owns this rule. Set when seeded via module activation
+    /// (mig 00073 `seed_module_rules`). Null = group-level rule with no
+    /// module affinity.
+    public let moduleKey: String?
+    /// Resource instance this rule overrides, if any. Null for module-
+    /// or group-scoped rules. Mig 00071.
+    public let resourceId: UUID?
 
     public init(
         id: UUID,
@@ -23,7 +30,9 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         isActive: Bool,
         trigger: RuleTrigger,
         conditions: [RuleCondition],
-        consequences: [ConsequenceEnvelope]
+        consequences: [ConsequenceEnvelope],
+        moduleKey: String? = nil,
+        resourceId: UUID? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -33,6 +42,8 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.trigger = trigger
         self.conditions = conditions
         self.consequences = consequences
+        self.moduleKey = moduleKey
+        self.resourceId = resourceId
     }
 
     /// Loosely-typed envelope used to read `rules.consequences[].config`.
@@ -86,5 +97,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         case trigger
         case conditions
         case consequences
+        case moduleKey    = "module_key"
+        case resourceId   = "resource_id"
     }
 }

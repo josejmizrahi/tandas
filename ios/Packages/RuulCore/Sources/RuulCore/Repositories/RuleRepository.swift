@@ -55,13 +55,20 @@ public protocol RuleRepository: Actor {
     /// Creates only the active drafts. Returns the created rules.
     func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
 
-    /// Seeds the platform-shape default rules for `templateId` by reading
-    /// `templates.config.defaultRules` server-side and bulk-inserting into
-    /// `public.rules`. Idempotent — re-running on a group that already has
-    /// platform-shape rules is a no-op. Replaces the per-template
-    /// `seed_dinner_template_rules` flow (back-compat wrapper still exists
-    /// in mig 00062).
+    /// Seeds the platform-shape default rules for `templateId`. Post mig
+    /// 00075 this is an orchestrator that reads `groups.active_modules`
+    /// and delegates to `seed_module_rules` per slug — the inserted rows
+    /// carry `module_key` so the engine and archive cascade can identify
+    /// ownership. Idempotent.
     func seedTemplateRules(templateId: String, groupId: UUID) async throws -> [OnboardingRule]
+
+    /// Seeds the rules for a single module activation. Reads
+    /// `modules.provided_rules_def[slug]` and upserts into `public.rules`
+    /// with `module_key = moduleSlug`. Idempotent (re-enables archived
+    /// rules instead of duplicating). Mirror of mig 00073's RPC; called
+    /// when a module is toggled on outside the bulk template path
+    /// (Phase E progressive onboarding).
+    func seedModuleRules(moduleSlug: String, groupId: UUID) async throws -> [OnboardingRule]
 
     /// Read-only list of all rules for a group, ordered by creation time.
     /// Used by the Reglas tab to show the active group's rules.
@@ -106,6 +113,22 @@ public actor MockRuleRepository: RuleRepository {
         // Only `recurring_dinner` has a known iOS-side mock catalog; other
         // templates would require their own template files (Phase 2+).
         guard templateId == "recurring_dinner" else { return [] }
+        return DinnerRecurringTemplate.defaultRules(groupId: groupId).map {
+            OnboardingRule(
+                id: $0.id,
+                groupId: groupId,
+                slug: $0.slug,
+                name: $0.name,
+                isActive: $0.isActive
+            )
+        }
+    }
+
+    public func seedModuleRules(moduleSlug: String, groupId: UUID) async throws -> [OnboardingRule] {
+        // Mock: only basic_fines has a known iOS-side rule catalog
+        // (the dinner_* rules). Other modules return empty until their
+        // catalogs ship in Phase 2+.
+        guard moduleSlug == "basic_fines" else { return [] }
         return DinnerRecurringTemplate.defaultRules(groupId: groupId).map {
             OnboardingRule(
                 id: $0.id,
@@ -198,10 +221,28 @@ public actor LiveRuleRepository: RuleRepository {
         }
     }
 
+    public func seedModuleRules(moduleSlug: String, groupId: UUID) async throws -> [OnboardingRule] {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_module_slug: String
+        }
+        do {
+            return try await client
+                .rpc("seed_module_rules", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_module_slug: moduleSlug
+                ))
+                .execute()
+                .value
+        } catch {
+            throw RuleError.rpcFailed(error.localizedDescription)
+        }
+    }
+
     public func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()
