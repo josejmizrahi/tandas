@@ -362,16 +362,16 @@ canonical references.
 ## Active plans
 
 - `Plans/Active/Roadmap.md` — north star, the 6 phases.
-- `Plans/Active/Audit-2026-05-06.md` — post-F0 audit, items §5.3
+- `Plans/Completed/Audit-2026-05-06.md` — post-F0 audit, items §5.3
   fully closed at 2026-05-07.
 - `Plans/Active/Beta1.md` — current cycle: real-cena observation
   period, journal template, freeze rules.
-- `Plans/Active/Phase0-DSv3-Migration-2026-05-07.md` — DS migration
+- `Plans/Completed/Phase0-DSv3-Migration-2026-05-07.md` — DS migration
   in progress in parallel session.
 - `Plans/Active/SystemEventsArchival.md` — deferred plan for pre-Fase 4.
 - `Plans/Active/GroupTypeRemoval.md` — follow-up to audit §7c.
-- `Plans/Active/AnonAuthUpgradeGap.md` — open backlog.
-- `Plans/Active/DSFutureComponents.md` — DS deferred items.
+- `Plans/Completed/AnonAuthUpgradeGap.md` — open backlog.
+- `Plans/Completed/DSFutureComponents.md` — DS deferred items.
 
 ## Historical (non-canonical, kept for context)
 

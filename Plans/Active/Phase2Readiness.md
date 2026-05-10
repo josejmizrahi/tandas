@@ -104,7 +104,7 @@ Tareas cuando llegue 2026-05-22:
 
 > Cerrado en migration `00058_drop_rules_legacy_columns.sql` + iOS
 > model collapse. Detalle del scope shipped en
-> `Plans/Active/RulesPlatformOnly.md` § Slice E.2.
+> `Plans/Completed/RulesPlatformOnly.md` § Slice E.2.
 
 ### 2.3 Items que NO son gating de Phase 2 (deferribles)
 
@@ -204,8 +204,8 @@ nuevo case en `ResourceType` + actualizar las closure tables (en SQL
 
 - `Plans/Active/Primitives.md` — niveles L1–L5, regla canónica de
   Resource, stack Role/Permission/Policy, estado de Slices 1-4.
-- `Plans/Active/RulesPlatformOnly.md` — plan E.1 (done) + E.2 (pending).
-- `Plans/Active/Audit-2026-05-06.md` — audit canónico, items
+- `Plans/Completed/RulesPlatformOnly.md` — plan E.1 (done) + E.2 (pending).
+- `Plans/Completed/Audit-2026-05-06.md` — audit canónico, items
   shipped en `§5.3`.
 - `Plans/Active/Beta1.md` — freeze levantado, journal de cenas, gate
   para decisión Phase 2.

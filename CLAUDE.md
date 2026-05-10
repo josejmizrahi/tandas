@@ -85,7 +85,7 @@ supabase/
 
 ## Backend (referencia)
 
-43 migrations forward (`supabase/migrations/`) son la fuente única.
+63 forward migrations en `supabase/migrations/` son la fuente única.
 La iOS app consume:
 
 | Recurso | Cómo |
@@ -95,21 +95,28 @@ La iOS app consume:
 | Members | `from('group_members')` + `rpc('join_group_by_code')` + `rpc('set_turn_order')` + `rpc('remove_member')` |
 | Events | `rpc('create_event')` + `rpc('set_rsvp')` + `rpc('check_in_attendee')` + `rpc('close_event')` (trigger 00039 dual-write a `resources`) |
 | Resources | `LiveResourceRepository` lee `from('resources')` polimórficamente |
-| Rules | `rpc('propose_rule')` + `rpc('seed_dinner_template_rules')` + `from('rules').update(...)` para archive/exceptions |
+| Rules | `rpc('create_initial_rule')` (platform-only post-mig 00058) + `rpc('seed_template_rules')` (generic, post-mig 00062) + `from('rules').update(...)` para toggle is_active |
 | Votes | `rpc('start_vote')` + `rpc('cast_vote')` + `rpc('finalize_vote')` (polimórfico via `vote_type` + `reference_id`) |
 | Fines | `rpc('issue_manual_fine')` + `rpc('pay_fine')` + `rpc('void_fine')` + `rpc('start_appeal')` |
 | Notifications | `notifications_outbox` table + cron `dispatch-notifications-every-minute` (APNs real) |
 | System events | `system_events` table append-only + `record_system_event` SECURITY DEFINER |
-| Templates | `from('templates')` + seed migrations 00021/00034/00037/00038 |
-| Governance | `from('groups').update({governance})` gated by `groups_update_admin` RLS |
+| Templates | `from('templates')` + `rpc('seed_template_rules')` (lee `templates.config.defaultRules`) |
+| Modules | `from('modules')` + `rpc('list_modules')` + `rpc('set_group_module')` (cascade dynamic post-mig 00061) |
+| Roles + Permissions | `from('groups')` (jsonb `roles`, mig 00063) + `rpc('has_permission')` |
+| Governance | `from('groups').update({governance})` gated by `groups_update_governance` RLS |
 
-## Estado al 2026-05-08
+## Estado al 2026-05-09
 
-- F0 (Fundación) cerrado al 100% — ver `Plans/Active/Audit-2026-05-06.md`.
-- Beta 1 freeze activo — ver `Plans/Active/Beta1.md`. Architectural changes
-  off-limits salvo bug fixes críticos.
-- Pre-Phase 2 sprint en curso (cleanup + close-out + capability layer).
-- Phase 2 primitive (Slot/Rotation/Fund/Asset) decidida por journal de cenas.
+- **L1 primitives todas verdes** FE+BE post-Gaps 1-4: Identity, Membership,
+  Group, Template, ModuleRegistry, CapabilityResolver, Resource, Rule,
+  SystemEvent, RoleStack (foundation slice).
+- **Atom/Projection** marker protocols en código (`AtomProjection.swift`)
+  + plan canónico (`Plans/Active/AtomProjection.md`).
+- **Phase 2 ready to start**. Decision sobre primitiva específica
+  (Slot/Rotation/Fund/Asset/mezcla) viene del journal de cenas o
+  del founder explícitamente. Ver `Plans/Active/Phase2Readiness.md`.
+- **Beta 1 freeze levantado** 2026-05-08; cenas siguen documentándose
+  en `Plans/Active/Beta1.md` § 5 como señal cualitativa.
 
 ## DoD por commit
 

@@ -6,7 +6,7 @@
 > `templates.config.defaultRoles` and iOS decodes them. Phase 2 of
 > RolesV2 (founder-managed UI + assign_role RPC + RLS rewire to
 > consult `has_permission`) deferred to pre-Phase-5.
-> Tracked en `Plans/Active/Audit-2026-05-06.md` § 4.5 Riesgo 5.
+> Tracked en `Plans/Completed/Audit-2026-05-06.md` § 4.5 Riesgo 5.
 
 ## Phase 1 done (Gap 3)
 

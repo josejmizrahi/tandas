@@ -272,7 +272,7 @@ Cosas que **no** se hacen en Beta 1, aunque el bug-itch tienta:
 ## 10. Cómo se relaciona con otros docs
 
 - `Plans/Active/Roadmap.md` — north star de las 6 fases.
-- `Plans/Active/Audit-2026-05-06.md` — los 5 items pre-Fase 2 ya
+- `Plans/Completed/Audit-2026-05-06.md` — los 5 items pre-Fase 2 ya
   cerrados (consolidación arquitectónica completa).
 - `docs/README.md` — mapa canónico de docs.
 - `docs/Ruul-Social-Primitives-and-Product-Logic.md` — referencia para
