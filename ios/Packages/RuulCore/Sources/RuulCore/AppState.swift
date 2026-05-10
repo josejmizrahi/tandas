@@ -54,10 +54,21 @@ public final class AppState {
     public let governance: any GovernanceServiceProtocol
     public let otp: any OTPService
     public let templateRegistry: TemplateRegistry
+
+    /// Catalog of platform modules. Boots cold from `ModuleRegistry.v1Fallback`
+    /// and is replaced via `loadModuleRegistry(client:)` after the
+    /// `list_modules()` RPC returns. Server-side `public.modules` (mig 00060)
+    /// is the canonical source — V1Modules.swift is now just the offline
+    /// fallback.
+    public var moduleRegistry: ModuleRegistry = .v1Fallback
+
     /// Resolves runtime capabilities for the active group based on its
-    /// template + activeModules. V1 callers can ignore (hardcoded surface
-    /// stays correct); Phase 2+ views consult this for module-aware gating.
-    public let capabilityResolver: CapabilityResolver
+    /// template + activeModules. Computed so it always reflects the latest
+    /// `moduleRegistry`; refreshing the registry post-boot automatically
+    /// updates the resolver consumers see.
+    public var capabilityResolver: CapabilityResolver {
+        CapabilityResolver(modules: moduleRegistry)
+    }
 
     // Event layer
     public let eventRepo: any EventRepository
@@ -94,7 +105,7 @@ public final class AppState {
         governance: any GovernanceServiceProtocol,
         otp: any OTPService,
         templateRegistry: TemplateRegistry,
-        capabilityResolver: CapabilityResolver = CapabilityResolver(),
+        moduleRegistry: ModuleRegistry = .v1Fallback,
         eventRepo: any EventRepository,
         rsvpRepo: any RSVPRepository,
         checkInRepo: any CheckInRepository,
@@ -119,7 +130,7 @@ public final class AppState {
         self.governance = governance
         self.otp = otp
         self.templateRegistry = templateRegistry
-        self.capabilityResolver = capabilityResolver
+        self.moduleRegistry = moduleRegistry
         self.eventRepo = eventRepo
         self.rsvpRepo = rsvpRepo
         self.checkInRepo = checkInRepo
@@ -141,10 +152,32 @@ public final class AppState {
         }
     }
 
+    /// Optional server loader for `moduleRegistry`. Wired by `TandasApp`
+    /// in live mode; nil in mock/preview where `v1Fallback` is enough.
+    public var moduleRegistryLoader: LiveModuleRegistry?
+
+    /// Refreshes `moduleRegistry` from the server-side `public.modules`
+    /// catalog (mig 00060). Falls back to the existing registry on error
+    /// — the cold-start `v1Fallback` is always good enough for the V1
+    /// surface, so a transient network blip doesn't degrade UX.
+    public func loadModuleRegistry() async {
+        guard let loader = moduleRegistryLoader else { return }
+        do {
+            self.moduleRegistry = try await loader.load()
+        } catch {
+            // Keep current (fallback or last-good) registry. Server drift
+            // is checked by tests + CI parity, not by runtime.
+        }
+    }
+
     public func start() async {
         for await s in auth.sessionStream {
             self.session = s
             if s != nil {
+                // list_modules() RPC is grant-restricted to authenticated;
+                // refresh the catalog only once we have a session. v1Fallback
+                // covers the pre-auth surface.
+                await loadModuleRegistry()
                 await refreshProfileAndGroups()
             } else {
                 self.profile = nil

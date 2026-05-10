@@ -20,7 +20,11 @@ import Foundation
 /// let decision = await governance.canPerform(.issueManualFine, ...)    // permission
 /// ```
 public struct CapabilityResolver: Sendable {
-    public init() {}
+    public let modules: ModuleRegistry
+
+    public init(modules: ModuleRegistry = .v1Fallback) {
+        self.modules = modules
+    }
 
     // MARK: - Module checks
 
@@ -70,7 +74,7 @@ public struct CapabilityResolver: Sendable {
         }
 
         for moduleId in group.effectiveActiveModules {
-            if let module = ModuleRegistry.module(id: moduleId) {
+            if let module = modules.module(id: moduleId) {
                 out.formUnion(module.providedResourceTypes)
             }
         }
@@ -131,7 +135,7 @@ public struct CapabilityResolver: Sendable {
         // provides it (e.g. tab id "slots" → module "slot_assignment"
         // declares `providedTabs: ["slots"]`).
         for moduleId in group.effectiveActiveModules {
-            if let module = ModuleRegistry.module(id: moduleId),
+            if let module = modules.module(id: moduleId),
                module.providedTabs.contains(tab.id) {
                 return true
             }

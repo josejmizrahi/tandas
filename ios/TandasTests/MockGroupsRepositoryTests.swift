@@ -199,21 +199,23 @@ struct MockGroupsRepositoryTests {
         #expect(updated.finesEnabled == false)
     }
 
-    @Test("ModuleRegistry transitive closures match mig 00057 SQL hardcoded tables")
+    @Test("ModuleRegistry.v1Fallback transitive closures match server (mig 00060/00061) cascade")
     func transitiveClosures_matchSqlTables() async throws {
-        // These literal expectations mirror the jsonb closures hardcoded in
-        // mig 00057. If iOS ever drifts from SQL, this test catches it
-        // before a deploy goes live.
-        #expect(Set(ModuleRegistry.transitiveDependencies(of: "basic_fines")) == ["rsvp", "check_in"])
-        #expect(Set(ModuleRegistry.transitiveDependencies(of: "check_in")) == ["rsvp"])
-        #expect(Set(ModuleRegistry.transitiveDependencies(of: "appeal_voting")) == ["basic_fines", "rsvp", "check_in"])
-        #expect(ModuleRegistry.transitiveDependencies(of: "rsvp").isEmpty)
-        #expect(ModuleRegistry.transitiveDependencies(of: "rotating_host").isEmpty)
+        // These literal expectations mirror the dependencies seeded in
+        // mig 00060 and the recursive CTE cascade in mig 00061. If the
+        // iOS V1Modules.swift fallback ever drifts from the server seed,
+        // this test catches it before a deploy goes live.
+        let r = ModuleRegistry.v1Fallback
+        #expect(Set(r.transitiveDependencies(of: "basic_fines")) == ["rsvp", "check_in"])
+        #expect(Set(r.transitiveDependencies(of: "check_in")) == ["rsvp"])
+        #expect(Set(r.transitiveDependencies(of: "appeal_voting")) == ["basic_fines", "rsvp", "check_in"])
+        #expect(r.transitiveDependencies(of: "rsvp").isEmpty)
+        #expect(r.transitiveDependencies(of: "rotating_host").isEmpty)
 
-        #expect(Set(ModuleRegistry.transitiveDependents(of: "rsvp")) == ["check_in", "basic_fines", "appeal_voting"])
-        #expect(Set(ModuleRegistry.transitiveDependents(of: "check_in")) == ["basic_fines", "appeal_voting"])
-        #expect(Set(ModuleRegistry.transitiveDependents(of: "basic_fines")) == ["appeal_voting"])
-        #expect(ModuleRegistry.transitiveDependents(of: "appeal_voting").isEmpty)
-        #expect(ModuleRegistry.transitiveDependents(of: "rotating_host").isEmpty)
+        #expect(Set(r.transitiveDependents(of: "rsvp")) == ["check_in", "basic_fines", "appeal_voting"])
+        #expect(Set(r.transitiveDependents(of: "check_in")) == ["basic_fines", "appeal_voting"])
+        #expect(Set(r.transitiveDependents(of: "basic_fines")) == ["appeal_voting"])
+        #expect(r.transitiveDependents(of: "appeal_voting").isEmpty)
+        #expect(r.transitiveDependents(of: "rotating_host").isEmpty)
     }
 }
