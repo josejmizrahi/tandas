@@ -54,12 +54,6 @@ public struct EditRuleSheet: View {
         Form {
             Section { Text(rule.name).font(.title3.weight(.semibold)) }
 
-            if let desc = rule.description, !desc.isEmpty {
-                Section("CÓMO FUNCIONA") {
-                    Text(desc)
-                }
-            }
-
             Section("MULTA") { fineSection }
 
             if pending != nil {

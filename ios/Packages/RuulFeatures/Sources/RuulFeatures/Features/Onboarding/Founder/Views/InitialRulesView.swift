@@ -145,20 +145,20 @@ public struct InitialRulesView: View {
     }
 
     private func exampleText(for rule: RuleDraft) -> String {
-        switch rule.code {
-        case "late":
+        switch rule.slug {
+        case DinnerRecurringTemplate.RuleSlug.lateArrival:
             return "Ejemplo: si llegas a las 9:35 cuando empezaba a las 9:00, " +
                 "pagas $\(rule.amountMXN) + $50 = $\(rule.amountMXN + 50)."
-        case "no_rsvp":
+        case DinnerRecurringTemplate.RuleSlug.noResponse:
             return "Ejemplo: si la cena es jueves y no confirmas antes del miércoles a las 20:00, " +
                 "pagas $\(rule.amountMXN)."
-        case "cancel_same_day":
+        case DinnerRecurringTemplate.RuleSlug.sameDayCancel:
             return "Ejemplo: si la cena es a las 9 PM y cancelas a las 6 PM del mismo día, " +
                 "pagas $\(rule.amountMXN)."
-        case "no_show":
+        case DinnerRecurringTemplate.RuleSlug.noShow:
             return "Ejemplo: confirmaste que ibas, no llegaste, no avisaste. " +
                 "Pagas $\(rule.amountMXN)."
-        case "host_no_menu":
+        case DinnerRecurringTemplate.RuleSlug.hostNoMenu:
             return "Ejemplo: eres el anfitrión y la cena es mañana, pero hoy a las 9 PM " +
                 "todavía no avisaste qué se va a comer. Pagas $\(rule.amountMXN)."
         default:

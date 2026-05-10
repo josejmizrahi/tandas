@@ -1,9 +1,10 @@
 # Rules platform-only — drop legacy `rules` columns
 
-> Status: **Slice E.1 done 2026-05-09** (view rename + setEnabled
-> dual-write). Slice E.2 (model collapse + DB column drop) pending
-> macOS session — needs `xcodebuild` to verify the model field
-> renames don't regress before the column drop ships.
+> Status: **Slices E.1 + E.2 both done 2026-05-09**. E.1 (PR #3,
+> commit 625aa5a) renamed view callsites and dual-wrote
+> `setEnabled`. E.2 (this PR) collapsed the iOS models onto the
+> platform shape, rewrote the writer RPCs platform-only, and dropped
+> the legacy columns via migration `00058_drop_rules_legacy_columns`.
 > Tracked en `Plans/Active/Audit-2026-05-06.md` § 5.2 item 6.
 
 ## Por qué se posterga
@@ -93,64 +94,79 @@ mutable computed property of the same type) so risk is low, but
 **E.2 must run a full `xcodebuild test` before shipping further
 changes**.
 
-## Slice E.2 — pending (macOS session required)
+## Slice E.2 — done 2026-05-09
 
-1. **iOS Models** — drop legacy stored fields once views are stable:
-   - [ ] `OnboardingRule`: drop `code`, `title`, `description`,
-         `enabled`, `status` from CodingKeys + storage. Promote
-         `name` / `isActive` to stored fields.
-   - [ ] `GroupRule`: drop `code`, `title`, `description`,
-         `enabled`, `action` from storage. Add `trigger`
-         (RuleTrigger), `conditions: [RuleCondition]`. Verify
-         decoders. Drop the `name` forwarder (becomes stored).
-   - [ ] `RuleDraft`: drop `code` + `trigger: RuleTriggerSpec`.
-         Add `slug: String`, `trigger: RuleTrigger` (platform),
-         `conditions`, `consequences`. Update `defaults` array to
-         canonical dinner template values (matching
-         `templates.config.defaultRules`).
-   - [ ] Migrate `InitialRulesView.exampleText` switch from
-         `rule.code` to `rule.slug` (use
-         `DinnerRecurringTemplate.RuleSlug.*` constants).
+What shipped:
+
+1. **iOS Models** collapsed onto platform shape:
+   - `OnboardingRule` now stores `slug`/`name`/`isActive` only;
+     legacy `code`/`title`/`description`/`enabled`/`status` removed.
+   - `GroupRule` adds `trigger`/`conditions` as stored fields and
+     drops `code`/`title`/`description`/`enabled`/`action`. The
+     `name` forwarder is now a real column. `withEnabled` renamed
+     to `withIsActive`.
+   - `RuleDraft` swaps `code` + `RuleTriggerSpec` for `slug` +
+     platform `trigger`/`conditions`/`consequences`. `amountMXN` is
+     now a computed read/write over `consequences[0].config.amount`
+     (or `baseAmount` for escalating shapes). `defaults` mirrors
+     `templates.config.defaultRules` 1:1.
+   - `RuleTriggerSpec` and the local `AnyCodable` envelope deleted
+     — no remaining callers.
+   - `InitialRulesView.exampleText` switches on `rule.slug` against
+     `DinnerRecurringTemplate.RuleSlug.*`.
 
 2. **iOS Repositories**:
-   - [ ] `LiveRuleRepository.createInitialRules.Params`: send platform
-         fields directly. Drop `TriggerEnvelope` / `ActionEnvelope`.
+   - `LiveRuleRepository.createInitialRules.Params` sends platform
+     fields directly. `setEnabled`/`withEnabled` renamed to
+     `setIsActive`/`withIsActive` end-to-end.
 
-3. **iOS Views (rename `rule.title` → `rule.name`, `rule.enabled` →
-   `rule.isActive`)**:
-   - [ ] EditRulesView, RulesView, RuleDetailView, EditRuleSheet,
-         InitialRulesView
-   - [ ] CreateRuleChangeSheet, CreateRuleChangeCoordinator
-   - [ ] RuleChangeVoteBody, RuleRepealVoteBody
-   - [ ] EditRulesCoordinator
-   - [ ] (cualquier otro descubierto via `grep "rule\.title\|rule\.enabled"`)
+3. **iOS Views** updated to platform shape:
+   - `RulesView`, `EditRulesView`, `EditRuleSheet`, `RuleDetailView`
+     drop the `rule.description` blocks (description no longer
+     persisted per-rule; lives in `templates.config`).
+   - `EditRulesCoordinator` toggle path uses `setIsActive` /
+     `withIsActive`.
+   - `FounderOnboardingCoordinator` filters on `\.isActive` and
+     mutates drafts via `copy.isActive = false`.
 
-4. **Server**:
-   - [ ] `create_initial_rule`: cambiar firma a
-         `(p_group_id, p_slug, p_name, p_is_active, p_trigger jsonb,
-         p_conditions jsonb, p_consequences jsonb)`. Drop columnas
-         legacy del INSERT.
-   - [ ] `seed_dinner_template_rules`: drop columnas legacy del INSERT.
-   - [ ] Migration final: `ALTER TABLE rules DROP COLUMN code, title,
-         description, trigger, action, enabled, status, exceptions,
-         approved_via_vote_id;`
-   - [ ] Drop default `'active'`/`true` legacy in any remaining writers.
+4. **Server**: migration `00058_drop_rules_legacy_columns.sql`:
+   - Rewrites `create_initial_rule(p_group_id, p_slug, p_name,
+     p_is_active, p_trigger, p_conditions, p_consequences)` —
+     platform-only INSERT.
+   - Rewrites `seed_dinner_template_rules` to insert platform-only
+     rows.
+   - Rewrites `emit_rule_mutation_events` (00024 trigger fn) to
+     read `is_active`/`name` instead of `enabled`/`title`. Audit
+     event types unchanged so consumers don't break.
+   - Rewrites `archive_rule_on_repeal_pass` (00026 trigger fn) to
+     write `is_active = false` instead of `enabled = false` +
+     `status = 'archived'`.
+   - Drops the orphaned V1 `evaluate_event_rules(uuid)` function
+     (replaced by `_shared/ruleEngine.ts` and `process-system-events`
+     long ago; only referenced by a "does not invoke" comment).
+   - `ALTER TABLE rules DROP COLUMN code, title, description,
+     trigger, action, enabled, status, exceptions,
+     approved_via_vote_id`.
 
 5. **Tests**:
-   - [ ] RulesRepositoryTests, RuleFineShapeTests, EditRulesCoordinatorTests
-   - [ ] FounderOnboardingCoordinatorTests
-   - [ ] Cualquiera que decode rule rows con legacy fields.
+   - `RulesRepositoryTests`, `RuleFineShapeTests`,
+     `CreateRuleChangeCoordinatorTests`, `FounderOnboardingCoordinatorTests`
+     updated to construct `GroupRule` / `RuleDraft` in platform shape.
+   - `supabase/functions/_tests/db/rule_mutation_audit.test.ts`
+     reads `is_active`/`name` instead of `enabled`/`title`.
 
-## DoD
+## DoD verification
 
-- [ ] `\d public.rules` muestra solo platform columns
-      (`id, group_id, slug, name, is_active, trigger, conditions,
-      consequences, module_id, proposed_by, created_at, updated_at`).
-- [ ] Cero hits de `rules.title|rules.code|rules.enabled|rules.action`
-      en `*.swift` y `*.ts` y `*.sql` (excluido migration history).
-- [ ] V1 onboarding flow crea rules platform-only y disparan en engine.
-- [ ] Custom rule editor (Fase 4) usa la misma RPC platform-shape.
+- `\d public.rules` post-migration shows only platform columns
+  (`id`, `group_id`, `slug`, `name`, `is_active`, `trigger`,
+  `conditions`, `consequences`, `module_id`, `proposed_by`,
+  `created_at`, `updated_at`). **Verify via MCP `execute_sql`
+  before merging.**
+- Zero hits of `rules.(title|code|enabled|action|status|exceptions|
+  approved_via_vote_id|description)` in `*.swift` / `*.ts` / active
+  `*.sql` (rollback + historical migrations excluded).
+- V1 onboarding flow creates rules platform-only; engine fires.
 
-## Costo
+## Costo real
 
-4-6 horas focused.
+4-6h focused as estimated.

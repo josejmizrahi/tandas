@@ -24,49 +24,35 @@ public struct PendingVote: Sendable, Hashable {
     }
 }
 
+/// Return type from the create-initial-rule and seed-template-rules RPCs.
+/// Carries only platform fields after Slice E.2 dropped the legacy columns.
+/// `slug` is optional because user-authored rules (Phase 4) won't have one.
 public struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
     public let groupId: UUID
     public let slug: String?
-    public let code: String?
-    public let title: String
-    public let description: String?
-    public let enabled: Bool
-    public let status: String
+    public let name: String
+    public let isActive: Bool
 
-    public init(id: UUID, groupId: UUID, slug: String?, code: String?, title: String, description: String?, enabled: Bool, status: String) {
+    public init(id: UUID, groupId: UUID, slug: String?, name: String, isActive: Bool) {
         self.id = id
         self.groupId = groupId
         self.slug = slug
-        self.code = code
-        self.title = title
-        self.description = description
-        self.enabled = enabled
-        self.status = status
+        self.name = name
+        self.isActive = isActive
     }
 
     public enum CodingKeys: String, CodingKey {
         case id
-        case groupId     = "group_id"
-        case slug, code, title, description, enabled, status
+        case groupId  = "group_id"
+        case slug
+        case name
+        case isActive = "is_active"
     }
-
-    /// Platform-shape forwarder. Views read `name`; legacy `title` is kept
-    /// on the struct only until the column drop in `RulesPlatformOnly.md`
-    /// E.2. After E.2 this becomes a stored field decoded from the
-    /// platform `name` column.
-    public var name: String { title }
-
-    /// Platform-shape forwarder. The legacy `enabled` boolean and the
-    /// platform `is_active` boolean were equal until 2026-05-08 because
-    /// `LiveRuleRepository.setEnabled` only updated the legacy column.
-    /// That writer now dual-writes both, so the forwarder is safe to use
-    /// from views going forward.
-    public var isActive: Bool { enabled }
 }
 
 public protocol RuleRepository: Actor {
-    /// Creates only the enabled drafts. Returns the created rules.
+    /// Creates only the active drafts. Returns the created rules.
     func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
 
     /// Seeds the 5 default Platform rules for the "Cena recurrente" template
@@ -78,8 +64,8 @@ public protocol RuleRepository: Actor {
     /// Used by the Reglas tab to show the active group's rules.
     func list(groupId: UUID) async throws -> [GroupRule]
 
-    /// Toggles enabled/disabled. Postgres trigger emits ruleEnabledChanged.
-    func setEnabled(ruleId: UUID, enabled: Bool) async throws
+    /// Toggles `is_active`. Postgres trigger emits ruleEnabledChanged.
+    func setIsActive(ruleId: UUID, isActive: Bool) async throws
 
     /// Updates the flat fine amount. Caller must pre-validate via
     /// `rule.fineShape == .flat`. Throws `.notFlatFine` if the rule is
@@ -99,18 +85,15 @@ public actor MockRuleRepository: RuleRepository {
 
     public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
         if let err = nextCreateError { nextCreateError = nil; throw err }
-        let enabled = drafts.filter(\.enabled)
-        lastCreatedDrafts = enabled
-        return enabled.map { d -> OnboardingRule in
+        let active = drafts.filter(\.isActive)
+        lastCreatedDrafts = active
+        return active.map { d -> OnboardingRule in
             OnboardingRule(
                 id: UUID(),
                 groupId: groupId,
-                slug: nil,
-                code: d.code,
-                title: d.title,
-                description: d.description,
-                enabled: true,
-                status: "active"
+                slug: d.slug,
+                name: d.name,
+                isActive: true
             )
         }
     }
@@ -122,11 +105,8 @@ public actor MockRuleRepository: RuleRepository {
                 id: $0.id,
                 groupId: groupId,
                 slug: $0.slug,
-                code: nil,
-                title: $0.name,
-                description: nil,
-                enabled: $0.isActive,
-                status: "active"
+                name: $0.name,
+                isActive: $0.isActive
             )
         }
     }
@@ -136,11 +116,11 @@ public actor MockRuleRepository: RuleRepository {
         []
     }
 
-    public private(set) var lastSetEnabled: (ruleId: UUID, enabled: Bool)?
+    public private(set) var lastSetIsActive: (ruleId: UUID, isActive: Bool)?
     public private(set) var lastSetAmount: (ruleId: UUID, amount: Int)?
 
-    public func setEnabled(ruleId: UUID, enabled: Bool) async throws {
-        lastSetEnabled = (ruleId, enabled)
+    public func setIsActive(ruleId: UUID, isActive: Bool) async throws {
+        lastSetIsActive = (ruleId, isActive)
     }
 
     public func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
@@ -162,30 +142,24 @@ public actor LiveRuleRepository: RuleRepository {
     public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
         struct Params: Encodable {
             let p_group_id: String
-            let p_code: String
-            let p_title: String
-            let p_description: String
-            let p_trigger: TriggerEnvelope
-            let p_action: ActionEnvelope
-        }
-        struct TriggerEnvelope: Encodable {
-            let type: String
-            let params: [String: AnyCodable]
-        }
-        struct ActionEnvelope: Encodable {
-            let type: String
-            let amount_mxn: Int
+            let p_slug: String
+            let p_name: String
+            let p_is_active: Bool
+            let p_trigger: RuleTrigger
+            let p_conditions: [RuleCondition]
+            let p_consequences: [RuleConsequence]
         }
 
         var rules: [OnboardingRule] = []
-        for draft in drafts where draft.enabled {
+        for draft in drafts where draft.isActive {
             let p = Params(
                 p_group_id: groupId.uuidString.lowercased(),
-                p_code: draft.code,
-                p_title: draft.title,
-                p_description: draft.description,
-                p_trigger: TriggerEnvelope(type: draft.trigger.type, params: draft.trigger.params),
-                p_action: ActionEnvelope(type: "fine", amount_mxn: draft.amountMXN)
+                p_slug: draft.slug,
+                p_name: draft.name,
+                p_is_active: draft.isActive,
+                p_trigger: draft.trigger,
+                p_conditions: draft.conditions,
+                p_consequences: draft.consequences
             )
             do {
                 let rule: OnboardingRule = try await client
@@ -217,27 +191,18 @@ public actor LiveRuleRepository: RuleRepository {
     public func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,code,title,description,enabled,is_active,action,consequences")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()
             .value
     }
 
-    public func setEnabled(ruleId: UUID, enabled: Bool) async throws {
-        // Dual-write the legacy `enabled` boolean and the platform
-        // `is_active` boolean so the two columns stay in lockstep until
-        // `RulesPlatformOnly.md` E.2 drops the legacy column. Pre-2026-05-09
-        // this writer only updated the legacy column, leaving the platform
-        // column stale on every toggle — `GroupRule.isLive = enabled &&
-        // isActive` then masked the divergence by AND-ing both.
-        struct Body: Encodable {
-            let enabled: Bool
-            let is_active: Bool
-        }
+    public func setIsActive(ruleId: UUID, isActive: Bool) async throws {
+        struct Body: Encodable { let is_active: Bool }
         do {
             _ = try await client.from("rules")
-                .update(Body(enabled: enabled, is_active: enabled))
+                .update(Body(is_active: isActive))
                 .eq("id", value: ruleId.uuidString.lowercased())
                 .execute()
         } catch {

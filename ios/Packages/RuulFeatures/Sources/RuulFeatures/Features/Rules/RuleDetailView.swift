@@ -67,11 +67,6 @@ public struct RuleDetailView: View {
             Text(rule.name)
                 .ruulTextStyle(RuulTypography.titleLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
-            if let desc = rule.description, !desc.isEmpty {
-                Text(desc)
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextSecondary)
-            }
             if let amount = rule.amountMXN, amount > 0 {
                 HStack {
                     Text("MULTA")
@@ -239,12 +234,10 @@ public struct RuleDetailView: View {
                 id: UUID(),
                 groupId: UUID(),
                 slug: "dinner_late_arrival",
-                code: "LATE",
-                title: "Llegada tardía",
-                description: "Si llegás más de 15 min tarde sin avisar.",
-                enabled: true,
+                name: "Llegada tardía",
                 isActive: true,
-                action: nil,
+                trigger: RuleTrigger(eventType: .checkInRecorded),
+                conditions: [],
                 consequences: [
                     GroupRule.ConsequenceEnvelope(
                         type: "fine",

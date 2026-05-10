@@ -191,13 +191,6 @@ public struct RulesView: View {
                         .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    if let desc = rule.description, !desc.isEmpty {
-                        Text(desc)
-                            .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
-                            .lineLimit(3)
-                            .multilineTextAlignment(.leading)
-                    }
                     if !rule.isLive {
                         Text("INACTIVA")
                             .ruulTextStyle(RuulTypography.footnote)

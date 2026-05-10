@@ -109,7 +109,7 @@ struct FounderOnboardingCoordinatorTests {
         await coord.skipRules()
         #expect(coord.currentStep == .invite)
         #expect(coord.draft.finesEnabled == false)
-        #expect(coord.draft.rules.allSatisfy { !$0.enabled })
+        #expect(coord.draft.rules.allSatisfy { !$0.isActive })
         let drafts = await rules.lastCreatedDrafts
         #expect(drafts.isEmpty) // no rules created
         let g = try await groups.listMine().first

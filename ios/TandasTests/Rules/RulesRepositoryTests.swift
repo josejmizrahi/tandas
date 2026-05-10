@@ -17,12 +17,11 @@ final class RulesRepositoryTests: XCTestCase {
         let escalatingRule = GroupRule(
             id: UUID(),
             groupId: UUID(),
-            code: nil,
-            title: "Tarde a evento",
-            description: nil,
-            enabled: true,
+            slug: nil,
+            name: "Tarde a evento",
             isActive: true,
-            action: nil,
+            trigger: RuleTrigger(eventType: .checkInRecorded),
+            conditions: [],
             consequences: [escalating]
         )
 
@@ -37,12 +36,12 @@ final class RulesRepositoryTests: XCTestCase {
         }
     }
 
-    func testSetEnabledHappyPath() async throws {
+    func testSetIsActiveHappyPath() async throws {
         let mock = MockRuleRepository()
         let ruleId = UUID()
-        try await mock.setEnabled(ruleId: ruleId, enabled: false)
-        let last = await mock.lastSetEnabled
+        try await mock.setIsActive(ruleId: ruleId, isActive: false)
+        let last = await mock.lastSetIsActive
         XCTAssertEqual(last?.ruleId, ruleId)
-        XCTAssertEqual(last?.enabled, false)
+        XCTAssertEqual(last?.isActive, false)
     }
 }

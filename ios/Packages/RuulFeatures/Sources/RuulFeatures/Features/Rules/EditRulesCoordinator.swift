@@ -9,7 +9,7 @@ import RuulCore
 ///   `GovernanceService` decisions: only `.allowed` flips to true; any
 ///   `.requiresVote`, `.denied`, or thrown error keeps it false. The view
 ///   uses this to enable/disable controls.
-/// - **Optimistic toggle** (`setEnabled`) — applies the toggle locally then
+/// - **Optimistic toggle** (`setIsActive`) — applies the toggle locally then
 ///   awaits the repository. On failure, reverts the local state and surfaces
 ///   an RLS-aware Spanish error message.
 /// - **Pending votes map** — populated alongside `rules` so the view can
@@ -101,21 +101,21 @@ public final class EditRulesCoordinator {
     /// Optimistic toggle: flips the row locally, attempts the persistence
     /// call, and reverts the local change on failure. The view subscribes to
     /// `rules` and `inFlightToggleIDs` to render a spinner / disabled state.
-    public func setEnabled(rule: GroupRule, enabled: Bool) async {
+    public func setIsActive(rule: GroupRule, isActive: Bool) async {
         inFlightToggleIDs.insert(rule.id)
         defer { inFlightToggleIDs.remove(rule.id) }
 
         let originalIndex = rules.firstIndex(where: { $0.id == rule.id })
         if let i = originalIndex {
-            rules[i] = rules[i].withEnabled(enabled)
+            rules[i] = rules[i].withIsActive(isActive)
         }
 
         do {
-            try await ruleRepo.setEnabled(ruleId: rule.id, enabled: enabled)
+            try await ruleRepo.setIsActive(ruleId: rule.id, isActive: isActive)
         } catch {
-            log.warning("setEnabled failed: \(error.localizedDescription)")
+            log.warning("setIsActive failed: \(error.localizedDescription)")
             if let i = originalIndex {
-                rules[i] = rules[i].withEnabled(!enabled)
+                rules[i] = rules[i].withIsActive(!isActive)
             }
             self.error = mapMutationError(error)
         }

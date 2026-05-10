@@ -56,9 +56,15 @@ primitiva se elija**.
 
 ### Rules write-path
 
-- ✅ **Slice E.1** (PR #TBD, 2026-05-09) — view callsites en platform
-  shape (`name`/`isActive`), `setEnabled` dual-write `enabled` +
-  `is_active`. Cierra divergencia silenciosa entre los dos booleans.
+- ✅ **Slice E.1** (PR #3, commit 625aa5a) — view callsites en
+  platform shape (`name`/`isActive`), `setEnabled` dual-write
+  `enabled` + `is_active`. Cierra divergencia silenciosa entre los
+  dos booleans.
+- ✅ **Slice E.2** (mig 00058) — iOS models collapse + legacy column
+  drop. `rules` table now exposes only platform columns;
+  `create_initial_rule` / `seed_dinner_template_rules` rewritten
+  platform-only; `archive_rule_on_repeal_pass` writes `is_active`;
+  orphan V1 `evaluate_event_rules` dropped.
 
 ### Polymorphic infra (audit § 5.3)
 
@@ -94,29 +100,11 @@ Tareas cuando llegue 2026-05-22:
 - [ ] Audit invariant chequeado vía MCP antes de drop:
   `select count(*) from groups where fines_enabled <> ('basic_fines' = ANY(active_modules))` → debe ser 0.
 
-### 2.2 Slice E.2 — drop legacy rules columns
+### 2.2 Slice E.2 — done 2026-05-09
 
-> **Gate**: macOS session con `xcodebuild` para verificar que el
-> model collapse no regresiona views.
->
-> **Bloquea**: Phase 4 custom rule editor (necesita schema limpio).
-> **No bloquea**: Phase 2 directamente. Phase 2 candidates (Rotation,
-> Slot, Fund, Asset) escriben rules nuevas via `create_initial_rule`
-> que ya escribe ambas formas, así que Phase 2 puede arrancar con
-> deuda viva en columnas legacy.
-
-Plan completo en `RulesPlatformOnly.md` § Slice E.2. Resumen:
-
-- iOS models drop `code`, `title`, `description`, `enabled`, `status`,
-  `action` storage; promueven `name`/`isActive`/`slug`/`trigger`/
-  `conditions`/`consequences` a stored fields.
-- `LiveRuleRepository.createInitialRules.Params` envía platform shape.
-- Server: rewrite `create_initial_rule` + `seed_dinner_template_rules`
-  para escribir SOLO platform.
-- Migration: `alter table rules drop column code, title, description,
-  trigger, action, enabled, status, exceptions, approved_via_vote_id`.
-
-Costo estimado: 4-6h focused **con build access**.
+> Cerrado en migration `00058_drop_rules_legacy_columns.sql` + iOS
+> model collapse. Detalle del scope shipped en
+> `Plans/Active/RulesPlatformOnly.md` § Slice E.2.
 
 ### 2.3 Items que NO son gating de Phase 2 (deferribles)
 

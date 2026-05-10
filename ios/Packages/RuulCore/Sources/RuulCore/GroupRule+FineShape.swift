@@ -4,7 +4,7 @@ public extension GroupRule {
     /// Typed view over `consequences[0].config` for `fine` consequences. The
     /// UI consumes this to decide flat-editable vs escalating-readonly; the
     /// repository validates against the same enum before issuing UPDATEs.
-    public enum FineShape: Sendable, Equatable {
+    enum FineShape: Sendable, Equatable {
         case none
         case flat(amount: Int)
         case escalating(base: Int, step: Int, stepMinutes: Int)
@@ -16,7 +16,7 @@ public extension GroupRule {
     /// Parses `consequences[0].config` into a typed shape. Only the first
     /// consequence is inspected — V1 rules carry exactly one. Non-fine first
     /// consequences and empty consequence arrays both yield `.none`.
-    public var fineShape: FineShape {
+    var fineShape: FineShape {
         guard let first = consequences.first, first.type == "fine" else {
             return .none
         }
@@ -33,19 +33,18 @@ public extension GroupRule {
         return .unknown(rawConfig: cfg)
     }
 
-    /// Returns a copy of this rule with `enabled` set to the given value.
+    /// Returns a copy of this rule with `isActive` set to the given value.
     /// Used by EditRulesCoordinator for the optimistic-toggle path. Since
     /// `GroupRule` properties are `let`, this constructs a new instance.
-    public func withEnabled(_ enabled: Bool) -> GroupRule {
+    func withIsActive(_ isActive: Bool) -> GroupRule {
         GroupRule(
             id: id,
             groupId: groupId,
-            code: code,
-            title: title,
-            description: description,
-            enabled: enabled,
+            slug: slug,
+            name: name,
             isActive: isActive,
-            action: action,
+            trigger: trigger,
+            conditions: conditions,
             consequences: consequences
         )
     }
