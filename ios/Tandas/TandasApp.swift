@@ -41,6 +41,7 @@ struct TandasApp: App {
             let appeals = MockAppealRepository()
             let fines = MockFineRepository()
             let resources = MockResourceRepository()
+            let slotLifecycle = MockSlotLifecycleRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -62,6 +63,7 @@ struct TandasApp: App {
                 appealRepo: appeals,
                 fineRepo: fines,
                 resourceRepo: resources,
+                slotLifecycleRepo: slotLifecycle,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics
@@ -87,6 +89,7 @@ struct TandasApp: App {
             let appeals = LiveAppealRepository(client: client)
             let fines = LiveFineRepository(client: client)
             let resources = LiveResourceRepository(client: client)
+            let slotLifecycle = LiveSlotLifecycleRepository(client: client)
             let analytics = LogAnalyticsService()
             let state = AppState(
                 auth: auth,
@@ -108,6 +111,7 @@ struct TandasApp: App {
                 appealRepo: appeals,
                 fineRepo: fines,
                 resourceRepo: resources,
+                slotLifecycleRepo: slotLifecycle,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics,

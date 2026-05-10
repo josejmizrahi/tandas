@@ -88,6 +88,10 @@ public final class AppState {
     /// Polymorphic gateway to `public.resources` (Plan 1, Task 11).
     /// Read-only V1; writes still flow through resource-type-specific repos.
     public let resourceRepo: any ResourceRepository
+    /// Phase 2 Slice 2.3 RPC bindings (create_asset, create_slot,
+    /// assign_slot, book_slot, request_slot_swap). Polymorphic over
+    /// `resources` table; consumed by Asset/Slot/Booking UI in Slice 2.4.
+    public let slotLifecycleRepo: any SlotLifecycleRepository
     public let systemEventEmitter: SystemEventEmitter
 
     /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
@@ -115,6 +119,7 @@ public final class AppState {
         appealRepo: any AppealRepository,
         fineRepo: any FineRepository,
         resourceRepo: any ResourceRepository,
+        slotLifecycleRepo: any SlotLifecycleRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
@@ -140,6 +145,7 @@ public final class AppState {
         self.appealRepo = appealRepo
         self.fineRepo = fineRepo
         self.resourceRepo = resourceRepo
+        self.slotLifecycleRepo = slotLifecycleRepo
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService
