@@ -55,14 +55,14 @@ struct FounderOnboardingCoordinatorTests {
         #expect(coord.createdGroup != nil)
 
         coord.draft.eventVocabulary = "cena"
-        coord.draft.frequencyType = .weekly
         await coord.advanceFromVocabulary()
         #expect(coord.currentStep == .rules)
 
         await coord.advanceFromRules()
-        #expect(coord.currentStep == .invite)
-        let drafts = await rules.lastCreatedDrafts
-        #expect(drafts.count == 4) // 4 enabled defaults
+        #expect(coord.currentStep == .governance)
+        // Rules now seed via module activation (mig 00073), not per-draft
+        // createInitialRules. Skip the drafts assertion.
+        _ = rules
 
         await coord.advanceFromInvite()
         #expect(coord.currentStep == .phoneVerify)
@@ -92,13 +92,12 @@ struct FounderOnboardingCoordinatorTests {
         await coord.advanceFromGroupIdentity()
         await coord.skipVocabulary()
         #expect(coord.currentStep == .rules)
-        #expect(coord.draft.frequencyType == nil)
         #expect(coord.draft.eventVocabulary == "evento")
     }
 
-    @Test("skip rules sets fines_enabled = false and disables all rules")
+    @Test("skip rules disables basic_fines module")
     func skipRules() async throws {
-        let (coord, groups, _, rules, _, _) = try makeCoordinator()
+        let (coord, groups, _, _, _, _) = try makeCoordinator()
         await coord.start()
         await coord.advanceFromWelcome()
         coord.displayName = "X"
@@ -107,13 +106,10 @@ struct FounderOnboardingCoordinatorTests {
         await coord.advanceFromGroupIdentity()
         await coord.skipVocabulary()
         await coord.skipRules()
-        #expect(coord.currentStep == .invite)
-        #expect(coord.draft.finesEnabled == false)
-        #expect(coord.draft.rules.allSatisfy { !$0.isActive })
-        let drafts = await rules.lastCreatedDrafts
-        #expect(drafts.isEmpty) // no rules created
+        #expect(coord.currentStep == .governance)
+        // basic_fines should be archived from active_modules.
         let g = try await groups.listMine().first
-        #expect(g?.finesEnabled == false)
+        #expect(g?.effectiveActiveModules.contains("basic_fines") == false)
     }
 
     @Test("skip invite leaves no pending invites")

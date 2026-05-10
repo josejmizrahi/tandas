@@ -2,6 +2,12 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
+/// Onboarding step: founder picks the vocabulary for "events" in this group.
+///
+/// Post BigBang the frequency / day / time pickers are gone — recurrence is
+/// not a group-level concept anymore. When the founder creates a recurring
+/// event later (Phase 2 ResourceWizard), the schedule lives on the
+/// ResourceSeries, not on the group.
 public struct GroupVocabularyView: View {
     @Environment(FounderOnboardingCoordinator.self) private var coord
 
@@ -27,10 +33,6 @@ public struct GroupVocabularyView: View {
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 vocabularySection
-                frequencySection
-                if coord.draft.frequencyType != nil && coord.draft.frequencyType != .unscheduled {
-                    dayTimeSection
-                }
             }
         }
     }
@@ -58,66 +60,5 @@ public struct GroupVocabularyView: View {
                 )
             )
         }
-    }
-
-    private var frequencySection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("¿Cada cuánto?")
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-            RuulPicker(
-                selection: Binding(
-                    get: { coord.draft.frequencyType ?? .unscheduled },
-                    set: { coord.draft.frequencyType = $0 }
-                ),
-                options: FrequencyType.allCases.map {
-                    .init(value: $0, label: $0.displayName)
-                }
-            )
-        }
-    }
-
-    private var dayTimeSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("Día y hora")
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-            RuulPicker(
-                selection: Binding(
-                    get: { coord.draft.frequencyConfig.dayOfWeek ?? 3 },
-                    set: { day in
-                        coord.draft.frequencyConfig.dayOfWeek = day
-                    }
-                ),
-                options: dayOptions
-            )
-            RuulDatePicker(
-                "Hora",
-                date: Binding(
-                    get: { dateFromConfig() },
-                    set: { newDate in
-                        let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
-                        coord.draft.frequencyConfig.hour = comps.hour
-                        coord.draft.frequencyConfig.minute = comps.minute
-                    }
-                ),
-                components: [.hourAndMinute]
-            )
-        }
-    }
-
-    private var dayOptions: [RuulPicker<Int>.Option] {
-        let days = [
-            (0, "Domingo"), (1, "Lunes"), (2, "Martes"), (3, "Miércoles"),
-            (4, "Jueves"), (5, "Viernes"), (6, "Sábado")
-        ]
-        return days.map { .init(value: $0.0, label: $0.1) }
-    }
-
-    private func dateFromConfig() -> Date {
-        var comps = DateComponents()
-        comps.hour = coord.draft.frequencyConfig.hour ?? 20
-        comps.minute = coord.draft.frequencyConfig.minute ?? 30
-        return Calendar.current.date(from: comps) ?? .now
     }
 }

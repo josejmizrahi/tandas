@@ -11,7 +11,7 @@ struct EventDetailCoordinatorTests {
     private func sampleGroup() -> Group {
         Group(
             id: UUID(), name: "G", inviteCode: "x",
-            eventVocabulary: "cena", finesEnabled: true,
+            activeModules: ["basic_fines", "rsvp", "check_in"],
             createdBy: UUID(), createdAt: .now
         )
     }

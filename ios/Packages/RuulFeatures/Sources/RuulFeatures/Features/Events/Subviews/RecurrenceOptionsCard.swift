@@ -37,26 +37,8 @@ public struct RecurrenceOptionsCard: View {
     }
 
     private var contextDescription: String? {
-        guard let freq = group.frequencyType else { return nil }
-        let dayPart: String
-        if let dayOfWeek = group.frequencyConfig?.dayOfWeek {
-            dayPart = "los \(dayName(for: dayOfWeek))"
-        } else {
-            dayPart = ""
-        }
-        let timePart: String
-        if let h = group.frequencyConfig?.hour {
-            let mm = group.frequencyConfig?.minute ?? 0
-            timePart = " a las \(String(format: "%02d:%02d", h, mm))"
-        } else {
-            timePart = ""
-        }
-        return "Tu grupo se ve \(freq.displayName.lowercased()) \(dayPart)\(timePart). Podemos crear los próximos eventos automáticamente."
-    }
-
-    private func dayName(for dayOfWeek: Int) -> String {
-        let names = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
-        guard (0..<7).contains(dayOfWeek) else { return "" }
-        return names[dayOfWeek] + "s"
+        // Group-level recurrence/scheduling was dropped at BigBang. Phase 2
+        // ResourceSeries will reintroduce this with a richer description.
+        nil
     }
 }

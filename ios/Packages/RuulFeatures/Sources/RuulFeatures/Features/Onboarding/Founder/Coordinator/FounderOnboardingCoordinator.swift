@@ -225,9 +225,7 @@ public final class FounderOnboardingCoordinator {
         isLoading = true
         defer { isLoading = false }
         let patch = GroupConfigPatch(
-            eventLabel: draft.resolvedVocabulary,
-            frequencyType: draft.frequencyType,
-            frequencyConfig: draft.frequencyConfig
+            initialEventVocabulary: draft.resolvedVocabulary
         )
         do {
             createdGroup = try await groupRepo.updateConfig(groupId: group.id, patch: patch)
@@ -240,62 +238,34 @@ public final class FounderOnboardingCoordinator {
     }
 
     public func skipVocabulary() async {
-        draft.frequencyType = nil
-        draft.frequencyConfig = .empty
+        // Frequency/recurrence is no longer a group-level concept post BigBang.
+        // It moves to ResourceSeries when the founder creates one (Phase 2).
         await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.vocabulary.rawValue))
         try? await transition(to: .rules)
     }
 
     public func advanceFromRules() async {
-        guard let group = createdGroup, !isLoading else { return }
-        isLoading = true
-        defer { isLoading = false }
-        let activeDrafts = draft.rules.filter(\.isActive)
-        do {
-            _ = try await ruleRepo.createInitialRules(groupId: group.id, drafts: activeDrafts)
-            // Primitives § 3 slice 3: write module membership directly. The
-            // `update_group_config` RPC keeps owning rotation_mode (still a
-            // first-class column on groups); fines toggle goes through the
-            // dedicated module write-path so active_modules stays canonical
-            // and the trigger derives fines_enabled.
-            createdGroup = try await groupRepo.setModule(
-                groupId: group.id,
-                slug: GroupModule.basicFines.id,
-                enabled: !activeDrafts.isEmpty
-            )
-            let patch = GroupConfigPatch(rotationMode: draft.rotationMode)
-            createdGroup = try await groupRepo.updateConfig(groupId: group.id, patch: patch)
-            await complete(step: .rules)
-            try? await transition(to: .governance)
-        } catch {
-            log.error("advanceFromRules failed: \(String(describing: error)) — message: \(error.localizedDescription)")
-            self.error = .createRulesFailed(error.localizedDescription)
-            await analytics.track(.stepFailed(flowType: .founder, stepID: FounderStep.rules.rawValue, errorType: "create_rules"))
-        }
+        // Per-rule selection moves to the ResourceWizard (Phase 2). For now
+        // this advances without doing anything — the basic_fines module's
+        // rules are already seeded by the template preset on group creation
+        // (mig 00075 orchestrator + 00073 seed_module_rules).
+        await complete(step: .rules)
+        try? await transition(to: .governance)
     }
 
     public func skipRules() async {
-        draft.finesEnabled = false
-        draft.rules = draft.rules.map {
-            var copy = $0; copy.isActive = false; return copy
-        }
-        guard let group = createdGroup else { return }
-        isLoading = true
-        defer { isLoading = false }
-        // Primitives § 3 slice 3: same split as advanceFromRules — module
-        // toggle via setModule, rotation via updateConfig. Soft-fail on the
-        // module call (try?) preserves the prior skip behaviour: a network
-        // hiccup never dead-ends onboarding.
-        if let updated = try? await groupRepo.setModule(
-            groupId: group.id,
-            slug: GroupModule.basicFines.id,
-            enabled: false
-        ) {
-            createdGroup = updated
-        }
-        let patch = GroupConfigPatch(rotationMode: draft.rotationMode)
-        if let updated = try? await groupRepo.updateConfig(groupId: group.id, patch: patch) {
-            createdGroup = updated
+        // Skipping = disable basic_fines module; rule cascade in
+        // set_group_module (mig 00074) archives the seeded rules.
+        if let group = createdGroup {
+            isLoading = true
+            defer { isLoading = false }
+            if let updated = try? await groupRepo.setModule(
+                groupId: group.id,
+                slug: GroupModule.basicFines.id,
+                enabled: false
+            ) {
+                createdGroup = updated
+            }
         }
         await analytics.track(.stepSkipped(flowType: .founder, stepID: FounderStep.rules.rawValue))
         try? await transition(to: .governance)
@@ -454,12 +424,13 @@ public final class FounderOnboardingCoordinator {
     private func trackOnboardingCompleted() async {
         let elapsed = Int(Date().timeIntervalSince(startedAt) * 1000)
         let group = createdGroup
+        let finesEnabled = group.map { CapabilityResolver().finesEnabled(in: $0) } ?? false
         await analytics.track(.groupCreated(
             hasVocabulary: draft.eventVocabulary != "evento",
-            hasFrequency: draft.frequencyType != nil,
-            finesEnabled: group.map { CapabilityResolver().finesEnabled(in: $0) } ?? draft.finesEnabled,
-            rotationMode: (group?.rotationMode ?? draft.rotationMode).rawValue,
-            rulesCount: draft.rules.filter(\.isActive).count
+            hasFrequency: false,
+            finesEnabled: finesEnabled,
+            rotationMode: "n/a",
+            rulesCount: 0
         ))
         await analytics.track(.onboardingCompleted(flowType: .founder, totalTimeMs: elapsed))
     }

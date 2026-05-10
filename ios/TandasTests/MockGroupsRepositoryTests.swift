@@ -19,17 +19,16 @@ struct MockGroupsRepositoryTests {
         let params = CreateGroupParams(
             name: "Cena martes",
             description: nil,
-            eventLabel: "Cena",
             currency: "MXN",
+            timezone: "America/Mexico_City",
             baseTemplate: "recurring_dinner",
             coverImageName: nil,
-            defaultDayOfWeek: 2,
-            defaultStartTime: "20:00:00",
-            defaultLocation: "Casa de Jose"
+            initialEventVocabulary: "cena"
         )
         let g = try await repo.create(params)
         #expect(g.name == "Cena martes")
         #expect(g.effectiveBaseTemplate == "recurring_dinner")
+        #expect(g.eventVocabulary == "cena")
         let all = try await repo.listMine()
         #expect(all.count == 1)
     }
@@ -59,15 +58,14 @@ struct MockGroupsRepositoryTests {
         }
     }
 
-    // MARK: - Primitives § 3 slice 3 (setModule)
+    // MARK: - setModule cascade
 
-    @Test("setModule adds slug + derives finesEnabled when slug is basic_fines")
+    @Test("setModule adds slug to active_modules")
     func setModule_addsBasicFines() async throws {
         let seed = Group(
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: false,
             activeModules: ["rsvp", "check_in"],
             createdBy: UUID(),
             createdAt: .now
@@ -75,16 +73,14 @@ struct MockGroupsRepositoryTests {
         let repo = MockGroupsRepository(seed: [seed])
         let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: true)
         #expect(updated.activeModules?.contains("basic_fines") == true)
-        #expect(updated.finesEnabled == true)
     }
 
-    @Test("setModule removes slug + derives finesEnabled false")
+    @Test("setModule removes slug from active_modules")
     func setModule_removesBasicFines() async throws {
         let seed = Group(
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: true,
             activeModules: ["basic_fines", "rsvp"],
             createdBy: UUID(),
             createdAt: .now
@@ -92,7 +88,6 @@ struct MockGroupsRepositoryTests {
         let repo = MockGroupsRepository(seed: [seed])
         let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: false)
         #expect(updated.activeModules?.contains("basic_fines") == false)
-        #expect(updated.finesEnabled == false)
     }
 
     @Test("setModule does not duplicate slug when re-enabling")
@@ -101,7 +96,6 @@ struct MockGroupsRepositoryTests {
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: true,
             activeModules: ["basic_fines", "rsvp", "check_in"],
             createdBy: UUID(),
             createdAt: .now
@@ -109,16 +103,14 @@ struct MockGroupsRepositoryTests {
         let repo = MockGroupsRepository(seed: [seed])
         let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: true)
         #expect(updated.activeModules?.filter { $0 == "basic_fines" }.count == 1)
-        #expect(updated.finesEnabled == true)
     }
 
-    @Test("setModule on non-fines slug leaves finesEnabled untouched")
-    func setModule_otherSlug_doesNotAffectFines() async throws {
+    @Test("setModule on unrelated slug leaves others alone")
+    func setModule_otherSlug() async throws {
         let seed = Group(
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: true,
             activeModules: ["basic_fines", "rsvp", "check_in"],
             createdBy: UUID(),
             createdAt: .now
@@ -126,7 +118,7 @@ struct MockGroupsRepositoryTests {
         let repo = MockGroupsRepository(seed: [seed])
         let updated = try await repo.setModule(groupId: seed.id, slug: "rotating_host", enabled: true)
         #expect(updated.activeModules?.contains("rotating_host") == true)
-        #expect(updated.finesEnabled == true)
+        #expect(updated.activeModules?.contains("basic_fines") == true)
     }
 
     @Test("setModule unknown groupId throws .notFound")
@@ -137,16 +129,12 @@ struct MockGroupsRepositoryTests {
         }
     }
 
-    // MARK: - Cascade behaviour (mirrors mig 00057 SQL closures)
-
     @Test("setModule enable cascades transitive dependencies in")
     func setModule_enableCascadesDeps() async throws {
-        // Empty active set + enable basic_fines should pull in rsvp + check_in.
         let seed = Group(
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: false,
             activeModules: [],
             createdBy: UUID(),
             createdAt: .now
@@ -155,18 +143,15 @@ struct MockGroupsRepositoryTests {
         let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: true)
         let active = Set(updated.activeModules ?? [])
         #expect(active.isSuperset(of: ["basic_fines", "rsvp", "check_in"]))
-        #expect(!active.contains("rotating_host"), "enable cascade should not over-pull rotating_host")
-        #expect(updated.finesEnabled == true)
+        #expect(!active.contains("rotating_host"))
     }
 
     @Test("setModule disable cascades transitive dependents out")
     func setModule_disableCascadesDependents() async throws {
-        // Disabling rsvp should remove check_in + basic_fines + appeal_voting.
         let seed = Group(
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: true,
             activeModules: ["basic_fines", "rsvp", "check_in", "appeal_voting", "rotating_host"],
             createdBy: UUID(),
             createdAt: .now
@@ -175,8 +160,7 @@ struct MockGroupsRepositoryTests {
         let updated = try await repo.setModule(groupId: seed.id, slug: "rsvp", enabled: false)
         let active = Set(updated.activeModules ?? [])
         #expect(active.isDisjoint(with: ["rsvp", "check_in", "basic_fines", "appeal_voting"]))
-        #expect(active.contains("rotating_host"), "disable cascade should leave unrelated rotating_host alone")
-        #expect(updated.finesEnabled == false)
+        #expect(active.contains("rotating_host"))
     }
 
     @Test("setModule disable basic_fines also removes appeal_voting only")
@@ -185,7 +169,6 @@ struct MockGroupsRepositoryTests {
             id: UUID(),
             name: "G",
             inviteCode: "abc12345",
-            finesEnabled: true,
             activeModules: ["basic_fines", "rsvp", "check_in", "appeal_voting", "rotating_host"],
             createdBy: UUID(),
             createdAt: .now
@@ -194,17 +177,12 @@ struct MockGroupsRepositoryTests {
         let updated = try await repo.setModule(groupId: seed.id, slug: "basic_fines", enabled: false)
         let active = Set(updated.activeModules ?? [])
         #expect(!active.contains("basic_fines"))
-        #expect(!active.contains("appeal_voting"), "appeal_voting depends on basic_fines and must cascade out")
+        #expect(!active.contains("appeal_voting"))
         #expect(active.isSuperset(of: ["rsvp", "check_in", "rotating_host"]))
-        #expect(updated.finesEnabled == false)
     }
 
-    @Test("ModuleRegistry.v1Fallback transitive closures match server (mig 00060/00061) cascade")
+    @Test("ModuleRegistry.v1Fallback transitive closures match server cascade")
     func transitiveClosures_matchSqlTables() async throws {
-        // These literal expectations mirror the dependencies seeded in
-        // mig 00060 and the recursive CTE cascade in mig 00061. If the
-        // iOS V1Modules.swift fallback ever drifts from the server seed,
-        // this test catches it before a deploy goes live.
         let r = ModuleRegistry.v1Fallback
         #expect(Set(r.transitiveDependencies(of: "basic_fines")) == ["rsvp", "check_in"])
         #expect(Set(r.transitiveDependencies(of: "check_in")) == ["rsvp"])

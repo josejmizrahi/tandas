@@ -3,34 +3,26 @@ import Foundation
 /// In-memory mutable draft of a group during the founder onboarding flow.
 /// Persisted (via JSON encoding) inside `OnboardingProgress.draftJSON` so the
 /// flow can resume exactly where the user left off.
+///
+/// Post BigBang (mig 00078): the draft only carries identity + template
+/// preset choice + initial vocabulary. Decisions about recurrence, fines,
+/// rotation, and rules move to the ResourceWizard (Phase 2 — progressive
+/// opt-in per resource).
 public struct GroupDraft: Codable, Sendable, Hashable {
     public var name: String
     public var coverImageName: String?
-    /// Platform template id picked at the TemplateSelector step. Stored as
-    /// raw string so it round-trips through OnboardingProgress.draftJSON
-    /// even if the enum changes shape later. Defaults to "recurring_dinner"
-    /// (the only V1 template).
+    /// Optional preset template id. Empty string = "empezar de cero" path.
     public var template: String
-    public var eventVocabulary: String          // maps to groups.event_label
+    /// User-facing word for "event" — surfaces as `settings.eventVocabulary`.
+    public var eventVocabulary: String
     public var customVocabulary: String?
-    public var frequencyType: FrequencyType?
-    public var frequencyConfig: FrequencyConfig
-    public var finesEnabled: Bool
-    public var rotationMode: RotationMode
-    public var rules: [RuleDraft]
 
-    /// Empty draft used at the start of the flow.
     public static let empty = GroupDraft(
         name: "",
         coverImageName: nil,
-        template: "recurring_dinner",
+        template: "",
         eventVocabulary: "evento",
-        customVocabulary: nil,
-        frequencyType: nil,
-        frequencyConfig: .empty,
-        finesEnabled: true,
-        rotationMode: .manual,
-        rules: RuleDraft.defaults
+        customVocabulary: nil
     )
 
     public var isReadyToCreate: Bool {
@@ -38,32 +30,25 @@ public struct GroupDraft: Codable, Sendable, Hashable {
     }
 
     public var resolvedVocabulary: String {
-        if eventVocabulary == "otro", let custom = customVocabulary?.trimmingCharacters(in: .whitespaces),
+        if eventVocabulary == "otro",
+           let custom = customVocabulary?.trimmingCharacters(in: .whitespaces),
            !custom.isEmpty {
             return custom
         }
         return eventVocabulary
     }
 
-    // Tolerant decode so any draftJSON persisted before Sprint 1b (which
-    // didn't have `template`) restores cleanly with the V1 default.
     public enum CodingKeys: String, CodingKey {
-        case name, coverImageName, template, eventVocabulary, customVocabulary,
-             frequencyType, frequencyConfig, finesEnabled, rotationMode, rules
+        case name, coverImageName, template, eventVocabulary, customVocabulary
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.name             = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         self.coverImageName   = try c.decodeIfPresent(String.self, forKey: .coverImageName)
-        self.template         = try c.decodeIfPresent(String.self, forKey: .template) ?? "recurring_dinner"
+        self.template         = try c.decodeIfPresent(String.self, forKey: .template) ?? ""
         self.eventVocabulary  = try c.decodeIfPresent(String.self, forKey: .eventVocabulary) ?? "evento"
         self.customVocabulary = try c.decodeIfPresent(String.self, forKey: .customVocabulary)
-        self.frequencyType    = try c.decodeIfPresent(FrequencyType.self, forKey: .frequencyType)
-        self.frequencyConfig  = try c.decodeIfPresent(FrequencyConfig.self, forKey: .frequencyConfig) ?? .empty
-        self.finesEnabled     = try c.decodeIfPresent(Bool.self, forKey: .finesEnabled) ?? true
-        self.rotationMode     = try c.decodeIfPresent(RotationMode.self, forKey: .rotationMode) ?? .manual
-        self.rules            = try c.decodeIfPresent([RuleDraft].self, forKey: .rules) ?? RuleDraft.defaults
     }
 
     public init(
@@ -71,22 +56,12 @@ public struct GroupDraft: Codable, Sendable, Hashable {
         coverImageName: String?,
         template: String,
         eventVocabulary: String,
-        customVocabulary: String?,
-        frequencyType: FrequencyType?,
-        frequencyConfig: FrequencyConfig,
-        finesEnabled: Bool,
-        rotationMode: RotationMode,
-        rules: [RuleDraft]
+        customVocabulary: String?
     ) {
         self.name = name
         self.coverImageName = coverImageName
         self.template = template
         self.eventVocabulary = eventVocabulary
         self.customVocabulary = customVocabulary
-        self.frequencyType = frequencyType
-        self.frequencyConfig = frequencyConfig
-        self.finesEnabled = finesEnabled
-        self.rotationMode = rotationMode
-        self.rules = rules
     }
 }

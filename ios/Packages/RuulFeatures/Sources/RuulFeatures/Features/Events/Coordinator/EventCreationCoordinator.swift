@@ -35,9 +35,10 @@ public final class EventCreationCoordinator {
         self.eventRepo = eventRepo
         self.lifecycle = lifecycle
         self.analytics = analytics
-        self.recurrenceAvailable = !hasExistingEvents
-            && group.frequencyType != nil
-            && group.frequencyType != .unscheduled
+        // Recurrence is no longer a Group-level concept post BigBang. Phase 2
+        // ResourceSeries owns it. Until that lands, every CreateEvent screen
+        // is a one-off event — no batch generation, no auto-generate toggle.
+        self.recurrenceAvailable = false
 
         var draft = EventDraft.empty(suggestedDate: suggestedDate)
         draft.coverImageName = group.coverImageName ?? "sunset"

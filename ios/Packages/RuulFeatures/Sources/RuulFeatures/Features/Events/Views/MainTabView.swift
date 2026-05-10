@@ -1061,12 +1061,13 @@ public struct MainTabView: View {
     }
 
     private func nextDefaultDate(for group: RuulCore.Group) -> Date {
-        // Default: tomorrow at 20:30 if group has no frequency.
+        // Default: tomorrow at 20:30. Group-level frequency is gone post
+        // BigBang; ResourceSeries (Phase 2) will provide the real default.
         let calendar = Calendar.current
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now) ?? .now
         var comps = calendar.dateComponents([.year, .month, .day], from: tomorrow)
-        comps.hour = group.frequencyConfig?.hour ?? 20
-        comps.minute = group.frequencyConfig?.minute ?? 30
+        comps.hour = 20
+        comps.minute = 30
         return calendar.date(from: comps) ?? tomorrow
     }
 

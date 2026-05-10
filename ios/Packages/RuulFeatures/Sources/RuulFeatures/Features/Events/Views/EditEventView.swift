@@ -121,7 +121,9 @@ public struct EditEventView: View {
 
     @ViewBuilder
     private var hostSection: some View {
-        if coordinator.group.rotationMode != .noHost {
+        // Post BigBang: presence of `rotating_host` module proxies "this
+        // group has hosts". Phase 2 rotation capability will refine this.
+        if coordinator.group.effectiveActiveModules.contains(GroupModule.rotatingHost.id) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("HOST")
                     .ruulTextStyle(RuulTypography.sectionLabel)

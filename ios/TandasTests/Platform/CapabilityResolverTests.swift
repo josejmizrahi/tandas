@@ -27,12 +27,13 @@ final class CapabilityResolverTests: XCTestCase {
         XCTAssertFalse(resolver.finesEnabled(in: group))
     }
 
-    func test_finesEnabled_whenActiveModulesNil_usesV1Default() {
-        // Legacy rows pre-migration 00019 have nil active_modules.
-        // `Group.effectiveActiveModules` falls back to the V1 default
-        // set, which includes "basic_fines". Resolver must agree.
+    func test_finesEnabled_whenActiveModulesNil_isFalsePostBigBang() {
+        // Post BigBang: bare groups (active_modules nil/empty) have no
+        // modules opted in. effectiveActiveModules falls back to []. The
+        // founder must explicitly enable basic_fines via setModule for
+        // fines to apply.
         let group = Self.makeGroup(activeModules: nil)
-        XCTAssertTrue(resolver.finesEnabled(in: group))
+        XCTAssertFalse(resolver.finesEnabled(in: group))
     }
 
     // MARK: - Cross-field invariant
@@ -93,11 +94,6 @@ final class CapabilityResolverTests: XCTestCase {
             description: nil,
             inviteCode: "TEST01",
             coverImageName: nil,
-            eventVocabulary: "evento",
-            frequencyType: nil,
-            frequencyConfig: nil,
-            finesEnabled: finesEnabled,
-            rotationMode: .manual,
             baseTemplate: "recurring_dinner",
             activeModules: activeModules,
             governance: nil,

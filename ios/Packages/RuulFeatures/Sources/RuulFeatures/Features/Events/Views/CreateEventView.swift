@@ -134,7 +134,10 @@ public struct CreateEventView: View {
 
     @ViewBuilder
     private var hostSection: some View {
-        if coordinator.group.rotationMode != .noHost {
+        // Host rotation moves to the rotation capability on a Resource (Phase 2).
+        // Until that lands, host always shows as "no host yet" — the founder
+        // can assign manually post-creation via the rotation module's UI.
+        if rotationActive {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Host")
                     .ruulTextStyle(RuulTypography.callout)
@@ -146,7 +149,7 @@ public struct CreateEventView: View {
                             .ruulTextStyle(RuulTypography.body)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Spacer()
-                        if coordinator.group.rotationMode == .autoOrder {
+                        if rotationAuto {
                             Text("Sugerido")
                                 .ruulTextStyle(RuulTypography.caption)
                                 .foregroundStyle(Color.ruulTextTertiary)
@@ -268,10 +271,18 @@ public struct CreateEventView: View {
     }
 
     private var hostLabel: String {
-        switch coordinator.group.rotationMode {
-        case .autoOrder: return "Próximo en orden"
-        case .manual:    return "Sin asignar — escoge después"
-        case .noHost:    return ""
-        }
+        // Phase 2 ResourceSeries / rotation capability will compute this.
+        rotationAuto ? "Próximo en orden" : "Sin asignar — escoge después"
+    }
+
+    /// Phase-2 rotation gate. True when the `rotating_host` module is active
+    /// for this group. Until ResourceSeries / rotation capability ships,
+    /// presence of the module on the group is the proxy.
+    private var rotationActive: Bool {
+        coordinator.group.effectiveActiveModules.contains(GroupModule.rotatingHost.id)
+    }
+
+    private var rotationAuto: Bool {
+        rotationActive
     }
 }

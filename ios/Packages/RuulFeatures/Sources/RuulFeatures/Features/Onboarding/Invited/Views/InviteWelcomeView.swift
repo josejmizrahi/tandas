@@ -70,14 +70,10 @@ public struct InviteWelcomeView: View {
     }
 
     private func metaCopy(for preview: InvitePreview) -> String {
-        var pieces: [String] = ["\(preview.memberCount) miembros"]
-        if !preview.eventLabel.isEmpty {
-            pieces.append(preview.eventLabel)
-        }
-        if let ft = preview.frequencyType, !ft.isEmpty {
-            pieces.append(ft)
-        }
-        return pieces.joined(separator: " · ")
+        // Capability-agnostic preview post BigBang. Event vocabulary +
+        // frequency move to a Phase 2 enriched preview view that joins
+        // active ResourceSeries.
+        "\(preview.memberCount) miembros"
     }
 
     private func avatarStack(for preview: InvitePreview) -> some View {

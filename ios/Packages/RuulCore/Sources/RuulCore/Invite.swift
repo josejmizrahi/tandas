@@ -33,25 +33,23 @@ public struct Invite: Identifiable, Codable, Sendable, Hashable {
     }
 }
 
-/// Read-only preview returned by GET /invite_preview?invite_code=eq.X.
-/// No sensitive fields, suitable for anon access.
+/// Read-only preview returned by `GET /invite_preview?invite_code=eq.X`.
+/// Capability-agnostic post BigBang (mig 00078): only identity + membership.
+/// Phase 2 will add a sibling view that joins active ResourceSeries for
+/// richer previews (e.g. "weekly dinner — Cena #14 this Thursday").
 public struct InvitePreview: Codable, Sendable, Hashable {
     public let groupId: UUID
     public let groupName: String
     public let coverImageName: String?
-    public let eventLabel: String
-    public let frequencyType: String?
     public let inviteCode: String
     public let groupCreatedAt: Date
     public let memberCount: Int
     public let recentMemberNames: [String]?
 
-    public init(groupId: UUID, groupName: String, coverImageName: String?, eventLabel: String, frequencyType: String?, inviteCode: String, groupCreatedAt: Date, memberCount: Int, recentMemberNames: [String]?) {
+    public init(groupId: UUID, groupName: String, coverImageName: String?, inviteCode: String, groupCreatedAt: Date, memberCount: Int, recentMemberNames: [String]?) {
         self.groupId = groupId
         self.groupName = groupName
         self.coverImageName = coverImageName
-        self.eventLabel = eventLabel
-        self.frequencyType = frequencyType
         self.inviteCode = inviteCode
         self.groupCreatedAt = groupCreatedAt
         self.memberCount = memberCount
@@ -62,8 +60,6 @@ public struct InvitePreview: Codable, Sendable, Hashable {
         case groupId            = "group_id"
         case groupName          = "group_name"
         case coverImageName     = "cover_image_name"
-        case eventLabel         = "event_label"
-        case frequencyType      = "frequency_type"
         case inviteCode         = "invite_code"
         case groupCreatedAt     = "group_created_at"
         case memberCount        = "member_count"
@@ -74,7 +70,7 @@ public struct InvitePreview: Codable, Sendable, Hashable {
 public struct PendingInvite: Identifiable, Sendable, Hashable {
     public let id: UUID
     public let phoneE164: String
-    public let displayName: String?       // from contact picker, optional
+    public let displayName: String?
     public var sentAt: Date?
 
     public init(id: UUID = UUID(), phoneE164: String, displayName: String?, sentAt: Date? = nil) {

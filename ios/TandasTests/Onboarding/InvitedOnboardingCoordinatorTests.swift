@@ -35,11 +35,13 @@ struct InvitedOnboardingCoordinatorTests {
     }
 
     private func sampleGroup(code: String) -> Group {
-        Group(
+        var settings = GroupSettings()
+        settings.eventVocabulary = "cena"
+        return Group(
             id: UUID(),
             name: "Los Cuates",
             inviteCode: code,
-            eventVocabulary: "cena",
+            settings: settings,
             createdBy: UUID(),
             createdAt: .now
         )

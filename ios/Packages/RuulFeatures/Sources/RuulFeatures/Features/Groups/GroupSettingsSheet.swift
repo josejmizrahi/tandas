@@ -3,15 +3,12 @@ import OSLog
 import RuulUI
 import RuulCore
 
-/// Admin-only sheet to edit a group's runtime configuration. Mirrors the
-/// fields the founder onboarding sets (vocabulary, fines on/off, rotation
-/// mode) so admins can change those once-set defaults later. Backed by
-/// `update_group_config` RPC — no schema changes needed.
+/// Admin-only sheet to edit a group's runtime configuration.
 ///
-/// Out of scope for V1: editing group name (no RPC), editing cover image
-/// (needs cover picker UI), editing frequency_type / frequency_config
-/// (richer date/time UI), member management (kick / promote), regenerating
-/// invite code, deleting / archiving the group. All deferred to V1.5.
+/// Post BigBang the group is bare. Settings reduces to: vocabulary
+/// (settings.eventVocabulary) + module toggles (basic_fines etc.). Rotation,
+/// frequency, fund, fines configs all migrate to capability blocks /
+/// module config / ResourceSeries — those flows live elsewhere (Phase 2+).
 public struct GroupSettingsSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -20,7 +17,6 @@ public struct GroupSettingsSheet: View {
 
     @State private var eventLabel: String = ""
     @State private var finesEnabled: Bool = true
-    @State private var rotationMode: RotationMode = .autoOrder
     @State private var isSaving: Bool = false
     @State private var error: String?
 
@@ -39,7 +35,6 @@ public struct GroupSettingsSheet: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     vocabularySection
                     finesSection
-                    rotationSection
                     if let error {
                         Text(error)
                             .ruulTextStyle(RuulTypography.caption)
@@ -69,8 +64,6 @@ public struct GroupSettingsSheet: View {
         }
         .onAppear { hydrateFromGroup() }
     }
-
-    // MARK: - Sections
 
     private var vocabularySection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
@@ -117,27 +110,6 @@ public struct GroupSettingsSheet: View {
         }
     }
 
-    private var rotationSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            sectionLabel("ANFITRIÓN")
-            RuulSegmentedControl(
-                selection: $rotationMode,
-                segments: RotationMode.allCases.map { ($0, segmentLabel(for: $0)) }
-            )
-            Text(rotationMode.description)
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
-        }
-    }
-
-    private func segmentLabel(for mode: RotationMode) -> String {
-        switch mode {
-        case .autoOrder: return "Auto"
-        case .manual:    return "Manual"
-        case .noHost:    return "Sin"
-        }
-    }
-
     private var saveButton: some View {
         RuulButton(
             "Guardar cambios",
@@ -150,8 +122,6 @@ public struct GroupSettingsSheet: View {
         .disabled(!hasChanges)
     }
 
-    // MARK: - Helpers
-
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
             .ruulTextStyle(RuulTypography.footnote)
@@ -163,13 +133,11 @@ public struct GroupSettingsSheet: View {
         let trimmed = eventLabel.trimmingCharacters(in: .whitespaces)
         return trimmed != group.eventVocabulary
             || finesEnabled != app.capabilityResolver.finesEnabled(in: group)
-            || rotationMode != group.rotationMode
     }
 
     private func hydrateFromGroup() {
         eventLabel = group.eventVocabulary
         finesEnabled = app.capabilityResolver.finesEnabled(in: group)
-        rotationMode = group.rotationMode
     }
 
     private func save() {
@@ -181,16 +149,9 @@ public struct GroupSettingsSheet: View {
             let trimmed = eventLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             let priorFinesEnabled = app.capabilityResolver.finesEnabled(in: group)
             let patch = GroupConfigPatch(
-                eventLabel: trimmed.isEmpty ? nil : trimmed,
-                rotationMode: rotationMode
+                initialEventVocabulary: trimmed.isEmpty ? nil : trimmed
             )
             do {
-                // Primitives § 3 slice 3: split the write-path. Vocabulary +
-                // rotation continue through `update_group_config`. The fines
-                // toggle is now a module-membership write so active_modules
-                // is canonical and the mig 00049 trigger derives the legacy
-                // boolean. Only call the module RPC if the toggle actually
-                // changed — keeps the save idempotent for vocab-only edits.
                 var updated = try await app.groupsRepo.updateConfig(groupId: group.id, patch: patch)
                 if finesEnabled != priorFinesEnabled {
                     updated = try await app.groupsRepo.setModule(
