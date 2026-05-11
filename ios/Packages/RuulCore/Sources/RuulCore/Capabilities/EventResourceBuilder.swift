@@ -26,18 +26,19 @@ public actor EventResourceBuilder: ResourceBuilder {
 
     private let eventRepo: any EventRepository
     private let ruleRepo: any RuleRepository
-    /// Optional. When injected, the builder persists each enabled
-    /// capability to `public.resource_capabilities` after the event row
-    /// lands. nil keeps backwards compat for callers that don't yet
-    /// pass the repo (mocks, previews, tests).
+    /// Optional legacy capability repo. Kept for callers that don't yet
+    /// inject draftRepo (mocks, previews). When draftRepo is present,
+    /// the atomic RPC handles capability inserts itself.
     private let capabilityRepo: (any ResourceCapabilityRepository)?
-    /// Optional. When injected + draft.seriesPattern is set, the builder
-    /// creates a ResourceSeries row first and links the event to it via
-    /// resources.series_id (post-event UPDATE).
+    /// Legacy series + resource repos. Same fallback semantics as
+    /// `capabilityRepo` above — only consulted on the non-atomic path.
     private let seriesRepo: (any ResourceSeriesRepository)?
-    /// Optional. Used to set resources.series_id after both the
-    /// ResourceSeries and the event are created.
     private let resourceRepo: (any ResourceRepository)?
+    /// Atomic RPC client (mig 00101). When injected, `build(_:)` calls
+    /// `build_resource_from_draft` instead of orchestrating N
+    /// sequential writes — partial failure rolls back the whole batch
+    /// instead of leaving orphan rows.
+    private let draftRepo: (any ResourceDraftRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.builder.event")
 
     public init(
@@ -45,13 +46,15 @@ public actor EventResourceBuilder: ResourceBuilder {
         ruleRepo: any RuleRepository,
         capabilityRepo: (any ResourceCapabilityRepository)? = nil,
         seriesRepo: (any ResourceSeriesRepository)? = nil,
-        resourceRepo: (any ResourceRepository)? = nil
+        resourceRepo: (any ResourceRepository)? = nil,
+        draftRepo: (any ResourceDraftRepository)? = nil
     ) {
         self.eventRepo = eventRepo
         self.ruleRepo = ruleRepo
         self.capabilityRepo = capabilityRepo
         self.seriesRepo = seriesRepo
         self.resourceRepo = resourceRepo
+        self.draftRepo = draftRepo
     }
 
     public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
@@ -67,6 +70,33 @@ public actor EventResourceBuilder: ResourceBuilder {
         guard let startsAt = draft.basicFields["startsAt"]?.dateValue else {
             throw ResourceBuilderError.missingRequiredField("startsAt")
         }
+
+        // Atomic path (founder framing 2026-05-11 #5): when the host
+        // app injected the draft repo, send the entire draft to the
+        // server-side RPC in one shot. Partial failures roll back.
+        if let draftRepo {
+            do {
+                let resourceId = try await draftRepo.build(draft)
+                return ResourceCreationResult(
+                    resourceId: resourceId,
+                    seriesId: nil,  // RPC owns the series id internally
+                    enabledCapabilityIds: draft.enabledCapabilities,
+                    createdRuleIds: [],  // RPC bypasses createInitialRules; ids not returned in V1
+                    cascadedModuleIds: []
+                )
+            } catch let e as ResourceDraftError {
+                if case let .rpcFailed(msg) = e {
+                    throw ResourceBuilderError.rpcFailed(msg)
+                }
+                throw ResourceBuilderError.rpcFailed("\(e)")
+            } catch {
+                throw ResourceBuilderError.rpcFailed(error.localizedDescription)
+            }
+        }
+
+        // Legacy N-RPC path. Kept for mocks/previews + as a fallback
+        // when callers haven't migrated to inject the draftRepo yet.
+        _ = title; _ = startsAt
 
         var eventDraft = EventDraft.empty(suggestedDate: startsAt)
         eventDraft.title = title

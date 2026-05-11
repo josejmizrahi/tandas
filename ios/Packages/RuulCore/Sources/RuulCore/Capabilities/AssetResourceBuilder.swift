@@ -22,14 +22,17 @@ public actor AssetResourceBuilder: ResourceBuilder {
 
     private let slotRepo: any SlotLifecycleRepository
     private let capabilityRepo: (any ResourceCapabilityRepository)?
+    private let draftRepo: (any ResourceDraftRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.builder.asset")
 
     public init(
         slotRepo: any SlotLifecycleRepository,
-        capabilityRepo: (any ResourceCapabilityRepository)? = nil
+        capabilityRepo: (any ResourceCapabilityRepository)? = nil,
+        draftRepo: (any ResourceDraftRepository)? = nil
     ) {
         self.slotRepo = slotRepo
         self.capabilityRepo = capabilityRepo
+        self.draftRepo = draftRepo
     }
 
     public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
@@ -39,6 +42,27 @@ public actor AssetResourceBuilder: ResourceBuilder {
         guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
+
+        // Atomic path via build_resource_from_draft RPC (mig 00101).
+        // Same shape as EventResourceBuilder — one round-trip + RPC-side
+        // rollback on partial failure.
+        if let draftRepo {
+            do {
+                let resourceId = try await draftRepo.build(draft)
+                return ResourceCreationResult(
+                    resourceId: resourceId,
+                    enabledCapabilityIds: draft.enabledCapabilities
+                )
+            } catch let e as ResourceDraftError {
+                if case let .rpcFailed(msg) = e {
+                    throw ResourceBuilderError.rpcFailed(msg)
+                }
+                throw ResourceBuilderError.rpcFailed("\(e)")
+            } catch {
+                throw ResourceBuilderError.rpcFailed(error.localizedDescription)
+            }
+        }
+
         let capacity: Int? = {
             if case let .int(value)? = draft.basicFields["capacity"] { return value }
             return nil

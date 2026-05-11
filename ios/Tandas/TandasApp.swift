@@ -47,6 +47,7 @@ struct TandasApp: App {
             let ledger = MockLedgerRepository()
             let rsvpActions = MockRsvpActionRepository()
             let policies = MockGroupPolicyRepository()
+            let draftRepo = MockResourceDraftRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -74,6 +75,7 @@ struct TandasApp: App {
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
                 rsvpActionRepo: rsvpActions,
+                resourceDraftRepo: draftRepo,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics
@@ -105,6 +107,7 @@ struct TandasApp: App {
             let ledger = LiveLedgerRepository(client: client)
             let rsvpActions = LiveRsvpActionRepository(client: client)
             let policies = LiveGroupPolicyRepository(client: client)
+            let draftRepo = LiveResourceDraftRepository(client: client)
             let analytics = LogAnalyticsService()
             let state = AppState(
                 auth: auth,
@@ -132,6 +135,7 @@ struct TandasApp: App {
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
                 rsvpActionRepo: rsvpActions,
+                resourceDraftRepo: draftRepo,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 walletService: StubWalletPassService(),
                 analytics: analytics,

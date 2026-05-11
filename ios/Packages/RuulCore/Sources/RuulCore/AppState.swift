@@ -108,6 +108,11 @@ public final class AppState {
     public let resourceCapabilityRepo: any ResourceCapabilityRepository
     public let ledgerRepo: any LedgerRepository
     public let rsvpActionRepo: any RsvpActionRepository
+    /// Atomic ResourceWizard submit — calls `build_resource_from_draft`
+    /// RPC (mig 00101). Builders that route through this avoid the
+    /// N-call orchestration that risked orphan rows on partial failure.
+    /// Founder framing 2026-05-11 #5.
+    public let resourceDraftRepo: any ResourceDraftRepository
     /// Pilot ResourceBuilder for events. Phase 2+ adds builders for slot,
     /// fund, asset following the same shape.
     public let eventBuilder: EventResourceBuilder
@@ -149,6 +154,7 @@ public final class AppState {
         resourceCapabilityRepo: any ResourceCapabilityRepository,
         ledgerRepo: any LedgerRepository,
         rsvpActionRepo: any RsvpActionRepository,
+        resourceDraftRepo: any ResourceDraftRepository,
         notifications: NotificationService? = nil,
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
@@ -180,16 +186,19 @@ public final class AppState {
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo
         self.rsvpActionRepo = rsvpActionRepo
+        self.resourceDraftRepo = resourceDraftRepo
         let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,
             capabilityRepo: resourceCapabilityRepo,
             seriesRepo: resourceSeriesRepo,
-            resourceRepo: resourceRepo
+            resourceRepo: resourceRepo,
+            draftRepo: resourceDraftRepo
         )
         let assetBuilder = AssetResourceBuilder(
             slotRepo: slotLifecycleRepo,
-            capabilityRepo: resourceCapabilityRepo
+            capabilityRepo: resourceCapabilityRepo,
+            draftRepo: resourceDraftRepo
         )
         // SlotResourceBuilder requires picking a parent Asset via a
         // resource picker that isn't wired yet. Re-register once R.1
