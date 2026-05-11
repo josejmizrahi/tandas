@@ -176,12 +176,13 @@ public struct MainTabView: View {
                     .tag(Tab.settings)
             }
             // Universal "+" button — always available across all tabs.
-            // Positioned just above the native tab bar at the bottom-center
-            // so it sits visually between Home and Group icons (or near
-            // them on smaller devices). Opens the ResourceWizardSheet.
+            // Sits visually centered in the native tab bar (overlaps the
+            // bar's middle, between Grupo and Historial icons). Opens the
+            // ResourceWizardSheet via creationRoute (cover lives at body
+            // level so any tab can present it).
             if app.activeGroup != nil {
                 createButton
-                    .padding(.bottom, 60) // clears the native tab bar
+                    .padding(.bottom, 4)
                     .accessibilityLabel("Crear recurso")
                     .transition(.scale.combined(with: .opacity))
             }
@@ -255,6 +256,22 @@ public struct MainTabView: View {
             ruleEditSheet(ctx)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        // Universal create wizard cover. Lives at body level (not inside
+        // homeTab) so the "+" works from any tab — Inicio / Grupo /
+        // Historial / Ajustes all present the same wizard.
+        .fullScreenCover(isPresented: $creationRoute) {
+            eventCreationScreen
+        }
+        .onChange(of: creationRoute) { wasOpen, isOpen in
+            // Refresh on cover dismissal regardless of source tab.
+            if wasOpen && !isOpen {
+                Task {
+                    async let h: Void = homeCoordinator?.refresh(force: true) ?? ()
+                    async let g: Void? = groupHistoryCoordinator?.refresh()
+                    _ = await (h, g)
+                }
+            }
         }
     }
 
@@ -907,21 +924,6 @@ public struct MainTabView: View {
                                 async let h: Void = homeCoordinator?.refresh(force: true) ?? ()
                                 async let i: Void? = inboxCoordinator?.refresh()
                                 _ = await (h, i)
-                            }
-                        }
-                    }
-                    .fullScreenCover(isPresented: $creationRoute) {
-                        eventCreationScreen
-                    }
-                    .onChange(of: creationRoute) { wasOpen, isOpen in
-                        // Refresh on cover dismissal regardless of source.
-                        // Refreshing inside the dismissed subview's onChange races
-                        // with view teardown and sometimes drops the Task.
-                        if wasOpen && !isOpen {
-                            Task {
-                                async let h: Void = homeCoordinator?.refresh(force: true) ?? ()
-                                async let g: Void? = groupHistoryCoordinator?.refresh()
-                                _ = await (h, g)
                             }
                         }
                     }

@@ -59,9 +59,6 @@ public struct HomeView: View {
                 async let r: Void = loadNonEventResources()
                 _ = await (h, i, r)
             }
-            // FAB removed — the universal "+" button now lives in MainTabView
-            // overlay between Home and Group tabs (consistent placement
-            // across tabs, not just Home).
         }
         .task {
             async let h: Void = coordinator.refresh()
@@ -670,24 +667,6 @@ public struct HomeView: View {
             }
             .buttonStyle(.plain)
         }
-    }
-
-    // MARK: - FAB — Apple Sports has no brand-color FABs: solid black on white,
-    // monochrome chrome with shadow.
-
-    private var fab: some View {
-        Button(action: onCreateEvent) {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(Color.ruulTextInverse)
-                .frame(width: 60, height: 60)
-                .background(Color.ruulTextPrimary, in: Circle())
-                .ruulElevation(.lg)
-                .accessibilityHidden(true)
-        }
-        .buttonStyle(.ruulPress)
-        .padding(RuulSpacing.lg)
-        .accessibilityLabel("Crear evento")
     }
 
     // MARK: - Cover + badge helpers
