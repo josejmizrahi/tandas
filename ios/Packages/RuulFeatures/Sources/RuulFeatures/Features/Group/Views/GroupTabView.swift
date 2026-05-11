@@ -132,16 +132,16 @@ public struct GroupTabView: View {
             } else {
                 EmptyView()
             }
+        case .resources:
+            GroupResourcesSubTab(group: activeGroup)
         }
     }
 
     /// Sub-tabs available based on the group's template. V1 dinner-recurring
-    /// has Events + Rules + Fines. Future templates expand this list.
+    /// has Events + Rules + Recursos + Votes + Fines. Future templates expand.
     /// `hasFines` excluye la sub-tab de Multas cuando no hay coordinator.
     public static func subTabs(for group: RuulCore.Group, hasFines: Bool = true) -> [GroupSubTab] {
-        // V1: assume all templates have events + rules + votes.
-        // Future: branch on group.effectiveActiveModules / group.effectiveBaseTemplate.
-        var tabs: [GroupSubTab] = [.events, .rules, .votes]
+        var tabs: [GroupSubTab] = [.events, .resources, .rules, .votes]
         if hasFines && CapabilityResolver().finesEnabled(in: group) {
             tabs.append(.fines)
         }
@@ -152,6 +152,7 @@ public struct GroupTabView: View {
 /// Sub-tab inventory for the Grupo tab. Conforms to RuulSubTabItem.
 public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
     case events
+    case resources
     case rules
     case votes
     case fines
@@ -159,10 +160,138 @@ public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .events: return "Eventos"
-        case .rules:  return "Reglas"
-        case .votes:  return "Votos"
-        case .fines:  return "Multas"
+        case .events:    return "Eventos"
+        case .resources: return "Recursos"
+        case .rules:     return "Reglas"
+        case .votes:     return "Votos"
+        case .fines:     return "Multas"
+        }
+    }
+}
+
+/// Sub-tab content: polymorphic list of every non-event resource in the
+/// group. Tap → ResourceDetailSheet (polymorphic). Empty state shown
+/// when the group has no assets/slots/funds/etc. yet.
+private struct GroupResourcesSubTab: View {
+    @Environment(AppState.self) private var app
+    public let group: RuulCore.Group
+    @State private var resources: [ResourceRow] = []
+    @State private var opened: ResourceRow?
+    @State private var isLoading: Bool = true
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, RuulSpacing.xxl)
+                } else if resources.isEmpty {
+                    EmptyStateView(
+                        systemImage: "square.stack",
+                        title: "Sin recursos aún",
+                        message: "Toca el botón + para crear un activo, slot, fondo u otro recurso."
+                    )
+                    .padding(.top, RuulSpacing.xl)
+                } else {
+                    ForEach(resources) { row in
+                        Button {
+                            opened = row
+                        } label: {
+                            resourceCard(row)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, RuulSpacing.screenPadding)
+            .padding(.vertical, RuulSpacing.md)
+        }
+        .task { await load() }
+        .sheet(item: $opened) { row in
+            ResourceDetailSheet(resource: row)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func resourceCard(_ row: ResourceRow) -> some View {
+        HStack(spacing: RuulSpacing.sm) {
+            ZStack {
+                Circle().fill(Color.ruulSurface).frame(width: 40, height: 40)
+                Image(systemName: iconFor(row.resourceType))
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(displayNameFor(row))
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Text(typeLabelFor(row.resourceType))
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.ruulTextTertiary)
+        }
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+        )
+    }
+
+    private func displayNameFor(_ row: ResourceRow) -> String {
+        if case let .string(s) = row.metadata["name"]  { return s }
+        if case let .string(s) = row.metadata["title"] { return s }
+        return typeLabelFor(row.resourceType)
+    }
+
+    private func iconFor(_ type: ResourceType) -> String {
+        switch type {
+        case .event:        return "calendar"
+        case .asset:        return "key.fill"
+        case .slot:         return "ticket"
+        case .fund:         return "banknote"
+        case .booking:      return "calendar.badge.checkmark"
+        case .contribution: return "arrow.up.bin"
+        default:            return "square.dashed"
+        }
+    }
+
+    private func typeLabelFor(_ type: ResourceType) -> String {
+        switch type {
+        case .event:        return "Evento"
+        case .asset:        return "Activo"
+        case .slot:         return "Slot"
+        case .fund:         return "Fondo"
+        case .booking:      return "Reserva"
+        case .contribution: return "Aportación"
+        case .position:     return "Posición"
+        case .assignment:   return "Tarea"
+        case .rotation:     return "Rotación"
+        case .guestPass:    return "Invitado"
+        case .proposal:     return "Propuesta"
+        case .unknown(let raw): return raw
+        }
+    }
+
+    @MainActor
+    private func load() async {
+        defer { isLoading = false }
+        let types: [ResourceType] = [.event, .asset, .slot, .fund, .booking, .contribution]
+        do {
+            resources = try await app.resourceRepo.list(
+                in: group.id,
+                types: types,
+                statuses: nil,
+                limit: 200
+            )
+        } catch {
+            resources = []
         }
     }
 }

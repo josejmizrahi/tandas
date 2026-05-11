@@ -159,20 +159,32 @@ public struct MainTabView: View {
         // peor que ignorarla en este caso específico"), we use the native
         // bar with `.tabBarMinimizeBehavior(.onScrollDown)` (iOS 26) and
         // glass material, plus per-tab badges via `.badge(_)`.
-        TabView(selection: $selectedTab) {
-            homeTab
-                .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
-                .tag(Tab.home)
-                .badge(inboxBadgeCount)
-            groupTab
-                .tabItem { Label(Tab.group.label, systemImage: Tab.group.symbol) }
-                .tag(Tab.group)
-            historyTab
-                .tabItem { Label(Tab.history.label, systemImage: Tab.history.symbol) }
-                .tag(Tab.history)
-            settingsTab
-                .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
-                .tag(Tab.settings)
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                homeTab
+                    .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
+                    .tag(Tab.home)
+                    .badge(inboxBadgeCount)
+                groupTab
+                    .tabItem { Label(Tab.group.label, systemImage: Tab.group.symbol) }
+                    .tag(Tab.group)
+                historyTab
+                    .tabItem { Label(Tab.history.label, systemImage: Tab.history.symbol) }
+                    .tag(Tab.history)
+                settingsTab
+                    .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
+                    .tag(Tab.settings)
+            }
+            // Universal "+" button — always available across all tabs.
+            // Positioned just above the native tab bar at the bottom-center
+            // so it sits visually between Home and Group icons (or near
+            // them on smaller devices). Opens the ResourceWizardSheet.
+            if app.activeGroup != nil {
+                createButton
+                    .padding(.bottom, 60) // clears the native tab bar
+                    .accessibilityLabel("Crear recurso")
+                    .transition(.scale.combined(with: .opacity))
+            }
         }
         // DS v3 §13.4: tab bar selected-state tint reflects el accent del
         // grupo activo (subtle on-brand cue). Falls back a textPrimary cuando
@@ -946,6 +958,23 @@ public struct MainTabView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
+    }
+
+    /// Universal create button. Always visible while the user has an
+    /// active group. Tap → opens ResourceWizardSheet via creationRoute.
+    private var createButton: some View {
+        Button {
+            creationRoute = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(Color.ruulTextInverse)
+                .frame(width: 56, height: 56)
+                .background(Color.ruulTextPrimary, in: Circle())
+                .ruulElevation(.lg)
+                .accessibilityHidden(true)
+        }
+        .buttonStyle(.ruulPress)
     }
 
     /// Empty-state hero for users with no groups. Lives next to homeTab

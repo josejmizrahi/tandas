@@ -63,6 +63,8 @@ public struct EventDetailView: View {
     /// que el push desde dentro del fullScreenCover funcione sin requerir
     /// NavigationStack outer.
     @State private var attendeeMemberRoute: MemberWithProfile?
+    @State private var eventRuleSheetPresented = false
+    @State private var eventLedgerSheetPresented = false
 
     private let coverHeight: CGFloat = 380
 
@@ -176,6 +178,26 @@ public struct EventDetailView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $eventRuleSheetPresented) {
+            EventCapabilityPlaceholderSheet(
+                icon: "list.bullet.clipboard.fill",
+                title: "Reglas del evento",
+                summary: "Pronto podrás agregar reglas que sólo apliquen a esta cena: late fee custom, no-show fine override, etc.",
+                comingFromPhase: "Phase 4 (in-event rule creation)"
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $eventLedgerSheetPresented) {
+            EventCapabilityPlaceholderSheet(
+                icon: "arrow.left.arrow.right",
+                title: "Movimientos del evento",
+                summary: "Pronto podrás registrar gastos, IOUs y aportaciones tied to this event. El sistema calculará automáticamente quién debe a quién al cerrar el evento.",
+                comingFromPhase: "Phase 3 (Money capability)"
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Parallax cover
@@ -265,6 +287,7 @@ public struct EventDetailView: View {
                 .padding(.horizontal, RuulSpacing.lg)
             }
             descriptionSection
+            eventCapabilitiesSection
         }
         .padding(.top, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.s12)
@@ -459,6 +482,91 @@ public struct EventDetailView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
         }
+    }
+
+    // MARK: - Event-scoped capability surfaces (Reglas + Movimientos)
+    //
+    // Two cards inside the event detail: lets the user add rules
+    // scoped to THIS event, or record IOU-style transactions tied to it.
+    // Both surface "Agregar" CTAs that open placeholder sheets — actual
+    // creation flows land in Phase 3 (Money) and Phase 4 (in-event rule
+    // creation) but the UX surface is here so the user sees the platform.
+
+    @ViewBuilder
+    private var eventCapabilitiesSection: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+            eventRulesCard
+            eventLedgerCard
+        }
+        .padding(.horizontal, RuulSpacing.lg)
+    }
+
+    private var eventRulesCard: some View {
+        capabilityCard(
+            icon: "list.bullet.clipboard.fill",
+            title: "Reglas de este evento",
+            summary: "Agrega reglas que sólo apliquen a este evento (override del grupo).",
+            ctaLabel: "Agregar regla",
+            onTap: { eventRuleSheetPresented = true }
+        )
+    }
+
+    private var eventLedgerCard: some View {
+        capabilityCard(
+            icon: "arrow.left.arrow.right",
+            title: "Movimientos",
+            summary: "Registra gastos, IOUs y aportaciones de este evento.",
+            ctaLabel: "Registrar movimiento",
+            onTap: { eventLedgerSheetPresented = true }
+        )
+    }
+
+    private func capabilityCard(
+        icon: String,
+        title: String,
+        summary: String,
+        ctaLabel: String,
+        onTap: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            HStack(spacing: RuulSpacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(Color.ruulAccent.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundStyle(Color.ruulAccent)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text(summary)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+            }
+            Button(action: onTap) {
+                HStack {
+                    Image(systemName: "plus")
+                    Text(ctaLabel)
+                }
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulAccent)
+                .padding(.vertical, RuulSpacing.xs)
+                .padding(.horizontal, RuulSpacing.sm)
+                .background(Color.ruulAccent.opacity(0.08), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.large)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+        )
     }
 
     // MARK: - Top nav (transparent → glass on scroll)

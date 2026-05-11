@@ -59,7 +59,9 @@ public struct HomeView: View {
                 async let r: Void = loadNonEventResources()
                 _ = await (h, i, r)
             }
-            .overlay(alignment: .bottomTrailing) { fab }
+            // FAB removed — the universal "+" button now lives in MainTabView
+            // overlay between Home and Group tabs (consistent placement
+            // across tabs, not just Home).
         }
         .task {
             async let h: Void = coordinator.refresh()

@@ -51,6 +51,25 @@ public final class ResourceWizardCoordinator {
     public func selectBuilder(_ builder: any ResourceBuilder) {
         selectedBuilder = builder
         basicFields = [:]
+        // Pre-fill defaults for non-text fields so validateRequiredFields
+        // passes immediately. Without this, the date binding in
+        // BuilderFieldRenderer only fires its `set` on user interaction —
+        // so a user who just types a title (without tapping the date
+        // picker) hits a silently-disabled CTA.
+        let iso = ISO8601DateFormatter()
+        let defaultDate = Date.now.addingTimeInterval(86_400)
+        for field in builder.requiredFields {
+            switch field.kind {
+            case .date, .time, .dateTime, .duration:
+                basicFields[field.key] = .string(iso.string(from: defaultDate))
+            case .boolean:
+                basicFields[field.key] = .bool(false)
+            case .integer, .decimal, .currency, .money:
+                basicFields[field.key] = .int(0)
+            default:
+                break  // text/picker/resource — wait for user input
+            }
+        }
         enabledCapabilities = defaultCapabilitiesFor(builder)
         step = .fields
     }
