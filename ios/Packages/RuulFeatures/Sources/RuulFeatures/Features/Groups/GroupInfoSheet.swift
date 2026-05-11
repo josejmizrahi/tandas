@@ -32,6 +32,7 @@ public struct GroupInfoSheet: View {
     @State private var leaveError: String?
     @State private var settingsPresented: Bool = false
     @State private var governancePresented: Bool = false
+    @State private var groupRulesPresented: Bool = false
     @State private var editMembersPresented: Bool = false
     /// Cached "can the current user remove members in this group?" — used to
     /// gate the entry point to `EditMembersSheet`. We resolve it once after
@@ -114,6 +115,16 @@ public struct GroupInfoSheet: View {
             GovernanceSettingsView(group: currentGroup) { updated in
                 liveGroup = updated
             }
+            .environment(app)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $groupRulesPresented) {
+            GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
+                group: currentGroup,
+                actorUserId: app.session?.user.id ?? UUID(),
+                policyRepo: app.policyRepo
+            ))
             .environment(app)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -210,10 +221,14 @@ public struct GroupInfoSheet: View {
             HStack(alignment: .firstTextBaseline) {
                 sectionLabel("GOBIERNO")
                 Spacer()
+                Button("Reglas") { groupRulesPresented = true }
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulAccent)
                 if canEdit {
                     Button("Editar") { governancePresented = true }
                         .ruulTextStyle(RuulTypography.callout)
                         .foregroundStyle(Color.ruulAccent)
+                        .padding(.leading, RuulSpacing.sm)
                 }
             }
             VStack(spacing: RuulSpacing.xs) {
