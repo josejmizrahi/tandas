@@ -26,6 +26,13 @@ public final class EventRulesCoordinator {
     public let shapeRegistry: RuleShapeRegistry
 
     public private(set) var rules: [GroupRule] = []
+    /// Bucketed by scope per Taxonomy §29: resource (event-specific),
+    /// series (recurrence-wide), group (everything else). Each list is
+    /// already ordered most-recent-first within its scope.
+    public var resourceRules: [GroupRule] { rules.filter { $0.scope == .resource } }
+    public var seriesRules:   [GroupRule] { rules.filter { $0.scope == .series   } }
+    public var groupRules:    [GroupRule] { rules.filter { $0.scope == .group    } }
+
     public private(set) var isLoading: Bool = true
     public private(set) var isSubmitting: Bool = false
     public private(set) var error: String?
@@ -100,7 +107,11 @@ public final class EventRulesCoordinator {
         error = nil
         defer { isLoading = false }
         do {
-            rules = try await ruleRepo.listForResource(eventId)
+            // R2: pull resource + series + group scope in one RPC so the
+            // sheet can render "Heredada de…" badges without an extra
+            // round-trip. The server splits the three buckets via UNION
+            // ALL; iOS classifies each row by inspecting scope columns.
+            rules = try await ruleRepo.listScopedForEvent(eventId)
         } catch {
             log.warning("load failed: \(error.localizedDescription)")
             self.error = "No pudimos cargar las reglas."

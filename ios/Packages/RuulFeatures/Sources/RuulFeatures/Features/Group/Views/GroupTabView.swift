@@ -126,6 +126,8 @@ public struct GroupTabView: View {
                 currentUserId: userId,
                 onCreateMoneyEntry: onCreateResource
             )
+        case .members:
+            MembersSubTabContainer(group: activeGroup)
         case .more:
             GroupMoreSubTab(
                 openVotesCount: openVotesCount,
@@ -160,15 +162,16 @@ public struct GroupTabView: View {
     /// templates can hide tabs (e.g. a group with no money capability
     /// could drop Dinero).
     public static func subTabs(for group: RuulCore.Group) -> [GroupSubTab] {
-        [.overview, .resources, .money, .more]
+        [.overview, .resources, .money, .members, .more]
     }
 }
 
-/// Sub-tab inventory for the Grupo tab post-G1. Conforms to RuulSubTabItem.
+/// Sub-tab inventory for the Grupo tab post-G1/G2. Conforms to RuulSubTabItem.
 public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
     case overview
     case resources
     case money
+    case members
     case more
 
     public var id: String { rawValue }
@@ -177,6 +180,7 @@ public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
         case .overview:  return "Resumen"
         case .resources: return "Recursos"
         case .money:     return "Dinero"
+        case .members:   return "Miembros"
         case .more:      return "Más"
         }
     }
@@ -305,6 +309,34 @@ private struct GroupResourcesSubTab: View {
             )
         } catch {
             resources = []
+        }
+    }
+}
+
+/// Same @State-holding container pattern for MembersSubTabCoordinator.
+@MainActor
+private struct MembersSubTabContainer: View {
+    @Environment(AppState.self) private var app
+    let group: RuulCore.Group
+    @State private var coord: MembersSubTabCoordinator?
+
+    var body: some View {
+        Group {
+            if let coord {
+                MembersSubTab(coordinator: coord)
+            } else {
+                RuulLoadingState().frame(maxWidth: .infinity, minHeight: 200)
+            }
+        }
+        .task {
+            if coord == nil {
+                coord = MembersSubTabCoordinator(
+                    group: group,
+                    ledgerRepo: app.ledgerRepo,
+                    groupsRepo: app.groupsRepo
+                )
+                await coord?.refresh()
+            }
         }
     }
 }

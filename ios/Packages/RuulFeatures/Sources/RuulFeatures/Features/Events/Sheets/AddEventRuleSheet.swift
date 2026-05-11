@@ -114,13 +114,17 @@ struct AddEventRuleSheet: View {
 
     @ViewBuilder
     private var previewSection: some View {
-        if let trigger = coordinator.selectedTrigger,
-           let consequence = coordinator.selectedConsequence {
+        if let sentence = RuleSentenceFormatter.draftSentence(
+            triggerShapeId: coordinator.formTriggerId,
+            consequenceShapeId: coordinator.formConsequenceId,
+            fieldValues: coordinator.formFieldValues,
+            registry: coordinator.shapeRegistry
+        ) {
             HStack(alignment: .top, spacing: RuulSpacing.xs) {
                 Image(systemName: "text.alignleft")
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(.top, 2)
-                Text("Si \(trigger.labelES.lowercased()) → \(consequenceSentence(for: consequence)).")
+                Text("\(sentence).")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.leading)
@@ -133,24 +137,6 @@ struct AddEventRuleSheet: View {
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
-    }
-
-    private func consequenceSentence(for shape: RuleShape) -> String {
-        // Build "$200" suffix only for the fine consequence in V1. The
-        // catalog will eventually carry a sentence template per shape so
-        // any consequence can self-describe; for now we read the well-
-        // known `amount` field.
-        let amountKey = coordinator.fieldBindingKey(
-            shape: shape,
-            field: RuleShapeField(key: "amount", kind: .currency, labelES: "")
-        )
-        if shape.id == "fine",
-           let raw = coordinator.formFieldValues[amountKey],
-           let amount = Int(raw.filter(\.isNumber)),
-           amount > 0 {
-            return "cobrar $\(amount)"
-        }
-        return shape.labelES.lowercased()
     }
 
     // MARK: - Shape row primitive

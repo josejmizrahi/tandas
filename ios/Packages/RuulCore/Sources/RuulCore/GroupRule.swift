@@ -21,6 +21,10 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     /// Resource instance this rule overrides, if any. Null for module-
     /// or group-scoped rules. Mig 00071.
     public let resourceId: UUID?
+    /// ResourceSeries this rule overrides, if any. Set when the rule
+    /// applies to every occurrence of a recurring resource (e.g. all
+    /// future dinners). Mig 00078.
+    public let seriesId: UUID?
 
     public init(
         id: UUID,
@@ -32,7 +36,8 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         conditions: [RuleCondition],
         consequences: [ConsequenceEnvelope],
         moduleKey: String? = nil,
-        resourceId: UUID? = nil
+        resourceId: UUID? = nil,
+        seriesId: UUID? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -44,6 +49,20 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.consequences = consequences
         self.moduleKey = moduleKey
         self.resourceId = resourceId
+        self.seriesId = seriesId
+    }
+
+    /// Computes the scope this rule lives at. More specific wins per
+    /// Taxonomy §29 — callers ordering inherited rule lists should sort
+    /// `resource > series > group` for display.
+    public var scope: Scope {
+        if resourceId != nil { return .resource }
+        if seriesId   != nil { return .series   }
+        return .group
+    }
+
+    public enum Scope: String, Sendable, Hashable {
+        case resource, series, group
     }
 
     /// Loosely-typed envelope used to read `rules.consequences[].config`.
@@ -99,5 +118,6 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         case consequences
         case moduleKey    = "module_key"
         case resourceId   = "resource_id"
+        case seriesId     = "series_id"
     }
 }

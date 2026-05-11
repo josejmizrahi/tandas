@@ -79,11 +79,19 @@ public protocol RuleRepository: Actor {
     /// surface immediately.
     func listForResource(_ resourceId: UUID) async throws -> [GroupRule]
 
+    /// All rules applicable to a given resource in scope order: rules
+    /// with `resource_id = resourceId`, plus rules from the resource's
+    /// series, plus rules from the resource's group. Caller can bucket
+    /// by inspecting each rule's `scope` (computed property). Powers R2
+    /// inherited rules sections. Polymorphic over resource type — the
+    /// same call works for events, assets, funds, etc.
+    func listScopedForResource(_ resourceId: UUID) async throws -> [GroupRule]
+
     /// Creates a user-authored rule scoped to `resourceId` via the
-    /// `create_event_rule` RPC (mig 00083). Caller must be group admin
-    /// or (for events) the event host. Server validates resource ownership
-    /// and authorization; iOS just forwards the form.
-    func createEventRule(
+    /// `create_resource_rule` RPC (mig 00086). Caller must be group
+    /// admin or (for events) the event host. Server validates resource
+    /// ownership + authorization. iOS just forwards the form.
+    func createResourceRule(
         groupId: UUID,
         resourceId: UUID,
         name: String,
@@ -169,7 +177,15 @@ public actor MockRuleRepository: RuleRepository {
         mockEventRules.filter { $0.resourceId == resourceId }
     }
 
-    public func createEventRule(
+    public func listScopedForResource(_ resourceId: UUID) async throws -> [GroupRule] {
+        // Mock returns the resource-scoped subset only. Tests/previews
+        // exercising inherited rules should pre-populate the mock with
+        // series/group-scoped rules; the bucketing in the coordinator
+        // will pick them up.
+        mockEventRules.filter { $0.resourceId == resourceId }
+    }
+
+    public func createResourceRule(
         groupId: UUID,
         resourceId: UUID,
         name: String,
@@ -319,14 +335,28 @@ public actor LiveRuleRepository: RuleRepository {
     public func listForResource(_ resourceId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id")
             .eq("resource_id", value: resourceId.uuidString.lowercased())
             .order("created_at", ascending: false)
             .execute()
             .value
     }
 
-    public func createEventRule(
+    public func listScopedForResource(_ resourceId: UUID) async throws -> [GroupRule] {
+        struct Params: Encodable { let p_resource_id: String }
+        do {
+            return try await client
+                .rpc("list_resource_rules_with_inherited", params: Params(
+                    p_resource_id: resourceId.uuidString.lowercased()
+                ))
+                .execute()
+                .value
+        } catch {
+            throw RuleError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func createResourceRule(
         groupId: UUID,
         resourceId: UUID,
         name: String,
@@ -344,7 +374,7 @@ public actor LiveRuleRepository: RuleRepository {
         }
         do {
             return try await client
-                .rpc("create_event_rule", params: Params(
+                .rpc("create_resource_rule", params: Params(
                     p_group_id: groupId.uuidString.lowercased(),
                     p_resource_id: resourceId.uuidString.lowercased(),
                     p_name: name,
