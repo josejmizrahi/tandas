@@ -641,6 +641,193 @@ Deno.test("slotExpiresInHours: slot already started → false (no retroactive fi
   assertEquals(captured.length, 0);
 });
 
+// =============================================================================
+// Scope hierarchy — Taxonomy §29 / mig 00071 + 00078
+//
+// `runRulesForEvent` must honor rule scope (resource_id / series_id /
+// membership_id) on top of group_id + is_active + trigger.eventType. Before
+// these tests landed the engine ignored scope, so a rule scoped to one
+// occurrence fired on every other event in the group. Audit gap #1.
+// =============================================================================
+
+const otherResourceId = "e00000000-0000-0000-0000-0000000000ff";
+const seriesAlpha     = "s10000000-0000-0000-0000-000000000001";
+const seriesBeta      = "s20000000-0000-0000-0000-000000000002";
+
+Deno.test("scope: resource_id=X rule does NOT fire on an event for resource Y", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "event-specific fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  // Override: this rule applies only to a DIFFERENT occurrence.
+  rule.resource_id = otherResourceId;
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("rsvpChangedSameDay", {
+    member_id: memberAlice.id,
+    resource_id: eventId, // event for a different resource than the rule targets
+  });
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0, "out-of-scope rule should be filtered out before evaluation");
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("scope: resource_id=X rule fires on its own resource", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "event-specific fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  rule.resource_id = eventId; // applies to this exact occurrence
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("rsvpChangedSameDay", {
+    member_id: memberAlice.id,
+    resource_id: eventId,
+  });
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, true);
+  assertEquals(captured.length, 1);
+});
+
+Deno.test("scope: series_id rule fires when occurrence belongs to that series", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "series-wide fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  rule.series_id = seriesAlpha;
+
+  // Context's resource carries the matching series_id, simulating an
+  // occurrence of Series Alpha.
+  const ctx = baseContext({ sink });
+  ctx.resource = { ...ctx.resource!, series_id: seriesAlpha };
+
+  const event = makeEvent("rsvpChangedSameDay", {
+    member_id: memberAlice.id,
+    resource_id: eventId,
+  });
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, true);
+  assertEquals(captured.length, 1);
+});
+
+Deno.test("scope: series_id rule does NOT fire on occurrence of a different series", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "series-wide fine (alpha)",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  rule.series_id = seriesAlpha;
+
+  // Occurrence belongs to Series Beta, not Alpha.
+  const ctx = baseContext({ sink });
+  ctx.resource = { ...ctx.resource!, series_id: seriesBeta };
+
+  const event = makeEvent("rsvpChangedSameDay", {
+    member_id: memberAlice.id,
+    resource_id: eventId,
+  });
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("scope: series_id rule does NOT fire when occurrence has no series", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "series-wide fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  rule.series_id = seriesAlpha;
+
+  // One-off resource (no series).
+  const ctx = baseContext({ sink });
+  ctx.resource = { ...ctx.resource!, series_id: null };
+
+  const event = makeEvent("rsvpChangedSameDay", {
+    member_id: memberAlice.id,
+    resource_id: eventId,
+  });
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("scope: group-level rule (no scope fields) fires regardless of resource/series", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "group-wide fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  // No scope set → group-level. Should still fire.
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("rsvpChangedSameDay", { member_id: memberAlice.id });
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, true);
+  assertEquals(captured.length, 1);
+});
+
+Deno.test("scope: membership_id rule fires only for the targeted member", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "alice-specific fine",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "responseStatusIs", config: { status: "pending" } }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  rule.membership_id = memberAlice.id;
+
+  // Both Alice and Bob have pending RSVP → trigger derives 2 targets, but
+  // membership scope must collapse to just Alice.
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "pending", rsvp_at: null, cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "pending", rsvp_at: null, cancelled_same_day: false },
+    ],
+  });
+  const event = makeEvent("eventClosed");
+
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1, "only one target survives the membership filter");
+  assertEquals((captured[0] as { member_id: string }).member_id, memberAlice.id);
+});
+
+// =============================================================================
+// Original "unmapped reserved type" test (preserved post scope additions)
+// =============================================================================
+
 Deno.test("unmapped reserved type → phase_target='unknown' (signals roadmap gap)", async () => {
   const { sink, captured } = captureSink();
   const { entries, restore } = captureLogs();

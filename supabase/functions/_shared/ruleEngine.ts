@@ -125,6 +125,13 @@ export interface ResourceLike {
   resource_type: string;
   status: string;
   metadata: Record<string, unknown>;
+  /**
+   * The series this resource belongs to, if any (mig 00078 §4b). Used by
+   * `runRulesForEvent` to honor series-scoped rules: a rule with `series_id`
+   * set applies to every occurrence of that series. Null for one-off
+   * resources (events with no `resource_series` parent).
+   */
+  series_id?: UUID | null;
 }
 
 export interface RSVPLike {
@@ -429,8 +436,51 @@ function failure(rule_id: UUID, member_id: UUID | null, error: string): Executio
 // =============================================================================
 
 /**
- * Runs ALL rules of `group` that match `event`'s trigger eventType. For each
- * match: derives targets, evaluates conditions (AND), executes consequences.
+ * Whether `rule` applies to `event` given its resource/series scope. Closes
+ * audit gap #1: prior to this filter the engine ran every group rule on
+ * every event, so a rule scoped to occurrence X fired on occurrences Y/Z.
+ *
+ * Hierarchy per Taxonomy §29 (mig 00071 + 00078):
+ *   - `rule.resource_id != null`  → exact-occurrence override; runs only when
+ *                                   the event's resource_id matches.
+ *   - `rule.series_id   != null`  → series scope; runs only when the
+ *                                   occurrence's `series_id` matches.
+ *   - both null                   → group-level rule (or module-shipped via
+ *                                   `module_key`); runs for any in-group event.
+ *
+ * Membership scope is orthogonal and handled at target derivation time
+ * (`applyMembershipScope`), not here — a membership-scoped rule still
+ * "applies" to the event; it just narrows which target survives.
+ */
+function ruleAppliesToEvent(
+  rule: Rule,
+  event: SystemEvent,
+  context: RuleContext,
+): boolean {
+  if (rule.resource_id != null) {
+    return event.resource_id != null && rule.resource_id === event.resource_id;
+  }
+  if (rule.series_id != null) {
+    const occurrenceSeriesId = context.resource?.series_id ?? null;
+    return occurrenceSeriesId != null && rule.series_id === occurrenceSeriesId;
+  }
+  return true;
+}
+
+/**
+ * Narrows `targets` to just the rule's `membership_id` when set. Membership
+ * scope is orthogonal to resource/series — a rule can be e.g. group-wide AND
+ * apply only to Alice. Drops the filter for unscoped rules.
+ */
+function applyMembershipScope(rule: Rule, targets: RuleTarget[]): RuleTarget[] {
+  if (rule.membership_id == null) return targets;
+  return targets.filter((t) => t.member_id === rule.membership_id);
+}
+
+/**
+ * Runs ALL rules of `group` that match `event`'s trigger eventType AND
+ * scope. For each match: derives targets, evaluates conditions (AND),
+ * executes consequences.
  */
 export async function runRulesForEvent(
   event: SystemEvent,
@@ -438,7 +488,10 @@ export async function runRulesForEvent(
   context: RuleContext,
 ): Promise<ExecutionResult[]> {
   const matchingRules = rules.filter(
-    (r) => r.is_active && r.trigger.eventType === event.event_type,
+    (r) =>
+      r.is_active &&
+      r.trigger.eventType === event.event_type &&
+      ruleAppliesToEvent(r, event, context),
   );
 
   const results: ExecutionResult[] = [];
@@ -464,6 +517,8 @@ export async function runRulesForEvent(
       results.push(failure(rule.id, null, `trigger eval threw: ${(e as Error).message}`));
       continue;
     }
+
+    targets = applyMembershipScope(rule, targets);
 
     for (const target of targets) {
       // AND across all conditions
