@@ -80,20 +80,11 @@ public struct DetailHeaderView: View {
     }
 
     private var typeLabel: String {
-        switch context.resource.resourceType {
-        case .event:        return "Evento"
-        case .asset:        return "Activo compartido"
-        case .slot:         return "Slot"
-        case .fund:         return "Fondo"
-        case .booking:      return "Reserva"
-        case .contribution: return "Aportación"
-        case .position:     return "Posición"
-        case .assignment:   return "Tarea"
-        case .rotation:     return "Rotación"
-        case .guestPass:    return "Invitado"
-        case .proposal:     return "Propuesta"
-        case .unknown(let raw): return raw
-        }
+        // Detail header gets a slightly more descriptive variant for
+        // assets — there's room in the header, and "Activo compartido"
+        // reads better than the bare "Activo" used in card lists.
+        if case .asset = context.resource.resourceType { return "Activo compartido" }
+        return context.resource.resourceType.humanLabel
     }
 
     private var statusLabel: String {

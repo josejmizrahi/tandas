@@ -79,7 +79,7 @@ public struct GroupTabView: View {
             header
             RuulSubTabBar(
                 selected: $selectedSubTab,
-                tabs: Self.subTabs(for: activeGroup)
+                tabs: Self.subTabs(for: activeGroup, resolver: app.capabilityResolver)
             )
             .padding(.bottom, RuulSpacing.md)
 
@@ -87,6 +87,17 @@ public struct GroupTabView: View {
                 .frame(maxHeight: .infinity)
         }
         .task { await refreshCounts() }
+        .onChange(of: activeGroup.id) { _, _ in
+            // If the user switches to a group whose visible sub-tabs no
+            // longer include the currently selected one (e.g. moving from
+            // a group with `basic_fines` to a blank one without money),
+            // snap selection back to overview to avoid showing an empty
+            // content area.
+            let visible = Self.subTabs(for: activeGroup, resolver: app.capabilityResolver)
+            if !visible.contains(selectedSubTab) {
+                selectedSubTab = .overview
+            }
+        }
     }
 
     private var header: some View {
@@ -157,12 +168,16 @@ public struct GroupTabView: View {
         }
     }
 
-    /// Sub-tabs available based on the group's template. V1 returns the
-    /// canonical four (Overview / Recursos / Dinero / Más). Future
-    /// templates can hide tabs (e.g. a group with no money capability
-    /// could drop Dinero).
-    public static func subTabs(for group: RuulCore.Group) -> [GroupSubTab] {
-        [.overview, .resources, .money, .members, .more]
+    /// Sub-tabs visible for `group`. Delegates to the resolver so module
+    /// activation drives the bar — V1 hides "Dinero" for groups whose
+    /// active modules don't provide a `ledger` capability, Phase 2 will
+    /// add module-specific sub-tabs without further edits here.
+    public static func subTabs(
+        for group: RuulCore.Group,
+        resolver: CapabilityResolver
+    ) -> [GroupSubTab] {
+        resolver.availableGroupSubTabs(for: group)
+            .compactMap { GroupSubTab(rawValue: $0) }
     }
 }
 
@@ -187,8 +202,13 @@ public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
 }
 
 /// Sub-tab content: polymorphic list of every non-event resource in the
-/// group. Tap → ResourceDetailSheet (polymorphic). Empty state shown
-/// when the group has no assets/slots/funds/etc. yet.
+/// group (assets, slots, funds, bookings, contributions). Events live
+/// on the Overview sub-tab + Home hero and open the polished
+/// `EventDetailView` — surfacing them here too would mean the same
+/// entity has two different detail UIs depending on tap origin (audit
+/// gap "misma entidad, dos UIs"). Tap on a non-event row →
+/// `ResourceDetailSheet` (polymorphic, capability-driven). Empty state
+/// shown when the group has no resources of the listed types yet.
 private struct GroupResourcesSubTab: View {
     @Environment(AppState.self) private var app
     public let group: RuulCore.Group
@@ -244,7 +264,7 @@ private struct GroupResourcesSubTab: View {
                 Text(displayNameFor(row))
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
-                Text(typeLabelFor(row.resourceType))
+                Text(row.resourceType.humanLabel)
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
@@ -264,7 +284,7 @@ private struct GroupResourcesSubTab: View {
     private func displayNameFor(_ row: ResourceRow) -> String {
         if case let .string(s) = row.metadata["name"]  { return s }
         if case let .string(s) = row.metadata["title"] { return s }
-        return typeLabelFor(row.resourceType)
+        return row.resourceType.humanLabel
     }
 
     private func iconFor(_ type: ResourceType) -> String {
@@ -279,27 +299,16 @@ private struct GroupResourcesSubTab: View {
         }
     }
 
-    private func typeLabelFor(_ type: ResourceType) -> String {
-        switch type {
-        case .event:        return "Evento"
-        case .asset:        return "Activo"
-        case .slot:         return "Slot"
-        case .fund:         return "Fondo"
-        case .booking:      return "Reserva"
-        case .contribution: return "Aportación"
-        case .position:     return "Posición"
-        case .assignment:   return "Tarea"
-        case .rotation:     return "Rotación"
-        case .guestPass:    return "Invitado"
-        case .proposal:     return "Propuesta"
-        case .unknown(let raw): return raw
-        }
-    }
-
     @MainActor
     private func load() async {
         defer { isLoading = false }
-        let types: [ResourceType] = [.event, .asset, .slot, .fund, .booking, .contribution]
+        // Events deliberately excluded — they have a dedicated polished
+        // detail surface (`EventDetailView`) reached from the Overview
+        // sub-tab and the Home hero. Listing them here would route the
+        // same entity through `ResourceDetailSheet` and create the
+        // "two UIs for the same thing" inconsistency the audit called
+        // out. Phase 2+ resource types live here.
+        let types: [ResourceType] = [.asset, .slot, .fund, .booking, .contribution]
         do {
             resources = try await app.resourceRepo.list(
                 in: group.id,

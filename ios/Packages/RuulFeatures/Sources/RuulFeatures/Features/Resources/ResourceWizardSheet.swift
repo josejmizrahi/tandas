@@ -151,7 +151,7 @@ public struct ResourceWizardSheet: View {
     private var optionsContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                Text("Capacidades")
+                Text("¿Qué más quieres que pase?")
                     .ruulTextStyle(RuulTypography.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .padding(.leading, RuulSpacing.xxs)
@@ -192,7 +192,7 @@ public struct ResourceWizardSheet: View {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 32))
                 .foregroundStyle(Color.ruulTextSecondary)
-            Text("No hay opciones extra para este tipo.")
+            Text("Listo, no necesitas configurar nada más.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
         }

@@ -203,7 +203,7 @@ public struct GroupOverviewSubTab: View {
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
-                    Text(typeLabelFor(row.resourceType))
+                    Text(row.resourceType.humanLabel)
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
@@ -225,7 +225,7 @@ public struct GroupOverviewSubTab: View {
     private func displayNameFor(_ row: ResourceRow) -> String {
         if case let .string(s) = row.metadata["name"]  { return s }
         if case let .string(s) = row.metadata["title"] { return s }
-        return typeLabelFor(row.resourceType)
+        return row.resourceType.humanLabel
     }
 
     private func iconFor(_ type: ResourceType) -> String {
@@ -237,23 +237,6 @@ public struct GroupOverviewSubTab: View {
         case .booking:      return "calendar.badge.checkmark"
         case .contribution: return "arrow.up.bin"
         default:            return "square.dashed"
-        }
-    }
-
-    private func typeLabelFor(_ type: ResourceType) -> String {
-        switch type {
-        case .event:        return "Evento"
-        case .asset:        return "Activo"
-        case .slot:         return "Slot"
-        case .fund:         return "Fondo"
-        case .booking:      return "Reserva"
-        case .contribution: return "Aportación"
-        case .position:     return "Posición"
-        case .assignment:   return "Tarea"
-        case .rotation:     return "Rotación"
-        case .guestPass:    return "Invitado"
-        case .proposal:     return "Propuesta"
-        case .unknown(let raw): return raw
         }
     }
 

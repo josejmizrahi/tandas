@@ -36,6 +36,22 @@ public struct HomeView: View {
     @State private var nonEventResources: [ResourceRow] = []
     @State private var openedResource: ResourceRow?
 
+    @State private var groupMemory: GroupMemory = .empty
+
+    /// Lightweight aggregate the home renders to give the group a sense
+    /// of accumulated history — closes audit gap #10 (sin memoria/streaks/
+    /// totales). Each counter is best-effort: failures collapse the
+    /// section instead of surfacing an error, since the rest of the
+    /// home still works without it.
+    private struct GroupMemory: Equatable {
+        var pastEventsCount: Int
+        var resolvedVotesCount: Int
+
+        var hasAnyContent: Bool { pastEventsCount > 0 || resolvedVotesCount > 0 }
+
+        static let empty = GroupMemory(pastEventsCount: 0, resolvedVotesCount: 0)
+    }
+
     public var body: some View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
@@ -46,6 +62,7 @@ public struct HomeView: View {
                     pendingsSection
                     resourcesSection
                     upcomingListSection
+                    groupMemorySection
                     pastEventsLink
                 }
                 .padding(.horizontal, RuulSpacing.lg)
@@ -57,7 +74,8 @@ public struct HomeView: View {
                 async let h: Void = coordinator.refresh(force: true)
                 async let i: Void? = inboxCoordinator?.refresh()
                 async let r: Void = loadNonEventResources()
-                _ = await (h, i, r)
+                async let m: Void = loadGroupMemory()
+                _ = await (h, i, r, m)
             }
         }
         .task {
@@ -67,6 +85,9 @@ public struct HomeView: View {
         }
         .task(id: resourceRefreshToken) {
             await loadNonEventResources()
+        }
+        .task(id: resourceRefreshToken) {
+            await loadGroupMemory()
         }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
@@ -78,6 +99,27 @@ public struct HomeView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+    }
+
+    /// Loads the lightweight aggregates that back the "Memoria del grupo"
+    /// section. Two reads in parallel (past events + all votes), both
+    /// capped at sensible limits — the section labels show "200+" if we
+    /// hit the cap so users still get a useful signal for long-running
+    /// groups. Failures collapse the section instead of surfacing.
+    @MainActor
+    private func loadGroupMemory() async {
+        guard let groupId = app.activeGroup?.id else {
+            groupMemory = .empty
+            return
+        }
+        async let pastTask = (try? await app.eventRepo.pastEvents(in: groupId, limit: 200)) ?? []
+        async let votesTask = (try? await app.voteRepo.votes(for: groupId)) ?? []
+        let past = await pastTask
+        let votes = await votesTask
+        groupMemory = GroupMemory(
+            pastEventsCount: past.count,
+            resolvedVotesCount: votes.filter { $0.status == .resolved }.count
+        )
     }
 
     @MainActor
@@ -351,7 +393,7 @@ public struct HomeView: View {
         if !nonEventResources.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("RECURSOS")
+                    Text("LO QUE ESTÁN ORGANIZANDO")
                         .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
                     Spacer()
@@ -385,7 +427,7 @@ public struct HomeView: View {
                     Text(displayNameFor(row))
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextPrimary)
-                    Text(typeLabelFor(row.resourceType))
+                    Text(row.resourceType.humanLabel)
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
@@ -410,7 +452,7 @@ public struct HomeView: View {
     private func displayNameFor(_ row: ResourceRow) -> String {
         if case let .string(name) = row.metadata["name"] { return name }
         if case let .string(title) = row.metadata["title"] { return title }
-        return typeLabelFor(row.resourceType)
+        return row.resourceType.humanLabel
     }
 
     private func iconFor(_ type: ResourceType) -> String {
@@ -421,23 +463,6 @@ public struct HomeView: View {
         case .booking:      return "calendar.badge.checkmark"
         case .contribution: return "arrow.up.bin"
         default:            return "square.dashed"
-        }
-    }
-
-    private func typeLabelFor(_ type: ResourceType) -> String {
-        switch type {
-        case .asset:        return "Activo"
-        case .slot:         return "Slot"
-        case .fund:         return "Fondo"
-        case .booking:      return "Reserva"
-        case .contribution: return "Aportación"
-        case .event:        return "Evento"
-        case .position:     return "Posición"
-        case .assignment:   return "Tarea"
-        case .rotation:     return "Rotación"
-        case .guestPass:    return "Invitado"
-        case .proposal:     return "Propuesta"
-        case .unknown(let raw): return raw
         }
     }
 
@@ -643,6 +668,77 @@ public struct HomeView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Memoria del grupo — accumulated aggregates that surface the
+    // group's history (eventos cerrados, decisiones resueltas). Hidden
+    // until at least one counter is non-zero, otherwise an empty group
+    // would render a permanent placeholder. Cap-label ("200+") when we
+    // hit the fetch limit so users see "more than we counted" instead
+    // of a misleading flat number.
+
+    @ViewBuilder
+    private var groupMemorySection: some View {
+        if groupMemory.hasAnyContent {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                Text("MEMORIA DEL GRUPO")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+
+                HStack(spacing: RuulSpacing.sm) {
+                    if groupMemory.pastEventsCount > 0 {
+                        memoryStatCard(
+                            value: memoryCountLabel(groupMemory.pastEventsCount, cap: 200),
+                            caption: "eventos juntos",
+                            icon: "calendar.badge.checkmark"
+                        )
+                    }
+                    if groupMemory.resolvedVotesCount > 0 {
+                        memoryStatCard(
+                            value: memoryCountLabel(groupMemory.resolvedVotesCount, cap: 200),
+                            caption: "decisiones tomadas",
+                            icon: "checkmark.seal"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func memoryCountLabel(_ count: Int, cap: Int) -> String {
+        count >= cap ? "\(cap)+" : "\(count)"
+    }
+
+    private func memoryStatCard(
+        value: String,
+        caption: String,
+        icon: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            HStack(spacing: RuulSpacing.xs) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .accessibilityHidden(true)
+                Text(caption.uppercased())
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .lineLimit(1)
+            }
+            Text(value)
+                .ruulTextStyle(RuulTypography.displayMedium)
+                .foregroundStyle(Color.ruulTextPrimary)
+        }
+        .padding(RuulSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(Color.ruulSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+        )
     }
 
     // MARK: - Past events link — Apple Sports style: subtle row, no chrome.

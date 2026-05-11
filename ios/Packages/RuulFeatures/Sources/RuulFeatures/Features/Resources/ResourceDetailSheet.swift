@@ -237,19 +237,6 @@ public struct ResourceDetailSheet: View {
     }
 
     private var typeLabel: String {
-        switch resource.resourceType {
-        case .event:        return "Evento"
-        case .asset:        return "Activo"
-        case .slot:         return "Slot"
-        case .fund:         return "Fondo"
-        case .booking:      return "Reserva"
-        case .contribution: return "Aportación"
-        case .position:     return "Posición"
-        case .assignment:   return "Tarea"
-        case .rotation:     return "Rotación"
-        case .guestPass:    return "Invitado"
-        case .proposal:     return "Propuesta"
-        case .unknown(let raw): return raw
-        }
+        resource.resourceType.humanLabel
     }
 }

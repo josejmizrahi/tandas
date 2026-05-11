@@ -35,3 +35,48 @@ public enum ResourceType: Codable, Sendable, Hashable {
 
     case unknown(String)
 }
+
+extension ResourceType {
+    /// Human-facing label for this resource type, in the singular. Single
+    /// source of truth — view layers (HomeView, GroupTabView,
+    /// ResourceDetailSheet, DetailSummaryView) must read from here instead
+    /// of inlining their own switch. Phrasing leans colloquial Mexican
+    /// Spanish to match the social register of the product, not the
+    /// taxonomy used in code/migrations.
+    public var humanLabel: String {
+        switch self {
+        case .event:        return "Evento"
+        case .slot:         return "Turno"
+        case .booking:      return "Reserva"
+        case .fund:         return "Fondo"
+        case .position:     return "Posición"
+        case .assignment:   return "Encargo"
+        case .rotation:     return "Rotación"
+        case .asset:        return "Activo"
+        case .guestPass:    return "Invitado"
+        case .contribution: return "Cuota"
+        case .proposal:     return "Propuesta"
+        case .unknown(let raw): return raw
+        }
+    }
+
+    /// Plural form of `humanLabel`. Used for section headers ("Tus turnos",
+    /// "Tus cuotas") and counters. Keep parity with `humanLabel` when adding
+    /// new cases.
+    public var humanLabelPlural: String {
+        switch self {
+        case .event:        return "Eventos"
+        case .slot:         return "Turnos"
+        case .booking:      return "Reservas"
+        case .fund:         return "Fondos"
+        case .position:     return "Posiciones"
+        case .assignment:   return "Encargos"
+        case .rotation:     return "Rotaciones"
+        case .asset:        return "Activos"
+        case .guestPass:    return "Invitados"
+        case .contribution: return "Cuotas"
+        case .proposal:     return "Propuestas"
+        case .unknown(let raw): return raw
+        }
+    }
+}

@@ -82,6 +82,47 @@ final class CapabilityResolverTests: XCTestCase {
         XCTAssertFalse(resolver.finesEnabled(in: group))
     }
 
+    // MARK: - Group sub-tabs
+
+    func test_availableGroupSubTabs_nilGroup_returnsCanonicalFiveTabs() {
+        // Pre-load: while the active group hasn't resolved, surface the
+        // full canonical set so the bar doesn't pop tabs in once modules
+        // hydrate. Order matters — content view switches on the enum
+        // rawValue and bar renders left-to-right in this order.
+        let tabs = resolver.availableGroupSubTabs(for: nil)
+        XCTAssertEqual(tabs, ["overview", "resources", "money", "members", "more"])
+    }
+
+    func test_availableGroupSubTabs_withMoneyProvidingModule_includesMoney() {
+        // basic_fines provides the `ledger` capability block per V1Modules.
+        // A group with it active should see the Dinero sub-tab.
+        let group = Self.makeGroup(activeModules: ["basic_fines"])
+        XCTAssertEqual(
+            resolver.availableGroupSubTabs(for: group),
+            ["overview", "resources", "money", "members", "more"]
+        )
+        XCTAssertTrue(resolver.moneySubTabEnabled(in: group))
+    }
+
+    func test_availableGroupSubTabs_withoutMoneyModule_skipsMoney() {
+        // Blank group with no ledger-providing module should not surface
+        // an empty Dinero tab.
+        let group = Self.makeGroup(activeModules: ["rsvp", "check_in"])
+        XCTAssertEqual(
+            resolver.availableGroupSubTabs(for: group),
+            ["overview", "resources", "members", "more"]
+        )
+        XCTAssertFalse(resolver.moneySubTabEnabled(in: group))
+    }
+
+    func test_availableGroupSubTabs_emptyActiveModules_skipsMoney() {
+        let group = Self.makeGroup(activeModules: [])
+        XCTAssertEqual(
+            resolver.availableGroupSubTabs(for: group),
+            ["overview", "resources", "members", "more"]
+        )
+    }
+
     // MARK: - Helpers
 
     private static func makeGroup(
