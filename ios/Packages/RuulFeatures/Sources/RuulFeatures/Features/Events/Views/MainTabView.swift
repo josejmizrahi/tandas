@@ -83,13 +83,14 @@ public struct MainTabView: View {
     @State private var leaveGroupInProgress: Bool = false
 
     public enum Tab: String, RuulTabItem, CaseIterable {
-        case home, group, history, settings
+        case home, group, create, history, settings
 
         public var id: String { rawValue }
         public var label: String {
             switch self {
             case .home:     return "Inicio"
             case .group:    return "Grupo"
+            case .create:   return "Crear"
             case .history:  return "Historial"
             case .settings: return "Ajustes"
             }
@@ -98,6 +99,7 @@ public struct MainTabView: View {
             switch self {
             case .home:     return "house.fill"
             case .group:    return "person.3.fill"
+            case .create:   return "plus.circle.fill"
             case .history:  return "clock.arrow.circlepath"
             case .settings: return "gear"
             }
@@ -150,42 +152,52 @@ public struct MainTabView: View {
         )
     }
 
+    /// Selection binding for the native TabView. When the user picks the
+    /// `.create` tab, the setter doesn't update `selectedTab` — instead it
+    /// flips `creationRoute` so the ResourceWizard cover (declared at body
+    /// level) presents. The previously-selected tab stays highlighted, so
+    /// dismissing the wizard returns the user to where they were.
+    private var createTabIntercept: Binding<Tab> {
+        Binding(
+            get: { selectedTab },
+            set: { newTab in
+                if newTab == .create {
+                    if app.activeGroup != nil {
+                        creationRoute = true
+                    }
+                    // intentionally leave selectedTab as-is
+                } else {
+                    selectedTab = newTab
+                }
+            }
+        )
+    }
+
     public var body: some View {
         // iOS 26's native TabView already renders a Liquid Glass tab bar.
-        // DS doc §3.6 RuulTabBar was specced before iOS 26; under iOS 26 the
-        // native bar is the canonical Liquid Glass surface, and overlaying
-        // RuulTabBar created a visible duplicate (native bar at the bottom +
-        // floating capsule above). Per DS §13 ("La regla produce resultado
-        // peor que ignorarla en este caso específico"), we use the native
-        // bar with `.tabBarMinimizeBehavior(.onScrollDown)` (iOS 26) and
-        // glass material, plus per-tab badges via `.badge(_)`.
-        ZStack(alignment: .bottom) {
-            TabView(selection: $selectedTab) {
-                homeTab
-                    .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
-                    .tag(Tab.home)
-                    .badge(inboxBadgeCount)
-                groupTab
-                    .tabItem { Label(Tab.group.label, systemImage: Tab.group.symbol) }
-                    .tag(Tab.group)
-                historyTab
-                    .tabItem { Label(Tab.history.label, systemImage: Tab.history.symbol) }
-                    .tag(Tab.history)
-                settingsTab
-                    .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
-                    .tag(Tab.settings)
-            }
-            // Universal "+" button — always available across all tabs.
-            // Sits visually centered in the native tab bar (overlaps the
-            // bar's middle, between Grupo and Historial icons). Opens the
-            // ResourceWizardSheet via creationRoute (cover lives at body
-            // level so any tab can present it).
-            if app.activeGroup != nil {
-                createButton
-                    .padding(.bottom, 4)
-                    .accessibilityLabel("Crear recurso")
-                    .transition(.scale.combined(with: .opacity))
-            }
+        // The "+" sits inline as a real tab item between Grupo and Historial.
+        // Tapping it doesn't navigate — `createTabIntercept` catches the
+        // selection, reverts it, and presents the ResourceWizard cover.
+        TabView(selection: createTabIntercept) {
+            homeTab
+                .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
+                .tag(Tab.home)
+                .badge(inboxBadgeCount)
+            groupTab
+                .tabItem { Label(Tab.group.label, systemImage: Tab.group.symbol) }
+                .tag(Tab.group)
+            // The "+" tab. Its body is never shown (selection intercept
+            // immediately reverts before the TabView swaps content), but
+            // a tab item still needs a destination view to register.
+            Color.clear
+                .tabItem { Label(Tab.create.label, systemImage: Tab.create.symbol) }
+                .tag(Tab.create)
+            historyTab
+                .tabItem { Label(Tab.history.label, systemImage: Tab.history.symbol) }
+                .tag(Tab.history)
+            settingsTab
+                .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
+                .tag(Tab.settings)
         }
         // DS v3 §13.4: tab bar selected-state tint reflects el accent del
         // grupo activo (subtle on-brand cue). Falls back a textPrimary cuando
@@ -970,23 +982,6 @@ public struct MainTabView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-    }
-
-    /// Universal create button. Always visible while the user has an
-    /// active group. Tap → opens ResourceWizardSheet via creationRoute.
-    private var createButton: some View {
-        Button {
-            creationRoute = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(Color.ruulTextInverse)
-                .frame(width: 56, height: 56)
-                .background(Color.ruulTextPrimary, in: Circle())
-                .ruulElevation(.lg)
-                .accessibilityHidden(true)
-        }
-        .buttonStyle(.ruulPress)
     }
 
     /// Empty-state hero for users with no groups. Lives next to homeTab

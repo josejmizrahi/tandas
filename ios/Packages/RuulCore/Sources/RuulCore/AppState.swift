@@ -62,6 +62,12 @@ public final class AppState {
     /// fallback.
     public var moduleRegistry: ModuleRegistry = .v1Fallback
 
+    /// Catalog of rule shapes (triggers/conditions/consequences). Boots
+    /// cold from `RuleShapeRegistry.v1Fallback` and is refreshed by
+    /// `loadRuleShapeRegistry()` after `list_rule_shapes` returns. Drives
+    /// dynamic rule-builder forms — mig 00084 is the canonical source.
+    public var ruleShapeRegistry: RuleShapeRegistry = .v1Fallback
+
     /// Resolves runtime capabilities for the active group based on its
     /// template + activeModules. Computed so it always reflects the latest
     /// `moduleRegistry`; refreshing the registry post-boot automatically
@@ -202,6 +208,10 @@ public final class AppState {
     /// in live mode; nil in mock/preview where `v1Fallback` is enough.
     public var moduleRegistryLoader: LiveModuleRegistry?
 
+    /// Optional server loader for `ruleShapeRegistry`. Wired by
+    /// `TandasApp` in live mode. Mocks/previews rely on `v1Fallback`.
+    public var ruleShapeRepo: (any RuleShapeRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
@@ -216,6 +226,18 @@ public final class AppState {
         }
     }
 
+    /// Refreshes `ruleShapeRegistry` from `list_rule_shapes` (mig 00084).
+    /// Same resilience contract as `loadModuleRegistry`: silent on error,
+    /// previously-loaded (or fallback) registry stays usable.
+    public func loadRuleShapeRegistry() async {
+        guard let repo = ruleShapeRepo else { return }
+        do {
+            self.ruleShapeRegistry = try await repo.load()
+        } catch {
+            // Keep v1Fallback / last-good registry on failure.
+        }
+    }
+
     public func start() async {
         for await s in auth.sessionStream {
             self.session = s
@@ -223,7 +245,9 @@ public final class AppState {
                 // list_modules() RPC is grant-restricted to authenticated;
                 // refresh the catalog only once we have a session. v1Fallback
                 // covers the pre-auth surface.
-                await loadModuleRegistry()
+                async let modules: Void = loadModuleRegistry()
+                async let shapes:  Void = loadRuleShapeRegistry()
+                _ = await (modules, shapes)
                 await refreshProfileAndGroups()
             } else {
                 self.profile = nil
