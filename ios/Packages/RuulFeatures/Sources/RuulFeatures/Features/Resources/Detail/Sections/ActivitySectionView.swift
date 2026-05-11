@@ -66,12 +66,12 @@ public struct ActivitySectionView: View {
         HStack(spacing: RuulSpacing.sm) {
             ZStack {
                 Circle().fill(Color.ruulBackgroundRecessed).frame(width: 32, height: 32)
-                Image(systemName: iconFor(event.eventType))
+                Image(systemName: iconFor(event))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(labelFor(event.eventType))
+                Text(labelFor(event))
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
@@ -85,15 +85,30 @@ public struct ActivitySectionView: View {
         .padding(.vertical, RuulSpacing.sm)
     }
 
+    /// True when the SystemEvent's payload marks it as a cancellation
+    /// (00098 emits eventClosed with status:cancelled for cancel_event).
+    /// We keep the SystemEventType enum closed (no `eventCancelled`
+    /// case) so the differentiation lives entirely in payload + the
+    /// renderer.
+    private func isCancelled(_ event: SystemEvent) -> Bool {
+        guard event.eventType == .eventClosed else { return false }
+        if case .string(let s) = event.payload["status"] {
+            return s == "cancelled"
+        }
+        return false
+    }
+
     private var divider: some View {
         Divider().background(Color.ruulSeparator).padding(.leading, 48)
     }
 
-    private func iconFor(_ type: SystemEventType) -> String {
-        switch type {
+    private func iconFor(_ event: SystemEvent) -> String {
+        switch event.eventType {
         case .eventCreated:        return "calendar.badge.plus"
-        case .eventClosed:         return "calendar.badge.checkmark"
+        case .eventClosed:         return isCancelled(event) ? "xmark.circle" : "calendar.badge.checkmark"
         case .checkInRecorded:     return "qrcode"
+        case .rsvpSubmitted:       return "checkmark.bubble"
+        case .rsvpChangedSameDay:  return "arrow.uturn.backward"
         case .fineOfficialized:    return "exclamationmark.triangle.fill"
         case .fineVoided:          return "xmark.circle"
         case .finePaid:            return "checkmark.seal.fill"
@@ -103,17 +118,21 @@ public struct ActivitySectionView: View {
         case .voteResolved:        return "flag.checkered"
         case .appealCreated:       return "doc.text"
         case .appealResolved:      return "doc.text.fill"
+        case .memberJoined:        return "person.fill.badge.plus"
+        case .memberLeft:          return "person.fill.badge.minus"
         case .ruleEnabledChanged:  return "list.bullet.clipboard"
         case .ruleAmountChanged:   return "list.bullet.clipboard"
         default:                   return "circle.dotted"
         }
     }
 
-    private func labelFor(_ type: SystemEventType) -> String {
-        switch type {
+    private func labelFor(_ event: SystemEvent) -> String {
+        switch event.eventType {
         case .eventCreated:        return "Se creó el evento"
-        case .eventClosed:         return "El evento cerró"
+        case .eventClosed:         return isCancelled(event) ? "El evento se canceló" : "El evento cerró"
         case .checkInRecorded:     return "Alguien hizo check-in"
+        case .rsvpSubmitted:       return "Alguien respondió"
+        case .rsvpChangedSameDay:  return "Cambio de RSVP el mismo día"
         case .fineOfficialized:    return "Multa oficializada"
         case .fineVoided:          return "Multa anulada"
         case .finePaid:            return "Multa pagada"
@@ -123,6 +142,8 @@ public struct ActivitySectionView: View {
         case .voteResolved:        return "Votación resuelta"
         case .appealCreated:       return "Se abrió apelación"
         case .appealResolved:      return "Apelación resuelta"
+        case .memberJoined:        return "Alguien se unió al grupo"
+        case .memberLeft:          return "Alguien dejó el grupo"
         case .ruleEnabledChanged:  return "Una regla cambió de estado"
         case .ruleAmountChanged:   return "Cambió el monto de una regla"
         default:                   return "Actividad"
