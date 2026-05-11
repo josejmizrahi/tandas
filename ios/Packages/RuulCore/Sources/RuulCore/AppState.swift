@@ -51,6 +51,10 @@ public final class AppState {
     public let ruleRepo: any RuleRepository
     public let voteRepo: any VoteRepository
     public let voteCastRepo: any VoteCastRepository
+    /// CRUD + resolver over `public.group_policies` (mig 00087). Coordinators
+    /// that mutate rules wrap `ruleRepo` in an `InterceptingRuleRepository`
+    /// composed from this + `voteRepo` to get governance-aware writes.
+    public let policyRepo: any GroupPolicyRepository
     public let governance: any GovernanceServiceProtocol
     public let otp: any OTPService
     public let templateRegistry: TemplateRegistry
@@ -126,6 +130,7 @@ public final class AppState {
         ruleRepo: any RuleRepository,
         voteRepo: any VoteRepository,
         voteCastRepo: any VoteCastRepository,
+        policyRepo: any GroupPolicyRepository,
         governance: any GovernanceServiceProtocol,
         otp: any OTPService,
         templateRegistry: TemplateRegistry,
@@ -156,6 +161,7 @@ public final class AppState {
         self.ruleRepo = ruleRepo
         self.voteRepo = voteRepo
         self.voteCastRepo = voteCastRepo
+        self.policyRepo = policyRepo
         self.governance = governance
         self.otp = otp
         self.templateRegistry = templateRegistry

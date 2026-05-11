@@ -46,6 +46,7 @@ struct TandasApp: App {
             let resourceCapabilities = MockResourceCapabilityRepository()
             let ledger = MockLedgerRepository()
             let rsvpActions = MockRsvpActionRepository()
+            let policies = MockGroupPolicyRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -55,6 +56,7 @@ struct TandasApp: App {
                 ruleRepo: rules,
                 voteRepo: votes,
                 voteCastRepo: voteCasts,
+                policyRepo: policies,
                 governance: governance,
                 otp: otp,
                 templateRegistry: templates,
@@ -102,6 +104,7 @@ struct TandasApp: App {
             let resourceCapabilities = LiveResourceCapabilityRepository(client: client)
             let ledger = LiveLedgerRepository(client: client)
             let rsvpActions = LiveRsvpActionRepository(client: client)
+            let policies = LiveGroupPolicyRepository(client: client)
             let analytics = LogAnalyticsService()
             let state = AppState(
                 auth: auth,
@@ -111,6 +114,7 @@ struct TandasApp: App {
                 ruleRepo: rules,
                 voteRepo: votes,
                 voteCastRepo: voteCasts,
+                policyRepo: policies,
                 governance: governance,
                 otp: otp,
                 templateRegistry: templates,
