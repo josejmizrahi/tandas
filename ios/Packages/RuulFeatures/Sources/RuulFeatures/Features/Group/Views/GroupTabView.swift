@@ -2,72 +2,76 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Tab "Grupo" per DS v3 §5.3 — composite con header (RuulGroupSwitcher) +
-/// sub-tabs adaptativas según template del grupo activo. En V1 templates
-/// dinner_recurring tienen Events / Rules / Fines.
+/// Tab "Grupo" post-G1 — composite con header (RuulGroupSwitcher) +
+/// sub-tabs reorganizados para reflejar "vida operativa del grupo"
+/// (Overview / Resources / Money / Más) en vez del corte técnico
+/// previo (Events / Rules / Votes / Fines).
 ///
-/// **No conectado a MainTabView todavía** — Fase 4b hará el swap. Este
-/// composite vive en paralelo a las tabs Reglas / Inbox actuales hasta entonces.
+/// Governance (reglas + votos + multas) vive ahora un nivel más abajo
+/// adentro de "Más" — Acuerdos / Decisiones / Sanciones.
 @MainActor
 public struct GroupTabView: View {
-    // Coordinators inyectados por el padre (MainTabView en Fase 4b).
-    public let rulesCoordinator: RulesCoordinator
-    /// Puede ser nil; en ese caso la sub-tab Multas se omite.
-    public let myFinesCoordinator: MyFinesCoordinator?
+    @Environment(AppState.self) private var app
     public let activeGroup: RuulCore.Group
-    /// Próximos eventos del grupo activo (HomeCoordinator post-Fase 3 expone esto).
+    public let userId: UUID
+
+    // Coordinators inyectados por el padre.
+    public let rulesCoordinator: RulesCoordinator
+    /// nil ⇒ el rol del usuario no tiene visibilidad de multas; "Sanciones"
+    /// se esconde en Más automáticamente.
+    public let myFinesCoordinator: MyFinesCoordinator?
+    public let inboxCoordinator: InboxCoordinator?
+
+    /// Próximos eventos del grupo activo (HomeCoordinator los expone).
     public let upcomingEvents: [Event]
     public let myRSVPs: [UUID: RSVP]
+
+    // Callbacks.
     public let onSwitchGroup: () -> Void
     public let onOpenEvent: (Event) -> Void
     public let onOpenFine: (Fine) -> Void
-    public let onOpenRule: (GroupRule) -> Void
-    public let voteRepo: any VoteRepository
-    public let voteCastRepo: (any VoteCastRepository)?
-    public let userMemberId: UUID?
-    public let userActionRepo: (any UserActionRepository)?
-    public let onSeeOpenVotes: () -> Void
-    public let onSelectVote: (Vote) -> Void
-    public let onCreateVote: () -> Void
+    public let onOpenInboxAction: (UserAction) async -> Void
+    public let onCreateResource: () -> Void
+    public let onOpenAcuerdos: () -> Void
+    public let onOpenDecisiones: () -> Void
+    public let onOpenSanciones: () -> Void
 
     @State private var selectedSubTab: GroupSubTab
+    @State private var openVotesCount: Int = 0
 
     public init(
+        activeGroup: RuulCore.Group,
+        userId: UUID,
         rulesCoordinator: RulesCoordinator,
         myFinesCoordinator: MyFinesCoordinator?,
-        activeGroup: RuulCore.Group,
+        inboxCoordinator: InboxCoordinator?,
         upcomingEvents: [Event],
         myRSVPs: [UUID: RSVP],
         onSwitchGroup: @escaping () -> Void,
         onOpenEvent: @escaping (Event) -> Void,
         onOpenFine: @escaping (Fine) -> Void,
-        onOpenRule: @escaping (GroupRule) -> Void = { _ in },
-        voteRepo: any VoteRepository,
-        voteCastRepo: (any VoteCastRepository)? = nil,
-        userMemberId: UUID? = nil,
-        userActionRepo: (any UserActionRepository)?,
-        onSeeOpenVotes: @escaping () -> Void,
-        onSelectVote: @escaping (Vote) -> Void = { _ in },
-        onCreateVote: @escaping () -> Void = { }
+        onOpenInboxAction: @escaping (UserAction) async -> Void,
+        onCreateResource: @escaping () -> Void,
+        onOpenAcuerdos: @escaping () -> Void,
+        onOpenDecisiones: @escaping () -> Void,
+        onOpenSanciones: @escaping () -> Void
     ) {
+        self.activeGroup = activeGroup
+        self.userId = userId
         self.rulesCoordinator = rulesCoordinator
         self.myFinesCoordinator = myFinesCoordinator
-        self.activeGroup = activeGroup
+        self.inboxCoordinator = inboxCoordinator
         self.upcomingEvents = upcomingEvents
         self.myRSVPs = myRSVPs
         self.onSwitchGroup = onSwitchGroup
         self.onOpenEvent = onOpenEvent
         self.onOpenFine = onOpenFine
-        self.onOpenRule = onOpenRule
-        self.voteRepo = voteRepo
-        self.voteCastRepo = voteCastRepo
-        self.userMemberId = userMemberId
-        self.userActionRepo = userActionRepo
-        self.onSeeOpenVotes = onSeeOpenVotes
-        self.onSelectVote = onSelectVote
-        self.onCreateVote = onCreateVote
-        let resolved = GroupTabView.subTabs(for: activeGroup, hasFines: myFinesCoordinator != nil)
-        self._selectedSubTab = State(initialValue: resolved.first ?? .rules)
+        self.onOpenInboxAction = onOpenInboxAction
+        self.onCreateResource = onCreateResource
+        self.onOpenAcuerdos = onOpenAcuerdos
+        self.onOpenDecisiones = onOpenDecisiones
+        self.onOpenSanciones = onOpenSanciones
+        self._selectedSubTab = State(initialValue: .overview)
     }
 
     public var body: some View {
@@ -75,13 +79,14 @@ public struct GroupTabView: View {
             header
             RuulSubTabBar(
                 selected: $selectedSubTab,
-                tabs: Self.subTabs(for: activeGroup, hasFines: myFinesCoordinator != nil)
+                tabs: Self.subTabs(for: activeGroup)
             )
             .padding(.bottom, RuulSpacing.md)
 
             content
                 .frame(maxHeight: .infinity)
         }
+        .task { await refreshCounts() }
     }
 
     private var header: some View {
@@ -101,70 +106,78 @@ public struct GroupTabView: View {
     @ViewBuilder
     private var content: some View {
         switch selectedSubTab {
-        case .events:
-            EventsSubTabContent(
+        case .overview:
+            GroupOverviewSubTab(
+                group: activeGroup,
                 upcomingEvents: upcomingEvents,
                 myRSVPs: myRSVPs,
-                onOpenEvent: onOpenEvent
+                inboxCoordinator: inboxCoordinator,
+                userId: userId,
+                onOpenEvent: onOpenEvent,
+                onOpenFine: onOpenFine,
+                onOpenInboxAction: onOpenInboxAction,
+                onGoToMoney: { selectedSubTab = .money }
             )
-        case .rules:
-            RulesView(
-                coordinator: rulesCoordinator,
-                voteRepo: voteRepo,
-                userActionRepo: userActionRepo,
-                onSeeOpenVotes: onSeeOpenVotes,
-                onSelectRule: onOpenRule
-            )
-        case .votes:
-            // Wrap in @State container so coord survives parent re-renders
-            // (same pattern used for ReviewProposed + VoteDetail).
-            VotesSubTabContainer(
-                group: activeGroup,
-                voteRepo: voteRepo,
-                castRepo: voteCastRepo,
-                userMemberId: userMemberId,
-                onSelectVote: onSelectVote,
-                onCreateVote: onCreateVote
-            )
-        case .fines:
-            if let coord = myFinesCoordinator {
-                MyFinesView(coordinator: coord, onOpenFine: onOpenFine)
-            } else {
-                EmptyView()
-            }
         case .resources:
             GroupResourcesSubTab(group: activeGroup)
+        case .money:
+            GroupMoneySubTabContainer(
+                group: activeGroup,
+                currentUserId: userId,
+                onCreateMoneyEntry: onCreateResource
+            )
+        case .more:
+            GroupMoreSubTab(
+                openVotesCount: openVotesCount,
+                outstandingFinesCount: outstandingFinesCount,
+                onOpenRules: onOpenAcuerdos,
+                onOpenVotes: onOpenDecisiones,
+                onOpenFines: onOpenSanciones
+            )
         }
     }
 
-    /// Sub-tabs available based on the group's template. V1 dinner-recurring
-    /// has Events + Rules + Recursos + Votes + Fines. Future templates expand.
-    /// `hasFines` excluye la sub-tab de Multas cuando no hay coordinator.
-    public static func subTabs(for group: RuulCore.Group, hasFines: Bool = true) -> [GroupSubTab] {
-        var tabs: [GroupSubTab] = [.events, .resources, .rules, .votes]
-        if hasFines && CapabilityResolver().finesEnabled(in: group) {
-            tabs.append(.fines)
+    private var outstandingFinesCount: Int {
+        guard let coord = myFinesCoordinator else { return 0 }
+        return coord.fines.filter { $0.status == .officialized && !$0.paid && !$0.waived }.count
+    }
+
+    @MainActor
+    private func refreshCounts() async {
+        // Open votes count for the More badge. Best-effort: fall back to 0
+        // if the query fails (RLS, network blip). Coordinator-grade refresh
+        // happens when the user navigates into Decisiones.
+        do {
+            let votes = try await app.voteRepo.openVotes(for: activeGroup.id)
+            openVotesCount = votes.count
+        } catch {
+            openVotesCount = 0
         }
-        return tabs
+    }
+
+    /// Sub-tabs available based on the group's template. V1 returns the
+    /// canonical four (Overview / Recursos / Dinero / Más). Future
+    /// templates can hide tabs (e.g. a group with no money capability
+    /// could drop Dinero).
+    public static func subTabs(for group: RuulCore.Group) -> [GroupSubTab] {
+        [.overview, .resources, .money, .more]
     }
 }
 
-/// Sub-tab inventory for the Grupo tab. Conforms to RuulSubTabItem.
+/// Sub-tab inventory for the Grupo tab post-G1. Conforms to RuulSubTabItem.
 public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
-    case events
+    case overview
     case resources
-    case rules
-    case votes
-    case fines
+    case money
+    case more
 
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .events:    return "Eventos"
+        case .overview:  return "Resumen"
         case .resources: return "Recursos"
-        case .rules:     return "Reglas"
-        case .votes:     return "Votos"
-        case .fines:     return "Multas"
+        case .money:     return "Dinero"
+        case .more:      return "Más"
         }
     }
 }
@@ -296,85 +309,38 @@ private struct GroupResourcesSubTab: View {
     }
 }
 
-/// Compacto: lista cronológica de upcoming events del grupo activo.
-/// Reusa `EventRow` (Fase 3 lo migró a aceptar `originGroup`).
-private struct EventsSubTabContent: View {
-    public let upcomingEvents: [Event]
-    public let myRSVPs: [UUID: RSVP]
-    public let onOpenEvent: (Event) -> Void
-
-    public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                if upcomingEvents.isEmpty {
-                    EmptyStateView(
-                        systemImage: "calendar",
-                        title: "Sin próximos eventos",
-                        message: "Crea el primer evento del grupo."
-                    )
-                    .padding(.top, RuulSpacing.xl)
-                } else {
-                    ForEach(upcomingEvents) { event in
-                        EventRow(
-                            event: event,
-                            // Dentro de Grupo tab el scope es uno solo —
-                            // origin tag redundante.
-                            originGroup: nil,
-                            myStatus: myRSVPs[event.id]?.status,
-                            onTap: { onOpenEvent(event) }
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, RuulSpacing.screenPadding)
-            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
-        }
-        .scrollIndicators(.hidden)
-    }
-}
-
-/// @State-holding container so the OpenVotesCoordinator survives parent
+/// @State-holding container so GroupMoneyCoordinator survives parent
 /// re-renders (otherwise `.task { coord.refresh() }` gets cancelled with
 /// CancellationError before the fetch completes).
 @MainActor
-private struct VotesSubTabContainer: View {
+private struct GroupMoneySubTabContainer: View {
+    @Environment(AppState.self) private var app
     let group: RuulCore.Group
-    let voteRepo: any VoteRepository
-    let castRepo: (any VoteCastRepository)?
-    let userMemberId: UUID?
-    let onSelectVote: (Vote) -> Void
-    let onCreateVote: () -> Void
+    let currentUserId: UUID
+    let onCreateMoneyEntry: () -> Void
 
-    @State private var coord: OpenVotesCoordinator
-
-    init(
-        group: RuulCore.Group,
-        voteRepo: any VoteRepository,
-        castRepo: (any VoteCastRepository)?,
-        userMemberId: UUID?,
-        onSelectVote: @escaping (Vote) -> Void,
-        onCreateVote: @escaping () -> Void
-    ) {
-        self.group = group
-        self.voteRepo = voteRepo
-        self.castRepo = castRepo
-        self.userMemberId = userMemberId
-        self.onSelectVote = onSelectVote
-        self.onCreateVote = onCreateVote
-        self._coord = State(wrappedValue: OpenVotesCoordinator(
-            group: group,
-            voteRepo: voteRepo,
-            castRepo: castRepo,
-            userMemberId: userMemberId
-        ))
-    }
+    @State private var coord: GroupMoneyCoordinator?
 
     var body: some View {
-        OpenVotesListView(
-            coordinator: coord,
-            onSelectVote: onSelectVote,
-            onCreateVote: onCreateVote
-        )
+        Group {
+            if let coord {
+                GroupMoneyView(coordinator: coord, onCreateMoneyEntry: onCreateMoneyEntry)
+            } else {
+                RuulLoadingState().frame(maxWidth: .infinity, minHeight: 200)
+            }
+        }
+        .task {
+            if coord == nil {
+                coord = GroupMoneyCoordinator(
+                    group: group,
+                    currentUserId: currentUserId,
+                    ledgerRepo: app.ledgerRepo,
+                    groupsRepo: app.groupsRepo,
+                    resourceRepo: app.resourceRepo
+                )
+                await coord?.refresh()
+            }
+        }
     }
 }
 

@@ -65,6 +65,12 @@ public struct MainTabView: View {
     /// stack (inbox content embebido en HomeView como sección "Pendientes").
     @State private var voteDetailRouteFromInbox: VoteDetailRouteContext?
 
+    /// G1: "Más → Acuerdos" push. Routes a la lista completa de reglas
+    /// (RulesView) en el groupTab stack.
+    @State private var acuerdosRoute: Bool = false
+    /// G1: "Más → Sanciones" push. Routes a `MyFinesView` en el groupTab stack.
+    @State private var sancionesRoute: Bool = false
+
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
     // points), create (new group from scratch), join (with invite code).
     @State private var groupSwitcherPresented: Bool = false
@@ -298,28 +304,25 @@ public struct MainTabView: View {
                 if let rulesCoord = rulesCoordinator,
                    let group = app.activeGroup {
                     GroupTabView(
+                        activeGroup: group,
+                        userId: app.session?.user.id ?? UUID(),
                         rulesCoordinator: rulesCoord,
                         myFinesCoordinator: myFinesCoordinator,
-                        activeGroup: group,
+                        inboxCoordinator: inboxCoordinator,
                         upcomingEvents: homeCoordinator?.upcomingEvents ?? [],
                         myRSVPs: homeCoordinator?.myRSVPs ?? [:],
                         onSwitchGroup: { groupSwitcherPresented = true },
                         onOpenEvent: { event in detailRoute = event },
                         onOpenFine: { fine in fineDetailRoute = fine },
-                        onOpenRule: { rule in ruleDetailRoute = rule },
-                        voteRepo: app.voteRepo,
-                        voteCastRepo: app.voteCastRepo,
-                        userMemberId: resolveUserMemberId(in: group),
-                        userActionRepo: app.userActionRepo,
-                        onSeeOpenVotes: {
-                            if let g = app.activeGroup {
-                                openVotesRoute = OpenVotesRouteContext(id: g.id)
-                            }
+                        onOpenInboxAction: { action in
+                            await handleInboxAction(action)
                         },
-                        onSelectVote: { vote in
-                            voteDetailRoute = VoteDetailRouteContext(vote: vote)
+                        onCreateResource: { creationRoute = true },
+                        onOpenAcuerdos: { acuerdosRoute = true },
+                        onOpenDecisiones: {
+                            openVotesRoute = OpenVotesRouteContext(id: group.id)
                         },
-                        onCreateVote: { createVoteSheetPresented = true }
+                        onOpenSanciones: { sancionesRoute = true }
                     )
                     .navigationDestination(item: $openVotesRoute) { _ in
                         openVotesDestination
@@ -329,6 +332,24 @@ public struct MainTabView: View {
                     }
                     .navigationDestination(item: $fineDetailRoute) { fine in
                         fineDetailScreen(fine)
+                    }
+                    .navigationDestination(isPresented: $acuerdosRoute) {
+                        RulesView(
+                            coordinator: rulesCoord,
+                            voteRepo: app.voteRepo,
+                            userActionRepo: app.userActionRepo,
+                            onSeeOpenVotes: {
+                                openVotesRoute = OpenVotesRouteContext(id: group.id)
+                            },
+                            onSelectRule: { rule in ruleDetailRoute = rule }
+                        )
+                    }
+                    .navigationDestination(isPresented: $sancionesRoute) {
+                        if let fCoord = myFinesCoordinator {
+                            MyFinesView(coordinator: fCoord) { fine in
+                                fineDetailRoute = fine
+                            }
+                        }
                     }
                     .navigationDestination(item: $ruleDetailRoute) { rule in
                         RuleDetailView(
@@ -1139,7 +1160,7 @@ public struct MainTabView: View {
                         groupsRepo: groupsRepo
                     )
                 },
-                makeEventRulesCoordinator: { [ruleRepo = app.ruleRepo] in
+                makeEventRulesCoordinator: { [ruleRepo = app.ruleRepo, registry = app.ruleShapeRegistry] in
                     // canCreate = group admin OR event host. Mirrors the
                     // server-side gating in create_event_rule (mig 00083)
                     // so the CTA is hidden when the user can't actually
@@ -1150,7 +1171,8 @@ public struct MainTabView: View {
                     return EventRulesCoordinator(
                         event: event,
                         canCreate: isAdmin || isHost,
-                        ruleRepo: ruleRepo
+                        ruleRepo: ruleRepo,
+                        shapeRegistry: registry
                     )
                 },
                 currentUserId: userId,

@@ -2,12 +2,14 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Form for creating a single event-scoped rule. Bound to
-/// `EventRulesCoordinator`'s form fields. Submit dismisses on success.
+/// Form for creating a single event-scoped rule. Renders every picker /
+/// input from `RuleShapeRegistry` — adding a new trigger or consequence
+/// is a server-side change (mig + INSERT into `public.rule_shapes`), no
+/// iOS release needed.
 ///
-/// MVP shape: name + trigger picker (3 canonical triggers) + flat fine
-/// amount. The coordinator stitches the trigger pick into a server-shaped
-/// `RuleTrigger` + `[RuleCondition]` + `[RuleConsequence]`.
+/// Founder principle: copy reads as "Si X → Y", never "trigger /
+/// consequence". The two top sections are labeled "CUÁNDO" and "ENTONCES"
+/// to land in the user's mental model.
 struct AddEventRuleSheet: View {
     @Binding var isPresented: Bool
     @Bindable var coordinator: EventRulesCoordinator
@@ -19,7 +21,8 @@ struct AddEventRuleSheet: View {
         ) {
             nameSection
             triggerSection
-            fineSection
+            consequenceSection
+            previewSection
             if let error = coordinator.error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
@@ -41,44 +44,142 @@ struct AddEventRuleSheet: View {
         )
     }
 
-    // MARK: - Trigger
+    // MARK: - Trigger picker
 
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("CUÁNDO APLICA")
+            Text("CUÁNDO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-            VStack(spacing: RuulSpacing.xs) {
-                ForEach(EventRulesCoordinator.TriggerKind.allCases) { kind in
-                    triggerRow(kind)
+            if coordinator.availableTriggers.isEmpty {
+                emptyShapeMessage("No hay disparadores disponibles todavía.")
+            } else {
+                VStack(spacing: RuulSpacing.xs) {
+                    ForEach(coordinator.availableTriggers) { shape in
+                        shapeRow(
+                            shape,
+                            isSelected: coordinator.formTriggerId == shape.id,
+                            onTap: { coordinator.selectTrigger(shape.id) }
+                        )
+                    }
+                }
+                .disabled(coordinator.isSubmitting)
+                if let trigger = coordinator.selectedTrigger {
+                    configFields(for: trigger)
                 }
             }
-            .disabled(coordinator.isSubmitting)
         }
     }
 
-    private func triggerRow(_ kind: EventRulesCoordinator.TriggerKind) -> some View {
-        let isSelected = coordinator.formTrigger == kind
-        return Button {
-            coordinator.formTrigger = kind
-        } label: {
+    // MARK: - Consequence picker
+
+    @ViewBuilder
+    private var consequenceSection: some View {
+        if coordinator.availableConsequences.count <= 1,
+           let only = coordinator.availableConsequences.first {
+            // Single consequence path — render just its config fields
+            // under a fixed "ENTONCES" header. Avoids a one-row picker
+            // that adds noise without choice.
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("ENTONCES → \(only.labelES.uppercased())")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                configFields(for: only)
+            }
+        } else if !coordinator.availableConsequences.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("ENTONCES")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                VStack(spacing: RuulSpacing.xs) {
+                    ForEach(coordinator.availableConsequences) { shape in
+                        shapeRow(
+                            shape,
+                            isSelected: coordinator.formConsequenceId == shape.id,
+                            onTap: { coordinator.selectConsequence(shape.id) }
+                        )
+                    }
+                }
+                .disabled(coordinator.isSubmitting)
+                if let consequence = coordinator.selectedConsequence {
+                    configFields(for: consequence)
+                }
+            }
+        } else {
+            emptyShapeMessage("No hay consecuencias disponibles todavía.")
+        }
+    }
+
+    // MARK: - Live preview ("Si X → Y" sentence)
+
+    @ViewBuilder
+    private var previewSection: some View {
+        if let trigger = coordinator.selectedTrigger,
+           let consequence = coordinator.selectedConsequence {
+            HStack(alignment: .top, spacing: RuulSpacing.xs) {
+                Image(systemName: "text.alignleft")
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .padding(.top, 2)
+                Text("Si \(trigger.labelES.lowercased()) → \(consequenceSentence(for: consequence)).")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(RuulSpacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.medium)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+        }
+    }
+
+    private func consequenceSentence(for shape: RuleShape) -> String {
+        // Build "$200" suffix only for the fine consequence in V1. The
+        // catalog will eventually carry a sentence template per shape so
+        // any consequence can self-describe; for now we read the well-
+        // known `amount` field.
+        let amountKey = coordinator.fieldBindingKey(
+            shape: shape,
+            field: RuleShapeField(key: "amount", kind: .currency, labelES: "")
+        )
+        if shape.id == "fine",
+           let raw = coordinator.formFieldValues[amountKey],
+           let amount = Int(raw.filter(\.isNumber)),
+           amount > 0 {
+            return "cobrar $\(amount)"
+        }
+        return shape.labelES.lowercased()
+    }
+
+    // MARK: - Shape row primitive
+
+    private func shapeRow(
+        _ shape: RuleShape,
+        isSelected: Bool,
+        onTap: @escaping () -> Void
+    ) -> some View {
+        Button(action: onTap) {
             HStack(spacing: RuulSpacing.sm) {
                 ZStack {
                     Circle()
                         .fill(Color.ruulAccent.opacity(isSelected ? 0.18 : 0.10))
                         .frame(width: 36, height: 36)
-                    Image(systemName: kind.iconName)
+                    Image(systemName: shape.icon ?? "circle")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundStyle(Color.ruulAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(kind.displayLabel)
+                    Text(shape.labelES)
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextPrimary)
-                    Text(kind.summary)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                        .multilineTextAlignment(.leading)
+                    if let summary = shape.summaryES, !summary.isEmpty {
+                        Text(summary)
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
                 }
                 Spacer()
                 if isSelected {
@@ -102,25 +203,57 @@ struct AddEventRuleSheet: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Fine amount
+    // MARK: - Dynamic config fields
 
-    private var fineSection: some View {
+    @ViewBuilder
+    private func configFields(for shape: RuleShape) -> some View {
+        if !shape.configFields.isEmpty {
+            VStack(spacing: RuulSpacing.sm) {
+                ForEach(shape.configFields, id: \.key) { field in
+                    fieldEditor(shape: shape, field: field)
+                }
+            }
+            .padding(.top, RuulSpacing.xs)
+        }
+    }
+
+    @ViewBuilder
+    private func fieldEditor(shape: RuleShape, field: RuleShapeField) -> some View {
+        let key = coordinator.fieldBindingKey(shape: shape, field: field)
         RuulTextField(
-            "200",
-            text: $coordinator.formFineAmountText,
-            label: "MULTA (MXN)",
-            style: .numeric,
+            field.placeholder ?? "",
+            text: bindingForField(key),
+            label: field.labelES.uppercased(),
+            style: textFieldStyle(for: field.kind),
             isDisabled: coordinator.isSubmitting
         )
     }
 
-    // MARK: - CTA
+    private func bindingForField(_ key: String) -> Binding<String> {
+        Binding(
+            get: { coordinator.formFieldValues[key] ?? "" },
+            set: { coordinator.formFieldValues[key] = $0 }
+        )
+    }
+
+    private func textFieldStyle(for kind: RuleShapeField.Kind) -> RuulTextField.Style {
+        switch kind {
+        case .int, .currency: return .numeric
+        case .string:         return .standard
+        }
+    }
+
+    // MARK: - Empty + CTA
+
+    private func emptyShapeMessage(_ message: String) -> some View {
+        Text(message)
+            .ruulTextStyle(RuulTypography.caption)
+            .foregroundStyle(Color.ruulTextSecondary)
+            .padding(.vertical, RuulSpacing.sm)
+    }
 
     private var submitButton: some View {
-        let label: String = {
-            if coordinator.isSubmitting { return "Guardando…" }
-            return "Crear regla"
-        }()
+        let label: String = coordinator.isSubmitting ? "Guardando…" : "Crear regla"
         return RuulButton(
             label,
             style: .primary,
