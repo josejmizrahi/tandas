@@ -449,6 +449,7 @@ public struct MainTabView: View {
                         onSwitchGroup: { groupSwitcherPresented = true },
                         profileCoordinator: pCoord,
                         onOpenMyFines: { myFinesRoute = true },
+                        onOpenMyLedger: { myLedgerRoute = true },
                         onOpenHistory: { selectedTab = .history },
                         onOpenSettings: { settingsRoute = true },
                         onEditProfile: { editProfilePresented = true },
@@ -465,6 +466,14 @@ public struct MainTabView: View {
                                 fineDetailRoute = fine
                             }
                         }
+                    }
+                    .navigationDestination(isPresented: $myLedgerRoute) {
+                        MyLedgerView(coordinator: MyLedgerCoordinator(
+                            userId: app.session?.user.id ?? UUID(),
+                            allGroups: app.groups,
+                            ledgerRepo: app.ledgerRepo,
+                            groupsRepo: app.groupsRepo
+                        ))
                     }
                     .navigationDestination(item: $fineDetailRoute) { fine in
                         fineDetailScreen(fine)
@@ -653,6 +662,7 @@ public struct MainTabView: View {
     }
 
     @State private var myFinesRoute: Bool = false
+    @State private var myLedgerRoute: Bool = false
     @State private var settingsRoute: Bool = false
     /// Sheet for `EditProfileSheet` (Settings → "Editar perfil"). Refresca el
     /// ProfileCoordinator on dismiss para que el displayName actualizado se
@@ -1132,6 +1142,20 @@ public struct MainTabView: View {
                         currentUserId: userId,
                         ledgerRepo: ledgerRepo,
                         groupsRepo: groupsRepo
+                    )
+                },
+                makeEventRulesCoordinator: { [ruleRepo = app.ruleRepo] in
+                    // canCreate = group admin OR event host. Mirrors the
+                    // server-side gating in create_event_rule (mig 00083)
+                    // so the CTA is hidden when the user can't actually
+                    // submit (avoids a 'permission denied' surface).
+                    let me = memberDirectorySnapshot[userId]?.member
+                    let isAdmin = me?.isFounder == true
+                    let isHost = event.hostId == userId
+                    return EventRulesCoordinator(
+                        event: event,
+                        canCreate: isAdmin || isHost,
+                        ruleRepo: ruleRepo
                     )
                 },
                 currentUserId: userId,

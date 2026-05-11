@@ -74,6 +74,24 @@ public protocol RuleRepository: Actor {
     /// Used by the Reglas tab to show the active group's rules.
     func list(groupId: UUID) async throws -> [GroupRule]
 
+    /// Rules scoped to a single resource (`rules.resource_id`). Powers the
+    /// per-event Rules section. Newest first so freshly authored rules
+    /// surface immediately.
+    func listForResource(_ resourceId: UUID) async throws -> [GroupRule]
+
+    /// Creates a user-authored rule scoped to `resourceId` via the
+    /// `create_event_rule` RPC (mig 00083). Caller must be group admin
+    /// or (for events) the event host. Server validates resource ownership
+    /// and authorization; iOS just forwards the form.
+    func createEventRule(
+        groupId: UUID,
+        resourceId: UUID,
+        name: String,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
+        consequences: [RuleConsequence]
+    ) async throws -> GroupRule
+
     /// Toggles `is_active`. Postgres trigger emits ruleEnabledChanged.
     func setIsActive(ruleId: UUID, isActive: Bool) async throws
 
@@ -143,6 +161,55 @@ public actor MockRuleRepository: RuleRepository {
     public func list(groupId: UUID) async throws -> [GroupRule] {
         // Empty in mock — RulesView shows the empty state.
         []
+    }
+
+    public private(set) var mockEventRules: [GroupRule] = []
+
+    public func listForResource(_ resourceId: UUID) async throws -> [GroupRule] {
+        mockEventRules.filter { $0.resourceId == resourceId }
+    }
+
+    public func createEventRule(
+        groupId: UUID,
+        resourceId: UUID,
+        name: String,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
+        consequences: [RuleConsequence]
+    ) async throws -> GroupRule {
+        let envelopes = consequences.map { c -> GroupRule.ConsequenceEnvelope in
+            // Mock projection: only `fine` carries an amount we can lift
+            // from the JSONConfig payload; other types decode as nil amount.
+            let amount: Int? = {
+                guard c.type == .fine, case let .int(value) = c.config["amount"] else {
+                    return nil
+                }
+                return value
+            }()
+            return GroupRule.ConsequenceEnvelope(
+                type: c.type.rawString,
+                config: .init(
+                    amount: amount,
+                    baseAmount: nil,
+                    stepAmount: nil,
+                    stepMinutes: nil
+                )
+            )
+        }
+        let rule = GroupRule(
+            id: UUID(),
+            groupId: groupId,
+            slug: nil,
+            name: name,
+            isActive: true,
+            trigger: trigger,
+            conditions: conditions,
+            consequences: envelopes,
+            moduleKey: nil,
+            resourceId: resourceId
+        )
+        mockEventRules.insert(rule, at: 0)
+        return rule
     }
 
     public private(set) var lastSetIsActive: (ruleId: UUID, isActive: Bool)?
@@ -247,6 +314,49 @@ public actor LiveRuleRepository: RuleRepository {
             .order("created_at", ascending: true)
             .execute()
             .value
+    }
+
+    public func listForResource(_ resourceId: UUID) async throws -> [GroupRule] {
+        try await client
+            .from("rules")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id")
+            .eq("resource_id", value: resourceId.uuidString.lowercased())
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
+
+    public func createEventRule(
+        groupId: UUID,
+        resourceId: UUID,
+        name: String,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
+        consequences: [RuleConsequence]
+    ) async throws -> GroupRule {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_resource_id: String
+            let p_name: String
+            let p_trigger: RuleTrigger
+            let p_conditions: [RuleCondition]
+            let p_consequences: [RuleConsequence]
+        }
+        do {
+            return try await client
+                .rpc("create_event_rule", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_resource_id: resourceId.uuidString.lowercased(),
+                    p_name: name,
+                    p_trigger: trigger,
+                    p_conditions: conditions,
+                    p_consequences: consequences
+                ))
+                .execute()
+                .value
+        } catch {
+            throw RuleError.rpcFailed(error.localizedDescription)
+        }
     }
 
     public func setIsActive(ruleId: UUID, isActive: Bool) async throws {

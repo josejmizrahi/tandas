@@ -34,6 +34,8 @@ public struct ProfileView: View {
     public let onOpenSettings: () -> Void
     public let onEditProfile: () -> Void
     public let onSignOut: () -> Void
+    /// "Mis movimientos" push (cross-group ledger summary). nil ⇒ no row.
+    public var onOpenMyLedger: (() -> Void)? = nil
 
     /// DS v3 §6.2 — sección "Este grupo" (group-active scope). Cuando estos
     /// callbacks vienen non-nil, ProfileView renderiza la sección al final.
@@ -41,13 +43,14 @@ public struct ProfileView: View {
     /// donde no haya grupo activo (auth bootstrap, anon stub).
     public var groupScope: GroupScopeContext? = nil
 
-    public init(coordinator: ProfileCoordinator, onOpenMyFines: @escaping () -> Void, onOpenHistory: @escaping () -> Void, onOpenSettings: @escaping () -> Void, onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void, groupScope: GroupScopeContext? = nil) {
+    public init(coordinator: ProfileCoordinator, onOpenMyFines: @escaping () -> Void, onOpenHistory: @escaping () -> Void, onOpenSettings: @escaping () -> Void, onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void, onOpenMyLedger: (() -> Void)? = nil, groupScope: GroupScopeContext? = nil) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMyFines = onOpenMyFines
         self.onOpenHistory = onOpenHistory
         self.onOpenSettings = onOpenSettings
         self.onEditProfile = onEditProfile
         self.onSignOut = onSignOut
+        self.onOpenMyLedger = onOpenMyLedger
         self.groupScope = groupScope
     }
 
@@ -214,6 +217,10 @@ public struct ProfileView: View {
     private var activitySection: some View {
         sectionContainer(title: "ACTIVIDAD") {
             navRow(icon: "creditcard", label: "Mis multas", trailing: { outstandingPill }, action: onOpenMyFines)
+            if let onOpenMyLedger {
+                divider
+                navRow(icon: "arrow.left.arrow.right", label: "Mis movimientos", trailing: { EmptyView() }, action: onOpenMyLedger)
+            }
             divider
             navRow(icon: "clock.arrow.circlepath", label: "Historia del grupo", trailing: { EmptyView() }, action: onOpenHistory)
         }

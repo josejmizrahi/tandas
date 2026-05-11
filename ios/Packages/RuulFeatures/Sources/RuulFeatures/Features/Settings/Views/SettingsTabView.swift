@@ -18,6 +18,7 @@ public struct SettingsTabView: View {
     /// recibimos la instancia por valor y la pasamos al child.
     public let profileCoordinator: ProfileCoordinator
     public let onOpenMyFines: () -> Void
+    public let onOpenMyLedger: () -> Void
     public let onOpenHistory: () -> Void
     public let onOpenSettings: () -> Void
     public let onEditProfile: () -> Void
@@ -29,11 +30,12 @@ public struct SettingsTabView: View {
     public let onOpenGovernance: () -> Void
     public let onLeaveGroup: () -> Void
 
-    public init(activeGroup: RuulCore.Group, onSwitchGroup: @escaping () -> Void, profileCoordinator: ProfileCoordinator, onOpenMyFines: @escaping () -> Void, onOpenHistory: @escaping () -> Void, onOpenSettings: @escaping () -> Void, onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void, onOpenMembers: @escaping () -> Void, onOpenGovernance: @escaping () -> Void, onLeaveGroup: @escaping () -> Void) {
+    public init(activeGroup: RuulCore.Group, onSwitchGroup: @escaping () -> Void, profileCoordinator: ProfileCoordinator, onOpenMyFines: @escaping () -> Void, onOpenMyLedger: @escaping () -> Void, onOpenHistory: @escaping () -> Void, onOpenSettings: @escaping () -> Void, onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void, onOpenMembers: @escaping () -> Void, onOpenGovernance: @escaping () -> Void, onLeaveGroup: @escaping () -> Void) {
         self.activeGroup = activeGroup
         self.onSwitchGroup = onSwitchGroup
         self.profileCoordinator = profileCoordinator
         self.onOpenMyFines = onOpenMyFines
+        self.onOpenMyLedger = onOpenMyLedger
         self.onOpenHistory = onOpenHistory
         self.onOpenSettings = onOpenSettings
         self.onEditProfile = onEditProfile
@@ -53,6 +55,7 @@ public struct SettingsTabView: View {
                 onOpenSettings: onOpenSettings,
                 onEditProfile: onEditProfile,
                 onSignOut: onSignOut,
+                onOpenMyLedger: onOpenMyLedger,
                 groupScope: ProfileView.GroupScopeContext(
                     onOpenMembers: onOpenMembers,
                     onOpenGovernance: onOpenGovernance,

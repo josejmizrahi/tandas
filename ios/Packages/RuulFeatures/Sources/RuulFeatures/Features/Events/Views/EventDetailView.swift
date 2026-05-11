@@ -29,6 +29,10 @@ public struct EventDetailView: View {
     /// sheet open so any in-flight form state is dropped when the user
     /// cancels — matches AddManualFineSheet's lifecycle.
     public let makeEventLedgerCoordinator: () -> EventLedgerCoordinator
+    /// Factory for the event-scoped rules coordinator. Constructed lazy
+    /// because authorization depends on async governance state captured
+    /// at sheet-open time.
+    public let makeEventRulesCoordinator: () -> EventRulesCoordinator
     /// Current user id, needed by the sheet to filter members.
     public let currentUserId: UUID
     /// Optional explicit close handler. Called by the X button BEFORE
@@ -39,7 +43,7 @@ public struct EventDetailView: View {
     /// session (the dismiss target resolves to the sheet, not the cover).
     public var onClose: (() -> Void)? = nil
 
-    public init(coordinator: EventDetailCoordinator, memberLookup: @escaping (UUID) -> (name: String, avatarURL: URL?), memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil, onScannerOpen: @escaping () -> Void, calendarService: CalendarExportService?, onEdit: @escaping () -> Void = {}, computeCanIssueManualFine: @escaping () async -> Bool, makeAddManualFineCoordinator: @escaping () -> AddManualFineCoordinator, makeEventLedgerCoordinator: @escaping () -> EventLedgerCoordinator, currentUserId: UUID, onClose: (() -> Void)? = nil) {
+    public init(coordinator: EventDetailCoordinator, memberLookup: @escaping (UUID) -> (name: String, avatarURL: URL?), memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil, onScannerOpen: @escaping () -> Void, calendarService: CalendarExportService?, onEdit: @escaping () -> Void = {}, computeCanIssueManualFine: @escaping () async -> Bool, makeAddManualFineCoordinator: @escaping () -> AddManualFineCoordinator, makeEventLedgerCoordinator: @escaping () -> EventLedgerCoordinator, makeEventRulesCoordinator: @escaping () -> EventRulesCoordinator, currentUserId: UUID, onClose: (() -> Void)? = nil) {
         self.coordinator = coordinator
         self.memberLookup = memberLookup
         self.memberWithProfileLookup = memberWithProfileLookup
@@ -49,6 +53,7 @@ public struct EventDetailView: View {
         self.computeCanIssueManualFine = computeCanIssueManualFine
         self.makeAddManualFineCoordinator = makeAddManualFineCoordinator
         self.makeEventLedgerCoordinator = makeEventLedgerCoordinator
+        self.makeEventRulesCoordinator = makeEventRulesCoordinator
         self.currentUserId = currentUserId
         self.onClose = onClose
     }
@@ -74,6 +79,8 @@ public struct EventDetailView: View {
     /// open/close cycles of the sheet — re-opening the same event shows
     /// the cached list while a background `load()` refreshes it.
     @State private var ledgerCoordinator: EventLedgerCoordinator?
+    /// Same lifecycle pattern for the event-scoped rules sheet.
+    @State private var rulesCoordinator: EventRulesCoordinator?
 
     private let coverHeight: CGFloat = 380
 
@@ -187,15 +194,18 @@ public struct EventDetailView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $eventRuleSheetPresented) {
-            EventCapabilityPlaceholderSheet(
-                icon: "list.bullet.clipboard.fill",
-                title: "Reglas del evento",
-                summary: "Pronto podrás agregar reglas que sólo apliquen a esta cena: late fee custom, no-show fine override, etc.",
-                comingFromPhase: "Phase 4 (in-event rule creation)"
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
+        .ruulSheet(isPresented: $eventRuleSheetPresented) {
+            if let rulesCoordinator {
+                EventRulesSheet(
+                    isPresented: $eventRuleSheetPresented,
+                    coordinator: rulesCoordinator
+                )
+            }
+        }
+        .onChange(of: eventRuleSheetPresented) { _, presented in
+            if presented && rulesCoordinator == nil {
+                rulesCoordinator = makeEventRulesCoordinator()
+            }
         }
         .ruulSheet(isPresented: $eventLedgerSheetPresented) {
             if let ledgerCoordinator {
