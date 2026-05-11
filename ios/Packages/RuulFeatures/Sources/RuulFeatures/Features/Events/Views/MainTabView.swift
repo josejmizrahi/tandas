@@ -927,11 +927,17 @@ public struct MainTabView: View {
                             onJoin: { joinGroupPresented = true }
                         )
                     }
+                    .transition(.opacity)
                 } else {
+                    // Brief window between activeGroup load and
+                    // homeCoordinator rebuildCoordinators completing. Show a
+                    // skeleton that matches HomeView's structure so the
+                    // transition feels continuous rather than blank-spinner-content.
                     ZStack {
                         Color.ruulBackground.ignoresSafeArea()
-                        RuulLoadingState()
+                        HomeViewSkeleton()
                     }
+                    .transition(.opacity)
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -977,6 +983,55 @@ public struct MainTabView: View {
                 .padding(.horizontal, RuulSpacing.lg)
                 Spacer()
             }
+        }
+    }
+
+    /// Skeleton view shown during the brief homeCoordinator init window.
+    /// Mirrors HomeView's hero+upcoming structure so the transition into
+    /// the real content feels continuous (no jarring spinner-to-content).
+    private struct HomeViewSkeleton: View {
+        @State private var pulse: Bool = false
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                // Header skeleton (group name + settings)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                        shimmerBlock(width: 80, height: 12)
+                        shimmerBlock(width: 180, height: 36)
+                    }
+                    Spacer()
+                    Circle()
+                        .fill(Color.ruulSurface)
+                        .frame(width: 40, height: 40)
+                }
+                .padding(.top, RuulSpacing.md)
+
+                // Hero skeleton
+                RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
+                    .fill(Color.ruulSurface)
+                    .frame(height: 220)
+
+                // Upcoming list skeleton
+                VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                    shimmerBlock(width: 100, height: 10)
+                    ForEach(0..<2, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                            .fill(Color.ruulSurface)
+                            .frame(height: 64)
+                    }
+                }
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .opacity(pulse ? 0.55 : 1.0)
+            .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
+            .onAppear { pulse = true }
+        }
+
+        private func shimmerBlock(width: CGFloat, height: CGFloat) -> some View {
+            RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous)
+                .fill(Color.ruulSurface)
+                .frame(width: width, height: height)
         }
     }
 

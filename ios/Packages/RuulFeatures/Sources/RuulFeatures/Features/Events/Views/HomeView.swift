@@ -313,27 +313,88 @@ public struct HomeView: View {
 
     // MARK: - Empty state
 
+    /// Capability-aware empty state per OpenPlatform S2. Reads the active
+    /// group's modules and chooses copy + iconography that matches what
+    /// the group is set up to do.
+    private enum HomeEmptyVariant {
+        case events      // rsvp/check_in/basic_fines stack — "crea tu primer evento"
+        case asset       // slot/booking/asset stack — "agrega tu primer slot"
+        case fund        // fund/contribution stack — "agrega tu primer fondo"
+        case bare        // no modules — "personaliza el grupo"
+
+        var icon: String {
+            switch self {
+            case .events: return "calendar.badge.plus"
+            case .asset:  return "key.fill"
+            case .fund:   return "banknote"
+            case .bare:   return "square.dashed"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .events: return "Aún no hay eventos"
+            case .asset:  return "Aún no hay slots"
+            case .fund:   return "Aún no hay aportaciones"
+            case .bare:   return "Tu grupo está listo"
+            }
+        }
+
+        var summary: String {
+            switch self {
+            case .events: return "Crea el primero — tu grupo lo verá en segundos."
+            case .asset:  return "Agrega una ventana de uso y reserva tu primer turno."
+            case .fund:   return "Define el fondo y empieza a recibir aportaciones."
+            case .bare:   return "Crea tu primer recurso para empezar a usarlo."
+            }
+        }
+
+        var ctaLabel: String {
+            switch self {
+            case .events: return "Crear evento"
+            case .asset:  return "Crear slot"
+            case .fund:   return "Crear fondo"
+            case .bare:   return "Crear recurso"
+            }
+        }
+    }
+
+    private var emptyHeroVariant: HomeEmptyVariant {
+        let modules = Set(app.activeGroup?.effectiveActiveModules ?? [])
+        if modules.contains("rsvp") || modules.contains("check_in") || modules.contains("basic_fines") {
+            return .events
+        }
+        if modules.contains("slot_assignment") {
+            return .asset
+        }
+        if modules.contains("common_fund") {
+            return .fund
+        }
+        return .bare
+    }
+
     private var emptyHero: some View {
-        VStack(spacing: RuulSpacing.lg) {
+        let variant = emptyHeroVariant
+        return VStack(spacing: RuulSpacing.lg) {
             ZStack {
                 Circle()
                     .fill(Color.ruulSurface)
                     .frame(width: 80, height: 80)
-                Image(systemName: "calendar.badge.plus")
+                Image(systemName: variant.icon)
                     .font(.system(size: 32, weight: .semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .accessibilityHidden(true)
             }
             VStack(spacing: RuulSpacing.xs) {
-                Text("Aún no hay eventos")
+                Text(variant.title)
                     .ruulTextStyle(RuulTypography.titleLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
-                Text("Crea el primero — tu grupo lo verá en segundos.")
+                Text(variant.summary)
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
             }
-            RuulButton("Crear evento", systemImage: "plus", style: .primary, size: .large, action: onCreateEvent)
+            RuulButton(variant.ctaLabel, systemImage: "plus", style: .primary, size: .large, action: onCreateEvent)
         }
         .frame(maxWidth: .infinity)
         .padding(RuulSpacing.xxl)
@@ -342,6 +403,10 @@ public struct HomeView: View {
             RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.95).combined(with: .opacity),
+            removal: .opacity
+        ))
     }
 
     // MARK: - Pendings — Fase 4b: Inbox content embedded como sección.
