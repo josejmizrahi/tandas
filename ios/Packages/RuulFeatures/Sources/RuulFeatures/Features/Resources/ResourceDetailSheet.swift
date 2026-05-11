@@ -29,6 +29,7 @@ public struct ResourceDetailSheet: View {
     @State private var ledgerCoordinator: ResourceLedgerCoordinator?
     @State private var rulesSheetPresented: Bool = false
     @State private var rulesCoordinator: ResourceRulesCoordinator?
+    @State private var enableCapabilityPresented: Bool = false
 
     public init(resource: ResourceRow) { self.resource = resource }
 
@@ -72,6 +73,27 @@ public struct ResourceDetailSheet: View {
                 rulesCoordinator = makeRulesCoordinator()
             }
         }
+        .sheet(isPresented: $enableCapabilityPresented) {
+            EnableCapabilitySheet(
+                resourceId: resource.id,
+                resourceType: resource.resourceType,
+                alreadyEnabled: enabledCapabilitySet,
+                onEnabled: { _ in
+                    // Refresh capabilities so the new section renders.
+                    Task { await reloadCapabilities() }
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// Light-weight reload after enabling a capability — only refetches
+    /// the resource_capabilities rows, not the member directory or
+    /// inbox actions.
+    @MainActor
+    private func reloadCapabilities() async {
+        capabilities = (try? await app.resourceCapabilityRepo.list(resourceId: resource.id)) ?? []
     }
 
     @ViewBuilder
@@ -102,7 +124,7 @@ public struct ResourceDetailSheet: View {
             onPresentLedger: { ledgerSheetPresented = true },
             onPresentRules:  { rulesSheetPresented = true },
             onPresentEditResource:     { /* TODO Phase 2 */ },
-            onPresentEnableCapability: { /* TODO Phase 2 */ },
+            onPresentEnableCapability: { enableCapabilityPresented = true },
             onOpenInboxAction: { _ in /* TODO Phase 2 */ }
         )
     }
