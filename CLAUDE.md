@@ -66,9 +66,8 @@ ios/
 supabase/
 ├── migrations/                      # 43 forward migrations (00001-00042)
 └── functions/                       # Edge functions
-    ├── _shared/ruleEngine.ts        # determinístico, server-only, phase_target mapping
-    ├── process-system-events/       # cron orquestador del rule engine
-    ├── evaluate-event-rules/        # legacy V1 pipeline (event-anchored)
+    ├── _shared/ruleEngine.ts        # determinístico, server-only, phase_target mapping + scope hierarchy
+    ├── process-system-events/       # cron orquestador del rule engine (lee `resources` polimórfico)
     ├── dispatch-notifications/      # APNs outbox (cron 1/min)
     └── send-event-notification/, finalize-votes/, finalize-fine-reviews/, …
 ```
