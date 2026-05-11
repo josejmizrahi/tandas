@@ -125,11 +125,14 @@ public actor LiveGroupPolicyRepository: GroupPolicyRepository {
     }
 
     public func upsert(_ policy: GroupPolicy) async throws -> GroupPolicy {
-        // The unique partial index covers (group, action, scope,
-        // coalesce(resource_type, ''), coalesce(resource_id, sentinel))
-        // WHERE enabled. supabase-swift's upsert API doesn't expose the
-        // expression-based conflict target, so we list the simple columns
-        // and rely on Postgres to match.
+        // NOTE: single-row upsert is BROKEN today because the unique index
+        // on group_policies (mig 00087) is partial + expression-based, and
+        // PostgREST refuses to match a simple `onConflict` column list. V1
+        // doesn't exercise this path (preset-only edits go through
+        // `applyPreset`), so leaving it as-is until per-row editing ships
+        // in V2. Fix at that point: either replace the partial index with
+        // a non-partial one using `NULLS NOT DISTINCT`, or promote this
+        // method to a SECURITY DEFINER RPC.
         let row: GroupPolicy = try await client
             .from("group_policies")
             .upsert(policy, onConflict: "group_id,target_action,target_scope")
@@ -141,16 +144,43 @@ public actor LiveGroupPolicyRepository: GroupPolicyRepository {
     }
 
     public func applyPreset(_ preset: GroupPolicyPreset, groupId: UUID) async throws {
-        // V1: client-side loop. Could become a single SQL RPC later if the
-        // round-trips become a bottleneck.
-        for spec in preset.specs {
-            _ = try await upsert(GroupPolicy(
+        // Two-step replace: delete existing rule.* group-scope rows then
+        // insert the preset's rows. We don't use `upsert` here because
+        // the unique index on group_policies (mig 00087) is partial
+        // (`WHERE enabled`) and uses COALESCE expressions for nullable
+        // resource_type/resource_id, which PostgREST cannot match against
+        // a simple `onConflict` column list — Postgres raises
+        // "there is no unique or exclusion constraint matching the ON
+        // CONFLICT specification".
+        //
+        // Delete-then-insert is not atomic at the SQL level, but a single
+        // user can only tap one preset at a time, and the unique-index
+        // guard still prevents duplicate enabled rows. If atomicity becomes
+        // important (concurrent admins), promote this to a SECURITY DEFINER
+        // RPC that wraps both in one transaction.
+        let actionValues = preset.specs.map { $0.action.rawValue }
+
+        try await client.from("group_policies")
+            .delete()
+            .eq("group_id", value: groupId.uuidString.lowercased())
+            .eq("target_scope", value: "group")
+            .in("target_action", values: actionValues)
+            .execute()
+
+        let rows: [GroupPolicy] = preset.specs.map { spec in
+            GroupPolicy(
                 groupId: groupId,
                 policyType: spec.policyType,
                 targetAction: spec.action,
                 approvalConfig: spec.approvalConfig
-            ))
+            )
         }
+
+        guard !rows.isEmpty else { return }
+
+        try await client.from("group_policies")
+            .insert(rows)
+            .execute()
     }
 
     public func resolve(

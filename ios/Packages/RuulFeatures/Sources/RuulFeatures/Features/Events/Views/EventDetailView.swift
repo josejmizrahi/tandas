@@ -8,6 +8,7 @@ import RuulCore
 /// the safe area below, magazine-style. Sticky CTA at the bottom.
 public struct EventDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: EventDetailCoordinator
     public let memberLookup: (UUID) -> (name: String, avatarURL: URL?)
     /// Optional rich lookup. Cuando set + un attendee row tap dispara, se
@@ -86,6 +87,17 @@ public struct EventDetailView: View {
     @State private var ledgerCoordinator: ResourceLedgerCoordinator?
     /// Same lifecycle pattern for the event-scoped rules sheet.
     @State private var rulesCoordinator: ResourceRulesCoordinator?
+    /// Capability blocks enabled on this event (per
+    /// `public.resource_capabilities`). Drives the dynamic section list
+    /// at the bottom of the view — Reglas, Movimientos, Actividad
+    /// appear when their corresponding caps are present. Seeded by
+    /// mig 00096 (trigger that derives defaults from
+    /// `groups.active_modules` × `modules.provided_capability_blocks`).
+    @State private var enabledCapabilities: Set<String> = []
+    /// Member directory for the event's group, used by the catalog's
+    /// derived-resolver paths (host lookup in DetailSummaryView, etc.)
+    /// and by ActivitySectionView's downstream queries.
+    @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
 
     private let coverHeight: CGFloat = 380
 
@@ -121,6 +133,7 @@ public struct EventDetailView: View {
         .ignoresSafeArea(edges: .top)
         .task { await coordinator.refresh() }
         .task { await coordinator.startRealtime() }
+        .task { await loadEventCapabilitiesAndDirectory() }
         .task {
             canIssueManualFine = await computeCanIssueManualFine()
         }
@@ -317,8 +330,7 @@ public struct EventDetailView: View {
                 .padding(.horizontal, RuulSpacing.lg)
             }
             descriptionSection
-            eventCapabilitiesSection
-            activityFeedSection
+            dynamicCapabilitySections
         }
         .padding(.top, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.s12)
@@ -515,25 +527,35 @@ public struct EventDetailView: View {
         }
     }
 
-    // MARK: - Activity feed — capability-driven section reused from the
-    // universal resource detail catalog. Renders system_events filtered to
-    // this event so the user sees a "memory of this event" timeline
-    // (eventCreated, rsvpSubmitted, fineOfficialized, …) without leaving
-    // the polished EventDetailView surface. Backed by mig 00097 which
-    // emits eventCreated so brand-new events have a baseline row.
+    // MARK: - Dynamic capability sections — Reglas / Movimientos /
+    // Actividad rendered via the same CapabilitySectionCatalog the
+    // polymorphic ResourceDetailSheet uses. EventDetailView used to
+    // hand-roll two launcher cards (eventRulesCard + eventLedgerCard)
+    // which duplicated the catalog's RulesSection + MoneySection. The
+    // catalog reads context.enabledCapabilities to decide which sections
+    // appear — for events that comes from mig 00096's seeding trigger.
+    // Adding a new capability section (Phase 2: slot booking, fund
+    // contributions, etc.) automatically surfaces in events too.
 
     @ViewBuilder
-    private var activityFeedSection: some View {
-        ActivitySectionView(context: activitySectionContext)
-            .padding(.horizontal, RuulSpacing.lg)
+    private var dynamicCapabilitySections: some View {
+        let sections = CapabilitySectionCatalog.shared
+            .sectionsFor(enabledCapabilities: enabledCapabilities)
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+            ForEach(sections) { section in
+                section.render(resourceDetailContext)
+            }
+        }
+        .padding(.horizontal, RuulSpacing.lg)
     }
 
-    /// Minimal `ResourceDetailContext` for the activity section. Only the
-    /// `group.id` + `resource.id` fields are read — the rest of the
-    /// context (display callbacks, enabledCapabilities, member directory)
-    /// is irrelevant for this section's `system_events` query. Building
-    /// the context inline keeps EventDetailView's init signature unchanged.
-    private var activitySectionContext: ResourceDetailContext {
+    /// `ResourceDetailContext` matching what ResourceDetailSheet builds —
+    /// so the same catalog sections render identically in both surfaces.
+    /// Resource row constructed inline (events.id == resources.id post
+    /// mig 00039, so no DB round-trip needed). Callbacks route into the
+    /// existing sheet bindings the rest of EventDetailView already
+    /// drives.
+    private var resourceDetailContext: ResourceDetailContext {
         let row = ResourceRow(
             id: coordinator.event.id,
             groupId: coordinator.group.id,
@@ -548,9 +570,24 @@ public struct EventDetailView: View {
             resource: row,
             group: coordinator.group,
             currentUserId: currentUserId,
-            enabledCapabilities: [],
-            displayName: coordinator.event.title
+            enabledCapabilities: enabledCapabilities,
+            memberDirectory: memberDirectory,
+            displayName: coordinator.event.title,
+            onPresentLedger: { eventLedgerSheetPresented = true },
+            onPresentRules:  { eventRuleSheetPresented = true }
         )
+    }
+
+    @MainActor
+    private func loadEventCapabilitiesAndDirectory() async {
+        async let capsTask = app.resourceCapabilityRepo.list(resourceId: coordinator.event.id)
+        async let membersTask = app.groupsRepo.membersWithProfiles(of: coordinator.group.id)
+        let caps = (try? await capsTask) ?? []
+        let members = (try? await membersTask) ?? []
+        enabledCapabilities = Set(caps.filter { $0.enabled }.map { $0.capabilityBlockId })
+        var dir: [UUID: MemberWithProfile] = [:]
+        for m in members { dir[m.member.userId] = m }
+        memberDirectory = dir
     }
 
     // MARK: - Event-scoped capability surfaces (Reglas + Movimientos)
@@ -560,83 +597,6 @@ public struct EventDetailView: View {
     // Both surface "Agregar" CTAs that open placeholder sheets — actual
     // creation flows land in Phase 3 (Money) and Phase 4 (in-event rule
     // creation) but the UX surface is here so the user sees the platform.
-
-    @ViewBuilder
-    private var eventCapabilitiesSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-            eventRulesCard
-            eventLedgerCard
-        }
-        .padding(.horizontal, RuulSpacing.lg)
-    }
-
-    private var eventRulesCard: some View {
-        capabilityCard(
-            icon: "list.bullet.clipboard.fill",
-            title: "Reglas de este evento",
-            summary: "Agrega reglas que sólo apliquen a este evento (override del grupo).",
-            ctaLabel: "Agregar regla",
-            onTap: { eventRuleSheetPresented = true }
-        )
-    }
-
-    private var eventLedgerCard: some View {
-        capabilityCard(
-            icon: "arrow.left.arrow.right",
-            title: "Movimientos",
-            summary: "Registra gastos, IOUs y aportaciones de este evento.",
-            ctaLabel: "Registrar movimiento",
-            onTap: { eventLedgerSheetPresented = true }
-        )
-    }
-
-    private func capabilityCard(
-        icon: String,
-        title: String,
-        summary: String,
-        ctaLabel: String,
-        onTap: @escaping () -> Void
-    ) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            HStack(spacing: RuulSpacing.sm) {
-                ZStack {
-                    Circle()
-                        .fill(Color.ruulAccent.opacity(0.15))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: icon)
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundStyle(Color.ruulAccent)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text(summary)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-            }
-            Button(action: onTap) {
-                HStack {
-                    Image(systemName: "plus")
-                    Text(ctaLabel)
-                }
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulAccent)
-                .padding(.vertical, RuulSpacing.xs)
-                .padding(.horizontal, RuulSpacing.sm)
-                .background(Color.ruulAccent.opacity(0.08), in: Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RuulSpacing.lg)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
-        )
-    }
 
     // MARK: - Top nav (transparent → glass on scroll)
 
