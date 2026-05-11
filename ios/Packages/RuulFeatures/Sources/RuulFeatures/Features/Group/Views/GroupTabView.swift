@@ -35,6 +35,7 @@ public struct GroupTabView: View {
     public let onOpenAcuerdos: () -> Void
     public let onOpenDecisiones: () -> Void
     public let onOpenSanciones: () -> Void
+    public let onOpenGroupRules: () -> Void
 
     @State private var selectedSubTab: GroupSubTab
     @State private var openVotesCount: Int = 0
@@ -54,7 +55,8 @@ public struct GroupTabView: View {
         onCreateResource: @escaping () -> Void,
         onOpenAcuerdos: @escaping () -> Void,
         onOpenDecisiones: @escaping () -> Void,
-        onOpenSanciones: @escaping () -> Void
+        onOpenSanciones: @escaping () -> Void,
+        onOpenGroupRules: @escaping () -> Void
     ) {
         self.activeGroup = activeGroup
         self.userId = userId
@@ -71,6 +73,7 @@ public struct GroupTabView: View {
         self.onOpenAcuerdos = onOpenAcuerdos
         self.onOpenDecisiones = onOpenDecisiones
         self.onOpenSanciones = onOpenSanciones
+        self.onOpenGroupRules = onOpenGroupRules
         self._selectedSubTab = State(initialValue: .overview)
     }
 
@@ -145,7 +148,8 @@ public struct GroupTabView: View {
                 outstandingFinesCount: outstandingFinesCount,
                 onOpenRules: onOpenAcuerdos,
                 onOpenVotes: onOpenDecisiones,
-                onOpenFines: onOpenSanciones
+                onOpenFines: onOpenSanciones,
+                onOpenGroupRules: onOpenGroupRules
             )
         }
     }

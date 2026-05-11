@@ -56,13 +56,12 @@ public struct ResourceWizardSheet: View {
                 .toolbarBackground(Color.ruulBackground, for: .navigationBar)
                 .animation(.ruulSnappy, value: coordinator.step)
         }
-        .onAppear {
-            // Reseat coordinator with the real registry from AppState.
-            let real = ResourceWizardCoordinator(
-                group: coordinator.group,
-                registry: app.resourceBuilders
-            )
-            coordinator = real
+        .task {
+            // Reseat coordinator with the real registry from AppState
+            // PLUS the template's defaultCapabilities map. Founder
+            // framing 2026-05-11: the wizard's auto-on caps come from
+            // the template, never from a Swift switch.
+            await rebuildCoordinatorWithTemplate()
         }
     }
 
@@ -562,5 +561,26 @@ public struct ResourceWizardSheet: View {
                 dismiss()
             }
         }
+    }
+
+    /// Looks up the active group's template via `TemplateRegistry`,
+    /// pulls its `config.defaultCapabilities` map, and rebuilds the
+    /// coordinator with both the real registry and the template-driven
+    /// defaults. Falls back to an empty map when the template isn't
+    /// available yet (offline / pre-auth) — wizard opens with nothing
+    /// pre-toggled in that case, matching the safe-default behavior.
+    private func rebuildCoordinatorWithTemplate() async {
+        var defaults: [String: [String]] = [:]
+        if let templateId = coordinator.group.baseTemplate,
+           let template = await app.templateRegistry.template(id: templateId),
+           let declared = template.config.defaultCapabilities {
+            defaults = declared
+        }
+        let real = ResourceWizardCoordinator(
+            group: coordinator.group,
+            registry: app.resourceBuilders,
+            defaultCapabilitiesByType: defaults
+        )
+        coordinator = real
     }
 }

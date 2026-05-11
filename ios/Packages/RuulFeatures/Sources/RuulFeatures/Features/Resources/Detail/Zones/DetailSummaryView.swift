@@ -47,12 +47,24 @@ public struct DetailSummaryView: View {
     /// Resolves descriptors for the resource's type into concrete rows,
     /// dropping any descriptor whose metadata is missing/empty. Order
     /// follows the catalog's declaration order.
+    ///
+    /// Builds a `SummaryResolverContext` from the resource metadata + a
+    /// memberLookup closure that maps `auth.users.id` → display name
+    /// via the cached `memberDirectory`. Required for descriptors that
+    /// can only resolve through cross-references (today: the event
+    /// host, which `events_view` ships as `host_id` only — no
+    /// denormalized name).
     private var rows: [ResolvedRow] {
         let descriptors = catalog.fields(for: context.resource.resourceType)
-        return descriptors.compactMap { d in
-            guard let value = d.resolve(in: context.resource.metadata) else {
-                return nil
+        let directory = context.memberDirectory
+        let resolverCtx = SummaryResolverContext(
+            metadata: context.resource.metadata,
+            memberLookup: { userId in
+                directory[userId]?.displayName
             }
+        )
+        return descriptors.compactMap { d in
+            guard let value = d.resolve(in: resolverCtx) else { return nil }
             return ResolvedRow(descriptor: d, value: value)
         }
     }

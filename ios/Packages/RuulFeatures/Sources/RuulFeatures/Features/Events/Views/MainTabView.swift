@@ -75,6 +75,7 @@ public struct MainTabView: View {
     @State private var acuerdosRoute: Bool = false
     /// G1: "Más → Sanciones" push. Routes a `MyFinesView` en el groupTab stack.
     @State private var sancionesRoute: Bool = false
+    @State private var groupRulesSettingsPresented: Bool = false
     /// "Ver como recurso (Beta)" desde EventDetailView. Presenta
     /// `ResourceDetailSheet` para el mismo event row sin tocar el
     /// flujo de event detail clásico.
@@ -274,6 +275,18 @@ public struct MainTabView: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .sheet(isPresented: $groupRulesSettingsPresented) {
+            if let group = app.activeGroup {
+                GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
+                    group: group,
+                    actorUserId: app.session?.user.id ?? UUID(),
+                    policyRepo: app.policyRepo
+                ))
+                .environment(app)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+        }
         .sheet(item: $ruleEditRoute, onDismiss: {
             // Phase G3: refresh the inbox so a resolved
             // `ruleChangeApplyPending` row disappears.
@@ -340,7 +353,8 @@ public struct MainTabView: View {
                         onOpenDecisiones: {
                             openVotesRoute = OpenVotesRouteContext(id: group.id)
                         },
-                        onOpenSanciones: { sancionesRoute = true }
+                        onOpenSanciones: { sancionesRoute = true },
+                        onOpenGroupRules: { groupRulesSettingsPresented = true }
                     )
                     .navigationDestination(item: $openVotesRoute) { _ in
                         openVotesDestination
@@ -974,7 +988,8 @@ public struct MainTabView: View {
                     onOpenDecisiones: {
                         openVotesRoute = OpenVotesRouteContext(id: group.id)
                     },
-                    onOpenSanciones: { sancionesRoute = true }
+                    onOpenSanciones: { sancionesRoute = true },
+                    onOpenGroupRules: { groupRulesSettingsPresented = true }
                 )
                 .navigationDestination(item: $openVotesRoute) { _ in
                     openVotesDestination

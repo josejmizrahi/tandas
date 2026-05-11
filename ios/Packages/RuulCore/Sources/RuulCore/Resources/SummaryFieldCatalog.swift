@@ -1,41 +1,88 @@
 import Foundation
 
+/// Minimal context the summary catalog needs to resolve a field's display
+/// value. Decoupled from `ResourceDetailContext` (which lives in
+/// RuulFeatures) so the catalog stays in RuulCore without a circular
+/// import. View layers map their richer context into this minimal
+/// shape — currently just `(metadata, memberLookup)`, future Phase 2
+/// types can extend the lookup surface as new cross-references appear
+/// (e.g. groupLookup for fund.holder_group_id).
+public struct SummaryResolverContext: Sendable {
+    /// `JSONConfig` blob from `resources.metadata`. Always available.
+    public let metadata: JSONConfig
+    /// Resolves an `auth.users.id` → human display name. Returns nil
+    /// when the id isn't in the caller's member directory. Closures
+    /// are `@Sendable` so the catalog stays usable across actor
+    /// boundaries.
+    public let memberLookup: @Sendable (UUID) -> String?
+
+    public init(
+        metadata: JSONConfig,
+        memberLookup: @escaping @Sendable (UUID) -> String?
+    ) {
+        self.metadata = metadata
+        self.memberLookup = memberLookup
+    }
+}
+
+/// How a `SummaryFieldDescriptor` derives its display value. Two paths:
+///   - `metadataKeys` — try each key in `keys` against `metadata`,
+///     format the first hit. The common case (location, capacity, etc).
+///   - `derived` — run an arbitrary closure over the full
+///     `SummaryResolverContext`. Used when a field needs cross-lookups
+///     the metadata alone can't satisfy (e.g. `host_id` → member name).
+public enum SummaryFieldResolver: Sendable {
+    case metadataKeys(keys: [String], format: SummaryFieldFormat)
+    case derived(@Sendable (SummaryResolverContext) -> String?)
+}
+
 /// Declarative descriptor for a single row in the polymorphic
-/// `DetailSummaryView` zone. Closes audit gap #6 — V1 had a switch over
+/// `DetailSummaryView`. Closes audit gap #6 — V1 had a switch over
 /// `ResourceType` inside the view returning a hand-coded list of fields
-/// per type, so each new type meant editing the View. With this catalog
-/// new types add an entry here and the View renders them automatically.
-public struct SummaryFieldDescriptor: Sendable, Hashable, Identifiable {
-    /// Stable id used by the View for diffing (ForEach key).
+/// per type. With this catalog new types add an entry here and the
+/// view renders them automatically. Each descriptor resolves through
+/// either a static metadata-key path or a derived context-aware closure.
+public struct SummaryFieldDescriptor: Sendable, Identifiable {
     public let id: String
-
-    /// SF Symbol name rendered on the left of the row.
     public let icon: String
-
-    /// Human label shown next to the icon. Keep short — the value
-    /// occupies the right column.
     public let label: String
-
-    /// Metadata keys to try in order; first hit wins. Supports both
-    /// snake_case (server canonical) and camelCase (Swift-encoded
-    /// drafts) so round-trips don't drop the row.
-    public let metadataKeys: [String]
-
-    /// How to turn the raw `JSONConfig` value into a display string.
-    public let format: SummaryFieldFormat
+    public let resolver: SummaryFieldResolver
 
     public init(
         id: String,
         icon: String,
         label: String,
-        metadataKeys: [String],
-        format: SummaryFieldFormat
+        resolver: SummaryFieldResolver
     ) {
         self.id = id
         self.icon = icon
         self.label = label
-        self.metadataKeys = metadataKeys
-        self.format = format
+        self.resolver = resolver
+    }
+
+    /// Resolves the descriptor's display value against the context.
+    /// Returns nil when the value is missing or doesn't match the
+    /// expected shape — the row is then dropped from the rendered list.
+    public func resolve(in context: SummaryResolverContext) -> String? {
+        switch resolver {
+        case .metadataKeys(let keys, let format):
+            for key in keys {
+                if let value = context.metadata[key], let rendered = format.format(value) {
+                    return rendered
+                }
+            }
+            return nil
+        case .derived(let fn):
+            return fn(context)
+        }
+    }
+
+    /// Back-compat: resolves with metadata only and a no-op member
+    /// lookup. Used by the catalog unit tests that exercise pure
+    /// metadata-key resolution without needing to construct a member
+    /// directory.
+    public func resolve(in metadata: JSONConfig) -> String? {
+        resolve(in: SummaryResolverContext(metadata: metadata, memberLookup: { _ in nil }))
     }
 }
 
@@ -90,7 +137,7 @@ public enum SummaryFieldFormat: Sendable, Hashable {
 /// preserved exactly; Phase 2 modules will ship their own descriptors
 /// via `ModuleRegistry` (out of scope for this slice).
 ///
-/// Order matters — the View renders fields in declaration order, top
+/// Order matters — the view renders fields in declaration order, top
 /// to bottom. Keep the most identity-relevant row first (host for an
 /// event, balance for a fund, …).
 public struct SummaryFieldCatalog: Sendable {
@@ -108,7 +155,10 @@ public struct SummaryFieldCatalog: Sendable {
     }
 
     /// V1 catalog. Field set mirrors the previously hard-coded behaviour
-    /// in `DetailSummaryView` so this refactor is observably equivalent.
+    /// in `DetailSummaryView` so this refactor is observably equivalent,
+    /// PLUS the Host row now resolves via memberLookup when metadata
+    /// only carries the host_id (which is the case for events_view —
+    /// the legacy projection that doesn't denormalize the host name).
     public static let v1: SummaryFieldCatalog = SummaryFieldCatalog(
         fieldsByResourceType: [
             .event: [
@@ -116,22 +166,41 @@ public struct SummaryFieldCatalog: Sendable {
                     id: "host",
                     icon: "star.fill",
                     label: "Host",
-                    metadataKeys: ["host_name", "hostName"],
-                    format: .string
+                    // Three-step fallback so the row renders regardless
+                    // of which projection ships the resource:
+                    //   1. metadata.host_name / hostName  (forward-compat
+                    //      for a future events_view that denormalizes
+                    //      the host display string)
+                    //   2. metadata.host_id  → memberLookup            (V1 path:
+                    //      events_view carries host_id only)
+                    resolver: .derived { ctx in
+                        if case .string(let s)? = ctx.metadata["host_name"], !s.isEmpty { return s }
+                        if case .string(let s)? = ctx.metadata["hostName"], !s.isEmpty { return s }
+                        if case .string(let idStr)? = ctx.metadata["host_id"],
+                           let uuid = UUID(uuidString: idStr),
+                           let name = ctx.memberLookup(uuid) {
+                            return name
+                        }
+                        return nil
+                    }
                 ),
                 SummaryFieldDescriptor(
                     id: "location",
                     icon: "mappin.and.ellipse",
                     label: "Lugar",
-                    metadataKeys: ["location_name", "locationName"],
-                    format: .string
+                    resolver: .metadataKeys(
+                        keys: ["location_name", "locationName"],
+                        format: .string
+                    )
                 ),
                 SummaryFieldDescriptor(
                     id: "capacity",
                     icon: "person.3.fill",
                     label: "Capacidad",
-                    metadataKeys: ["capacity_max", "capacityMax"],
-                    format: .intWithUnit(unit: "persona", unitPlural: "personas")
+                    resolver: .metadataKeys(
+                        keys: ["capacity_max", "capacityMax"],
+                        format: .intWithUnit(unit: "persona", unitPlural: "personas")
+                    )
                 ),
             ],
             .asset: [
@@ -139,15 +208,16 @@ public struct SummaryFieldCatalog: Sendable {
                     id: "owners",
                     icon: "person.2.fill",
                     label: "Dueños",
-                    metadataKeys: ["owners_count", "ownersCount"],
-                    format: .intCount
+                    resolver: .metadataKeys(
+                        keys: ["owners_count", "ownersCount"],
+                        format: .intCount
+                    )
                 ),
                 SummaryFieldDescriptor(
                     id: "capacity",
                     icon: "person.3.fill",
                     label: "Capacidad",
-                    metadataKeys: ["capacity"],
-                    format: .string
+                    resolver: .metadataKeys(keys: ["capacity"], format: .string)
                 ),
             ],
             .fund: [
@@ -155,8 +225,10 @@ public struct SummaryFieldCatalog: Sendable {
                     id: "balance",
                     icon: "banknote",
                     label: "Saldo",
-                    metadataKeys: ["balance_cents", "balanceCents"],
-                    format: .currencyCents(code: "MXN")
+                    resolver: .metadataKeys(
+                        keys: ["balance_cents", "balanceCents"],
+                        format: .currencyCents(code: "MXN")
+                    )
                 ),
             ],
             .slot: [
@@ -164,24 +236,9 @@ public struct SummaryFieldCatalog: Sendable {
                     id: "capacity",
                     icon: "person.3.fill",
                     label: "Capacidad",
-                    metadataKeys: ["capacity"],
-                    format: .intCount
+                    resolver: .metadataKeys(keys: ["capacity"], format: .intCount)
                 ),
             ],
         ]
     )
-}
-
-extension SummaryFieldDescriptor {
-    /// Resolves the first matching metadata value for this descriptor
-    /// and runs it through `format`. Returns nil when no key hits or
-    /// the formatter rejects the value.
-    public func resolve(in metadata: JSONConfig) -> String? {
-        for key in metadataKeys {
-            if let value = metadata[key], let rendered = format.format(value) {
-                return rendered
-            }
-        }
-        return nil
-    }
 }

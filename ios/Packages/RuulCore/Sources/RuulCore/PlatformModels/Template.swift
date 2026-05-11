@@ -103,6 +103,13 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
     public let defaultGovernance: GovernanceRules?
     public let defaultSettings: JSONConfig?
     public let defaultRules: [TemplateRule]?
+    /// Capability auto-on defaults per resource type. Founder framing
+    /// 2026-05-11: the wizard's "what's pre-toggled" must come from the
+    /// template/preset, never from a Swift switch on resource_type.
+    /// Shape: `{ "event": ["rsvp", "check_in", "rotation"] }`. Optional
+    /// so groups without a template (or templates seeded pre-mig 00091)
+    /// fall back to empty defaults.
+    public let defaultCapabilities: [String: [String]]?
     /// Role catalog this template prescribes (Phase 2+). Keys are role
     /// ids (`founder`, `member`, `seat_owner`, ...); values follow
     /// `RoleDefinition`. Server-side `seed_template_roles` (mig 00067)
@@ -151,7 +158,8 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         onboardingFlow: [OnboardingStepConfig]? = nil,
         resourceTypes: [ResourceType]? = nil,
         presentation: TemplatePresentation? = nil,
-        defaultCategory: GroupCategory? = nil
+        defaultCategory: GroupCategory? = nil,
+        defaultCapabilities: [String: [String]]? = nil
     ) {
         self.id = id
         self.availableInVersion = availableInVersion
@@ -165,5 +173,6 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         self.resourceTypes = resourceTypes
         self.presentation = presentation
         self.defaultCategory = defaultCategory
+        self.defaultCapabilities = defaultCapabilities
     }
 }

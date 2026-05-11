@@ -29,6 +29,13 @@ public final class ResourceWizardCoordinator {
     public let group: Group
     public let registry: ResourceBuilderRegistry
     public let catalog: CapabilityCatalog
+    /// Capability auto-on defaults per resource type, sourced from the
+    /// group's template (`templates.config.defaultCapabilities`). Empty
+    /// dict means "no auto-on" — the wizard opens with nothing toggled.
+    /// Founder framing 2026-05-11: this map is THE source of truth for
+    /// pre-toggling caps; the coordinator never hardcodes per
+    /// resource_type.
+    public let defaultCapabilitiesByType: [String: [String]]
 
     public private(set) var step: ResourceWizardStep = .typePicker
     public private(set) var selectedBuilder: (any ResourceBuilder)?
@@ -56,12 +63,14 @@ public final class ResourceWizardCoordinator {
         group: Group,
         registry: ResourceBuilderRegistry,
         catalog: CapabilityCatalog = .v1,
-        resolver: CapabilityResolver = CapabilityResolver()
+        resolver: CapabilityResolver = CapabilityResolver(),
+        defaultCapabilitiesByType: [String: [String]] = [:]
     ) {
         self.group = group
         self.registry = registry
         self.catalog = catalog
         self.resolver = resolver
+        self.defaultCapabilitiesByType = defaultCapabilitiesByType
     }
 
     // MARK: - Step navigation
@@ -323,14 +332,24 @@ public final class ResourceWizardCoordinator {
     private func defaultCapabilitiesFor(_ builder: any ResourceBuilder) -> Set<String> {
         // Founder framing 2026-05-11: capability auto-on defaults come
         // from the group's template/preset, NEVER from a hardcoded
-        // per-resource_type rule. A "simple junta" should open with
-        // nothing pre-ticked; a structured "tanda" preset can opt every
-        // member into RSVP + check-in + rotation explicitly.
+        // per-resource_type rule. The wizard sheet looks up
+        // `template.config.defaultCapabilities` and passes the resolved
+        // map here on init. Templates that don't declare any default
+        // (custom / placeholder) result in an empty set — user opts in
+        // to every cap explicitly.
         //
-        // Phase 1: always empty. Phase 2 reads
-        // `group.template.defaultCapabilities[builder.resourceType.rawValue]`
-        // when the templates table gains that column.
-        return []
+        // Defensive: intersect with the group's actually-available
+        // capability list so a template that suggests `rsvp` for a
+        // group that doesn't have the rsvp module activated won't
+        // pre-toggle a hidden cap.
+        let suggested = Set(defaultCapabilitiesByType[builder.resourceType.rawString] ?? [])
+        // (resourceType.rawString matches the templates jsonb key — e.g.
+        // "event" → ["rsvp", "check_in", "rotation"].)
+        guard !suggested.isEmpty else { return [] }
+        let available = Set(resolver.availableCapabilities(
+            for: builder.resourceType, in: group, catalog: catalog
+        ))
+        return suggested.intersection(available)
     }
 
     /// Seeds defaults for a block's required + optional fields when the

@@ -15,31 +15,60 @@ public struct GroupMoreSubTab: View {
     public let onOpenRules: () -> Void
     public let onOpenVotes: () -> Void
     public let onOpenFines: () -> Void
+    /// Opens `GroupRulesSettingsView` — the preset picker for governance
+    /// policies (Casual / Equilibrado / Estricto). Lives under "Más" so
+    /// changing how decisions are taken is one tap from the group home,
+    /// not buried behind the Inicio header icon.
+    public let onOpenGroupRules: () -> Void
 
     public init(
         openVotesCount: Int,
         outstandingFinesCount: Int,
         onOpenRules: @escaping () -> Void,
         onOpenVotes: @escaping () -> Void,
-        onOpenFines: @escaping () -> Void
+        onOpenFines: @escaping () -> Void,
+        onOpenGroupRules: @escaping () -> Void
     ) {
         self.openVotesCount = openVotesCount
         self.outstandingFinesCount = outstandingFinesCount
         self.onOpenRules = onOpenRules
         self.onOpenVotes = onOpenVotes
         self.onOpenFines = onOpenFines
+        self.onOpenGroupRules = onOpenGroupRules
     }
 
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 governanceSection
+                policiesSection
             }
             .padding(.horizontal, RuulSpacing.screenPadding)
             .padding(.top, RuulSpacing.xs)
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private var policiesSection: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            Text("CONFIGURACIÓN")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.horizontal, RuulSpacing.xxs)
+            VStack(spacing: 0) {
+                row(icon: "checkmark.seal.fill",
+                    label: "Reglas del grupo",
+                    sublabel: "Cómo se cambian las reglas (votación, admin, etc.)",
+                    trailing: { EmptyView() },
+                    action: onOpenGroupRules)
+            }
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+        }
     }
 
     private var governanceSection: some View {
