@@ -2,70 +2,102 @@ import Foundation
 import OSLog
 import RuulCore
 
-/// Drives the ResourceWizardSheet — the progressive opt-in creation flow
-/// that surfaces Capability Foundation blocks as toggles.
+/// Universal ResourceWizard coordinator. Drives the multi-step flow:
 ///
-/// V1 scope: event creation only (EventResourceBuilder is the only
-/// implemented builder). Wizard renders required fields (title + date)
-/// plus a collapsible "Opciones" panel with toggles for the V1 blocks
-/// the group can enable (resolver-gated).
+///   1. typePicker — choose what to create (Event, Asset, Slot, …)
+///   2. fields     — fill the builder's requiredFields
+///   3. options    — toggle capability blocks (filtered by resource type)
+///   4. submit     — route to the selected ResourceBuilder
+///
+/// Persists step state so back/forward navigation feels natural.
+public enum ResourceWizardStep: Int, Sendable, CaseIterable {
+    case typePicker
+    case fields
+    case options
+}
+
 @Observable @MainActor
 public final class ResourceWizardCoordinator {
-    public var title: String = ""
-    public var startsAt: Date
+    public let group: Group
+    public let registry: ResourceBuilderRegistry
+    public let catalog: CapabilityCatalog
+
+    public private(set) var step: ResourceWizardStep = .typePicker
+    public private(set) var selectedBuilder: (any ResourceBuilder)?
+    public var basicFields: [String: JSONConfig] = [:]
     public var enabledCapabilities: Set<String> = []
 
     public private(set) var isCreating: Bool = false
     public private(set) var error: String?
     public private(set) var createdResourceId: UUID?
 
-    public let group: Group
-    public let availableCapabilities: [any CapabilityBlock]
-
-    private let builder: EventResourceBuilder
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.wizard")
+    private let resolver: CapabilityResolver
 
     public init(
         group: Group,
-        suggestedDate: Date,
-        availableCapabilities: [any CapabilityBlock],
-        builder: EventResourceBuilder,
-        defaultEnabled: Set<String> = []
+        registry: ResourceBuilderRegistry,
+        catalog: CapabilityCatalog = .v1,
+        resolver: CapabilityResolver = CapabilityResolver()
     ) {
         self.group = group
-        self.startsAt = suggestedDate
-        self.availableCapabilities = availableCapabilities
-        self.builder = builder
-        self.enabledCapabilities = defaultEnabled
+        self.registry = registry
+        self.catalog = catalog
+        self.resolver = resolver
     }
 
-    public var canSubmit: Bool {
-        !title.trimmingCharacters(in: .whitespaces).isEmpty && !isCreating
+    // MARK: - Step navigation
+
+    public func selectBuilder(_ builder: any ResourceBuilder) {
+        selectedBuilder = builder
+        basicFields = [:]
+        enabledCapabilities = defaultCapabilitiesFor(builder)
+        step = .fields
     }
 
-    public var trimmedTitle: String {
-        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    public func goBack() {
+        switch step {
+        case .typePicker: return
+        case .fields:     step = .typePicker; selectedBuilder = nil
+        case .options:    step = .fields
+        }
+    }
+
+    public func advanceFromFields() {
+        guard validateRequiredFields() else { return }
+        step = .options
+    }
+
+    public var canAdvanceFromFields: Bool {
+        validateRequiredFields()
+    }
+
+    /// Capability blocks the picker should show in step 3 — filtered by:
+    /// (1) the selected builder declares them, AND
+    /// (2) the resolver says they're available on this group.
+    public var availableCapabilityBlocks: [any CapabilityBlock] {
+        guard let builder = selectedBuilder else { return [] }
+        let groupAvailable = Set(resolver.availableCapabilities(
+            for: builder.resourceType, in: group, catalog: catalog
+        ))
+        return builder.optionalCapabilities
+            .filter { groupAvailable.contains($0) }
+            .compactMap { catalog[$0] }
     }
 
     public func toggleCapability(_ blockId: String) {
         if enabledCapabilities.contains(blockId) {
             enabledCapabilities.remove(blockId)
-            // When a block is turned off, also turn off any blocks that
-            // depend on it (keep the set internally consistent so the
-            // user can't ship a draft that the builder will reject).
-            let catalog = CapabilityCatalog.v1
-            for block in availableCapabilities where enabledCapabilities.contains(block.id) {
+            // Drop dependents whose deps just disappeared.
+            for block in availableCapabilityBlocks where enabledCapabilities.contains(block.id) {
                 if block.dependencies.contains(blockId) {
                     enabledCapabilities.remove(block.id)
                 }
             }
-            _ = catalog  // silence unused warning if catalog is removed later
         } else {
             enabledCapabilities.insert(blockId)
-            // Pull in transitive dependencies so the user doesn't have to
-            // manually opt in to prerequisites (e.g. enabling check_in
-            // pulls in rsvp).
-            if let block = availableCapabilities.first(where: { $0.id == blockId }) {
+            // Pull in transitive deps.
+            if let block = availableCapabilityBlocks.first(where: { $0.id == blockId }) {
                 for dep in block.dependencies {
                     enabledCapabilities.insert(dep)
                 }
@@ -73,23 +105,26 @@ public final class ResourceWizardCoordinator {
         }
     }
 
-    public func isEnabled(_ blockId: String) -> Bool {
+    public func isCapabilityEnabled(_ blockId: String) -> Bool {
         enabledCapabilities.contains(blockId)
     }
 
+    // MARK: - Submit
+
+    public var canSubmit: Bool {
+        selectedBuilder != nil && validateRequiredFields() && !isCreating
+    }
+
     public func submit() async -> Bool {
-        guard canSubmit else { return false }
+        guard let builder = selectedBuilder, canSubmit else { return false }
         isCreating = true
         error = nil
         defer { isCreating = false }
 
         let draft = ResourceDraft(
             groupId: group.id,
-            resourceType: .event,
-            basicFields: [
-                "title":    .string(trimmedTitle),
-                "startsAt": .string(ISO8601DateFormatter().string(from: startsAt))
-            ],
+            resourceType: builder.resourceType,
+            basicFields: basicFields,
             enabledCapabilities: Array(enabledCapabilities),
             capabilityConfigs: [:],
             seriesPattern: nil,
@@ -99,17 +134,47 @@ public final class ResourceWizardCoordinator {
         do {
             let result = try await builder.build(draft)
             createdResourceId = result.resourceId
-            log.debug("created resource \(result.resourceId) with capabilities \(result.enabledCapabilityIds.joined(separator: ","))")
+            log.debug("created \(builder.displayName) \(result.resourceId)")
             return true
         } catch let e as ResourceBuilderError {
             self.error = userFacing(error: e)
-            log.warning("wizard build failed: \(String(describing: e))")
             return false
         } catch {
             self.error = "No pudimos crear el recurso: \(error.localizedDescription)"
-            log.warning("wizard build failed: \(error.localizedDescription)")
             return false
         }
+    }
+
+    // MARK: - Helpers
+
+    private func validateRequiredFields() -> Bool {
+        guard let builder = selectedBuilder else { return false }
+        for field in builder.requiredFields {
+            if let value = basicFields[field.key] {
+                if case let .string(s) = value, s.trimmingCharacters(in: .whitespaces).isEmpty {
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func defaultCapabilitiesFor(_ builder: any ResourceBuilder) -> Set<String> {
+        // For events: rsvp + check_in + rotation default ON if the group has those modules.
+        // For other types: empty default — user opts in explicitly.
+        if builder.resourceType == .event {
+            let available = Set(resolver.availableCapabilities(
+                for: .event, in: group, catalog: catalog
+            ))
+            var defaults: Set<String> = []
+            for id in ["rsvp", "check_in", "rotation"] where available.contains(id) {
+                defaults.insert(id)
+            }
+            return defaults
+        }
+        return []
     }
 
     private func userFacing(error: ResourceBuilderError) -> String {

@@ -8,10 +8,14 @@ import OSLog
 /// that follow the same orchestration shape.
 public actor EventResourceBuilder: ResourceBuilder {
     public nonisolated let resourceType: ResourceType = .event
+    public nonisolated let displayName: String = "Evento"
+    public nonisolated let icon: String = "calendar.badge.clock"
+    public nonisolated let summary: String = "Cena, junta, partido. Algo que pasa una vez (o se repite)."
 
     public nonisolated var requiredFields: [BuilderField] {
         [
-            BuilderField(key: "title",     label: "Título",  kind: .text),
+            BuilderField(key: "title",     label: "Título",  kind: .text,
+                         placeholder: "ej: Cena del jueves"),
             BuilderField(key: "startsAt",  label: "Empieza", kind: .dateTime)
         ]
     }
@@ -122,16 +126,5 @@ public actor EventResourceBuilder: ResourceBuilder {
     }
 }
 
-// MARK: - JSONConfig date helper
-
-private extension JSONConfig {
-    /// Best-effort decode of an ISO8601 / "yyyy-MM-dd HH:mm" date string
-    /// embedded as a string value. Returns nil for any other shape.
-    var dateValue: Date? {
-        guard case let .string(raw) = self else { return nil }
-        if let iso = ISO8601DateFormatter().date(from: raw) { return iso }
-        let fallback = DateFormatter()
-        fallback.dateFormat = "yyyy-MM-dd HH:mm"
-        return fallback.date(from: raw)
-    }
-}
+// JSONConfig.dateValue / .uuidValue helpers live in SlotResourceBuilder.swift
+// (module-wide extension). Keep them in one place to avoid redeclaration.

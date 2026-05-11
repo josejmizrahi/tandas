@@ -102,6 +102,10 @@ public final class AppState {
     /// fund, asset following the same shape.
     public let eventBuilder: EventResourceBuilder
 
+    /// Universal Resource Wizard registry — maps ResourceType → builder.
+    /// Drives the type picker + final submit routing.
+    public let resourceBuilders: ResourceBuilderRegistry
+
     public let systemEventEmitter: SystemEventEmitter
 
     /// Builds an `RSVPRealtimeService` for a given event id. nil in mock /
@@ -164,11 +168,23 @@ public final class AppState {
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo
         self.rsvpActionRepo = rsvpActionRepo
-        self.eventBuilder = EventResourceBuilder(
+        let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,
             capabilityRepo: resourceCapabilityRepo
         )
+        let assetBuilder = AssetResourceBuilder(
+            slotRepo: slotLifecycleRepo,
+            capabilityRepo: resourceCapabilityRepo
+        )
+        let slotBuilder = SlotResourceBuilder(
+            slotRepo: slotLifecycleRepo,
+            capabilityRepo: resourceCapabilityRepo
+        )
+        self.eventBuilder = eventBuilder
+        self.resourceBuilders = ResourceBuilderRegistry(builders: [
+            eventBuilder, assetBuilder, slotBuilder
+        ])
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
         self.walletService = walletService

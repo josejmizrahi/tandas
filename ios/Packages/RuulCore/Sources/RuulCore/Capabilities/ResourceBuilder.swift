@@ -16,8 +16,22 @@ import Foundation
 ///   4. For each rule draft, seed it via the rules pipeline.
 ///   5. Return a ResourceCreationResult summarising what was created.
 public protocol ResourceBuilder: Sendable {
+    /// What resource_type this builder produces.
     var resourceType: ResourceType { get }
+
+    /// User-facing label shown in the type picker.
+    var displayName: String { get }
+
+    /// SF Symbol id rendered on the type picker card.
+    var icon: String { get }
+
+    /// One-line description shown below the title on the picker card.
+    var summary: String { get }
+
+    /// Required fields the wizard renders in step 2 (cannot be skipped).
     var requiredFields: [BuilderField] { get }
+
+    /// Optional capability blocks the wizard surfaces in step 3.
     var optionalCapabilities: [String] { get }
 
     func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult
