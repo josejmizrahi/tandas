@@ -18,6 +18,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { runRulesForEvent, type ConsequenceSink, type RuleContext } from "../_shared/ruleEngine.ts";
+import {
+  composeResourceLike,
+  mapAttendanceToCheckIns,
+  mapAttendanceToRsvps,
+  type EventAttendanceRow,
+  type EventsViewRow,
+  type ResourcesRow,
+} from "../_shared/ruleContext.ts";
 import { getNow } from "../_shared/time.ts";
 import type { Rule, SystemEvent } from "../_shared/platformTypes.ts";
 import { withSentry } from "../_shared/sentry.ts";
@@ -120,23 +128,11 @@ async function buildContext(
     .select("id, user_id, active")
     .eq("group_id", event.group_id);
 
-  // Resource resolution — polymorphic.
-  //
-  // Step 1: look up the polymorphic `resources` row (universal across
-  // event/slot/fund/asset/etc.). This is the source of truth for
-  // `resource_type` + `series_id`. Events also live here via the 00039
-  // dual-write trigger (events.id == resources.id), so the query works
-  // for V1 events too.
-  //
-  // Step 2: when the resource is an event, also load `events_view` and
-  // `event_attendance` to populate the legacy-only fields the engine's
-  // event triggers depend on (host_id in metadata, RSVPs, check-ins).
-  //
-  // Step 3: for non-event types we build the resource directly from the
-  // resources row — RSVPs/check-ins stay empty because those concepts
-  // are event-only. Closes the audit gap that buildContext silently
-  // returned `resource: null` for any non-event system_event because it
-  // only knew how to read `events_view`.
+  // Resource resolution — polymorphic. IO happens here; the shape decision
+  // (events_view vs resources row, attendance → RSVP/check-in derivation)
+  // lives in `_shared/ruleContext.ts` so it's unit-testable without a
+  // live Supabase connection. See that file's doc-comment for the
+  // decision tree.
   let resource: RuleContext["resource"] = null;
   let rsvps: RuleContext["rsvps"] = [];
   let checkIns: RuleContext["checkIns"] = [];
@@ -149,66 +145,32 @@ async function buildContext(
       .maybeSingle();
 
     if (r) {
+      let ev: EventsViewRow | null = null;
+      let attendance: EventAttendanceRow[] = [];
+
       if (r.resource_type === "event") {
-        // Legacy V1 path: read the richer projection via events_view (it
-        // surfaces fields like host_id / starts_at / description that the
-        // event-only triggers depend on). Resources.metadata for events is
-        // currently sparser than the events_view projection.
-        const { data: ev } = await supabase
+        const evResult = await supabase
           .from("events_view")
           .select("*")
           .eq("resource_id", event.resource_id)
           .maybeSingle();
+        ev = (evResult.data as EventsViewRow | null) ?? null;
 
         if (ev) {
-          resource = {
-            id: ev.resource_id,
-            group_id: ev.group_id,
-            resource_type: ev.resource_type,
-            status: ev.status,
-            metadata: ev.metadata,
-            series_id: r.series_id,
-          };
-
-          const { data: attendance } = await supabase
+          const attResult = await supabase
             .from("event_attendance")
             .select("user_id, rsvp_status, rsvp_at, cancelled_same_day, arrived_at")
             .eq("event_id", event.resource_id);
-
-          const startsAt = (resource.metadata.starts_at as string | undefined) ?? null;
-          const startsAtMs = startsAt ? new Date(startsAt).getTime() : null;
-
-          rsvps = (attendance ?? []).map((a) => ({
-            member_user_id: a.user_id,
-            status: a.rsvp_status,
-            rsvp_at: a.rsvp_at,
-            cancelled_same_day: a.cancelled_same_day ?? false,
-          }));
-
-          checkIns = (attendance ?? [])
-            .filter((a) => a.arrived_at != null)
-            .map((a) => ({
-              member_user_id: a.user_id,
-              arrived_at: a.arrived_at,
-              minutes_late:
-                startsAtMs != null
-                  ? Math.round((new Date(a.arrived_at).getTime() - startsAtMs) / 60_000)
-                  : 0,
-            }));
+          attendance = (attResult.data as EventAttendanceRow[] | null) ?? [];
         }
-      } else {
-        // Phase 2 path: slot / fund / asset / etc. resources are read
-        // straight from `resources`. No RSVPs/check-ins — those rules
-        // don't apply outside event-shaped resources. Triggers/conditions
-        // that need attendance data return no targets for these resources.
-        resource = {
-          id: r.id,
-          group_id: r.group_id,
-          resource_type: r.resource_type,
-          status: r.status,
-          metadata: (r.metadata as Record<string, unknown> | null) ?? {},
-          series_id: r.series_id,
-        };
+      }
+
+      resource = composeResourceLike(r as ResourcesRow, ev);
+
+      if (resource && r.resource_type === "event") {
+        const startsAt = (resource.metadata.starts_at as string | undefined) ?? null;
+        rsvps = mapAttendanceToRsvps(attendance);
+        checkIns = mapAttendanceToCheckIns(attendance, startsAt);
       }
     }
   }
