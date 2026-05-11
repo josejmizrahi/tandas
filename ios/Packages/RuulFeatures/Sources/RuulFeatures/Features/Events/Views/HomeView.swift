@@ -89,6 +89,16 @@ public struct HomeView: View {
         .task(id: resourceRefreshToken) {
             await loadGroupMemory()
         }
+        // Group switch (active group changes via the switcher) doesn't bump
+        // resourceRefreshToken, so without this second .task the @State
+        // stays bound to whatever group was active when the view first
+        // appeared — past events + resolved votes from the prior group
+        // bleed into the new one (or vanish if the prior group had none,
+        // which is exactly what hides the Memoria section silently).
+        .task(id: app.activeGroup?.id) {
+            await loadNonEventResources()
+            await loadGroupMemory()
+        }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .presentationDetents([.medium, .large])
