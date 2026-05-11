@@ -177,13 +177,12 @@ public final class AppState {
             slotRepo: slotLifecycleRepo,
             capabilityRepo: resourceCapabilityRepo
         )
-        let slotBuilder = SlotResourceBuilder(
-            slotRepo: slotLifecycleRepo,
-            capabilityRepo: resourceCapabilityRepo
-        )
+        // SlotResourceBuilder requires picking a parent Asset via a
+        // resource picker that isn't wired yet. Re-register once R.1
+        // (BuilderFieldRenderer.resourcePicker) loads real resources.
         self.eventBuilder = eventBuilder
         self.resourceBuilders = ResourceBuilderRegistry(builders: [
-            eventBuilder, assetBuilder, slotBuilder
+            eventBuilder, assetBuilder
         ])
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications

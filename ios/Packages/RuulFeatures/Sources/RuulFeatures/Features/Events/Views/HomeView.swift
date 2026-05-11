@@ -15,8 +15,11 @@ public struct HomeView: View {
     public var onOpenEvent: (Event) -> Void
     public var onOpenPastEvents: () -> Void
     public var onInvitePeople: (() -> Void)? = nil
+    /// Bumped by the parent (MainTabView) after the wizard creates a
+    /// resource — drives the non-event-resources re-fetch via .task(id:).
+    public var resourceRefreshToken: UUID
 
-    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onInvitePeople: (() -> Void)? = nil) {
+    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onInvitePeople: (() -> Void)? = nil, resourceRefreshToken: UUID = UUID()) {
         self.coordinator = coordinator
         self.inboxCoordinator = inboxCoordinator
         self.onInboxActionTap = onInboxActionTap
@@ -25,9 +28,13 @@ public struct HomeView: View {
         self.onOpenEvent = onOpenEvent
         self.onOpenPastEvents = onOpenPastEvents
         self.onInvitePeople = onInvitePeople
+        self.resourceRefreshToken = resourceRefreshToken
     }
 
     @State private var showSettings: Bool = false
+
+    @State private var nonEventResources: [ResourceRow] = []
+    @State private var openedResource: ResourceRow?
 
     public var body: some View {
         ZStack {
@@ -37,6 +44,7 @@ public struct HomeView: View {
                     header
                     nextEventSection
                     pendingsSection
+                    resourcesSection
                     upcomingListSection
                     pastEventsLink
                 }
@@ -48,7 +56,8 @@ public struct HomeView: View {
             .refreshable {
                 async let h: Void = coordinator.refresh(force: true)
                 async let i: Void? = inboxCoordinator?.refresh()
-                _ = await (h, i)
+                async let r: Void = loadNonEventResources()
+                _ = await (h, i, r)
             }
             .overlay(alignment: .bottomTrailing) { fab }
         }
@@ -57,10 +66,35 @@ public struct HomeView: View {
             async let i: Void? = inboxCoordinator?.refresh()
             _ = await (h, i)
         }
+        .task(id: resourceRefreshToken) {
+            await loadNonEventResources()
+        }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $openedResource) { row in
+            ResourceDetailSheet(resource: row)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    @MainActor
+    private func loadNonEventResources() async {
+        guard let groupId = app.activeGroup?.id else { return }
+        let types: [ResourceType] = [.asset, .slot, .fund, .booking, .contribution]
+        do {
+            let rows = try await app.resourceRepo.list(
+                in: groupId,
+                types: types,
+                statuses: nil,
+                limit: 50
+            )
+            nonEventResources = rows
+        } catch {
+            // Silent — section just stays empty.
         }
     }
 
@@ -312,6 +346,101 @@ public struct HomeView: View {
     }
 
     // MARK: - Empty state
+
+    @ViewBuilder
+    private var resourcesSection: some View {
+        if !nonEventResources.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("RECURSOS")
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                    Spacer()
+                    Text("\(nonEventResources.count)")
+                        .ruulTextStyle(RuulTypography.statSmall)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
+                VStack(spacing: RuulSpacing.xs) {
+                    ForEach(nonEventResources) { row in
+                        resourceCard(row)
+                    }
+                }
+            }
+        }
+    }
+
+    private func resourceCard(_ row: ResourceRow) -> some View {
+        Button {
+            openedResource = row
+        } label: {
+            HStack(spacing: RuulSpacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(Color.ruulSurface)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: iconFor(row.resourceType))
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(Color.ruulTextPrimary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(displayNameFor(row))
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text(typeLabelFor(row.resourceType))
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .padding(RuulSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func displayNameFor(_ row: ResourceRow) -> String {
+        if case let .string(name) = row.metadata["name"] { return name }
+        if case let .string(title) = row.metadata["title"] { return title }
+        return typeLabelFor(row.resourceType)
+    }
+
+    private func iconFor(_ type: ResourceType) -> String {
+        switch type {
+        case .asset:        return "key.fill"
+        case .slot:         return "ticket"
+        case .fund:         return "banknote"
+        case .booking:      return "calendar.badge.checkmark"
+        case .contribution: return "arrow.up.bin"
+        default:            return "square.dashed"
+        }
+    }
+
+    private func typeLabelFor(_ type: ResourceType) -> String {
+        switch type {
+        case .asset:        return "Activo"
+        case .slot:         return "Slot"
+        case .fund:         return "Fondo"
+        case .booking:      return "Reserva"
+        case .contribution: return "Aportación"
+        case .event:        return "Evento"
+        case .position:     return "Posición"
+        case .assignment:   return "Tarea"
+        case .rotation:     return "Rotación"
+        case .guestPass:    return "Invitado"
+        case .proposal:     return "Propuesta"
+        case .unknown(let raw): return raw
+        }
+    }
 
     /// Capability-aware empty state per OpenPlatform S2. Reads the active
     /// group's modules and chooses copy + iconography that matches what

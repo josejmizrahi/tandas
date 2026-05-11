@@ -23,6 +23,9 @@ public struct MainTabView: View {
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
     @State private var calendarService = CalendarExportService()
     @State private var selectedTab: Tab = .home
+    /// Bumped after the ResourceWizard creates a non-event resource so
+    /// HomeView's nonEventResources section re-fetches via .task(id:).
+    @State private var resourceRefreshToken: UUID = UUID()
 
     // Sprint 1c: inbox + my-fines coordinators owned at tab root so refresh
     // state survives tab switches. Built lazily once we have a session.
@@ -830,7 +833,8 @@ public struct MainTabView: View {
                         onCreateEvent: { creationRoute = true },
                         onOpenEvent: { event in detailRoute = event },
                         onOpenPastEvents: { pastRoute = true },
-                        onInvitePeople: { inviteSharePresented = true }
+                        onInvitePeople: { inviteSharePresented = true },
+                        resourceRefreshToken: resourceRefreshToken
                     )
                     .navigationDestination(isPresented: $pastRoute) {
                         if let group = app.activeGroup {
@@ -1133,7 +1137,13 @@ public struct MainTabView: View {
                 group: group,
                 suggestedDate: suggested,
                 onCreated: { _ in
-                    Task { await homeCoordinator?.refresh(force: true) }
+                    Task {
+                        await homeCoordinator?.refresh(force: true)
+                        // Bump the token so HomeView re-fetches its
+                        // non-event resources section and the new
+                        // asset/slot/fund shows up immediately.
+                        await MainActor.run { resourceRefreshToken = UUID() }
+                    }
                 }
             )
         }

@@ -59,6 +59,8 @@ public final class ResourceBuilderRegistry {
     /// the type picker to show "Próximamente" cards.
     public static func placeholderInfo(for type: ResourceType) -> (displayName: String, icon: String, summary: String)? {
         switch type {
+        case .slot:
+            return ("Slot", "ticket", "Ventana de uso de un activo. Crea un activo primero.")
         case .fund:
             return ("Fondo", "banknote", "Caja común para aportaciones y payouts.")
         case .contribution:
