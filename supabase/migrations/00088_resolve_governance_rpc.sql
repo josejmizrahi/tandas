@@ -130,9 +130,14 @@ begin
       return jsonb_build_object('decision', 'allowed');
 
     elsif v_who = 'majorityVote' then
-      v_quorum    := coalesce((v_governance->>'quorum_percent')::int,    50);
-      v_threshold := coalesce((v_governance->>'threshold_percent')::int, 50);
-      v_duration  := coalesce((v_governance->>'duration_hours')::int,    72);
+      -- groups.governance is written by iOS GovernanceRules struct; default
+      -- Swift Codable emits property names verbatim, so the keys are camelCase
+      -- (votingQuorumPercent, votingThresholdPercent, votingDurationHours) —
+      -- NOT snake_case. Approval_config on group_policies uses snake_case
+      -- because Swift's GroupPolicy struct defines explicit CodingKeys.
+      v_quorum    := coalesce((v_governance->>'votingQuorumPercent')::int,    50);
+      v_threshold := coalesce((v_governance->>'votingThresholdPercent')::int, 50);
+      v_duration  := coalesce((v_governance->>'votingDurationHours')::int,    72);
       return jsonb_build_object(
         'decision',          'vote_required',
         'quorum_percent',    v_quorum,
@@ -141,9 +146,9 @@ begin
       );
 
     elsif v_who = 'supermajorityVote' then
-      v_quorum    := coalesce((v_governance->>'quorum_percent')::int, 50);
+      v_quorum    := coalesce((v_governance->>'votingQuorumPercent')::int, 50);
       v_threshold := 66;
-      v_duration  := coalesce((v_governance->>'duration_hours')::int, 72);
+      v_duration  := coalesce((v_governance->>'votingDurationHours')::int, 72);
       return jsonb_build_object(
         'decision',          'vote_required',
         'quorum_percent',    v_quorum,
