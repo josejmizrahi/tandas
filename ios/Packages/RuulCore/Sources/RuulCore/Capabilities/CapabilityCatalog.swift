@@ -107,7 +107,26 @@ public struct RsvpCapability: CapabilityBlock {
             BuilderField(key: "allowMaybe", label: "Permitir 'tal vez'", kind: .boolean)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [RuleTemplate] {
+        // Slug heuristics in ResourceWizardCoordinator.defaultTrigger pick
+        // the right SystemEventType from these keywords. Keep slug
+        // fragments aligned with that mapper or add an explicit
+        // triggerEventType field to RuleTemplate.
+        [
+            RuleTemplate(
+                slug: "rsvp_late_cancel",
+                displayName: "Cancelar el mismo día tiene consecuencia",
+                summary: "Si alguien cambia a 'no voy' el día del evento, paga $150.",
+                defaultConfig: ["amount": "150"]
+            ),
+            RuleTemplate(
+                slug: "rsvp_no_response_reminder",
+                displayName: "Recordatorio a quien no respondió",
+                summary: "Cuando vence la fecha límite, manda un recordatorio a los pendientes.",
+                defaultConfig: [:]
+            )
+        ]
+    }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "rsvp.set", label: "Confirmar asistencia", surface: .resourceDetail)]
     }
@@ -133,7 +152,22 @@ public struct CheckInCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "lateThresholdMinutes", label: "Tarde después de (min)", kind: .integer)]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [RuleTemplate] {
+        [
+            RuleTemplate(
+                slug: "check_in_late_arrival",
+                displayName: "Llegar tarde tiene consecuencia",
+                summary: "Si alguien hace check-in pasada la hora, paga $100.",
+                defaultConfig: ["amount": "100"]
+            ),
+            RuleTemplate(
+                slug: "event_closed_no_show_fine",
+                displayName: "No-show al cerrar el evento",
+                summary: "Cuando el host cierra el evento, los que no llegaron pagan $250.",
+                defaultConfig: ["amount": "250"]
+            )
+        ]
+    }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "check_in.record", label: "Registrar llegada", surface: .resourceDetail)]
     }
@@ -220,7 +254,16 @@ public struct RotationCapability: CapabilityBlock {
             BuilderField(key: "swapPolicy", label: "Política de cambio", kind: .picker)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [RuleTemplate] {
+        [
+            RuleTemplate(
+                slug: "rotation_auto_skip_late_cancel",
+                displayName: "Si el host cancela el día, su turno se salta",
+                summary: "Cuando alguien cancela el mismo día, el turno se reasigna y se le multa.",
+                defaultConfig: ["amount": "200"]
+            )
+        ]
+    }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "rotation.advance", label: "Avanzar turno", surface: .resourceDetail)]
     }

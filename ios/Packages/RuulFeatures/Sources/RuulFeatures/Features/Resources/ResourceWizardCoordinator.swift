@@ -4,16 +4,24 @@ import RuulCore
 
 /// Universal ResourceWizard coordinator. Drives the multi-step flow:
 ///
-///   1. typePicker — choose what to create (Event, Asset, Slot, …)
+///   1. typePicker — choose what to create (Event, Asset, Fund, …)
 ///   2. fields     — fill the builder's requiredFields
 ///   3. options    — toggle capability blocks (filtered by resource type)
-///   4. submit     — route to the selected ResourceBuilder
+///   4. rules      — pick suggested rules grouped by enabled capability
+///   5. review     — read-only summary before commit
+///
+/// Founder framing 2026-05-10: resources are created from composable
+/// capabilities + rules, not hardcoded vertical flows. The step order
+/// mirrors the user's mental model — "what is this? / fill details /
+/// add options / set agreements / confirm".
 ///
 /// Persists step state so back/forward navigation feels natural.
 public enum ResourceWizardStep: Int, Sendable, CaseIterable {
     case typePicker
     case fields
     case options
+    case rules
+    case review
 }
 
 @Observable @MainActor
@@ -26,6 +34,10 @@ public final class ResourceWizardCoordinator {
     public private(set) var selectedBuilder: (any ResourceBuilder)?
     public var basicFields: [String: JSONConfig] = [:]
     public var enabledCapabilities: Set<String> = []
+    /// Suggested rules the user has toggled ON in step 4. Keyed by the
+    /// composite "blockId.slug" so the same rule slug declared by two
+    /// different capabilities can coexist independently.
+    public var selectedSuggestedRules: Set<String> = []
     /// Recurrence pattern when "recurrence" capability is enabled.
     /// Shape: { frequency: "weekly"|"biweekly"|"monthly", dayOfWeek: int,
     /// hour: int, minute: int }. Empty when recurrence is off.
@@ -78,6 +90,11 @@ public final class ResourceWizardCoordinator {
             }
         }
         enabledCapabilities = defaultCapabilitiesFor(builder)
+        // Pre-select every suggested rule from the auto-enabled
+        // capabilities so step 4 opens with sensible defaults — the user
+        // sees "RSVP closes 24h before" already ticked, can toggle off if
+        // they don't want it.
+        selectedSuggestedRules = defaultSelectedRules()
         step = .fields
     }
 
@@ -86,12 +103,25 @@ public final class ResourceWizardCoordinator {
         case .typePicker: return
         case .fields:     step = .typePicker; selectedBuilder = nil
         case .options:    step = .fields
+        case .rules:      step = .options
+        case .review:     step = hasAnySuggestedRules ? .rules : .options
         }
     }
 
     public func advanceFromFields() {
         guard validateRequiredFields() else { return }
         step = .options
+    }
+
+    public func advanceFromOptions() {
+        // Skip step 4 when no enabled capability advertises any
+        // suggested rules — there's nothing to pick. Drops the user
+        // straight to review.
+        step = hasAnySuggestedRules ? .rules : .review
+    }
+
+    public func advanceFromRules() {
+        step = .review
     }
 
     public var canAdvanceFromFields: Bool {
@@ -120,6 +150,16 @@ public final class ResourceWizardCoordinator {
                     enabledCapabilities.remove(block.id)
                 }
             }
+            // Drop the just-disabled block's suggested rule picks so
+            // they don't haunt the review/submit if the user re-enables
+            // a different capability with the same slug.
+            if let block = availableCapabilityBlocks.first(where: { $0.id == blockId }) {
+                for template in block.suggestedRules {
+                    selectedSuggestedRules.remove(
+                        suggestedRuleKey(blockId: blockId, slug: template.slug)
+                    )
+                }
+            }
         } else {
             enabledCapabilities.insert(blockId)
             // Pull in transitive deps.
@@ -127,12 +167,53 @@ public final class ResourceWizardCoordinator {
                 for dep in block.dependencies {
                     enabledCapabilities.insert(dep)
                 }
+                // Pre-select this block's suggested rules so the user
+                // doesn't have to step through and re-tick them.
+                for template in block.suggestedRules {
+                    selectedSuggestedRules.insert(
+                        suggestedRuleKey(blockId: blockId, slug: template.slug)
+                    )
+                }
             }
         }
     }
 
     public func isCapabilityEnabled(_ blockId: String) -> Bool {
         enabledCapabilities.contains(blockId)
+    }
+
+    // MARK: - Suggested rules (Step 4)
+
+    /// Suggested rules from every enabled capability. Used by step 4 to
+    /// render the toggle list and by submit to materialize the user's
+    /// picks into `RuleDraft` rows.
+    public var availableSuggestedRules: [(block: any CapabilityBlock, template: RuleTemplate)] {
+        availableCapabilityBlocks
+            .filter { enabledCapabilities.contains($0.id) }
+            .flatMap { block in
+                block.suggestedRules.map { (block: block, template: $0) }
+            }
+    }
+
+    public var hasAnySuggestedRules: Bool {
+        !availableSuggestedRules.isEmpty
+    }
+
+    public func suggestedRuleKey(blockId: String, slug: String) -> String {
+        "\(blockId).\(slug)"
+    }
+
+    public func isSuggestedRuleSelected(blockId: String, slug: String) -> Bool {
+        selectedSuggestedRules.contains(suggestedRuleKey(blockId: blockId, slug: slug))
+    }
+
+    public func toggleSuggestedRule(blockId: String, slug: String) {
+        let key = suggestedRuleKey(blockId: blockId, slug: slug)
+        if selectedSuggestedRules.contains(key) {
+            selectedSuggestedRules.remove(key)
+        } else {
+            selectedSuggestedRules.insert(key)
+        }
     }
 
     // MARK: - Submit
@@ -159,6 +240,25 @@ public final class ResourceWizardCoordinator {
             ])
             : nil
 
+        // Materialize selected suggested rules into RuleDraft rows so the
+        // builder can hand them to the rule repo at create time. The
+        // template's `defaultConfig` flows into the trigger's config jsonb
+        // so server-side evaluators see the right thresholds.
+        let initialRules: [RuleDraft] = availableSuggestedRules.compactMap { pair in
+            guard isSuggestedRuleSelected(blockId: pair.block.id, slug: pair.template.slug) else {
+                return nil
+            }
+            return RuleDraft(
+                slug: pair.template.slug,
+                name: pair.template.displayName,
+                description: pair.template.summary,
+                isActive: true,
+                trigger: defaultTrigger(for: pair.template),
+                conditions: [RuleCondition(type: .alwaysTrue, config: .object([:]))],
+                consequences: defaultConsequences(for: pair.template)
+            )
+        }
+
         let draft = ResourceDraft(
             groupId: group.id,
             resourceType: builder.resourceType,
@@ -166,7 +266,7 @@ public final class ResourceWizardCoordinator {
             enabledCapabilities: Array(enabledCapabilities),
             capabilityConfigs: [:],
             seriesPattern: seriesPattern,
-            initialRules: []
+            initialRules: initialRules
         )
 
         do {
@@ -213,6 +313,63 @@ public final class ResourceWizardCoordinator {
             return defaults
         }
         return []
+    }
+
+    /// Pre-selected suggested rules at builder-pick time. Honors every
+    /// auto-enabled capability so the user opens step 4 with the
+    /// canonical defaults already ticked.
+    private func defaultSelectedRules() -> Set<String> {
+        var picks: Set<String> = []
+        for block in availableCapabilityBlocks where enabledCapabilities.contains(block.id) {
+            for template in block.suggestedRules {
+                picks.insert(suggestedRuleKey(blockId: block.id, slug: template.slug))
+            }
+        }
+        return picks
+    }
+
+    /// Translates a RuleTemplate's slug into a server-shaped RuleTrigger.
+    /// `defaultConfig` from the template flows into the trigger's `config`
+    /// jsonb when the slug implies extra params (e.g. `hours` for an
+    /// hours-before trigger). Unknown slugs fall back to `.unknown(slug)`
+    /// — forward-compat: a catalog row added server-side renders today
+    /// even without an iOS enum case.
+    private func defaultTrigger(for template: RuleTemplate) -> RuleTrigger {
+        let slug = template.slug.lowercased()
+        let eventType: SystemEventType
+        if slug.contains("late_arrival") || slug.contains("check_in") {
+            eventType = .checkInRecorded
+        } else if slug.contains("same_day") || slug.contains("late_cancel") {
+            eventType = .rsvpChangedSameDay
+        } else if slug.contains("rsvp_deadline") || slug.contains("rsvp_pending") {
+            eventType = .rsvpDeadlinePassed
+        } else if slug.contains("closed") || slug.contains("event_closed") {
+            eventType = .eventClosed
+        } else if slug.contains("hours_before") || slug.contains("reminder") {
+            eventType = .hoursBeforeEvent
+        } else {
+            eventType = .unknown(template.slug)
+        }
+
+        var configMap: [String: JSONConfig] = [:]
+        for (k, v) in template.defaultConfig where k != "amount" {
+            if let i = Int(v) { configMap[k] = .int(i) } else { configMap[k] = .string(v) }
+        }
+        return RuleTrigger(eventType: eventType, config: .object(configMap))
+    }
+
+    /// Default consequences inferred from `defaultConfig.amount`. V1 only
+    /// generates a `fine` consequence; richer consequences arrive when
+    /// the RuleTemplate gains a `consequenceType` field.
+    private func defaultConsequences(for template: RuleTemplate) -> [RuleConsequence] {
+        if let raw = template.defaultConfig["amount"], let amount = Int(raw) {
+            return [
+                RuleConsequence(type: .fine, config: .object(["amount": .int(amount)]))
+            ]
+        }
+        return [
+            RuleConsequence(type: .fine, config: .object(["amount": .int(200)]))
+        ]
     }
 
     private func userFacing(error: ResourceBuilderError) -> String {
