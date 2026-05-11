@@ -318,6 +318,7 @@ public struct EventDetailView: View {
             }
             descriptionSection
             eventCapabilitiesSection
+            activityFeedSection
         }
         .padding(.top, RuulSpacing.xl)
         .padding(.bottom, RuulSpacing.s12)
@@ -512,6 +513,44 @@ public struct EventDetailView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
         }
+    }
+
+    // MARK: - Activity feed — capability-driven section reused from the
+    // universal resource detail catalog. Renders system_events filtered to
+    // this event so the user sees a "memory of this event" timeline
+    // (eventCreated, rsvpSubmitted, fineOfficialized, …) without leaving
+    // the polished EventDetailView surface. Backed by mig 00097 which
+    // emits eventCreated so brand-new events have a baseline row.
+
+    @ViewBuilder
+    private var activityFeedSection: some View {
+        ActivitySectionView(context: activitySectionContext)
+            .padding(.horizontal, RuulSpacing.lg)
+    }
+
+    /// Minimal `ResourceDetailContext` for the activity section. Only the
+    /// `group.id` + `resource.id` fields are read — the rest of the
+    /// context (display callbacks, enabledCapabilities, member directory)
+    /// is irrelevant for this section's `system_events` query. Building
+    /// the context inline keeps EventDetailView's init signature unchanged.
+    private var activitySectionContext: ResourceDetailContext {
+        let row = ResourceRow(
+            id: coordinator.event.id,
+            groupId: coordinator.group.id,
+            resourceType: .event,
+            status: coordinator.event.status.rawValue,
+            metadata: .empty,
+            createdBy: nil,
+            createdAt: coordinator.event.startsAt,
+            updatedAt: coordinator.event.startsAt
+        )
+        return ResourceDetailContext(
+            resource: row,
+            group: coordinator.group,
+            currentUserId: currentUserId,
+            enabledCapabilities: [],
+            displayName: coordinator.event.title
+        )
     }
 
     // MARK: - Event-scoped capability surfaces (Reglas + Movimientos)
