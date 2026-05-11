@@ -42,8 +42,12 @@ public struct EventDetailView: View {
     /// to no-op when a sheet binding was momentarily true earlier in the
     /// session (the dismiss target resolves to the sheet, not the cover).
     public var onClose: (() -> Void)? = nil
+    /// Beta entry point: opens the polymorphic `ResourceDetailSheet`
+    /// for this event so the user can see the capability-driven view
+    /// composed for the same data. nil ⇒ menu entry hidden.
+    public var onOpenAsResource: (() -> Void)? = nil
 
-    public init(coordinator: EventDetailCoordinator, memberLookup: @escaping (UUID) -> (name: String, avatarURL: URL?), memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil, onScannerOpen: @escaping () -> Void, calendarService: CalendarExportService?, onEdit: @escaping () -> Void = {}, computeCanIssueManualFine: @escaping () async -> Bool, makeAddManualFineCoordinator: @escaping () -> AddManualFineCoordinator, makeResourceLedgerCoordinator: @escaping () -> ResourceLedgerCoordinator, makeResourceRulesCoordinator: @escaping () -> ResourceRulesCoordinator, currentUserId: UUID, onClose: (() -> Void)? = nil) {
+    public init(coordinator: EventDetailCoordinator, memberLookup: @escaping (UUID) -> (name: String, avatarURL: URL?), memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil, onScannerOpen: @escaping () -> Void, calendarService: CalendarExportService?, onEdit: @escaping () -> Void = {}, computeCanIssueManualFine: @escaping () async -> Bool, makeAddManualFineCoordinator: @escaping () -> AddManualFineCoordinator, makeResourceLedgerCoordinator: @escaping () -> ResourceLedgerCoordinator, makeResourceRulesCoordinator: @escaping () -> ResourceRulesCoordinator, currentUserId: UUID, onClose: (() -> Void)? = nil, onOpenAsResource: (() -> Void)? = nil) {
         self.coordinator = coordinator
         self.memberLookup = memberLookup
         self.memberWithProfileLookup = memberWithProfileLookup
@@ -56,6 +60,7 @@ public struct EventDetailView: View {
         self.makeResourceRulesCoordinator = makeResourceRulesCoordinator
         self.currentUserId = currentUserId
         self.onClose = onClose
+        self.onOpenAsResource = onOpenAsResource
     }
 
     @State private var qrSheetPresented = false
@@ -608,6 +613,12 @@ public struct EventDetailView: View {
             Spacer()
             navCircleButton(icon: "square.and.arrow.up", label: "Compartir") {
                 shareSheetPresented = true
+            }
+            if let onOpenAsResource {
+                navCircleButton(
+                    icon: "list.bullet.below.rectangle",
+                    label: "Ver como recurso"
+                ) { onOpenAsResource() }
             }
             if coordinator.viewerRole == .host {
                 navCircleButton(icon: "pencil", label: "Editar") { onEdit() }

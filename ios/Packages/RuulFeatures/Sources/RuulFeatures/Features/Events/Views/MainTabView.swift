@@ -75,6 +75,10 @@ public struct MainTabView: View {
     @State private var acuerdosRoute: Bool = false
     /// G1: "Más → Sanciones" push. Routes a `MyFinesView` en el groupTab stack.
     @State private var sancionesRoute: Bool = false
+    /// "Ver como recurso (Beta)" desde EventDetailView. Presenta
+    /// `ResourceDetailSheet` para el mismo event row sin tocar el
+    /// flujo de event detail clásico.
+    @State private var resourceFromEventRoute: ResourceRow?
 
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
     // points), create (new group from scratch), join (with invite code).
@@ -284,6 +288,15 @@ public struct MainTabView: View {
         // Historial / Ajustes all present the same wizard.
         .fullScreenCover(isPresented: $creationRoute) {
             eventCreationScreen
+        }
+        // "Ver como recurso (Beta)" — presents the universal detail
+        // for the same row. Sheet over the event's fullScreenCover so
+        // dismissing returns to the event detail intact.
+        .sheet(item: $resourceFromEventRoute) { row in
+            ResourceDetailSheet(resource: row)
+                .environment(app)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .onChange(of: creationRoute) { wasOpen, isOpen in
             // Refresh on cover dismissal regardless of source tab.
@@ -1363,7 +1376,17 @@ public struct MainTabView: View {
                     )
                 },
                 currentUserId: userId,
-                onClose: { detailRoute = nil }
+                onClose: { detailRoute = nil },
+                onOpenAsResource: {
+                    Task {
+                        // Fetch the polymorphic resources row that mirrors
+                        // this event (mig 00039 dual-write keeps them in
+                        // sync). The resource id equals the event id.
+                        if let row = try? await app.resourceRepo.resource(event.id) {
+                            resourceFromEventRoute = row
+                        }
+                    }
+                }
             )
         )
     }
