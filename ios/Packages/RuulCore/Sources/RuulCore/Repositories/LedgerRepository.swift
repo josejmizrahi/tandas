@@ -19,10 +19,23 @@ public protocol LedgerRepository: Actor {
     func listForResource(_ resourceId: UUID, limit: Int) async throws -> [LedgerEntry]
     /// Entries involving a specific member (either side).
     func listForMember(_ memberId: UUID, limit: Int) async throws -> [LedgerEntry]
-    /// Records a new entry. RLS gates by admin (mig 00078). Phase 3 may
-    /// add a SECURITY DEFINER `record_*` RPC family for finer per-action
-    /// gating.
+    /// Records a new entry via direct INSERT. RLS gates by admin (mig 00078).
+    /// Prefer `recordEntry(...)` which uses the `record_ledger_entry` RPC
+    /// available to any group member (mig 00082).
     func record(_ entry: LedgerEntry) async throws -> LedgerEntry
+    /// Records a money atom via the `record_ledger_entry` RPC (mig 00082).
+    /// Any group member can call. When `resourceId` is set, the entry is
+    /// scoped to that resource (event/fund/asset) per Taxonomy §29.
+    func recordEntry(
+        groupId: UUID,
+        resourceId: UUID?,
+        type: String,
+        amountCents: Int64,
+        fromMemberId: UUID?,
+        toMemberId: UUID?,
+        currency: String,
+        metadata: JSONConfig
+    ) async throws -> LedgerEntry
 }
 
 // MARK: - Mock
@@ -46,6 +59,30 @@ public actor MockLedgerRepository: LedgerRepository {
     }
 
     public func record(_ entry: LedgerEntry) async throws -> LedgerEntry {
+        entries.append(entry)
+        return entry
+    }
+
+    public func recordEntry(
+        groupId: UUID,
+        resourceId: UUID?,
+        type: String,
+        amountCents: Int64,
+        fromMemberId: UUID?,
+        toMemberId: UUID?,
+        currency: String = "MXN",
+        metadata: JSONConfig = .object([:])
+    ) async throws -> LedgerEntry {
+        let entry = LedgerEntry(
+            groupId: groupId,
+            resourceId: resourceId,
+            type: type,
+            amountCents: amountCents,
+            currency: currency,
+            fromMemberId: fromMemberId,
+            toMemberId: toMemberId,
+            metadata: metadata
+        )
         entries.append(entry)
         return entry
     }
@@ -128,6 +165,45 @@ public actor LiveLedgerRepository: LedgerRepository {
                 .insert(entry)
                 .select()
                 .single()
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func recordEntry(
+        groupId: UUID,
+        resourceId: UUID?,
+        type: String,
+        amountCents: Int64,
+        fromMemberId: UUID?,
+        toMemberId: UUID?,
+        currency: String = "MXN",
+        metadata: JSONConfig = .object([:])
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_resource_id: String?
+            let p_type: String
+            let p_amount_cents: Int64
+            let p_from_member_id: String?
+            let p_to_member_id: String?
+            let p_currency: String
+            let p_metadata: JSONConfig
+        }
+        do {
+            return try await client
+                .rpc("record_ledger_entry", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_resource_id: resourceId?.uuidString.lowercased(),
+                    p_type: type,
+                    p_amount_cents: amountCents,
+                    p_from_member_id: fromMemberId?.uuidString.lowercased(),
+                    p_to_member_id: toMemberId?.uuidString.lowercased(),
+                    p_currency: currency,
+                    p_metadata: metadata
+                ))
                 .execute()
                 .value
         } catch {

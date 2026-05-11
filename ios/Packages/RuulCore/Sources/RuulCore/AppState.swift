@@ -171,7 +171,9 @@ public final class AppState {
         let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,
-            capabilityRepo: resourceCapabilityRepo
+            capabilityRepo: resourceCapabilityRepo,
+            seriesRepo: resourceSeriesRepo,
+            resourceRepo: resourceRepo
         )
         let assetBuilder = AssetResourceBuilder(
             slotRepo: slotLifecycleRepo,

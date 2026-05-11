@@ -25,6 +25,10 @@ public struct EventDetailView: View {
     /// Factory invoked when the sheet opens. Captures fineRepo + groupsRepo
     /// + groupId/eventId so the sheet's coordinator gets fresh state per open.
     public let makeAddManualFineCoordinator: () -> AddManualFineCoordinator
+    /// Factory for the event-scoped ledger coordinator. Fresh instance per
+    /// sheet open so any in-flight form state is dropped when the user
+    /// cancels — matches AddManualFineSheet's lifecycle.
+    public let makeEventLedgerCoordinator: () -> EventLedgerCoordinator
     /// Current user id, needed by the sheet to filter members.
     public let currentUserId: UUID
     /// Optional explicit close handler. Called by the X button BEFORE
@@ -35,7 +39,7 @@ public struct EventDetailView: View {
     /// session (the dismiss target resolves to the sheet, not the cover).
     public var onClose: (() -> Void)? = nil
 
-    public init(coordinator: EventDetailCoordinator, memberLookup: @escaping (UUID) -> (name: String, avatarURL: URL?), memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil, onScannerOpen: @escaping () -> Void, calendarService: CalendarExportService?, onEdit: @escaping () -> Void = {}, computeCanIssueManualFine: @escaping () async -> Bool, makeAddManualFineCoordinator: @escaping () -> AddManualFineCoordinator, currentUserId: UUID, onClose: (() -> Void)? = nil) {
+    public init(coordinator: EventDetailCoordinator, memberLookup: @escaping (UUID) -> (name: String, avatarURL: URL?), memberWithProfileLookup: ((UUID) -> MemberWithProfile?)? = nil, onScannerOpen: @escaping () -> Void, calendarService: CalendarExportService?, onEdit: @escaping () -> Void = {}, computeCanIssueManualFine: @escaping () async -> Bool, makeAddManualFineCoordinator: @escaping () -> AddManualFineCoordinator, makeEventLedgerCoordinator: @escaping () -> EventLedgerCoordinator, currentUserId: UUID, onClose: (() -> Void)? = nil) {
         self.coordinator = coordinator
         self.memberLookup = memberLookup
         self.memberWithProfileLookup = memberWithProfileLookup
@@ -44,6 +48,7 @@ public struct EventDetailView: View {
         self.onEdit = onEdit
         self.computeCanIssueManualFine = computeCanIssueManualFine
         self.makeAddManualFineCoordinator = makeAddManualFineCoordinator
+        self.makeEventLedgerCoordinator = makeEventLedgerCoordinator
         self.currentUserId = currentUserId
         self.onClose = onClose
     }
@@ -65,6 +70,10 @@ public struct EventDetailView: View {
     @State private var attendeeMemberRoute: MemberWithProfile?
     @State private var eventRuleSheetPresented = false
     @State private var eventLedgerSheetPresented = false
+    /// Owned by the view so its `entries`/`members` state survives across
+    /// open/close cycles of the sheet — re-opening the same event shows
+    /// the cached list while a background `load()` refreshes it.
+    @State private var ledgerCoordinator: EventLedgerCoordinator?
 
     private let coverHeight: CGFloat = 380
 
@@ -188,15 +197,21 @@ public struct EventDetailView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $eventLedgerSheetPresented) {
-            EventCapabilityPlaceholderSheet(
-                icon: "arrow.left.arrow.right",
-                title: "Movimientos del evento",
-                summary: "Pronto podrás registrar gastos, IOUs y aportaciones tied to this event. El sistema calculará automáticamente quién debe a quién al cerrar el evento.",
-                comingFromPhase: "Phase 3 (Money capability)"
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
+        .ruulSheet(isPresented: $eventLedgerSheetPresented) {
+            if let ledgerCoordinator {
+                EventLedgerSheet(
+                    isPresented: $eventLedgerSheetPresented,
+                    coordinator: ledgerCoordinator,
+                    groupVocabulary: coordinator.group.eventVocabulary
+                )
+            }
+        }
+        .onChange(of: eventLedgerSheetPresented) { _, presented in
+            // Lazy build the coordinator the first time the sheet opens.
+            // Subsequent opens reuse the same instance so entries stay warm.
+            if presented && ledgerCoordinator == nil {
+                ledgerCoordinator = makeEventLedgerCoordinator()
+            }
         }
     }
 

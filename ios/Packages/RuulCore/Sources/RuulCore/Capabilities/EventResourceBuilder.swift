@@ -31,16 +31,27 @@ public actor EventResourceBuilder: ResourceBuilder {
     /// lands. nil keeps backwards compat for callers that don't yet
     /// pass the repo (mocks, previews, tests).
     private let capabilityRepo: (any ResourceCapabilityRepository)?
+    /// Optional. When injected + draft.seriesPattern is set, the builder
+    /// creates a ResourceSeries row first and links the event to it via
+    /// resources.series_id (post-event UPDATE).
+    private let seriesRepo: (any ResourceSeriesRepository)?
+    /// Optional. Used to set resources.series_id after both the
+    /// ResourceSeries and the event are created.
+    private let resourceRepo: (any ResourceRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.builder.event")
 
     public init(
         eventRepo: any EventRepository,
         ruleRepo: any RuleRepository,
-        capabilityRepo: (any ResourceCapabilityRepository)? = nil
+        capabilityRepo: (any ResourceCapabilityRepository)? = nil,
+        seriesRepo: (any ResourceSeriesRepository)? = nil,
+        resourceRepo: (any ResourceRepository)? = nil
     ) {
         self.eventRepo = eventRepo
         self.ruleRepo = ruleRepo
         self.capabilityRepo = capabilityRepo
+        self.seriesRepo = seriesRepo
+        self.resourceRepo = resourceRepo
     }
 
     public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
@@ -67,15 +78,48 @@ public actor EventResourceBuilder: ResourceBuilder {
         }
         eventDraft.applyRules = draft.enabledCapabilities.contains("rules")
 
+        // Recurrence path: when the wizard sent a seriesPattern, create
+        // a ResourceSeries row first. The event we create below will be
+        // linked to it via resources.series_id (post-event UPDATE — the
+        // events table doesn't have a series_id column; only the
+        // polymorphic resources row does).
+        var createdSeriesId: UUID? = nil
+        if let pattern = draft.seriesPattern, let seriesRepo {
+            let series = ResourceSeries(
+                groupId: draft.groupId,
+                resourceType: "event",
+                pattern: pattern,
+                metadata: .object(["seedTitle": .string(title)]),
+                active: true
+            )
+            do {
+                let created = try await seriesRepo.create(series)
+                createdSeriesId = created.id
+            } catch {
+                log.warning("create series failed: \(error.localizedDescription)")
+            }
+        }
+
         let event: Event
         do {
             event = try await eventRepo.createEvent(
                 eventDraft,
                 in: draft.groupId,
-                isRecurringGenerated: draft.seriesPattern != nil
+                isRecurringGenerated: createdSeriesId != nil
             )
         } catch {
             throw ResourceBuilderError.rpcFailed(error.localizedDescription)
+        }
+
+        // Link the event's resources row to the series via series_id.
+        // Events get dual-written to resources via the mig 00039 trigger
+        // (resources.id = event.id), so the UPDATE finds the row.
+        if let seriesId = createdSeriesId, let resourceRepo {
+            do {
+                try await resourceRepo.setSeriesId(seriesId, on: event.id)
+            } catch {
+                log.warning("link series_id failed: \(error.localizedDescription)")
+            }
         }
 
         // Persist capability rows for the toggled blocks. This is the
@@ -116,7 +160,7 @@ public actor EventResourceBuilder: ResourceBuilder {
 
         return ResourceCreationResult(
             resourceId: event.id,
-            seriesId: nil,
+            seriesId: createdSeriesId,
             enabledCapabilityIds: persistedCapabilityIds.isEmpty
                 ? draft.enabledCapabilities
                 : persistedCapabilityIds,

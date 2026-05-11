@@ -202,24 +202,34 @@ public struct ResourceWizardSheet: View {
     }
 
     private func capabilityRow(for block: any CapabilityBlock) -> some View {
-        HStack(alignment: .top, spacing: RuulSpacing.sm) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(block.displayName)
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                Text(block.summary)
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: RuulSpacing.sm) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(block.displayName)
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text(block.summary)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { coordinator.isCapabilityEnabled(block.id) },
+                    set: { _ in coordinator.toggleCapability(block.id) }
+                ))
+                .labelsHidden()
+                .tint(Color.ruulAccent)
             }
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { coordinator.isCapabilityEnabled(block.id) },
-                set: { _ in coordinator.toggleCapability(block.id) }
-            ))
-            .labelsHidden()
-            .tint(Color.ruulAccent)
+            .padding(RuulSpacing.md)
+            // Inline config sub-card: shown when the capability is on and
+            // has tunable parameters. V1 only the recurrence block has this.
+            if coordinator.isCapabilityEnabled(block.id), block.id == "recurrence" {
+                Divider().padding(.horizontal, RuulSpacing.md)
+                recurrenceInlineConfig
+                    .padding(RuulSpacing.md)
+                    .transition(.opacity)
+            }
         }
-        .padding(RuulSpacing.md)
         .background(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .fill(Color.ruulSurface)
@@ -228,6 +238,67 @@ public struct ResourceWizardSheet: View {
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 1)
         )
+    }
+
+    private var recurrenceInlineConfig: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Frecuencia")
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Picker("Frecuencia", selection: Binding(
+                    get: { coordinator.recurrenceFrequency },
+                    set: { coordinator.recurrenceFrequency = $0 }
+                )) {
+                    Text("Semanal").tag("weekly")
+                    Text("Cada 2 semanas").tag("biweekly")
+                    Text("Mensual").tag("monthly")
+                }
+                .pickerStyle(.segmented)
+            }
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Día")
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Picker("Día", selection: Binding(
+                    get: { coordinator.recurrenceDayOfWeek },
+                    set: { coordinator.recurrenceDayOfWeek = $0 }
+                )) {
+                    Text("Dom").tag(0)
+                    Text("Lun").tag(1)
+                    Text("Mar").tag(2)
+                    Text("Mié").tag(3)
+                    Text("Jue").tag(4)
+                    Text("Vie").tag(5)
+                    Text("Sáb").tag(6)
+                }
+                .pickerStyle(.segmented)
+            }
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Hora")
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                DatePicker(
+                    "Hora",
+                    selection: Binding(
+                        get: {
+                            var comps = DateComponents()
+                            comps.hour = coordinator.recurrenceHour
+                            comps.minute = coordinator.recurrenceMinute
+                            return Calendar.current.date(from: comps) ?? .now
+                        },
+                        set: { newDate in
+                            let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                            coordinator.recurrenceHour = comps.hour ?? 20
+                            coordinator.recurrenceMinute = comps.minute ?? 0
+                        }
+                    ),
+                    displayedComponents: [.hourAndMinute]
+                )
+                .labelsHidden()
+                .datePickerStyle(.compact)
+            }
+        }
     }
 
     // MARK: - Toolbar / state helpers

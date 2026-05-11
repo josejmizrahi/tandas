@@ -1124,6 +1124,14 @@ public struct MainTabView: View {
                         groupsRepo: groupsRepo
                     )
                 },
+                makeEventLedgerCoordinator: { [ledgerRepo = app.ledgerRepo] in
+                    EventLedgerCoordinator(
+                        event: event,
+                        currentUserId: userId,
+                        ledgerRepo: ledgerRepo,
+                        groupsRepo: groupsRepo
+                    )
+                },
                 currentUserId: userId,
                 onClose: { detailRoute = nil }
             )

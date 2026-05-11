@@ -26,6 +26,13 @@ public final class ResourceWizardCoordinator {
     public private(set) var selectedBuilder: (any ResourceBuilder)?
     public var basicFields: [String: JSONConfig] = [:]
     public var enabledCapabilities: Set<String> = []
+    /// Recurrence pattern when "recurrence" capability is enabled.
+    /// Shape: { frequency: "weekly"|"biweekly"|"monthly", dayOfWeek: int,
+    /// hour: int, minute: int }. Empty when recurrence is off.
+    public var recurrenceFrequency: String = "weekly"
+    public var recurrenceDayOfWeek: Int = 4  // Thursday default for cenas
+    public var recurrenceHour: Int = 20
+    public var recurrenceMinute: Int = 0
 
     public private(set) var isCreating: Bool = false
     public private(set) var error: String?
@@ -140,13 +147,25 @@ public final class ResourceWizardCoordinator {
         error = nil
         defer { isCreating = false }
 
+        // Build seriesPattern when "recurrence" capability is enabled.
+        // The builder reads this and creates a ResourceSeries first,
+        // linking the event/slot to it via series_id.
+        let seriesPattern: JSONConfig? = enabledCapabilities.contains("recurrence")
+            ? .object([
+                "frequency": .string(recurrenceFrequency),
+                "dayOfWeek": .int(recurrenceDayOfWeek),
+                "hour":      .int(recurrenceHour),
+                "minute":    .int(recurrenceMinute)
+            ])
+            : nil
+
         let draft = ResourceDraft(
             groupId: group.id,
             resourceType: builder.resourceType,
             basicFields: basicFields,
             enabledCapabilities: Array(enabledCapabilities),
             capabilityConfigs: [:],
-            seriesPattern: nil,
+            seriesPattern: seriesPattern,
             initialRules: []
         )
 

@@ -29,6 +29,13 @@ public protocol ResourceRepository: Actor {
     /// Fetches a single resource row by id. Throws `ResourceRowError.notFound`
     /// when the id is unknown or RLS hides it.
     func resource(_ id: UUID) async throws -> ResourceRow
+
+    /// Links an existing resource to a ResourceSeries via
+    /// `resources.series_id`. Used by EventResourceBuilder when the
+    /// wizard's recurrence capability is enabled — after creating the
+    /// event (via the events table dual-write trigger), the resources
+    /// row needs its series_id set.
+    func setSeriesId(_ seriesId: UUID, on resourceId: UUID) async throws
 }
 
 // MARK: - Mock
@@ -67,6 +74,15 @@ public actor MockResourceRepository: ResourceRepository {
             throw ResourceRowError.notFound
         }
         return row
+    }
+
+    public func setSeriesId(_ seriesId: UUID, on resourceId: UUID) async throws {
+        // Mock no-op — we don't model series_id on ResourceRow yet in
+        // mock since the column was added in mig 00078 and the iOS
+        // model doesn't surface it as a stored field. Tests for series
+        // linkage would need to extend the mock.
+        _ = seriesId
+        _ = resourceId
     }
 
     /// Test helper: append a row to the in-memory store.
@@ -124,6 +140,19 @@ public actor LiveResourceRepository: ResourceRepository {
             if (error as NSError).localizedDescription.contains("0 rows") {
                 throw ResourceRowError.notFound
             }
+            throw ResourceRowError.fetchFailed(error.localizedDescription)
+        }
+    }
+
+    public func setSeriesId(_ seriesId: UUID, on resourceId: UUID) async throws {
+        struct Patch: Encodable { let series_id: String }
+        do {
+            _ = try await client
+                .from("resources")
+                .update(Patch(series_id: seriesId.uuidString.lowercased()))
+                .eq("id", value: resourceId.uuidString.lowercased())
+                .execute()
+        } catch {
             throw ResourceRowError.fetchFailed(error.localizedDescription)
         }
     }
