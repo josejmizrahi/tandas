@@ -211,7 +211,6 @@ public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
 /// group truly has no resources of any kind yet.
 private struct GroupResourcesSubTab: View {
     @Environment(AppState.self) private var app
-    @Environment(\.eventsRepoLoader) private var eventsRepoLoader
     public let group: RuulCore.Group
     public let onOpenEvent: (Event) -> Void
     @State private var resources: [ResourceRow] = []
@@ -235,7 +234,7 @@ private struct GroupResourcesSubTab: View {
                 } else {
                     ForEach(resources) { row in
                         Button {
-                            opened = row
+                            tap(row)
                         } label: {
                             resourceCard(row)
                         }
@@ -301,16 +300,37 @@ private struct GroupResourcesSubTab: View {
         }
     }
 
+    /// Tap routing: an event resource opens the rich event-specific
+    /// surface (cover/parallax/RSVP) via the parent's onOpenEvent
+    /// callback. Everything else opens the universal capability-driven
+    /// `ResourceDetailSheet`. Splitting by type here — instead of
+    /// hiding events from the list — keeps the polymorphic semantics
+    /// ("an event is a resource") visible while preserving the polished
+    /// EventDetailView UX.
+    private func tap(_ row: ResourceRow) {
+        if row.resourceType == .event {
+            Task { await openEvent(rowId: row.id) }
+        } else {
+            opened = row
+        }
+    }
+
+    @MainActor
+    private func openEvent(rowId: UUID) async {
+        // resources.id mirrors events.id post mig 00039 so the lookup
+        // is a single primary-key fetch.
+        if let event = try? await app.eventRepo.event(rowId) {
+            onOpenEvent(event)
+        }
+    }
+
     @MainActor
     private func load() async {
         defer { isLoading = false }
-        // Events deliberately excluded — they have a dedicated polished
-        // detail surface (`EventDetailView`) reached from the Overview
-        // sub-tab and the Home hero. Listing them here would route the
-        // same entity through `ResourceDetailSheet` and create the
-        // "two UIs for the same thing" inconsistency the audit called
-        // out. Phase 2+ resource types live here.
-        let types: [ResourceType] = [.asset, .slot, .fund, .booking, .contribution]
+        // Polymorphic list across every resource type the group can
+        // host. Events included — they're resources too. The tap router
+        // decides which detail surface to present.
+        let types: [ResourceType] = [.event, .asset, .slot, .fund, .booking, .contribution]
         do {
             resources = try await app.resourceRepo.list(
                 in: group.id,
