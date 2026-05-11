@@ -22,7 +22,12 @@ public struct MainTabView: View {
     @State private var editRoute: Event?
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
     @State private var calendarService = CalendarExportService()
-    @State private var selectedTab: Tab = .home
+    @State private var selectedTab: Tab = .groups
+    /// G2.b: when set, the Grupos tab's NavigationStack pushes the
+    /// GroupTabView destination for this group. nil ⇒ user is on the
+    /// list root. Tap a group → set this + sync app.activeGroupId so
+    /// the create cover knows which group to operate in.
+    @State private var selectedGroupRoute: RuulCore.Group?
     /// Bumped after the ResourceWizard creates a non-event resource so
     /// HomeView's nonEventResources section re-fetches via .task(id:).
     @State private var resourceRefreshToken: UUID = UUID()
@@ -89,25 +94,25 @@ public struct MainTabView: View {
     @State private var leaveGroupInProgress: Bool = false
 
     public enum Tab: String, RuulTabItem, CaseIterable {
-        case home, group, create, history, settings
+        case groups, inbox, create, activity, profile
 
         public var id: String { rawValue }
         public var label: String {
             switch self {
-            case .home:     return "Inicio"
-            case .group:    return "Grupo"
+            case .groups:   return "Grupos"
+            case .inbox:    return "Inbox"
             case .create:   return "Crear"
-            case .history:  return "Historial"
-            case .settings: return "Ajustes"
+            case .activity: return "Actividad"
+            case .profile:  return "Perfil"
             }
         }
         public var symbol: String {
             switch self {
-            case .home:     return "house.fill"
-            case .group:    return "person.3.fill"
+            case .groups:   return "person.3.fill"
+            case .inbox:    return "tray.fill"
             case .create:   return "plus.circle.fill"
-            case .history:  return "clock.arrow.circlepath"
-            case .settings: return "gear"
+            case .activity: return "clock.arrow.circlepath"
+            case .profile:  return "person.crop.circle.fill"
             }
         }
         /// Default `nil` from the protocol extension; runtime badge counts
@@ -132,15 +137,14 @@ public struct MainTabView: View {
         Tab.allCases.map { tab in
             TabBadged(
                 base: tab,
-                badgeCount: tab == .home ? (inboxCoordinator?.actions.count ?? 0) : nil
+                badgeCount: tab == .inbox ? (inboxCoordinator?.actions.count ?? 0) : nil
             )
         }
     }
 
-    /// Native TabView badge for the Home tab (post-Fase 4b: pending inbox
-    /// actions surface as a badge on Inicio since Inbox content lives there).
-    /// Returns 0 when there's nothing pending — SwiftUI hides the badge when
-    /// the count is 0.
+    /// Native TabView badge for the Inbox tab. Pending actions across all
+    /// groups surface here. Returns 0 when there's nothing pending — SwiftUI
+    /// hides the badge when the count is 0.
     private var inboxBadgeCount: Int {
         inboxCoordinator?.actions.count ?? 0
     }
@@ -185,25 +189,25 @@ public struct MainTabView: View {
         // Tapping it doesn't navigate — `createTabIntercept` catches the
         // selection, reverts it, and presents the ResourceWizard cover.
         TabView(selection: createTabIntercept) {
-            homeTab
-                .tabItem { Label(Tab.home.label, systemImage: Tab.home.symbol) }
-                .tag(Tab.home)
+            groupsTab
+                .tabItem { Label(Tab.groups.label, systemImage: Tab.groups.symbol) }
+                .tag(Tab.groups)
+            inboxTab
+                .tabItem { Label(Tab.inbox.label, systemImage: Tab.inbox.symbol) }
+                .tag(Tab.inbox)
                 .badge(inboxBadgeCount)
-            groupTab
-                .tabItem { Label(Tab.group.label, systemImage: Tab.group.symbol) }
-                .tag(Tab.group)
             // The "+" tab. Its body is never shown (selection intercept
             // immediately reverts before the TabView swaps content), but
             // a tab item still needs a destination view to register.
             Color.clear
                 .tabItem { Label(Tab.create.label, systemImage: Tab.create.symbol) }
                 .tag(Tab.create)
-            historyTab
-                .tabItem { Label(Tab.history.label, systemImage: Tab.history.symbol) }
-                .tag(Tab.history)
-            settingsTab
-                .tabItem { Label(Tab.settings.label, systemImage: Tab.settings.symbol) }
-                .tag(Tab.settings)
+            activityTab
+                .tabItem { Label(Tab.activity.label, systemImage: Tab.activity.symbol) }
+                .tag(Tab.activity)
+            profileTab
+                .tabItem { Label(Tab.profile.label, systemImage: Tab.profile.symbol) }
+                .tag(Tab.profile)
         }
         // DS v3 §13.4: tab bar selected-state tint reflects el accent del
         // grupo activo (subtle on-brand cue). Falls back a textPrimary cuando
@@ -295,10 +299,11 @@ public struct MainTabView: View {
 
     // MARK: - Tabs (v3): Grupo / Historial / Ajustes
 
-    /// Tab "Grupo" — composite con sub-tabs Events/Rules/Fines via `GroupTabView`.
-    /// Reemplaza `rulesTab` y absorbe la sub-tab Eventos del antiguo Inicio.
+    /// Dead post-G2.b — the group surface now lives inside groupsTab as a
+    /// pushed destination. Retained briefly as reference; safe to delete
+    /// once the new groupsTab structure has been validated on device.
     @ViewBuilder
-    private var groupTab: some View {
+    private var deprecatedGroupTab: some View {
         NavigationStack {
             SwiftUI.Group {
                 if let rulesCoord = rulesCoordinator,
@@ -390,7 +395,7 @@ public struct MainTabView: View {
     /// homeTab + groupTab + settingsTab stacks, el push ocurre en el tab
     /// destino (switch antes del set para que el push sea visible).
     @ViewBuilder
-    private var historyTab: some View {
+    private var activityTab: some View {
         NavigationStack {
             SwiftUI.Group {
                 if let coord = groupHistoryCoordinator,
@@ -432,12 +437,12 @@ public struct MainTabView: View {
             switch event.eventType {
             case .fineOfficialized, .fineVoided, .finePaid, .fineReminderSent:
                 if let fine = try? await app.fineRepo.fine(id: resourceId) {
-                    selectedTab = .group
+                    selectedTab = .groups
                     fineDetailRoute = fine
                 }
             case .voteOpened, .voteCast, .voteResolved:
                 if let vote = try? await app.voteRepo.vote(id: resourceId) {
-                    selectedTab = .group
+                    selectedTab = .groups
                     voteDetailRoute = VoteDetailRouteContext(vote: vote)
                 }
             case .appealCreated, .appealResolved:
@@ -445,12 +450,12 @@ public struct MainTabView: View {
                 // routear al FineDetailView (que ya muestra appeal state).
                 if let appeal = try? await app.appealRepo.appeal(id: resourceId),
                    let fine = try? await app.fineRepo.fine(id: appeal.fineId) {
-                    selectedTab = .group
+                    selectedTab = .groups
                     fineDetailRoute = fine
                 }
             case .eventClosed, .eventCreated, .checkInRecorded:
                 if let evt = try? await app.eventRepo.event(resourceId) {
-                    selectedTab = .home
+                    selectedTab = .groups
                     detailRoute = evt
                 }
             case .ruleEnabledChanged, .ruleAmountChanged:
@@ -458,7 +463,7 @@ public struct MainTabView: View {
                 // repo.rule(id:) — buscamos por id sobre la lista cacheada.
                 if let rules = rulesCoordinator?.rules,
                    let rule = rules.first(where: { $0.id == resourceId }) {
-                    selectedTab = .group
+                    selectedTab = .groups
                     ruleDetailRoute = rule
                 }
             default:
@@ -472,7 +477,7 @@ public struct MainTabView: View {
     /// `SettingsTabView`. `onOpenHistory` ahora salta a la tab Historial
     /// directamente en lugar de pushear adentro de la stack de Ajustes.
     @ViewBuilder
-    private var settingsTab: some View {
+    private var profileTab: some View {
         NavigationStack {
             SwiftUI.Group {
                 if let pCoord = profileCoordinator,
@@ -483,7 +488,7 @@ public struct MainTabView: View {
                         profileCoordinator: pCoord,
                         onOpenMyFines: { myFinesRoute = true },
                         onOpenMyLedger: { myLedgerRoute = true },
-                        onOpenHistory: { selectedTab = .history },
+                        onOpenHistory: { selectedTab = .activity },
                         onOpenSettings: { settingsRoute = true },
                         onEditProfile: { editProfilePresented = true },
                         onSignOut: {
@@ -679,7 +684,7 @@ public struct MainTabView: View {
             if app.groups.first(where: { $0.id == group.id }) == nil {
                 app.activeGroupId = app.groups.first?.id
             }
-            selectedTab = .home
+            selectedTab = .groups
         } catch {
             // No tracked-error path por ahora; en V2 mostrar toast.
             // Coordinator-level errors (que sí muestran retry) pertenecen al
@@ -868,7 +873,7 @@ public struct MainTabView: View {
         case .rsvpPending:
             if let event = try? await app.eventRepo.event(action.referenceId) {
                 detailRoute = event
-                selectedTab = .home
+                selectedTab = .groups
             }
         case .ruleChangeApplyPending:
             // Phase G3: action.referenceId === vote_id (see migration 00032).
@@ -891,7 +896,173 @@ public struct MainTabView: View {
     }
 
     @ViewBuilder
-    private var homeTab: some View {
+    private var groupsTab: some View {
+        NavigationStack {
+            GroupsListView(
+                onSelectGroup: { group in
+                    app.activeGroupId = group.id
+                    selectedGroupRoute = group
+                },
+                onCreateGroup: { createGroupPresented = true },
+                onJoinGroup: { joinGroupPresented = true }
+            )
+            .navigationDestination(item: $selectedGroupRoute) { group in
+                groupDestinationContent(for: group)
+            }
+        }
+    }
+
+    /// Inbox tab — cross-group pending actions. Tapping an action routes
+    /// to the canonical detail via the same `handleInboxAction` used by
+    /// the legacy home pendings section. Detail pushes appear on the
+    /// Grupos tab stack (handleInboxAction switches selectedTab first).
+    @ViewBuilder
+    private var inboxTab: some View {
+        NavigationStack {
+            if let coord = inboxCoordinator {
+                ActionInboxView(coordinator: coord) { action in
+                    Task { await handleInboxAction(action) }
+                }
+            } else {
+                ZStack {
+                    Color.ruulBackground.ignoresSafeArea()
+                    RuulLoadingState()
+                }
+            }
+        }
+    }
+
+    /// Inner destination rendered when a row is tapped in GroupsListView.
+    /// Hosts the full GroupTabView (Resumen/Recursos/Dinero/Miembros/Más)
+    /// plus every detail push that lives inside a group context.
+    @ViewBuilder
+    private func groupDestinationContent(for group: RuulCore.Group) -> some View {
+        SwiftUI.Group {
+            if let rulesCoord = rulesCoordinator,
+               app.activeGroup?.id == group.id {
+                GroupTabView(
+                    activeGroup: group,
+                    userId: app.session?.user.id ?? UUID(),
+                    rulesCoordinator: rulesCoord,
+                    myFinesCoordinator: myFinesCoordinator,
+                    inboxCoordinator: inboxCoordinator,
+                    upcomingEvents: homeCoordinator?.upcomingEvents ?? [],
+                    myRSVPs: homeCoordinator?.myRSVPs ?? [:],
+                    onSwitchGroup: { selectedGroupRoute = nil },
+                    onOpenEvent: { event in detailRoute = event },
+                    onOpenFine: { fine in fineDetailRoute = fine },
+                    onOpenInboxAction: { action in
+                        await handleInboxAction(action)
+                    },
+                    onCreateResource: { creationRoute = true },
+                    onOpenAcuerdos: { acuerdosRoute = true },
+                    onOpenDecisiones: {
+                        openVotesRoute = OpenVotesRouteContext(id: group.id)
+                    },
+                    onOpenSanciones: { sancionesRoute = true }
+                )
+                .navigationDestination(item: $openVotesRoute) { _ in
+                    openVotesDestination
+                }
+                .navigationDestination(item: $voteDetailRoute) { ctx in
+                    voteDetailDestination(for: ctx)
+                }
+                .navigationDestination(item: $fineDetailRoute) { fine in
+                    fineDetailScreen(fine)
+                }
+                .navigationDestination(item: $voteDetailRouteFromInbox) { ctx in
+                    voteDetailDestination(for: ctx)
+                }
+                .onChange(of: voteDetailRouteFromInbox) { wasSet, isNil in
+                    if wasSet != nil && isNil == nil {
+                        Task { await inboxCoordinator?.refresh() }
+                    }
+                }
+                .navigationDestination(item: $reviewProposedRoute) { event in
+                    reviewProposedScreen(event)
+                }
+                .onChange(of: reviewProposedRoute) { wasSet, isNil in
+                    if wasSet != nil && isNil == nil {
+                        Task {
+                            async let i: Void? = inboxCoordinator?.refresh()
+                            async let f: Void? = myFinesCoordinator?.refresh()
+                            _ = await (i, f)
+                        }
+                    }
+                }
+                .navigationDestination(isPresented: $acuerdosRoute) {
+                    RulesView(
+                        coordinator: rulesCoord,
+                        voteRepo: app.voteRepo,
+                        userActionRepo: app.userActionRepo,
+                        onSeeOpenVotes: {
+                            openVotesRoute = OpenVotesRouteContext(id: group.id)
+                        },
+                        onSelectRule: { rule in ruleDetailRoute = rule }
+                    )
+                }
+                .navigationDestination(isPresented: $sancionesRoute) {
+                    if let fCoord = myFinesCoordinator {
+                        MyFinesView(coordinator: fCoord) { fine in
+                            fineDetailRoute = fine
+                        }
+                    }
+                }
+                .navigationDestination(item: $ruleDetailRoute) { rule in
+                    RuleDetailView(
+                        rule: rule,
+                        canEditRules: rulesCoord.canEditRules,
+                        onEdit: {
+                            ruleEditRoute = RuleEditRouteContext(
+                                rule: rule,
+                                group: group,
+                                proposedAmount: nil,
+                                pendingActionId: nil
+                            )
+                        },
+                        onProposeChange: {
+                            ruleChangeInitialRule = rule
+                            createRuleChangePresented = true
+                        }
+                    )
+                }
+                .ruulSheet(item: $voteOnAppealRoute) { ctx in
+                    voteOnAppealSheet(ctx)
+                }
+                .fullScreenCover(item: $detailRoute) { event in
+                    eventDetailScreen(event)
+                }
+                .onChange(of: detailRoute) { wasOpen, isOpen in
+                    if wasOpen != nil && isOpen == nil {
+                        Task {
+                            async let h: Void = homeCoordinator?.refresh(force: true) ?? ()
+                            async let i: Void? = inboxCoordinator?.refresh()
+                            _ = await (h, i)
+                        }
+                    }
+                }
+                .fullScreenCover(item: $scannerRoute) { scannerCoord in
+                    CheckInScannerView(coordinator: scannerCoord)
+                }
+                .fullScreenCover(item: $editRoute) { event in
+                    eventEditScreen(event)
+                }
+                .toolbar(.hidden, for: .navigationBar)
+            } else {
+                // Coordinator rebuild in flight after activeGroupId change.
+                ZStack {
+                    Color.ruulBackground.ignoresSafeArea()
+                    RuulLoadingState()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deprecatedHomeTab: some View {
+        // Retained temporarily as dead code while we verify the new
+        // groupsTab structure on device. Safe to delete after a few
+        // iterations of validation.
         NavigationStack {
             SwiftUI.Group {
                 if let coord = homeCoordinator {
@@ -1152,25 +1323,37 @@ public struct MainTabView: View {
                         groupsRepo: groupsRepo
                     )
                 },
-                makeEventLedgerCoordinator: { [ledgerRepo = app.ledgerRepo] in
-                    EventLedgerCoordinator(
-                        event: event,
-                        currentUserId: userId,
+                makeResourceLedgerCoordinator: { [ledgerRepo = app.ledgerRepo] in
+                    let ctx = ResourceLedgerContext(
+                        groupId: event.groupId,
+                        resourceId: event.id,
+                        resourceType: "event",
+                        displayName: event.title,
+                        currentUserId: userId
+                    )
+                    return ResourceLedgerCoordinator(
+                        context: ctx,
                         ledgerRepo: ledgerRepo,
                         groupsRepo: groupsRepo
                     )
                 },
-                makeEventRulesCoordinator: { [ruleRepo = app.ruleRepo, registry = app.ruleShapeRegistry] in
+                makeResourceRulesCoordinator: { [ruleRepo = app.ruleRepo, registry = app.ruleShapeRegistry] in
                     // canCreate = group admin OR event host. Mirrors the
-                    // server-side gating in create_event_rule (mig 00083)
+                    // server-side gating in create_resource_rule (mig 00086)
                     // so the CTA is hidden when the user can't actually
                     // submit (avoids a 'permission denied' surface).
                     let me = memberDirectorySnapshot[userId]?.member
                     let isAdmin = me?.isFounder == true
                     let isHost = event.hostId == userId
-                    return EventRulesCoordinator(
-                        event: event,
-                        canCreate: isAdmin || isHost,
+                    let ctx = ResourceRuleContext(
+                        groupId: event.groupId,
+                        resourceId: event.id,
+                        resourceType: "event",
+                        displayName: event.title,
+                        canCreate: isAdmin || isHost
+                    )
+                    return ResourceRulesCoordinator(
+                        context: ctx,
                         ruleRepo: ruleRepo,
                         shapeRegistry: registry
                     )

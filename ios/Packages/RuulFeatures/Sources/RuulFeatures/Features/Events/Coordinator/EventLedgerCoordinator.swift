@@ -3,20 +3,27 @@ import Observation
 import OSLog
 import RuulCore
 
-/// Coordinator backing the event-scoped Money surface. Loads ledger entries
-/// for a single event (`resource_id = event.id` per Taxonomy §29 scope
-/// contract), exposes a per-member balance projection computed client-side,
-/// and drives the AddLedgerEntrySheet form.
+// File name kept for git continuity; the type is the polymorphic
+// `ResourceLedgerCoordinator` that drives the Money surface for ANY
+// Resource — events, assets, funds. Founder framing 2026-05-10:
+// Money is a capability section on ResourceDetail, not an event-only
+// feature.
+
+/// Coordinator backing the per-resource Money surface. Loads ledger
+/// entries scoped to a single resource (`resource_id = context.resourceId`
+/// per Taxonomy §29), exposes a per-member balance projection computed
+/// client-side, and drives the AddLedgerEntrySheet form.
 ///
 /// Append-only: there is no edit / delete path here intentionally. The
 /// rule engine + admin tooling handles corrections via compensating
 /// entries in Phase 4+.
 @Observable @MainActor
-public final class EventLedgerCoordinator {
+public final class ResourceLedgerCoordinator {
     public enum EntryKind: String, CaseIterable, Identifiable, Hashable {
         case expense        // Yo pagué algo por el grupo
         case contribution   // Yo aporté al evento (pot, fund-shaped)
         case settlement     // Yo le pagué a alguien (cierre de IOU)
+        case payout         // El grupo le paga a un miembro (pot → miembro)
 
         public var id: String { rawValue }
 
@@ -25,6 +32,7 @@ public final class EventLedgerCoordinator {
             case .expense:      return "Gasto"
             case .contribution: return "Aportación"
             case .settlement:   return "Pago a un miembro"
+            case .payout:       return "Pago del grupo"
             }
         }
 
@@ -33,6 +41,7 @@ public final class EventLedgerCoordinator {
             case .expense:      return "cart.fill"
             case .contribution: return "arrow.up.bin.fill"
             case .settlement:   return "arrow.left.arrow.right"
+            case .payout:       return "tray.and.arrow.down.fill"
             }
         }
 
@@ -41,6 +50,7 @@ public final class EventLedgerCoordinator {
             case .expense:      return "Yo pagué algo por el grupo. El sistema lo cuenta a mi favor."
             case .contribution: return "Yo aporté dinero al evento. Suma a un pot común."
             case .settlement:   return "Yo le pagué directo a otro miembro (cierre de cuenta)."
+            case .payout:       return "El grupo (pot común) le paga a un miembro — ej. reembolso al host."
             }
         }
 
@@ -51,19 +61,30 @@ public final class EventLedgerCoordinator {
             case .expense:      return LedgerEntry.Kind.expense
             case .contribution: return LedgerEntry.Kind.contribution
             case .settlement:   return LedgerEntry.Kind.settlement
+            case .payout:       return LedgerEntry.Kind.payout
             }
         }
 
         /// True when this kind requires the user to pick a `to_member` (the
-        /// counter-party that received the money). Settlement is the only
-        /// directional kind in the slice — expense + contribution treat the
-        /// group as the implicit recipient.
-        public var requiresCounterparty: Bool { self == .settlement }
+        /// counter-party that received the money). Settlement + payout both
+        /// need a recipient — expense + contribution treat the group as the
+        /// implicit recipient.
+        public var requiresCounterparty: Bool {
+            self == .settlement || self == .payout
+        }
+
+        /// True when the `from_member_id` column is recorded as the current
+        /// user. False for payouts where the implicit "from" side is the
+        /// group's collective pot (no specific member).
+        public var requiresFromMember: Bool {
+            self != .payout
+        }
     }
 
-    public let groupId: UUID
-    public let eventId: UUID
-    public let event: Event
+    public let context: ResourceLedgerContext
+    public var groupId: UUID    { context.groupId }
+    public var resourceId: UUID { context.resourceId }
+    public var displayName: String { context.displayName }
 
     public private(set) var entries: [LedgerEntry] = []
     public private(set) var members: [MemberWithProfile] = []
@@ -80,21 +101,17 @@ public final class EventLedgerCoordinator {
     /// `.settlement`. The payer (`from_member`) is always the current user.
     public var formCounterpartyMemberId: UUID?
 
-    private let currentUserId: UUID
+    private var currentUserId: UUID { context.currentUserId }
     private let ledgerRepo: any LedgerRepository
     private let groupsRepo: any GroupsRepository
-    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "event.ledger")
+    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.ledger")
 
     public init(
-        event: Event,
-        currentUserId: UUID,
+        context: ResourceLedgerContext,
         ledgerRepo: any LedgerRepository,
         groupsRepo: any GroupsRepository
     ) {
-        self.event = event
-        self.groupId = event.groupId
-        self.eventId = event.id
-        self.currentUserId = currentUserId
+        self.context = context
         self.ledgerRepo = ledgerRepo
         self.groupsRepo = groupsRepo
     }
@@ -106,7 +123,7 @@ public final class EventLedgerCoordinator {
         error = nil
         defer { isLoading = false }
         do {
-            async let entriesTask = ledgerRepo.listForResource(eventId, limit: 200)
+            async let entriesTask = ledgerRepo.listForResource(resourceId, limit: 200)
             async let membersTask = groupsRepo.membersWithProfiles(of: groupId)
             entries = try await entriesTask
             members = try await membersTask.sorted { lhs, rhs in
@@ -129,10 +146,13 @@ public final class EventLedgerCoordinator {
         members.first(where: { $0.member.userId == currentUserId })?.member.id
     }
 
-    /// Counter-party options for the settlement kind: every active member
-    /// except the current user, founders first then alphabetical.
+    /// Counter-party options for the active form kind. For settlement we
+    /// exclude the current user (you can't settle with yourself). For payout
+    /// every member is eligible — the host of a dinner getting reimbursed
+    /// from the pot is the canonical case.
     public var counterpartyOptions: [MemberWithProfile] {
-        members.filter { $0.member.userId != currentUserId }
+        if formKind == .payout { return members }
+        return members.filter { $0.member.userId != currentUserId }
     }
 
     /// Parsed amount in cents. Returns nil for empty/negative/unparseable.
@@ -156,7 +176,9 @@ public final class EventLedgerCoordinator {
     public var canSubmit: Bool {
         guard !isSubmitting else { return false }
         guard parsedAmountCents != nil else { return false }
-        guard currentMemberId != nil else { return false }
+        // Payouts don't need a `from_member` (the pot is the implicit source),
+        // but every other kind does — we record the current user as `from`.
+        if formKind.requiresFromMember && currentMemberId == nil { return false }
         if formKind.requiresCounterparty && formCounterpartyMemberId == nil {
             return false
         }
@@ -179,6 +201,8 @@ public final class EventLedgerCoordinator {
         for entry in entries {
             // Expense + contribution: payer's balance goes up (group owes them).
             // Settlement: payer down, recipient up (debt closes the other way).
+            // Payout: pot pays a member — that member's "group owes them"
+            // tally goes DOWN since they just received what they were owed.
             switch entry.type {
             case LedgerEntry.Kind.expense, LedgerEntry.Kind.contribution:
                 if let from = entry.fromMemberId {
@@ -191,8 +215,12 @@ public final class EventLedgerCoordinator {
                 if let to = entry.toMemberId {
                     net[to, default: 0] -= entry.amountCents
                 }
+            case LedgerEntry.Kind.payout:
+                if let to = entry.toMemberId {
+                    net[to, default: 0] -= entry.amountCents
+                }
             default:
-                // Other types (fine_issued, fine_paid, payout) — skip in this
+                // Other types (fine_issued, fine_paid) — skip in this
                 // event-scoped projection. Phase 4 will fold them in.
                 break
             }
@@ -231,11 +259,11 @@ public final class EventLedgerCoordinator {
 
     @discardableResult
     public func submit() async -> LedgerEntry? {
-        guard canSubmit,
-              let amountCents = parsedAmountCents,
-              let fromMember = currentMemberId else {
-            return nil
-        }
+        guard canSubmit, let amountCents = parsedAmountCents else { return nil }
+        // Payouts: `from_member_id` stays nil (the pot is the implicit
+        // source). Everything else records the current user as `from`.
+        let fromMember: UUID? = formKind.requiresFromMember ? currentMemberId : nil
+        if formKind.requiresFromMember, fromMember == nil { return nil }
         let toMember: UUID? = formKind.requiresCounterparty ? formCounterpartyMemberId : nil
         let trimmedNote = formNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let metadata: JSONConfig = trimmedNote.isEmpty
@@ -249,7 +277,7 @@ public final class EventLedgerCoordinator {
         do {
             let entry = try await ledgerRepo.recordEntry(
                 groupId: groupId,
-                resourceId: eventId,
+                resourceId: resourceId,
                 type: formKind.ledgerType,
                 amountCents: amountCents,
                 fromMemberId: fromMember,

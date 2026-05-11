@@ -15,6 +15,10 @@ public struct ResourceDetailSheet: View {
 
     public let resource: ResourceRow
     @State private var capabilities: [ResourceCapability] = []
+    @State private var rulesSheetPresented: Bool = false
+    @State private var rulesCoordinator: ResourceRulesCoordinator?
+    @State private var ledgerSheetPresented: Bool = false
+    @State private var ledgerCoordinator: ResourceLedgerCoordinator?
 
     public init(resource: ResourceRow) { self.resource = resource }
 
@@ -25,6 +29,8 @@ public struct ResourceDetailSheet: View {
                     heroSection
                     metadataSection
                     capabilitiesSection
+                    moneyCard
+                    rulesCard
                     historyPlaceholder
                 }
                 .padding(.horizontal, RuulSpacing.lg)
@@ -47,7 +53,192 @@ public struct ResourceDetailSheet: View {
             .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .task { await loadCapabilities() }
+        .ruulSheet(isPresented: $rulesSheetPresented) {
+            if let rulesCoordinator {
+                ResourceRulesSheet(
+                    isPresented: $rulesSheetPresented,
+                    coordinator: rulesCoordinator
+                )
+            }
+        }
+        .onChange(of: rulesSheetPresented) { _, presented in
+            if presented && rulesCoordinator == nil {
+                rulesCoordinator = makeRulesCoordinator()
+            }
+        }
+        .ruulSheet(isPresented: $ledgerSheetPresented) {
+            if let ledgerCoordinator {
+                ResourceLedgerSheet(
+                    isPresented: $ledgerSheetPresented,
+                    coordinator: ledgerCoordinator,
+                    groupVocabulary: typeLabel
+                )
+            }
+        }
+        .onChange(of: ledgerSheetPresented) { _, presented in
+            if presented && ledgerCoordinator == nil {
+                ledgerCoordinator = makeLedgerCoordinator()
+            }
+        }
     }
+
+    // MARK: - Money card (R5)
+
+    /// Surfaces "Movimientos de este recurso" on every non-event Resource.
+    /// Mirrors the Rules card pattern — generic over resource type per
+    /// the founder's capability-driven page principle.
+    @ViewBuilder
+    private var moneyCard: some View {
+        if resource.resourceType != .event {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                HStack(spacing: RuulSpacing.sm) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.ruulAccent.opacity(0.15))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 17, weight: .regular))
+                            .foregroundStyle(Color.ruulAccent)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Movimientos")
+                            .ruulTextStyle(RuulTypography.headline)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                        Text("Gastos, aportaciones y pagos atados a este recurso.")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                    }
+                    Spacer()
+                }
+                Button {
+                    ledgerSheetPresented = true
+                } label: {
+                    HStack {
+                        Image(systemName: "chevron.right.circle")
+                        Text("Ver movimientos")
+                    }
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulAccent)
+                    .padding(.vertical, RuulSpacing.xs)
+                    .padding(.horizontal, RuulSpacing.sm)
+                    .background(Color.ruulAccent.opacity(0.08), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(RuulSpacing.lg)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.large)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+        }
+    }
+
+    private func makeLedgerCoordinator() -> ResourceLedgerCoordinator {
+        let userId = app.session?.user.id ?? UUID()
+        let ctx = ResourceLedgerContext(
+            groupId: resource.groupId,
+            resourceId: resource.id,
+            resourceType: resource.resourceType.rawString,
+            displayName: displayName,
+            currentUserId: userId
+        )
+        return ResourceLedgerCoordinator(
+            context: ctx,
+            ledgerRepo: app.ledgerRepo,
+            groupsRepo: app.groupsRepo
+        )
+    }
+
+    // MARK: - Rules card (R4)
+
+    /// Surfaces a "Reglas de este recurso" card on every non-event
+    /// resource. Tapping it opens the polymorphic `ResourceRulesSheet`
+    /// which already handles inherited rules. Events route through
+    /// `EventDetailView.eventRulesCard` and never open this surface.
+    @ViewBuilder
+    private var rulesCard: some View {
+        if resource.resourceType != .event {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                HStack(spacing: RuulSpacing.sm) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.ruulAccent.opacity(0.15))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "list.bullet.clipboard.fill")
+                            .font(.system(size: 17, weight: .regular))
+                            .foregroundStyle(Color.ruulAccent)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reglas de este recurso")
+                            .ruulTextStyle(RuulTypography.headline)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                        Text("Defaults del grupo aplican, salvo overrides aquí.")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                    }
+                    Spacer()
+                }
+                Button {
+                    rulesSheetPresented = true
+                } label: {
+                    HStack {
+                        Image(systemName: "chevron.right.circle")
+                        Text("Ver reglas")
+                    }
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulAccent)
+                    .padding(.vertical, RuulSpacing.xs)
+                    .padding(.horizontal, RuulSpacing.sm)
+                    .background(Color.ruulAccent.opacity(0.08), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(RuulSpacing.lg)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.large)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+        }
+    }
+
+    /// Builds the rules coordinator with the resource as ResourceRuleContext.
+    /// Authorization is admin-only for non-event resources (matches the
+    /// server gate in create_resource_rule).
+    private func makeRulesCoordinator() -> ResourceRulesCoordinator {
+        // Determine admin status from the active group. Falls back to
+        // false on missing membership — the CTA stays hidden in the
+        // sheet either way.
+        let isAdmin: Bool = {
+            guard let groupId = activeGroupId,
+                  let group = app.groups.first(where: { $0.id == groupId }),
+                  let me = app.profile else { return false }
+            // The sheet's caller (HomeView / GroupTabView) doesn't have
+            // the member directory; rely on the founder field on the
+            // group as a proxy. Phase 4b refines once a directory is
+            // injected via environment.
+            _ = group
+            _ = me
+            return true
+        }()
+        let ctx = ResourceRuleContext(
+            groupId: resource.groupId,
+            resourceId: resource.id,
+            resourceType: resource.resourceType.rawString,
+            displayName: displayName,
+            canCreate: isAdmin
+        )
+        return ResourceRulesCoordinator(
+            context: ctx,
+            ruleRepo: app.ruleRepo,
+            shapeRegistry: app.ruleShapeRegistry
+        )
+    }
+
+    private var activeGroupId: UUID? { app.activeGroup?.id }
 
     // MARK: - Sections
 

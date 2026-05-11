@@ -3,9 +3,15 @@ import Observation
 import OSLog
 import RuulCore
 
-/// Coordinator backing the event-scoped Rules surface. Loads rules with
-/// `rules.resource_id = event.id` (Taxonomy §29) and drives the rule
-/// builder form.
+// NOTE: file name still "EventRulesCoordinator.swift" for git history
+// continuity; the type is the polymorphic `ResourceRulesCoordinator`
+// that drives the rules surface for ANY Resource — events, assets,
+// funds, slots. Founder framing 2026-05-10: rules apply to any
+// Resource, not just events.
+
+/// Coordinator backing the per-resource Rules surface. Loads rules with
+/// `rules.resource_id = context.resourceId` (Taxonomy §29) and drives
+/// the rule builder form.
 ///
 /// Founder principle 2026-05-10: the rule builder is catalog-driven —
 /// triggers/conditions/consequences come from `RuleShapeRegistry`, NOT
@@ -18,11 +24,11 @@ import RuulCore
 /// automatically with `alwaysTrue` for the MVP — the conditions picker
 /// arrives in slice 3 once the catalog grows beyond two condition kinds.
 @Observable @MainActor
-public final class EventRulesCoordinator {
-    public let groupId: UUID
-    public let eventId: UUID
-    public let event: Event
-    public let canCreate: Bool
+public final class ResourceRulesCoordinator {
+    public let context: ResourceRuleContext
+    public var groupId: UUID    { context.groupId }
+    public var resourceId: UUID { context.resourceId }
+    public var canCreate: Bool  { context.canCreate }
     public let shapeRegistry: RuleShapeRegistry
 
     public private(set) var rules: [GroupRule] = []
@@ -55,32 +61,26 @@ public final class EventRulesCoordinator {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "event.rules")
 
     public init(
-        event: Event,
-        canCreate: Bool,
+        context: ResourceRuleContext,
         ruleRepo: any RuleRepository,
         shapeRegistry: RuleShapeRegistry
     ) {
-        self.event = event
-        self.groupId = event.groupId
-        self.eventId = event.id
-        self.canCreate = canCreate
+        self.context = context
         self.ruleRepo = ruleRepo
         self.shapeRegistry = shapeRegistry
     }
 
     // MARK: - Catalog-driven options
 
-    /// Triggers applicable to a resource-scoped rule on an `event`. The
-    /// registry filters by scope/resource_type; iOS just renders the
-    /// surviving rows.
+    /// Triggers applicable to a resource-scoped rule on `context.resourceType`.
+    /// The registry filters by scope/resource_type; iOS just renders the
+    /// surviving rows. Catalog rows that leave `valid_resource_types`
+    /// empty count as universal and always pass.
     public var availableTriggers: [RuleShape] {
-        // Events always live as the "event" resource_type on the
-        // polymorphic resources row. The catalog filter keeps shapes
-        // declared for other resource types (slot, fund) hidden here.
         shapeRegistry.shapes(
             kind: .trigger,
             scope: "resource",
-            resourceType: "event"
+            resourceType: context.resourceType
         )
     }
 
@@ -111,7 +111,7 @@ public final class EventRulesCoordinator {
             // sheet can render "Heredada de…" badges without an extra
             // round-trip. The server splits the three buckets via UNION
             // ALL; iOS classifies each row by inspecting scope columns.
-            rules = try await ruleRepo.listScopedForEvent(eventId)
+            rules = try await ruleRepo.listScopedForResource(resourceId)
         } catch {
             log.warning("load failed: \(error.localizedDescription)")
             self.error = "No pudimos cargar las reglas."
@@ -210,9 +210,9 @@ public final class EventRulesCoordinator {
         defer { isSubmitting = false }
 
         do {
-            let rule = try await ruleRepo.createEventRule(
+            let rule = try await ruleRepo.createResourceRule(
                 groupId: groupId,
-                resourceId: eventId,
+                resourceId: resourceId,
                 name: trimmedName,
                 trigger: trigger,
                 conditions: conditions,

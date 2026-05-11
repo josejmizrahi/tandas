@@ -8,14 +8,16 @@ import RuulCore
 /// new entry.
 ///
 /// The coordinator is owned by EventDetailView; this sheet only binds.
-struct EventLedgerSheet: View {
+// File name kept for git continuity; the type is `ResourceLedgerSheet`,
+// polymorphic over Resource (event, asset, fund).
+struct ResourceLedgerSheet: View {
     @Binding var isPresented: Bool
-    @Bindable var coordinator: EventLedgerCoordinator
+    @Bindable var coordinator: ResourceLedgerCoordinator
     let groupVocabulary: String
 
     public init(
         isPresented: Binding<Bool>,
-        coordinator: EventLedgerCoordinator,
+        coordinator: ResourceLedgerCoordinator,
         groupVocabulary: String
     ) {
         self._isPresented = isPresented
@@ -98,7 +100,7 @@ struct EventLedgerSheet: View {
         }
     }
 
-    private func balanceRow(_ balance: EventLedgerCoordinator.MemberBalance) -> some View {
+    private func balanceRow(_ balance: ResourceLedgerCoordinator.MemberBalance) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             RuulAvatar(name: balance.displayName, imageURL: balance.avatarURL, size: .small)
             Text(balance.displayName)

@@ -3,7 +3,7 @@ import RuulUI
 import RuulCore
 
 /// Form sheet for recording a single ledger entry scoped to an event.
-/// Backed by `EventLedgerCoordinator` — view binds form fields, dispatches
+/// Backed by `ResourceLedgerCoordinator` — view binds form fields, dispatches
 /// `submit()`, and dismisses on success.
 ///
 /// Scope contract: the parent coordinator was built with `event.id`, so
@@ -12,7 +12,7 @@ import RuulCore
 /// is anchored.
 struct AddLedgerEntrySheet: View {
     @Binding var isPresented: Bool
-    @Bindable var coordinator: EventLedgerCoordinator
+    @Bindable var coordinator: ResourceLedgerCoordinator
 
     var body: some View {
         ModalSheetTemplate(
@@ -43,7 +43,7 @@ struct AddLedgerEntrySheet: View {
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             VStack(spacing: RuulSpacing.xs) {
-                ForEach(EventLedgerCoordinator.EntryKind.allCases) { kind in
+                ForEach(ResourceLedgerCoordinator.EntryKind.allCases) { kind in
                     kindRow(kind)
                 }
             }
@@ -51,7 +51,7 @@ struct AddLedgerEntrySheet: View {
         }
     }
 
-    private func kindRow(_ kind: EventLedgerCoordinator.EntryKind) -> some View {
+    private func kindRow(_ kind: ResourceLedgerCoordinator.EntryKind) -> some View {
         let isSelected = coordinator.formKind == kind
         return Button {
             coordinator.formKind = kind
@@ -113,9 +113,18 @@ struct AddLedgerEntrySheet: View {
 
     // MARK: - Counter-party (settlement only)
 
+    /// Section header reads "¿A QUIÉN LE PAGASTE?" for settlement
+    /// (member-to-member) and "¿A QUIÉN LE PAGA EL GRUPO?" for payout
+    /// (pot-to-member).
+    private var counterpartySectionLabel: String {
+        coordinator.formKind == .payout
+            ? "¿A QUIÉN LE PAGA EL GRUPO?"
+            : "¿A QUIÉN LE PAGASTE?"
+    }
+
     private var counterpartySection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("¿A QUIÉN LE PAGASTE?")
+            Text(counterpartySectionLabel)
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             if coordinator.counterpartyOptions.isEmpty {

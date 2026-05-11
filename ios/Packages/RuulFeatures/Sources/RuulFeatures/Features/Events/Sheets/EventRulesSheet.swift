@@ -15,13 +15,16 @@ import RuulCore
 /// sections render with a "Heredada" chip and a softer visual treatment
 /// so the user understands they need to navigate to the source scope to
 /// change them. Tap → navigation to source = future R4 work.
-struct EventRulesSheet: View {
+// File name kept for git continuity; the type is the generic
+// `ResourceRulesSheet` that handles any Resource — event, asset, fund,
+// etc.
+struct ResourceRulesSheet: View {
     @Binding var isPresented: Bool
-    @Bindable var coordinator: EventRulesCoordinator
+    @Bindable var coordinator: ResourceRulesCoordinator
 
     public init(
         isPresented: Binding<Bool>,
-        coordinator: EventRulesCoordinator
+        coordinator: ResourceRulesCoordinator
     ) {
         self._isPresented = isPresented
         self.coordinator = coordinator
@@ -71,7 +74,7 @@ struct EventRulesSheet: View {
         }
         .task { await coordinator.load() }
         .ruulSheet(isPresented: $coordinator.addSheetPresented) {
-            AddEventRuleSheet(
+            AddResourceRuleSheet(
                 isPresented: $coordinator.addSheetPresented,
                 coordinator: coordinator
             )

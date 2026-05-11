@@ -10,9 +10,11 @@ import RuulCore
 /// Founder principle: copy reads as "Si X → Y", never "trigger /
 /// consequence". The two top sections are labeled "CUÁNDO" and "ENTONCES"
 /// to land in the user's mental model.
-struct AddEventRuleSheet: View {
+// File name kept for git continuity; the type is `AddResourceRuleSheet`
+// — the form is polymorphic over Resource type, not specific to events.
+struct AddResourceRuleSheet: View {
     @Binding var isPresented: Bool
-    @Bindable var coordinator: EventRulesCoordinator
+    @Bindable var coordinator: ResourceRulesCoordinator
 
     var body: some View {
         ModalSheetTemplate(
