@@ -28,7 +28,7 @@ create table public.group_policies (
   default_config       jsonb  not null default '{}'::jsonb,
   enabled         boolean     not null default true,
   priority        int         not null default 100,
-  created_by      uuid        null references auth.users(id),
+  created_by      uuid        null references auth.users(id) on delete set null,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -58,13 +58,13 @@ create trigger group_policies_set_updated_at
 alter table public.group_policies enable row level security;
 
 -- Read: any active group member (mirrors mig 00002 conventions).
-create policy group_policies_read on public.group_policies
+create policy "group_policies_read" on public.group_policies
   for select to authenticated
   using (public.is_group_member(group_policies.group_id, auth.uid()));
 
 -- Write: only members with Permission.modifyGovernance via has_permission().
 -- For V1 fallback that translates to founder (see mig 00063 role defaults).
-create policy group_policies_write on public.group_policies
+create policy "group_policies_write" on public.group_policies
   for all to authenticated
   using (
     public.has_permission(group_policies.group_id, auth.uid(), 'modifyGovernance')
