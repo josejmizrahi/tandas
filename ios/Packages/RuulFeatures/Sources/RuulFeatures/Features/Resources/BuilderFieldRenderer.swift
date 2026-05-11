@@ -32,6 +32,35 @@ public struct BuilderFieldRenderer: View {
     }
 
     @ViewBuilder
+    private func pickerView(options: [BuilderField.PickerOption]) -> some View {
+        // Render as a segmented control when there are 2-4 options
+        // (matches the recurrence frequency + dayOfWeek UX); otherwise
+        // a menu/dropdown. The renderer uses option `value`'s JSONConfig
+        // identity so int/string/bool options round-trip without
+        // stringification.
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            Text(field.label)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextSecondary)
+            if options.count <= 7 {
+                Picker(field.label, selection: pickerBinding(options: options)) {
+                    ForEach(options.indices, id: \.self) { i in
+                        Text(options[i].label).tag(i)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } else {
+                Picker(field.label, selection: pickerBinding(options: options)) {
+                    ForEach(options.indices, id: \.self) { i in
+                        Text(options[i].label).tag(i)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+        }
+    }
+
+    @ViewBuilder
     private var controlView: some View {
         switch field.kind {
         case .text:
@@ -115,14 +144,17 @@ public struct BuilderFieldRenderer: View {
             }
 
         case .picker:
-            // Phase 2: when builders declare picker options as part of
-            // BuilderField, render Menu / Picker here. For V1 fall back
-            // to a text field.
-            RuulTextField(
-                field.placeholder ?? field.label,
-                text: stringBinding(),
-                label: field.label
-            )
+            if let options = field.options, !options.isEmpty {
+                pickerView(options: options)
+            } else {
+                // Pre-X2 fallback: catalog row without options renders
+                // as a free-text field so the wizard stays usable.
+                RuulTextField(
+                    field.placeholder ?? field.label,
+                    text: stringBinding(),
+                    label: field.label
+                )
+            }
 
         case .multiPicker:
             RuulTextField(
@@ -184,6 +216,26 @@ public struct BuilderFieldRenderer: View {
             },
             set: { newDate in
                 values[field.key] = .string(ISO8601DateFormatter().string(from: newDate))
+            }
+        )
+    }
+
+    /// Binds the field's current JSONConfig value to an option index in
+    /// the provided array. The index round-trip is what gives SwiftUI
+    /// stable Hashable tags while keeping the underlying `values`
+    /// dictionary in its canonical JSONConfig shape.
+    private func pickerBinding(options: [BuilderField.PickerOption]) -> Binding<Int> {
+        Binding(
+            get: {
+                if let current = values[field.key],
+                   let idx = options.firstIndex(where: { $0.value == current }) {
+                    return idx
+                }
+                return 0  // First option is the implicit default.
+            },
+            set: { newIdx in
+                guard options.indices.contains(newIdx) else { return }
+                values[field.key] = options[newIdx].value
             }
         )
     }

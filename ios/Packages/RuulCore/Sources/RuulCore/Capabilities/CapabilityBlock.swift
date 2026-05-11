@@ -72,6 +72,13 @@ public struct BuilderField: Sendable, Hashable {
     public let kind: Kind
     public let placeholder: String?
     public let helpText: String?
+    /// Options for `.picker` / `.multiPicker` kinds. Each option stores
+    /// the raw `JSONConfig` value that the renderer writes to the
+    /// shared `values` dictionary, plus a human-readable label.
+    /// Founder framing 2026-05-11: capability sub-config (recurrence,
+    /// rotation, …) is declarative — define options here, not as a
+    /// view-side Picker hardcoded per capability id.
+    public let options: [PickerOption]?
 
     public enum Kind: String, Sendable, Hashable {
         case text
@@ -91,18 +98,31 @@ public struct BuilderField: Sendable, Hashable {
         case money       // {amount_cents, currency}
     }
 
+    /// A single choice in a `.picker` / `.multiPicker` field.
+    public struct PickerOption: Sendable, Hashable {
+        public let value: JSONConfig
+        public let label: String
+
+        public init(value: JSONConfig, label: String) {
+            self.value = value
+            self.label = label
+        }
+    }
+
     public init(
         key: String,
         label: String,
         kind: Kind,
         placeholder: String? = nil,
-        helpText: String? = nil
+        helpText: String? = nil,
+        options: [PickerOption]? = nil
     ) {
         self.key = key
         self.label = label
         self.kind = kind
         self.placeholder = placeholder
         self.helpText = helpText
+        self.options = options
     }
 }
 

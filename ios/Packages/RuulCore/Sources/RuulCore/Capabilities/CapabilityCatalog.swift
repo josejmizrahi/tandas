@@ -228,16 +228,47 @@ public struct RecurrenceCapability: CapabilityBlock {
     public var displayName: String { "Repetir" }
     public var summary: String { "Genera ocurrencias automáticamente según un patrón." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .contribution] }
+    /// Founder framing 2026-05-11: capability sub-config is declarative.
+    /// The wizard reads these fields via BuilderFieldRenderer instead of
+    /// a hardcoded view for each capability id. Adding a new picker
+    /// option (e.g. "anual") is one BuilderField.PickerOption row, not
+    /// a Swift view edit.
     public var requiredFields: [BuilderField] {
         [
-            BuilderField(key: "frequency", label: "Frecuencia", kind: .picker,
-                         helpText: "weekly, biweekly, monthly")
+            BuilderField(
+                key: "frequency",
+                label: "Frecuencia",
+                kind: .picker,
+                options: [
+                    .init(value: .string("weekly"),   label: "Semanal"),
+                    .init(value: .string("biweekly"), label: "Cada 2 semanas"),
+                    .init(value: .string("monthly"),  label: "Mensual")
+                ]
+            ),
+            BuilderField(
+                key: "dayOfWeek",
+                label: "Día",
+                kind: .picker,
+                options: [
+                    .init(value: .int(0), label: "Dom"),
+                    .init(value: .int(1), label: "Lun"),
+                    .init(value: .int(2), label: "Mar"),
+                    .init(value: .int(3), label: "Mié"),
+                    .init(value: .int(4), label: "Jue"),
+                    .init(value: .int(5), label: "Vie"),
+                    .init(value: .int(6), label: "Sáb")
+                ]
+            ),
+            BuilderField(
+                key: "time",
+                label: "Hora",
+                kind: .time
+            )
         ]
     }
     public var optionalFields: [BuilderField] {
         [
             BuilderField(key: "interval", label: "Cada", kind: .integer),
-            BuilderField(key: "daysOfWeek", label: "Días", kind: .multiPicker),
             BuilderField(key: "endCondition", label: "Termina", kind: .picker)
         ]
     }

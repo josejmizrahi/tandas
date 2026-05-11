@@ -38,13 +38,12 @@ public final class ResourceWizardCoordinator {
     /// composite "blockId.slug" so the same rule slug declared by two
     /// different capabilities can coexist independently.
     public var selectedSuggestedRules: Set<String> = []
-    /// Recurrence pattern when "recurrence" capability is enabled.
-    /// Shape: { frequency: "weekly"|"biweekly"|"monthly", dayOfWeek: int,
-    /// hour: int, minute: int }. Empty when recurrence is off.
-    public var recurrenceFrequency: String = "weekly"
-    public var recurrenceDayOfWeek: Int = 4  // Thursday default for cenas
-    public var recurrenceHour: Int = 20
-    public var recurrenceMinute: Int = 0
+    /// Per-capability config values, keyed by `block.id` then field key.
+    /// Recurrence's frequency / dayOfWeek / time / etc. live here.
+    /// Replaces the four dedicated recurrence* properties this struct
+    /// used to carry. Founder framing 2026-05-11: capability sub-config
+    /// is declarative — the renderer writes here via BuilderFieldRenderer.
+    public var capabilityConfigs: [String: [String: JSONConfig]] = [:]
 
     public private(set) var isCreating: Bool = false
     public private(set) var error: String?
@@ -176,6 +175,10 @@ public final class ResourceWizardCoordinator {
                         suggestedRuleKey(blockId: blockId, slug: template.slug)
                     )
                 }
+                // Seed sub-config defaults for this block's required
+                // fields so step 3 renders sensible initial values
+                // (e.g. recurrence opens with weekly / Thursday / 20:00).
+                seedCapabilityConfigDefaults(for: block)
             }
         }
     }
@@ -230,17 +233,25 @@ public final class ResourceWizardCoordinator {
         error = nil
         defer { isCreating = false }
 
-        // Build seriesPattern when "recurrence" capability is enabled.
-        // The builder reads this and creates a ResourceSeries first,
-        // linking the event/slot to it via series_id.
-        let seriesPattern: JSONConfig? = enabledCapabilities.contains("recurrence")
-            ? .object([
-                "frequency": .string(recurrenceFrequency),
-                "dayOfWeek": .int(recurrenceDayOfWeek),
-                "hour":      .int(recurrenceHour),
-                "minute":    .int(recurrenceMinute)
-            ])
-            : nil
+        // Build seriesPattern from the recurrence capability's
+        // declarative config. The renderer writes
+        // `capabilityConfigs["recurrence"]` directly; we extract the
+        // hour+minute from the `.time` field's ISO timestamp at submit
+        // time to keep the wire format the rule engine expects.
+        let seriesPattern: JSONConfig? = {
+            guard enabledCapabilities.contains("recurrence"),
+                  let cfg = capabilityConfigs["recurrence"] else { return nil }
+            var pattern: [String: JSONConfig] = [:]
+            if case let .string(f) = cfg["frequency"] { pattern["frequency"] = .string(f) }
+            if case let .int(d)    = cfg["dayOfWeek"] { pattern["dayOfWeek"] = .int(d) }
+            if case let .string(raw) = cfg["time"],
+               let date = ISO8601DateFormatter().date(from: raw) {
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
+                pattern["hour"]   = .int(comps.hour ?? 20)
+                pattern["minute"] = .int(comps.minute ?? 0)
+            }
+            return .object(pattern)
+        }()
 
         // Materialize selected suggested rules into RuleDraft rows so the
         // builder can hand them to the rule repo at create time. The
@@ -261,12 +272,20 @@ public final class ResourceWizardCoordinator {
             )
         }
 
+        // Flatten the per-block config map into a single
+        // [String: JSONConfig] keyed by `blockId` — each value is the
+        // block's `.object(fieldKey: …)` payload. The draft schema
+        // accepts arbitrary jsonb here so the server can use as much
+        // detail as it wants per capability.
+        let flatCapabilityConfigs: [String: JSONConfig] = capabilityConfigs
+            .compactMapValues { dict in dict.isEmpty ? nil : JSONConfig.object(dict) }
+
         let draft = ResourceDraft(
             groupId: group.id,
             resourceType: builder.resourceType,
             basicFields: basicFields,
             enabledCapabilities: Array(enabledCapabilities),
-            capabilityConfigs: [:],
+            capabilityConfigs: flatCapabilityConfigs,
             seriesPattern: seriesPattern,
             initialRules: initialRules
         )
@@ -312,6 +331,49 @@ public final class ResourceWizardCoordinator {
         // `group.template.defaultCapabilities[builder.resourceType.rawValue]`
         // when the templates table gains that column.
         return []
+    }
+
+    /// Seeds defaults for a block's required + optional fields when the
+    /// block is enabled. Picker fields default to their first option;
+    /// time fields default to a sensible weekly cadence (Thursday 20:00
+    /// for events). Idempotent — won't overwrite values the user
+    /// already touched.
+    private func seedCapabilityConfigDefaults(for block: any CapabilityBlock) {
+        var current = capabilityConfigs[block.id] ?? [:]
+        for field in block.requiredFields {
+            if current[field.key] != nil { continue }
+            switch field.kind {
+            case .picker, .multiPicker:
+                if let first = field.options?.first {
+                    current[field.key] = first.value
+                }
+            case .time:
+                // 20:00 today as ISO timestamp — extract hour/minute at submit.
+                var comps = Calendar.current.dateComponents([.year, .month, .day], from: .now)
+                comps.hour = 20
+                comps.minute = 0
+                if let date = Calendar.current.date(from: comps) {
+                    current[field.key] = .string(ISO8601DateFormatter().string(from: date))
+                }
+            case .date, .dateTime:
+                let date = Date.now.addingTimeInterval(86_400)
+                current[field.key] = .string(ISO8601DateFormatter().string(from: date))
+            case .boolean:
+                current[field.key] = .bool(false)
+            case .integer, .decimal, .currency, .money:
+                current[field.key] = .int(0)
+            default:
+                break  // text-shaped → wait for user input
+            }
+        }
+        // Special-case: pre-pick Thursday for recurrence's dayOfWeek
+        // so cenas opens with the dinner default founders expect. Any
+        // group that wants a different default would re-pick — the
+        // user's choice persists.
+        if block.id == "recurrence", current["dayOfWeek"] == nil {
+            current["dayOfWeek"] = .int(4)
+        }
+        capabilityConfigs[block.id] = current
     }
 
     /// Pre-selected suggested rules at builder-pick time. Honors every

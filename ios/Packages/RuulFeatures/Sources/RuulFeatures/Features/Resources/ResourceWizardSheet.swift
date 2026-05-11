@@ -221,13 +221,21 @@ public struct ResourceWizardSheet: View {
                 .tint(Color.ruulAccent)
             }
             .padding(RuulSpacing.md)
-            // Inline config sub-card: shown when the capability is on and
-            // has tunable parameters. V1 only the recurrence block has this.
-            if coordinator.isCapabilityEnabled(block.id), block.id == "recurrence" {
+            // Inline sub-config: render every capability's `requiredFields`
+            // via BuilderFieldRenderer when the cap is enabled. Founder
+            // framing 2026-05-11 — declarative, not per-capability view code.
+            if coordinator.isCapabilityEnabled(block.id), !block.requiredFields.isEmpty {
                 Divider().padding(.horizontal, RuulSpacing.md)
-                recurrenceInlineConfig
-                    .padding(RuulSpacing.md)
-                    .transition(.opacity)
+                VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                    ForEach(Array(block.requiredFields.enumerated()), id: \.offset) { _, field in
+                        BuilderFieldRenderer(
+                            field: field,
+                            values: capabilityConfigBinding(for: block.id)
+                        )
+                    }
+                }
+                .padding(RuulSpacing.md)
+                .transition(.opacity)
             }
         }
         .background(
@@ -240,65 +248,14 @@ public struct ResourceWizardSheet: View {
         )
     }
 
-    private var recurrenceInlineConfig: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Frecuencia")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                Picker("Frecuencia", selection: Binding(
-                    get: { coordinator.recurrenceFrequency },
-                    set: { coordinator.recurrenceFrequency = $0 }
-                )) {
-                    Text("Semanal").tag("weekly")
-                    Text("Cada 2 semanas").tag("biweekly")
-                    Text("Mensual").tag("monthly")
-                }
-                .pickerStyle(.segmented)
-            }
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Día")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                Picker("Día", selection: Binding(
-                    get: { coordinator.recurrenceDayOfWeek },
-                    set: { coordinator.recurrenceDayOfWeek = $0 }
-                )) {
-                    Text("Dom").tag(0)
-                    Text("Lun").tag(1)
-                    Text("Mar").tag(2)
-                    Text("Mié").tag(3)
-                    Text("Jue").tag(4)
-                    Text("Vie").tag(5)
-                    Text("Sáb").tag(6)
-                }
-                .pickerStyle(.segmented)
-            }
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Hora")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                DatePicker(
-                    "Hora",
-                    selection: Binding(
-                        get: {
-                            var comps = DateComponents()
-                            comps.hour = coordinator.recurrenceHour
-                            comps.minute = coordinator.recurrenceMinute
-                            return Calendar.current.date(from: comps) ?? .now
-                        },
-                        set: { newDate in
-                            let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
-                            coordinator.recurrenceHour = comps.hour ?? 20
-                            coordinator.recurrenceMinute = comps.minute ?? 0
-                        }
-                    ),
-                    displayedComponents: [.hourAndMinute]
-                )
-                .labelsHidden()
-                .datePickerStyle(.compact)
-            }
-        }
+    /// Two-way binding into `coordinator.capabilityConfigs[blockId]`
+    /// with a default of `[:]`. Lets BuilderFieldRenderer write per-
+    /// capability sub-config without per-block plumbing.
+    private func capabilityConfigBinding(for blockId: String) -> Binding<[String: JSONConfig]> {
+        Binding(
+            get: { coordinator.capabilityConfigs[blockId] ?? [:] },
+            set: { coordinator.capabilityConfigs[blockId] = $0 }
+        )
     }
 
     // MARK: - Step 4: Rules (suggested rules per enabled capability)
