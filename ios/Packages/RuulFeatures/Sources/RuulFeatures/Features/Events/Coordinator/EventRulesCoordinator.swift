@@ -111,7 +111,7 @@ public final class EventRulesCoordinator {
             // sheet can render "Heredada de…" badges without an extra
             // round-trip. The server splits the three buckets via UNION
             // ALL; iOS classifies each row by inspecting scope columns.
-            rules = try await ruleRepo.listScopedForEvent(eventId)
+            rules = try await ruleRepo.listScopedForResource(eventId)
         } catch {
             log.warning("load failed: \(error.localizedDescription)")
             self.error = "No pudimos cargar las reglas."
@@ -210,7 +210,7 @@ public final class EventRulesCoordinator {
         defer { isSubmitting = false }
 
         do {
-            let rule = try await ruleRepo.createEventRule(
+            let rule = try await ruleRepo.createResourceRule(
                 groupId: groupId,
                 resourceId: eventId,
                 name: trimmedName,
