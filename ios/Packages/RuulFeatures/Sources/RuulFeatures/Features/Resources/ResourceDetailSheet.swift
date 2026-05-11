@@ -11,13 +11,11 @@ import RuulCore
 ///      `UniversalResourceDetailView`, which composes the page out of
 ///      the catalog-registered capability sections.
 ///
-/// V1 leaves ledger / rules sub-sheet presentation as no-ops because
-/// the existing sheets are still event-shaped (they take `Event`, not
-/// `ResourceRow`). The sections still render and route the user toward
-/// the action — they just don't open a follow-up sheet yet. Phase 2
-/// generalizes `EventLedgerCoordinator` / `EventRulesCoordinator` to
-/// `ResourceLedgerCoordinator` / `ResourceRulesCoordinator` and wires
-/// them in here.
+/// Ledger + rules tap routes go through the polymorphic
+/// `ResourceLedgerCoordinator` / `ResourceRulesCoordinator`, opening
+/// `ResourceLedgerSheet` / `ResourceRulesSheet` on demand. Coordinator
+/// instances are built lazily on first present so we don't pay for
+/// them when the user doesn't tap.
 public struct ResourceDetailSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -26,6 +24,11 @@ public struct ResourceDetailSheet: View {
 
     @State private var capabilities: [ResourceCapability] = []
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
+    @State private var resourceActions: [UserAction] = []
+    @State private var ledgerSheetPresented: Bool = false
+    @State private var ledgerCoordinator: ResourceLedgerCoordinator?
+    @State private var rulesSheetPresented: Bool = false
+    @State private var rulesCoordinator: ResourceRulesCoordinator?
 
     public init(resource: ResourceRow) { self.resource = resource }
 
@@ -42,6 +45,33 @@ public struct ResourceDetailSheet: View {
                 .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .task { await load() }
+        .ruulSheet(isPresented: $ledgerSheetPresented) {
+            if let ledgerCoordinator {
+                ResourceLedgerSheet(
+                    isPresented: $ledgerSheetPresented,
+                    coordinator: ledgerCoordinator,
+                    groupVocabulary: typeLabel.lowercased()
+                )
+            }
+        }
+        .onChange(of: ledgerSheetPresented) { _, presented in
+            if presented && ledgerCoordinator == nil {
+                ledgerCoordinator = makeLedgerCoordinator()
+            }
+        }
+        .ruulSheet(isPresented: $rulesSheetPresented) {
+            if let rulesCoordinator {
+                ResourceRulesSheet(
+                    isPresented: $rulesSheetPresented,
+                    coordinator: rulesCoordinator
+                )
+            }
+        }
+        .onChange(of: rulesSheetPresented) { _, presented in
+            if presented && rulesCoordinator == nil {
+                rulesCoordinator = makeRulesCoordinator()
+            }
+        }
     }
 
     @ViewBuilder
@@ -68,9 +98,9 @@ public struct ResourceDetailSheet: View {
             enabledCapabilities: enabledCapabilitySet,
             memberDirectory: memberDirectory,
             displayName: displayName,
-            attentionActions: [],
-            onPresentLedger: { /* TODO Phase 2: polymorphic ledger sheet */ },
-            onPresentRules:  { /* TODO Phase 2: polymorphic rules sheet */ },
+            attentionActions: resourceActions,
+            onPresentLedger: { ledgerSheetPresented = true },
+            onPresentRules:  { rulesSheetPresented = true },
             onPresentEditResource:     { /* TODO Phase 2 */ },
             onPresentEnableCapability: { /* TODO Phase 2 */ },
             onOpenInboxAction: { _ in /* TODO Phase 2 */ }
@@ -79,6 +109,75 @@ public struct ResourceDetailSheet: View {
 
     private var enabledCapabilitySet: Set<String> {
         Set(capabilities.filter { $0.enabled }.map { $0.capabilityBlockId })
+    }
+
+    // MARK: - Sub-coordinators
+
+    /// Builds the polymorphic ledger coordinator on first ledger sheet
+    /// present. Reuses the resource's group_id + id so the listForResource
+    /// query hits the right ledger_entries rows.
+    private func makeLedgerCoordinator() -> ResourceLedgerCoordinator {
+        let ctx = ResourceLedgerContext(
+            groupId: resource.groupId,
+            resourceId: resource.id,
+            resourceType: resourceTypeString,
+            displayName: displayName,
+            currentUserId: app.session?.user.id ?? UUID()
+        )
+        return ResourceLedgerCoordinator(
+            context: ctx,
+            ledgerRepo: app.ledgerRepo,
+            groupsRepo: app.groupsRepo
+        )
+    }
+
+    /// Builds the polymorphic rules coordinator. `canCreate` is the
+    /// server-side gate predicate. V1 mirrors the legacy behavior:
+    /// founders + admins can create; everyone else reads only. The
+    /// gate hardens in the governance plan (Tasks 8-10) once
+    /// resolve_governance is fully wired into RuleRepository mutations.
+    private func makeRulesCoordinator() -> ResourceRulesCoordinator {
+        let ctx = ResourceRuleContext(
+            groupId: resource.groupId,
+            resourceId: resource.id,
+            resourceType: resourceTypeString,
+            displayName: displayName,
+            canCreate: isFounder
+        )
+        return ResourceRulesCoordinator(
+            context: ctx,
+            ruleRepo: app.ruleRepo,
+            shapeRegistry: app.ruleShapeRegistry
+        )
+    }
+
+    /// True when the current user created the parent group. The
+    /// ResourceRulesCoordinator's CTA stays hidden when this is false;
+    /// the server still gates the write at the RPC level.
+    private var isFounder: Bool {
+        guard let userId = app.session?.user.id,
+              let group = parentGroup else { return false }
+        return group.createdBy == userId
+    }
+
+    /// `ResourceType` lacks a public string accessor; derive it locally
+    /// so the polymorphic Context structs (which need a raw string)
+    /// stay decoupled from the enum's Codable wire format.
+    private var resourceTypeString: String {
+        switch resource.resourceType {
+        case .event:           return "event"
+        case .slot:            return "slot"
+        case .booking:         return "booking"
+        case .fund:            return "fund"
+        case .position:        return "position"
+        case .assignment:      return "assignment"
+        case .rotation:        return "rotation"
+        case .asset:           return "asset"
+        case .guestPass:       return "guestPass"
+        case .contribution:    return "contribution"
+        case .proposal:        return "proposal"
+        case .unknown(let s):  return s
+        }
     }
 
     @MainActor
@@ -90,6 +189,23 @@ public struct ResourceDetailSheet: View {
         var dir: [UUID: MemberWithProfile] = [:]
         for m in members { dir[m.member.userId] = m }
         memberDirectory = dir
+
+        // Inbox is cross-group; pending(_, groupId:) filters to this group
+        // so unrelated rows from other groups don't leak into the section.
+        // V1 attribution to a resource: `referenceId == resource.id` —
+        // catches rsvpPending + fineProposalReview for events directly.
+        // Phase 2 widens this to follow indirect refs (finePending →
+        // fine → event, etc.).
+        if let userId = app.session?.user.id,
+           let allActions = try? await app.userActionRepo.pending(
+               userId: userId,
+               groupId: resource.groupId
+           )
+        {
+            resourceActions = allActions.filter { $0.referenceId == resource.id }
+        } else {
+            resourceActions = []
+        }
     }
 
     private var displayName: String {

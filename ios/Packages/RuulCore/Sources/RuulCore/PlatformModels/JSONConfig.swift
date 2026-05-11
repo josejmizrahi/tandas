@@ -92,3 +92,15 @@ public enum JSONConfig: Sendable, Hashable, Codable {
         }
     }
 }
+
+public extension JSONConfig {
+    /// Encodes any `Encodable` value into a `JSONConfig`. Round-trips
+    /// through JSON encoder/decoder so the result mirrors the wire shape.
+    /// Used to stash structured envelopes (e.g. `PendingChangeEnvelope`)
+    /// into `votes.payload` while keeping the column type as the loosely-
+    /// typed `JSONConfig`.
+    static func encoded<T: Encodable>(_ value: T) throws -> JSONConfig {
+        let data = try JSONEncoder().encode(value)
+        return try JSONDecoder().decode(JSONConfig.self, from: data)
+    }
+}
