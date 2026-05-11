@@ -44,6 +44,7 @@ public struct EditRulesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 header
+                modeBanner
                 VStack(spacing: RuulSpacing.sm) {
                     // Repo lists rules ordered by created_at ASC; toggle
                     // mutates in place via withIsActive, so order is stable.
@@ -59,6 +60,59 @@ public struct EditRulesView: View {
         }
         .scrollIndicators(.hidden)
         .refreshable { await coordinator.refresh() }
+    }
+
+    /// Renders the governance state for this group:
+    /// - `.voteGated` → "los cambios abren votación" card; toggle still works
+    ///   but each tap opens a vote_change vote (the coordinator handles the
+    ///   server-side flow).
+    /// - `.readOnly`  → "no podés editar" card; controls are disabled.
+    /// - `.directWrite` → no banner (default editor experience).
+    @ViewBuilder
+    private var modeBanner: some View {
+        switch coordinator.editMode {
+        case .voteGated(let threshold):
+            HStack(alignment: .top, spacing: RuulSpacing.sm) {
+                Image(systemName: "checkmark.seal")
+                    .foregroundStyle(Color.ruulAccent)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Los cambios abren votación")
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Necesitan \(threshold)% de votos a favor para aplicarse.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+                Spacer()
+            }
+            .padding(RuulSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulAccent.opacity(0.3), lineWidth: 1)
+            )
+        case .readOnly:
+            HStack(spacing: RuulSpacing.sm) {
+                Image(systemName: "lock")
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
+                Text("Tu rol no puede editar reglas en este grupo.")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Spacer()
+            }
+            .padding(RuulSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface)
+            )
+        case .directWrite:
+            EmptyView()
+        }
     }
 
     private var header: some View {

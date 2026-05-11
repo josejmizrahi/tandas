@@ -7,56 +7,75 @@ import RuulFeatures
 
 @MainActor
 final class EditRulesCoordinatorTests: XCTestCase {
-    private func makeCoordinator(decision: GovernanceDecision = .allowed,
-                                 throwOnNext: Bool = false) -> EditRulesCoordinator {
+
+    private func makeCoordinator(
+        policyDecision: PolicyDecision = .adminOnly
+    ) async -> EditRulesCoordinator {
         let group = Group.mock(id: UUID())
         let member = Member.mock(role: .founder, groupId: group.id)
-        let governance = MockGovernanceService(nextDecision: decision, throwOnNext: throwOnNext)
+        let governance = MockGovernanceService(nextDecision: .allowed)
+        let policyRepo = MockGroupPolicyRepository()
+        await policyRepo.setResolution(
+            groupId: group.id, action: .ruleToggle, decision: policyDecision
+        )
         let ruleRepo = MockRuleRepository()
         let voteRepo = MockVoteRepository()
         return EditRulesCoordinator(
             group: group,
             currentMember: member,
+            actorUserId: member.userId,
             governance: governance,
+            policyRepo: policyRepo,
             ruleRepo: ruleRepo,
             voteRepo: voteRepo
         )
     }
 
-    func testCanEditDefaultsFalse() {
-        XCTAssertFalse(makeCoordinator().canEditRules)
+    func testEditModeDefaultsToReadOnlyBeforeRefresh() async {
+        let c = await makeCoordinator()
+        XCTAssertEqual(c.editMode, .readOnly)
+        XCTAssertFalse(c.canEditRules)
     }
 
-    func testRefreshAllowedSetsCanEditTrue() async {
-        let c = makeCoordinator(decision: .allowed)
+    func testRefreshAllowedSetsDirectWriteMode() async {
+        let c = await makeCoordinator(policyDecision: .allowed)
         await c.refresh()
+        XCTAssertEqual(c.editMode, .directWrite)
         XCTAssertTrue(c.canEditRules)
     }
 
-    func testRefreshRequiresVoteIsTreatedAsDenied() async {
-        let c = makeCoordinator(decision: .requiresVote(quorumPercent: 50, thresholdPercent: 50))
+    func testRefreshVoteRequiredSetsVoteGatedMode() async {
+        let c = await makeCoordinator(
+            policyDecision: .voteRequired(quorumPercent: 50, thresholdPercent: 66, durationHours: 72)
+        )
         await c.refresh()
+        XCTAssertEqual(c.editMode, .voteGated(thresholdPercent: 66))
+        // canEditRules is true in voteGated mode — user CAN propose, just
+        // not write directly.
+        XCTAssertTrue(c.canEditRules)
+    }
+
+    func testRefreshAdminOnlyDecisionKeepsReadOnly() async {
+        let c = await makeCoordinator(policyDecision: .adminOnly)
+        await c.refresh()
+        XCTAssertEqual(c.editMode, .readOnly)
         XCTAssertFalse(c.canEditRules)
     }
 
-    func testRefreshDeniedKeepsCanEditFalse() async {
-        let c = makeCoordinator(decision: .denied(reason: .notFounder))
+    func testRefreshDeniedDecisionKeepsReadOnly() async {
+        let c = await makeCoordinator(policyDecision: .denied(reason: "not_member"))
         await c.refresh()
-        XCTAssertFalse(c.canEditRules)
-    }
-
-    func testRefreshGovernanceThrowFailsClosed() async {
-        let c = makeCoordinator(decision: .allowed, throwOnNext: true)
-        await c.refresh()
+        XCTAssertEqual(c.editMode, .readOnly)
         XCTAssertFalse(c.canEditRules)
     }
 }
 
 // MARK: - Test fixtures
 
-/// Mock `GovernanceServiceProtocol` that returns a configured decision (or
-/// throws). Used by the coordinator tests above to exercise the
-/// `canEditRules` state machine without spinning up the real actor.
+/// Mock `GovernanceServiceProtocol` retained for backwards compat with the
+/// coordinator's `governance` dependency (used by future fine-grained
+/// actions). The current voteGated test relies on PolicyDecision, not on
+/// GovernanceDecision.
 final class MockGovernanceService: GovernanceServiceProtocol, @unchecked Sendable {
     var nextDecision: GovernanceDecision
     var throwOnNext: Bool
@@ -78,8 +97,7 @@ final class MockGovernanceService: GovernanceServiceProtocol, @unchecked Sendabl
 }
 
 private extension Group {
-    /// Minimal `Group` fixture for coordinator tests. Defaults match
-    /// `recurring_dinner` so `effectiveGovernance` evaluates as expected.
+    /// Minimal `Group` fixture for coordinator tests.
     static func mock(id: UUID) -> Group {
         Group(
             id: id,
@@ -92,9 +110,7 @@ private extension Group {
 }
 
 private extension Member {
-    /// Minimal `Member` fixture for coordinator tests. The single-role
-    /// override drives both `role` text and `roles` array, which is what
-    /// `GovernanceService` reads.
+    /// Minimal `Member` fixture for coordinator tests.
     static func mock(role: MemberRole, groupId: UUID = UUID()) -> Member {
         Member(
             id: UUID(),

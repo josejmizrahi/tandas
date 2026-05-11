@@ -5,13 +5,16 @@ import RuulCore
 
 /// Editor-side coordinator for the Reglas tab. Owns:
 ///
-/// - **Governance gate** (`canEditRules`) — fail-closed against
-///   `GovernanceService` decisions: only `.allowed` flips to true; any
-///   `.requiresVote`, `.denied`, or thrown error keeps it false. The view
-///   uses this to enable/disable controls.
+/// - **Edit mode** (`editMode`) — three-state policy-driven gate:
+///   `.directWrite` (member can edit and changes apply immediately),
+///   `.voteGated` (member can propose changes which open a vote), or
+///   `.readOnly` (no edit path). Driven by `GroupPolicyRepository.resolve`
+///   against `target_action = rule.toggle`.
 /// - **Optimistic toggle** (`setIsActive`) — applies the toggle locally then
-///   awaits the repository. On failure, reverts the local state and surfaces
-///   an RLS-aware Spanish error message.
+///   awaits the `InterceptingRuleRepository`. On `.vote` outcome reverts
+///   the optimistic flip and surfaces a `voteOpened` banner. On `.applied`
+///   keeps the new state. On `.adminOnly` or denial, reverts and shows an
+///   error.
 /// - **Pending votes map** — populated alongside `rules` so the view can
 ///   render a "voto en curso" badge.
 /// - **`openRepealVote`** — convenience over `VoteRepository.startVote`
@@ -19,63 +22,105 @@ import RuulCore
 ///   archives the rule on resolution; we just open the vote.
 @Observable @MainActor
 public final class EditRulesCoordinator {
+
+    public enum EditMode: Sendable, Hashable {
+        /// Member can edit and writes apply directly.
+        case directWrite
+        /// Member can edit but every change opens a vote first. `thresholdPercent`
+        /// is the % "yes" required to pass.
+        case voteGated(thresholdPercent: Int)
+        /// Member can view but cannot edit. UI disables controls.
+        case readOnly
+    }
+
+    public enum Banner: Sendable, Hashable {
+        /// A vote was just opened for a proposed change. `voteId` deeplinks
+        /// to the detail view.
+        case voteOpened(voteId: UUID)
+    }
+
     public private(set) var rules: [GroupRule] = []
     public private(set) var pendingVotes: [UUID: PendingVote] = [:]
     public private(set) var isLoading: Bool = false
     public private(set) var error: String?
-    public private(set) var canEditRules: Bool = false
+    public private(set) var editMode: EditMode = .readOnly
+    public private(set) var banner: Banner?
     public private(set) var inFlightToggleIDs: Set<UUID> = []
+
+    /// Backwards-compat alias for legacy callers that read a bool.
+    /// True when `editMode` permits any edit path (direct or vote-gated).
+    public var canEditRules: Bool {
+        switch editMode {
+        case .directWrite, .voteGated: return true
+        case .readOnly:                return false
+        }
+    }
 
     public let group: Group
     private let currentMember: Member
+    private let actorUserId: UUID
     private let governance: any GovernanceServiceProtocol
+    private let policyRepo: any GroupPolicyRepository
     private let ruleRepo: any RuleRepository
     private let voteRepo: any VoteRepository
-    /// Phase G3: optional dependency. Only required when the sheet is
-    /// reached from an inbox row (`ruleChangeApplyPending`); the pencil
-    /// flow doesn't pass one. Nil-safe — `resolvePendingAction` no-ops if
-    /// the repo wasn't injected.
     private let userActionRepo: (any UserActionRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "rules.edit")
+
+    /// Lazy interceptor — constructed on first mutation so we can compose
+    /// `ruleRepo` + `policyRepo` + `voteRepo` with the actor's user id.
+    private var interceptor: InterceptingRuleRepository {
+        InterceptingRuleRepository(
+            inner: ruleRepo,
+            policyRepo: policyRepo,
+            voteRepo: voteRepo,
+            actorUserId: actorUserId
+        )
+    }
 
     public init(
         group: Group,
         currentMember: Member,
+        actorUserId: UUID,
         governance: any GovernanceServiceProtocol,
+        policyRepo: any GroupPolicyRepository,
         ruleRepo: any RuleRepository,
         voteRepo: any VoteRepository,
         userActionRepo: (any UserActionRepository)? = nil
     ) {
         self.group = group
         self.currentMember = currentMember
+        self.actorUserId = actorUserId
         self.governance = governance
+        self.policyRepo = policyRepo
         self.ruleRepo = ruleRepo
         self.voteRepo = voteRepo
         self.userActionRepo = userActionRepo
     }
 
-    /// Refreshes governance, rules, and pending votes. Fail-closed: any
-    /// governance throw or non-`.allowed` decision leaves `canEditRules`
-    /// false.
+    /// Refreshes edit mode, rules, and pending votes. Fail-closed: any
+    /// resolve throw or unrecognized decision yields `.readOnly`.
     public func refresh() async {
         isLoading = true
         defer { isLoading = false }
 
         do {
-            let decision = try await governance.canPerform(
-                .modifyRules,
-                member: currentMember,
-                in: group,
-                context: nil
+            let decision = try await policyRepo.resolve(
+                groupId: group.id,
+                actorUserId: actorUserId,
+                action: .ruleToggle,
+                targetPayload: [:]
             )
-            if case .allowed = decision {
-                canEditRules = true
-            } else {
-                canEditRules = false
+            switch decision {
+            case .allowed:
+                editMode = .directWrite
+            case .voteRequired(_, let threshold, _):
+                editMode = .voteGated(thresholdPercent: threshold)
+            case .adminOnly, .denied:
+                editMode = .readOnly
             }
         } catch {
-            log.warning("governance check failed: \(error.localizedDescription)")
-            canEditRules = false
+            log.warning("policy resolve failed: \(error.localizedDescription)")
+            editMode = .readOnly
         }
 
         do {
@@ -98,48 +143,92 @@ public final class EditRulesCoordinator {
         }
     }
 
-    /// Optimistic toggle: flips the row locally, attempts the persistence
-    /// call, and reverts the local change on failure. The view subscribes to
-    /// `rules` and `inFlightToggleIDs` to render a spinner / disabled state.
+    /// Optimistic toggle: flips the row locally, calls the interceptor,
+    /// reconciles based on the outcome.
     public func setIsActive(rule: GroupRule, isActive: Bool) async {
         inFlightToggleIDs.insert(rule.id)
         defer { inFlightToggleIDs.remove(rule.id) }
 
         let originalIndex = rules.firstIndex(where: { $0.id == rule.id })
+        let currentIsActive = rule.isActive
         if let i = originalIndex {
             rules[i] = rules[i].withIsActive(isActive)
         }
 
         do {
-            try await ruleRepo.setIsActive(ruleId: rule.id, isActive: isActive)
+            let outcome = try await interceptor.setIsActive(
+                ruleId: rule.id,
+                isActive: isActive,
+                groupId: group.id,
+                currentIsActive: currentIsActive
+            )
+            switch outcome {
+            case .applied:
+                // Local optimistic state already matches the new server state.
+                break
+            case .vote(let voteId):
+                // Revert local — the change isn't applied until the vote resolves.
+                if let i = originalIndex {
+                    rules[i] = rules[i].withIsActive(currentIsActive)
+                }
+                banner = .voteOpened(voteId: voteId)
+                await refresh()
+            case .adminOnly:
+                if let i = originalIndex {
+                    rules[i] = rules[i].withIsActive(currentIsActive)
+                }
+                self.error = "Solo los admins pueden cambiar esta regla."
+            }
+        } catch let mutation as RuleMutationError {
+            if let i = originalIndex {
+                rules[i] = rules[i].withIsActive(currentIsActive)
+            }
+            self.error = mapMutationError(mutation)
         } catch {
             log.warning("setIsActive failed: \(error.localizedDescription)")
             if let i = originalIndex {
-                rules[i] = rules[i].withIsActive(!isActive)
+                rules[i] = rules[i].withIsActive(currentIsActive)
             }
-            self.error = mapMutationError(error)
+            self.error = mapGenericError(error)
         }
     }
 
     /// Persists a new flat fine amount. Caller must pre-validate via
-    /// `rule.fineShape == .flat`; the repo also rejects with
-    /// `.notFlatFine` for safety.
+    /// `rule.fineShape == .flat`; the repo also rejects with `.notFlatFine`.
     public func setFlatFineAmount(rule: GroupRule, amount: Int) async {
+        let currentAmount: Int = {
+            if case .flat(let value) = rule.fineShape { return value }
+            return 0
+        }()
+
         do {
-            try await ruleRepo.setFlatFineAmount(rule: rule, amount: amount)
-            await refresh()
+            let outcome = try await interceptor.setFlatFineAmount(
+                rule: rule,
+                amount: amount,
+                currentAmount: currentAmount
+            )
+            switch outcome {
+            case .applied:
+                await refresh()
+            case .vote(let voteId):
+                banner = .voteOpened(voteId: voteId)
+                await refresh()
+            case .adminOnly:
+                self.error = "Solo los admins pueden cambiar el monto."
+            }
         } catch RulesRepositoryError.notFlatFine {
             self.error = "Esta regla tiene multa escalonada; se editará en una próxima versión."
+        } catch let mutation as RuleMutationError {
+            self.error = mapMutationError(mutation)
         } catch {
             log.warning("setFlatFineAmount failed: \(error.localizedDescription)")
-            self.error = mapMutationError(error)
+            self.error = mapGenericError(error)
         }
     }
 
-    /// Opens a `rule_repeal` vote via `VoteRepository.startVote`. The vote
-    /// machinery emits `voteOpened` immediately; the `archive_rule_on_repeal_pass`
-    /// trigger (migration 00026) archives the rule when `finalize_vote`
-    /// resolves `passed`.
+    /// Opens a `rule_repeal` vote. The vote machinery emits `voteOpened`
+    /// immediately; the `archive_rule_on_repeal_pass` trigger (mig 00026)
+    /// archives the rule when finalize resolves passed.
     public func openRepealVote(rule: GroupRule) async {
         do {
             _ = try await voteRepo.startVote(
@@ -153,15 +242,14 @@ public final class EditRulesCoordinator {
             await refresh()
         } catch {
             log.warning("startVote failed: \(error.localizedDescription)")
-            self.error = mapMutationError(error)
+            self.error = mapGenericError(error)
         }
     }
 
-    /// Phase G3: resolves the inbox `UserAction` that opened this sheet.
-    /// Called from `EditRuleSheet.commitAmount` after a successful save.
-    /// Idempotent on the repo side — already-resolved actions are no-ops.
-    /// Errors are logged but not surfaced; the rule edit already succeeded
-    /// and inbox refresh will retry resolution on next load.
+    public func clearBanner() { banner = nil }
+    public func clearError() { error = nil }
+
+    /// Resolves a pending inbox action (Phase G3).
     public func resolvePendingAction(_ id: UUID) async {
         guard let userActionRepo else { return }
         do {
@@ -171,11 +259,20 @@ public final class EditRulesCoordinator {
         }
     }
 
-    /// Maps repository mutation errors to user-facing Spanish copy. RLS
-    /// denials (Postgres SQLSTATE `42501` or any "policy" mention) get a
-    /// "governance changed — pull to refresh" hint; everything else falls
-    /// through to a generic retry message.
-    private func mapMutationError(_ error: Error) -> String {
+    // MARK: - Error mapping
+
+    private func mapMutationError(_ error: RuleMutationError) -> String {
+        switch error {
+        case .denied(let reason):
+            return "No tienes permiso: \(reason)"
+        case .voteOpenFailed(let detail):
+            return "No pudimos abrir la votación: \(detail)"
+        case .underlying(let detail):
+            return "Algo salió mal: \(detail)"
+        }
+    }
+
+    private func mapGenericError(_ error: Error) -> String {
         let message = error.localizedDescription.lowercased()
         if message.contains("policy") || message.contains("42501") {
             return "La gobernanza del grupo cambió. Tirá pull-to-refresh para ver los permisos actuales."

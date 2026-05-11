@@ -14,6 +14,14 @@ public struct RulesView: View {
     /// `RulesCoordinator` itself doesn't use it, so the view holds it
     /// directly to avoid leaking the dependency into the read-side coord.
     public let voteRepo: any VoteRepository
+    /// `GroupPolicyRepository` is forwarded into `EditRulesCoordinator` so it
+    /// can resolve the active policy decision and gate edits via vote when
+    /// the group config requires it (mig 00087 / 00088).
+    public let policyRepo: any GroupPolicyRepository
+    /// Auth user id of the current actor — composed with `policyRepo` +
+    /// `voteRepo` to drive the governance-aware mutations in
+    /// `EditRulesCoordinator`. Source: `app.session?.user.id` at the seam.
+    public let actorUserId: UUID
     /// Phase G3: forwarded into `EditRulesCoordinator` so saves of an
     /// inbox-reached rule can resolve the originating `UserAction`. nil
     /// for previews / call sites that don't need inbox integration.
@@ -30,12 +38,16 @@ public struct RulesView: View {
     public init(
         coordinator: RulesCoordinator,
         voteRepo: any VoteRepository,
+        policyRepo: any GroupPolicyRepository,
+        actorUserId: UUID,
         userActionRepo: (any UserActionRepository)? = nil,
         onSeeOpenVotes: @escaping () -> Void = {},
         onSelectRule: @escaping (GroupRule) -> Void = { _ in }
     ) {
         self.coordinator = coordinator
         self.voteRepo = voteRepo
+        self.policyRepo = policyRepo
+        self.actorUserId = actorUserId
         self.userActionRepo = userActionRepo
         self.onSeeOpenVotes = onSeeOpenVotes
         self.onSelectRule = onSelectRule
@@ -98,7 +110,9 @@ public struct RulesView: View {
         EditRulesCoordinator(
             group: coordinator.group,
             currentMember: coordinator.currentMember,
+            actorUserId: actorUserId,
             governance: coordinator.governance,
+            policyRepo: policyRepo,
             ruleRepo: coordinator.ruleRepo,
             voteRepo: voteRepo,
             userActionRepo: userActionRepo

@@ -342,6 +342,8 @@ public struct MainTabView: View {
                         RulesView(
                             coordinator: rulesCoord,
                             voteRepo: app.voteRepo,
+                            policyRepo: app.policyRepo,
+                            actorUserId: app.session?.user.id ?? UUID(),
                             userActionRepo: app.userActionRepo,
                             onSeeOpenVotes: {
                                 openVotesRoute = OpenVotesRouteContext(id: group.id)
@@ -994,6 +996,8 @@ public struct MainTabView: View {
                     RulesView(
                         coordinator: rulesCoord,
                         voteRepo: app.voteRepo,
+                        policyRepo: app.policyRepo,
+                        actorUserId: app.session?.user.id ?? UUID(),
                         userActionRepo: app.userActionRepo,
                         onSeeOpenVotes: {
                             openVotesRoute = OpenVotesRouteContext(id: group.id)
@@ -1565,7 +1569,9 @@ public struct MainTabView: View {
         let editCoord = EditRulesCoordinator(
             group: ctx.group,
             currentMember: currentMember,
+            actorUserId: userId,
             governance: app.governance,
+            policyRepo: app.policyRepo,
             ruleRepo: app.ruleRepo,
             voteRepo: app.voteRepo,
             userActionRepo: app.userActionRepo

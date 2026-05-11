@@ -210,6 +210,24 @@ public final class AppState {
         }
     }
 
+    /// Factory: builds an `InterceptingRuleRepository` for the given user.
+    /// Coordinators that mutate rules call this to get a governance-aware
+    /// wrapper around the raw `ruleRepo`. The wrapper consults
+    /// `resolve_governance` before each write — direct-apply, vote-open,
+    /// or denied — without changing the underlying live repo.
+    ///
+    /// Each call instantiates a fresh actor because `actorUserId` is
+    /// pinned at construction; coordinators that outlive a session
+    /// switch should rebuild this when `session.user.id` changes.
+    public func makeInterceptingRuleRepo(userId: UUID) -> InterceptingRuleRepository {
+        InterceptingRuleRepository(
+            inner: ruleRepo,
+            policyRepo: policyRepo,
+            voteRepo: voteRepo,
+            actorUserId: userId
+        )
+    }
+
     /// Optional server loader for `moduleRegistry`. Wired by `TandasApp`
     /// in live mode; nil in mock/preview where `v1Fallback` is enough.
     public var moduleRegistryLoader: LiveModuleRegistry?
