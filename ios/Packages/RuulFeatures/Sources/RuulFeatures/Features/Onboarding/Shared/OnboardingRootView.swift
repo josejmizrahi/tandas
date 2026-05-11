@@ -133,22 +133,12 @@ private struct FounderFlow: View {
             WelcomeView()
         case .identity:
             FounderIdentityView()
-        case .templateSelect:
-            TemplateSelectorView()
         case .group:
             GroupIdentityView()
-        case .vocabulary:
-            GroupVocabularyView()
-        case .rules:
-            InitialRulesView()
-        case .governance:
-            GovernanceConfigView()
+        case .preset:
+            PresetPickerView()
         case .invite:
             InviteMembersView()
-        case .phoneVerify:
-            PhoneVerifyView()
-        case .otp:
-            OTPVerifyView()
         case .confirm:
             ConfirmationView(
                 onCreateFirstEvent: { onCompleted(.createFirstEvent) },

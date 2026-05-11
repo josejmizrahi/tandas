@@ -53,44 +53,26 @@ public final class OnboardingProgress {
 
 public enum FounderStep: String, CaseIterable, Codable, Sendable {
     case welcome
-    case identity        // founder personal name + avatar
-    case templateSelect  // platform template (Sprint 1b — Cena recurrente only in V1)
-    case group           // group identity (name + cover)
-    case vocabulary
-    case rules
-    case governance      // Bloque 6 — who can modify rules, voting config
-    case invite
-    case phoneVerify
-    case otp
-    case confirm
+    case identity   // founder personal name + avatar
+    case group      // group identity (name + cover)
+    case preset     // choose starter preset OR "empezar de cero"
+    case invite     // invite members (optional skip)
+    case confirm    // landing screen
 
     public var index: Int { Self.allCases.firstIndex(of: self) ?? 0 }
 
-    /// Beta 1 skip-by-default: steps that the coordinator auto-completes
-    /// without showing UI (template has only one option in V1; vocabulary/
-    /// rules/governance use template defaults editable post-onboarding
-    /// via Settings). Drives the progress bar denominator so the user
-    /// sees realistic completion %.
     public static let visibleSteps: [FounderStep] = [
-        .identity, .group, .invite, .phoneVerify, .otp, .confirm
+        .identity, .group, .preset, .invite, .confirm
     ]
 
-    /// Index within `visibleSteps`, or the closest-prior visible-step slot
-    /// for steps that auto-skip. Used by progress views so the bar never
-    /// regresses or jumps disproportionately.
     public var visibleIndex: Int {
         if let idx = Self.visibleSteps.firstIndex(of: self) { return idx }
         switch self {
-        case .welcome:        return 0  // pre-identity
-        case .templateSelect: return 0  // between identity and group
-        case .vocabulary,
-             .rules,
-             .governance:     return 1  // between group and invite
-        default:              return 0
+        case .welcome: return 0
+        default:       return 0
         }
     }
 
-    /// Fraction in [0, 1] for progress display.
     public var progressFraction: Double {
         let total = max(1, Self.visibleSteps.count - 1)
         return Double(visibleIndex) / Double(total)

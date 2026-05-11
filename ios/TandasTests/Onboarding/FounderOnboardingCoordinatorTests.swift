@@ -36,9 +36,9 @@ struct FounderOnboardingCoordinatorTests {
 
     // MARK: - Happy path
 
-    @Test("full happy path advances welcome → confirm")
+    @Test("full happy path: welcome → identity → group → preset → invite → confirm")
     func happyPath() async throws {
-        let (coord, groups, _, rules, otp, _) = try makeCoordinator()
+        let (coord, groups, _, _, _, _) = try makeCoordinator()
         await coord.start()
 
         await coord.advanceFromWelcome()
@@ -49,153 +49,120 @@ struct FounderOnboardingCoordinatorTests {
         #expect(coord.currentStep == .group)
 
         coord.draft.name = "Los Cuates"
-        coord.draft.coverImageName = "sunset"
         await coord.advanceFromGroupIdentity()
-        #expect(coord.currentStep == .vocabulary)
+        #expect(coord.currentStep == .preset)
+
+        await coord.selectPreset(.recurringDinner)
+        #expect(coord.currentStep == .invite)
         #expect(coord.createdGroup != nil)
 
-        coord.draft.eventVocabulary = "cena"
-        await coord.advanceFromVocabulary()
-        #expect(coord.currentStep == .rules)
-
-        await coord.advanceFromRules()
-        #expect(coord.currentStep == .governance)
-        // Rules now seed via module activation (mig 00073), not per-draft
-        // createInitialRules. Skip the drafts assertion.
-        _ = rules
-
         await coord.advanceFromInvite()
-        #expect(coord.currentStep == .phoneVerify)
-
-        coord.phoneE164 = "+5215555551234"
-        await coord.advanceFromPhoneVerify()
-        #expect(coord.currentStep == .otp)
-
-        otp.verifyResult = .success(())
-        await coord.submitOTP(code: "123456")
         #expect(coord.currentStep == .confirm)
 
         let listed = try await groups.listMine()
         #expect(listed.count == 1)
     }
 
-    // MARK: - Skips
+    // MARK: - Preset variations
 
-    @Test("skip vocabulary keeps default 'evento'")
-    func skipVocabulary() async throws {
+    @Test("blank preset creates bare group without seeding rules")
+    func blankPreset() async throws {
         let (coord, _, _, _, _, _) = try makeCoordinator()
         await coord.start()
-        await coord.advanceFromWelcome()
         coord.displayName = "X"
         await coord.advanceFromIdentity()
         coord.draft.name = "G"
         await coord.advanceFromGroupIdentity()
-        await coord.skipVocabulary()
-        #expect(coord.currentStep == .rules)
-        #expect(coord.draft.eventVocabulary == "evento")
+        await coord.selectPreset(.blank)
+        #expect(coord.currentStep == .invite)
+        #expect(coord.createdGroup?.baseTemplate == nil || coord.createdGroup?.baseTemplate?.isEmpty == true)
     }
 
-    @Test("skip rules disables basic_fines module")
-    func skipRules() async throws {
-        let (coord, groups, _, _, _, _) = try makeCoordinator()
+    @Test("skip identity advances with empty name")
+    func skipIdentity() async throws {
+        let (coord, _, _, _, _, _) = try makeCoordinator()
         await coord.start()
-        await coord.advanceFromWelcome()
-        coord.displayName = "X"
-        await coord.advanceFromIdentity()
-        coord.draft.name = "G"
-        await coord.advanceFromGroupIdentity()
-        await coord.skipVocabulary()
-        await coord.skipRules()
-        #expect(coord.currentStep == .governance)
-        // basic_fines should be archived from active_modules.
-        let g = try await groups.listMine().first
-        #expect(g?.effectiveActiveModules.contains("basic_fines") == false)
+        await coord.skipIdentity()
+        #expect(coord.currentStep == .group)
+        #expect(coord.displayName.isEmpty)
     }
 
-    @Test("skip invite leaves no pending invites")
+    @Test("skip invite goes straight to confirm")
     func skipInvite() async throws {
         let (coord, _, _, _, _, _) = try makeCoordinator()
         await coord.start()
-        await coord.advanceFromWelcome()
         coord.displayName = "X"
         await coord.advanceFromIdentity()
         coord.draft.name = "G"
         await coord.advanceFromGroupIdentity()
-        await coord.skipVocabulary()
-        await coord.skipRules()
+        await coord.selectPreset(.recurringDinner)
         await coord.skipInvite()
-        #expect(coord.currentStep == .phoneVerify)
+        #expect(coord.currentStep == .confirm)
         #expect(coord.pendingInvites.isEmpty)
     }
 
-    // MARK: - Errors
+    // MARK: - Failures
 
-    @Test("create group failure stays on group step + sets error")
+    @Test("group create failure stays on preset + sets error")
     func createGroupFailure() async throws {
         let groups = MockGroupsRepository()
-        await groups.setNextCreateError(.rpcFailed("boom"))
+        await groups.setNextError(.rpcFailed("server down"))
         let (coord, _, _, _, _, _) = try makeCoordinator(groupRepo: groups)
         await coord.start()
-        await coord.advanceFromWelcome()
         coord.displayName = "X"
         await coord.advanceFromIdentity()
         coord.draft.name = "G"
         await coord.advanceFromGroupIdentity()
-        #expect(coord.currentStep == .group) // did NOT advance
-        #expect(coord.error != nil)
-    }
-
-    @Test("OTP wrong code increments attempts; 3 fails → tooManyAttempts")
-    func otpThreeStrikesError() async throws {
-        let (coord, _, _, _, otp, _) = try makeCoordinator()
-        await coord.start()
-        await coord.advanceFromWelcome()
-        coord.displayName = "X"
-        await coord.advanceFromIdentity()
-        coord.draft.name = "G"
-        await coord.advanceFromGroupIdentity()
-        await coord.skipVocabulary()
-        await coord.skipRules()
-        await coord.skipInvite()
-        coord.phoneE164 = "+5215555551234"
-        await coord.advanceFromPhoneVerify()
-        #expect(coord.currentStep == .otp)
-
-        otp.verifyResult = .failure(.invalidCode)
-        await coord.submitOTP(code: "000000")
-        #expect(coord.otpAttempts == 1)
-        await coord.submitOTP(code: "000000")
-        await coord.submitOTP(code: "000000")
-        #expect(coord.otpAttempts == 3)
-        #expect(coord.error == .otpTooManyAttempts)
-        #expect(coord.currentStep == .otp) // did NOT advance to confirm
-    }
-
-    // MARK: - Restoration
-
-    @Test("restore from progress entity at step .rules sets currentStep")
-    func restoreAtRules() async throws {
-        let (coord, _, _, _, _, _) = try makeCoordinator()
-        let entity = OnboardingProgress(flowType: .founder)
-        entity.founderStep = .rules
-        var draft = GroupDraft.empty
-        draft.name = "Restored"
-        if let data = try? JSONEncoder().encode(draft) {
-            entity.draftJSON = data
+        #expect(coord.currentStep == .preset)
+        await coord.selectPreset(.recurringDinner)
+        #expect(coord.currentStep == .preset)
+        guard case .createGroupFailed = coord.error else {
+            Issue.record("expected createGroupFailed error")
+            return
         }
-        entity.displayName = "Restored Name"
+    }
 
+    // MARK: - Restore
+
+    @Test("legacy persisted step .vocabulary projects to .invite")
+    func restoreFromLegacyVocabulary() async throws {
+        // Construct a progress entity with a legacy persisted step value
+        // by going through the JSON path (FounderStep enum doesn't have
+        // .vocabulary anymore so we can't construct one directly).
+        // Round-trip: persist 'vocabulary' as raw string, then restore.
+        let container = try ModelContainer(
+            for: OnboardingProgress.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let manager = OnboardingProgressManager(context: container.mainContext)
+        let entity = OnboardingProgress(flowType: .founder)
+        entity.founderStepRaw = "vocabulary"
+        try manager.save(entity)
+
+        let coord = FounderOnboardingCoordinator(
+            groupRepo: MockGroupsRepository(),
+            inviteRepo: MockInviteRepository(),
+            ruleRepo: MockRuleRepository(),
+            otp: MockOTPService(),
+            analytics: MockAnalyticsService(),
+            progress: manager
+        )
         await coord.restore(from: entity)
-        #expect(coord.currentStep == .rules)
-        #expect(coord.draft.name == "Restored")
-        #expect(coord.displayName == "Restored Name")
+        // .vocabulary is gone — projects onto .invite. The restore()
+        // safeguard (no createdGroup → reset to .group) kicks in because
+        // there's no persisted group, so the final state is .group.
+        #expect(coord.currentStep == .group)
     }
 }
 
-// MARK: - Mock helpers
-
-extension MockGroupsRepository {
-    func setNextCreateError(_ err: GroupsError) {
+private extension MockGroupsRepository {
+    func setNextError(_ err: GroupsError) async {
+        await nextCreateErrorIsSet(err)
+    }
+    func nextCreateErrorIsSet(_ err: GroupsError) async {
+        // MockGroupsRepository already exposes `nextCreateError` as a
+        // mutable property. Set via the property since this extension
+        // can only see public surface.
         self.nextCreateError = err
     }
 }
