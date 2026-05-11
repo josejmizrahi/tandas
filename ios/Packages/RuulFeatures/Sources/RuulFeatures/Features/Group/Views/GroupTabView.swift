@@ -130,7 +130,7 @@ public struct GroupTabView: View {
                 onGoToMoney: { selectedSubTab = .money }
             )
         case .resources:
-            GroupResourcesSubTab(group: activeGroup)
+            GroupResourcesSubTab(group: activeGroup, onOpenEvent: onOpenEvent)
         case .money:
             GroupMoneySubTabContainer(
                 group: activeGroup,
@@ -201,17 +201,19 @@ public enum GroupSubTab: String, RuulSubTabItem, CaseIterable {
     }
 }
 
-/// Sub-tab content: polymorphic list of every non-event resource in the
-/// group (assets, slots, funds, bookings, contributions). Events live
-/// on the Overview sub-tab + Home hero and open the polished
-/// `EventDetailView` — surfacing them here too would mean the same
-/// entity has two different detail UIs depending on tap origin (audit
-/// gap "misma entidad, dos UIs"). Tap on a non-event row →
-/// `ResourceDetailSheet` (polymorphic, capability-driven). Empty state
-/// shown when the group has no resources of the listed types yet.
+/// Sub-tab content: polymorphic list of every resource in the group.
+/// Events are first-class resources here too (the polymorphic model
+/// treats them like any other type); the "two UIs for same thing" gap
+/// the audit flagged is resolved by routing the tap, not by hiding
+/// events from the list — taps on events go to the rich
+/// `EventDetailView` via `onOpenEvent`, taps on non-events open the
+/// universal `ResourceDetailSheet`. Empty state shown only when the
+/// group truly has no resources of any kind yet.
 private struct GroupResourcesSubTab: View {
     @Environment(AppState.self) private var app
+    @Environment(\.eventsRepoLoader) private var eventsRepoLoader
     public let group: RuulCore.Group
+    public let onOpenEvent: (Event) -> Void
     @State private var resources: [ResourceRow] = []
     @State private var opened: ResourceRow?
     @State private var isLoading: Bool = true

@@ -167,9 +167,11 @@ public final class ResourceWizardCoordinator {
                 for dep in block.dependencies {
                     enabledCapabilities.insert(dep)
                 }
-                // Pre-select this block's suggested rules so the user
-                // doesn't have to step through and re-tick them.
-                for template in block.suggestedRules {
+                // Pre-select this block's suggested rules — but only
+                // the ones flagged `defaultEnabled` (reminders,
+                // approvals, social norms). Monetary fines stay OFF
+                // until the user opts in on step 4.
+                for template in block.suggestedRules where template.defaultEnabled {
                     selectedSuggestedRules.insert(
                         suggestedRuleKey(blockId: blockId, slug: template.slug)
                     )
@@ -300,76 +302,56 @@ public final class ResourceWizardCoordinator {
     }
 
     private func defaultCapabilitiesFor(_ builder: any ResourceBuilder) -> Set<String> {
-        // For events: rsvp + check_in + rotation default ON if the group has those modules.
-        // For other types: empty default — user opts in explicitly.
-        if builder.resourceType == .event {
-            let available = Set(resolver.availableCapabilities(
-                for: .event, in: group, catalog: catalog
-            ))
-            var defaults: Set<String> = []
-            for id in ["rsvp", "check_in", "rotation"] where available.contains(id) {
-                defaults.insert(id)
-            }
-            return defaults
-        }
+        // Founder framing 2026-05-11: capability auto-on defaults come
+        // from the group's template/preset, NEVER from a hardcoded
+        // per-resource_type rule. A "simple junta" should open with
+        // nothing pre-ticked; a structured "tanda" preset can opt every
+        // member into RSVP + check-in + rotation explicitly.
+        //
+        // Phase 1: always empty. Phase 2 reads
+        // `group.template.defaultCapabilities[builder.resourceType.rawValue]`
+        // when the templates table gains that column.
         return []
     }
 
     /// Pre-selected suggested rules at builder-pick time. Honors every
-    /// auto-enabled capability so the user opens step 4 with the
-    /// canonical defaults already ticked.
+    /// auto-enabled capability AND each template's `defaultEnabled`
+    /// flag — reminder/social templates default to ON, monetary fines
+    /// default to OFF so first-time users don't see a punitive default.
     private func defaultSelectedRules() -> Set<String> {
         var picks: Set<String> = []
         for block in availableCapabilityBlocks where enabledCapabilities.contains(block.id) {
-            for template in block.suggestedRules {
+            for template in block.suggestedRules where template.defaultEnabled {
                 picks.insert(suggestedRuleKey(blockId: block.id, slug: template.slug))
             }
         }
         return picks
     }
 
-    /// Translates a RuleTemplate's slug into a server-shaped RuleTrigger.
-    /// `defaultConfig` from the template flows into the trigger's `config`
-    /// jsonb when the slug implies extra params (e.g. `hours` for an
-    /// hours-before trigger). Unknown slugs fall back to `.unknown(slug)`
-    /// — forward-compat: a catalog row added server-side renders today
-    /// even without an iOS enum case.
+    /// Builds the server-shaped trigger from the template's explicit
+    /// `triggerEventType` (founder framing 2026-05-11 — never infer
+    /// from slug). Trigger config jsonb is filled from
+    /// `defaultConfig` keys that are NOT the consequence's `amount`.
     private func defaultTrigger(for template: RuleTemplate) -> RuleTrigger {
-        let slug = template.slug.lowercased()
-        let eventType: SystemEventType
-        if slug.contains("late_arrival") || slug.contains("check_in") {
-            eventType = .checkInRecorded
-        } else if slug.contains("same_day") || slug.contains("late_cancel") {
-            eventType = .rsvpChangedSameDay
-        } else if slug.contains("rsvp_deadline") || slug.contains("rsvp_pending") {
-            eventType = .rsvpDeadlinePassed
-        } else if slug.contains("closed") || slug.contains("event_closed") {
-            eventType = .eventClosed
-        } else if slug.contains("hours_before") || slug.contains("reminder") {
-            eventType = .hoursBeforeEvent
-        } else {
-            eventType = .unknown(template.slug)
-        }
-
         var configMap: [String: JSONConfig] = [:]
         for (k, v) in template.defaultConfig where k != "amount" {
             if let i = Int(v) { configMap[k] = .int(i) } else { configMap[k] = .string(v) }
         }
-        return RuleTrigger(eventType: eventType, config: .object(configMap))
+        return RuleTrigger(eventType: template.triggerEventType, config: .object(configMap))
     }
 
-    /// Default consequences inferred from `defaultConfig.amount`. V1 only
-    /// generates a `fine` consequence; richer consequences arrive when
-    /// the RuleTemplate gains a `consequenceType` field.
+    /// Builds the consequence row from the template's
+    /// `consequenceType` + `defaultConfig.amount` (for fine
+    /// consequences). Non-fine consequences (sendNotification,
+    /// loseTurn, …) receive an empty config object.
     private func defaultConsequences(for template: RuleTemplate) -> [RuleConsequence] {
-        if let raw = template.defaultConfig["amount"], let amount = Int(raw) {
-            return [
-                RuleConsequence(type: .fine, config: .object(["amount": .int(amount)]))
-            ]
+        var configMap: [String: JSONConfig] = [:]
+        if template.consequenceType == .fine,
+           let raw = template.defaultConfig["amount"],
+           let amount = Int(raw) {
+            configMap["amount"] = .int(amount)
         }
-        return [
-            RuleConsequence(type: .fine, config: .object(["amount": .int(200)]))
-        ]
+        return [RuleConsequence(type: template.consequenceType, config: .object(configMap))]
     }
 
     private func userFacing(error: ResourceBuilderError) -> String {

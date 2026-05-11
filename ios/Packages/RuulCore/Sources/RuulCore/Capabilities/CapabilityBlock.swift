@@ -169,14 +169,40 @@ public struct RuleTemplate: Sendable, Hashable {
     public let slug: String
     public let displayName: String
     public let summary: String
-    /// Optional default consequence — e.g. fine_amount=200. The wizard
-    /// surfaces this as an editable field when the user selects the rule.
+    /// Server-shaped trigger this template fires on. Founder framing
+    /// 2026-05-11: never infer from slug — declare explicitly so adding
+    /// a new template is one entry, not two coupled edits.
+    public let triggerEventType: SystemEventType
+    /// Consequence the rule emits when the trigger + conditions match.
+    /// V1: every template ships exactly one consequence; richer
+    /// envelopes arrive when the catalog needs them.
+    public let consequenceType: ConsequenceType
+    /// Optional default consequence config — e.g. `amount: "200"`.
+    /// Flows into the consequence's jsonb when the user keeps the
+    /// rule on. Also carries trigger-config keys like `hours: "24"`
+    /// for an "hours-before" template.
     public let defaultConfig: [String: String]
+    /// Whether the wizard pre-ticks this rule when the user enables
+    /// the parent capability. Reminder/approval/social-norm templates
+    /// default to `true`; monetary fines default to `false` so the
+    /// user explicitly opts in. Founder framing 2026-05-11.
+    public let defaultEnabled: Bool
 
-    public init(slug: String, displayName: String, summary: String, defaultConfig: [String: String] = [:]) {
+    public init(
+        slug: String,
+        displayName: String,
+        summary: String,
+        triggerEventType: SystemEventType,
+        consequenceType: ConsequenceType = .fine,
+        defaultConfig: [String: String] = [:],
+        defaultEnabled: Bool = true
+    ) {
         self.slug = slug
         self.displayName = displayName
         self.summary = summary
+        self.triggerEventType = triggerEventType
+        self.consequenceType = consequenceType
         self.defaultConfig = defaultConfig
+        self.defaultEnabled = defaultEnabled
     }
 }

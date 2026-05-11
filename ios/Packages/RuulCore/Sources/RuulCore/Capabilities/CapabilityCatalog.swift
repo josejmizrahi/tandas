@@ -108,22 +108,27 @@ public struct RsvpCapability: CapabilityBlock {
         ]
     }
     public var suggestedRules: [RuleTemplate] {
-        // Slug heuristics in ResourceWizardCoordinator.defaultTrigger pick
-        // the right SystemEventType from these keywords. Keep slug
-        // fragments aligned with that mapper or add an explicit
-        // triggerEventType field to RuleTemplate.
+        // Each template declares its own trigger + consequence
+        // explicitly per founder framing 2026-05-11. Reminder
+        // template defaults ON; monetary fine template defaults OFF
+        // so first-time users don't see a punitive default.
         [
-            RuleTemplate(
-                slug: "rsvp_late_cancel",
-                displayName: "Cancelar el mismo día tiene consecuencia",
-                summary: "Si alguien cambia a 'no voy' el día del evento, paga $150.",
-                defaultConfig: ["amount": "150"]
-            ),
             RuleTemplate(
                 slug: "rsvp_no_response_reminder",
                 displayName: "Recordatorio a quien no respondió",
                 summary: "Cuando vence la fecha límite, manda un recordatorio a los pendientes.",
-                defaultConfig: [:]
+                triggerEventType: .rsvpDeadlinePassed,
+                consequenceType: .sendNotification,
+                defaultEnabled: true
+            ),
+            RuleTemplate(
+                slug: "rsvp_late_cancel_fine",
+                displayName: "Multa por cancelar el mismo día",
+                summary: "Si alguien cambia a 'no voy' el día del evento, paga $150.",
+                triggerEventType: .rsvpChangedSameDay,
+                consequenceType: .fine,
+                defaultConfig: ["amount": "150"],
+                defaultEnabled: false
             )
         ]
     }
@@ -153,18 +158,28 @@ public struct CheckInCapability: CapabilityBlock {
         [BuilderField(key: "lateThresholdMinutes", label: "Tarde después de (min)", kind: .integer)]
     }
     public var suggestedRules: [RuleTemplate] {
+        // Late-arrival monetary fine + no-show monetary fine. Both
+        // OFF by default — the user explicitly opts into punitive
+        // rules. Their reminder counterparts (when seeded) would
+        // default to ON.
         [
             RuleTemplate(
-                slug: "check_in_late_arrival",
-                displayName: "Llegar tarde tiene consecuencia",
+                slug: "check_in_late_arrival_fine",
+                displayName: "Multa por llegar tarde",
                 summary: "Si alguien hace check-in pasada la hora, paga $100.",
-                defaultConfig: ["amount": "100"]
+                triggerEventType: .checkInRecorded,
+                consequenceType: .fine,
+                defaultConfig: ["amount": "100"],
+                defaultEnabled: false
             ),
             RuleTemplate(
                 slug: "event_closed_no_show_fine",
-                displayName: "No-show al cerrar el evento",
+                displayName: "Multa por no llegar",
                 summary: "Cuando el host cierra el evento, los que no llegaron pagan $250.",
-                defaultConfig: ["amount": "250"]
+                triggerEventType: .eventClosed,
+                consequenceType: .fine,
+                defaultConfig: ["amount": "250"],
+                defaultEnabled: false
             )
         ]
     }
@@ -255,12 +270,26 @@ public struct RotationCapability: CapabilityBlock {
         ]
     }
     public var suggestedRules: [RuleTemplate] {
+        // Auto-skip is a structural rule (not monetary) — defaults ON
+        // so rotation works smoothly out of the box. The optional
+        // monetary fine for same-day cancellation defaults OFF.
         [
             RuleTemplate(
                 slug: "rotation_auto_skip_late_cancel",
-                displayName: "Si el host cancela el día, su turno se salta",
-                summary: "Cuando alguien cancela el mismo día, el turno se reasigna y se le multa.",
-                defaultConfig: ["amount": "200"]
+                displayName: "Si el host no puede, pasa al siguiente",
+                summary: "Cuando el host cancela el mismo día, el turno se reasigna automáticamente.",
+                triggerEventType: .rsvpChangedSameDay,
+                consequenceType: .loseTurn,
+                defaultEnabled: true
+            ),
+            RuleTemplate(
+                slug: "rotation_late_cancel_fine",
+                displayName: "Multa al host por cancelar el día",
+                summary: "Además de perder turno, paga $200 si cancela el día.",
+                triggerEventType: .rsvpChangedSameDay,
+                consequenceType: .fine,
+                defaultConfig: ["amount": "200"],
+                defaultEnabled: false
             )
         ]
     }
