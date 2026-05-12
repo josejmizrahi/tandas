@@ -493,24 +493,52 @@ public struct EditMembersSheet: View {
         }
     }
 
+    /// Resolves the active `member.remove` policy via the server resolver
+    /// (migs 00088 + 00111) and translates the PolicyDecision into the
+    /// GovernanceDecision shape the rest of this view keys off (canRemove
+    /// / canPropose / swipe + context actions). Translation is intentional
+    /// — keeps every other call site unchanged while swapping the source
+    /// of truth from the legacy whoCanRemoveMembers jsonb to group_policies.
+    ///
+    /// Doctrine: removeMembers IS a Group Rule (governs the group as a
+    /// system), so its config lives next to rule.toggle / rule.update_amount
+    /// in `group_policies`, not in the legacy flat `governance` jsonb.
     private func refreshGovernanceDecision() async {
-        guard let me = actor else {
+        guard let uid = currentUserId else {
             removeDecision = .denied(reason: .inactiveMember)
             return
         }
         do {
-            let decision = try await app.governance.canPerform(
-                .removeMembers,
-                member: me,
-                in: group,
-                context: nil
+            let decision = try await app.policyRepo.resolve(
+                groupId: group.id,
+                actorUserId: uid,
+                action: .memberRemove,
+                targetPayload: [:]
             )
-            await MainActor.run { self.removeDecision = decision }
+            await MainActor.run { self.removeDecision = Self.translate(decision) }
         } catch {
-            log.debug("governance.canPerform threw: \(error.localizedDescription)")
+            log.debug("policyRepo.resolve(.memberRemove) threw: \(error.localizedDescription)")
             await MainActor.run {
                 self.removeDecision = .denied(reason: .inactiveMember)
             }
+        }
+    }
+
+    /// Bridges `PolicyDecision` (resolver outcome) into `GovernanceDecision`
+    /// (the legacy enum the V1 UI here was built against). `.adminOnly`
+    /// collapses into `.denied(.notFounder)` — the only consumer that
+    /// distinguishes "admin-only blocked" from "vote denied" is the swipe
+    /// helper, which only cares whether the actor can act at all.
+    private static func translate(_ decision: PolicyDecision) -> GovernanceDecision {
+        switch decision {
+        case .allowed:
+            return .allowed
+        case .voteRequired(let q, let t, _):
+            return .requiresVote(quorumPercent: q, thresholdPercent: t)
+        case .adminOnly:
+            return .denied(reason: .notFounder)
+        case .denied:
+            return .denied(reason: .inactiveMember)
         }
     }
 }

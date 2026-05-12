@@ -11,6 +11,11 @@ public enum TargetAction: String, Codable, Sendable, Hashable, CaseIterable {
     case ruleUpdateAmount = "rule.update_amount"
     case ruleCreate       = "rule.create"
     case ruleDelete       = "rule.delete"
+    /// Remove a member from the group. Vote-pass path keys off the
+    /// pre-existing `member_removal` vote type + the trigger in
+    /// migration 00035 (delete by user_id). admin_only path requires
+    /// Permission.removeMember.
+    case memberRemove     = "member.remove"
 }
 
 /// Kind of policy applied to a (group, action) tuple. Mirrors
