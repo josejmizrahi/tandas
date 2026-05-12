@@ -84,8 +84,19 @@ jobs:
         # tests vía invokeCron(). El --no-verify-jwt deja que los tests
         # llamen con service_role JWT sin el header de verificación de
         # JWT estándar.
+        #
+        # --env-file: las funciones corren en contenedores Docker que NO
+        # heredan $GITHUB_ENV. Sin esto, time.ts ve
+        # `ALLOW_CLOCK_OVERRIDE != "true"` y silenciosamente ignora el
+        # X-Test-Clock header que los e2e tests envían para avanzar el
+        # reloj sobre grace periods y vote close. Bug observado 2026-05-12
+        # en run e40252d: `finalize-fine-reviews response: {processed:0}`
+        # aun cuando t1 estaba 1h después del expires_at del period.
         run: |
-          nohup supabase functions serve --no-verify-jwt > /tmp/functions-serve.log 2>&1 &
+          cat > /tmp/edge-fn-env <<EOF
+          ALLOW_CLOCK_OVERRIDE=true
+          EOF
+          nohup supabase functions serve --no-verify-jwt --env-file /tmp/edge-fn-env > /tmp/functions-serve.log 2>&1 &
           echo "FUNCTIONS_SERVE_PID=$!" >> "$GITHUB_ENV"
           # Espera hasta que el runtime responda. El handler default a
           # 404 si la función no existe, pero el server estará listo.
