@@ -78,6 +78,13 @@ public struct MainTabView: View {
     @State private var createGroupPresented: Bool = false
     @State private var joinGroupPresented: Bool = false
     @State private var inviteSharePresented: Bool = false
+    /// Cached `member.invite` policy decision for the active group.
+    /// Refreshed on group switch via `.task(id:)`. The Inicio header
+    /// "Invitar gente" icon hides when this is false — direct +
+    /// admin_only-with-permission resolve to true; everything else
+    /// (admin_only-without-permission, vote_required, denied) hides
+    /// the affordance entirely.
+    @State private var canInviteMembers: Bool = false
 
     // Sprint 3 polish — placeholder handlers wired to real flows.
     /// Picker sheet shown por tap del "+" en OpenVotesListView. Routes a
@@ -217,6 +224,12 @@ public struct MainTabView: View {
         // scroll up. Aprovecha la real estate y evita hide manual.
         .tabBarMinimizeBehavior(.onScrollDown)
         .task { await bootstrap() }
+        .task(id: app.activeGroup?.id) {
+            // Resolves member.invite for the active group so the Inicio
+            // header icon shows / hides based on policy. Re-runs on every
+            // group switch.
+            await refreshCanInviteMembers()
+        }
         .onChange(of: app.pendingEventDeepLink) { _, link in
             Task { await handleDeepLink(link) }
         }
@@ -833,7 +846,7 @@ public struct MainTabView: View {
                         onCreateEvent: { creationRoute = true },
                         onOpenEvent: { event in detailRoute = event },
                         onOpenPastEvents: { pastRoute = true },
-                        onInvitePeople: { inviteSharePresented = true },
+                        onInvitePeople: canInviteMembers ? { inviteSharePresented = true } : nil,
                         onSwitchGroup: { groupSwitcherPresented = true },
                         resourceRefreshToken: resourceRefreshToken
                     )
@@ -1155,6 +1168,34 @@ public struct MainTabView: View {
         // .onChange(of: app.activeGroupId) hook in the body.
         if homeCoordinator?.group.id != group.id {
             await rebuildCoordinators(for: group)
+        }
+    }
+
+    /// Resolves `member.invite` for the active group and caches the
+    /// boolean used by the Inicio header to show/hide the Invitar
+    /// gente icon. Fail-closed: any throw / non-`.allowed` decision
+    /// hides the icon.
+    @MainActor
+    private func refreshCanInviteMembers() async {
+        guard let group = app.activeGroup,
+              let uid = app.session?.user.id else {
+            canInviteMembers = false
+            return
+        }
+        do {
+            let decision = try await app.policyRepo.resolve(
+                groupId: group.id,
+                actorUserId: uid,
+                action: .memberInvite,
+                targetPayload: [:]
+            )
+            if case .allowed = decision {
+                canInviteMembers = true
+            } else {
+                canInviteMembers = false
+            }
+        } catch {
+            canInviteMembers = false
         }
     }
 

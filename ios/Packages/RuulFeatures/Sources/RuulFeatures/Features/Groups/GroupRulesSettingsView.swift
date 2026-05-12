@@ -56,6 +56,9 @@ public struct GroupRulesSettingsView: View {
 
                     section(title: "Miembros", subtitle: "Cómo se quita / agrega gente.") {
                         liveList([
+                            ("¿Quién puede invitar miembros?",
+                                coordinator.humanAnswer(for: .memberInvite),
+                                true),
                             ("¿Cómo se quita a alguien del grupo?",
                                 coordinator.humanAnswer(for: .memberRemove),
                                 true),

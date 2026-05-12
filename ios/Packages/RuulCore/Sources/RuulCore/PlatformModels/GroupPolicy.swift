@@ -30,6 +30,14 @@ public enum TargetAction: String, Codable, Sendable, Hashable, CaseIterable {
     /// soft-blocked in V1 (no apply path yet; needs a vote_type for
     /// capability toggles + the trigger).
     case capabilityEnable = "capability.enable"
+    /// Invite a new member (share the invite code). admin_only
+    /// dispatches to Permission.modifyMembers. Default policy is
+    /// derived from groups.governance.whoCanInviteMembers (recurring_
+    /// dinner template ships 'founder' → admin_only). MainTabView
+    /// hides the Inicio "Invitar gente" header icon when the
+    /// resolver returns admin_only-without-permission, vote_required,
+    /// or denied — surface stays invisible to non-authorised actors.
+    case memberInvite     = "member.invite"
 }
 
 /// Kind of policy applied to a (group, action) tuple. Mirrors
