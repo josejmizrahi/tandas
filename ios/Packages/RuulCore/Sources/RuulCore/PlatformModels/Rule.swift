@@ -15,11 +15,21 @@ import Foundation
 /// by slug in `GroupModule.providedRules`. Per-group user-authored rules
 /// have `slug = nil`.
 ///
-/// Three-level scope (mig 00071):
-///   - `moduleKey == nil && resourceId == nil` → group-level / template-seeded
-///   - `moduleKey != nil && resourceId == nil` → seeded by module activation;
-///     lifecycle bound to `set_group_module(slug, true/false)`
-///   - `resourceId != nil` → per-instance override (may also carry moduleKey)
+/// Five-axis scope (mig 00071 + 00078). Resolution precedence — most specific
+/// wins when more than one matches the same trigger:
+///
+///   membership > resource (occurrence) > series > module > group/default
+///
+///   - `moduleKey == nil && resourceId == nil && seriesId == nil && membershipId == nil`
+///     → group-level / template-seeded
+///   - `moduleKey != nil` (others nil) → seeded by module activation; lifecycle
+///     bound to `set_group_module(slug, true/false)`
+///   - `seriesId != nil` → applies to every occurrence of a ResourceSeries
+///     unless overridden at occurrence level
+///   - `resourceId != nil` → per-instance override (occurrences ARE resources
+///     per taxonomy §1.4; may carry moduleKey too)
+///   - `membershipId != nil` → per-member deviation; orthogonal axis that may
+///     coexist with any of the above
 public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public let id: UUID
     public let groupId: UUID
@@ -31,6 +41,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public var consequences: [RuleConsequence]
     public var moduleKey: String?
     public var resourceId: UUID?
+    public var seriesId: UUID?
+    public var membershipId: UUID?
     public let createdAt: Date
     public var updatedAt: Date
 
@@ -45,6 +57,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         consequences: [RuleConsequence],
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
+        seriesId: UUID? = nil,
+        membershipId: UUID? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -58,6 +72,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         self.consequences = consequences
         self.moduleKey = moduleKey
         self.resourceId = resourceId
+        self.seriesId = seriesId
+        self.membershipId = membershipId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -73,6 +89,8 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         case consequences
         case moduleKey    = "module_key"
         case resourceId   = "resource_id"
+        case seriesId     = "series_id"
+        case membershipId = "membership_id"
         case createdAt    = "created_at"
         case updatedAt    = "updated_at"
     }
