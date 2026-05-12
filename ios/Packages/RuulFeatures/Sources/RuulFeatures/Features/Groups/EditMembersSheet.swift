@@ -412,10 +412,42 @@ public struct EditMembersSheet: View {
             }
         } catch {
             log.warning("removeMember failed: \(error.localizedDescription)")
+            let raw = error.localizedDescription.lowercased()
+            // remove_member (mig 00120) routes through resolve_governance.
+            // When the group's `member.remove` policy is vote_required the
+            // RPC raises a recognizable exception — auto-promote to the
+            // vote-driven path instead of bubbling the raw error to the
+            // user. Same code we'd run if they'd tapped "propose removal".
+            if raw.contains("governance requires vote") {
+                Task { await proposeRemoval(mwp) }
+                return
+            }
             await MainActor.run {
-                self.rowError = "No pudimos quitar a \(mwp.displayName): \(error.localizedDescription)"
+                self.rowError = "No pudimos quitar a \(mwp.displayName): \(mapRemoveError(error))"
             }
         }
+    }
+
+    /// Maps the most common remove_member rejections to Spanish copy so
+    /// the swipe error doesn't leak raw Postgres text. The
+    /// `governance requires vote` case is handled separately upstream
+    /// (auto-promote to proposeRemoval), so we don't need to map it
+    /// here.
+    private func mapRemoveError(_ error: Error) -> String {
+        let msg = error.localizedDescription.lowercased()
+        if msg.contains("governance denied") || msg.contains("policy denied") {
+            return "Este grupo no permite quitar miembros."
+        }
+        if msg.contains("admin only") || msg.contains("forbidden") {
+            return "Solo administradores pueden quitar miembros."
+        }
+        if msg.contains("cannot remove themselves") {
+            return "Los administradores no pueden quitarse a sí mismos. Para irte, usa \"Salir del grupo\"."
+        }
+        if msg.contains("not an active member") {
+            return "Esa persona ya no está en el grupo."
+        }
+        return error.localizedDescription
     }
 
     /// Opens a `member_removal` vote via `VoteRepository.startVote` so
