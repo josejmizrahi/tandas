@@ -2,34 +2,20 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// RSVP surface for event-shaped resources. Composed of two stacked
-/// elements, both optional:
-///
-///   1. **Intent CTA** — surfaces only when `\.eventInteractor` is in
-///      scope. Lets the current user set their own RSVP (going / maybe /
-///      declined), pick plus-ones, and reach the Wallet/QR/Scanner
-///      affordances via `\.eventDetailPresenter`.
-///   2. **Roll** — tally + expandable per-status list of other members'
-///      RSVPs. Renders even when no interactor is present (read-only
-///      surface for non-event resources that gain the cap in Phase 2+).
-///
-/// Section visibility is governed by the `rsvp` capability on the
-/// resource; presence of the interactor only decides whether the intent
-/// control draws.
+/// Dynamic Section showing **who's coming** to a resource. Per the
+/// canonical Resource Detail spec, RSVP-as-an-action lives upstream in
+/// the Primary Actions zone (`DetailPrimaryActions`); this section
+/// renders the attendee surface only — tally + expandable per-status
+/// rolls — gated by the `rsvp` capability.
 public struct RSVPSectionView: View {
     @Environment(AppState.self) private var app
     @Environment(\.eventInteractor) private var interactor: (any EventInteractor)?
-    @Environment(\.eventDetailPresenter) private var presenter: EventDetailPresenter?
 
     public let context: ResourceDetailContext
 
     @State private var rsvps: [RSVP] = []
     @State private var isLoading: Bool = true
     @State private var expanded: Set<RSVPStatus> = [.going]
-    /// Local plus-ones stepper state. Mirrors `interactor.myRSVP?.plusOnes`
-    /// after each interactor change so the stepper reflects the truth even
-    /// if the server downgrades the count (capacity).
-    @State private var pendingPlusOnes: Int = 0
 
     public static let definition = CapabilitySection(
         id: "rsvp",
@@ -39,83 +25,36 @@ public struct RSVPSectionView: View {
     )
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-            if let intent = intentControl {
-                intent
-            }
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            Text("Asistentes")
+                .ruulTextStyle(RuulTypography.headline)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .padding(.horizontal, RuulSpacing.xxs)
             rollContent
         }
         .task { await load() }
-        .onChange(of: interactor?.myRSVP?.plusOnes ?? 0, initial: true) { _, new in
-            pendingPlusOnes = new
-        }
     }
-
-    // MARK: - Intent CTA (current user)
-
-    /// Rendered only when an `EventInteractor` is in scope. Falls back
-    /// gracefully when no presenter is wired — Wallet/QR taps become
-    /// no-ops, intent CTAs still work via the interactor.
-    @ViewBuilder
-    private var intentControl: (some View)? {
-        if let interactor, let event = eventFromInteractor(interactor) {
-            EventRSVPStateView(
-                status: interactor.myRSVP?.status ?? .pending,
-                event: event,
-                walletAvailable: interactor.walletAvailable,
-                isAtCapacity: isAtCapacity(interactor: interactor),
-                plusOnes: $pendingPlusOnes,
-                onChange: { newStatus in
-                    Task {
-                        await interactor.setRSVP(newStatus, plusOnes: pendingPlusOnes, reason: nil)
-                    }
-                },
-                onAddToWallet: { presenter?.onAddToWallet() },
-                onShowQR: { presenter?.onPresentMemberQR() }
-            )
-        }
-    }
-
-    /// Returns the live `Event` value from the interactor. Today the
-    /// existential is a single concrete (`EventDetailCoordinator`) so this
-    /// is a direct read; the indirection lets the protocol grow without
-    /// every section knowing the conforming type.
-    private func eventFromInteractor(_ interactor: any EventInteractor) -> Event? {
-        interactor.event
-    }
-
-    /// Same capacity calc as the legacy EventDetailView: the viewer's
-    /// own existing seats don't count against the threshold when
-    /// re-confirming, matching the server's check semantics.
-    private func isAtCapacity(interactor: any EventInteractor) -> Bool {
-        guard let max = interactor.event.capacityMax else { return false }
-        let seatsTaken = interactor.rsvps
-            .filter { $0.status == .going }
-            .reduce(0) { $0 + 1 + $1.plusOnes }
-        let myExisting = (interactor.myRSVP?.status == .going)
-            ? (1 + (interactor.myRSVP?.plusOnes ?? 0))
-            : 0
-        return (seatsTaken - myExisting + 1 + pendingPlusOnes) > max
-    }
-
-    // MARK: - Roll
 
     @ViewBuilder
     private var rollContent: some View {
-        if isLoading {
+        if isLoading && effectiveRsvps.isEmpty {
             HStack { Spacer(); ProgressView().padding(RuulSpacing.lg); Spacer() }
-                .cardBackground()
+                .background(
+                    Color.ruulSurface,
+                    in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                )
         } else if effectiveRsvps.isEmpty {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "person.crop.circle.badge.questionmark")
                     .foregroundStyle(Color.ruulTextTertiary)
-                Text("Aún nadie ha confirmado")
+                    .accessibilityHidden(true)
+                Text("Sin confirmaciones aún")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
-                Spacer()
+                Spacer(minLength: 0)
             }
-            .padding(RuulSpacing.md)
-            .cardBackground()
+            .padding(.horizontal, RuulSpacing.xxs)
+            .padding(.vertical, RuulSpacing.sm)
         } else {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 tallyCard
@@ -124,9 +63,8 @@ public struct RSVPSectionView: View {
         }
     }
 
-    /// Prefer the interactor's realtime-driven list when present; otherwise
-    /// fall back to the section's own one-shot fetch. Keeps the roll
-    /// in-sync with optimistic mutations the user makes via the intent CTA.
+    /// Prefer the interactor's realtime list (mutations land instantly)
+    /// over the section's own one-shot fetch.
     private var effectiveRsvps: [RSVP] {
         interactor?.rsvps ?? rsvps
     }
@@ -135,15 +73,18 @@ public struct RSVPSectionView: View {
 
     private var tallyCard: some View {
         VStack(spacing: 0) {
-            tallyRow(.going,    label: "Vas",       color: .ruulPositive)
+            tallyRow(.going,    label: "Van",       color: .ruulPositive)
             divider
-            tallyRow(.maybe,    label: "Quizás",    color: .ruulWarning)
+            tallyRow(.maybe,    label: "Tal vez",   color: .ruulWarning)
             divider
-            tallyRow(.declined, label: "No vas",    color: .ruulNegative)
+            tallyRow(.declined, label: "No van",    color: .ruulNegative)
             divider
-            tallyRow(.pending,  label: "Pendiente", color: .ruulTextTertiary)
+            tallyRow(.pending,  label: "Pendientes", color: .ruulTextTertiary)
         }
-        .cardBackground()
+        .background(
+            Color.ruulSurface,
+            in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        )
     }
 
     private func tallyRow(_ status: RSVPStatus, label: String, color: Color) -> some View {
@@ -166,10 +107,10 @@ public struct RSVPSectionView: View {
         Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
     }
 
-    // MARK: - Rolls (expandable per status)
+    // MARK: - Rolls
 
     private var rolls: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
             ForEach(RSVPStatus.allCases, id: \.self) { status in
                 roll(for: status)
             }
@@ -189,18 +130,19 @@ public struct RSVPSectionView: View {
                 } label: {
                     HStack(spacing: RuulSpacing.xs) {
                         rollIcon(for: status)
-                        Text(rollLabel(for: status).uppercased())
-                            .ruulTextStyle(RuulTypography.sectionLabelLg)
+                        Text(rollLabel(for: status))
+                            .ruulTextStyle(RuulTypography.callout)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Text("\(filtered.count)")
                             .ruulTextStyle(RuulTypography.statSmall)
                             .foregroundStyle(Color.ruulTextTertiary)
                         Spacer()
                         Image(systemName: expanded.contains(status) ? "chevron.up" : "chevron.down")
-                            .font(.system(size: RuulSize.iconXS, weight: .bold))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Color.ruulTextTertiary)
                             .accessibilityHidden(true)
                     }
+                    .padding(.horizontal, RuulSpacing.xxs)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -210,6 +152,7 @@ public struct RSVPSectionView: View {
                             row(for: rsvp)
                         }
                     }
+                    .padding(.horizontal, RuulSpacing.xxs)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
@@ -220,10 +163,9 @@ public struct RSVPSectionView: View {
     private func row(for rsvp: RSVP) -> some View {
         let profile = context.memberDirectory[rsvp.userId]
         let name    = profile?.displayName ?? "Miembro"
-        let avatar  = profile?.avatarURL
         Button { context.onSelectMember(rsvp.userId) } label: {
             HStack(spacing: RuulSpacing.sm) {
-                RuulAvatar(name: name, imageURL: avatar, size: .small)
+                RuulAvatar(name: name, imageURL: profile?.avatarURL, size: .small)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
                         .ruulTextStyle(RuulTypography.body)
@@ -232,9 +174,13 @@ public struct RSVPSectionView: View {
                         Text("Llegó \(arrived.ruulShortTime)")
                             .ruulTextStyle(RuulTypography.caption)
                             .foregroundStyle(Color.ruulPositive)
+                    } else if rsvp.plusOnes > 0 {
+                        Text("+\(rsvp.plusOnes)")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextTertiary)
                     }
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
             .padding(.vertical, RuulSpacing.xxs)
             .contentShape(Rectangle())
@@ -270,9 +216,6 @@ public struct RSVPSectionView: View {
     @MainActor
     private func load() async {
         defer { isLoading = false }
-        // When the interactor is in scope it owns the realtime stream,
-        // so a manual fetch would be redundant churn. Phase 11 will let
-        // us delete this branch outright.
         guard interactor == nil else { return }
         do {
             rsvps = try await app.rsvpRepo.rsvps(for: context.resource.id)

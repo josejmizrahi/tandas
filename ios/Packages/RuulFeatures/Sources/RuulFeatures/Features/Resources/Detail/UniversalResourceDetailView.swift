@@ -2,25 +2,23 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Universal, capability-driven resource detail page. Sections render
-/// dynamically based on which capabilities the resource has enabled —
-/// no per-type branching anywhere in this view.
+/// Universal, capability-driven resource detail page. Composed per the
+/// canonical Resource Detail spec:
 ///
-/// Composition (top → bottom):
-///   1. Cover         — optional parallax hero (events + any resource with a cover)
-///   2. Header        — identity (icon + name + type + status pill)
-///   3. Attention     — inbox actions filtered to this resource
-///   4. Summary       — 2-3 key facts (type-aware metadata)
-///   5. Actions       — capability-driven CTA strip
-///   6. Sections      — DynamicSectionRenderer over the catalog
+///   1. Cover (optional)         — parallax hero when an image URL exists
+///   2. Header                   — identity (`EventHeroTitleBlock` for events,
+///                                  `DetailHeaderView` for other types)
+///   3. Summary                  — compact status block (`EventStatusSummary`
+///                                  for events, metadata-rows otherwise)
+///   4. Needs Attention          — inbox actions filtered to this resource
+///   5. Primary Actions          — top CTA (RSVP intent for events)
+///   6. Secondary Actions strip  — money-flavored chips (Gasto / Aportación / Payout)
+///   7. Dynamic Sections         — catalog-registered, gated by capabilities
+///       (RSVP attendees, CheckIn, HostActions, Money, Rules, Activity)
 ///
 /// Two chrome layers sit on top of the scroll content:
 ///   - `DetailTopNavView`        — floating glass nav (close, share, more menu)
 ///   - `DetailStickyFooterView`  — bottom-pinned CTA via `safeAreaInset`
-///
-/// `ResourceDetailContext` is the single argument every zone + section
-/// reads from. Event-aware sections additionally consume
-/// `\.eventInteractor` + `\.eventDetailPresenter` from the environment.
 public struct UniversalResourceDetailView: View {
     public let context: ResourceDetailContext
 
@@ -54,18 +52,18 @@ public struct UniversalResourceDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    /// Content body. Events get the hand-crafted `EventInvitesContent`
-    /// layout — Apple Invites mold, hero + meta + RSVP + avatar strip +
-    /// secondary actions, no card-on-card stacking. Other resource types
-    /// stay on the polymorphic catalog-driven stack with `DetailHeaderView`
-    /// + `DetailSummaryView` + capability sections.
+    /// Single canonical content stack. Identity + Summary swap based on
+    /// resource type; everything below is shared across types so non-event
+    /// resources benefit from the same ordering when their detail surfaces
+    /// land.
     private var contentPanel: some View {
-        Group {
-            if context.usesEventHero {
-                EventInvitesContent(context: context)
-            } else {
-                catalogPanel
-            }
+        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+            identityZone
+            summaryZone
+            DetailAttentionView(context: context)
+            DetailPrimaryActions(context: context)
+            DetailActionsBar(context: context)
+            dynamicSections
         }
         .padding(.horizontal, RuulSpacing.lg)
         .padding(.top, context.hasCoverHero ? RuulSpacing.xl : topInsetWithoutCover)
@@ -73,24 +71,27 @@ public struct UniversalResourceDetailView: View {
         .background(panelBackground)
     }
 
-    /// Catalog-driven layout for non-event resources. Identity strip +
-    /// summary rows + dynamic capability sections. Stays in place so
-    /// upcoming slot / fund / asset detail surfaces aren't blocked on
-    /// the event redesign.
-    private var catalogPanel: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+    @ViewBuilder
+    private var identityZone: some View {
+        if context.usesEventHero {
+            EventHeroTitleBlock(context: context)
+        } else {
             DetailHeaderView(context: context)
-            DetailSummaryView(context: context)
-            DetailAttentionView(context: context)
-            DetailActionsBar(context: context)
-            dynamicSections
         }
     }
 
-    /// Top padding when the page has no cover. Needs to clear the
-    /// floating `DetailTopNavView` (which sits at safe-area top) so the
-    /// title block doesn't tuck under it. Approximate the nav row's
-    /// vertical footprint — 44pt button + dynamic-island inset.
+    @ViewBuilder
+    private var summaryZone: some View {
+        if context.usesEventHero {
+            EventStatusSummary(context: context)
+        } else {
+            DetailSummaryView(context: context)
+        }
+    }
+
+    /// Top padding when no cover is present. Clears the floating
+    /// `DetailTopNavView` (which sits at safe-area top) so the title
+    /// block doesn't tuck under it.
     private var topInsetWithoutCover: CGFloat {
         RuulSpacing.xxl + 44
     }
@@ -98,9 +99,6 @@ public struct UniversalResourceDetailView: View {
     @ViewBuilder
     private var panelBackground: some View {
         if context.hasCoverHero {
-            // Pulls the rounded panel up under the cover bottom by its own
-            // corner radius — the bottom of the cover disappears into the
-            // curve. Matches the legacy EventDetailView treatment 1:1.
             UnevenRoundedRectangle(
                 topLeadingRadius: RuulRadius.extraLarge,
                 topTrailingRadius: RuulRadius.extraLarge,
@@ -113,10 +111,6 @@ public struct UniversalResourceDetailView: View {
         }
     }
 
-    /// Renders every capability-driven section in priority order. Tries
-    /// to avoid empty visual noise: each section is responsible for its
-    /// own loading / empty state, but we don't add any section unless
-    /// the catalog's predicate matches.
     @ViewBuilder
     private var dynamicSections: some View {
         let sections = CapabilitySectionCatalog.shared
