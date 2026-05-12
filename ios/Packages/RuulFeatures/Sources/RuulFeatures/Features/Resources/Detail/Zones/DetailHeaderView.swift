@@ -6,13 +6,15 @@ import RuulCore
 /// type icon + name + type label + status pill. Stays compact —
 /// the deep visual hero (cover image, capacity bar, etc.) lives in
 /// the type-specific full-screen detail when one exists.
+///
+/// Overflow actions (Editar, Activar capability) live in
+/// `DetailTopNavView`'s more menu — keeping the header purely about
+/// identity avoids a redundant ••• on the same screen.
 public struct DetailHeaderView: View {
     public let context: ResourceDetailContext
-    public let onMore: () -> Void
 
-    public init(context: ResourceDetailContext, onMore: @escaping () -> Void = {}) {
+    public init(context: ResourceDetailContext) {
         self.context = context
-        self.onMore = onMore
     }
 
     public var body: some View {
@@ -36,17 +38,6 @@ public struct DetailHeaderView: View {
                 }
             }
             Spacer()
-            Menu {
-                Button("Editar", systemImage: "pencil",
-                       action: context.onPresentEditResource)
-                Button("Activar capability", systemImage: "plus.circle",
-                       action: context.onPresentEnableCapability)
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 22, weight: .regular))
-                    .foregroundStyle(Color.ruulTextSecondary)
-            }
-            .accessibilityLabel("Más acciones")
         }
         .padding(.horizontal, RuulSpacing.xxs)
     }

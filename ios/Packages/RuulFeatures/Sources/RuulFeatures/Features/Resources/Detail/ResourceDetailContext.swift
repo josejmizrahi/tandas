@@ -48,6 +48,11 @@ public struct ResourceDetailContext {
     /// rows as display-only. EventDetailView wires this to the attendee
     /// member detail sheet.
     public let onSelectMember: (UUID) -> Void
+    /// Optional dismiss handler. Lets the outer shell tear down its own
+    /// route binding (e.g. MainTabView's `detailRoute = nil`) before
+    /// SwiftUI propagates `\.dismiss`. When nil, the top nav falls back
+    /// to `\.dismiss` from the environment.
+    public let onDismiss: (() -> Void)?
 
     public init(
         resource: ResourceRow,
@@ -62,7 +67,8 @@ public struct ResourceDetailContext {
         onPresentEditResource: @escaping () -> Void = {},
         onPresentEnableCapability: @escaping () -> Void = {},
         onOpenInboxAction: @escaping (UserAction) async -> Void = { _ in },
-        onSelectMember: @escaping (UUID) -> Void = { _ in }
+        onSelectMember: @escaping (UUID) -> Void = { _ in },
+        onDismiss: (() -> Void)? = nil
     ) {
         self.resource = resource
         self.group = group
@@ -77,6 +83,7 @@ public struct ResourceDetailContext {
         self.onPresentEnableCapability = onPresentEnableCapability
         self.onOpenInboxAction = onOpenInboxAction
         self.onSelectMember = onSelectMember
+        self.onDismiss = onDismiss
     }
 }
 

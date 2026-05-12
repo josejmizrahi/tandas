@@ -48,16 +48,10 @@ public struct HostActionsSectionView: View {
             statsCard(interactor: interactor)
             actionsCard(event: event, interactor: interactor)
 
-            if isCloseable(event: event) {
-                RuulButton(
-                    "Cerrar evento",
-                    style: .primary,
-                    size: .large,
-                    fillsWidth: true
-                ) {
-                    presenter?.onPresentCloseEventSheet()
-                }
-            }
+            // "Cerrar evento" lives in the sticky bottom footer
+            // (DetailStickyFooterView) so the host always has the CTA in
+            // reach when the event window has elapsed. Keeping a second
+            // copy here would duplicate the affordance.
 
             if event.isRecurringGenerated {
                 autoGenerateToggleCard(interactor: interactor)
@@ -176,10 +170,4 @@ public struct HostActionsSectionView: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func isCloseable(event: Event) -> Bool {
-        guard event.status == .upcoming || event.status == .inProgress else { return false }
-        return Date.now > event.startsAt.addingTimeInterval(TimeInterval(event.durationMinutes * 60))
-    }
 }
