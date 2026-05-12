@@ -104,3 +104,12 @@ public struct UniversalResourceDetailView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Event — guest viewer") {
+    Text("UniversalResourceDetailView needs AppState + AppState-bound repos to render the dynamic section catalog. See `EventDetailHostShowcase` in the showcase target for a wired live preview.")
+        .multilineTextAlignment(.center)
+        .padding(RuulSpacing.lg)
+        .background(Color.ruulBackground)
+}
+#endif
