@@ -2,18 +2,15 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Tab "Ajustes" per DS v3 §6.2 — dual scope:
-///   - Sección "Tu cuenta" (global): perfil personal, notificaciones
-///   - Sección "Este grupo" (grupo-activo, con switcher): members, governance, danger zone
+/// Tab "Perfil" per AppShell.md — cross-group identity. **Sin GroupSwitcher**
+/// chrome (Profile no se reescopa por grupo; las secciones "Este grupo"
+/// muestran el grupo activo pero el header global queda limpio).
 ///
-/// V1 reusa ProfileView completo como contenido principal. Sección "Este grupo"
-/// se queda como placeholder hasta que Fase 5 le ponga affordances reales.
-///
-/// **No conectado a MainTabView todavía** — Fase 4b hará el swap.
+/// V1 reusa ProfileView completo como contenido principal. La sección
+/// "Este grupo" se queda como placeholder hasta que Fase 5 le ponga
+/// affordances reales.
 @MainActor
 public struct SettingsTabView: View {
-    public let activeGroup: RuulCore.Group
-    public let onSwitchGroup: () -> Void
     /// `ProfileView` usa `@State var coordinator`, no `@Bindable`, así que
     /// recibimos la instancia por valor y la pasamos al child.
     public let profileCoordinator: ProfileCoordinator
@@ -30,9 +27,7 @@ public struct SettingsTabView: View {
     public let onOpenGovernance: () -> Void
     public let onLeaveGroup: () -> Void
 
-    public init(activeGroup: RuulCore.Group, onSwitchGroup: @escaping () -> Void, profileCoordinator: ProfileCoordinator, onOpenMyFines: @escaping () -> Void, onOpenMyLedger: @escaping () -> Void, onOpenHistory: @escaping () -> Void, onOpenSettings: @escaping () -> Void, onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void, onOpenMembers: @escaping () -> Void, onOpenGovernance: @escaping () -> Void, onLeaveGroup: @escaping () -> Void) {
-        self.activeGroup = activeGroup
-        self.onSwitchGroup = onSwitchGroup
+    public init(profileCoordinator: ProfileCoordinator, onOpenMyFines: @escaping () -> Void, onOpenMyLedger: @escaping () -> Void, onOpenHistory: @escaping () -> Void, onOpenSettings: @escaping () -> Void, onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void, onOpenMembers: @escaping () -> Void, onOpenGovernance: @escaping () -> Void, onLeaveGroup: @escaping () -> Void) {
         self.profileCoordinator = profileCoordinator
         self.onOpenMyFines = onOpenMyFines
         self.onOpenMyLedger = onOpenMyLedger
@@ -46,37 +41,20 @@ public struct SettingsTabView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            header
-            ProfileView(
-                coordinator: profileCoordinator,
-                onOpenMyFines: onOpenMyFines,
-                onOpenHistory: onOpenHistory,
-                onOpenSettings: onOpenSettings,
-                onEditProfile: onEditProfile,
-                onSignOut: onSignOut,
-                onOpenMyLedger: onOpenMyLedger,
-                groupScope: ProfileView.GroupScopeContext(
-                    onOpenMembers: onOpenMembers,
-                    onOpenGovernance: onOpenGovernance,
-                    onLeaveGroup: onLeaveGroup
-                )
+        ProfileView(
+            coordinator: profileCoordinator,
+            onOpenMyFines: onOpenMyFines,
+            onOpenHistory: onOpenHistory,
+            onOpenSettings: onOpenSettings,
+            onEditProfile: onEditProfile,
+            onSignOut: onSignOut,
+            onOpenMyLedger: onOpenMyLedger,
+            groupScope: ProfileView.GroupScopeContext(
+                onOpenMembers: onOpenMembers,
+                onOpenGovernance: onOpenGovernance,
+                onLeaveGroup: onLeaveGroup
             )
-        }
-    }
-
-    private var header: some View {
-        HStack {
-            RuulGroupSwitcher(
-                activeGroupName: activeGroup.name,
-                activeCategory: activeGroup.category,
-                activeInitials: activeGroup.initials,
-                onTap: onSwitchGroup
-            )
-            Spacer()
-        }
-        .padding(.horizontal, RuulSpacing.screenPadding)
-        .padding(.vertical, RuulSpacing.md)
+        )
     }
 }
 

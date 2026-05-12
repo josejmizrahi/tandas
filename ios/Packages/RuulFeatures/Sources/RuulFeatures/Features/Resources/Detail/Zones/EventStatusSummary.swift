@@ -3,15 +3,15 @@ import RuulUI
 import RuulCore
 
 /// "Summary" zone for event-shaped resources per the canonical Resource
-/// Detail spec — a compact magazine block of two-to-three status lines:
+/// Detail spec — a compact two-line status block:
 ///
-///   ⭐ Daniel hosting
+///   ⭐ Daniel está hospedando
 ///   👥 4 de 8 confirmados
-///   📍 Casa de Jose
 ///
 /// Replaces `DetailSummaryView`'s metadata-row card (host, lugar, capacidad,
-/// dura, empieza) for events. The hero already carries the date / countdown
-/// / status pills, so Summary sticks to who-and-where rather than fact dump.
+/// dura, empieza) for events. The hero carries date/countdown/status; the
+/// `LocationSection` below carries lugar + map; this zone keeps to host +
+/// headcount so nothing duplicates downstream.
 public struct EventStatusSummary: View {
     @Environment(\.eventInteractor) private var interactor: (any EventInteractor)?
 
@@ -27,9 +27,6 @@ public struct EventStatusSummary: View {
                 row(icon: "person.fill", text: "\(host) está hospedando")
             }
             row(icon: "person.3.fill", text: attendingLine)
-            if let location = locationName {
-                row(icon: "mappin.and.ellipse", text: location)
-            }
         }
         .padding(.horizontal, RuulSpacing.xxs)
     }

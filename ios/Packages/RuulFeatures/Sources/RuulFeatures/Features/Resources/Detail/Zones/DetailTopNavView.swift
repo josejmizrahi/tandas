@@ -52,8 +52,14 @@ public struct DetailTopNavView: View {
                     presenter?.onPresentEditEvent()
                 }
             }
-            Button("Activar capability", systemImage: "plus.circle") {
-                context.onPresentEnableCapability()
+            // "Activar capability" only when the surrounding shell actually
+            // wires a handler (non-events). For events the cap set is hard-
+            // seeded by migrations 00109/00110 — surfacing a no-op menu
+            // item would just confuse the user.
+            if !context.usesEventHero {
+                Button("Activar capability", systemImage: "plus.circle") {
+                    context.onPresentEnableCapability()
+                }
             }
         } label: {
             ZStack {

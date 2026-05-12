@@ -54,6 +54,7 @@ public struct EventDetailHost: View {
     @State private var coordinator: EventDetailCoordinator?
     @State private var enabledCapabilities: Set<String> = []
     @State private var canIssueManualFine: Bool = false
+    @State private var attentionActions: [UserAction] = []
     @State private var attendeeRoute: MemberWithProfile?
     @State private var ledgerCoordinator: ResourceLedgerCoordinator?
     @State private var rulesCoordinator: ResourceRulesCoordinator?
@@ -95,6 +96,7 @@ public struct EventDetailHost: View {
             .task { await coordinator.refresh() }
             .task { await coordinator.startRealtime() }
             .task { await loadCapabilities() }
+            .task { await loadAttentionActions() }
             .task { canIssueManualFine = await computeCanIssueManualFine() }
             .onDisappear { coordinator.stopRealtime() }
             .ruulSheet(isPresented: bindingForSheet(.share)) {
@@ -208,15 +210,17 @@ public struct EventDetailHost: View {
             enabledCapabilities: enabledCapabilities,
             memberDirectory: memberDirectory,
             displayName: coordinator.event.title,
-            attentionActions: [],
+            attentionActions: attentionActions,
             onPresentLedger: { sheet = .ledger },
             onPresentRules: { sheet = .rules },
             onPresentEditResource: { onEditEvent(coordinator.event) },
-            onPresentEnableCapability: {
-                // Forward-compat: UniversalResourceDetailView's overflow
-                // menu opens this. Event detail today doesn't surface a
-                // cap-enable sheet — the cap set is seeded by mig 00109/110.
-                // Leave as no-op until the host wants to add the route.
+            // Events have their capability set hard-seeded by mig
+            // 00109/00110 — surfacing "Activar capability" would be a
+            // dead route. The top-nav menu filters this item out via
+            // ResourceDetailContext.usesEventHero.
+            onPresentEnableCapability: { },
+            onOpenInboxAction: { action in
+                await openInboxAction(action, coordinator: coordinator)
             },
             onSelectMember: { userId in
                 if let mwp = memberDirectory[userId] { attendeeRoute = mwp }
@@ -288,6 +292,44 @@ public struct EventDetailHost: View {
     private func loadCapabilities() async {
         let caps = (try? await app.resourceCapabilityRepo.list(resourceId: event.id)) ?? []
         enabledCapabilities = Set(caps.filter { $0.enabled }.map { $0.capabilityBlockId })
+    }
+
+    /// Hydrates the "Necesita atención" zone from the user_actions inbox,
+    /// keeping only rows whose `referenceId` matches this event. Filters
+    /// out resolved actions so the badge clears the moment the user
+    /// acts elsewhere.
+    @MainActor
+    private func loadAttentionActions() async {
+        let pending = (try? await app.userActionRepo.pending(
+            userId: currentUserId,
+            groupId: group.id
+        )) ?? []
+        attentionActions = pending.filter { $0.referenceId == event.id && $0.resolvedAt == nil }
+    }
+
+    /// Inbox handler — dispatches a tapped action to its natural route.
+    /// RSVP-pending → focus the RSVP intent in place; fine-related →
+    /// open the appropriate sheet; everything else falls back to a
+    /// resolve mark-as-read so the action drops out of the list.
+    @MainActor
+    private func openInboxAction(_ action: UserAction, coordinator: EventDetailCoordinator) async {
+        switch action.actionType {
+        case .rsvpPending:
+            // Surface is already on screen — just resolve the prompt so
+            // it stops nagging. The user RSVPs via the Primary Actions
+            // CTA.
+            try? await app.userActionRepo.resolve(actionId: action.id)
+            await loadAttentionActions()
+        case .finePending, .fineVoided, .fineProposalReview, .appealVotePending:
+            // Fines live in their own surface; resolve the inbox row so
+            // it disappears, and let the user navigate via the host
+            // actions or MyFines.
+            try? await app.userActionRepo.resolve(actionId: action.id)
+            await loadAttentionActions()
+        default:
+            try? await app.userActionRepo.resolve(actionId: action.id)
+            await loadAttentionActions()
+        }
     }
 
     @MainActor

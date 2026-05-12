@@ -24,7 +24,13 @@ public struct CapacityProgressSectionView: View {
     )
 
     public var body: some View {
-        if let capacityMax {
+        // For events, the summary zone (`EventStatusSummary`) already
+        // surfaces "X de Y confirmados" textually. Repeating the same
+        // count as a bar here would just thicken the rhythm without
+        // adding info. Other resource types still get the visual bar.
+        if context.usesEventHero {
+            EmptyView()
+        } else if let capacityMax {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: RuulSpacing.xs) {
                     Text(captionLine(capacityMax: capacityMax))
