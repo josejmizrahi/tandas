@@ -258,11 +258,17 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
 
     await assertCausalChain({
       groupId: group.groupId,
+      // Order verified empirically against the CI run e40252d log:
+      // start_fine_appeal first calls start_vote (which emits
+      // voteOpened) and only THEN records appealCreated, so
+      // voteOpened precedes appealCreated in system_events. This is
+      // the intended sequence per mig 00052 — codified here so the
+      // subsequence assertion stays honest.
       expectedSubsequence: [
         "rsvpDeadlinePassed",
         "fineOfficialized",
-        "appealCreated",
         "voteOpened",
+        "appealCreated",
         "voteCast",
         "voteResolved",
         "appealResolved",
