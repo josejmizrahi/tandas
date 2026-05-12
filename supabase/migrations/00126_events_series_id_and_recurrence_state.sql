@@ -217,7 +217,15 @@ declare
   v_rotation_on   boolean;
   v_rsvp_deadline timestamptz;
 begin
-  if not public.is_group_member(p_group_id, auth.uid()) then
+  -- Membership gate. Service-role callers (auth.uid() IS NULL) bypass:
+  -- this covers cron paths like auto-generate-events (post-Tier-1.5)
+  -- that call create_event_v2 to materialize recurrence occurrences,
+  -- and any future system-level event creation. The function stays
+  -- SECURITY DEFINER but trusts the service_role JWT only for the
+  -- membership-gate skip; everything downstream (cycle_number, host
+  -- selection, rsvp_deadline, ON CONFLICT idempotency) is identical.
+  if auth.uid() is not null
+     and not public.is_group_member(p_group_id, auth.uid()) then
     raise exception 'forbidden: not a member of group';
   end if;
 
