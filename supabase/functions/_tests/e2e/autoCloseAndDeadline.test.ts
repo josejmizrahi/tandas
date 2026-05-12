@@ -30,7 +30,7 @@
 
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { adminClient } from "./_fixtures/supabaseClients.ts";
-import { seedGroup, type SeededGroup } from "./_fixtures/seedGroup.ts";
+import { extractRowId, seedGroup, type SeededGroup } from "./_fixtures/seedGroup.ts";
 import { cleanupGroup } from "./_fixtures/cleanup.ts";
 import { invokeCron } from "./_fixtures/invokeCron.ts";
 import {
@@ -111,7 +111,7 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
     // picks it up because rsvp_deadline < now AND status='scheduled'.
     const startsAt = new Date(Date.now() + 4 * 3600_000);   // 4h ahead
     const rsvpDeadline = new Date(Date.now() - 1 * 60_000);  // 1 min ago
-    const { data: eventId, error: createErr } = await alice.client.rpc(
+    const { data: createResult, error: createErr } = await alice.client.rpc(
       "create_event_v2",
       {
         p_group_id:       group.groupId,
@@ -122,6 +122,8 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
       },
     );
     if (createErr) throw new Error(`create_event_v2: ${createErr.message}`);
+    const eventId = extractRowId(createResult);
+    if (!eventId) throw new Error(`create_event_v2 returned no id: ${JSON.stringify(createResult)}`);
 
     // Alice + Carla RSVP going. Bob never responds (his RSVP row stays
     // 'pending' as seeded by create_event_v2).
@@ -362,7 +364,7 @@ Deno.test("auto-close-events emits eventClosed → rule engine fires no-show fin
 
     // Event in the past, way past the auto-close cutoff (default 24h).
     const startsAt = new Date(Date.now() - 30 * 3600_000); // 30h ago
-    const { data: eventId, error: createErr } = await alice.client.rpc(
+    const { data: createResult, error: createErr } = await alice.client.rpc(
       "create_event_v2",
       {
         p_group_id:  group.groupId,
@@ -372,6 +374,8 @@ Deno.test("auto-close-events emits eventClosed → rule engine fires no-show fin
       },
     );
     if (createErr) throw new Error(`create_event_v2: ${createErr.message}`);
+    const eventId = extractRowId(createResult);
+    if (!eventId) throw new Error(`create_event_v2 returned no id: ${JSON.stringify(createResult)}`);
 
     // RSVPs: bob going, carla declined. Bob never checks in.
     await bob.client.rpc("set_rsvp_v2",   { p_event_id: eventId, p_status: "going" });

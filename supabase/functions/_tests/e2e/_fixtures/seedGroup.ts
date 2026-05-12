@@ -1,5 +1,11 @@
 // Seeds a fully-formed test group: auth users → group → members → rules.
 //
+// Helpers:
+//   extractRowId — normalizes supabase-js .rpc results that may return
+//     either a bare uuid (legacy signatures) or a full row (current
+//     `returns public.X` signatures). Use after every `client.rpc(...)`
+//     that you'd expect to give you an id.
+//
 // Returns everything the test needs to drive scenarios: the group_id,
 // each member's userId + group_member id + authed Supabase client, and
 // the founder reference for convenience.
@@ -10,6 +16,23 @@
 
 import { adminClient, createTestUser } from "./supabaseClients.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+
+/**
+ * Normalizes the result of a Supabase RPC call that may return either a
+ * bare uuid string (legacy signatures) or a full row with an `id`
+ * column (post-BigBang signatures like create_event_v2,
+ * create_group_with_admin). Returns null when neither shape applies so
+ * the caller can throw with context.
+ */
+export function extractRowId(rpcResult: unknown): string | null {
+  if (rpcResult == null) return null;
+  if (typeof rpcResult === "string") return rpcResult;
+  if (typeof rpcResult === "object" && "id" in rpcResult) {
+    const id = (rpcResult as { id: unknown }).id;
+    return typeof id === "string" ? id : null;
+  }
+  return null;
+}
 
 export interface MemberSpec {
   /** Human label for test readability. Becomes part of the email. */
@@ -89,14 +112,7 @@ export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
   if (groupErr) {
     throw new Error(`seedGroup: create_group_with_admin failed: ${groupErr.message}`);
   }
-  const groupId: string | null = (() => {
-    if (rpcResult == null) return null;
-    if (typeof rpcResult === "string") return rpcResult;
-    if (typeof rpcResult === "object" && "id" in rpcResult) {
-      return (rpcResult as { id: string }).id;
-    }
-    return null;
-  })();
+  const groupId = extractRowId(rpcResult);
   if (!groupId) {
     throw new Error(
       `seedGroup: create_group_with_admin returned no group_id (got: ${JSON.stringify(rpcResult)})`,

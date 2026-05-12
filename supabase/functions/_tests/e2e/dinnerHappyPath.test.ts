@@ -13,7 +13,7 @@
 
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { adminClient } from "./_fixtures/supabaseClients.ts";
-import { seedGroup, type SeededGroup } from "./_fixtures/seedGroup.ts";
+import { extractRowId, seedGroup, type SeededGroup } from "./_fixtures/seedGroup.ts";
 import { cleanupGroup } from "./_fixtures/cleanup.ts";
 import { invokeCron } from "./_fixtures/invokeCron.ts";
 import {
@@ -54,7 +54,7 @@ Deno.test("dinner happy path — late check-in → fine → grace → officializ
 
     // Create event 90 min ago so check-in lateness is meaningful.
     const startsAt = new Date(Date.now() - 90 * 60_000);
-    const { data: eventId, error: createErr } = await alice.client.rpc(
+    const { data: createResult, error: createErr } = await alice.client.rpc(
       "create_event_v2",
       {
         p_group_id:    group.groupId,
@@ -64,6 +64,8 @@ Deno.test("dinner happy path — late check-in → fine → grace → officializ
       },
     );
     if (createErr) throw new Error(`create_event_v2: ${createErr.message}`);
+    const eventId = extractRowId(createResult);
+    if (!eventId) throw new Error(`create_event_v2 returned no id: ${JSON.stringify(createResult)}`);
 
     // Bob RSVPs going + checks in 75 min late
     const { error: bobRsvpErr } = await bob.client.rpc("set_rsvp_v2", {
