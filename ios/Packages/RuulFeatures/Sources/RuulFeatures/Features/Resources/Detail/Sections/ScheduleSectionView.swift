@@ -24,18 +24,28 @@ public struct ScheduleSectionView: View {
     )
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            sectionHeader("CUÁNDO")
-            VStack(spacing: 0) {
-                if let starts = startsAt {
-                    row(icon: "calendar", label: dateLabel(starts), trailing: relativeLabel(starts))
-                    if recurrenceLabel != nil { divider }
+        // Events show their schedule in the `EventHeroTitleBlock` (date
+        // line + countdown + recurring pill). Repeating the same info
+        // here as a "CUÁNDO" card just doubles the visual noise — hide
+        // for events. Non-event resources still get the section.
+        if !context.usesEventHero {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                Text("Cuándo")
+                    .ruulTextStyle(RuulTypography.headline)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .padding(.horizontal, RuulSpacing.xxs)
+
+                VStack(spacing: 0) {
+                    if let starts = startsAt {
+                        row(icon: "calendar", label: dateLabel(starts), trailing: relativeLabel(starts))
+                        if recurrenceLabel != nil { divider }
+                    }
+                    if let recurrence = recurrenceLabel {
+                        row(icon: "arrow.triangle.2.circlepath", label: "Recurrente", trailing: recurrence)
+                    }
                 }
-                if let recurrence = recurrenceLabel {
-                    row(icon: "arrow.triangle.2.circlepath", label: "Recurrente", trailing: recurrence)
-                }
+                .cardBackground()
             }
-            .cardBackground()
         }
     }
 

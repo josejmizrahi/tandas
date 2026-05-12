@@ -2,10 +2,10 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Rules primitive renderer. Mirrors MoneySectionView shape — tap →
-/// caller presents `ResourceRulesSheet`. The sheet handles add /
-/// edit / propose-change UX (governance plan from feat/group-
-/// governance-policies wires resolve_governance into the save path).
+/// Rules primitive renderer. Settings-style single-row entry that opens
+/// `ResourceRulesSheet` for the resource. The sheet handles add / edit /
+/// propose-change UX (governance plan from feat/group-governance-policies
+/// wires `resolve_governance` into the save path).
 public struct RulesSectionView: View {
     public let context: ResourceDetailContext
 
@@ -18,38 +18,43 @@ public struct RulesSectionView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            sectionHeader("ACUERDOS")
+            Text("Reglas")
+                .ruulTextStyle(RuulTypography.headline)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .padding(.horizontal, RuulSpacing.xxs)
+
             Button(action: context.onPresentRules) {
-                HStack(spacing: RuulSpacing.sm) {
-                    iconBadge(systemName: "list.bullet.clipboard.fill")
+                HStack(spacing: RuulSpacing.md) {
+                    Image(systemName: "list.bullet.clipboard.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ruulAccent)
+                        .frame(width: 28)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Reglas de este recurso")
-                            .ruulTextStyle(RuulTypography.headline)
+                            .ruulTextStyle(RuulTypography.body)
                             .foregroundStyle(Color.ruulTextPrimary)
-                        Text("Lo que se cumple sin pensar — multas, límites, votos.")
+                        Text("Lo que se cumple sin pensar.")
                             .ruulTextStyle(RuulTypography.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
-                            .multilineTextAlignment(.leading)
                     }
-                    Spacer()
+                    Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
                 }
-                .padding(RuulSpacing.md)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.vertical, RuulSpacing.md)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .cardBackground()
-        }
-    }
-
-    private func iconBadge(systemName: String) -> some View {
-        ZStack {
-            Circle().fill(Color.ruulAccent.opacity(0.15)).frame(width: 36, height: 36)
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.ruulAccent)
+            .background(
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            )
+            .accessibilityLabel("Ver reglas del recurso")
         }
     }
 }

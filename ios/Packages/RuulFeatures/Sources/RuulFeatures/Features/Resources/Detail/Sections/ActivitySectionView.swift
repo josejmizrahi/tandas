@@ -3,15 +3,17 @@ import RuulUI
 import RuulCore
 
 /// Resource-scoped activity feed. Queries `system_events` filtered to
-/// `resource_id = context.resource.id` so each row is a real atom
-/// (event closed, fine officialized, vote opened, rule changed, etc).
+/// `resource_id = context.resource.id` so each row is a real atom (event
+/// closed, fine officialized, vote opened, rule changed, …).
 ///
-/// Always enabled — there's no "off" state for memory. Lives at the
-/// bottom of the dynamic stack (priority 900) so it acts as the
-/// chronological tail of the section column.
+/// Settings-style grouped list under a quiet sentence-case header — no
+/// more shouty "ACTIVIDAD" caps, no card chrome on loading / empty
+/// states (those collapse to a quiet inline message instead).
 public struct ActivitySectionView: View {
     @Environment(AppState.self) private var app
+
     public let context: ResourceDetailContext
+
     @State private var events: [SystemEvent] = []
     @State private var isLoading: Bool = true
 
@@ -25,32 +27,51 @@ public struct ActivitySectionView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            sectionHeader("ACTIVIDAD", count: events.isEmpty ? nil : events.count)
+            header
             content
         }
         .task { await load() }
     }
 
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text("Actividad")
+                .ruulTextStyle(RuulTypography.headline)
+                .foregroundStyle(Color.ruulTextPrimary)
+            if !events.isEmpty {
+                Text("\(events.count)")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, RuulSpacing.xxs)
+    }
+
     @ViewBuilder
     private var content: some View {
         if isLoading {
-            HStack {
-                Spacer()
-                ProgressView().padding(RuulSpacing.lg)
-                Spacer()
+            HStack(spacing: RuulSpacing.sm) {
+                ProgressView()
+                Text("Cargando…")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Spacer(minLength: 0)
             }
-            .cardBackground()
+            .padding(.horizontal, RuulSpacing.xxs)
+            .padding(.vertical, RuulSpacing.sm)
         } else if events.isEmpty {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "clock.arrow.circlepath")
                     .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
                 Text("Aún no hay actividad")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
-                Spacer()
+                Spacer(minLength: 0)
             }
-            .padding(RuulSpacing.md)
-            .cardBackground()
+            .padding(.horizontal, RuulSpacing.xxs)
+            .padding(.vertical, RuulSpacing.sm)
         } else {
             VStack(spacing: 0) {
                 ForEach(Array(events.prefix(8).enumerated()), id: \.element.id) { idx, event in
@@ -58,31 +79,40 @@ public struct ActivitySectionView: View {
                     if idx < min(7, events.count - 1) { divider }
                 }
             }
-            .cardBackground()
+            .background(
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            )
         }
     }
 
     private func activityRow(_ event: SystemEvent) -> some View {
-        HStack(spacing: RuulSpacing.sm) {
-            ZStack {
-                Circle().fill(Color.ruulBackgroundRecessed).frame(width: 32, height: 32)
-                Image(systemName: iconFor(event))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
-            }
+        HStack(spacing: RuulSpacing.md) {
+            Image(systemName: iconFor(event))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.ruulTextSecondary)
+                .frame(width: 28)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(labelFor(event))
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
                 Text(event.occurredAt.ruulRelativeDescription)
                     .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.ruulTextTertiary)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
+    }
+
+    private var divider: some View {
+        Divider()
+            .background(Color.ruulSeparator)
+            .padding(.leading, RuulSpacing.md + 28 + RuulSpacing.md)
     }
 
     /// True when the SystemEvent's payload marks it as a cancellation
@@ -96,10 +126,6 @@ public struct ActivitySectionView: View {
             return s == "cancelled"
         }
         return false
-    }
-
-    private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, 48)
     }
 
     private func iconFor(_ event: SystemEvent) -> String {
@@ -153,10 +179,6 @@ public struct ActivitySectionView: View {
     @MainActor
     private func load() async {
         defer { isLoading = false }
-        // The system_events repository's `recent(groupId:)` returns the
-        // group-wide stream. We filter client-side to this resource —
-        // a dedicated `recent(resourceId:)` is worth adding when the
-        // group's stream grows beyond a few hundred rows.
         let groupStream = (try? await app.systemEventRepo.recent(
             groupId: context.group.id,
             limit: 200

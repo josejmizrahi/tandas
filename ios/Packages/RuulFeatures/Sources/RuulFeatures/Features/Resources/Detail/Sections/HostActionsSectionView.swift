@@ -2,22 +2,15 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Host-only action panel for event-shaped resources. Gated by the
-/// `host_actions` capability (seeded for every event by mig 00109) plus
-/// `EventInteractor.viewerIsHost`. Non-host viewers see nothing even
-/// though the cap is enabled — the section returns `EmptyView`.
+/// Host-only action panel for event-shaped resources. Settings-style
+/// grouped list — a single rounded surface with action rows divided by
+/// thin separators. Replaces the legacy stack of four to five separate
+/// `RuulActionableCard` instances which created visual heaviness in the
+/// detail page.
 ///
-/// Surfaces:
-///   - Confirmation stats (X de Y CONFIRMARON + progress bar)
-///   - Reminders / Edit / Scanner / Cancel / Manual fine action cards
-///   - Auto-generate toggle for recurring events
-///   - "Cerrar evento" primary CTA when the event window has elapsed
-///
-/// All taps route through `\.eventDetailPresenter` (sheets, scanner,
-/// edit) or `\.eventInteractor` (mutations like cancel / toggle
-/// autogen). When the presenter is missing, taps degrade to no-ops; the
-/// section itself still renders so the host sees the surface in
-/// previews / read-only contexts.
+/// Gated by the `host_actions` capability (mig 00109) AND
+/// `EventInteractor.viewerIsHost`. Non-host viewers see `EmptyView`
+/// even though the cap is enabled.
 public struct HostActionsSectionView: View {
     @Environment(\.eventInteractor) private var interactor: (any EventInteractor)?
     @Environment(\.eventDetailPresenter) private var presenter: EventDetailPresenter?
@@ -39,135 +32,180 @@ public struct HostActionsSectionView: View {
         }
     }
 
+    // MARK: - Composition
+
     @ViewBuilder
     private func content(interactor: any EventInteractor) -> some View {
         let event = interactor.event
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            sectionHeader("COMO HOST")
+            Text("Como host")
+                .ruulTextStyle(RuulTypography.headline)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .padding(.horizontal, RuulSpacing.xxs)
 
-            statsCard(interactor: interactor)
-            actionsCard(event: event, interactor: interactor)
-
-            // "Cerrar evento" lives in the sticky bottom footer
-            // (DetailStickyFooterView) so the host always has the CTA in
-            // reach when the event window has elapsed. Keeping a second
-            // copy here would duplicate the affordance.
+            statsRow(interactor: interactor)
+            actionList(event: event)
 
             if event.isRecurringGenerated {
-                autoGenerateToggleCard(interactor: interactor)
+                autoGenerateRow(interactor: interactor)
             }
         }
     }
 
     // MARK: - Stats
 
-    private func statsCard(interactor: any EventInteractor) -> some View {
+    private func statsRow(interactor: any EventInteractor) -> some View {
         let totalConfirmed = interactor.rsvps.filter { $0.status == .going }.count
-        let totalMembers = max(interactor.rsvps.count, 1)
-        let ratio = Double(totalConfirmed) / Double(totalMembers)
+        let total = max(interactor.rsvps.count, 1)
+        let ratio = Double(totalConfirmed) / Double(total)
         let percent = Int(ratio * 100)
 
-        return RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                HStack(alignment: .lastTextBaseline) {
-                    HStack(spacing: 6) {
-                        Text("\(totalConfirmed)")
-                            .ruulTextStyle(RuulTypography.statMedium)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                        Text("DE \(interactor.rsvps.count) CONFIRMARON")
-                            .ruulTextStyle(RuulTypography.sectionLabel)
-                            .foregroundStyle(Color.ruulTextTertiary)
-                    }
-                    Spacer()
-                    Text("\(percent)%")
-                        .ruulTextStyle(RuulTypography.statMedium)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-                RuulProgressBar(value: ratio)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(totalConfirmed) de \(interactor.rsvps.count) confirmaron")
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Spacer(minLength: 0)
+                Text("\(percent)%")
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(Color.ruulTextSecondary)
             }
+            RuulProgressBar(value: ratio)
         }
+        .padding(.horizontal, RuulSpacing.xxs)
     }
 
-    // MARK: - Actions
+    // MARK: - Action list
 
     @ViewBuilder
-    private func actionsCard(event: Event, interactor: any EventInteractor) -> some View {
-        VStack(spacing: RuulSpacing.sm) {
-            RuulActionableCard(
-                icon: "bell.badge",
-                title: "Mandar recordatorio",
-                subtitle: "A los que no han confirmado."
-            ) {
+    private func actionList(event: Event) -> some View {
+        let showScanner = !event.isPast && event.status != .cancelled
+        let showManualFine = presenter?.canIssueManualFine == true
+
+        VStack(spacing: 0) {
+            actionRow(icon: "bell.badge", title: "Mandar recordatorio") {
                 presenter?.onPresentRemindAttendeesSheet()
             }
-            RuulActionableCard(
-                icon: "pencil",
-                title: "Editar evento",
-                subtitle: "Cambiar fecha, ubicación, host."
-            ) {
+            divider
+            actionRow(icon: "pencil", title: "Editar evento") {
                 presenter?.onPresentEditEvent()
             }
-            if !event.isPast && event.status != .cancelled {
-                RuulActionableCard(
+            if showScanner {
+                divider
+                actionRow(
                     icon: "qrcode.viewfinder",
                     title: "Modo check-in",
-                    subtitle: "Escanea QRs de tus invitados.",
-                    accessory: .badge("Nuevo")
+                    badge: "Nuevo"
                 ) {
                     presenter?.onPresentScanner()
                 }
             }
-            RuulActionableCard(
-                icon: "xmark.circle",
-                title: "Cancelar evento",
-                subtitle: "Avisamos a todos los confirmados.",
-                tint: .ruulNegative,
-                accessory: .none
-            ) {
-                presenter?.onPresentCancelEventSheet()
-            }
-            if presenter?.canIssueManualFine == true {
-                RuulActionableCard(
-                    icon: "exclamationmark.triangle",
-                    title: "Multar manualmente",
-                    subtitle: "Sin pasar por reglas automáticas."
-                ) {
+            if showManualFine {
+                divider
+                actionRow(icon: "exclamationmark.triangle", title: "Multar manualmente") {
                     presenter?.onPresentManualFineSheet()
                 }
             }
-        }
-    }
-
-    // MARK: - Auto-generate
-
-    private func autoGenerateToggleCard(interactor: any EventInteractor) -> some View {
-        RuulCard(.tile) {
-            HStack(alignment: .top, spacing: RuulSpacing.sm) {
-                RuulIconBadge("arrow.triangle.2.circlepath", size: .small)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Generación automática")
-                        .ruulTextStyle(RuulTypography.body)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text("Cuando cierres este evento, creamos el siguiente automáticamente.")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                Spacer()
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { autoGenerateLocal },
-                        set: { newValue in
-                            autoGenerateLocal = newValue
-                            Task { await interactor.toggleAutoGenerate(newValue) }
-                        }
-                    )
-                )
-                .labelsHidden()
-                .tint(Color.ruulAccent)
-                .accessibilityLabel("Generación automática")
+            divider
+            actionRow(
+                icon: "xmark.circle",
+                title: "Cancelar evento",
+                tint: .ruulNegative
+            ) {
+                presenter?.onPresentCancelEventSheet()
             }
         }
+        .background(
+            Color.ruulSurface,
+            in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        )
     }
 
+    @ViewBuilder
+    private func actionRow(
+        icon: String,
+        title: String,
+        badge: String? = nil,
+        tint: Color = .ruulTextPrimary,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: RuulSpacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(tint == .ruulTextPrimary ? Color.ruulTextSecondary : tint)
+                    .frame(width: 28)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(tint)
+                if let badge {
+                    Text(badge)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulAccent)
+                        .padding(.horizontal, RuulSpacing.xs)
+                        .padding(.vertical, 2)
+                        .background(Color.ruulAccent.opacity(0.12), in: Capsule())
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.md)
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var divider: some View {
+        Divider()
+            .background(Color.ruulSeparator)
+            .padding(.leading, RuulSpacing.md + 28 + RuulSpacing.md)
+    }
+
+    // MARK: - Auto-generate (recurring)
+
+    private func autoGenerateRow(interactor: any EventInteractor) -> some View {
+        HStack(alignment: .top, spacing: RuulSpacing.md) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.ruulTextSecondary)
+                .frame(width: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Generación automática")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Text("Cuando cierres este evento, creamos el siguiente.")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .multilineTextAlignment(.leading)
+            }
+            Spacer(minLength: 0)
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { autoGenerateLocal },
+                    set: { newValue in
+                        autoGenerateLocal = newValue
+                        Task { await interactor.toggleAutoGenerate(newValue) }
+                    }
+                )
+            )
+            .labelsHidden()
+            .tint(Color.ruulAccent)
+            .accessibilityLabel("Generación automática")
+        }
+        .padding(RuulSpacing.md)
+        .background(
+            Color.ruulSurface,
+            in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        )
+    }
 }

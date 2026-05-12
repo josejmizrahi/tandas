@@ -84,14 +84,10 @@ public struct DetailActionsBar: View {
             ))
         }
 
-        if caps.contains("rules") {
-            out.append(.init(
-                id: "rules",
-                label: "Reglas",
-                icon: "list.bullet.clipboard.fill",
-                run: context.onPresentRules
-            ))
-        }
+        // Rules has its own dedicated section card lower in the page;
+        // surfacing the same affordance as a chip here would just create
+        // visual redundancy. Keep the chip strip focused on money-flavored
+        // actions that don't have their own section button.
 
         return out
     }
