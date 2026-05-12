@@ -8,7 +8,9 @@ import Foundation
 /// derived from this table.
 ///
 /// Schema source: mig 00078. Decodes from `public.rsvp_actions`.
-public struct RsvpAction: Identifiable, Codable, Sendable, Hashable {
+public struct RsvpAction: Atom, Hashable {
+    public static var atomTableName: String { "rsvp_actions" }
+
     public let id: UUID
     public let resourceId: UUID
     public let memberId: UUID
