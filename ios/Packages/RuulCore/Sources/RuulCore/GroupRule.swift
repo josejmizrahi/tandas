@@ -25,6 +25,10 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     /// applies to every occurrence of a recurring resource (e.g. all
     /// future dinners). Mig 00078.
     public let seriesId: UUID?
+    /// Member this rule deviates for, if any. Orthogonal axis — may
+    /// coexist with any other scope (e.g. "this member has 2x grace
+    /// period on every dinner"). Mig 00078.
+    public let membershipId: UUID?
 
     public init(
         id: UUID,
@@ -37,7 +41,8 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         consequences: [ConsequenceEnvelope],
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
-        seriesId: UUID? = nil
+        seriesId: UUID? = nil,
+        membershipId: UUID? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -50,19 +55,22 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.moduleKey = moduleKey
         self.resourceId = resourceId
         self.seriesId = seriesId
+        self.membershipId = membershipId
     }
 
-    /// Computes the scope this rule lives at. More specific wins per
-    /// Taxonomy §29 — callers ordering inherited rule lists should sort
-    /// `resource > series > group` for display.
+    /// Computes the scope label this rule lives at, picking the most
+    /// specific axis when more than one is set. Precedence per Taxonomy
+    /// §29: membership > resource (occurrence) > series > module > group.
     public var scope: Scope {
-        if resourceId != nil { return .resource }
-        if seriesId   != nil { return .series   }
+        if membershipId != nil { return .membership }
+        if resourceId   != nil { return .resource }
+        if seriesId     != nil { return .series   }
+        if moduleKey    != nil { return .module   }
         return .group
     }
 
     public enum Scope: String, Sendable, Hashable {
-        case resource, series, group
+        case membership, resource, series, module, group
     }
 
     /// Loosely-typed envelope used to read `rules.consequences[].config`.
@@ -119,5 +127,6 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         case moduleKey    = "module_key"
         case resourceId   = "resource_id"
         case seriesId     = "series_id"
+        case membershipId = "membership_id"
     }
 }

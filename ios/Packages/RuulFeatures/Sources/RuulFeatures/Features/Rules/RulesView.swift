@@ -205,6 +205,9 @@ public struct RulesView: View {
                         .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+                    if let chip = scopeChip(for: rule) {
+                        chip
+                    }
                     if !rule.isLive {
                         Text("INACTIVA")
                             .ruulTextStyle(RuulTypography.footnote)
@@ -229,6 +232,27 @@ public struct RulesView: View {
         }
         .buttonStyle(.ruulPress)
         .accessibilityHint("Abre el detalle de la regla")
+    }
+
+    /// Renders a small pill describing where the rule applies. Group-scoped
+    /// rules return nil — they're the default for this list, so a chip
+    /// would just add noise. Non-group scopes get a labelled badge so the
+    /// reader can tell at a glance whether the rule covers one resource,
+    /// one series, one module, or one member.
+    private func scopeChip(for rule: GroupRule) -> RuulBadge? {
+        switch rule.scope {
+        case .group:
+            return nil
+        case .module:
+            let label = rule.moduleKey.map { "Módulo · \($0)" } ?? "Módulo"
+            return RuulBadge(label, style: .neutral, icon: "puzzlepiece")
+        case .series:
+            return RuulBadge("Toda la recurrencia", style: .info, icon: "repeat")
+        case .resource:
+            return RuulBadge("Esta instancia", style: .info, icon: "scope")
+        case .membership:
+            return RuulBadge("Por miembro", style: .warning, icon: "person")
+        }
     }
 
     @ViewBuilder

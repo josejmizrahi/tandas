@@ -152,3 +152,97 @@ Cuando la primera de estas dos cosas pase:
 2-3 días focused. Riesgo medio: toca `GroupGovernanceConfigView` y
 `GovernanceConfigSheet`. Tests existentes deben pasar sin cambios
 porque accessors typed se mantienen como conveniencia.
+
+---
+
+## Anexo (audit 2026-05-12) — Jerarquía `groups.governance` ↔ `public.group_policies`
+
+Post-mig 00087 hay dos lugares donde vive política de gobernanza, y el
+boundary no estaba documentado. Antes de tocar nada más, congelamos la
+semántica.
+
+### Capas
+
+| Capa | Storage | Granularidad | Mutabilidad |
+|---|---|---|---|
+| **Global defaults** | `groups.governance` jsonb | grupo entero | edita founder o vote |
+| **Action × Scope overrides** | `public.group_policies` rows | `(target_action, target_scope, target_resource_type?, target_resource_id?)` | edita founder o vote |
+
+`groups.governance` declara los defaults que aplican cuando no hay
+override más específico:
+
+```json
+{
+  "whoCanModifyRules": "founder",
+  "whoCanInviteMembers": "founder",
+  "whoCanRemoveMembers": "majorityVote",
+  "votingQuorumPercent": 50,
+  "votingThresholdPercent": 50,
+  "votingDurationHours": 72,
+  "votesAreAnonymous": false
+}
+```
+
+`group_policies` declara overrides progresivamente específicos:
+
+| `target_scope` | Significado | Ejemplo |
+|---|---|---|
+| `group` | aplica al grupo entero (override directo de governance default) | "para *este* grupo, modifyRules requiere `unanimousVote`" |
+| `resource_type` | aplica a todos los Resources del tipo | "para todos los Funds del grupo, withdrawFund requiere `majorityVote`" |
+| `resource` | aplica a un Resource específico | "para el Fund Cumpleaños, withdraw requiere `unanimousVote`" |
+
+### Resolución
+
+`resolve_governance(group_id, action, resource?)` (mig 00088) ya
+implementa la jerarquía. La regla es **más-específica-gana** con
+desempate por `priority` descendente:
+
+```
+1. Buscar group_policies donde
+     target_action = $action AND enabled = true AND (
+       (target_scope = 'resource' AND target_resource_id = $resource.id)
+       OR (target_scope = 'resource_type' AND target_resource_type = $resource.type)
+       OR (target_scope = 'group')
+     )
+   ordenadas por
+     (target_scope = 'resource')      DESC,   -- 1°: resource-specific
+     (target_scope = 'resource_type') DESC,   -- 2°: type-wide
+     (target_scope = 'group')         DESC,   -- 3°: group-wide override
+     priority                          DESC,   -- desempate
+     created_at                        ASC
+
+2. Si hay match: usar policy.approval_config (quorum/threshold/permission).
+3. Si no hay match: fallback a groups.governance[whoCanX] o
+   whoCanX_default del enum GovernanceAction.
+```
+
+### Reglas de coexistencia (no negociables post-audit)
+
+- **Una governance jsonb key no debe duplicar una policy row.** Si una
+  key existe en governance Y existe una policy con `target_scope='group'`
+  para esa acción, la policy gana — pero el row jsonb queda como
+  documentación zombie. Cleanup: cuando se inserta la primera policy
+  `target_scope='group'` para una acción, dropear la key correspondiente
+  de governance jsonb en la misma transacción.
+
+- **Resource-specific policies no necesitan governance jsonb default.**
+  La governance es para el caso global; la policy específica es para el
+  override. Si solo existe el override (sin global), el resolver cae al
+  `defaultPermission` del enum case.
+
+- **Nuevos `whoCan*` después del refactor jsonb-driven entran como
+  `GovernanceAction` enum cases.** El resolver consulta primero
+  `group_policies`, después `groups.governance.permissions[action]`,
+  después `action.defaultPermission`. Tres niveles, mismo contrato.
+
+### Por qué este boundary
+
+Antes del audit: developers veían `group_policies` table y pensaban que
+era el lugar canónico; otros veían `groups.governance` jsonb y pensaban
+que ese era. Sin doc claro, cada feature elegía el suyo y la
+inconsistencia se infiltraba.
+
+Después: governance jsonb = defaults globales del grupo; group_policies =
+overrides por (action × scope). Resolver lee policies primero, governance
+después. El refactor de §"Por qué" sigue siendo válido — pero pasa a
+ser refactor del lado *governance jsonb*, no del lado *group_policies*.

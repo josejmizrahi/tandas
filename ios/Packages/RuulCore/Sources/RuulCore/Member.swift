@@ -5,11 +5,15 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public let groupId: UUID
     public let userId: UUID
     public let displayNameOverride: String?
-    /// Single-role string. Maps to `group_members.role` (text, validated
-    /// by the trigger added in mig 00063 against `groups.roles` keys).
-    /// Legacy `"admin"` is aliased to `"founder"` server-side by
-    /// `has_permission()`; new code should read `roles` (array of typed
-    /// `MemberRole`) for system-role checks.
+    /// DEPRECATED (audit 2026-05-12 M.15). Maps to `group_members.role`
+    /// (text) which is itself deprecated post-mig 00106 — use
+    /// `group_members.roles` jsonb array instead. Legacy `"admin"` aliases
+    /// to `"founder"` server-side via `has_permission()`.
+    ///
+    /// Field is kept for the Phase D rewire window so existing
+    /// `GroupsRepository.myRole` and `group_members_with_founder` consumers
+    /// keep working. Phase D step 3 deletes this field; Step 4 drops the
+    /// SQL column. See Plans/Active/L1_Audit_2026-05-10.md.
     public let role: String
     /// Multi-role array. Backfilled by migration 00019: admins get
     /// `[founder, member]`, others `[member]`. V1 active values: founder,

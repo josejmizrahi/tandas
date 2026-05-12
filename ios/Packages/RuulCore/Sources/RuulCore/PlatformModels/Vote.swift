@@ -85,7 +85,14 @@ public enum VoteStatus: String, Codable, Sendable, Hashable {
 /// Aggregate of vote_casts for a vote. Stored in `votes.counts` jsonb after
 /// `finalize_vote` runs. Consumers can also read live counts via
 /// `vote_counts_view`.
-public struct VoteCounts: Codable, Sendable, Equatable, Hashable {
+///
+/// Conforms to `Projection`: every field is derived from `vote_casts`
+/// atoms (mig 00020). The `resolution` field is a post-finalize annotation
+/// not present in the live view — clients reading directly from the view
+/// will decode it as nil.
+public struct VoteCounts: Projection, Equatable, Hashable {
+    public static var projectionViewName: String { "vote_counts_view" }
+
     public let inFavor: Int
     public let against: Int
     public let abstained: Int

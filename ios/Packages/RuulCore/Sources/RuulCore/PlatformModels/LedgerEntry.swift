@@ -9,7 +9,9 @@ import Foundation
 /// system_events.
 ///
 /// Schema source: mig 00078. Decodes from `public.ledger_entries`.
-public struct LedgerEntry: Identifiable, Codable, Sendable, Hashable {
+public struct LedgerEntry: Atom, Hashable {
+    public static var atomTableName: String { "ledger_entries" }
+
     public let id: UUID
     public let groupId: UUID
     public let resourceId: UUID?

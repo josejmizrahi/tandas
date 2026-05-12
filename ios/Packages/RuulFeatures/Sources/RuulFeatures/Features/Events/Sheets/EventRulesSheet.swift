@@ -186,9 +186,11 @@ struct ResourceRulesSheet: View {
 
     private func badgeText(for scope: GroupRule.Scope) -> String {
         switch scope {
-        case .resource: return "Evento"
-        case .series:   return "Heredada · serie"
-        case .group:    return "Heredada · grupo"
+        case .membership: return "Para ti"
+        case .resource:   return "Evento"
+        case .series:     return "Heredada · serie"
+        case .module:     return "Heredada · módulo"
+        case .group:      return "Heredada · grupo"
         }
     }
 

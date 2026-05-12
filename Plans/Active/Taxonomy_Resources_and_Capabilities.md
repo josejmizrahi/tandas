@@ -32,14 +32,54 @@ Group → Resources → Capability Blocks
 
 ---
 
-## 1. Resources base (22 tipos)
+## 1. Resources base
 
-Los sustantivos del sistema.
+Los sustantivos del sistema. **Source of truth de qué es Resource = case
+en `ios/Packages/RuulCore/Sources/RuulCore/PlatformModels/ResourceType.swift`**.
+La lista de abajo es el roadmap aspiracional; cada entrada marca su estado
+real (`✅ live` / `📦 enum case, builder pendiente` / `🗓 phase N`). Audit
+2026-05-12 reconcilió los conflictos previos con `Plans/Active/Primitives.md` § 2.
 
-### 1.1 group_space
-**Resource general del grupo.**
-Sirve para: reglas globales, anuncios, balances generales, propuestas generales, fondos generales.
-**Capabilities:** rules, voting, money, announcements, documents, history, permissions.
+> **Lo que NO es Resource case** (a pesar de tener entrada propia en versiones
+> previas de este doc):
+> - **`group_space`** — el Group ya tiene governance, rules, balances y history
+>   propios; modelarlo como Resource separado duplica el primitivo. Reglas
+>   globales viven en `groups.governance` jsonb + `group_policies` table;
+>   announcements/documents llegan como capabilities sobre el Group mismo
+>   (Phase 4). **Rechazado** post-audit 2026-05-12.
+> - **`occurrence`** — NO es un case del enum. Es el patrón `Resource con
+>   series_id != null` (`event` con padre `resource_series`, idem `slot`,
+>   `contribution`). Per Taxonomy §1.4 / Primitives.md.
+
+### 1.1 Estado por Resource type (audit 2026-05-12)
+
+Snapshot de qué hay en código + qué falta. La sección `ResourceType.swift`
+es la fuente única; este table refleja el delta.
+
+| Resource | `ResourceType` case | Builder iOS | Detail view | Fase |
+|---|---|---|---|---|
+| event | ✅ `.event` | ✅ `EventResourceBuilder` | ✅ EventDetailView (legacy) + ResourceDetailSheet | V1 |
+| resource_series | n/a (tabla hermana) | ✅ vía Event builder | n/a | V1 |
+| slot | ✅ `.slot` | 📦 `SlotResourceBuilder` declared, no wireado | ❌ | Phase 2 |
+| booking | ✅ `.booking` | ❌ | ❌ | Phase 2 |
+| asset | ✅ `.asset` | ✅ `AssetResourceBuilder` | ❌ | Phase 2 |
+| guest_pass | ✅ `.guestPass` | ❌ | ❌ | Phase 2 |
+| rotation | ✅ `.rotation` | ❌ | ❌ | Phase 2 |
+| assignment | ✅ `.assignment` | ❌ | ❌ | Phase 2 |
+| position | ✅ `.position` | ❌ | ❌ | Phase 2 |
+| fund | ✅ `.fund` | ❌ | ❌ | Phase 3 |
+| contribution | ✅ `.contribution` | ❌ | ❌ | Phase 3 |
+| payout | 🗓 enum case pendiente | ❌ | ❌ | Phase 3 |
+| settlement | 🗓 enum case pendiente | ❌ | ❌ | Phase 3 |
+| expense | 🗓 enum case pendiente | ❌ | ❌ | Phase 3 |
+| trip | 🗓 enum case pendiente | ❌ | ❌ | Phase 4 |
+| document | 🗓 enum case pendiente | ❌ | ❌ | Phase 4 |
+| proposal | ✅ `.proposal` | ❌ | ❌ | Phase 5 |
+| vote | 🗓 instrument hoy (`votes` table); promoción a Resource case | ❌ | n/a | Phase 5 |
+| appeal | 🗓 instrument hoy (`appeals` table); promoción a Resource case | ❌ | n/a | Phase 5 |
+| commitment | 🗓 enum case pendiente | ❌ | ❌ | Phase 5 |
+| checklist | 🗓 enum case pendiente | ❌ | ❌ | Phase 5 (deferrable) |
+| custom_resource | 🗓 case `.custom(String)` pendiente | ❌ | ❌ | Phase 5 |
 
 ### 1.2 event
 **Una actividad puntual.**
@@ -51,10 +91,17 @@ Ejemplos: cena, brunch, salida, workout, clase, partido, poker night, reunión.
 Ejemplos: cena semanal, contribución mensual, reunión mensual, booking recurrente, workout semanal.
 **Capabilities:** recurrence, occurrence_generation, rotation, rsvp_defaults, rules, notifications, location_strategy, guests, money, cancellation_policy, history.
 
-### 1.4 occurrence
-**Instancia generada por una serie.**
+### 1.4 occurrence — **patrón, no Resource case**
+
+**No es un case del enum `ResourceType`.** Una occurrence es un `Resource`
+cuyo `series_id` apunta a una `resource_series`. El resource_type del row
+sigue siendo el del padre (`event` para una cena dentro de una serie de
+cenas, `slot` para una ventana dentro de una serie de slots, etc.).
+Reglas que aplican a una occurrence específica viven en `rules` con
+`resource_id` set al row de la occurrence.
+
 Ejemplos: Cena #14, Pago de marzo, Workout del martes, Slot semana 3.
-**Capabilities:** schedule, overrides, rsvp, attendance, assignment, expense, guests, rules, cancellation, check-in, history.
+**Capabilities adicionales (sobre las del padre):** overrides, cancellation, check-in.
 
 ### 1.5 expense
 **Un gasto pagado por alguien.**

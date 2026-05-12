@@ -478,20 +478,73 @@ function applyMembershipScope(rule: Rule, targets: RuleTarget[]): RuleTarget[] {
 }
 
 /**
+ * Ranks a rule by scope specificity for "most-specific-wins" resolution.
+ * Higher number = more specific.
+ *
+ *   resource_id (occurrence override) > series_id > module_key > group
+ *
+ * membership_id is orthogonal — it doesn't change the rank because a
+ * membership-scoped variant of a group rule is still "the same rule for
+ * a different member", not a more-specific version of the same logical
+ * rule (the dedup key already separates them by member).
+ */
+function ruleScopeRank(rule: Rule): number {
+  if (rule.resource_id != null) return 4;
+  if (rule.series_id   != null) return 3;
+  if (rule.module_key  != null) return 2;
+  return 1;
+}
+
+/**
+ * Deduplicates rules that share a `slug` (the stable cross-scope id of a
+ * logical rule). Same logical rule at multiple scopes → most-specific wins
+ * per Taxonomy §29.
+ *
+ * Bucketing key is `slug + membership_id`: a group rule and a membership-
+ * scoped override of the SAME logical rule are kept separately so the
+ * group rule applies to everyone else while the member override applies to
+ * its targeted member. Slugless rules (user-authored) are passed through
+ * untouched — without a stable identity there is nothing to dedupe.
+ *
+ * Exported for testing.
+ */
+export function selectMostSpecificPerSlug(rules: Rule[]): Rule[] {
+  const winners = new Map<string, Rule>();
+  const slugless: Rule[] = [];
+  for (const r of rules) {
+    if (r.slug == null || r.slug === "") {
+      slugless.push(r);
+      continue;
+    }
+    const key = `${r.slug}::${r.membership_id ?? ""}`;
+    const cur = winners.get(key);
+    if (cur == null || ruleScopeRank(r) > ruleScopeRank(cur)) {
+      winners.set(key, r);
+    }
+  }
+  return [...winners.values(), ...slugless];
+}
+
+/**
  * Runs ALL rules of `group` that match `event`'s trigger eventType AND
  * scope. For each match: derives targets, evaluates conditions (AND),
  * executes consequences.
+ *
+ * Multiple rules sharing the same `slug` at different scopes collapse to
+ * the most-specific one before evaluation — see `selectMostSpecificPerSlug`.
  */
 export async function runRulesForEvent(
   event: SystemEvent,
   rules: Rule[],
   context: RuleContext,
 ): Promise<ExecutionResult[]> {
-  const matchingRules = rules.filter(
-    (r) =>
-      r.is_active &&
-      r.trigger.eventType === event.event_type &&
-      ruleAppliesToEvent(r, event, context),
+  const matchingRules = selectMostSpecificPerSlug(
+    rules.filter(
+      (r) =>
+        r.is_active &&
+        r.trigger.eventType === event.event_type &&
+        ruleAppliesToEvent(r, event, context),
+    ),
   );
 
   const results: ExecutionResult[] = [];

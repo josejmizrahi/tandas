@@ -1,0 +1,35 @@
+-- 00106 — Mark group_members.role text column DEPRECATED.
+--
+-- Audit task M.15 (preparatory step — not the drop).
+--
+-- group_members.role (text) coexists with group_members.roles (jsonb array)
+-- since mig 00019, but the legacy text column still has active readers:
+--   - public.group_members_with_founder view (mig 00011) reads
+--     gm.role = 'admin' to derive is_founder.
+--   - RuulCore/Member.swift exposes `role: String`.
+--   - RuulCore/Repositories/GroupsRepository.swift returns myRole from
+--     a SELECT of the text column.
+--
+-- Dropping the column without rewiring those callsites first would
+-- silently break the founder badge in onboarding and the host actions
+-- gating in EventDetailView. The drop is sequenced post-Beta:
+--
+--   Step 1 (this migration): mark column deprecated via COMMENT so any
+--     dev who looks at the schema sees the warning. Zero behavior
+--     change.
+--
+--   Step 2 (separate migration, post-Beta): rewrite
+--     group_members_with_founder to read group_members.roles ?
+--     ['founder'] or the canonical groups.created_by join, drop
+--     dependency on gm.role.
+--
+--   Step 3 (Swift release): drop Member.role field; switch
+--     GroupsRepository.myRole + every reader to roles array.
+--
+--   Step 4 (separate migration, post-Step-3 cohabitation): drop the
+--     column.
+--
+-- This step is reversible and ships value: the deprecation banner.
+
+comment on column public.group_members.role is
+  'DEPRECATED (audit 2026-05-12 M.15). Use group_members.roles jsonb array instead. Drop sequenced post-Beta after group_members_with_founder view + Swift Member.role + GroupsRepository.myRole rewire. See Plans/Active/L1_Audit_2026-05-10.md Phase D.';
