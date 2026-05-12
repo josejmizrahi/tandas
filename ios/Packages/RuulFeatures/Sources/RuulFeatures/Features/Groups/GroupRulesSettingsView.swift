@@ -28,11 +28,13 @@ public struct GroupRulesSettingsView: View {
                         presetPicker
                     }
 
+                    // Show ONLY questions backed by a real target_action.
+                    // Doctrine: don't advertise what we don't deliver. As
+                    // new actions land (member.invite, fund.withdraw,
+                    // visibility.*, defaults.*) the corresponding rows
+                    // re-appear here.
+
                     section(title: "Permisos", subtitle: "Quién puede hacer qué.") {
-                        // Active policies surface as live answers; entries
-                        // without a backing target_action stay as
-                        // "Próximamente configurable" so users see what's
-                        // coming without hiding it. Real rows on top.
                         liveList([
                             ("¿Quién puede cambiar los acuerdos del grupo?",
                                 coordinator.humanAnswer(for: .ruleUpdateAmount),
@@ -46,21 +48,17 @@ public struct GroupRulesSettingsView: View {
                             ("¿Quién puede activar/desactivar acuerdos?",
                                 coordinator.humanAnswer(for: .ruleToggle),
                                 true),
-                            ("¿Quién puede crear recursos?", "Cualquier miembro", false),
-                            ("¿Quién puede invitar miembros?", "Cualquier miembro", false),
-                            ("¿Quién puede activar capabilities?", "Solo admins", false),
+                            ("¿Quién puede activar capabilities?",
+                                coordinator.humanAnswer(for: .capabilityEnable),
+                                true),
                         ])
                     }
 
-                    section(title: "Miembros", subtitle: "Cómo funciona la membresía y los invitados.") {
+                    section(title: "Miembros", subtitle: "Cómo se quita / agrega gente.") {
                         liveList([
                             ("¿Cómo se quita a alguien del grupo?",
                                 coordinator.humanAnswer(for: .memberRemove),
                                 true),
-                            ("¿Miembros nuevos requieren aprobación?", "No", false),
-                            ("¿Cuántos invitados máximo por miembro?", "Sin límite", false),
-                            ("¿Los invitados pueden votar?", "No", false),
-                            ("¿Los invitados ven el dinero?", "No", false),
                         ])
                     }
 
@@ -69,26 +67,6 @@ public struct GroupRulesSettingsView: View {
                             ("¿Quién puede registrar gastos?",
                                 coordinator.humanAnswer(for: .expenseCreate),
                                 true),
-                            ("¿Los balances son visibles para todos?", "Sí", false),
-                            ("¿Gastos arriba de cuánto necesitan aprobación?", "Sin límite", false),
-                            ("¿Los retiros de fondos necesitan votación?", "No", false),
-                            ("¿Cuándo mandan recordatorios de pago?", "48 hrs", false),
-                        ])
-                    }
-
-                    section(title: "Visibilidad", subtitle: "Quién puede ver qué.") {
-                        liveList([
-                            ("¿Los invitados ven balances?", "No", false),
-                            ("¿Quién ve analíticas del grupo?", "Solo admin", false),
-                            ("¿Los settlements son privados?", "No", false),
-                        ])
-                    }
-
-                    section(title: "Defaults para recursos nuevos", subtitle: "Sugerencias que heredan las cosas nuevas.") {
-                        liveList([
-                            ("¿Eventos nuevos sugieren RSVP?", "Sí", false),
-                            ("¿Gastos nuevos tienen deadline?", "72 hrs", false),
-                            ("¿Bookings nuevos requieren confirmación?", "No", false),
                         ])
                     }
                 }
