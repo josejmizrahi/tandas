@@ -170,7 +170,9 @@ begin
 end;
 $$;
 
-comment on function public.start_vote is
+comment on function public.start_vote(
+  uuid, text, uuid, text, text, jsonb, int, int, int, boolean, int
+) is
   'Creates a vote + pending vote_casts for active members. For vote_type=fine_appeal, excludes payload.member_id (the infractor) from eligible voters. Inserts a notifications_outbox row per eligible voter. Reads governance defaults if duration/quorum/threshold/anonymous/quorum_min_absolute not provided.';
 
 -- =============================================================================

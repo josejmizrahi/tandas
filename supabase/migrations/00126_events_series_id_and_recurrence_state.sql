@@ -327,5 +327,8 @@ begin
 end;
 $$;
 
-comment on function public.create_event_v2 is
+comment on function public.create_event_v2(
+  uuid, text, timestamp with time zone, integer, text, numeric, numeric,
+  uuid, text, text, text, boolean, boolean, uuid, timestamp with time zone
+) is
   'Event creation post-BigBang. v3 (00126): accepts p_series_id (recurrence link) and p_rsvp_deadline (explicit override of legacy starts_at - 4h). Idempotent on (series_id, starts_at) for cron-generated occurrences. Emits eventCreated to system_events (00097) including series_id.';

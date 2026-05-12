@@ -167,5 +167,7 @@ begin
 end;
 $$;
 
-comment on function public.start_vote is
+comment on function public.start_vote(
+  uuid, text, uuid, text, text, jsonb, int, int, int, boolean, int
+) is
   'Creates a vote + pending vote_casts for active members. Validates vote_type against is_known_vote_type whitelist (NOTICE on unknown — see 00116). For vote_type=fine_appeal, excludes payload.member_id (the infractor). Reads governance defaults if duration/quorum/threshold/anonymous/quorum_min_absolute not provided.';

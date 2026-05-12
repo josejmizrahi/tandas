@@ -89,5 +89,8 @@ begin
 end;
 $$;
 
-comment on function public.create_event_v2 is
+comment on function public.create_event_v2(
+  uuid, text, timestamp with time zone, integer, text, numeric, numeric,
+  uuid, text, text, text, boolean, boolean
+) is
   'Event creation post-BigBang (mig 00080). Rotation gating now reads groups.active_modules ?? ''rotating_host'' instead of the dropped rotation_enabled column.';
