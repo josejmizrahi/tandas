@@ -71,7 +71,7 @@ final class SummaryFieldCatalogTests: XCTestCase {
         // Order is contractual — the view renders in declaration order. A
         // catalog edit that reorders rows is a UX change worth flagging.
         let ids = SummaryFieldCatalog.v1.fields(for: .event).map(\.id)
-        XCTAssertEqual(ids, ["host", "location", "capacity"])
+        XCTAssertEqual(ids, ["host", "countdown", "location", "capacity", "duration"])
     }
 
     // MARK: - Formatter
