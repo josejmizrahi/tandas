@@ -149,7 +149,8 @@ public struct ResourceDetailSheet: View {
         return ResourceLedgerCoordinator(
             context: ctx,
             ledgerRepo: app.ledgerRepo,
-            groupsRepo: app.groupsRepo
+            groupsRepo: app.groupsRepo,
+            policyRepo: app.policyRepo
         )
     }
 

@@ -16,6 +16,13 @@ public enum TargetAction: String, Codable, Sendable, Hashable, CaseIterable {
     /// migration 00035 (delete by user_id). admin_only path requires
     /// Permission.removeMember.
     case memberRemove     = "member.remove"
+    /// Create a money atom (record_ledger_entry). Default policy is
+    /// `direct` (anyone can record expenses, matching the existing RPC
+    /// grant to authenticated). admin_only requires
+    /// Permission.expenseSubmit. Vote-required is reserved for V2
+    /// when threshold-aware policies (condition_config.min_amount_cents)
+    /// land — current iOS treats vote_required as a soft block.
+    case expenseCreate    = "expense.create"
 }
 
 /// Kind of policy applied to a (group, action) tuple. Mirrors

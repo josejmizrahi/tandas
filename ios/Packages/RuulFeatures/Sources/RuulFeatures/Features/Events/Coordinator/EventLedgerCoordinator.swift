@@ -104,16 +104,24 @@ public final class ResourceLedgerCoordinator {
     private var currentUserId: UUID { context.currentUserId }
     private let ledgerRepo: any LedgerRepository
     private let groupsRepo: any GroupsRepository
+    /// `GroupPolicyRepository` is consulted in `submit()` before every
+    /// expense.create — gates the entry behind the active group policy
+    /// (default `direct`, configurable to `admin_only` via Strict preset
+    /// in V2). Lives here next to the other repos for symmetry with
+    /// EditRulesCoordinator's interception seam.
+    private let policyRepo: any GroupPolicyRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.ledger")
 
     public init(
         context: ResourceLedgerContext,
         ledgerRepo: any LedgerRepository,
-        groupsRepo: any GroupsRepository
+        groupsRepo: any GroupsRepository,
+        policyRepo: any GroupPolicyRepository
     ) {
         self.context = context
         self.ledgerRepo = ledgerRepo
         self.groupsRepo = groupsRepo
+        self.policyRepo = policyRepo
     }
 
     // MARK: - Loading
@@ -273,6 +281,50 @@ public final class ResourceLedgerCoordinator {
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
+
+        // Governance gate (Group Rule, expense.create — mig 00112).
+        // Default policy is `direct` (anyone can record), so this is a
+        // no-op for groups that haven't customized their money policy.
+        // Strict / admin-curated groups can lift it to `admin_only` via
+        // GroupRulesSettingsView once V2 ships per-question editing.
+        // amount_cents is included in the payload so V2's threshold-aware
+        // policies (condition_config.min_amount_cents) can evaluate the
+        // expense's size — the resolver ignores it today.
+        let decision: PolicyDecision
+        do {
+            decision = try await policyRepo.resolve(
+                groupId: groupId,
+                actorUserId: currentUserId,
+                action: .expenseCreate,
+                targetPayload: [
+                    "resource_id":   resourceId.uuidString.lowercased(),
+                    "amount_cents":  String(amountCents),
+                ]
+            )
+        } catch let resolveError {
+            log.warning("resolve(.expenseCreate) failed: \(resolveError.localizedDescription)")
+            // Fail-open: if the resolver itself can't be reached, fall back
+            // to the existing record_ledger_entry RLS for gating. Keeps the
+            // primary money flow working under network blips.
+            decision = .allowed
+        }
+
+        switch decision {
+        case .allowed:
+            break
+        case .adminOnly:
+            self.error = "Solo los admins pueden registrar gastos en este grupo."
+            return nil
+        case .voteRequired:
+            // V2: open a vote with the expense envelope + apply on pass.
+            // For now this is a soft block so the user knows the policy
+            // exists; nothing in V1 produces this decision via the seeder.
+            self.error = "Este grupo requiere aprobación por votación para gastos. La flow llega en una próxima versión."
+            return nil
+        case .denied(let reason):
+            self.error = "No se puede registrar este gasto: \(reason)."
+            return nil
+        }
 
         do {
             let entry = try await ledgerRepo.recordEntry(

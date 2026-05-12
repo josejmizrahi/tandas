@@ -334,7 +334,8 @@ public struct EventDetailHost: View {
             ledgerCoordinator = ResourceLedgerCoordinator(
                 context: ctx,
                 ledgerRepo: app.ledgerRepo,
-                groupsRepo: app.groupsRepo
+                groupsRepo: app.groupsRepo,
+                policyRepo: app.policyRepo
             )
         case .rules where rulesCoordinator == nil:
             let me = memberDirectory[currentUserId]?.member
