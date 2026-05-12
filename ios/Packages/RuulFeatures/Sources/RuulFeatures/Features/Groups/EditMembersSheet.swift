@@ -402,7 +402,11 @@ public struct EditMembersSheet: View {
             }
         }
         do {
-            try await app.groupsRepo.removeMember(memberId: mwp.member.id)
+            try await app.groupsRepo.removeMember(
+                groupId: mwp.member.groupId,
+                userId: mwp.member.userId,
+                reason: nil
+            )
             await MainActor.run {
                 rows.removeAll { $0.id == mwp.id }
             }

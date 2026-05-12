@@ -27,7 +27,14 @@ public protocol GroupsRepository: Actor {
 
     // Member management
     func setTurnOrder(groupId: UUID, userIds: [UUID]) async throws
-    func removeMember(memberId: UUID) async throws
+    /// Admin-driven removal via the `remove_member` RPC (mig 00115).
+    /// Soft-deletes the member's row and emits a `memberLeft` system
+    /// event. Caller must be a group admin.
+    func removeMember(groupId: UUID, userId: UUID, reason: String?) async throws
+    /// Self-leave via the `leave_group` RPC (mig 00115). Soft-deletes
+    /// the calling user's membership and emits a `memberLeft` event
+    /// with reason=self_leave.
+    func leaveGroup(groupId: UUID) async throws
 
     // Module lifecycle
     func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group
@@ -239,11 +246,21 @@ public actor MockGroupsRepository: GroupsRepository {
 
     public func lastTurnOrder(for groupId: UUID) -> [UUID]? { _turnOrders[groupId] }
 
-    public func removeMember(memberId: UUID) async throws {
-        for (gid, list) in _members {
-            _members[gid] = list.filter { $0.id != memberId }
+    public func removeMember(groupId: UUID, userId: UUID, reason: String?) async throws {
+        _ = reason
+        if var list = _members[groupId] {
+            list.removeAll { $0.userId == userId }
+            _members[groupId] = list
         }
-        _membersWithProfiles.removeAll { $0.member.id == memberId }
+        _membersWithProfiles.removeAll { $0.member.userId == userId && $0.member.groupId == groupId }
+    }
+
+    public func leaveGroup(groupId: UUID) async throws {
+        // Mock fixture doesn't track auth.uid — the test driving the
+        // mock supplies the user_id externally. Treat as a no-op so
+        // unit tests focused on UI flows can call leaveGroup without
+        // requiring a fully wired auth context.
+        _ = groupId
     }
 
     // MARK: - Module lifecycle
@@ -537,12 +554,36 @@ public actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
-    public func removeMember(memberId: UUID) async throws {
+    public func removeMember(groupId: UUID, userId: UUID, reason: String?) async throws {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_user_id: String
+            let p_reason: String?
+        }
         do {
-            try await client
-                .from("group_members")
-                .delete()
-                .eq("id", value: memberId.uuidString.lowercased())
+            _ = try await client
+                .rpc(
+                    "remove_member",
+                    params: Params(
+                        p_group_id: groupId.uuidString.lowercased(),
+                        p_user_id:  userId.uuidString.lowercased(),
+                        p_reason:   reason
+                    )
+                )
+                .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func leaveGroup(groupId: UUID) async throws {
+        struct Params: Encodable { let p_group_id: String }
+        do {
+            _ = try await client
+                .rpc(
+                    "leave_group",
+                    params: Params(p_group_id: groupId.uuidString.lowercased())
+                )
                 .execute()
         } catch {
             throw GroupsError.rpcFailed(error.localizedDescription)
