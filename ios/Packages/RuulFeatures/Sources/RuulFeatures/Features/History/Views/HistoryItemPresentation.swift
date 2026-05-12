@@ -158,6 +158,10 @@ public struct HistoryItemPresentation {
             self.icon = "pencil.line"
             self.title = "\(actor) editó la multa de una regla"
             self.tone = .neutral
+        case .pendingChangeApplied:
+            self.icon = "checkmark.seal"
+            self.title = "Se aplicó un cambio aprobado"
+            self.tone = .positive
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"

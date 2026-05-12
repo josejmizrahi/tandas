@@ -138,7 +138,7 @@ public struct PendingChangeEnvelope: Codable, Sendable, Hashable {
             case .empty:
                 // Encode as an empty object so the SQL `v_after = payload->'after'`
                 // read produces `'{}'::jsonb`, not null.
-                var c = encoder.container(keyedBy: EmptyKey.self)
+                let c = encoder.container(keyedBy: EmptyKey.self)
                 _ = c
             }
         }
