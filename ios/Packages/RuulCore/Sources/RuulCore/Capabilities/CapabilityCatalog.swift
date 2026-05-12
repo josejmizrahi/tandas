@@ -67,7 +67,21 @@ public struct CapabilityCatalog: Sendable {
         RulesCapability(),
         ConsequenceCapability(),
         AppealCapability(),
-        SwapCapability()
+        SwapCapability(),
+        // Phase 2 prerequisites (audit task M.10). These blocks are
+        // referenced by modules.provided_capability_blocks rows seeded
+        // in mig 00078 (slot_assignment provides capacity + booking +
+        // expiration; rsvp module pairs with reminder). Declared here
+        // so resource_capabilities lookups resolve cleanly before the
+        // matching ResourceType cases ship their own builders.
+        CapacityCapability(),
+        GuestAccessCapability(),
+        BookingCapability(),
+        ExpirationCapability(),
+        CancellationCapability(),
+        ReminderCapability(),
+        StatusCapability(),
+        HistoryCapability()
     ])
 }
 
@@ -623,6 +637,198 @@ public struct SwapCapability: CapabilityBlock {
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// MARK: - Phase 2 prerequisites (audit M.10)
+
+// capacity — cap on participant count
+public struct CapacityCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "capacity" }
+    public var displayName: String { "Cupo" }
+    public var summary: String { "Límite de cuántos miembros pueden ocupar el recurso." }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .asset, .guestPass] }
+    public var requiredFields: [BuilderField] {
+        [BuilderField(key: "max", label: "Cupo máximo", kind: .integer)]
+    }
+    public var optionalFields: [BuilderField] {
+        [BuilderField(key: "waitlistEnabled", label: "Lista de espera", kind: .boolean)]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// guest_access — non-member can attend
+public struct GuestAccessCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "guest_access" }
+    public var displayName: String { "Invitados" }
+    public var summary: String { "Permite que los miembros traigan acompañantes externos al grupo." }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .asset] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] {
+        [
+            BuilderField(key: "perMemberLimit", label: "Invitados por miembro", kind: .integer),
+            BuilderField(key: "approvalRequired", label: "Requiere aprobación", kind: .boolean)
+        ]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "guest_access.invite", label: "Agregar invitado", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// booking — claiming a slot/resource for a member
+public struct BookingCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "booking" }
+    public var displayName: String { "Reservas" }
+    public var summary: String { "Los miembros reservan slots o recursos disponibles." }
+    public var enabledResourceTypes: [ResourceType] { [.slot, .asset] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] {
+        [
+            BuilderField(key: "approvalRequired", label: "Requiere aprobación", kind: .boolean),
+            BuilderField(key: "cancellationDeadlineHours", label: "Cancelar hasta (h antes)", kind: .integer)
+        ]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "booking.request", label: "Reservar", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { ["schedule"] }
+    public var conflicts: [String] { [] }
+}
+
+// expiration — auto-close after a time window
+public struct ExpirationCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "expiration" }
+    public var displayName: String { "Expira" }
+    public var summary: String { "El recurso se libera o cierra automáticamente al pasar la fecha." }
+    public var enabledResourceTypes: [ResourceType] { [.slot, .booking, .guestPass, .proposal] }
+    public var requiredFields: [BuilderField] {
+        [BuilderField(key: "expiresAt", label: "Expira", kind: .dateTime)]
+    }
+    public var optionalFields: [BuilderField] {
+        [BuilderField(key: "autoRelease", label: "Liberar al expirar", kind: .boolean)]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// cancellation — explicit teardown lifecycle step
+public struct CancellationCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "cancellation" }
+    public var displayName: String { "Cancelación" }
+    public var summary: String { "Define quién puede cancelar y con cuánta anticipación." }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] {
+        [
+            BuilderField(key: "whoCanCancel", label: "Quién puede cancelar", kind: .text),
+            BuilderField(key: "deadlineHours", label: "Mínimo (h antes)", kind: .integer)
+        ]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "cancellation.cancel", label: "Cancelar", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// reminder — scheduled nudge to members
+public struct ReminderCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "reminder" }
+    public var displayName: String { "Recordatorios" }
+    public var summary: String { "Avisa a los miembros antes de la fecha límite o del evento." }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .contribution, .assignment] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] {
+        [BuilderField(key: "hoursBefore", label: "Horas antes", kind: .integer)]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// status — lifecycle state machine on the resource
+public struct StatusCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "status" }
+    public var displayName: String { "Estado" }
+    public var summary: String { "Lifecycle del recurso (borrador, activo, completo, cancelado, expirado, …)." }
+    /// All Resource types own a status field. The catalog still has to
+    /// enumerate the cases explicitly — `unknown` is omitted because it
+    /// is the forward-compat sentinel, not a wireable type.
+    public var enabledResourceTypes: [ResourceType] {
+        [.event, .slot, .booking, .fund, .position, .assignment,
+         .rotation, .asset, .guestPass, .contribution, .proposal]
+    }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "status", displayName: "Estado", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// history — derived activity feed over system_events
+public struct HistoryCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "history" }
+    public var displayName: String { "Historial" }
+    public var summary: String { "Bitácora de cambios del recurso, derivada de system_events." }
+    public var enabledResourceTypes: [ResourceType] {
+        [.event, .slot, .booking, .fund, .position, .assignment,
+         .rotation, .asset, .guestPass, .contribution, .proposal]
+    }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] {
+        [CapabilityRoute(id: "history.feed", label: "Historial", icon: "clock.arrow.circlepath")]
+    }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "activity_feed", displayName: "Actividad", scope: .resource)]
+    }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
 }
