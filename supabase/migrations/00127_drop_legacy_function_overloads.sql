@@ -84,30 +84,43 @@ drop function if exists public.issue_manual_fine(
 );
 
 -- create_group_with_admin — drop every legacy overload. Audit
--- 2026-05-12: 5+ signatures coexist; 00079 7-param is canonical.
--- Use a DO block to drop all overloads that aren't the canonical one,
--- so we don't have to enumerate every historic signature manually.
+-- 2026-05-12: in the apply-from-zero path that CI uses, 00079 already
+-- drops its 3 historical overloads + re-creates the canonical 7-text
+-- function. Most of the time this block has nothing to do. We keep it
+-- as a safety net in case future migrations sneak a new overload in
+-- without explicit drops.
+--
+-- IMPORTANT: use `p.oid::regprocedure::text` for comparison.
+-- `pg_get_function_identity_arguments` returns parameter names + types
+-- ("p_name text, p_description text, …"), which my first version of
+-- this DO block mistook for a "non-canonical" overload and dropped the
+-- ONLY function that existed. The regprocedure cast returns just
+-- `schema.name(type,type,…)` with no parameter names — stable and
+-- unambiguous.
 do $$
 declare
   proc record;
-  canonical_args text;
+  canonical_sig text;
 begin
-  -- Pin canonical signature from 00079: 7 args
-  --   p_name text, p_base_template text, p_initials text, p_category text,
-  --   p_currency text, p_timezone text, p_color text
-  canonical_args := 'text, text, text, text, text, text, text';
+  -- Canonical sig from 00079 — 7 text args, no spaces between types.
+  canonical_sig := 'create_group_with_admin(text,text,text,text,text,text,text)';
 
   for proc in
-    select pg_get_function_identity_arguments(p.oid) as args
+    select  (p.oid::regprocedure)::text as sig,
+            pg_get_function_identity_arguments(p.oid) as args_for_drop
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and p.proname = 'create_group_with_admin'
-       -- Identity arg list strips DEFAULT clauses, so compare cleanly.
-       and pg_get_function_identity_arguments(p.oid) <> canonical_args
+       -- The regprocedure cast strips the schema for built-in pg_catalog
+       -- types but keeps it for user-defined. For pure-text args we get
+       -- the schemaless `create_group_with_admin(text,...)` form — match
+       -- against canonical_sig directly.
+       and (p.oid::regprocedure)::text <> canonical_sig
+       and (p.oid::regprocedure)::text <> ('public.' || canonical_sig)
   loop
-    execute 'drop function if exists public.create_group_with_admin(' || proc.args || ') cascade';
-    raise notice '00127 dropped legacy overload create_group_with_admin(%)', proc.args;
+    execute 'drop function if exists public.create_group_with_admin(' || proc.args_for_drop || ') cascade';
+    raise notice '00127 dropped legacy overload %', proc.sig;
   end loop;
 end $$;
 
