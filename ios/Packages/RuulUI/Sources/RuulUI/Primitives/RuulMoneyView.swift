@@ -56,6 +56,10 @@ public struct RuulMoneyView: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = currency
+        // Pin the locale so the rendered string is deterministic across
+        // host devices and CI runners — matches the es_MX locale already
+        // used for `accessibleLabel`. The app is Mexican-Spanish-only.
+        formatter.locale = Locale(identifier: "es_MX")
         let prefix = (showSign && amount > 0) ? "+" : ""
         return prefix + (formatter.string(from: amount as NSDecimalNumber) ?? "")
     }
