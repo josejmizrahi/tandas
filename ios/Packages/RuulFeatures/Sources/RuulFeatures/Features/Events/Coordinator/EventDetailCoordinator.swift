@@ -364,10 +364,29 @@ public final class EventDetailCoordinator {
 }
 
 public extension EventDetailCoordinator.ViewerRole {
-    public var analyticsRole: EventAnalytics.ViewerRole {
+    var analyticsRole: EventAnalytics.ViewerRole {
         switch self {
         case .host:       return .host
         case .guestRole:  return .guestRole
         }
+    }
+}
+
+// MARK: - EventInteractor conformance
+
+extension EventDetailCoordinator: EventInteractor {
+    /// Convenience for `EventInteractor.viewerIsHost`. Avoids leaking the
+    /// `ViewerRole` enum into sections that only care about the boolean.
+    public var viewerIsHost: Bool { viewerRole == .host }
+
+    /// Convenience for `EventInteractor.walletAvailable`. Mirrors the
+    /// underlying `WalletPassService.isAvailable` flag.
+    public var walletAvailable: Bool { walletService.isAvailable }
+
+    /// Default-argument bridge to the existing async method. Required so
+    /// the protocol witness picks up the call without callers having to
+    /// supply `plusOnes:` / `reason:` every time.
+    public func setRSVP(_ status: RSVPStatus) async {
+        await setRSVP(status, plusOnes: 0, reason: nil)
     }
 }
