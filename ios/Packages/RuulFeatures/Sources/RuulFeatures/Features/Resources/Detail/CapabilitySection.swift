@@ -91,6 +91,7 @@ public final class CapabilitySectionCatalog {
     /// `static let definition: CapabilitySection`.
     private func registerDefaults() {
         register(ScheduleSectionView.definition)
+        register(DescriptionSectionView.definition)
         register(RSVPSectionView.definition)
         register(MoneySectionView.definition)
         register(RulesSectionView.definition)
