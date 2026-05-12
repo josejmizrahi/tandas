@@ -15,9 +15,10 @@ public final class EventDetailCoordinator {
     public private(set) var isMutating: Bool = false
     public private(set) var error: CoordinatorError?
     /// True only for the initial load case (no event data yet + error set).
-    /// EventDetailView swaps the parallax for ErrorStateView in this state;
-    /// mid-flight errors (RSVP, check-in) keep the parallax visible and the
-    /// existing alert/toast pathway handles the surface.
+    /// `EventDetailHost` swaps the loading view for an inline error state
+    /// when this flag flips on; mid-flight errors (RSVP, check-in) keep
+    /// the detail visible and the existing alert/toast pathway handles
+    /// the surface.
     public var hasInitialLoadError: Bool { error != nil && rsvps.isEmpty && myRSVP == nil }
 
     public let viewerRole: ViewerRole

@@ -10,7 +10,7 @@ public protocol WalletPassService: Sendable {
 }
 
 /// V1 stub. `isAvailable` returns false so the "Add to Wallet" button never
-/// appears in `EventRSVPStateView` until the real implementation is wired.
+/// appears in `RSVPSectionView` until the real implementation is wired.
 public final class StubWalletPassService: WalletPassService {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "wallet")
 

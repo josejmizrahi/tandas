@@ -45,7 +45,7 @@ public struct ResourceDetailContext {
     public let onOpenInboxAction: (UserAction) async -> Void
     /// Tap callback for a member-row in any section (RSVP roll, attendance
     /// list, host check-in roll). Optional — when nil, sections render
-    /// rows as display-only. EventDetailView wires this to the attendee
+    /// rows as display-only. EventDetailHost wires this to the attendee
     /// member detail sheet.
     public let onSelectMember: (UUID) -> Void
     /// Optional dismiss handler. Lets the outer shell tear down its own
