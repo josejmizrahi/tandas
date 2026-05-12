@@ -147,9 +147,31 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
     // STEP 3 — fast-forward 25h, officialize via finalize-fine-reviews.
     // ──────────────────────────────────────────────────────────────────
 
+    // Diagnostic: dump fine_review_periods state before + after so a
+    // CI fail surfaces WHY finalize-fine-reviews didn't advance the
+    // fine. Without this, the assertion failure looked identical to a
+    // generic "officialize didn't happen" without any context.
+    const { data: rpBefore } = await admin
+      .from("fine_review_periods")
+      .select("event_id, expires_at, officialized_at");
+    console.log("[diag] fine_review_periods before finalize:", JSON.stringify(rpBefore));
+
     const t1 = new Date(Date.now() + 25 * 3600_000);
     const finalizeFines = await invokeCron("finalize-fine-reviews", { clockOverride: t1 });
+    console.log("[diag] finalize-fine-reviews response:", JSON.stringify(finalizeFines.body));
     assertEquals(finalizeFines.ok, true, `finalize-fine-reviews failed: ${JSON.stringify(finalizeFines.body)}`);
+
+    const { data: rpAfter } = await admin
+      .from("fine_review_periods")
+      .select("event_id, expires_at, officialized_at");
+    console.log("[diag] fine_review_periods after finalize:", JSON.stringify(rpAfter));
+
+    const { data: fineAfter } = await admin
+      .from("fines")
+      .select("id, status, amount, event_id, resource_id, auto_generated")
+      .eq("id", fine.id)
+      .single();
+    console.log("[diag] fine after finalize:", JSON.stringify(fineAfter));
 
     await assertFineState({
       fineId:         fine.id,
