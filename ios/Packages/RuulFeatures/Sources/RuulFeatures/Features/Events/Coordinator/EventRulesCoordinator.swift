@@ -326,11 +326,26 @@ public final class ResourceRulesCoordinator {
     private func humanize(error: Error) -> String {
         let raw = (error as NSError).localizedDescription.lowercased()
         if raw.contains("auth required") { return "Tu sesión expiró. Volvé a entrar." }
+        // 00122 governance-routing error paths. Auto-promote to a vote
+        // can't ship until a `rule_create` VoteType exists (today only
+        // ruleChange / ruleRepeal cover modifying / removing existing
+        // rules) — surface a clear message instead so the user knows
+        // the action is gated rather than failing for an unclear reason.
+        if raw.contains("governance requires vote") {
+            return "Las reglas de este grupo requieren votación. (Próximamente: proponer la nueva regla.)"
+        }
+        if raw.contains("governance denied") {
+            return "Este grupo no permite crear reglas nuevas."
+        }
+        // Pre-00122 wording + post-00122 fallback ("admin only" string).
         if raw.contains("only group admins or the event host") {
             return "Sólo el host del evento o un admin pueden crear reglas aquí."
         }
         if raw.contains("only group admins") {
             return "Sólo los admins del grupo pueden crear reglas para este recurso."
+        }
+        if raw.contains("admin only") {
+            return "Sólo administradores pueden crear reglas aquí."
         }
         if raw.contains("resource does not belong") {
             return "Esta regla no pertenece a este evento."
