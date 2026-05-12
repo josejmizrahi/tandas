@@ -2,7 +2,7 @@ import Foundation
 
 public extension SystemEventType {
     /// True if Sprint 1a / V1 has a TriggerEvaluator implementation.
-    public var isImplementedInV1: Bool {
+    var isImplementedInV1: Bool {
         switch self {
         case .eventClosed, .checkInRecorded, .rsvpChangedSameDay,
              .hoursBeforeEvent, .rsvpSubmitted, .rsvpDeadlinePassed,
@@ -19,7 +19,8 @@ public extension SystemEventType {
              .assetCreated,
              .fundDeposit, .fundThresholdReached,
              .positionChanged,
-             .ruleEnabledChanged, .ruleAmountChanged:
+             .ruleEnabledChanged, .ruleAmountChanged,
+             .pendingChangeApplied:
             return false
         case .unknown:
             return false
