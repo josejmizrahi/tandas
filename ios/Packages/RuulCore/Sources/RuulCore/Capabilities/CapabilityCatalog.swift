@@ -81,7 +81,13 @@ public struct CapabilityCatalog: Sendable {
         CancellationCapability(),
         ReminderCapability(),
         StatusCapability(),
-        HistoryCapability()
+        HistoryCapability(),
+        // Event-shape primitives. Hard-seeded on every event resource by
+        // mig 00109 (no module provides them — they're inherent to the
+        // event shape). Declared here so the catalog resolves the strings
+        // when iOS reads resource_capabilities.
+        DescriptionCapability(),
+        HostActionsCapability()
     ])
 }
 
@@ -804,6 +810,48 @@ public struct StatusCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "status", displayName: "Estado", scope: .resource)]
     }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// description — free-text body shown as its own detail section
+public struct DescriptionCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "description" }
+    public var displayName: String { "Descripción" }
+    public var summary: String { "Texto libre que describe el recurso." }
+    public var enabledResourceTypes: [ResourceType] {
+        [.event, .slot, .booking, .fund, .position, .assignment,
+         .rotation, .asset, .guestPass, .contribution, .proposal]
+    }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] {
+        [BuilderField(key: "description", label: "Descripción", kind: .multilineText)]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// host_actions — host-only action panel (reminders, edit, cancel, close, …).
+// Section gates internally on viewer role; capability is always enabled for events.
+public struct HostActionsCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "host_actions" }
+    public var displayName: String { "Acciones del host" }
+    public var summary: String { "Panel de acciones disponibles solo para el host del recurso." }
+    public var enabledResourceTypes: [ResourceType] { [.event] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
 }
