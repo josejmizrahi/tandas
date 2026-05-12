@@ -29,46 +29,66 @@ public struct GroupRulesSettingsView: View {
                     }
 
                     section(title: "Permisos", subtitle: "Quién puede hacer qué.") {
-                        previewList([
-                            ("¿Quién puede crear recursos?", currentPresetMatches ? "Cualquiera" : "Configurable"),
-                            ("¿Quién puede invitar miembros?", "Cualquiera"),
-                            ("¿Quién puede activar capabilities?", "Admin"),
-                            ("¿Quién puede borrar recursos?", "Admin"),
-                            ("¿Quién administra los fondos?", "Admin"),
+                        // Active policies surface as live answers; entries
+                        // without a backing target_action stay as
+                        // "Próximamente configurable" so users see what's
+                        // coming without hiding it. Real rows on top.
+                        liveList([
+                            ("¿Quién puede cambiar los acuerdos del grupo?",
+                                coordinator.humanAnswer(for: .ruleUpdateAmount),
+                                /*isLive*/ true),
+                            ("¿Quién puede agregar acuerdos nuevos?",
+                                coordinator.humanAnswer(for: .ruleCreate),
+                                true),
+                            ("¿Quién puede borrar acuerdos?",
+                                coordinator.humanAnswer(for: .ruleDelete),
+                                true),
+                            ("¿Quién puede activar/desactivar acuerdos?",
+                                coordinator.humanAnswer(for: .ruleToggle),
+                                true),
+                            ("¿Quién puede crear recursos?", "Cualquier miembro", false),
+                            ("¿Quién puede invitar miembros?", "Cualquier miembro", false),
+                            ("¿Quién puede activar capabilities?", "Solo admins", false),
                         ])
                     }
 
                     section(title: "Miembros", subtitle: "Cómo funciona la membresía y los invitados.") {
-                        previewList([
-                            ("¿Miembros nuevos requieren aprobación?", "No"),
-                            ("¿Cuántos invitados máximo por miembro?", "Sin límite"),
-                            ("¿Los invitados pueden votar?", "No"),
-                            ("¿Los invitados ven el dinero?", "No"),
+                        liveList([
+                            ("¿Cómo se quita a alguien del grupo?",
+                                coordinator.humanAnswer(for: .memberRemove),
+                                true),
+                            ("¿Miembros nuevos requieren aprobación?", "No", false),
+                            ("¿Cuántos invitados máximo por miembro?", "Sin límite", false),
+                            ("¿Los invitados pueden votar?", "No", false),
+                            ("¿Los invitados ven el dinero?", "No", false),
                         ])
                     }
 
                     section(title: "Dinero", subtitle: "Reglas financieras globales del grupo.") {
-                        previewList([
-                            ("¿Los balances son visibles para todos?", "Sí"),
-                            ("¿Gastos arriba de cuánto necesitan aprobación?", "Sin límite"),
-                            ("¿Los retiros de fondos necesitan votación?", "No"),
-                            ("¿Cuándo mandan recordatorios de pago?", "48 hrs"),
+                        liveList([
+                            ("¿Quién puede registrar gastos?",
+                                coordinator.humanAnswer(for: .expenseCreate),
+                                true),
+                            ("¿Los balances son visibles para todos?", "Sí", false),
+                            ("¿Gastos arriba de cuánto necesitan aprobación?", "Sin límite", false),
+                            ("¿Los retiros de fondos necesitan votación?", "No", false),
+                            ("¿Cuándo mandan recordatorios de pago?", "48 hrs", false),
                         ])
                     }
 
                     section(title: "Visibilidad", subtitle: "Quién puede ver qué.") {
-                        previewList([
-                            ("¿Los invitados ven balances?", "No"),
-                            ("¿Quién ve analíticas del grupo?", "Solo admin"),
-                            ("¿Los settlements son privados?", "No"),
+                        liveList([
+                            ("¿Los invitados ven balances?", "No", false),
+                            ("¿Quién ve analíticas del grupo?", "Solo admin", false),
+                            ("¿Los settlements son privados?", "No", false),
                         ])
                     }
 
                     section(title: "Defaults para recursos nuevos", subtitle: "Sugerencias que heredan las cosas nuevas.") {
-                        previewList([
-                            ("¿Eventos nuevos sugieren RSVP?", "Sí"),
-                            ("¿Gastos nuevos tienen deadline?", "72 hrs"),
-                            ("¿Bookings nuevos requieren confirmación?", "No"),
+                        liveList([
+                            ("¿Eventos nuevos sugieren RSVP?", "Sí", false),
+                            ("¿Gastos nuevos tienen deadline?", "72 hrs", false),
+                            ("¿Bookings nuevos requieren confirmación?", "No", false),
                         ])
                     }
                 }
@@ -166,10 +186,7 @@ public struct GroupRulesSettingsView: View {
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
-    /// Whether any preset matched the current policies — used as a
-    /// heuristic seed for the read-only previews until V2 wires real
-    /// per-question editing.
-    private var currentPresetMatches: Bool { coordinator.activePreset != nil }
+    // (Helper removed — per-question liveness is explicit per row now.)
 
     // MARK: - Section helpers
 
@@ -190,11 +207,12 @@ public struct GroupRulesSettingsView: View {
         }
     }
 
-    /// Read-only Q&A list for sections that haven't been wired to live
-    /// per-question editing yet. Each row reads as a humanized question
-    /// + current answer — never exposing `policy_type` / `target_action`
-    /// jargon. Tap target later opens a per-question editor.
-    private func previewList(_ entries: [(question: String, answer: String)]) -> some View {
+    /// Q&A list where each row carries its own "is live?" flag. Live rows
+    /// read their answer from `group_policies` via the coordinator and
+    /// surface a small "Activo" dot; non-live rows are placeholders for
+    /// the V2 surface area and get a "Próximamente" tag. No "policy_type"
+    /// jargon — every answer is a human sentence.
+    private func liveList(_ entries: [(question: String, answer: String, isLive: Bool)]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
                 VStack(spacing: 0) {
@@ -202,13 +220,20 @@ public struct GroupRulesSettingsView: View {
                         Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
                     }
                     HStack(alignment: .top, spacing: RuulSpacing.sm) {
-                        Text(entry.question)
-                            .ruulTextStyle(RuulTypography.body)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.question)
+                                .ruulTextStyle(RuulTypography.body)
+                                .foregroundStyle(Color.ruulTextPrimary)
+                            if !entry.isLive {
+                                Text("Próximamente")
+                                    .ruulTextStyle(RuulTypography.sectionLabel)
+                                    .foregroundStyle(Color.ruulTextTertiary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         Text(entry.answer)
                             .ruulTextStyle(RuulTypography.body)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(entry.isLive ? Color.ruulTextPrimary : Color.ruulTextSecondary)
                             .multilineTextAlignment(.trailing)
                     }
                     .padding(.vertical, RuulSpacing.sm)
@@ -224,14 +249,5 @@ public struct GroupRulesSettingsView: View {
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
-        .overlay(alignment: .topTrailing) {
-            Text("Próximamente editable")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
-                .padding(.horizontal, RuulSpacing.xs)
-                .padding(.vertical, 2)
-                .background(Color.ruulSurface, in: Capsule())
-                .padding(RuulSpacing.xs)
-        }
     }
 }

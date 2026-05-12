@@ -69,4 +69,36 @@ public final class GroupRulesCoordinator {
         }
         return nil
     }
+
+    /// Returns the active policy row for a `(action, group-scope)` tuple,
+    /// or nil if none is seeded. The Q&A renderer uses this to translate
+    /// the policy_type into a humanized answer (`humanAnswer(for:)`).
+    public func policy(for action: TargetAction) -> GroupPolicy? {
+        policies.first { $0.targetAction == action && $0.targetScope == "group" }
+    }
+
+    /// Human-readable answer for the active policy of a given action.
+    /// Mapping:
+    ///   direct         → "Cualquier miembro"
+    ///   vote_required  → "Requiere votación (X% a favor)"
+    ///   admin_only     → "Solo admins"
+    ///   denied         → "No permitido"
+    ///   (no row)       → "Sin configurar"
+    /// Doctrine: never expose `policy_type` / `target_action` jargon — this
+    /// is the only place we translate the table's raw values into a
+    /// sentence the user can read aloud.
+    public func humanAnswer(for action: TargetAction) -> String {
+        guard let policy = policy(for: action) else { return "Sin configurar" }
+        switch policy.policyType {
+        case .direct:
+            return "Cualquier miembro"
+        case .voteRequired:
+            let threshold = policy.approvalConfig?.thresholdPercent ?? 50
+            return "Requiere votación (\(threshold)% a favor)"
+        case .adminOnly:
+            return "Solo admins"
+        case .denied:
+            return "No permitido"
+        }
+    }
 }
