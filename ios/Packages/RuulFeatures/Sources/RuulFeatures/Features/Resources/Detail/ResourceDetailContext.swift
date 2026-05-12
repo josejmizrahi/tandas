@@ -79,3 +79,28 @@ public struct ResourceDetailContext {
         self.onSelectMember = onSelectMember
     }
 }
+
+public extension ResourceDetailContext {
+    /// Optional cover image URL derived from `resource.metadata.cover_image_url`.
+    /// Returns nil when the metadata key is absent or doesn't parse as a URL.
+    /// Used by `DetailCoverView` for the parallax hero on event-shaped resources.
+    var coverImageURL: URL? {
+        guard let raw = resource.metadata["cover_image_url"]?.stringValue,
+              !raw.isEmpty else { return nil }
+        return URL(string: raw)
+    }
+
+    /// Optional fallback cover name derived from
+    /// `resource.metadata.cover_image_name`. Resolved by `RuulCoverCatalog`
+    /// when no image URL is set, so the hero always has something to render.
+    var coverImageName: String? {
+        resource.metadata["cover_image_name"]?.stringValue
+    }
+
+    /// True when the resource has either a cover image URL or a fallback
+    /// cover name worth showing in the detail hero. Events always return
+    /// true because the cover name falls back to a default in `RuulCoverCatalog`.
+    var hasCoverHero: Bool {
+        resource.resourceType == .event || coverImageURL != nil
+    }
+}
