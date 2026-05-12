@@ -825,6 +825,168 @@ Deno.test("scope: membership_id rule fires only for the targeted member", async 
 });
 
 // =============================================================================
+// Most-specific-wins dedup (audit M.5) — when the same slug exists at
+// multiple scopes, only the most specific should fire.
+// =============================================================================
+
+Deno.test("scope precedence: resource-scoped slug beats group-scoped slug", async () => {
+  const { sink, captured } = captureSink();
+
+  const group = makeRule(
+    "group fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  group.slug = "rsvp_late_cancel_fine";
+
+  const occurrence = makeRule(
+    "this-event fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 250 } }],
+  );
+  occurrence.slug = "rsvp_late_cancel_fine";
+  occurrence.resource_id = eventId;
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("rsvpChangedSameDay", { member_id: memberAlice.id });
+
+  const results = await runRulesForEvent(event, [group, occurrence], ctx);
+
+  assertEquals(results.length, 1, "only the resource-scoped variant fires");
+  assertEquals((captured[0] as { amount: number }).amount, 250, "the resource-scoped amount wins");
+});
+
+Deno.test("scope precedence: series-scoped slug beats group-scoped slug", async () => {
+  const { sink, captured } = captureSink();
+
+  const group = makeRule(
+    "group fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  group.slug = "rsvp_late_cancel_fine";
+
+  const series = makeRule(
+    "series fine",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 175 } }],
+  );
+  series.slug = "rsvp_late_cancel_fine";
+  series.series_id = seriesAlpha;
+
+  const ctx = baseContext({ sink });
+  ctx.resource = { ...ctx.resource!, series_id: seriesAlpha };
+  const event = makeEvent("rsvpChangedSameDay", { member_id: memberAlice.id });
+
+  const results = await runRulesForEvent(event, [group, series], ctx);
+
+  assertEquals(results.length, 1, "only the series-scoped variant fires");
+  assertEquals((captured[0] as { amount: number }).amount, 175);
+});
+
+Deno.test("scope precedence: slugless rules are not deduplicated", async () => {
+  const { sink, captured } = captureSink();
+
+  const a = makeRule(
+    "user rule A",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  const b = makeRule(
+    "user rule B",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 200 } }],
+  );
+  // Neither carries a slug — both fire independently even though scope is identical.
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("rsvpChangedSameDay", { member_id: memberAlice.id });
+
+  const results = await runRulesForEvent(event, [a, b], ctx);
+
+  assertEquals(results.length, 2, "without a slug there is no dedup");
+  assertEquals(captured.length, 2);
+});
+
+Deno.test("scope precedence: rules with different slugs all fire", async () => {
+  const { sink, captured } = captureSink();
+
+  const reminder = makeRule(
+    "reminder rule",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 50 } }],
+  );
+  reminder.slug = "rsvp_reminder";
+
+  const cancel = makeRule(
+    "cancel-fine rule",
+    { eventType: "rsvpChangedSameDay", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 150 } }],
+  );
+  cancel.slug = "rsvp_late_cancel";
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("rsvpChangedSameDay", { member_id: memberAlice.id });
+
+  const results = await runRulesForEvent(event, [reminder, cancel], ctx);
+
+  assertEquals(results.length, 2, "different slugs are different logical rules");
+});
+
+Deno.test("scope precedence: group rule + per-member override coexist (different dedup keys)", async () => {
+  const { sink, captured } = captureSink();
+
+  const group = makeRule(
+    "group fine",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "responseStatusIs", config: { status: "pending" } }],
+    [{ type: "fine", config: { amount: 100 } }],
+  );
+  group.slug = "no_response_fine";
+
+  const aliceOverride = makeRule(
+    "alice override",
+    { eventType: "eventClosed", config: {} },
+    [{ type: "responseStatusIs", config: { status: "pending" } }],
+    [{ type: "fine", config: { amount: 50 } }],
+  );
+  aliceOverride.slug = "no_response_fine";
+  aliceOverride.membership_id = memberAlice.id;
+
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "pending", rsvp_at: null, cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "pending", rsvp_at: null, cancelled_same_day: false },
+    ],
+  });
+  const event = makeEvent("eventClosed");
+
+  const results = await runRulesForEvent(event, [group, aliceOverride], ctx);
+
+  // Alice's override hits her (1 result); group rule hits Alice + Bob (2 results)
+  // — but Alice's group target overlaps with the override. The current
+  // implementation lets BOTH the group rule and the per-member override fire
+  // for Alice (different dedup keys). Bob only sees the group rule. Total = 3.
+  assertEquals(results.length, 3);
+  const amounts = (captured as { member_id: string; amount: number }[]).sort(
+    (a, b) => a.amount - b.amount,
+  );
+  assertEquals(amounts[0].amount, 50,  "alice override fired");
+  assertEquals(amounts[0].member_id, memberAlice.id);
+  assertEquals(amounts[1].amount, 100, "alice group rule fired");
+  assertEquals(amounts[2].amount, 100, "bob group rule fired");
+});
+
+// =============================================================================
 // Original "unmapped reserved type" test (preserved post scope additions)
 // =============================================================================
 

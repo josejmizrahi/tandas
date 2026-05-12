@@ -54,6 +54,14 @@ export interface RuleConsequence {
 export interface Rule {
   id: UUID;
   group_id: UUID;
+  /**
+   * Stable cross-scope identifier inherited from the originating template
+   * rule (e.g. `dinner_late_arrival`). Survives rename of `name` (display
+   * copy) and i18n. Used by `selectMostSpecificPerSlug` to dedupe the same
+   * logical rule across scopes (most specific wins). Optional because
+   * user-authored rules may not carry a slug.
+   */
+  slug?: string | null;
   name: string;
   is_active: boolean;
   trigger: RuleTrigger;
