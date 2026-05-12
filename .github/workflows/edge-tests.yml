@@ -1,0 +1,134 @@
+name: edge-tests
+
+# Corre los tests de las edge functions de Supabase:
+#   1. unit (rule engine, ruleContext, time helpers) — siempre, sin DB.
+#   2. e2e (dinnerHappyPath, appealQuorumFailed, palcoSharedResource)
+#      + db (RLS, mutation audit, unique-open-vote) — contra una
+#      instancia local de Supabase levantada con `supabase start`.
+#
+# Hasta esta migración los tests sólo corrían local. La auditoría
+# 2026-05-12 lo marcó como blocker: cambios en _shared/ruleEngine.ts
+# podían mergear rotos porque CI nunca los ejecutaba.
+
+on:
+  push:
+    branches: [main, ios-rewrite]
+  pull_request:
+    paths:
+      - "supabase/functions/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/edge-tests.yml"
+
+jobs:
+  unit:
+    name: unit (no DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Type check shared modules
+        run: deno check supabase/functions/_shared/*.ts
+
+      - name: Run shared unit tests
+        # _shared/*.test.ts no necesitan red ni DB; el sink es in-memory.
+        # --allow-env porque time.ts lee ALLOW_CLOCK_OVERRIDE.
+        run: deno test --allow-env supabase/functions/_shared/
+
+  e2e:
+    name: e2e + db (local supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Permite que el job de unit gate los PRs y el de e2e sea
+    # observable pero no bloqueante mientras estabilizamos el setup.
+    # Cuando confiemos en el setup, quitar `continue-on-error`.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        # `supabase start` levanta postgres + auth + storage + edge
+        # runtime + applies every migration en supabase/migrations/.
+        # Imagen total ~3GB; el primer pull dura ~2-3 min, después es
+        # cache de runner.
+        run: supabase start
+
+      - name: Export connection envs
+        # supabase status -o json devuelve { API_URL, SERVICE_ROLE_KEY,
+        # ANON_KEY, ... }. Los inyectamos al $GITHUB_ENV para que los
+        # próximos pasos los lean sin volver a parsear.
+        run: |
+          status=$(supabase status -o json)
+          echo "SUPABASE_URL=$(echo "$status" | jq -r .API_URL)" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$status" | jq -r .SERVICE_ROLE_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_ANON_KEY=$(echo "$status" | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
+          # Required para que X-Test-Clock funcione (ver _shared/time.ts).
+          echo "ALLOW_CLOCK_OVERRIDE=true" >> "$GITHUB_ENV"
+
+      - name: Serve edge functions in background
+        # `supabase functions serve` levanta el runtime que escuchan los
+        # tests vía invokeCron(). El --no-verify-jwt deja que los tests
+        # llamen con service_role JWT sin el header de verificación de
+        # JWT estándar.
+        run: |
+          nohup supabase functions serve --no-verify-jwt > /tmp/functions-serve.log 2>&1 &
+          echo "FUNCTIONS_SERVE_PID=$!" >> "$GITHUB_ENV"
+          # Espera hasta que el runtime responda. El handler default a
+          # 404 si la función no existe, pero el server estará listo.
+          for i in $(seq 1 30); do
+            if curl -sf "$SUPABASE_URL/functions/v1/" >/dev/null 2>&1 \
+              || curl -sf -X POST "$SUPABASE_URL/functions/v1/process-system-events" \
+                   -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+                   -H "Content-Type: application/json" \
+                   -d '{}' >/dev/null 2>&1; then
+              echo "functions runtime is up"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run shared unit tests (sanity, sin DB)
+        run: deno test --allow-env supabase/functions/_shared/
+
+      - name: Run DB tests
+        # RLS, mutation audit, vote uniqueness. Pegan directo a
+        # postgres via supabase-js admin.
+        run: |
+          deno test --allow-net --allow-env supabase/functions/_tests/db/
+
+      - name: Run E2E tests
+        # dinnerHappyPath cubre la cadena causal completa con
+        # X-Test-Clock para avanzar grace periods + vote close.
+        run: |
+          deno test --allow-net --allow-env supabase/functions/_tests/e2e/
+
+      - name: Dump functions serve log on failure
+        if: failure()
+        run: |
+          echo "===== functions-serve.log ====="
+          cat /tmp/functions-serve.log || true
+          echo "===== supabase status ====="
+          supabase status || true
+
+      - name: Stop functions runtime
+        if: always()
+        run: |
+          if [ -n "${FUNCTIONS_SERVE_PID:-}" ]; then
+            kill "$FUNCTIONS_SERVE_PID" 2>/dev/null || true
+          fi
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop || true

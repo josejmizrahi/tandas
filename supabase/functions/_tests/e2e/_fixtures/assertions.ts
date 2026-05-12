@@ -16,7 +16,7 @@ export interface FineAssertion {
   fineId?: string;
   groupId: string;
   userId: string;            // who should be fined
-  expectedStatus: "proposed" | "official" | "in_appeal" | "cancelled" | "paid";
+  expectedStatus: "proposed" | "officialized" | "voided" | "in_appeal" | "paid";
   expectedAmount: number;
 }
 

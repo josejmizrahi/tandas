@@ -32,15 +32,15 @@ serve(withSentry(async (_req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const startedAt = new Date();
 
-  // Pull official, unpaid, un-waived fines older than 3 days. We'll filter
-  // each into the appropriate threshold bucket below.
+  // Pull officialized, unpaid, un-waived fines older than 3 days. We'll
+  // filter each into the appropriate threshold bucket below.
   const minAgeCutoff = new Date(startedAt);
   minAgeCutoff.setDate(minAgeCutoff.getDate() - THRESHOLDS_DAYS[0]);
 
   const { data: fines, error: selErr } = await supabase
     .from("fines")
     .select("id, group_id, user_id, amount, created_at, details")
-    .eq("status", "official")
+    .eq("status", "officialized")
     .eq("paid", false)
     .eq("waived", false)
     .lt("created_at", minAgeCutoff.toISOString())

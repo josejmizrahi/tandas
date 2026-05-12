@@ -82,7 +82,7 @@ Deno.test("2-member group: infractor only eligible → quorum_failed automatic",
       fineId: fine.id,
       groupId: group.groupId,
       userId: bob.userId,
-      expectedStatus: "official",
+      expectedStatus: "officialized",
       expectedAmount: 300,
     });
 
@@ -138,7 +138,7 @@ Deno.test("2-member group: infractor only eligible → quorum_failed automatic",
       fineId: fine.id,
       groupId: group.groupId,
       userId: bob.userId,
-      expectedStatus: "official",
+      expectedStatus: "officialized",
       expectedAmount: 300,
     });
 

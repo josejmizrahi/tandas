@@ -8,7 +8,7 @@
 // officialized_at is null:
 //   - Set fine_review_periods.officialized_at = now().
 //   - Update related fines on the same event from status='proposed' to
-//     status='official'.
+//     status='officialized'.
 //   - Emit a `fineOfficialized` system event per officialized fine so the
 //     rule engine + history pick it up.
 //
@@ -76,7 +76,7 @@ serve(withSentry(async (req) => {
     const fineIds = fines.map(f => f.id);
     const { error: updateErr } = await supabase
       .from("fines")
-      .update({ status: "official" })
+      .update({ status: "officialized" })
       .in("id", fineIds);
     if (updateErr) {
       errors.push({ event_id: rp.event_id, error: `fines update: ${updateErr.message}` });

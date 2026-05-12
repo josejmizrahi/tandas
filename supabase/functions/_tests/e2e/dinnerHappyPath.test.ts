@@ -136,12 +136,12 @@ Deno.test("dinner happy path — late check-in → fine → grace → officializ
     });
     assertEquals(finalizeFines.ok, true, `finalize-fine-reviews failed: ${JSON.stringify(finalizeFines.body)}`);
 
-    // STATE: fine is now official
+    // STATE: fine is now officialized
     await assertFineState({
       fineId:         fine.id,
       groupId:        group.groupId,
       userId:         bob.userId,
-      expectedStatus: "official",
+      expectedStatus: "officialized",
       expectedAmount: 300,
     });
 
@@ -254,6 +254,29 @@ Deno.test("dinner happy path — late check-in → fine → grace → officializ
 
     // Sanity: exactly 1 voteResolved system_event was emitted
     assertEquals(await countSystemEvents(group.groupId, "voteResolved"), 1);
+
+    // ────────────────────────────────────────────────────────────────
+    // STEP 7 — Fix #3 contract: a passed fine_appeal vote MUST have
+    // mutated the underlying fine. Before mig 00123 the fine stayed
+    // pegged at in_appeal forever. Now: passed → voided + waived.
+    //
+    // Note this test routes the appeal via raw start_vote (not via
+    // start_fine_appeal), so the fine was never flipped to in_appeal.
+    // The mig 00123 guard `WHERE status='in_appeal'` therefore SKIPS
+    // mutation here — the fine stays officialized. That's correct: a
+    // vote opened without the appeal helper isn't recognized as a
+    // formal appeal. We assert the negative-mutation path here, and
+    // assert the positive path in autoCloseAndDeadline.test.ts where
+    // the appeal goes through start_fine_appeal.
+    // ────────────────────────────────────────────────────────────────
+
+    await assertFineState({
+      fineId:         fine.id,
+      groupId:        group.groupId,
+      userId:         bob.userId,
+      expectedStatus: "officialized",
+      expectedAmount: 300,
+    });
   } finally {
     if (group) await cleanupGroup(group);
   }

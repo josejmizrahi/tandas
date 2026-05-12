@@ -125,6 +125,97 @@ Deno.test("eventClosed + responseStatusIs(pending) → fines pending members", a
 });
 
 // =============================================================================
+// Rule 2.b: "No confirmó a tiempo" via rsvpDeadlinePassed
+// — pre-event variant of Rule 2. Fires at the RSVP deadline (emitted by
+// the emit-deadline-events cron) so a member who hasn't responded gets
+// hit while there's still time to react. The post-event variant (Rule 2,
+// above) keeps eventClosed semantics for groups that prefer to penalize
+// at close time instead.
+// =============================================================================
+
+Deno.test("rsvpDeadlinePassed + responseStatusIs(pending) → fines only pending members", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "No confirmó a tiempo (pre-event)",
+    { eventType: "rsvpDeadlinePassed", config: {} },
+    [{ type: "responseStatusIs", config: { status: "pending" } }],
+    [{ type: "fine", config: { amount: 150 } }],
+  );
+
+  const deadlineIso = "2026-05-04T12:00:00Z";
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "going",   rsvp_at: "2026-05-03T10:00:00Z", cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "pending", rsvp_at: null,                   cancelled_same_day: false },
+      { member_user_id: memberCarla.user_id, status: "pending", rsvp_at: null,                   cancelled_same_day: false },
+    ],
+  });
+
+  const event = makeEvent("rsvpDeadlinePassed", {
+    payload: { rsvp_deadline: deadlineIso, starts_at: "2026-05-04T20:30:00Z" },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  // 2 pending members → 2 fines proposed; Alice (going) is skipped.
+  assertEquals(results.length, 2);
+  assertEquals(captured.length, 2);
+  const fined = (captured as Array<{ member_id: string; amount: number }>)
+    .map(f => f.member_id)
+    .sort();
+  assertEquals(fined, [memberBob.id, memberCarla.id].sort());
+  for (const fine of captured as Array<{ amount: number }>) {
+    assertEquals(fine.amount, 150);
+  }
+});
+
+Deno.test("rsvpDeadlinePassed: all members responded → no fines", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "No confirmó a tiempo (pre-event)",
+    { eventType: "rsvpDeadlinePassed", config: {} },
+    [{ type: "responseStatusIs", config: { status: "pending" } }],
+    [{ type: "fine", config: { amount: 150 } }],
+  );
+
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "going",    rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "declined", rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberCarla.user_id, status: "maybe",    rsvp_at: "x", cancelled_same_day: false },
+    ],
+  });
+
+  const event = makeEvent("rsvpDeadlinePassed", {
+    payload: { rsvp_deadline: "2026-05-04T12:00:00Z", starts_at: "2026-05-04T20:30:00Z" },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0, "every member responded — no fines");
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("rsvpDeadlinePassed without resource_id → no targets, no fines", async () => {
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "No confirmó a tiempo (pre-event)",
+    { eventType: "rsvpDeadlinePassed", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "fine", config: { amount: 150 } }],
+  );
+
+  const ctx = baseContext({ sink });
+  // Defensive: the emitter always sets resource_id, but guard the engine
+  // against malformed rows so a missing FK doesn't crash process-events.
+  const event = makeEvent("rsvpDeadlinePassed", { resource_id: null });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+});
+
+// =============================================================================
 // Rule 4: "No-show" — eventClosed + going + checkInExists(false) → fine $300
 // =============================================================================
 

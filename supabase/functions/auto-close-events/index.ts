@@ -2,26 +2,32 @@
 //
 // Deploy as a scheduled function (cron expression "0 * * * *" — every hour).
 // Uses service_role to bypass RLS. Marks events as 'completed' + sets
-// closed_at. Does NOT invoke evaluate_event_rules — phase 4 will add a
-// separate cron that runs the rule engine for events that need it.
+// closed_at, AND emits one `eventClosed` system_event per closed event so
+// process-system-events runs the rule engine just like a manual close
+// via the close_event RPC would. Without this emission, no-show / late-
+// cancel rules silently never fired for hosts who forgot to close.
 //
 // Idempotent: skips events already in 'completed' or 'cancelled' state.
+// The system_event emit is per-batch so a cron retry won't re-emit (the
+// status filter prevents it from picking up the same events twice).
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { getNow } from "../_shared/time.ts";
 import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CLOSE_AFTER_HOURS = parseInt(Deno.env.get("AUTO_CLOSE_AFTER_HOURS") ?? "24");
 
-serve(withSentry(async (_req) => {
+serve(withSentry(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const cutoff = new Date(Date.now() - CLOSE_AFTER_HOURS * 60 * 60 * 1000);
+  const now = getNow(req);
+  const cutoff = new Date(now.getTime() - CLOSE_AFTER_HOURS * 60 * 60 * 1000);
 
   const { data: stale, error: selErr } = await supabase
     .from("events")
-    .select("id, group_id, starts_at, status")
+    .select("id, group_id, host_id, starts_at, status")
     .in("status", ["scheduled", "in_progress"])
     .lt("starts_at", cutoff.toISOString())
     .limit(100);
@@ -35,16 +41,17 @@ serve(withSentry(async (_req) => {
   }
 
   if (!stale || stale.length === 0) {
-    return new Response(JSON.stringify({ closed: 0 }), {
+    return new Response(JSON.stringify({ closed: 0, emitted: 0 }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   }
 
   const ids = stale.map((e) => e.id);
+  const closedAt = now.toISOString();
   const { error: updErr } = await supabase
     .from("events")
-    .update({ status: "completed", closed_at: new Date().toISOString() })
+    .update({ status: "completed", closed_at: closedAt })
     .in("id", ids);
 
   if (updErr) {
@@ -55,8 +62,48 @@ serve(withSentry(async (_req) => {
     });
   }
 
-  console.log(`auto-closed ${ids.length} events`);
-  return new Response(JSON.stringify({ closed: ids.length, ids }), {
+  // Emit eventClosed per event so process-system-events runs the rule
+  // engine on each one (mirrors close_event RPC behavior). Sent as a
+  // single batch insert to keep the round-trip count bounded; an
+  // individual failure here does NOT roll back the close, but is logged
+  // so an operator can backfill manually if needed.
+  const systemEventRows = stale.map((e) => ({
+    group_id:    e.group_id,
+    event_type:  "eventClosed" as const,
+    resource_id: e.id,
+    // We intentionally leave member_id null here because auto-close has
+    // no human actor — the close was driven by a deadline, not a host
+    // tap. The rule engine's eventClosed trigger doesn't read
+    // event.member_id (it iterates context.members), so null is correct.
+    member_id:   null,
+    payload:     {
+      host_id:     e.host_id ?? null,
+      starts_at:   e.starts_at,
+      auto_closed: true,
+    },
+  }));
+
+  const { error: emitErr } = await supabase
+    .from("system_events")
+    .insert(systemEventRows);
+
+  if (emitErr) {
+    // Don't fail the whole job — the close itself succeeded. Log so the
+    // operator can re-emit (running a `record_system_event` SQL block)
+    // for the affected event ids if rule consequences depend on them.
+    console.error("eventClosed emit failed (close succeeded, rules will not fire automatically)", {
+      error:    emitErr.message,
+      event_ids: ids,
+    });
+  }
+
+  console.log(`auto-closed ${ids.length} events (${emitErr ? "0" : ids.length} eventClosed emitted)`);
+  return new Response(JSON.stringify({
+    closed:  ids.length,
+    emitted: emitErr ? 0 : ids.length,
+    ids,
+    emit_error: emitErr?.message ?? null,
+  }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });

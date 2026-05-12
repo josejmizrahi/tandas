@@ -201,6 +201,35 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
       }));
   },
 
+  // (V1) RSVP deadline passed. Mirrors eventClosed in shape — one target
+  // per active member with their RSVP — but fires BEFORE the event so
+  // pre-event rules ("no confirmó a tiempo → warning/fine") can run while
+  // there's still time for a member to respond. emit-deadline-events
+  // emits one row per event (member_id=null, payload carries the
+  // rsvp_deadline + starts_at), so the trigger enumerates members like
+  // eventClosed does. Conditions (e.g. responseStatusIs("pending"))
+  // narrow which targets actually fire.
+  rsvpDeadlinePassed: async (event, _rule, context) => {
+    if (!event.resource_id) return [];
+    return context.members
+      .filter((m) => m.active)
+      .map((m) => ({
+        member_id: m.id,
+        resource_id: event.resource_id,
+        context: {
+          user_id: m.user_id,
+          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
+          // Surface the deadline metadata on each target so condition
+          // evaluators that compare against the deadline (Phase 4) can
+          // read it without re-fetching the resource.
+          rsvp_deadline:   event.payload?.rsvp_deadline ?? null,
+          event_starts_at: event.payload?.starts_at
+            ?? context.resource?.metadata?.starts_at
+            ?? null,
+        },
+      }));
+  },
+
   // (V1) Single target = the member who checked in.
   checkInRecorded: async (event, _rule, context) => {
     if (!event.member_id) return [];
