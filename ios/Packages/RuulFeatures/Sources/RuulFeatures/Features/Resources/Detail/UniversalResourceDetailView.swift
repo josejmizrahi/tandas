@@ -54,33 +54,37 @@ public struct UniversalResourceDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    /// Padded VStack that hosts every zone below the cover. When a cover
-    /// is present, the panel pulls up under it via an `UnevenRoundedRectangle`
-    /// so the cover bottom is visually masked into a soft curve. When there's
-    /// no cover, the panel renders flush against the safe-area top.
-    ///
-    /// Events use the rich `EventHeroTitleBlock` as their identity zone
-    /// and skip `DetailSummaryView` entirely — host / start time / capacity /
-    /// location already live in the hero or in their own capability
-    /// sections (LocationSection, CapacityProgressSection, etc.). Other
-    /// resource types keep the compact `DetailHeaderView` + summary stack.
+    /// Content body. Events get the hand-crafted `EventInvitesContent`
+    /// layout — Apple Invites mold, hero + meta + RSVP + avatar strip +
+    /// secondary actions, no card-on-card stacking. Other resource types
+    /// stay on the polymorphic catalog-driven stack with `DetailHeaderView`
+    /// + `DetailSummaryView` + capability sections.
     private var contentPanel: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+        Group {
             if context.usesEventHero {
-                EventHeroTitleBlock(context: context)
+                EventInvitesContent(context: context)
             } else {
-                DetailHeaderView(context: context)
-                DetailSummaryView(context: context)
+                catalogPanel
             }
-            DetailAttentionView(context: context)
-            DetailActionsBar(context: context)
-
-            dynamicSections
         }
         .padding(.horizontal, RuulSpacing.lg)
         .padding(.top, context.hasCoverHero ? RuulSpacing.xl : topInsetWithoutCover)
         .padding(.bottom, RuulSpacing.xxl)
         .background(panelBackground)
+    }
+
+    /// Catalog-driven layout for non-event resources. Identity strip +
+    /// summary rows + dynamic capability sections. Stays in place so
+    /// upcoming slot / fund / asset detail surfaces aren't blocked on
+    /// the event redesign.
+    private var catalogPanel: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+            DetailHeaderView(context: context)
+            DetailSummaryView(context: context)
+            DetailAttentionView(context: context)
+            DetailActionsBar(context: context)
+            dynamicSections
+        }
     }
 
     /// Top padding when the page has no cover. Needs to clear the

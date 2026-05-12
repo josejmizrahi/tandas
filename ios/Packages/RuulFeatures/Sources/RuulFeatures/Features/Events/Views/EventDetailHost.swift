@@ -63,7 +63,7 @@ public struct EventDetailHost: View {
     @State private var sheet: Sheet?
 
     private enum Sheet: Identifiable, Hashable {
-        case share, qr, cancelEvent, cancelAttendance, remindAttendees, closeEvent, manualFine, ledger, rules
+        case share, qr, cancelEvent, cancelAttendance, remindAttendees, closeEvent, manualFine, ledger, rules, attendees
         var id: Self { self }
     }
 
@@ -171,6 +171,17 @@ public struct EventDetailHost: View {
                     )
                 }
             }
+            .ruulSheet(isPresented: bindingForSheet(.attendees)) {
+                AttendeesListSheet(
+                    rsvps: coordinator.rsvps,
+                    memberDirectory: memberDirectory
+                ) { userId in
+                    sheet = nil
+                    if let mwp = memberDirectory[userId] {
+                        attendeeRoute = mwp
+                    }
+                }
+            }
             .sheet(item: $attendeeRoute) { mwp in
                 NavigationStack {
                     MemberDetailView(
@@ -228,6 +239,7 @@ public struct EventDetailHost: View {
             onPresentCloseEventSheet: { sheet = .closeEvent },
             onPresentCancelAttendanceSheet: { sheet = .cancelAttendance },
             onPresentEditEvent: { onEditEvent(coordinator?.event ?? event) },
+            onPresentAttendeesList: { sheet = .attendees },
             canIssueManualFine: canIssueManualFine
         )
     }

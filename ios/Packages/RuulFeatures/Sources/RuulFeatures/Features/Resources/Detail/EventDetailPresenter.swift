@@ -38,6 +38,9 @@ public struct EventDetailPresenter {
     public var onPresentCancelAttendanceSheet: () -> Void
     /// Push the event edit flow.
     public var onPresentEditEvent: () -> Void
+    /// Open the full per-status attendee list (tally + rolls). Triggered
+    /// by the "Ver todos" affordance on the home avatar strip.
+    public var onPresentAttendeesList: () -> Void
     /// Async-resolved governance check. The outer shell sets this to true
     /// only when the viewer can issue a manual fine for this event; the
     /// HostActionsSection hides the CTA otherwise.
@@ -54,6 +57,7 @@ public struct EventDetailPresenter {
         onPresentCloseEventSheet: @escaping () -> Void = {},
         onPresentCancelAttendanceSheet: @escaping () -> Void = {},
         onPresentEditEvent: @escaping () -> Void = {},
+        onPresentAttendeesList: @escaping () -> Void = {},
         canIssueManualFine: Bool = false
     ) {
         self.onPresentShareSheet = onPresentShareSheet
@@ -66,6 +70,7 @@ public struct EventDetailPresenter {
         self.onPresentCloseEventSheet = onPresentCloseEventSheet
         self.onPresentCancelAttendanceSheet = onPresentCancelAttendanceSheet
         self.onPresentEditEvent = onPresentEditEvent
+        self.onPresentAttendeesList = onPresentAttendeesList
         self.canIssueManualFine = canIssueManualFine
     }
 }
