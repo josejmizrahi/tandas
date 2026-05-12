@@ -74,17 +74,33 @@ export async function seedGroup(opts: SeedOpts): Promise<SeededGroup> {
     });
   }
 
-  // 2. Founder creates the group via RPC
+  // 2. Founder creates the group via RPC. Post-00079 the function
+  // returns `public.groups` (the full row), not just a uuid. Older
+  // versions returned `uuid` directly, so we normalize both shapes
+  // here — extract .id if we got a row, otherwise trust the bare
+  // string. CI surfaced this 2026-05-12 when supabase start applied
+  // 00079 fresh and the seed broke with "invalid input syntax for
+  // type uuid: '[object Object]'".
   const founderEntry = provisioned[0];
-  const { data: groupId, error: groupErr } = await founderEntry.client.rpc(
+  const { data: rpcResult, error: groupErr } = await founderEntry.client.rpc(
     "create_group_with_admin",
     { p_name: groupName, p_base_template: opts.baseTemplate ?? "recurring_dinner" },
   );
   if (groupErr) {
     throw new Error(`seedGroup: create_group_with_admin failed: ${groupErr.message}`);
   }
+  const groupId: string | null = (() => {
+    if (rpcResult == null) return null;
+    if (typeof rpcResult === "string") return rpcResult;
+    if (typeof rpcResult === "object" && "id" in rpcResult) {
+      return (rpcResult as { id: string }).id;
+    }
+    return null;
+  })();
   if (!groupId) {
-    throw new Error("seedGroup: create_group_with_admin returned no group_id");
+    throw new Error(
+      `seedGroup: create_group_with_admin returned no group_id (got: ${JSON.stringify(rpcResult)})`,
+    );
   }
 
   // 3. Look up founder's group_members.id
