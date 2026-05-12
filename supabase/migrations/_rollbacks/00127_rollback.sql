@@ -1,0 +1,11 @@
+-- Rollback 00127 — re-create the legacy function overloads.
+-- WARNING: this rollback is a stub. Re-running each historic migration
+-- (00003, 00005, 00007, 00008, 00010, 00011, 00012, 00020, 00028,
+-- 00042, 00051, 00067) would re-create them, but most of those are
+-- not idempotent w.r.t. the current schema. In practice if 00127 has
+-- to be reverted, prefer fix-forward in a new migration.
+--
+-- This rollback is intentionally empty so it doesn't pretend to
+-- restore something we can't safely restore. The drops in 00127 are
+-- additive in spirit (legacy overloads no caller uses) — there is no
+-- production data dependency on those overloads.
