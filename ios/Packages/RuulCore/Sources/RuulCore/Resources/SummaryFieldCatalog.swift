@@ -154,6 +154,19 @@ public struct SummaryFieldCatalog: Sendable {
         fieldsByResourceType[type] ?? []
     }
 
+    /// Per-call ISO8601 parser used by derived descriptors that need to
+    /// resolve start times for countdowns. Decoupled from the formatter
+    /// in `ResourceRow+Event` so the catalog (RuulCore) doesn't depend
+    /// on private fileprivate statics in adjacent files.
+    fileprivate static func parseISO8601(_ s: String?) -> Date? {
+        guard let s, !s.isEmpty else { return nil }
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: s) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: s)
+    }
+
     /// V1 catalog. Field set mirrors the previously hard-coded behaviour
     /// in `DetailSummaryView` so this refactor is observably equivalent,
     /// PLUS the Host row now resolves via memberLookup when metadata
@@ -184,6 +197,29 @@ public struct SummaryFieldCatalog: Sendable {
                         return nil
                     }
                 ),
+                // Urgency row for upcoming events <7 days out. Mirrors the
+                // "EMPIEZA EN 2 DÍAS" line from the legacy EventDetailView
+                // titleBlock — kept as text only so the catalog stays
+                // renderer-agnostic. Hidden once the event starts.
+                SummaryFieldDescriptor(
+                    id: "countdown",
+                    icon: "clock.fill",
+                    label: "Empieza",
+                    resolver: .derived { ctx in
+                        guard let startsAt = SummaryFieldCatalog.parseISO8601(ctx.metadata["starts_at"]?.stringValue)
+                            ?? SummaryFieldCatalog.parseISO8601(ctx.metadata["startsAt"]?.stringValue)
+                        else { return nil }
+                        let interval = startsAt.timeIntervalSince(.now)
+                        guard interval > 0 else { return nil }
+                        let days = Int(interval / 86_400)
+                        let hours = Int(interval / 3_600)
+                        let minutes = Int(interval / 60)
+                        if interval < 3_600 { return "en \(max(1, minutes)) min" }
+                        if interval < 86_400 { return "en \(hours) h" }
+                        if days < 7 { return days == 1 ? "mañana" : "en \(days) días" }
+                        return nil
+                    }
+                ),
                 SummaryFieldDescriptor(
                     id: "location",
                     icon: "mappin.and.ellipse",
@@ -201,6 +237,22 @@ public struct SummaryFieldCatalog: Sendable {
                         keys: ["capacity_max", "capacityMax"],
                         format: .intWithUnit(unit: "persona", unitPlural: "personas")
                     )
+                ),
+                SummaryFieldDescriptor(
+                    id: "duration",
+                    icon: "hourglass",
+                    label: "Dura",
+                    resolver: .derived { ctx in
+                        guard let mins = ctx.metadata["duration_minutes"]?.intValue
+                            ?? ctx.metadata["durationMinutes"]?.intValue
+                        else { return nil }
+                        if mins < 60 {
+                            return "\(mins) min"
+                        }
+                        let hours = mins / 60
+                        let remainder = mins % 60
+                        return remainder == 0 ? "\(hours) h" : "\(hours) h \(remainder) min"
+                    }
                 ),
             ],
             .asset: [
