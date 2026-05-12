@@ -76,10 +76,6 @@ public struct MainTabView: View {
     /// G1: "Más → Sanciones" push. Routes a `MyFinesView` en el groupTab stack.
     @State private var sancionesRoute: Bool = false
     @State private var groupRulesSettingsPresented: Bool = false
-    /// "Ver como recurso (Beta)" desde EventDetailView. Presenta
-    /// `ResourceDetailSheet` para el mismo event row sin tocar el
-    /// flujo de event detail clásico.
-    @State private var resourceFromEventRoute: ResourceRow?
 
     // Fase B: multi-grupo. Three sheets — switcher (lists groups + entry
     // points), create (new group from scratch), join (with invite code).
@@ -301,15 +297,6 @@ public struct MainTabView: View {
         // Historial / Ajustes all present the same wizard.
         .fullScreenCover(isPresented: $creationRoute) {
             eventCreationScreen
-        }
-        // "Ver como recurso (Beta)" — presents the universal detail
-        // for the same row. Sheet over the event's fullScreenCover so
-        // dismissing returns to the event detail intact.
-        .sheet(item: $resourceFromEventRoute) { row in
-            ResourceDetailSheet(resource: row)
-                .environment(app)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
         .onChange(of: creationRoute) { wasOpen, isOpen in
             // Refresh on cover dismissal regardless of source tab.
@@ -1304,104 +1291,16 @@ public struct MainTabView: View {
             return AnyView(EmptyView())
         }
         let userId = app.session?.user.id ?? UUID()
-        let coord = EventDetailCoordinator(
-            event: event,
-            group: group,
-            userId: userId,
-            eventRepo: app.eventRepo,
-            rsvpRepo: app.rsvpRepo,
-            checkInRepo: app.checkInRepo,
-            lifecycle: app.eventLifecycle,
-            notifications: app.notifications,
-            walletService: app.walletService,
-            analytics: EventAnalytics(analytics: app.analytics),
-            realtimeFactory: app.realtimeFactory,
-            systemEvents: app.systemEventEmitter
-        )
-        let governance = app.governance
-        let fineRepo = app.fineRepo
-        let groupsRepo = app.groupsRepo
-        let memberDirectorySnapshot = memberDirectory
-
         return AnyView(
-            EventDetailView(
-                coordinator: coord,
-                memberLookup: lookupMember,
-                memberWithProfileLookup: { userId in memberDirectorySnapshot[userId] },
-                onScannerOpen: { openScanner(for: coord) },
-                calendarService: calendarService,
-                onEdit: { editRoute = coord.event },
-                computeCanIssueManualFine: {
-                    let me = memberDirectorySnapshot[userId]?.member
-                        ?? Self.fallbackMember(userId: userId, groupId: group.id)
-                    do {
-                        let decision = try await governance.canPerform(
-                            .issueManualFine,
-                            member: me,
-                            in: group,
-                            context: nil
-                        )
-                        if case .allowed = decision { return true }
-                        return false
-                    } catch {
-                        return false
-                    }
-                },
-                makeAddManualFineCoordinator: {
-                    AddManualFineCoordinator(
-                        groupId: group.id,
-                        eventId: event.id,
-                        fineRepo: fineRepo,
-                        groupsRepo: groupsRepo
-                    )
-                },
-                makeResourceLedgerCoordinator: { [ledgerRepo = app.ledgerRepo] in
-                    let ctx = ResourceLedgerContext(
-                        groupId: event.groupId,
-                        resourceId: event.id,
-                        resourceType: "event",
-                        displayName: event.title,
-                        currentUserId: userId
-                    )
-                    return ResourceLedgerCoordinator(
-                        context: ctx,
-                        ledgerRepo: ledgerRepo,
-                        groupsRepo: groupsRepo
-                    )
-                },
-                makeResourceRulesCoordinator: { [ruleRepo = app.ruleRepo, registry = app.ruleShapeRegistry] in
-                    // canCreate = group admin OR event host. Mirrors the
-                    // server-side gating in create_resource_rule (mig 00086)
-                    // so the CTA is hidden when the user can't actually
-                    // submit (avoids a 'permission denied' surface).
-                    let me = memberDirectorySnapshot[userId]?.member
-                    let isAdmin = me?.isFounder == true
-                    let isHost = event.hostId == userId
-                    let ctx = ResourceRuleContext(
-                        groupId: event.groupId,
-                        resourceId: event.id,
-                        resourceType: "event",
-                        displayName: event.title,
-                        canCreate: isAdmin || isHost
-                    )
-                    return ResourceRulesCoordinator(
-                        context: ctx,
-                        ruleRepo: ruleRepo,
-                        shapeRegistry: registry
-                    )
-                },
+            EventDetailHost(
+                event: event,
+                group: group,
                 currentUserId: userId,
+                memberDirectory: memberDirectory,
+                calendarService: calendarService,
                 onClose: { detailRoute = nil },
-                onOpenAsResource: {
-                    Task {
-                        // Fetch the polymorphic resources row that mirrors
-                        // this event (mig 00039 dual-write keeps them in
-                        // sync). The resource id equals the event id.
-                        if let row = try? await app.resourceRepo.resource(event.id) {
-                            resourceFromEventRoute = row
-                        }
-                    }
-                }
+                onEditEvent: { editRoute = $0 },
+                onScannerOpen: { openScanner(for: $0) }
             )
         )
     }
