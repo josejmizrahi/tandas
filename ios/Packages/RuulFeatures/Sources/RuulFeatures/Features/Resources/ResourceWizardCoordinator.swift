@@ -138,7 +138,11 @@ public final class ResourceWizardCoordinator {
 
     /// Capability blocks the picker should show in step 3 — filtered by:
     /// (1) the selected builder declares them, AND
-    /// (2) the resolver says they're available on this group.
+    /// (2) the resolver says they're available on this group, AND
+    /// (3) Tier 0 truth gate (2026-05-12): `block.status` is `.stable`.
+    ///     Incomplete blocks are hidden until UI config + backend save +
+    ///     runtime support are all real. Founder framing: "no toggles
+    ///     decorativos." See CapabilityStatus on each block for reason.
     public var availableCapabilityBlocks: [any CapabilityBlock] {
         guard let builder = selectedBuilder else { return [] }
         let groupAvailable = Set(resolver.availableCapabilities(
@@ -147,6 +151,7 @@ public final class ResourceWizardCoordinator {
         return builder.optionalCapabilities
             .filter { groupAvailable.contains($0) }
             .compactMap { catalog[$0] }
+            .filter { $0.status.isStable }
     }
 
     public func toggleCapability(_ blockId: String) {
@@ -315,18 +320,50 @@ public final class ResourceWizardCoordinator {
 
     // MARK: - Helpers
 
+    /// True iff every required field across (a) the builder's own
+    /// basicFields and (b) each currently-enabled capability's
+    /// `requiredFields` has a non-empty value in the appropriate config
+    /// blob. Founder framing 2026-05-12 Tier 0: an active capability
+    /// without complete required config must NOT be submittable. Before
+    /// this fix, only builder fields gated submit — a user with
+    /// `rotation.purpose` empty (when rotation was still surfaced) could
+    /// still tap Create and the cap row would persist with `{}` config.
     private func validateRequiredFields() -> Bool {
         guard let builder = selectedBuilder else { return false }
+        // (a) Builder's own fields (title, startsAt, …).
         for field in builder.requiredFields {
-            if let value = basicFields[field.key] {
-                if case let .string(s) = value, s.trimmingCharacters(in: .whitespaces).isEmpty {
-                    return false
-                }
-            } else {
-                return false
+            if !isFieldFilled(field, in: basicFields) { return false }
+        }
+        // (b) Required fields of every active capability. Caps that get
+        //     filtered out of step 3 (incomplete) can still appear in
+        //     `enabledCapabilities` if a template defaulted them on
+        //     before the filter landed; defensive `compactMap` skips
+        //     unknown ids. Stable caps with empty requiredFields are
+        //     a no-op for this loop.
+        for blockId in enabledCapabilities {
+            guard let block = catalog[blockId] else { continue }
+            let configForBlock = capabilityConfigs[blockId] ?? [:]
+            for field in block.requiredFields {
+                if !isFieldFilled(field, in: configForBlock) { return false }
             }
         }
         return true
+    }
+
+    /// Whether `field` has a non-empty value in `values`. Strings are
+    /// trimmed; non-string types (int/bool/double/object/array) count as
+    /// present once the key exists. `.null` is treated as empty so an
+    /// explicit null doesn't slip through as "filled."
+    private func isFieldFilled(_ field: BuilderField, in values: [String: JSONConfig]) -> Bool {
+        guard let value = values[field.key] else { return false }
+        switch value {
+        case .string(let s):
+            return !s.trimmingCharacters(in: .whitespaces).isEmpty
+        case .null:
+            return false
+        case .int, .double, .bool, .object, .array:
+            return true
+        }
     }
 
     private func defaultCapabilitiesFor(_ builder: any ResourceBuilder) -> Set<String> {
@@ -349,7 +386,17 @@ public final class ResourceWizardCoordinator {
         let available = Set(resolver.availableCapabilities(
             for: builder.resourceType, in: group, catalog: catalog
         ))
-        return suggested.intersection(available)
+        // Tier 0 truth gate (2026-05-12): never auto-enable an incomplete
+        // capability via a template default. A template that pre-toggles
+        // `rotation` for "recurring_dinner" used to silently activate an
+        // unbuilt rotation cap row; the filter below makes the template
+        // honest too. If a template wants behavior, the underlying cap
+        // has to be `.stable`.
+        let stable = Set(suggested.compactMap { id -> String? in
+            guard let block = catalog[id] else { return nil }
+            return block.status.isStable ? id : nil
+        })
+        return stable.intersection(available)
     }
 
     /// Seeds defaults for a block's required + optional fields when the

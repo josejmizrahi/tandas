@@ -302,6 +302,14 @@ public struct RecurrenceCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { ["schedule"] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: required fields miss startDate, end
+    /// condition options, occurrence count, timezone, exceptions. Submit
+    /// emits a partial seriesPattern. auto-generate-events still reads
+    /// `groups.frequency_type` legacy instead of resource_series.
+    /// Reactivate when Tier 1 ships (catalog completion + edge refactor).
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 1: complete catalog fields + refactor auto-generate-events to read resource_series.")
+    }
 }
 
 // rotation — turns rotate among participants
@@ -357,6 +365,14 @@ public struct RotationCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["participants"] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: orderStrategy + swapPolicy declared as
+    /// `.picker` with NO options → BuilderFieldRenderer would fall to
+    /// free text. Runtime: `next_host_for_group` reads
+    /// `groups.turn_order`, NOT capability_config rotation. The toggle
+    /// promises behavior nothing delivers.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 5: rotation as standalone capability needs participant selector + order policy + runtime that reads capability_config.")
+    }
 }
 
 // assignment — discrete responsibility
@@ -390,6 +406,12 @@ public struct AssignmentCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: `assignee` is .memberPicker which falls
+    /// through to free text in the renderer. No standalone backend save
+    /// path — assignments live inside slot.metadata.assigned_member_id.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 5: needs real memberPicker UI + standalone save path or removal in favor of slot.metadata.")
+    }
 }
 
 // participants — who's eligible / included
@@ -413,6 +435,11 @@ public struct ParticipantsCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: `explicitMembers` is .multiPicker which
+    /// falls to free text. No backend consumer of participants config.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 5: needs member directory multiPicker + backend that reads participants config.")
+    }
 }
 
 // attendance — derived from rsvp + check_in
@@ -485,6 +512,12 @@ public struct ApprovalCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: approverType + autoApprovePolicy declared
+    /// as `.picker` without options. No event-side approval RPC; only
+    /// finalize-fine-reviews hardcoded 48h grace exists.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 4: needs approverType + autoApprovePolicy options + per-resource approval RPC.")
+    }
 }
 
 // money — semantic umbrella over expense/contribution/payout
@@ -509,6 +542,13 @@ public struct MoneyCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["ledger"] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: requiredFields + optionalFields empty
+    /// → toggle is decorative. record_ledger_entry writes ledger_entries
+    /// but NO edge fn aggregates them — no balance projection, no
+    /// settlement job. Re-enable once Tier 6 ships money stack.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 6: needs UI form (who can add, split, settlement, reminders) + edge fn that aggregates ledger_entries.")
+    }
 }
 
 // ledger — append-only money atoms
@@ -529,6 +569,12 @@ public struct LedgerCapability: CapabilityBlock {
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: write-only — record_ledger_entry RPC
+    /// inserts atoms but no edge fn reads them. Projection ledger_view
+    /// has zero consumers.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 6: needs balance projection edge fn + UI for the ledger_view projection.")
+    }
 }
 
 // voting — collective decision
@@ -559,6 +605,13 @@ public struct VotingCapability: CapabilityBlock {
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: enabledResourceTypes = [proposal, booking]
+    /// — both raise in build_resource_from_draft. quorum/threshold/anon
+    /// in optionalFields means step 3 doesn't surface them. start_vote
+    /// reads groups.governance, not capability_config voting.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 3: needs proposal/booking resource_types creatable + start_vote reading capability_config voting.")
+    }
 }
 
 // rules — configurable WHEN/IF/THEN
@@ -599,6 +652,14 @@ public struct ConsequenceCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { ["rules"] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: empty fields = decorative toggle. The
+    /// real consequence config lives inside each rule's `consequences`
+    /// jsonb (see RulesCapability). Surfacing this as its own toggle is
+    /// confusing — the user thinks it's a switch for "are consequences
+    /// allowed" when really every rule already declares its own.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 7: collapse into Rules — consequence is per-rule, not a resource-level switch.")
+    }
 }
 
 // appeal — disputing a consequence
@@ -646,6 +707,12 @@ public struct SwapCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: only relevant for slot/booking (both
+    /// raise in build_resource_from_draft). request_slot_swap RPC exists
+    /// but finalize-handler "lands in Slice 2.5" — not shipped.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 5: ship slot/booking creation + slot_swap finalize handler before exposing.")
+    }
 }
 
 // MARK: - Phase 2 prerequisites (audit M.10)
@@ -695,6 +762,14 @@ public struct GuestAccessCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: required + optional fields don't surface
+    /// in step 3 (no requiredFields). For events, runtime reads
+    /// events.allow_plus_ones column not capability_config — works as a
+    /// FLAG but the user-facing toggle promises per-resource limits the
+    /// config can't actually set.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 2: promote perMemberLimit + approvalRequired to requiredFields + wire set_rsvp_v2 to read capability_config.")
+    }
 }
 
 // booking — claiming a slot/resource for a member
@@ -720,6 +795,12 @@ public struct BookingCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { ["schedule"] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: slot/asset resource_types are the only
+    /// targets; slot raises in build_resource_from_draft. requiredFields
+    /// empty → toggle has no form to fill.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 5: ship slot creation via build_resource_from_draft + promote approval/cancellationDeadline to requiredFields.")
+    }
 }
 
 // expiration — auto-close after a time window
@@ -767,6 +848,12 @@ public struct CancellationCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: requiredFields empty → no form. Runtime
+    /// cancel_event RPC exists but isn't gated by capability_config (any
+    /// host/admin can cancel regardless of whoCanCancel/deadlineHours).
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 5: promote whoCanCancel + deadlineHours to requiredFields + cancel_event consults capability_config.")
+    }
 }
 
 // reminder — scheduled nudge to members
@@ -787,6 +874,13 @@ public struct ReminderCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
+    /// Tier 0 audit 2026-05-12: empty requiredFields. No cron emits
+    /// `hoursBeforeEvent` system_events — the evaluator exists but has
+    /// no upstream emitter. send-fine-reminders hardcodes the 3/7/14d
+    /// schedule. Per-resource reminder config is decorative.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Tier 4: ship emit-event-reminder-events cron + promote hoursBefore to requiredFields.")
+    }
 }
 
 // status — lifecycle state machine on the resource

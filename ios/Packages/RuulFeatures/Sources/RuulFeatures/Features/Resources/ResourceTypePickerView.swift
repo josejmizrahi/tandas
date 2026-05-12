@@ -5,9 +5,17 @@ import RuulCore
 /// Step 1 of the Universal ResourceWizard. Cards for every resource
 /// type the registry exposes (`ResourceBuilderRegistry.surfaceTypes`).
 ///
-/// Implemented types are tappable. Types without a builder yet render
-/// disabled with a "Próximamente" badge so the user sees the platform
-/// roadmap without being able to act on it.
+/// Tier 0 truth gate (2026-05-12): a card is tappable iff
+/// `ResourceBuilderRegistry` has a builder registered for that type AND
+/// the server-side `build_resource_from_draft` supports it. Today that
+/// is exactly two: `event` and `asset`. Every other surface type
+/// (slot/fund/contribution/proposal/…) appears explicitly as a
+/// "Próximamente" placeholder — never as a creatable option whose
+/// submit would explode in the RPC's `else raise` branch (mig 00101).
+///
+/// Founder framing: "Create Resource must never lie." A disabled card
+/// communicating "Phase 2" is honest; a tappable card that crashes the
+/// flow halfway through is not.
 public struct ResourceTypePickerView: View {
     public let registry: ResourceBuilderRegistry
     public var onSelect: (ResourceType, any ResourceBuilder) -> Void
@@ -45,12 +53,21 @@ public struct ResourceTypePickerView: View {
             }
             .buttonStyle(.plain)
         } else if let info = ResourceBuilderRegistry.placeholderInfo(for: type) {
+            // Wrap in a non-interactive container so VoiceOver and the
+            // hit-test layer both treat this card as decorative. The
+            // visual `.opacity(0.55)` alone wasn't enough of a signal —
+            // a user tapping a "Próximamente" card got nothing back and
+            // sometimes assumed the app froze.
             cardContent(
                 icon: info.icon,
                 title: info.displayName,
                 summary: info.summary,
                 isImplemented: false
             )
+            .accessibilityLabel("\(info.displayName), próximamente")
+            .accessibilityHint("Este tipo de recurso aún no se puede crear.")
+            .accessibilityAddTraits(.isStaticText)
+            .allowsHitTesting(false)
         }
     }
 

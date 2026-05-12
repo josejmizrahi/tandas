@@ -60,6 +60,56 @@ public protocol CapabilityBlock: Sendable {
     /// Capability block ids this one conflicts with (cannot be enabled
     /// simultaneously on the same resource).
     var conflicts: [String] { get }
+
+    /// Tier-0 truth gate: declares whether the four contract conditions
+    /// are met for this block to appear in Create Resource:
+    ///   1. config UI renderable (no options-less pickers, no memberPicker
+    ///      fallback to free text);
+    ///   2. backend save path (resource_capabilities row writeable for the
+    ///      target resource type);
+    ///   3. runtime support (an edge fn/RPC/cron actually consumes the
+    ///      saved config or its column-shaped proxy);
+    ///   4. wired through end-to-end with at least one test path.
+    ///
+    /// Defaults to `.stable`. Blocks that fail any of the four declare
+    /// `.incomplete(reason:)` explicitly. The wizard hides incomplete
+    /// blocks from step 3 and from template auto-on defaults so the user
+    /// never sees a misleading toggle.
+    ///
+    /// Founder framing 2026-05-12: "No toggles decorativos." If a
+    /// capability is half-built, surfacing it as togglable promises
+    /// behavior the runtime can't deliver. Mark it incomplete; ship it
+    /// when the four conditions are real.
+    var status: CapabilityStatus { get }
+}
+
+/// Default `status = .stable` so existing blocks keep their behavior.
+/// Blocks that are half-built override this explicitly with
+/// `.incomplete(reason: …)` — the explicit string is the contract for
+/// why the audit flagged it.
+public extension CapabilityBlock {
+    var status: CapabilityStatus { .stable }
+}
+
+/// Whether a `CapabilityBlock` is ready to surface in Create Resource.
+///
+/// `.stable` blocks render normally in step 3. `.incomplete` blocks are
+/// hidden by the wizard until they ship config UI, save path, and
+/// runtime support. The reason string is shown in catalog-debug surfaces
+/// only — end users never see it; they just never see the toggle.
+public enum CapabilityStatus: Sendable, Hashable {
+    case stable
+    case incomplete(reason: String)
+
+    public var isStable: Bool {
+        if case .stable = self { return true }
+        return false
+    }
+
+    public var reason: String? {
+        if case .incomplete(let r) = self { return r }
+        return nil
+    }
 }
 
 // MARK: - Supporting types

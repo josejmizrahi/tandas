@@ -147,36 +147,72 @@ public struct BuilderFieldRenderer: View {
             if let options = field.options, !options.isEmpty {
                 pickerView(options: options)
             } else {
-                // Pre-X2 fallback: catalog row without options renders
-                // as a free-text field so the wizard stays usable.
-                RuulTextField(
-                    field.placeholder ?? field.label,
-                    text: stringBinding(),
-                    label: field.label
+                // Tier 0 audit 2026-05-12: a `.picker` without options
+                // used to fall through to a free-text RuulTextField. The
+                // user would type "weekly" and the wizard would accept
+                // it as a valid picker selection — a UI lie. Render a
+                // disabled placeholder that surfaces the catalog gap
+                // instead, so the field is visibly non-configurable.
+                unavailableField(
+                    note: "Selector no disponible — catálogo sin opciones."
                 )
             }
 
         case .multiPicker:
-            RuulTextField(
-                field.placeholder ?? field.label,
-                text: stringBinding(),
-                label: field.label
+            // Tier 0: no multi-pick UI exists yet. Free-text fallback
+            // produced "Juan, María" strings the backend couldn't parse
+            // into a real selection. Render disabled until a real
+            // multi-pick is wired (Tier 5+).
+            unavailableField(
+                note: "Selección múltiple no disponible — Próximamente."
             )
 
         case .memberPicker:
-            // Phase 2 will integrate the member directory. For now allow
-            // free-text fallback so the wizard remains usable.
-            RuulTextField(
-                field.placeholder ?? "Nombre o email",
-                text: stringBinding(),
-                label: field.label
+            // Tier 0: member directory picker not wired yet. Free-text
+            // produced ambiguous "name or email" strings the backend
+            // couldn't resolve to a group_members.id. Render disabled
+            // until the picker integrates with MembersRepository.
+            unavailableField(
+                note: "Selector de miembros no disponible — Próximamente."
             )
 
         case .resourcePicker:
-            RuulTextField(
-                field.placeholder ?? "Pega el id del recurso",
-                text: stringBinding(),
-                label: field.label
+            // Tier 0: cross-resource picker not wired. Asking the user
+            // to paste a UUID was hostile UX; render disabled until a
+            // real resource browser ships.
+            unavailableField(
+                note: "Selector de recurso no disponible — Próximamente."
+            )
+        }
+    }
+
+    /// Renders a field that the catalog declares but the renderer can't
+    /// honor today. Visibly disabled with a short reason — never falls
+    /// through to free text. Founder framing 2026-05-12: a half-built
+    /// catalog row must look half-built, not pretend to be configurable.
+    @ViewBuilder
+    private func unavailableField(note: String) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+            Text(field.label)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextSecondary)
+            HStack(spacing: RuulSpacing.sm) {
+                Image(systemName: "exclamationmark.circle")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(Color.ruulTextTertiary)
+                Text(note)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                Spacer(minLength: 0)
+            }
+            .padding(RuulSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(Color.ruulSurface.opacity(0.5))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
             )
         }
     }
