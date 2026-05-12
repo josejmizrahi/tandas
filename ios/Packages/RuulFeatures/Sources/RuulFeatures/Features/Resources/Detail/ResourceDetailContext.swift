@@ -43,6 +43,11 @@ public struct ResourceDetailContext {
     public let onPresentEditResource: () -> Void
     public let onPresentEnableCapability: () -> Void
     public let onOpenInboxAction: (UserAction) async -> Void
+    /// Tap callback for a member-row in any section (RSVP roll, attendance
+    /// list, host check-in roll). Optional — when nil, sections render
+    /// rows as display-only. EventDetailView wires this to the attendee
+    /// member detail sheet.
+    public let onSelectMember: (UUID) -> Void
 
     public init(
         resource: ResourceRow,
@@ -56,7 +61,8 @@ public struct ResourceDetailContext {
         onPresentRules: @escaping () -> Void = {},
         onPresentEditResource: @escaping () -> Void = {},
         onPresentEnableCapability: @escaping () -> Void = {},
-        onOpenInboxAction: @escaping (UserAction) async -> Void = { _ in }
+        onOpenInboxAction: @escaping (UserAction) async -> Void = { _ in },
+        onSelectMember: @escaping (UUID) -> Void = { _ in }
     ) {
         self.resource = resource
         self.group = group
@@ -70,5 +76,6 @@ public struct ResourceDetailContext {
         self.onPresentEditResource = onPresentEditResource
         self.onPresentEnableCapability = onPresentEnableCapability
         self.onOpenInboxAction = onOpenInboxAction
+        self.onSelectMember = onSelectMember
     }
 }

@@ -308,7 +308,6 @@ public struct EventDetailView: View {
                 onShowQR: { qrSheetPresented = true }
             )
             .padding(.horizontal, RuulSpacing.lg)
-            attendeesSection
             checkInSectionView
             if coordinator.viewerRole == .host {
                 EventHostActionsSection(
@@ -478,21 +477,21 @@ public struct EventDetailView: View {
     }
 
     // MARK: - Sections
-
-    private var attendeesSection: some View {
-        AttendeesListSection(
-            rsvps: coordinator.rsvps,
-            memberLookup: memberLookup,
-            onSelectAttendee: memberWithProfileLookup.map { lookup in
-                { userId in
-                    if let mwp = lookup(userId) {
-                        attendeeMemberRoute = mwp
-                    }
-                }
-            }
-        )
-        .padding(.horizontal, RuulSpacing.lg)
-    }
+    //
+    // Post-audit M.7: `attendeesSection` removed. The attendee roll now
+    // lives inside `RSVPSectionView` (Features/Resources/Detail/Sections),
+    // which the dynamicCapabilitySections block renders when the event
+    // has the `rsvp` capability enabled. Member taps flow through
+    // `ResourceDetailContext.onSelectMember` wired below.
+    //
+    // The remaining hand-rolled sections (CheckInSection,
+    // EventRSVPStateView, EventHostActionsSection) stay event-specific
+    // intentionally: they depend on EventDetailCoordinator state
+    // (myRSVP, viewerRole, walletAvailable, 6 host callbacks) that the
+    // polymorphic context cannot supply without leaking event-shaped
+    // fields into every Resource type's context. Phase 2 will extract a
+    // shared interaction context across Event/Slot/Booking once those
+    // types ship coordinators with the same surface area.
 
     private var checkInSectionView: some View {
         CheckInSection(
@@ -574,7 +573,12 @@ public struct EventDetailView: View {
             memberDirectory: memberDirectory,
             displayName: coordinator.event.title,
             onPresentLedger: { eventLedgerSheetPresented = true },
-            onPresentRules:  { eventRuleSheetPresented = true }
+            onPresentRules:  { eventRuleSheetPresented = true },
+            onSelectMember: { userId in
+                if let mwp = memberWithProfileLookup?(userId) {
+                    attendeeMemberRoute = mwp
+                }
+            }
         )
     }
 
