@@ -154,16 +154,56 @@ public struct GroupSettingsSheet: View {
             do {
                 var updated = try await app.groupsRepo.updateConfig(groupId: group.id, patch: patch)
                 if finesEnabled != priorFinesEnabled {
-                    updated = try await app.groupsRepo.setModule(
-                        groupId: group.id,
-                        slug: GroupModule.basicFines.id,
-                        enabled: finesEnabled
-                    )
+                    // Governance gate (mig 00113). Default policy is
+                    // admin_only, so non-admins see a soft block; founders
+                    // / custom admin roles proceed. vote_required isn't
+                    // produceable by the seeder today — V2 adds an apply
+                    // path for capability toggles via vote.
+                    let decision: PolicyDecision
+                    do {
+                        decision = try await app.policyRepo.resolve(
+                            groupId: group.id,
+                            actorUserId: app.session?.user.id ?? UUID(),
+                            action: .capabilityEnable,
+                            targetPayload: ["capability_slug": GroupModule.basicFines.id]
+                        )
+                    } catch {
+                        // Resolver unreachable — fall back to the existing
+                        // set_group_module RLS so the primary path stays
+                        // usable under network blips.
+                        decision = .allowed
+                    }
+                    switch decision {
+                    case .allowed:
+                        updated = try await app.groupsRepo.setModule(
+                            groupId: group.id,
+                            slug: GroupModule.basicFines.id,
+                            enabled: finesEnabled
+                        )
+                    case .adminOnly:
+                        throw CapabilityGovernanceError.adminOnly
+                    case .voteRequired:
+                        throw CapabilityGovernanceError.voteRequired
+                    case .denied(let reason):
+                        throw CapabilityGovernanceError.denied(reason: reason)
+                    }
                 }
                 await app.refreshProfileAndGroups()
                 await MainActor.run {
                     onSaved?(updated)
                     dismiss()
+                }
+            } catch CapabilityGovernanceError.adminOnly {
+                await MainActor.run {
+                    self.error = "Solo los admins pueden activar o desactivar capabilities en este grupo."
+                }
+            } catch CapabilityGovernanceError.voteRequired {
+                await MainActor.run {
+                    self.error = "Este grupo requiere votación para activar capabilities. La flow llega en una próxima versión."
+                }
+            } catch CapabilityGovernanceError.denied(let reason) {
+                await MainActor.run {
+                    self.error = "No se puede cambiar esta capability: \(reason)."
                 }
             } catch {
                 log.warning("update group config failed: \(error.localizedDescription)")
@@ -173,4 +213,13 @@ public struct GroupSettingsSheet: View {
             }
         }
     }
+}
+
+/// Sentinel errors used by `GroupSettingsSheet.save` to bridge a
+/// PolicyDecision outcome into the existing `do/catch` flow — keeps
+/// each branch's user-facing copy local to the catch block.
+private enum CapabilityGovernanceError: Error {
+    case adminOnly
+    case voteRequired
+    case denied(reason: String)
 }

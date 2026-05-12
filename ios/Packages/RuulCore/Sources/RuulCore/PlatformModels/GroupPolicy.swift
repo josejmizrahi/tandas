@@ -23,6 +23,13 @@ public enum TargetAction: String, Codable, Sendable, Hashable, CaseIterable {
     /// when threshold-aware policies (condition_config.min_amount_cents)
     /// land — current iOS treats vote_required as a soft block.
     case expenseCreate    = "expense.create"
+    /// Enable / disable a capability (set_group_module). Default is
+    /// admin_only — capabilities reshape what the group can DO, so
+    /// they sit closer to governance than to behaviour. admin_only
+    /// dispatches to Permission.modifyGovernance. Vote-required is
+    /// soft-blocked in V1 (no apply path yet; needs a vote_type for
+    /// capability toggles + the trigger).
+    case capabilityEnable = "capability.enable"
 }
 
 /// Kind of policy applied to a (group, action) tuple. Mirrors
