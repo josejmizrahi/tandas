@@ -58,19 +58,37 @@ public struct UniversalResourceDetailView: View {
     /// is present, the panel pulls up under it via an `UnevenRoundedRectangle`
     /// so the cover bottom is visually masked into a soft curve. When there's
     /// no cover, the panel renders flush against the safe-area top.
+    ///
+    /// Events use the rich `EventHeroTitleBlock` as their identity zone
+    /// and skip `DetailSummaryView` entirely — host / start time / capacity /
+    /// location already live in the hero or in their own capability
+    /// sections (LocationSection, CapacityProgressSection, etc.). Other
+    /// resource types keep the compact `DetailHeaderView` + summary stack.
     private var contentPanel: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-            DetailHeaderView(context: context)
+            if context.usesEventHero {
+                EventHeroTitleBlock(context: context)
+            } else {
+                DetailHeaderView(context: context)
+                DetailSummaryView(context: context)
+            }
             DetailAttentionView(context: context)
-            DetailSummaryView(context: context)
             DetailActionsBar(context: context)
 
             dynamicSections
         }
         .padding(.horizontal, RuulSpacing.lg)
-        .padding(.top, context.hasCoverHero ? RuulSpacing.xl : RuulSpacing.md)
+        .padding(.top, context.hasCoverHero ? RuulSpacing.xl : topInsetWithoutCover)
         .padding(.bottom, RuulSpacing.xxl)
         .background(panelBackground)
+    }
+
+    /// Top padding when the page has no cover. Needs to clear the
+    /// floating `DetailTopNavView` (which sits at safe-area top) so the
+    /// title block doesn't tuck under it. Approximate the nav row's
+    /// vertical footprint — 44pt button + dynamic-island inset.
+    private var topInsetWithoutCover: CGFloat {
+        RuulSpacing.xxl + 44
     }
 
     @ViewBuilder

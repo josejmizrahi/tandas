@@ -3,12 +3,13 @@ import RuulUI
 import RuulCore
 
 /// Free-text body section. Reads `resource.metadata.description` and
-/// renders it in a soft card. Returns `EmptyView` when the metadata
-/// key is missing or empty, so the cap stays always-on at the DB level
-/// without polluting the detail layout for events that didn't fill it in.
+/// renders it as plain body text — no card chrome, no section header.
+/// Mirrors the Apple Invites / Calendar treatment: description sits in
+/// the page rhythm as prose, not as a card-with-caption.
 ///
 /// Honors the `description` capability declared in `CapabilityCatalog.v1`
-/// (mig 00109 seeds it for every event resource).
+/// (mig 00109 seeds it for every event). Returns `EmptyView` when the
+/// metadata key is missing or empty so the always-on cap stays harmless.
 public struct DescriptionSectionView: View {
     public let context: ResourceDetailContext
 
@@ -21,24 +22,18 @@ public struct DescriptionSectionView: View {
 
     public var body: some View {
         if let body = descriptionBody {
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                sectionHeader("DESCRIPCIÓN")
-                Text(body)
-                    .ruulTextStyle(RuulTypography.bodyLarge)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(RuulSpacing.md)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .cardBackground()
-                    .accessibilityLabel("Descripción del recurso")
-                    .accessibilityValue(body)
-            }
+            Text(body)
+                .ruulTextStyle(RuulTypography.bodyLarge)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, RuulSpacing.xxs)
+                .accessibilityLabel("Descripción del recurso")
+                .accessibilityValue(body)
         }
     }
 
-    /// Trimmed description from `resource.metadata.description`, or nil
-    /// when the field is missing, NULL, or whitespace-only.
     private var descriptionBody: String? {
         guard let raw = context.resource.metadata["description"]?.stringValue else {
             return nil

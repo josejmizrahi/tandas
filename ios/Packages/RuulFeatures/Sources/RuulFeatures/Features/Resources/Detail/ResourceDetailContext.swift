@@ -104,10 +104,20 @@ public extension ResourceDetailContext {
         resource.metadata["cover_image_name"]?.stringValue
     }
 
-    /// True when the resource has either a cover image URL or a fallback
-    /// cover name worth showing in the detail hero. Events always return
-    /// true because the cover name falls back to a default in `RuulCoverCatalog`.
+    /// True only when the resource has a real cover image URL. Without
+    /// one, the detail page falls back to a magazine title block (no
+    /// animated gradient hero) so the layout stays magazine-clean
+    /// instead of trying to fill empty space with decoration.
     var hasCoverHero: Bool {
-        resource.resourceType == .event || coverImageURL != nil
+        coverImageURL != nil
+    }
+
+    /// True when the resource's identity zone should use the event-style
+    /// hero title block (large title + date + countdown + status pills)
+    /// instead of the generic `DetailHeaderView` (icon badge + title +
+    /// type label). Events get the rich treatment; other types stay on
+    /// the compact identity strip.
+    var usesEventHero: Bool {
+        resource.resourceType == .event
     }
 }

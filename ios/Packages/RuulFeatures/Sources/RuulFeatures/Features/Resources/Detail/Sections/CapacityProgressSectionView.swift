@@ -2,17 +2,15 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Capacity progress widget for event-shaped resources. Renders the
-/// "X DE Y" header + RuulProgressBar fill + "LLENO" pill when the
-/// resource has a `capacity_max` set. Gated by the `capacity` capability
-/// (seeded for events by mig 00110). Returns `EmptyView` when the
-/// metadata key is absent so the always-on cap stays harmless for
-/// uncapped events.
+/// Compact capacity widget. Renders a single-line "X de Y · LLENO" caption
+/// plus a thin progress bar — no big stat number, no cards-on-cards. Quiet
+/// by design so it can sit in the page rhythm without competing with the
+/// hero title block above.
 ///
-/// Read counts come from `\.eventInteractor` when available — the live
-/// rsvps list keeps the bar in sync with the realtime stream. Falls
-/// back to a metadata-only render (no count) when no interactor is
-/// scoped (read-only surfaces like ResourceDetailSheet).
+/// Gated by the `capacity` capability (seeded for events by mig 00110)
+/// and a non-nil `metadata.capacity_max`. Seat counts come from the
+/// live `\.eventInteractor.rsvps` stream when in scope; falls back to
+/// 0 when no interactor is present (preview / read-only surfaces).
 public struct CapacityProgressSectionView: View {
     @Environment(\.eventInteractor) private var interactor: (any EventInteractor)?
 
@@ -28,45 +26,34 @@ public struct CapacityProgressSectionView: View {
     public var body: some View {
         if let capacityMax {
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    HStack(spacing: 4) {
-                        Text("\(seatsTaken)")
-                            .ruulTextStyle(RuulTypography.statMedium)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                        Text("DE \(capacityMax)")
-                            .ruulTextStyle(RuulTypography.sectionLabel)
-                            .foregroundStyle(Color.ruulTextTertiary)
-                    }
-                    Spacer()
+                HStack(spacing: RuulSpacing.xs) {
+                    Text(captionLine(capacityMax: capacityMax))
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                    Spacer(minLength: 0)
                     if seatsTaken >= capacityMax {
-                        HStack(spacing: RuulSpacing.xs) {
-                            Circle()
-                                .fill(Color.ruulNegative)
-                                .frame(width: 8, height: 8)
-                            Text("LLENO")
-                                .ruulTextStyle(RuulTypography.sectionLabel)
-                                .foregroundStyle(Color.ruulTextPrimary)
-                        }
-                        .accessibilityLabel("Cupo lleno")
+                        Text("LLENO")
+                            .ruulTextStyle(RuulTypography.sectionLabel)
+                            .foregroundStyle(Color.ruulNegative)
                     }
                 }
                 RuulProgressBar(value: ratio)
                     .accessibilityLabel("Cupo")
                     .accessibilityValue("\(seatsTaken) de \(capacityMax)")
             }
+            .padding(.horizontal, RuulSpacing.xxs)
         }
     }
 
-    // MARK: - Data
+    private func captionLine(capacityMax: Int) -> String {
+        "\(seatsTaken) de \(capacityMax) lugares"
+    }
 
     private var capacityMax: Int? {
         context.resource.metadata["capacity_max"]?.intValue
             ?? context.resource.metadata["capacityMax"]?.intValue
     }
 
-    /// Sum of going seats (1 + plus_ones each) from the interactor's
-    /// realtime list. Falls back to 0 when no interactor is in scope —
-    /// the bar still draws so the cap is communicated.
     private var seatsTaken: Int {
         guard let interactor else { return 0 }
         return interactor.rsvps

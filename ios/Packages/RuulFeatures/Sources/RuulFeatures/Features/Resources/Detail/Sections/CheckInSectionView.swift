@@ -32,7 +32,6 @@ public struct CheckInSectionView: View {
     public var body: some View {
         if let interactor, isVisible(for: interactor.event) {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                sectionHeader("CHECK-IN")
                 guestBlock(interactor: interactor)
                 if interactor.viewerIsHost {
                     hostBlock(interactor: interactor)

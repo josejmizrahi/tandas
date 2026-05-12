@@ -43,11 +43,7 @@ public struct RSVPSectionView: View {
             if let intent = intentControl {
                 intent
             }
-
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                sectionHeader("RSVP")
-                rollContent
-            }
+            rollContent
         }
         .task { await load() }
         .onChange(of: interactor?.myRSVP?.plusOnes ?? 0, initial: true) { _, new in
