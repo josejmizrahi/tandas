@@ -93,6 +93,7 @@ public final class CapabilitySectionCatalog {
         register(ScheduleSectionView.definition)
         register(DescriptionSectionView.definition)
         register(RSVPSectionView.definition)
+        register(CheckInSectionView.definition)
         register(MoneySectionView.definition)
         register(RulesSectionView.definition)
         register(ActivitySectionView.definition)
