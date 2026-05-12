@@ -15,11 +15,14 @@ public struct HomeView: View {
     public var onOpenEvent: (Event) -> Void
     public var onOpenPastEvents: () -> Void
     public var onInvitePeople: (() -> Void)? = nil
+    /// Tap del GroupSwitcher pill — abre `GroupSwitcherSheet` desde Home.
+    /// Per AppShell.md: el switcher es chrome persistente en Home/Inbox/Activity.
+    public var onSwitchGroup: () -> Void = {}
     /// Bumped by the parent (MainTabView) after the wizard creates a
     /// resource — drives the non-event-resources re-fetch via .task(id:).
     public var resourceRefreshToken: UUID
 
-    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onInvitePeople: (() -> Void)? = nil, resourceRefreshToken: UUID = UUID()) {
+    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onInvitePeople: (() -> Void)? = nil, onSwitchGroup: @escaping () -> Void = {}, resourceRefreshToken: UUID = UUID()) {
         self.coordinator = coordinator
         self.inboxCoordinator = inboxCoordinator
         self.onInboxActionTap = onInboxActionTap
@@ -28,6 +31,7 @@ public struct HomeView: View {
         self.onOpenEvent = onOpenEvent
         self.onOpenPastEvents = onOpenPastEvents
         self.onInvitePeople = onInvitePeople
+        self.onSwitchGroup = onSwitchGroup
         self.resourceRefreshToken = resourceRefreshToken
     }
 
@@ -153,31 +157,35 @@ public struct HomeView: View {
     // huge group name in display weight + settings button (top-right).
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting)
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                Text("Inicio")
-                    .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
-            }
-            Spacer()
-            HStack(spacing: RuulSpacing.xs) {
-                if let onInvitePeople {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            HStack(alignment: .center) {
+                if let group = app.activeGroup {
+                    RuulGroupSwitcher(activeGroup: group, onTap: onSwitchGroup)
+                } else {
+                    Text("Inicio")
+                        .ruulTextStyle(RuulTypography.title)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                }
+                Spacer()
+                HStack(spacing: RuulSpacing.xs) {
+                    if let onInvitePeople {
+                        headerIconButton(
+                            systemName: "person.badge.plus",
+                            accessibilityLabel: "Invitar gente",
+                            action: onInvitePeople
+                        )
+                    }
                     headerIconButton(
-                        systemName: "person.badge.plus",
-                        accessibilityLabel: "Invitar gente",
-                        action: onInvitePeople
-                    )
-                }
-                headerIconButton(
-                    systemName: "gearshape",
-                    accessibilityLabel: "Ajustes"
-                ) {
-                    showSettings = true
+                        systemName: "gearshape",
+                        accessibilityLabel: "Ajustes"
+                    ) {
+                        showSettings = true
+                    }
                 }
             }
+            Text(greeting)
+                .ruulTextStyle(RuulTypography.sectionLabelLg)
+                .foregroundStyle(Color.ruulTextSecondary)
         }
         .padding(.top, RuulSpacing.md)
     }

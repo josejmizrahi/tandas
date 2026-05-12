@@ -132,7 +132,7 @@ extension PolicyDecision: Codable {
 
 /// Row in `public.group_policies` (mig 00087). V1 reads policies grouped by
 /// `(group, action)`; the editor in `GroupRulesSettingsView` upserts these.
-public struct GroupPolicy: Identifiable, Codable, Sendable, Hashable {
+public struct GroupPolicy: Identifiable, Sendable, Hashable {
     public let id: UUID
     public let groupId: UUID
     public var policyType: PolicyType
@@ -177,5 +177,45 @@ public struct GroupPolicy: Identifiable, Codable, Sendable, Hashable {
         case targetResourceType = "target_resource_type"
         case targetResourceId   = "target_resource_id"
         case approvalConfig     = "approval_config"
+    }
+}
+
+extension GroupPolicy: Codable {
+    /// Tolerant decoder: rows with `approval_config = '{}'` (the seeder's
+    /// default for direct / admin_only / denied policies) would otherwise
+    /// throw because `ApprovalConfig` has required Int fields. We treat
+    /// any decode failure as "no real approval config" and fall back to
+    /// nil. Vote-required rows still decode their config normally.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id            = try c.decode(UUID.self,         forKey: .id)
+        self.groupId       = try c.decode(UUID.self,         forKey: .groupId)
+        self.policyType    = try c.decode(PolicyType.self,   forKey: .policyType)
+        self.targetAction  = try c.decode(TargetAction.self, forKey: .targetAction)
+        self.targetScope   = try c.decode(String.self,       forKey: .targetScope)
+        self.targetResourceType = try c.decodeIfPresent(String.self, forKey: .targetResourceType)
+        self.targetResourceId   = try c.decodeIfPresent(UUID.self,   forKey: .targetResourceId)
+        self.approvalConfig     = try? c.decodeIfPresent(ApprovalConfig.self, forKey: .approvalConfig)
+        self.enabled  = try c.decode(Bool.self, forKey: .enabled)
+        self.priority = try c.decode(Int.self,  forKey: .priority)
+    }
+
+    /// Custom encoder so a nil `approvalConfig` OMITS the key entirely
+    /// from the wire payload. The column is NOT NULL DEFAULT '{}'::jsonb
+    /// on the server — sending `"approval_config": null` (what the
+    /// synthesized encoder would do for an Optional) raises 23502
+    /// not-null violation. Omitting lets Postgres apply the default.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id,            forKey: .id)
+        try c.encode(groupId,       forKey: .groupId)
+        try c.encode(policyType,    forKey: .policyType)
+        try c.encode(targetAction,  forKey: .targetAction)
+        try c.encode(targetScope,   forKey: .targetScope)
+        try c.encodeIfPresent(targetResourceType, forKey: .targetResourceType)
+        try c.encodeIfPresent(targetResourceId,   forKey: .targetResourceId)
+        try c.encodeIfPresent(approvalConfig,     forKey: .approvalConfig)
+        try c.encode(enabled,  forKey: .enabled)
+        try c.encode(priority, forKey: .priority)
     }
 }
