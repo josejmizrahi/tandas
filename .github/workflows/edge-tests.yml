@@ -43,10 +43,12 @@ jobs:
     name: e2e + db (local supabase)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Permite que el job de unit gate los PRs y el de e2e sea
-    # observable pero no bloqueante mientras estabilizamos el setup.
-    # Cuando confiemos en el setup, quitar `continue-on-error`.
-    continue-on-error: true
+    # Job-level continue-on-error removed 2026-05-12 once Tier 1 e2e
+    # was wired. Pre-existing DB test failures are quarantined at the
+    # STEP level (Run DB tests has continue-on-error). A real
+    # regression in the E2E step (recurrence, dinner happy path,
+    # auto-close, appeal quorum, palco) will now fail the whole
+    # workflow — that's the signal we want.
     steps:
       - uses: actions/checkout@v4
 
@@ -102,17 +104,28 @@ jobs:
       - name: Run shared unit tests (sanity, sin DB)
         run: deno test --allow-env supabase/functions/_shared/
 
-      - name: Run DB tests
-        # RLS, mutation audit, vote uniqueness. Pegan directo a
-        # postgres via supabase-js admin.
-        run: |
-          deno test --allow-net --allow-env supabase/functions/_tests/db/
-
       - name: Run E2E tests
-        # dinnerHappyPath cubre la cadena causal completa con
-        # X-Test-Clock para avanzar grace periods + vote close.
+        # Tier 1 acceptance: recurrenceGenerator.test.ts + the existing
+        # dinnerHappyPath + autoCloseAndDeadline + appealQuorumFailed
+        # + palcoSharedResource. This step is the gating signal for
+        # whether recurrence (and the rest of the causal chain) is
+        # actually working end-to-end. Runs BEFORE DB tests because
+        # the DB tests have known pre-existing failures we're not
+        # fixing in Tier 1 — keeping them downstream lets a real e2e
+        # failure surface as the first red line.
         run: |
           deno test --allow-net --allow-env supabase/functions/_tests/e2e/
+
+      - name: Run DB tests
+        # RLS, mutation audit, vote uniqueness. Pegan directo a
+        # postgres via supabase-js admin. continue-on-error: 6/15
+        # tests have pre-existing failures (TypeError on null result,
+        # AssertionError on non-Error rejection) that pre-date Tier
+        # 1; they need their own cleanup pass (Tier 0.5+) and
+        # shouldn't gate the workflow until then.
+        continue-on-error: true
+        run: |
+          deno test --allow-net --allow-env supabase/functions/_tests/db/
 
       - name: Dump functions serve log on failure
         if: failure()
