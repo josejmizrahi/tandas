@@ -35,9 +35,22 @@ public final class ResourceRulesCoordinator {
     /// Bucketed by scope per Taxonomy §29: resource (event-specific),
     /// series (recurrence-wide), group (everything else). Each list is
     /// already ordered most-recent-first within its scope.
-    public var resourceRules: [GroupRule] { rules.filter { $0.scope == .resource } }
-    public var seriesRules:   [GroupRule] { rules.filter { $0.scope == .series   } }
-    public var groupRules:    [GroupRule] { rules.filter { $0.scope == .group    } }
+    ///
+    /// `.module` rules fold into `groupRules` because module-seeded rules
+    /// (basic_fines / rsvp / etc.) apply to every resource in the group —
+    /// indistinguishable from group-wide defaults at the UI surface. Audit
+    /// 2026-05-12 introduced the `.module` scope axis on `GroupRule.scope`;
+    /// without this fold every module-seeded rule disappeared from the
+    /// event Rules sheet. `.membership` rules surface as a `.resource`-
+    /// adjacent bucket since they are per-instance overrides on the
+    /// targeted member; for the V1 UI we route them into `resourceRules`.
+    public var resourceRules: [GroupRule] {
+        rules.filter { $0.scope == .resource || $0.scope == .membership }
+    }
+    public var seriesRules:   [GroupRule] { rules.filter { $0.scope == .series } }
+    public var groupRules:    [GroupRule] {
+        rules.filter { $0.scope == .group || $0.scope == .module }
+    }
 
     public private(set) var isLoading: Bool = true
     public private(set) var isSubmitting: Bool = false
