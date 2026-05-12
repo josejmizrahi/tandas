@@ -83,11 +83,12 @@ public struct CapabilityCatalog: Sendable {
         StatusCapability(),
         HistoryCapability(),
         // Event-shape primitives. Hard-seeded on every event resource by
-        // mig 00109 (no module provides them — they're inherent to the
-        // event shape). Declared here so the catalog resolves the strings
-        // when iOS reads resource_capabilities.
+        // mig 00109 + 00110 (no module provides them — they're inherent
+        // to the event shape). Declared here so the catalog resolves the
+        // strings when iOS reads resource_capabilities.
         DescriptionCapability(),
-        HostActionsCapability()
+        HostActionsCapability(),
+        LocationCapability()
     ])
 }
 
@@ -847,6 +848,30 @@ public struct HostActionsCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// location — physical place where the resource happens (lat/lng + name)
+public struct LocationCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "location" }
+    public var displayName: String { "Lugar" }
+    public var summary: String { "Dirección o sitio físico donde sucede el recurso." }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .asset] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] {
+        [
+            BuilderField(key: "location_name", label: "Nombre del lugar", kind: .text),
+            BuilderField(key: "location_lat", label: "Latitud", kind: .decimal),
+            BuilderField(key: "location_lng", label: "Longitud", kind: .decimal)
+        ]
+    }
     public var suggestedRules: [RuleTemplate] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
