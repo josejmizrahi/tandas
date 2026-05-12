@@ -48,11 +48,17 @@ struct CheckInScannerCoordinatorTests {
     @Test("valid QR for the event records check-in")
     func validQR() async {
         let (coord, repo, eventId) = makeCoord()
-        // Match the QRSignatureService.sharedSecret which reads from
-        // Info.plist; in tests it's empty string, sign + verify still
-        // round-trip with empty secret.
+        // Sign with whatever QRSignatureService.sharedSecret resolves to in
+        // the current environment — locally that's typically "" (no
+        // RUUL_QR_SECRET in xcconfig), on CI it's the workflow's
+        // RUUL_QR_SECRET secret. The coordinator verifies against
+        // sharedSecret too, so this keeps the round-trip honest.
         let memberId = UUID()
-        let payload = QRSignatureService.sign(eventId: eventId, memberId: memberId, secret: "")
+        let payload = QRSignatureService.sign(
+            eventId: eventId,
+            memberId: memberId,
+            secret: QRSignatureService.sharedSecret
+        )
         await coord.handleScan(payload)
         #expect(coord.checkedCount == 1)
         let checkIns = await repo.checkIns
