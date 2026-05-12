@@ -134,12 +134,27 @@ public struct RuleDetailView: View {
             if let slug = rule.slug, !slug.isEmpty {
                 metadataRow(label: "Slug", value: slug)
             }
+            metadataRow(label: "Aplica a", value: scopeLabel(rule))
             metadataRow(
                 label: "Estado",
                 value: rule.isActive ? "Activa" : "Deshabilitada"
             )
         }
         .padding(.top, RuulSpacing.lg)
+    }
+
+    /// Human-readable label for `rule.scope`. The detail view always shows
+    /// it (unlike the list, which hides the chip for group-scoped rules)
+    /// so the reader sees "Aplica a: Grupo" explicitly when that's the
+    /// case, not by omission.
+    private func scopeLabel(_ rule: GroupRule) -> String {
+        switch rule.scope {
+        case .group:      return "Todo el grupo"
+        case .module:     return rule.moduleKey.map { "Módulo · \($0)" } ?? "Módulo"
+        case .series:     return "Toda la recurrencia"
+        case .resource:   return "Esta instancia"
+        case .membership: return "Por miembro"
+        }
     }
 
     // MARK: - Rendering helpers
