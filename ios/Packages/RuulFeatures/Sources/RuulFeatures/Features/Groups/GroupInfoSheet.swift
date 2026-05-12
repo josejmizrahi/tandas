@@ -634,7 +634,11 @@ public struct GroupInfoSheet: View {
         leaveError = nil
         defer { Task { @MainActor in isLeaving = false } }
         do {
-            try await app.groupsRepo.leave(group.id)
+            // `leaveGroup(groupId:)` routes through the leave_group RPC
+            // (mig 00115) which soft-deletes + emits memberLeft. The
+            // older `leave(_:)` direct-UPDATE path stays in the repo
+            // for back-compat but skips the activity timeline.
+            try await app.groupsRepo.leaveGroup(groupId: group.id)
             await app.refreshProfileAndGroups()
             await MainActor.run {
                 if app.activeGroupId == group.id {
