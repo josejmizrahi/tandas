@@ -36,6 +36,7 @@ export const systemEventTypeValues = [
   "memberLeft",
   "ruleEnabledChanged",
   "ruleAmountChanged",
+  "pendingChangeApplied",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

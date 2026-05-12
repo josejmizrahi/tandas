@@ -39,6 +39,7 @@ extension SystemEventType {
         .memberLeft,
         .ruleEnabledChanged,
         .ruleAmountChanged,
+        .pendingChangeApplied,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -76,6 +77,7 @@ extension SystemEventType {
         "memberLeft",
         "ruleEnabledChanged",
         "ruleAmountChanged",
+        "pendingChangeApplied",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -124,6 +126,7 @@ extension SystemEventType {
         case .memberLeft: return "memberLeft"
         case .ruleEnabledChanged: return "ruleEnabledChanged"
         case .ruleAmountChanged: return "ruleAmountChanged"
+        case .pendingChangeApplied: return "pendingChangeApplied"
         case .unknown(let s): return s
         }
     }
@@ -164,6 +167,7 @@ extension SystemEventType {
         case "memberLeft": return .memberLeft
         case "ruleEnabledChanged": return .ruleEnabledChanged
         case "ruleAmountChanged": return .ruleAmountChanged
+        case "pendingChangeApplied": return .pendingChangeApplied
         default: return .unknown(raw)
         }
     }

@@ -59,5 +59,11 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// Emitted when a rule's fine amount is edited (UPDATE rules.action).
     case ruleAmountChanged
 
+    // MARK: - Governance / pending changes (audit only)
+    /// Emitted by `apply_pending_change` (mig 00089) after a vote
+    /// resolves and the queued change has been applied. Lets subsequent
+    /// invocations short-circuit and gives the audit trail a marker.
+    case pendingChangeApplied
+
     case unknown(String)
 }
