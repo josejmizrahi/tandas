@@ -58,54 +58,30 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
     });
     const [alice, bob, carla] = group.members;
 
-    // Activate ONLY the "no confirmó a tiempo" rule — keeps the assertion
-    // surface focused on the deadline trigger. The seeded rule uses
-    // trigger=eventClosed by default in the legacy template, so we patch
-    // it to rsvpDeadlinePassed for this test. If the template ships with
-    // rsvpDeadlinePassed natively the patch is a no-op.
-    await admin.from("rules")
-      .update({ is_active: false })
-      .eq("group_id", group.groupId);
+    // Wipe any template-seeded rules so the only active rule is the
+    // one this test inserts. Previously this used a "update if exists,
+    // insert if not" pattern, but template-seeded rules carry their
+    // own amount (200/300) and my "update" path didn't override
+    // consequences — the test expected 150 and got 200.
+    await admin.from("rules").delete().eq("group_id", group.groupId);
 
-    const { data: existing } = await admin
+    const { data: inserted, error: insErr } = await admin
       .from("rules")
-      .select("id, trigger")
-      .eq("group_id", group.groupId)
-      .ilike("name", "%confirm%a tiempo%")
-      .maybeSingle();
-
-    let ruleId: string;
-    if (existing?.id) {
-      // Force the trigger to rsvpDeadlinePassed regardless of how the
-      // template seeded it. Keep config + conditions + consequences.
-      await admin.from("rules")
-        .update({
-          is_active: true,
-          trigger: { eventType: "rsvpDeadlinePassed", config: {} },
-        })
-        .eq("id", existing.id);
-      ruleId = existing.id;
-    } else {
-      // Template didn't ship this rule — insert one directly so the
-      // engine has something to evaluate.
-      const { data: inserted, error: insErr } = await admin
-        .from("rules")
-        .insert({
-          group_id: group.groupId,
-          name: "No confirmó a tiempo (e2e)",
-          slug: "rsvp_no_response_fine_e2e",
-          is_active: true,
-          trigger: { eventType: "rsvpDeadlinePassed", config: {} },
-          conditions: [{ type: "responseStatusIs", config: { status: "pending" } }],
-          consequences: [{ type: "fine", config: { amount: 150 } }],
-        })
-        .select("id")
-        .single();
-      if (insErr || !inserted) {
-        throw new Error(`rule insert failed: ${insErr?.message}`);
-      }
-      ruleId = inserted.id;
+      .insert({
+        group_id: group.groupId,
+        name: "No confirmó a tiempo (e2e)",
+        slug: "rsvp_no_response_fine_e2e",
+        is_active: true,
+        trigger: { eventType: "rsvpDeadlinePassed", config: {} },
+        conditions: [{ type: "responseStatusIs", config: { status: "pending" } }],
+        consequences: [{ type: "fine", config: { amount: 150 } }],
+      })
+      .select("id")
+      .single();
+    if (insErr || !inserted) {
+      throw new Error(`rule insert failed: ${insErr?.message}`);
     }
+    const ruleId: string = inserted.id;
 
     // Event already in the past, deadline already past. emit-deadline-events
     // picks it up because rsvp_deadline < now AND status='scheduled'.
@@ -329,38 +305,26 @@ Deno.test("auto-close-events emits eventClosed → rule engine fires no-show fin
     });
     const [alice, bob, carla] = group.members;
 
-    // Activate only the no-show rule.
-    await admin.from("rules")
-      .update({ is_active: false })
-      .eq("group_id", group.groupId);
-
-    const { data: existing } = await admin
+    // Wipe template-seeded rules + insert exactly the no-show rule we
+    // want to assert against. Same reasoning as the first test —
+    // template-seeded rules have amount=300 default, conflicting with
+    // this test's expected 250.
+    await admin.from("rules").delete().eq("group_id", group.groupId);
+    const { error: insErr } = await admin
       .from("rules")
-      .select("id")
-      .eq("group_id", group.groupId)
-      .ilike("name", "%no%show%")
-      .maybeSingle();
-
-    if (existing?.id) {
-      await admin.from("rules").update({ is_active: true }).eq("id", existing.id);
-    } else {
-      // Insert a synthetic no-show rule keyed on eventClosed + going + !checkIn.
-      const { error: insErr } = await admin
-        .from("rules")
-        .insert({
-          group_id: group.groupId,
-          name: "No-show (e2e auto-close)",
-          slug: "no_show_event_close_e2e",
-          is_active: true,
-          trigger: { eventType: "eventClosed", config: {} },
-          conditions: [
-            { type: "responseStatusIs", config: { status: "going" } },
-            { type: "checkInExists",    config: { exists: false } },
-          ],
-          consequences: [{ type: "fine", config: { amount: 250 } }],
-        });
-      if (insErr) throw new Error(`no-show rule insert: ${insErr.message}`);
-    }
+      .insert({
+        group_id: group.groupId,
+        name: "No-show (e2e auto-close)",
+        slug: "no_show_event_close_e2e",
+        is_active: true,
+        trigger: { eventType: "eventClosed", config: {} },
+        conditions: [
+          { type: "responseStatusIs", config: { status: "going" } },
+          { type: "checkInExists",    config: { exists: false } },
+        ],
+        consequences: [{ type: "fine", config: { amount: 250 } }],
+      });
+    if (insErr) throw new Error(`no-show rule insert: ${insErr.message}`);
 
     // Event in the past, way past the auto-close cutoff (default 24h).
     const startsAt = new Date(Date.now() - 30 * 3600_000); // 30h ago
