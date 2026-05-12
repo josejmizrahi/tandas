@@ -222,19 +222,29 @@ public struct ResourceWizardSheet: View {
             .padding(RuulSpacing.md)
             // Inline sub-config: render every capability's `requiredFields`
             // via BuilderFieldRenderer when the cap is enabled. Founder
-            // framing 2026-05-11 — declarative, not per-capability view code.
+            // framing 2026-05-11 — declarative, not per-capability view
+            // code. Tier 1.1 (2026-05-12): filter by `dependsOn` so
+            // conditional fields (recurrence's count/untilDate) appear
+            // only when their parent's value matches.
             if coordinator.isCapabilityEnabled(block.id), !block.requiredFields.isEmpty {
-                Divider().padding(.horizontal, RuulSpacing.md)
-                VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                    ForEach(Array(block.requiredFields.enumerated()), id: \.offset) { _, field in
-                        BuilderFieldRenderer(
-                            field: field,
-                            values: capabilityConfigBinding(for: block.id)
-                        )
-                    }
+                let configForBlock = coordinator.capabilityConfigs[block.id] ?? [:]
+                let visibleFields = block.requiredFields.filter { field in
+                    guard let dep = field.dependsOn else { return true }
+                    return configForBlock[dep.key] == dep.equalsValue
                 }
-                .padding(RuulSpacing.md)
-                .transition(.opacity)
+                if !visibleFields.isEmpty {
+                    Divider().padding(.horizontal, RuulSpacing.md)
+                    VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                        ForEach(Array(visibleFields.enumerated()), id: \.offset) { _, field in
+                            BuilderFieldRenderer(
+                                field: field,
+                                values: capabilityConfigBinding(for: block.id)
+                            )
+                        }
+                    }
+                    .padding(RuulSpacing.md)
+                    .transition(.opacity)
+                }
             }
         }
         .background(

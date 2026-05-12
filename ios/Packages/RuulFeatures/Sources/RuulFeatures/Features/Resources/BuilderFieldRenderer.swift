@@ -244,16 +244,43 @@ public struct BuilderFieldRenderer: View {
     private func dateBinding() -> Binding<Date> {
         Binding(
             get: {
-                if case let .string(raw)? = values[field.key],
-                   let date = ISO8601DateFormatter().date(from: raw) {
-                    return date
+                guard case let .string(raw)? = values[field.key] else {
+                    return .now.addingTimeInterval(86_400)
                 }
-                return .now.addingTimeInterval(86_400)
+                return Self.parseDateString(raw) ?? .now.addingTimeInterval(86_400)
             },
             set: { newDate in
-                values[field.key] = .string(ISO8601DateFormatter().string(from: newDate))
+                values[field.key] = .string(Self.formatDate(newDate, kind: field.kind))
             }
         )
+    }
+
+    /// Serializes `date` per `kind`. `.date` writes YYYY-MM-DD (the
+    /// shape the recurrence pattern validator expects); `.time` and
+    /// `.dateTime` write full ISO8601 timestamp. Centralizing
+    /// serialization here keeps coordinator + sheet ignorant of kind.
+    static func formatDate(_ date: Date, kind: BuilderField.Kind) -> String {
+        let iso = ISO8601DateFormatter()
+        switch kind {
+        case .date:
+            iso.formatOptions = [.withFullDate]
+        default:
+            // .time + .dateTime + duration: full timestamp.
+            iso.formatOptions = [.withInternetDateTime]
+        }
+        return iso.string(from: date)
+    }
+
+    /// Parses either YYYY-MM-DD (date-only) or a full ISO8601 timestamp.
+    /// Returns nil when neither shape matches so the caller can fall
+    /// back to a default.
+    static func parseDateString(_ raw: String) -> Date? {
+        let dateOnly = ISO8601DateFormatter()
+        dateOnly.formatOptions = [.withFullDate]
+        if let d = dateOnly.date(from: raw) { return d }
+        let full = ISO8601DateFormatter()
+        if let d = full.date(from: raw) { return d }
+        return nil
     }
 
     /// Binds the field's current JSONConfig value to an option index in

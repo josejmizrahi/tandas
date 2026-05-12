@@ -248,22 +248,41 @@ public final class ResourceWizardCoordinator {
         defer { isCreating = false }
 
         // Build seriesPattern from the recurrence capability's
-        // declarative config. The renderer writes
-        // `capabilityConfigs["recurrence"]` directly; we extract the
-        // hour+minute from the `.time` field's ISO timestamp at submit
-        // time to keep the wire format the rule engine expects.
+        // declarative config. Tier 1.2 (2026-05-12): emits the full
+        // pattern shape `_shared/recurrence.ts` validates against
+        // (frequency, dayOfWeek, hour, minute, startDate, endCondition,
+        // count|untilDate, timezone). Each field's presence depends on
+        // what the user filled — count and untilDate are conditional
+        // via BuilderField.dependsOn, so we only emit the one matching
+        // the chosen endCondition.
         let seriesPattern: JSONConfig? = {
             guard enabledCapabilities.contains("recurrence"),
                   let cfg = capabilityConfigs["recurrence"] else { return nil }
             var pattern: [String: JSONConfig] = [:]
             if case let .string(f) = cfg["frequency"] { pattern["frequency"] = .string(f) }
             if case let .int(d)    = cfg["dayOfWeek"] { pattern["dayOfWeek"] = .int(d) }
+            // Time field renders as `.time` and carries an ISO datetime;
+            // extract hour+minute for the recurrence pattern shape.
             if case let .string(raw) = cfg["time"],
-               let date = ISO8601DateFormatter().date(from: raw) {
+               let date = BuilderFieldRenderer.parseDateString(raw) {
                 let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
                 pattern["hour"]   = .int(comps.hour ?? 20)
                 pattern["minute"] = .int(comps.minute ?? 0)
             }
+            // startDate is `.date` kind → already YYYY-MM-DD via the
+            // renderer's formatDate. Emit as-is.
+            if case let .string(s) = cfg["startDate"] { pattern["startDate"] = .string(s) }
+            if case let .string(ec) = cfg["endCondition"] {
+                pattern["endCondition"] = .string(ec)
+                switch ec {
+                case "after_count":
+                    if case let .int(c) = cfg["count"] { pattern["count"] = .int(c) }
+                case "until_date":
+                    if case let .string(ud) = cfg["untilDate"] { pattern["untilDate"] = .string(ud) }
+                default: break  // 'never' needs neither
+                }
+            }
+            if case let .string(tz) = cfg["timezone"] { pattern["timezone"] = .string(tz) }
             return .object(pattern)
         }()
 
@@ -322,32 +341,39 @@ public final class ResourceWizardCoordinator {
 
     /// True iff every required field across (a) the builder's own
     /// basicFields and (b) each currently-enabled capability's
-    /// `requiredFields` has a non-empty value in the appropriate config
-    /// blob. Founder framing 2026-05-12 Tier 0: an active capability
-    /// without complete required config must NOT be submittable. Before
-    /// this fix, only builder fields gated submit — a user with
-    /// `rotation.purpose` empty (when rotation was still surfaced) could
-    /// still tap Create and the cap row would persist with `{}` config.
+    /// `requiredFields` (filtered by `dependsOn`) has a non-empty value
+    /// in the appropriate config blob.
+    ///
+    /// Tier 0 (2026-05-12): active capability requires its required
+    /// fields filled. Tier 1.1: `dependsOn` lets a field declare itself
+    /// conditional ("count required when endCondition=after_count").
+    /// The validator skips a conditional field whose dependency value
+    /// doesn't match — that field isn't relevant to this submission.
     private func validateRequiredFields() -> Bool {
         guard let builder = selectedBuilder else { return false }
-        // (a) Builder's own fields (title, startsAt, …).
-        for field in builder.requiredFields {
+        // (a) Builder's own fields (title, startsAt, …). Builder fields
+        //     don't use dependsOn today, but the helper handles it.
+        for field in builder.requiredFields where isFieldActive(field, in: basicFields) {
             if !isFieldFilled(field, in: basicFields) { return false }
         }
-        // (b) Required fields of every active capability. Caps that get
-        //     filtered out of step 3 (incomplete) can still appear in
-        //     `enabledCapabilities` if a template defaulted them on
-        //     before the filter landed; defensive `compactMap` skips
-        //     unknown ids. Stable caps with empty requiredFields are
-        //     a no-op for this loop.
+        // (b) Required fields of every active capability.
         for blockId in enabledCapabilities {
             guard let block = catalog[blockId] else { continue }
             let configForBlock = capabilityConfigs[blockId] ?? [:]
-            for field in block.requiredFields {
+            for field in block.requiredFields where isFieldActive(field, in: configForBlock) {
                 if !isFieldFilled(field, in: configForBlock) { return false }
             }
         }
         return true
+    }
+
+    /// Whether `field` should be considered required given its
+    /// `dependsOn` predicate against `values`. Returns true when no
+    /// dependency is declared, or when the dependent key holds the
+    /// expected value. Founder framing 2026-05-12 Tier 1.1.
+    private func isFieldActive(_ field: BuilderField, in values: [String: JSONConfig]) -> Bool {
+        guard let dep = field.dependsOn else { return true }
+        return values[dep.key] == dep.equalsValue
     }
 
     /// Whether `field` has a non-empty value in `values`. Strings are
@@ -422,8 +448,11 @@ public final class ResourceWizardCoordinator {
                     current[field.key] = .string(ISO8601DateFormatter().string(from: date))
                 }
             case .date, .dateTime:
+                // Use BuilderFieldRenderer.formatDate so the seed shape
+                // matches what the renderer will write on user change.
+                // For `.date`: YYYY-MM-DD; for `.dateTime`: full ISO8601.
                 let date = Date.now.addingTimeInterval(86_400)
-                current[field.key] = .string(ISO8601DateFormatter().string(from: date))
+                current[field.key] = .string(BuilderFieldRenderer.formatDate(date, kind: field.kind))
             case .boolean:
                 current[field.key] = .bool(false)
             case .integer, .decimal, .currency, .money:
@@ -438,6 +467,27 @@ public final class ResourceWizardCoordinator {
         // user's choice persists.
         if block.id == "recurrence", current["dayOfWeek"] == nil {
             current["dayOfWeek"] = .int(4)
+        }
+        // Tier 1.1 (2026-05-12) — recurrence pattern defaults:
+        //   - startDate = first occurrence on/after tomorrow.
+        //   - endCondition default 'never' (so wizard opens valid).
+        //   - timezone = current TimeZone identifier (informative).
+        // These run after the generic loop because they reference
+        // each other (endCondition='never' implies count/untilDate
+        // skipped) and need cap-specific knowledge.
+        if block.id == "recurrence" {
+            if current["startDate"] == nil {
+                let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now
+                let iso = ISO8601DateFormatter()
+                iso.formatOptions = [.withFullDate]
+                current["startDate"] = .string(iso.string(from: tomorrow))
+            }
+            if current["endCondition"] == nil {
+                current["endCondition"] = .string("never")
+            }
+            if current["timezone"] == nil {
+                current["timezone"] = .string(TimeZone.current.identifier)
+            }
         }
         capabilityConfigs[block.id] = current
     }

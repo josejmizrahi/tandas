@@ -129,6 +129,18 @@ public struct BuilderField: Sendable, Hashable {
     /// rotation, …) is declarative — define options here, not as a
     /// view-side Picker hardcoded per capability id.
     public let options: [PickerOption]?
+    /// Optional conditional visibility — the field is rendered AND
+    /// validated only when the value at `dependsOn.key` in the same
+    /// capability_config equals `dependsOn.equalsValue`.
+    ///
+    /// Use case: recurrence's `count` is required when endCondition=
+    /// 'after_count' but not when endCondition='never'. Declare both
+    /// fields as required; the dependsOn gates which one applies.
+    ///
+    /// Founder framing 2026-05-12: capability config conditional logic
+    /// is declarative — no Swift switch on capability id needed in the
+    /// renderer or coordinator.
+    public let dependsOn: DependsOn?
 
     public enum Kind: String, Sendable, Hashable {
         case text
@@ -159,13 +171,28 @@ public struct BuilderField: Sendable, Hashable {
         }
     }
 
+    /// Conditional visibility predicate: this field renders / validates
+    /// only when `values[key]` equals `equalsValue`. Founder framing
+    /// 2026-05-12 — keeps capability config declarative without
+    /// per-block view code.
+    public struct DependsOn: Sendable, Hashable {
+        public let key: String
+        public let equalsValue: JSONConfig
+
+        public init(key: String, equalsValue: JSONConfig) {
+            self.key = key
+            self.equalsValue = equalsValue
+        }
+    }
+
     public init(
         key: String,
         label: String,
         kind: Kind,
         placeholder: String? = nil,
         helpText: String? = nil,
-        options: [PickerOption]? = nil
+        options: [PickerOption]? = nil,
+        dependsOn: DependsOn? = nil
     ) {
         self.key = key
         self.label = label
@@ -173,6 +200,7 @@ public struct BuilderField: Sendable, Hashable {
         self.placeholder = placeholder
         self.helpText = helpText
         self.options = options
+        self.dependsOn = dependsOn
     }
 }
 

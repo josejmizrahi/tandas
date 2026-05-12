@@ -249,11 +249,11 @@ public struct RecurrenceCapability: CapabilityBlock {
     public var displayName: String { "Repetir" }
     public var summary: String { "Genera ocurrencias automáticamente según un patrón." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .contribution] }
-    /// Founder framing 2026-05-11: capability sub-config is declarative.
-    /// The wizard reads these fields via BuilderFieldRenderer instead of
-    /// a hardcoded view for each capability id. Adding a new picker
-    /// option (e.g. "anual") is one BuilderField.PickerOption row, not
-    /// a Swift view edit.
+    /// Founder framing 2026-05-12 (Tier 1.1): full pattern surface so
+    /// the cron generator (auto-generate-events post-Tier-1.5) has
+    /// every field it needs to compute occurrences without legacy
+    /// fallbacks. Conditional fields (count, untilDate) use the new
+    /// BuilderField.dependsOn predicate.
     public var requiredFields: [BuilderField] {
         [
             BuilderField(
@@ -284,13 +284,56 @@ public struct RecurrenceCapability: CapabilityBlock {
                 key: "time",
                 label: "Hora",
                 kind: .time
+            ),
+            BuilderField(
+                key: "startDate",
+                label: "Empieza el",
+                kind: .date,
+                helpText: "Fecha del primer evento de la serie."
+            ),
+            BuilderField(
+                key: "endCondition",
+                label: "Termina",
+                kind: .picker,
+                options: [
+                    .init(value: .string("never"),       label: "Nunca"),
+                    .init(value: .string("after_count"), label: "Después de N veces"),
+                    .init(value: .string("until_date"),  label: "En una fecha")
+                ]
+            ),
+            // Conditional: count only when endCondition='after_count'.
+            BuilderField(
+                key: "count",
+                label: "¿Cuántas veces?",
+                kind: .integer,
+                placeholder: "8",
+                helpText: "Número total de ocurrencias a generar.",
+                dependsOn: .init(key: "endCondition", equalsValue: .string("after_count"))
+            ),
+            // Conditional: untilDate only when endCondition='until_date'.
+            BuilderField(
+                key: "untilDate",
+                label: "Hasta",
+                kind: .date,
+                helpText: "Última fecha posible. Si cae el día de la serie, ese día sí cuenta.",
+                dependsOn: .init(key: "endCondition", equalsValue: .string("until_date"))
+            ),
+            BuilderField(
+                key: "timezone",
+                label: "Zona horaria",
+                kind: .text,
+                placeholder: "America/Mexico_City",
+                helpText: "Solo informativa por ahora — la generación usa UTC."
             )
         ]
     }
     public var optionalFields: [BuilderField] {
+        // Interval kept as an advanced option (for "every N weeks/months").
+        // V1 generator ignores it (advances by 1 unit per frequency). The
+        // field stays declared so the wizard renders + persists it for
+        // later Tier-8 work, but it's not required.
         [
-            BuilderField(key: "interval", label: "Cada", kind: .integer),
-            BuilderField(key: "endCondition", label: "Termina", kind: .picker)
+            BuilderField(key: "interval", label: "Cada cuántas (avanzado)", kind: .integer)
         ]
     }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -302,14 +345,15 @@ public struct RecurrenceCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] { [] }
     public var dependencies: [String] { ["schedule"] }
     public var conflicts: [String] { [] }
-    /// Tier 0 audit 2026-05-12: required fields miss startDate, end
-    /// condition options, occurrence count, timezone, exceptions. Submit
-    /// emits a partial seriesPattern. auto-generate-events still reads
-    /// `groups.frequency_type` legacy instead of resource_series.
-    /// Reactivate when Tier 1 ships (catalog completion + edge refactor).
-    public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 1: complete catalog fields + refactor auto-generate-events to read resource_series.")
-    }
+    // Tier 1 (2026-05-12) shipped:
+    //   - Catalog full pattern: startDate, endCondition options,
+    //     count + untilDate (conditional via dependsOn), timezone.
+    //   - Wizard serializes the full pattern jsonb on submit.
+    //   - auto-generate-events rewrite reads resource_series + uses
+    //     _shared/recurrence.ts (24 unit tests passing).
+    //   - resource_series.generated_until cursor + events.series_id
+    //     unique constraint for idempotency (mig 00126).
+    // Status default `.stable` via protocol extension applies.
 }
 
 // rotation — turns rotate among participants
