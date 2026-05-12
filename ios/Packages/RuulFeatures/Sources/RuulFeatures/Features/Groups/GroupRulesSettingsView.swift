@@ -2,10 +2,14 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Group Rules settings — the 6 sections from the governance spec. V1 only
-/// edits the "How decisions are made" section via preset. The other 5
-/// sections surface as cards with "Próximamente" so the founder can see
-/// the shape of what's coming without leaving the screen.
+/// Group governance settings — the social-system layer. NOT behavior rules
+/// (those live under "Acuerdos" / RulesView). Doctrine: keeps the group
+/// from becoming an ERP. See memory/project_group_governance_rules.md.
+///
+/// Six sections in importance order: Decisions → Permissions → Members →
+/// Money → Visibility → Defaults. V1 only edits Decisions (via preset);
+/// the other five render the human Q&A but their answers are read-only
+/// previews until per-question editing ships in V2.
 public struct GroupRulesSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var coordinator: GroupRulesCoordinator
@@ -18,33 +22,55 @@ public struct GroupRulesSettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                    section(
-                        title: "Cómo se toman decisiones",
-                        subtitle: "Quién puede cambiar las reglas y si los cambios necesitan votación."
-                    ) {
+                    intro
+
+                    section(title: "Decisiones", subtitle: "Cómo se toman cambios importantes.") {
                         presetPicker
                     }
 
-                    placeholderSection(
-                        title: "Quién puede qué",
-                        subtitle: "Crear resources, invitar miembros, aprobar invitados."
-                    )
-                    placeholderSection(
-                        title: "Defaults para resources nuevos",
-                        subtitle: "RSVP sugerido, deadlines, confirmación."
-                    )
-                    placeholderSection(
-                        title: "Reglas de miembros",
-                        subtitle: "Aprobación, deuda máxima, suspensión."
-                    )
-                    placeholderSection(
-                        title: "Reglas de dinero",
-                        subtitle: "Gastos grandes, withdrawals, recordatorios."
-                    )
-                    placeholderSection(
-                        title: "Invitados",
-                        subtitle: "Aprobación, máximos, visibilidad."
-                    )
+                    section(title: "Permisos", subtitle: "Quién puede hacer qué.") {
+                        previewList([
+                            ("¿Quién puede crear recursos?", currentPresetMatches ? "Cualquiera" : "Configurable"),
+                            ("¿Quién puede invitar miembros?", "Cualquiera"),
+                            ("¿Quién puede activar capabilities?", "Admin"),
+                            ("¿Quién puede borrar recursos?", "Admin"),
+                            ("¿Quién administra los fondos?", "Admin"),
+                        ])
+                    }
+
+                    section(title: "Miembros", subtitle: "Cómo funciona la membresía y los invitados.") {
+                        previewList([
+                            ("¿Miembros nuevos requieren aprobación?", "No"),
+                            ("¿Cuántos invitados máximo por miembro?", "Sin límite"),
+                            ("¿Los invitados pueden votar?", "No"),
+                            ("¿Los invitados ven el dinero?", "No"),
+                        ])
+                    }
+
+                    section(title: "Dinero", subtitle: "Reglas financieras globales del grupo.") {
+                        previewList([
+                            ("¿Los balances son visibles para todos?", "Sí"),
+                            ("¿Gastos arriba de cuánto necesitan aprobación?", "Sin límite"),
+                            ("¿Los retiros de fondos necesitan votación?", "No"),
+                            ("¿Cuándo mandan recordatorios de pago?", "48 hrs"),
+                        ])
+                    }
+
+                    section(title: "Visibilidad", subtitle: "Quién puede ver qué.") {
+                        previewList([
+                            ("¿Los invitados ven balances?", "No"),
+                            ("¿Quién ve analíticas del grupo?", "Solo admin"),
+                            ("¿Los settlements son privados?", "No"),
+                        ])
+                    }
+
+                    section(title: "Defaults para recursos nuevos", subtitle: "Sugerencias que heredan las cosas nuevas.") {
+                        previewList([
+                            ("¿Eventos nuevos sugieren RSVP?", "Sí"),
+                            ("¿Gastos nuevos tienen deadline?", "72 hrs"),
+                            ("¿Bookings nuevos requieren confirmación?", "No"),
+                        ])
+                    }
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.lg)
@@ -57,7 +83,7 @@ public struct GroupRulesSettingsView: View {
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("Reglas del grupo")
+                    Text("Gobierno del grupo")
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
@@ -68,7 +94,24 @@ public struct GroupRulesSettingsView: View {
         }
     }
 
-    // MARK: - Preset picker
+    // MARK: - Intro
+
+    /// One-line framing so users get the doctrine without reading docs:
+    /// these rules gobiernan el GRUPO, not the cenas. Keeps the screen
+    /// from being confused with the Acuerdos surface.
+    private var intro: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+            Text("Cómo funciona este grupo")
+                .ruulTextStyle(RuulTypography.title)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Text("Las reglas de cada cosa (multas, llegadas, RSVP) viven en Acuerdos. Esto es el sistema.")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Preset picker (Decisiones)
 
     private var presetPicker: some View {
         VStack(spacing: RuulSpacing.sm) {
@@ -123,6 +166,11 @@ public struct GroupRulesSettingsView: View {
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
+    /// Whether any preset matched the current policies — used as a
+    /// heuristic seed for the read-only previews until V2 wires real
+    /// per-question editing.
+    private var currentPresetMatches: Bool { coordinator.activePreset != nil }
+
     // MARK: - Section helpers
 
     private func section<Content: View>(
@@ -142,22 +190,48 @@ public struct GroupRulesSettingsView: View {
         }
     }
 
-    private func placeholderSection(title: String, subtitle: String) -> some View {
-        section(title: title, subtitle: subtitle) {
-            HStack {
-                Text("Próximamente")
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                Spacer()
-                Image(systemName: "clock")
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .accessibilityHidden(true)
+    /// Read-only Q&A list for sections that haven't been wired to live
+    /// per-question editing yet. Each row reads as a humanized question
+    /// + current answer — never exposing `policy_type` / `target_action`
+    /// jargon. Tap target later opens a per-question editor.
+    private func previewList(_ entries: [(question: String, answer: String)]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
+                VStack(spacing: 0) {
+                    if idx > 0 {
+                        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
+                    }
+                    HStack(alignment: .top, spacing: RuulSpacing.sm) {
+                        Text(entry.question)
+                            .ruulTextStyle(RuulTypography.body)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(entry.answer)
+                            .ruulTextStyle(RuulTypography.body)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .padding(.vertical, RuulSpacing.sm)
+                    .padding(.horizontal, RuulSpacing.md)
+                }
             }
-            .padding(RuulSpacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface.opacity(0.5))
-            )
+        }
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(Color.ruulSurface.opacity(0.6))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+        )
+        .overlay(alignment: .topTrailing) {
+            Text("Próximamente editable")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.horizontal, RuulSpacing.xs)
+                .padding(.vertical, 2)
+                .background(Color.ruulSurface, in: Capsule())
+                .padding(RuulSpacing.xs)
         }
     }
 }

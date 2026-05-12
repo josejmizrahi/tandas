@@ -40,8 +40,8 @@ public struct GroupMoreSubTab: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                governanceSection
-                policiesSection
+                groupRulesSection
+                operationsSection
             }
             .padding(.horizontal, RuulSpacing.screenPadding)
             .padding(.top, RuulSpacing.xs)
@@ -50,16 +50,20 @@ public struct GroupMoreSubTab: View {
         .scrollIndicators(.hidden)
     }
 
-    private var policiesSection: some View {
+    /// Group-level governance — the social system. Permissions, decisions,
+    /// money, visibility, defaults. Doctrine: lives ABOVE behaviors because
+    /// it gobierna how the group itself works, not any one resource. See
+    /// memory/project_group_governance_rules.md.
+    private var groupRulesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("CONFIGURACIÓN")
+            Text("REGLAS DEL GRUPO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.horizontal, RuulSpacing.xxs)
             VStack(spacing: 0) {
-                row(icon: "checkmark.seal.fill",
-                    label: "Reglas del grupo",
-                    sublabel: "Cómo se cambian las reglas (votación, admin, etc.)",
+                row(icon: "building.columns.fill",
+                    label: "Gobierno del grupo",
+                    sublabel: "Permisos, decisiones, dinero, invitados",
                     trailing: { EmptyView() },
                     action: onOpenGroupRules)
             }
@@ -71,16 +75,20 @@ public struct GroupMoreSubTab: View {
         }
     }
 
-    private var governanceSection: some View {
+    /// Day-to-day operation surfaces: the behavior rules (acuerdos), votes
+    /// in flight, fines outstanding. These describe specific things — they
+    /// are NOT group governance. Renamed from "GOBERNANZA" because Acuerdos
+    /// is behavior (resource rules), not governance.
+    private var operationsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("GOBERNANZA")
+            Text("DÍA A DÍA")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.horizontal, RuulSpacing.xxs)
             VStack(spacing: 0) {
                 row(icon: "list.bullet.clipboard.fill",
                     label: "Acuerdos",
-                    sublabel: "Las reglas vivas del grupo",
+                    sublabel: "Cómo se comporta el grupo: multas, llegadas, RSVP",
                     trailing: { EmptyView() },
                     action: onOpenRules)
                 divider

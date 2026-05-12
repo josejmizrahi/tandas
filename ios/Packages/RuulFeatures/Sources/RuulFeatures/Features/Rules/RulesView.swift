@@ -68,8 +68,8 @@ public struct RulesView: View {
                 } else if coordinator.rules.isEmpty {
                     EmptyStateView(
                         systemImage: "list.bullet.clipboard",
-                        title: "Sin reglas",
-                        message: "Este grupo aún no tiene reglas configuradas."
+                        title: "Sin acuerdos",
+                        message: "Este grupo aún no tiene acuerdos configurados."
                     )
                     .transition(.opacity)
                 } else {
@@ -125,7 +125,7 @@ public struct RulesView: View {
                 Text(coordinator.group.name)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextSecondary)
-                Text("\(activeCount) reglas activas")
+                Text("\(activeCount) acuerdos activos")
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
