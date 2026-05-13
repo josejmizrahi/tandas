@@ -107,6 +107,10 @@ public final class AppState {
     public let resourceSeriesRepo: any ResourceSeriesRepository
     public let resourceCapabilityRepo: any ResourceCapabilityRepository
     public let ledgerRepo: any LedgerRepository
+    /// Tier 6 slice 18 (mig 00136): per-member balance projection over
+    /// `ledger_entries`. Read-time aggregation, no cache. MoneySectionView
+    /// renders top balances inline; group-wide views use balancesForGroup.
+    public let balanceRepo: any BalanceRepository
     public let rsvpActionRepo: any RsvpActionRepository
     /// Atomic ResourceWizard submit — calls `build_resource_from_draft`
     /// RPC (mig 00101). Builders that route through this avoid the
@@ -153,6 +157,7 @@ public final class AppState {
         resourceSeriesRepo: any ResourceSeriesRepository,
         resourceCapabilityRepo: any ResourceCapabilityRepository,
         ledgerRepo: any LedgerRepository,
+        balanceRepo: any BalanceRepository,
         rsvpActionRepo: any RsvpActionRepository,
         resourceDraftRepo: any ResourceDraftRepository,
         notifications: NotificationService? = nil,
@@ -185,6 +190,7 @@ public final class AppState {
         self.resourceSeriesRepo = resourceSeriesRepo
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo
+        self.balanceRepo = balanceRepo
         self.rsvpActionRepo = rsvpActionRepo
         self.resourceDraftRepo = resourceDraftRepo
         let eventBuilder = EventResourceBuilder(

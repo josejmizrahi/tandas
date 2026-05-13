@@ -45,6 +45,7 @@ struct TandasApp: App {
             let resourceSeries = MockResourceSeriesRepository()
             let resourceCapabilities = MockResourceCapabilityRepository()
             let ledger = MockLedgerRepository()
+            let balances = MockBalanceRepository()
             let rsvpActions = MockRsvpActionRepository()
             let policies = MockGroupPolicyRepository()
             let draftRepo = MockResourceDraftRepository()
@@ -74,6 +75,7 @@ struct TandasApp: App {
                 resourceSeriesRepo: resourceSeries,
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
+                balanceRepo: balances,
                 rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
                 notifications: NotificationService(tokenRepo: notifTokens),
@@ -105,6 +107,7 @@ struct TandasApp: App {
             let resourceSeries = LiveResourceSeriesRepository(client: client)
             let resourceCapabilities = LiveResourceCapabilityRepository(client: client)
             let ledger = LiveLedgerRepository(client: client)
+            let balances = LiveBalanceRepository(client: client)
             let rsvpActions = LiveRsvpActionRepository(client: client)
             let policies = LiveGroupPolicyRepository(client: client)
             let draftRepo = LiveResourceDraftRepository(client: client)
@@ -134,6 +137,7 @@ struct TandasApp: App {
                 resourceSeriesRepo: resourceSeries,
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
+                balanceRepo: balances,
                 rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
                 notifications: NotificationService(tokenRepo: notifTokens),

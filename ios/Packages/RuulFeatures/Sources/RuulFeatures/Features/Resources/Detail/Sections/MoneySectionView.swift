@@ -4,11 +4,19 @@ import RuulCore
 
 /// Money primitive renderer. Tap the card → caller opens the
 /// `ResourceLedgerSheet` (delegated via context.onPresentLedger).
-/// V1 doesn't inline-render a balance summary; the sheet shows
-/// the full per-member breakdown. Future: render top-3 balances
-/// inline so the user sees state without tapping in.
+///
+/// Tier 6 slice 18 (mig 00136): renders top-3 non-zero balances inline
+/// above the "Movimientos" button so the user sees who's owed / owes
+/// without tapping into the sheet. Balances come from the
+/// `member_balances_per_resource` SQL view via `BalanceRepository`.
+/// Degrades to the legacy button-only layout when the resource has no
+/// ledger entries yet.
 public struct MoneySectionView: View {
+    @Environment(AppState.self) private var app
     public let context: ResourceDetailContext
+
+    @State private var topBalances: [MemberBalance] = []
+    @State private var hasLoaded: Bool = false
 
     public static let definition = CapabilitySection(
         id: "money",
@@ -32,6 +40,9 @@ public struct MoneySectionView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             sectionHeader("DINERO")
+            if !topBalances.isEmpty {
+                balancesCard
+            }
             Button(action: context.onPresentLedger) {
                 HStack(spacing: RuulSpacing.sm) {
                     iconBadge(systemName: "arrow.left.arrow.right")
@@ -55,6 +66,105 @@ public struct MoneySectionView: View {
             .buttonStyle(.plain)
             .cardBackground()
         }
+        .task { await loadBalances() }
+    }
+
+    /// Top 3 non-zero balances sorted by `|netCents|` descending. The
+    /// user sees the most lopsided positions first ("X debe $500, Y
+    /// recibe $300"). Even / zero rows are filtered out — they're
+    /// noise, the user doesn't need to know they're square.
+    @ViewBuilder
+    private var balancesCard: some View {
+        VStack(spacing: 1) {
+            ForEach(topBalances) { balance in
+                balanceRow(balance)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(Color.ruulSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private func balanceRow(_ balance: MemberBalance) -> some View {
+        let isCurrentUser = isCurrentUserMember(balance.memberId)
+        let displayName = memberDisplayName(balance.memberId)
+        let prefix = isCurrentUser ? "Tú" : displayName
+        let amountText = formattedAmount(abs(balance.netCents), currency: balance.currency)
+        let owesGroup = balance.netCents < 0
+        let labelText: String = owesGroup
+            ? "\(prefix) \(isCurrentUser ? "debes" : "debe") \(amountText)"
+            : "\(prefix) \(isCurrentUser ? "recibes" : "recibe") \(amountText)"
+
+        HStack(spacing: RuulSpacing.sm) {
+            Image(systemName: owesGroup ? "arrow.up.right.circle" : "arrow.down.left.circle")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(owesGroup ? Color.ruulTextSecondary : Color.ruulAccent)
+                .frame(width: 22)
+            Text(labelText)
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+    }
+
+    // MARK: - Data + helpers
+
+    private func loadBalances() async {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        do {
+            let raw = try await app.balanceRepo.balancesForResource(context.resource.id)
+            // Filter out zero rows, sort by absolute net descending,
+            // take top 3.
+            let nonZero = raw.filter { $0.netCents != 0 }
+            let sorted = nonZero.sorted { abs($0.netCents) > abs($1.netCents) }
+            await MainActor.run { topBalances = Array(sorted.prefix(3)) }
+        } catch {
+            // Balance projection is decorative — failing silently keeps
+            // the rest of the section usable. The Movimientos button
+            // still works.
+            await MainActor.run { topBalances = [] }
+        }
+    }
+
+    /// True when this `member_id` (from group_members.id) corresponds
+    /// to the currently-authed user. memberDirectory keys by user_id,
+    /// so we walk the values looking for member.id == balance.memberId.
+    private func isCurrentUserMember(_ memberId: UUID) -> Bool {
+        guard let currentUserId = context.currentUserId else { return false }
+        for (_, m) in context.memberDirectory {
+            if m.member.id == memberId && m.member.userId == currentUserId {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func memberDisplayName(_ memberId: UUID) -> String {
+        for (_, m) in context.memberDirectory {
+            if m.member.id == memberId {
+                return m.displayName
+            }
+        }
+        return "Alguien"
+    }
+
+    private func formattedAmount(_ cents: Int64, currency: String) -> String {
+        let pesos = Double(cents) / 100.0
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        formatter.maximumFractionDigits = pesos.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
+        return formatter.string(from: NSNumber(value: pesos)) ?? "\(currency) \(pesos)"
     }
 
     private var subtitle: String {

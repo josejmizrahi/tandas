@@ -636,12 +636,17 @@ public struct MoneyCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["ledger"] }
     public var conflicts: [String] { [] }
-    /// Tier 0 audit 2026-05-12: requiredFields + optionalFields empty
-    /// → toggle is decorative. record_ledger_entry writes ledger_entries
-    /// but NO edge fn aggregates them — no balance projection, no
-    /// settlement job. Re-enable once Tier 6 ships money stack.
+    /// Tier 6 slice 18 (mig 00136) shipped: balance projection views
+    /// (`member_balances_per_group` + `member_balances_per_resource`)
+    /// aggregate ledger_entries at read time, and MoneySectionView now
+    /// renders the top 3 non-zero balances inline. Remaining
+    /// `.incomplete` reasons (separate slices, not Beta 1 scope):
+    ///   - UI form for who-can-add / default-split / settlement /
+    ///     reminders (requiredFields/optionalFields still empty)
+    ///   - Settlement workflow (one-tap "salda ahora")
+    ///   - `fund` resource_type creation path (Tier 6 slice 19)
     public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 6: needs UI form (who can add, split, settlement, reminders) + edge fn that aggregates ledger_entries.")
+        .incomplete(reason: "Tier 6 slice 18 shipped balance projection. Remaining: who-can-add / split / settlement form + fund resource_type creation path.")
     }
 }
 
@@ -663,11 +668,16 @@ public struct LedgerCapability: CapabilityBlock {
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
-    /// Tier 0 audit 2026-05-12: write-only — record_ledger_entry RPC
-    /// inserts atoms but no edge fn reads them. Projection ledger_view
-    /// has zero consumers.
+    /// Tier 6 slice 18 (mig 00136) shipped: `member_balances_per_group`
+    /// + `member_balances_per_resource` SQL views aggregate
+    /// ledger_entries at read time. iOS `BalanceRepository` reads them;
+    /// MoneySectionView surfaces top-3 non-zero balances inline.
+    /// `.incomplete` stays because the ledger_view projection
+    /// descriptor (`scope: .group`) isn't yet rendered on its own
+    /// surface — only inline inside MoneySection. A dedicated
+    /// group-wide ledger surface is a follow-up slice.
     public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 6: needs balance projection edge fn + UI for the ledger_view projection.")
+        .incomplete(reason: "Tier 6 slice 18 shipped balance projection (views + iOS repo + inline render). Remaining: dedicated group-wide ledger surface.")
     }
 }
 
