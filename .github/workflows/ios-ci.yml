@@ -43,6 +43,13 @@ jobs:
         run: cd ios && xcodegen
 
       - name: Build & test
+        # TEST_RUNNER_CI=true is forwarded by xcodebuild into the test
+        # process's env, so ProcessInfo.processInfo.environment["CI"]
+        # reads "true" inside PrimitiveSnapshotTests.skipOnCI(). The
+        # bare `CI` env on the runner doesn't transfer to the simulator
+        # process, so without this prefix the snapshot skip never
+        # fires and we land back at "RuulMoneyView snapshot doesn't
+        # match across Xcode minors" — observed in run 25774604408.
         run: |
           set -o pipefail
           xcodebuild test \
@@ -50,8 +57,10 @@ jobs:
             -scheme Tandas \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
             CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            TEST_RUNNER_CI=true \
             | xcpretty || (xcodebuild test \
                 -project ios/Tandas.xcodeproj \
                 -scheme Tandas \
                 -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
-                CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='')
+                CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+                TEST_RUNNER_CI=true)
