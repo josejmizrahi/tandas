@@ -39,14 +39,13 @@ import { invokeCron } from "./_fixtures/invokeCron.ts";
 
 const admin = adminClient();
 
-// QUARANTINED 2026-05-12 Tier 1.7 — pre-existing breakage surfaced
-// when edge-tests CI first started running these against a fresh
-// `supabase start`. Fail signature:
-//   AssertionError: shared_no_show rule must be seeded by template
-// The shared_resource template's defaultRules don't include the
-// shared_no_show rule slug the test expects. Either the template
-// config is missing it or the slug got renamed. Tier 0.5 cleanup.
-Deno.test.ignore("palco shared_resource scenario — 5 family members, 17 slots, 1 no-show fined, 1 swap vote opened", async () => {
+// Tier 1.7 un-quarantine (2026-05-13). Root cause was structural:
+// create_group_with_admin called seed_template_roles automatically
+// but not seed_template_rules. Mig 00134 closes that gap — template
+// defaultRules now auto-seed alongside defaultRoles, so a server-side
+// caller (this test, future SDKs) lands fully configured. Run against
+// the full chain: slotExpired → rule engine → fine → swap vote.
+Deno.test("palco shared_resource scenario — 5 family members, 17 slots, 1 no-show fined, 1 swap vote opened", async () => {
   let group: SeededGroup | null = null;
   try {
     // ────────────────────────────────────────────────────────────────
