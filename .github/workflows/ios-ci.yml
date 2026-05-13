@@ -43,13 +43,15 @@ jobs:
         run: cd ios && xcodegen
 
       - name: Build & test
-        # TEST_RUNNER_CI=true is forwarded by xcodebuild into the test
-        # process's env, so ProcessInfo.processInfo.environment["CI"]
-        # reads "true" inside PrimitiveSnapshotTests.skipOnCI(). The
-        # bare `CI` env on the runner doesn't transfer to the simulator
-        # process, so without this prefix the snapshot skip never
-        # fires and we land back at "RuulMoneyView snapshot doesn't
-        # match across Xcode minors" — observed in run 25774604408.
+        # SWIFT_ACTIVE_COMPILATION_CONDITIONS=CI sets a compile-time
+        # `#if CI` flag the test bundle picks up. Used by
+        # PrimitiveSnapshotTests.skipOnCI() to gate the two
+        # RuulMoneyView snapshots that can't survive Xcode minor-SDK
+        # font-rendering drift (CI is on macos-15 / Xcode 26.3; local
+        # devs are on 26.4+). Three prior attempts (env var on runner,
+        # TEST_RUNNER_CI=true) didn't propagate to the iOS Simulator
+        # test process — compile-time flag is the only channel that
+        # actually reaches the test bundle for iOS unit tests.
         run: |
           set -o pipefail
           xcodebuild test \
@@ -57,10 +59,10 @@ jobs:
             -scheme Tandas \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
             CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
-            TEST_RUNNER_CI=true \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CI' \
             | xcpretty || (xcodebuild test \
                 -project ios/Tandas.xcodeproj \
                 -scheme Tandas \
                 -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
                 CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
-                TEST_RUNNER_CI=true)
+                SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CI')

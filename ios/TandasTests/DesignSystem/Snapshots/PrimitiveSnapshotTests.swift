@@ -92,10 +92,16 @@ final class PrimitiveSnapshotTests: XCTestCase {
     /// When CI's macos image upgrades to Xcode ≥ 26.4 — currently
     /// blocked on GitHub's macos-15 image — the snapshots will match
     /// again and this skip can go away.
+    ///
+    /// Detection: `#if CI` is set via `SWIFT_ACTIVE_COMPILATION_CONDITIONS`
+    /// in the workflow's xcodebuild command. ProcessInfo + ENV does
+    /// NOT propagate from runner shell into the iOS Simulator test
+    /// process (verified across 3 CI runs); the compile-time flag is
+    /// the only reliable channel for iOS unit tests.
     private func skipOnCI() throws {
-        if ProcessInfo.processInfo.environment["CI"] == "true" {
-            throw XCTSkip("RuulMoneyView snapshots skipped on CI — cross-Xcode font rendering. See PrimitiveSnapshotTests.swift skipOnCI() comment.")
-        }
+        #if CI
+        throw XCTSkip("RuulMoneyView snapshots skipped on CI — cross-Xcode font rendering. See PrimitiveSnapshotTests.swift skipOnCI() comment.")
+        #endif
     }
 
     // MARK: - RuulPillButton
