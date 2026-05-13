@@ -5,8 +5,54 @@ import Supabase
 import RuulUI
 import RuulCore
 
-/// Sign-in surface for returning users (session is nil but the device has
-/// already completed onboarding). Two paths:
+/// Mode the AuthGate hands `SignInView` so the same auth surface can
+/// frame itself for first-time-on-device users and for returning users
+/// without two parallel screens.
+///
+/// Beta 1 W1-4: a brand-new device (`!hasOnboarded && session == nil`)
+/// used to land on "Bienvenido de vuelta" / "Inicia sesión para volver a
+/// tus grupos." — pure returning-user copy that read like the wrong
+/// screen to anyone signing up for the first time. The mode here
+/// switches the header and hides the "¿No tienes cuenta? Crear nueva"
+/// fallback (irrelevant for someone who's already on the create path).
+public enum SignInMode: Hashable, Sendable {
+    /// Brand-new device, no `OnboardingCompletion` flag set. Apple
+    /// Sign In + Phone OTP both auto-create accounts, so the screen
+    /// frames itself as "Bienvenido a Ruul / crea tu grupo".
+    case firstTime
+    /// Device has completed onboarding before. Standard sign-in copy.
+    case returning
+}
+
+public extension SignInMode {
+    var startHeadline: String {
+        switch self {
+        case .firstTime: "Bienvenido a Ruul"
+        case .returning: "Bienvenido de vuelta"
+        }
+    }
+
+    var startSubtitle: String {
+        switch self {
+        case .firstTime: "Crea tu grupo o únete a uno con tu teléfono o Apple ID."
+        case .returning: "Inicia sesión para volver a tus grupos."
+        }
+    }
+
+    /// The "¿No tienes cuenta? Crear nueva" link only makes sense for
+    /// a returning user who wants to start fresh with a different
+    /// identity. In firstTime mode, the entire screen IS the create
+    /// path, so the link is redundant noise.
+    var showsCreateAccountLink: Bool {
+        switch self {
+        case .firstTime: false
+        case .returning: true
+        }
+    }
+}
+
+/// Sign-in surface — frames itself as create-account or sign-in based on
+/// `mode`. Two auth paths regardless of mode:
 ///
 /// - **Apple Sign In** — calls `signInWithIdToken` directly on the Supabase
 ///   client. The LiveAuthService's authStateChanges subscription catches the
@@ -15,14 +61,18 @@ import RuulCore
 ///   which is the standard sign-in (not the anon-promote) flow used during
 ///   onboarding. Requires Twilio/Supabase Auth phone provider configured.
 ///
-/// "Crear cuenta nueva" clears the has-onboarded flag so AuthGate falls
-/// through to the founder onboarding flow.
+/// In `.returning` mode, "Crear cuenta nueva" clears the has-onboarded
+/// flag so AuthGate falls through to the founder onboarding flow.
 public struct SignInView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var modelContext
     @State private var phoneInput: String = ""
 
-    public init() {}
+    private let mode: SignInMode
+
+    public init(mode: SignInMode = .returning) {
+        self.mode = mode
+    }
 
     @State private var phoneE164: String = ""
     @State private var otpCode: String = ""
@@ -50,7 +100,9 @@ public struct SignInView: View {
                     }
                     .animation(.ruulMorph, value: step)
                     Spacer(minLength: RuulSpacing.xl)
-                    createAccountLink
+                    if mode.showsCreateAccountLink {
+                        createAccountLink
+                    }
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.s8)
@@ -63,11 +115,11 @@ public struct SignInView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(step == .start ? "Bienvenido de vuelta" : "Confirma tu código")
+            Text(step == .start ? mode.startHeadline : "Confirma tu código")
                 .ruulTextStyle(RuulTypography.displayMedium)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(step == .start
-                ? "Inicia sesión para volver a tus grupos."
+                ? mode.startSubtitle
                 : "Llega a \(PhoneFormatter.displayFormat(phoneE164)). Pégalo aquí.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)

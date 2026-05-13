@@ -29,7 +29,12 @@ struct AuthGate: View {
                 // SignInView handles both Apple Sign In and Phone OTP;
                 // both providers auto-create users on first-use, so
                 // there is no separate "create account" path.
-                SignInView()
+                //
+                // Beta 1 W1-4: pass `.firstTime` when the device has
+                // never completed onboarding so the header reads
+                // "Bienvenido a Ruul" instead of "de vuelta". Returning
+                // users keep the legacy "de vuelta" copy.
+                SignInView(mode: hasOnboarded ? .returning : .firstTime)
             } else if hasActiveOnboarding || isFirstTimeAuth {
                 // Authenticated branch: either we're mid-onboarding
                 // (entity persisted, restoring on relaunch) OR this is
