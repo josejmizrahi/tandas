@@ -1032,16 +1032,20 @@ Deno.test("scope precedence: rules with different slugs all fire", async () => {
   assertEquals(results.length, 2, "different slugs are different logical rules");
 });
 
-// QUARANTINED 2026-05-12 by Tier 1.7 — expectation conflicts with the
-// engine's `responseStatusIs` default. The condition treats a missing
-// RSVP row as "pending" (see ruleEngine.ts:299 — `rsvp?.status ?? "pending"`),
-// so Carla — who has no RSVP — also matches the group rule's pending
-// filter and gets fined. Test expects 3 results (alice override + alice
-// group + bob group); actual is 4 (adds carla). Either the engine
-// should differentiate "no RSVP" from "pending", or the test should
-// expect 4. Decision deferred to Tier 0.5 cleanup so we don't slip
-// behavior changes into Tier 1 (recurrence). Tracker: NEEDS_TRIAGE.
-Deno.test.ignore("scope precedence: group rule + per-member override coexist (different dedup keys)", async () => {
+Deno.test("scope precedence: group rule + per-member override coexist (different dedup keys)", async () => {
+  // The pre-Tier-0.5 version of this test seeded RSVPs only for Alice
+  // and Bob, leaving Carla with no event_attendance row. The engine's
+  // `responseStatusIs` reads `rsvp?.status ?? "pending"` (defensive),
+  // so a missing RSVP defaulted to "pending" and Carla unexpectedly
+  // matched the group rule's filter — producing 4 fines instead of 3.
+  //
+  // Production never reaches that state: `create_event_v2` seeds
+  // event_attendance for every active member at event creation, so by
+  // the time the eventClosed trigger runs every member has a real
+  // RSVP row. The test fixture, not the engine, was the artifact.
+  //
+  // Fix: seed Carla with an explicit RSVP that doesn't match `pending`
+  // ("going" suffices). Test now reflects the production guarantee.
   const { sink, captured } = captureSink();
 
   const group = makeRule(
@@ -1066,16 +1070,16 @@ Deno.test.ignore("scope precedence: group rule + per-member override coexist (di
     rsvps: [
       { member_user_id: memberAlice.user_id, status: "pending", rsvp_at: null, cancelled_same_day: false },
       { member_user_id: memberBob.user_id,   status: "pending", rsvp_at: null, cancelled_same_day: false },
+      { member_user_id: memberCarla.user_id, status: "going",   rsvp_at: "z",  cancelled_same_day: false },
     ],
   });
   const event = makeEvent("eventClosed");
 
   const results = await runRulesForEvent(event, [group, aliceOverride], ctx);
 
-  // Alice's override hits her (1 result); group rule hits Alice + Bob (2 results)
-  // — but Alice's group target overlaps with the override. The current
-  // implementation lets BOTH the group rule and the per-member override fire
-  // for Alice (different dedup keys). Bob only sees the group rule. Total = 3.
+  // Alice's override hits her (1 result); group rule hits Alice + Bob (2 results).
+  // Alice's group target overlaps with the override but both fire (different
+  // dedup keys). Bob only sees the group rule. Carla (going) skipped. Total = 3.
   assertEquals(results.length, 3);
   const amounts = (captured as { member_id: string; amount: number }[]).sort(
     (a, b) => a.amount - b.amount,

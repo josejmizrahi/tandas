@@ -5,7 +5,7 @@
 //     with unique violation.
 //   - After closing the first, opening a new one with same key → succeeds.
 
-import { assert, assertRejects } from "jsr:@std/assert@1";
+import { assert } from "jsr:@std/assert@1";
 import { adminClient } from "../e2e/_fixtures/supabaseClients.ts";
 import { seedGroup, type SeededGroup } from "../e2e/_fixtures/seedGroup.ts";
 import { cleanupGroup } from "../e2e/_fixtures/cleanup.ts";
@@ -40,25 +40,28 @@ Deno.test("unique index blocks duplicate open vote on same (vote_type, reference
     assert(!firstErr, `first insert failed: ${firstErr?.message}`);
 
     // Second open vote with same (vote_type, reference_id) — must fail.
-    await assertRejects(
-      async () => {
-        const { error } = await admin.from("votes").insert({
-          group_id: g!.groupId,
-          vote_type: "rule_repeal",
-          reference_id: ruleId,
-          title: "Archive rule (second)",
-          created_by_member_id: g!.members[0].memberId,
-          opened_at: new Date().toISOString(),
-          closes_at: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
-          quorum_percent: 50,
-          threshold_percent: 50,
-          is_anonymous: true,
-          status: "open",
-        });
-        if (error) throw error;
-      },
-      Error,
-      "duplicate key value", // postgres unique violation message
+    // supabase-js v2 surfaces PostgrestError as a plain object (NOT an
+    // Error subclass), so `assertRejects(fn, Error, msg)` rejects with
+    // "A non-Error object was rejected" before reaching the message
+    // check. Use inline assertions on the returned `error` shape
+    // instead. Postgres unique violation code is `23505`.
+    const { error: dupErr } = await admin.from("votes").insert({
+      group_id: g!.groupId,
+      vote_type: "rule_repeal",
+      reference_id: ruleId,
+      title: "Archive rule (second)",
+      created_by_member_id: g!.members[0].memberId,
+      opened_at: new Date().toISOString(),
+      closes_at: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+      quorum_percent: 50,
+      threshold_percent: 50,
+      is_anonymous: true,
+      status: "open",
+    });
+    assert(dupErr !== null, "expected unique violation, got success");
+    assert(
+      dupErr.code === "23505" || (dupErr.message ?? "").includes("duplicate key value"),
+      `expected 23505 / duplicate key, got ${dupErr.code}: ${dupErr.message}`,
     );
 
     // Close the first vote — second can now open.

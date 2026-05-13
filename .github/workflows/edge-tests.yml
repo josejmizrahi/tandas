@@ -129,12 +129,14 @@ jobs:
 
       - name: Run DB tests
         # RLS, mutation audit, vote uniqueness. Pegan directo a
-        # postgres via supabase-js admin. continue-on-error: 6/15
-        # tests have pre-existing failures (TypeError on null result,
-        # AssertionError on non-Error rejection) that pre-date Tier
-        # 1; they need their own cleanup pass (Tier 0.5+) and
-        # shouldn't gate the workflow until then.
-        continue-on-error: true
+        # postgres via supabase-js admin. Tier 0.5 (2026-05-12) fixed
+        # the 6 pre-existing failures:
+        #   - rls_update_rules: `enabled` → `is_active` (column dropped in 00058).
+        #   - can_modify_rules: create_group_with_admin now seeds founder
+        #     `roles` jsonb (mig 00128).
+        #   - vote_unique_open: replaced assertRejects with inline
+        #     assert on PostgrestError shape.
+        # No more continue-on-error — this step now truly gates the workflow.
         run: |
           deno test --allow-net --allow-env supabase/functions/_tests/db/
 

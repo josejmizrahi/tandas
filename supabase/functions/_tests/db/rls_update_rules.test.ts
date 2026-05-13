@@ -32,14 +32,14 @@ Deno.test("RLS allows founder UPDATE rules when governance=founder", async () =>
     await setGovernance(g.groupId, "whoCanModifyRules", "founder");
 
     const founder = g.members[0];
-    const { data: rules } = await admin.from("rules").select("id,enabled")
+    const { data: rules } = await admin.from("rules").select("id,is_active")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
-    const initial = rules![0].enabled as boolean;
+    const initial = rules![0].is_active as boolean;
 
     const userScoped = userClient(founder.accessToken!);
     const { error } = await userScoped.from("rules")
-      .update({ enabled: !initial }).eq("id", ruleId);
+      .update({ is_active: !initial }).eq("id", ruleId);
 
     assertEquals(error, null);
   } finally {
@@ -57,20 +57,20 @@ Deno.test("RLS denies founder UPDATE rules when governance=majorityVote", async 
     await setGovernance(g.groupId, "whoCanModifyRules", "majorityVote");
 
     const founder = g.members[0];
-    const { data: rules } = await admin.from("rules").select("id,enabled")
+    const { data: rules } = await admin.from("rules").select("id,is_active")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
 
     const userScoped = userClient(founder.accessToken!);
     const { error } = await userScoped.from("rules")
-      .update({ enabled: false }).eq("id", ruleId);
+      .update({ is_active: false }).eq("id", ruleId);
 
     if (error) {
       assertEquals(error.code === "42501" || error.message.includes("policy"), true);
     } else {
       // No error, but the UPDATE matched zero rows because the policy filtered them out.
-      const { data: after } = await admin.from("rules").select("enabled").eq("id", ruleId).single();
-      assertEquals(after!.enabled, rules![0].enabled, "rule should remain unchanged");
+      const { data: after } = await admin.from("rules").select("is_active").eq("id", ruleId).single();
+      assertEquals(after!.is_active, rules![0].is_active, "rule should remain unchanged");
     }
   } finally {
     if (g) await cleanupGroup(g);
@@ -87,14 +87,14 @@ Deno.test("RLS allows non-founder member UPDATE when governance=anyMember", asyn
     await setGovernance(g.groupId, "whoCanModifyRules", "anyMember");
 
     const bob = g.members[1];
-    const { data: rules } = await admin.from("rules").select("id,enabled")
+    const { data: rules } = await admin.from("rules").select("id,is_active")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
-    const initial = rules![0].enabled as boolean;
+    const initial = rules![0].is_active as boolean;
 
     const userScoped = userClient(bob.accessToken!);
     const { error } = await userScoped.from("rules")
-      .update({ enabled: !initial }).eq("id", ruleId);
+      .update({ is_active: !initial }).eq("id", ruleId);
 
     assertEquals(error, null);
   } finally {
@@ -112,19 +112,19 @@ Deno.test("RLS denies non-founder member UPDATE when governance=founder", async 
     await setGovernance(g.groupId, "whoCanModifyRules", "founder");
 
     const bob = g.members[1];
-    const { data: rules } = await admin.from("rules").select("id,enabled")
+    const { data: rules } = await admin.from("rules").select("id,is_active")
       .eq("group_id", g.groupId).limit(1);
     const ruleId = rules![0].id as string;
 
     const userScoped = userClient(bob.accessToken!);
     const { error } = await userScoped.from("rules")
-      .update({ enabled: false }).eq("id", ruleId);
+      .update({ is_active: false }).eq("id", ruleId);
 
     if (error) {
       assertEquals(error.code === "42501" || error.message.includes("policy"), true);
     } else {
-      const { data: after } = await admin.from("rules").select("enabled").eq("id", ruleId).single();
-      assertEquals(after!.enabled, rules![0].enabled, "rule should remain unchanged");
+      const { data: after } = await admin.from("rules").select("is_active").eq("id", ruleId).single();
+      assertEquals(after!.is_active, rules![0].is_active, "rule should remain unchanged");
     }
   } finally {
     if (g) await cleanupGroup(g);

@@ -26,17 +26,14 @@ import {
 
 const admin = adminClient();
 
-// QUARANTINED 2026-05-12 Tier 1.7 — pre-existing breakage surfaced
-// when edge-tests CI first started running these against a fresh
-// `supabase start`. Fail signature:
-//   close_event: function public.evaluate_event_rules(uuid) does not
-//   exist
-// The legacy `close_event` RPC (mig 00007) tries to call
-// `evaluate_event_rules` which mig 00058 dropped. The test needs to
-// switch to `close_event_no_fines` + emit `eventClosed` manually, OR
-// the close_event RPC needs to be deprecated + dropped. Tier 0.5
-// cleanup will decide.
-Deno.test.ignore("dinner happy path — late check-in → fine → grace → officialized → appeal passed", async () => {
+// Un-quarantined 2026-05-12 Tier 0.5 cleanup. The legacy `close_event`
+// RPC (mig 00007) called `public.evaluate_event_rules(uuid)` which
+// was dropped in mig 00058. Switched the test to `close_event_no_fines`
+// (mig 00098) — same lifecycle effect (status='completed', closed_at,
+// emits eventClosed system_event) without the dead RPC call. The test
+// deactivates auto-rules anyway, so dropping the "fines from close"
+// path is a no-op for this scenario.
+Deno.test("dinner happy path — late check-in → fine → grace → officialized → appeal passed", async () => {
   // ────────────────────────────────────────────────────────────────────
   // SETUP — 3 members, dinner template rules, fresh event
   // ────────────────────────────────────────────────────────────────────
@@ -123,11 +120,15 @@ Deno.test.ignore("dinner happy path — late check-in → fine → grace → off
     // because we deactivated them).
     // ────────────────────────────────────────────────────────────────
 
-    const { error: closeErr } = await alice.client.rpc("close_event", { p_event_id: eventId });
-    if (closeErr) throw new Error(`close_event: ${closeErr.message}`);
+    // close_event_no_fines (mig 00098) emits eventClosed itself, so we
+    // don't need the manual system_events insert that the old
+    // close_event path required. Kept the explicit insert below as
+    // defensive backfill in case the RPC's emit fails — system_events
+    // de-dup is implicit (rule engine runs per row; double-fire is
+    // benign because every active rule was deactivated at L50-53).
+    const { error: closeErr } = await alice.client.rpc("close_event_no_fines", { p_event_id: eventId });
+    if (closeErr) throw new Error(`close_event_no_fines: ${closeErr.message}`);
 
-    // close_event uses the LEGACY rule pipeline; emit eventClosed for
-    // the new pipeline (so the causal-chain assertion sees it).
     await admin.from("system_events").insert({
       group_id:    group.groupId,
       event_type:  "eventClosed",

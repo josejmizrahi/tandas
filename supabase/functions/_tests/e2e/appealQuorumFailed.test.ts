@@ -22,16 +22,13 @@ import {
 
 const admin = adminClient();
 
-// QUARANTINED 2026-05-12 Tier 1.7 — pre-existing breakage surfaced
-// when edge-tests CI first started running these against a fresh
-// `supabase start`. Fail signature:
-//   AssertionError: fine.status expected officialized, got proposed
-// The fine never advanced from proposed → officialized after the
-// 24h grace period. Either finalize-fine-reviews didn't fire (it
-// shouldn't need to in CI's compressed timeline — X-Test-Clock
-// advances time) or the test needs to explicitly invoke that cron
-// before asserting officialized. Tier 0.5 cleanup.
-Deno.test.ignore("2-member group: infractor only eligible → quorum_failed automatic", async () => {
+// Un-quarantined 2026-05-12 Tier 0.5 cleanup. Root cause was the
+// edge-tests workflow not passing `ALLOW_CLOCK_OVERRIDE` into the
+// `supabase functions serve` containers, so the cron silently
+// ignored X-Test-Clock and the fine never advanced past `proposed`.
+// Fixed in CI commit 46aa334 by writing /tmp/edge-fn-env and adding
+// `--env-file /tmp/edge-fn-env` to the serve command.
+Deno.test("2-member group: infractor only eligible → quorum_failed automatic", async () => {
   let group: SeededGroup | null = null;
   try {
     group = await seedGroup({

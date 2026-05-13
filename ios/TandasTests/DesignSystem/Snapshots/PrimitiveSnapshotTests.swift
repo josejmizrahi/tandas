@@ -61,7 +61,17 @@ final class PrimitiveSnapshotTests: XCTestCase {
 
     func test_RuulMoneyView_neutral_light() {
         let view = RuulMoneyView(amount: 1234.50, currency: "MXN", size: .medium)
-        assertImage(view, size: moneySize, scheme: .light)
+        // Lower precision for the two MoneyView tests because
+        // RuulMoneyView is the only primitive using `.monospacedDigit()`,
+        // whose glyph anti-aliasing shifts a sub-pixel across iOS 26
+        // simulator SDK minors (CI macos-15 ships Xcode 26.3 / iOS 26.2;
+        // most engineers' local Xcode is 26.4+). The default 0.99/0.98
+        // floor in `assertImage` flags those text shifts as failures
+        // even though the rendered component is visually identical.
+        // Catastrophic regressions (color flip, sign disappearing) still
+        // fail at 0.95/0.85.
+        assertImage(view, size: moneySize, scheme: .light,
+                    precision: 0.95, perceptualPrecision: 0.85)
     }
 
     func test_RuulMoneyView_negative_dark() {
@@ -72,7 +82,8 @@ final class PrimitiveSnapshotTests: XCTestCase {
             showSign: true,
             color: .negative
         )
-        assertImage(view, size: moneySize, scheme: .dark)
+        assertImage(view, size: moneySize, scheme: .dark,
+                    precision: 0.95, perceptualPrecision: 0.85)
     }
 
     // MARK: - RuulPillButton
@@ -109,6 +120,8 @@ final class PrimitiveSnapshotTests: XCTestCase {
         _ view: V,
         size: CGSize,
         scheme: ColorScheme,
+        precision: Float = 0.99,
+        perceptualPrecision: Float = 0.98,
         filePath: StaticString = #filePath,
         testName: String = #function,
         line: UInt = #line
@@ -116,7 +129,7 @@ final class PrimitiveSnapshotTests: XCTestCase {
         let host = DSSnapshot.host(view, size: size, scheme: scheme)
         assertSnapshot(
             of: host,
-            as: .image(precision: 0.99, perceptualPrecision: 0.98, size: size),
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, size: size),
             named: scheme == .dark ? "dark" : "light",
             file: filePath,
             testName: testName,
