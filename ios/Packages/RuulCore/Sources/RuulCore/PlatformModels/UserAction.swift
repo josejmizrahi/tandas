@@ -63,6 +63,10 @@ public enum ActionType: String, Codable, Sendable, Hashable, CaseIterable {
     case rsvpPending             = "rsvpPending"
     case fineProposalReview      = "fineProposalReview"
     case ruleChangeApplyPending  = "ruleChangeApplyPending"  // NEW: emitted by finalize_vote v3 when rule_change passes
+    /// Tier 5 Beta (mig 00133): inserted by the events insert trigger
+    /// when host_id ≠ created_by. Covers both manual assignment and
+    /// rotation-resolved hosts from auto-generate-events.
+    case hostAssigned            = "hostAssigned"
     // Future phases
     case slotPending             = "slotPending"
     case votePending             = "votePending"

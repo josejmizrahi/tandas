@@ -453,22 +453,20 @@ public struct RotationCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["participants"] }
     public var conflicts: [String] { [] }
-    /// Tier 5 Beta (mig 00132) shipped backend: `next_host_for_series`
-    /// reads `resource_series.metadata.capability_configs.rotation` and
-    /// the cron generator forwards the resolved host_id to
-    /// create_event_v2. Remaining `.incomplete` reasons:
-    ///   1. Wizard renderer doesn't natively handle a "multiPicker over
-    ///      group members" — needs a special case in BuilderFieldRenderer
-    ///      to populate options from group_members instead of a static
-    ///      PickerOption[] list.
-    ///   2. ResourceDetail doesn't yet surface next-host preview
-    ///      ("Próximo anfitrión: <name>").
-    ///   3. Inbox/activity entry for "Te toca ser anfitrión" not wired
-    ///      from the resolved host_id on upcoming events.
-    /// All three are scoped within Tier 5 Beta and gate `.stable`.
-    public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 5 Beta: backend rotation ships (mig 00132 + auto-generate-events). UI surfaces remaining: member-aware multiPicker renderer + next-host preview in ResourceDetail + inbox host-assignment entry.")
-    }
+    /// Tier 5 Beta closed end-to-end:
+    ///   - mig 00132: next_host_for_series + series-level cap_config
+    ///   - auto-generate-events v7: forwards resolved host_id to create_event_v2
+    ///   - mig 00133: trigger inserts user_action(hostAssigned) when host_id ≠ created_by
+    ///   - MemberMultiPickerField: real member-aware multi-picker with ordered output
+    ///   - RotationSectionView: read-only Resource Detail surface (next host,
+    ///     upcoming, rotation order, policy summary)
+    ///   - ActivitySectionView.labelForEventCreated: surfaces host name in
+    ///     the activity feed for rotation-resolved occurrences
+    /// Future work (out of Beta scope, won't reopen .stable):
+    ///   - host_skipped / host_reassigned signals (no schema field today)
+    ///   - swap requests, marketplace, voting on swaps
+    ///   - rotation shared across multiple resources
+    public var status: CapabilityStatus { .stable }
 }
 
 // assignment — discrete responsibility

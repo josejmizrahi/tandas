@@ -159,13 +159,25 @@ public struct BuilderFieldRenderer: View {
             }
 
         case .multiPicker:
-            // Tier 0: no multi-pick UI exists yet. Free-text fallback
-            // produced "Juan, María" strings the backend couldn't parse
-            // into a real selection. Render disabled until a real
-            // multi-pick is wired (Tier 5+).
-            unavailableField(
-                note: "Selección múltiple no disponible — Próximamente."
-            )
+            // Tier 5 (2026-05-13): `participants` in the rotation
+            // capability is a real member multi-picker sourced from the
+            // active group. Output is an ordered JSONConfig.array of
+            // user_id strings — order matters because next_host_for_series
+            // walks `participants[(cycle - 1) % count]` when
+            // order=sequential. Any other multiPicker key still falls
+            // through to the disabled placeholder until its renderer
+            // path lands.
+            if field.key == "participants" {
+                MemberMultiPickerField(
+                    label: field.label,
+                    helpText: field.helpText,
+                    binding: jsonArrayBinding()
+                )
+            } else {
+                unavailableField(
+                    note: "Selección múltiple no disponible — Próximamente."
+                )
+            }
 
         case .memberPicker:
             // Tier 0: member directory picker not wired yet. Free-text
@@ -281,6 +293,26 @@ public struct BuilderFieldRenderer: View {
         let full = ISO8601DateFormatter()
         if let d = full.date(from: raw) { return d }
         return nil
+    }
+
+    /// Binds the field's JSONConfig value as a `[String]` of user_ids
+    /// (or other primitive ids). Storage shape: `JSONConfig.array(
+    /// .string("…"), .string("…"), …)`. `set` rewrites the whole
+    /// array each time; the caller is responsible for de-duplication
+    /// and ordering (the picker sub-view enforces both).
+    private func jsonArrayBinding() -> Binding<[String]> {
+        Binding(
+            get: {
+                guard case let .array(items)? = values[field.key] else { return [] }
+                return items.compactMap { item in
+                    if case let .string(s) = item { return s }
+                    return nil
+                }
+            },
+            set: { newList in
+                values[field.key] = .array(newList.map { .string($0) })
+            }
+        )
     }
 
     /// Binds the field's current JSONConfig value to an option index in

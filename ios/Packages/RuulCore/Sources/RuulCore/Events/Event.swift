@@ -27,6 +27,12 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
     public let capacityMax: Int?
     public let allowPlusOnes: Bool
     public let maxPlusOnesPerMember: Int
+    /// Recurrence link. nil for one-off events; populated when this event
+    /// was materialized by `auto-generate-events` from a `resource_series`
+    /// (mig 00126). Drives Tier 5 rotation lookups in the Resource Detail
+    /// section — without it the rotation surface has no series to read
+    /// the cap_config from.
+    public let seriesId: UUID?
     public let createdAt: Date
     public let updatedAt: Date
 
@@ -55,6 +61,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         case capacityMax           = "capacity_max"
         case allowPlusOnes         = "allow_plus_ones"
         case maxPlusOnesPerMember  = "max_plus_ones_per_member"
+        case seriesId              = "series_id"
     }
 
     public init(
@@ -84,7 +91,8 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         updatedAt: Date? = nil,
         capacityMax: Int? = nil,
         allowPlusOnes: Bool = false,
-        maxPlusOnesPerMember: Int = 0
+        maxPlusOnesPerMember: Int = 0,
+        seriesId: UUID? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -113,6 +121,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         self.capacityMax = capacityMax
         self.allowPlusOnes = allowPlusOnes
         self.maxPlusOnesPerMember = maxPlusOnesPerMember
+        self.seriesId = seriesId
     }
 
     /// Tolerant decoder: missing newer columns (e.g. on a fixture from
@@ -147,6 +156,7 @@ public struct Event: Identifiable, Codable, Sendable, Hashable {
         self.capacityMax          = try c.decodeIfPresent(Int.self,    forKey: .capacityMax)
         self.allowPlusOnes        = (try? c.decode(Bool.self, forKey: .allowPlusOnes)) ?? false
         self.maxPlusOnesPerMember = (try? c.decode(Int.self,  forKey: .maxPlusOnesPerMember)) ?? 0
+        self.seriesId             = try c.decodeIfPresent(UUID.self,   forKey: .seriesId)
     }
 }
 

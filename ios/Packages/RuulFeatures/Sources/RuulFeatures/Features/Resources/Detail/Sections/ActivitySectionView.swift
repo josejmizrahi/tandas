@@ -154,7 +154,7 @@ public struct ActivitySectionView: View {
 
     private func labelFor(_ event: SystemEvent) -> String {
         switch event.eventType {
-        case .eventCreated:        return "Se creó el evento"
+        case .eventCreated:        return labelForEventCreated(event)
         case .eventClosed:         return isCancelled(event) ? "El evento se canceló" : "El evento cerró"
         case .checkInRecorded:     return "Alguien hizo check-in"
         case .rsvpSubmitted:       return "Alguien respondió"
@@ -174,6 +174,21 @@ public struct ActivitySectionView: View {
         case .ruleAmountChanged:   return "Cambió el monto de una regla"
         default:                   return "Actividad"
         }
+    }
+
+    /// Tier 5 Beta: when the eventCreated payload carries `host_id`,
+    /// surface the host's display name in the activity row so the feed
+    /// reflects rotation assignments without a separate "hostAssigned"
+    /// SystemEventType. The host_id payload was added in mig 00097 and
+    /// preserved through 00126's recurrence wiring.
+    private func labelForEventCreated(_ event: SystemEvent) -> String {
+        let baseLabel = "Se creó el evento"
+        guard case .string(let raw) = event.payload["host_id"],
+              let hostUserId = UUID(uuidString: raw),
+              let host = context.memberDirectory[hostUserId] else {
+            return baseLabel
+        }
+        return "\(baseLabel) · anfitrión: \(host.displayName)"
     }
 
     @MainActor
