@@ -131,10 +131,13 @@ begin
       end if;
     end if;
 
-    declare
-      v_event_id uuid;
-    begin
-      v_event_id := public.create_event_v2(
+    -- create_event_v2 returns `public.events` (the full row, not a bare
+    -- uuid), so we extract `.id`. 00101 had this same call returning the
+    -- record into a uuid variable, which Postgres surfaced at runtime as
+    -- "invalid input syntax for type uuid: '(<row tuple>)'" — fixed here
+    -- by selecting the id explicitly.
+    select e.id into v_resource_id
+      from public.create_event_v2(
         p_group_id            := p_group_id,
         p_title               := v_event_title,
         p_starts_at           := v_event_starts_at,
@@ -149,9 +152,7 @@ begin
         p_apply_rules         := true,
         p_is_recurring_generated := false,
         p_rsvp_deadline       := v_event_deadline
-      );
-      v_resource_id := v_event_id;
-    end;
+      ) as e;
 
   when 'asset' then
     v_asset_name     := p_basic_fields->>'name';
