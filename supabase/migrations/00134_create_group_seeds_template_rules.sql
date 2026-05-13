@@ -148,10 +148,17 @@ begin
     -- so a separate iOS-side call to seed_template_rules from the
     -- legacy wizard path becomes a no-op on the second pass.
     v_default_rules := template_config -> 'defaultRules';
+    raise notice '[00134] template=% defaultRules typeof=% length=%',
+      p_base_template,
+      jsonb_typeof(v_default_rules),
+      coalesce(jsonb_array_length(coalesce(v_default_rules, '[]'::jsonb)), 0);
     if v_default_rules is not null
        and jsonb_typeof(v_default_rules) = 'array'
        and jsonb_array_length(v_default_rules) > 0 then
+      raise notice '[00134] calling seed_template_rules(% , %)', p_base_template, g.id;
       perform public.seed_template_rules(p_base_template, g.id);
+      raise notice '[00134] seed_template_rules returned. Rules now in group: %',
+        (select count(*) from public.rules where group_id = g.id);
     end if;
   end if;
 
