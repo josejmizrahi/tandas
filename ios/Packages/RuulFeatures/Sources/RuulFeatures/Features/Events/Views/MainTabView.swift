@@ -431,7 +431,10 @@ public struct MainTabView: View {
                         onOpenSettings: { settingsRoute = true },
                         onEditProfile: { editProfilePresented = true },
                         onSignOut: {
-                            Task { try? await app.auth.signOut() }
+                            // app.signOut revokes the APNs token first
+                            // so this device stops receiving pushes for
+                            // the user that just left.
+                            Task { try? await app.signOut() }
                         },
                         onOpenMembers: { membersSheetPresented = true },
                         onOpenGovernance: { /* Fase 6 placeholder */ },

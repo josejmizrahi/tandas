@@ -318,6 +318,21 @@ public final class AppState {
         }
     }
 
+    /// Sign out + revoke the device's APNs token in one step. Use this
+    /// everywhere instead of calling `auth.signOut()` directly: a bare
+    /// `auth.signOut` leaves the `notification_tokens` row owned by the
+    /// now-gone session, so a shared device that swaps users keeps
+    /// receiving pushes addressed to the original account.
+    ///
+    /// The revoke is best-effort — failures are logged inside
+    /// `NotificationService.revokeTokenIfRegistered()` but never block the
+    /// sign-out. The user always ends up logged out client-side even if
+    /// the server-side revoke didn't reach the DB.
+    public func signOut() async throws {
+        await notifications?.revokeTokenIfRegistered()
+        try await auth.signOut()
+    }
+
     public func handleIncomingURL(_ url: URL) {
         if let code = InviteLinkGenerator.parseInviteCode(from: url) {
             pendingInviteCode = code

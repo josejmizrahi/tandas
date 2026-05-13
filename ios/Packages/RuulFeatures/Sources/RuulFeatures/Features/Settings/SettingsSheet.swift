@@ -125,7 +125,11 @@ public struct SettingsSheet: View {
     private var signOutButton: some View {
         Button {
             Task {
-                try? await app.auth.signOut()
+                // app.signOut revokes the APNs token before clearing the
+                // session, so the device stops receiving pushes addressed
+                // to this user. Plain `auth.signOut()` leaks pushes to
+                // the next user of a shared device.
+                try? await app.signOut()
                 dismiss()
             }
         } label: {

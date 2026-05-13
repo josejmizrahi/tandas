@@ -77,6 +77,39 @@ public final class NotificationService: NSObject {
         }
     }
 
+    /// Revoke the locally-registered APNs token from the server (best-effort)
+    /// and clear local state.
+    ///
+    /// Called by `AppState.signOut()` before `auth.signOut()` so that the
+    /// device's `notification_tokens` row is detached from the user before
+    /// they leave. Without this step, a shared family device that switches
+    /// users keeps delivering APNs pushes addressed to the original user
+    /// to whoever now holds the phone — a cross-user data leak.
+    ///
+    /// Semantics:
+    /// - If no token was registered this session, no-op.
+    /// - Repo errors (network drop, server transient failure) are logged
+    ///   and swallowed: the user must always end up signed out client-side
+    ///   even if the server-side revoke fails. The orphaned row is
+    ///   recoverable via the server-side outbox janitor + future
+    ///   `notification_tokens` cleanup on member removal.
+    /// - Also clears the app icon badge and pending/delivered local
+    ///   notifications so the next user lands on a fresh notification state.
+    public func revokeTokenIfRegistered() async {
+        if let token = lastDeviceToken {
+            do {
+                try await tokenRepo.revokeToken(token)
+                log.debug("revoked APNs token on sign out")
+            } catch {
+                log.warning("revokeToken on sign out failed: \(error.localizedDescription)")
+            }
+        }
+        lastDeviceToken = nil
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        try? await center.setBadgeCount(0)
+    }
+
     /// Schedule the 3 reminders for an event. Idempotent: re-scheduling
     /// replaces previous notifications for the same eventId.
     public func scheduleLocalReminders(for event: Event, vocabulary: String) async {

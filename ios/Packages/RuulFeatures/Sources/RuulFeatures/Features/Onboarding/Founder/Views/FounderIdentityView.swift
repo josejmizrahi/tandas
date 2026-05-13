@@ -75,8 +75,11 @@ public struct FounderIdentityView: View {
             // Sign out the anon session if `GroupsRepository.createInitial`
             // already ran. Failure is fine — the worst case is the anon
             // lingers until the user signs in for real, at which point
-            // signInWithIdToken / verifyOTP replaces it.
-            try? await app.auth.signOut()
+            // signInWithIdToken / verifyOTP replaces it. Anon sessions
+            // never get a real APNs token registered (no push perms
+            // requested yet), so revokeTokenIfRegistered is a no-op here
+            // — but the orchestrator stays consistent across the codebase.
+            try? await app.signOut()
             // Mark the flag so AuthGate's `session==nil && hasOnboarded`
             // gate routes to SignInView. The ".onReceive" subscriber on
             // AuthGate picks up the notification synchronously.
