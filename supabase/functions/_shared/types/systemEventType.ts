@@ -29,6 +29,7 @@ export const systemEventTypeValues = [
   "voteOpened",
   "voteCast",
   "voteResolved",
+  "fundCreated",
   "fundDeposit",
   "fundThresholdReached",
   "positionChanged",

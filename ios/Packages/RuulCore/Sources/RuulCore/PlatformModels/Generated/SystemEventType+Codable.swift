@@ -32,6 +32,7 @@ extension SystemEventType {
         .voteOpened,
         .voteCast,
         .voteResolved,
+        .fundCreated,
         .fundDeposit,
         .fundThresholdReached,
         .positionChanged,
@@ -70,6 +71,7 @@ extension SystemEventType {
         "voteOpened",
         "voteCast",
         "voteResolved",
+        "fundCreated",
         "fundDeposit",
         "fundThresholdReached",
         "positionChanged",
@@ -119,6 +121,7 @@ extension SystemEventType {
         case .voteOpened: return "voteOpened"
         case .voteCast: return "voteCast"
         case .voteResolved: return "voteResolved"
+        case .fundCreated: return "fundCreated"
         case .fundDeposit: return "fundDeposit"
         case .fundThresholdReached: return "fundThresholdReached"
         case .positionChanged: return "positionChanged"
@@ -160,6 +163,7 @@ extension SystemEventType {
         case "voteOpened": return .voteOpened
         case "voteCast": return .voteCast
         case "voteResolved": return .voteResolved
+        case "fundCreated": return .fundCreated
         case "fundDeposit": return .fundDeposit
         case "fundThresholdReached": return .fundThresholdReached
         case "positionChanged": return .positionChanged
