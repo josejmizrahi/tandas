@@ -17,7 +17,7 @@ public extension SystemEventType {
              .slotSwapRequested, .slotSwapApproved,
              .bookingCreated, .bookingCancelled, .bookingExpired,
              .assetCreated,
-             .fundDeposit, .fundThresholdReached,
+             .fundCreated, .fundDeposit, .fundThresholdReached,
              .positionChanged,
              .ruleEnabledChanged, .ruleAmountChanged,
              .pendingChangeApplied:

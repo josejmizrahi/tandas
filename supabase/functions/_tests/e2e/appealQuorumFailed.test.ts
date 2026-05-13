@@ -40,11 +40,16 @@ Deno.test("2-member group: infractor only eligible → quorum_failed automatic",
     });
     const [alice, bob] = group.members;
 
-    // Deactivate other rules
+    // Beta 1 W1-2 (mig 00137): all monetary fines ship is_active=false.
+    // Force "Llegada tardía" on and everything else off — this test
+    // only exercises that rule.
     await admin.from("rules")
       .update({ is_active: false })
+      .eq("group_id", group.groupId);
+    await admin.from("rules")
+      .update({ is_active: true })
       .eq("group_id", group.groupId)
-      .neq("name", "Llegada tardía");
+      .eq("name", "Llegada tardía");
 
     // Create event 90 min ago, Bob RSVPs going + checks in 75 min late
     const startsAt = new Date(Date.now() - 90 * 60_000);

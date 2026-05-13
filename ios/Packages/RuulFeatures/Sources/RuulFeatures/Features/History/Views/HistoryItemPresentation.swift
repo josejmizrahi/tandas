@@ -150,6 +150,10 @@ public struct HistoryItemPresentation {
             self.icon = "house.fill"
             self.title = "\(actor) registró un recurso"
             self.tone = .info
+        case .fundCreated:
+            self.icon = "banknote"
+            self.title = "\(actor) creó un fondo"
+            self.tone = .info
         case .ruleEnabledChanged:
             self.icon = "switch.2"
             self.title = "\(actor) cambió el estado de una regla"

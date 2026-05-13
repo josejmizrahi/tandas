@@ -68,6 +68,10 @@ Deno.test("palco shared_resource scenario — 5 family members, 17 slots, 1 no-s
 
     // Sanity: shared_no_show rule was seeded into public.rules via
     // seed_template_rules (driven by templates.config.defaultRules).
+    //
+    // Beta 1 W1-2 (mig 00137): monetary fines ship is_active=false by
+    // default. shared_no_show carries a fine consequence, so it lands
+    // inactive — the test activates it here for the slot-expired flow.
     const { data: seededRules } = await admin
       .from("rules")
       .select("slug, is_active, trigger, conditions, consequences")
@@ -76,7 +80,13 @@ Deno.test("palco shared_resource scenario — 5 family members, 17 slots, 1 no-s
       .single();
     assert(seededRules, "shared_no_show rule must be seeded by template");
     assertEquals((seededRules.trigger as { eventType: string }).eventType, "slotExpired");
-    assertEquals(seededRules.is_active, true);
+    assertEquals(seededRules.is_active, false, "monetary fine must seed inactive post W1-2");
+
+    // Activate it so the rule actually fires for the slotExpired test flow.
+    await admin.from("rules")
+      .update({ is_active: true })
+      .eq("group_id", group.groupId)
+      .eq("slug", "shared_no_show");
 
     // ────────────────────────────────────────────────────────────────
     // STEP 2: Founder creates the asset (palco).

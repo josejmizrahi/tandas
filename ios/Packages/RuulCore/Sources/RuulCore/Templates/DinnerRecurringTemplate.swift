@@ -27,6 +27,13 @@ public enum DinnerRecurringTemplate {
     /// The 5 default rules for "Cena recurrente". All MXN amounts; the
     /// template-specific UI in Sprint 1c will let founders edit amounts +
     /// toggle activeness before the group goes live.
+    ///
+    /// Beta 1 W1-2 policy: all monetary-fine rules ship `isActive: false`
+    /// by default. The founder activates them explicitly in `RulesView`
+    /// once they understand the group's social contract. Soft / reminder
+    /// rules (none in this template today) may ship ON. See
+    /// `supabase/migrations/00137_template_fines_opt_in_default.sql` for
+    /// the backend mirror.
     public static func defaultRules(groupId: UUID) -> [Rule] {
         [
             // Rule 1 — Llegada tardía (escalating fine)
@@ -37,7 +44,7 @@ public enum DinnerRecurringTemplate {
                 groupId: groupId,
                 slug: RuleSlug.lateArrival,
                 name: "Llegada tardía",
-                isActive: true,
+                isActive: false,  // Beta 1 W1-2: monetary fines opt-in
                 trigger: RuleTrigger(eventType: .checkInRecorded),
                 conditions: [
                     RuleCondition(
@@ -65,7 +72,7 @@ public enum DinnerRecurringTemplate {
                 groupId: groupId,
                 slug: RuleSlug.noResponse,
                 name: "No confirmó a tiempo",
-                isActive: true,
+                isActive: false,  // Beta 1 W1-2: monetary fines opt-in
                 trigger: RuleTrigger(eventType: .eventClosed),
                 conditions: [
                     RuleCondition(
@@ -89,7 +96,7 @@ public enum DinnerRecurringTemplate {
                 groupId: groupId,
                 slug: RuleSlug.sameDayCancel,
                 name: "Cancelación mismo día",
-                isActive: true,
+                isActive: false,  // Beta 1 W1-2: monetary fines opt-in
                 trigger: RuleTrigger(eventType: .rsvpChangedSameDay),
                 conditions: [RuleCondition(type: .alwaysTrue)],
                 consequences: [
@@ -108,7 +115,7 @@ public enum DinnerRecurringTemplate {
                 groupId: groupId,
                 slug: RuleSlug.noShow,
                 name: "No-show",
-                isActive: true,
+                isActive: false,  // Beta 1 W1-2: monetary fines opt-in
                 trigger: RuleTrigger(eventType: .eventClosed),
                 conditions: [
                     RuleCondition(

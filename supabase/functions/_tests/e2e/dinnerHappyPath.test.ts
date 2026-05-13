@@ -50,14 +50,18 @@ Deno.test("dinner happy path — late check-in → fine → grace → officializ
     });
     const [alice, bob, carla] = group.members;
 
-    // Deactivate the no-show + no-rsvp + same-day-cancel rules so the
-    // test only exercises "Llegada tardía". This keeps the assertions
-    // focused — the other rules have their own coverage in the Deno
-    // unit tests for the rule engine.
+    // After Beta 1 W1-2 (mig 00137) all monetary fines from the dinner
+    // template ship `is_active=false` (opt-in by founder consent). This
+    // test exercises "Llegada tardía" specifically, so we explicitly
+    // (re-)activate it and force-deactivate every other rule so the
+    // assertions stay focused on a single rule firing path.
     await admin.from("rules")
       .update({ is_active: false })
+      .eq("group_id", group.groupId);
+    await admin.from("rules")
+      .update({ is_active: true })
       .eq("group_id", group.groupId)
-      .neq("name", "Llegada tardía");
+      .eq("name", "Llegada tardía");
 
     // Create event 90 min ago so check-in lateness is meaningful.
     const startsAt = new Date(Date.now() - 90 * 60_000);
