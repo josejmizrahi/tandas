@@ -21,10 +21,23 @@ public enum InviteLinkGenerator {
         URL(string: "https://ruul.app/invite/\(code)")!
     }
 
-    /// Pre-formatted share message used by `ShareLink` in `InviteMembersView`.
+    /// Pre-formatted share message used by `ShareLink` in `InviteMembersView`
+    /// and `GroupInfoSheet`.
+    ///
+    /// Beta 1 W1-5: shipped the universal `https://ruul.app/invite/<code>`
+    /// URL alongside the message — AASA isn't live, so the link opened
+    /// Safari to a 404 and the invitee abandoned. New format leads with
+    /// the plaintext 6-char code (uppercased for easy copy) and gives the
+    /// recipient a one-line action: download Ruul, tap "Unirme con código",
+    /// paste. No dead URLs.
     public static func shareMessage(groupName: String, code: String) -> String {
-        "Te invito a \(groupName) en ruul. Aquí coordinamos todo: turnos, RSVP, " +
-        "reglas. Únete: \(universal(code: code).absoluteString)"
+        """
+        Te invito a "\(groupName)" en Ruul.
+
+        Código: \(code.uppercased())
+
+        Descarga la app y entra con ese código en "Unirme con código".
+        """
     }
 
     /// Parse an inbound URL into an invite code, if it matches either format.

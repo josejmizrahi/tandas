@@ -41,11 +41,25 @@ struct InviteLinkGeneratorTests {
         #expect(url.absoluteString == "https://ruul.app/invite/abc123")
     }
 
-    @Test("share message includes group name and link")
+    @Test("share message includes group name and plaintext code (no dead URL)")
     func shareMessage() {
+        // Beta 1 W1-5: shareMessage must NOT carry the universal
+        // https://ruul.app/invite/<code> URL — AASA isn't live yet, so
+        // that link opens Safari to a 404 and the invitee abandons.
+        // Plaintext code is the primary affordance; recipient opens
+        // the app and pastes it into JoinGroupSheet.
         let msg = InviteLinkGenerator.shareMessage(groupName: "Los Cuates", code: "xyz")
         #expect(msg.contains("Los Cuates"))
-        #expect(msg.contains("https://ruul.app/invite/xyz"))
+        #expect(msg.uppercased().contains("XYZ"), "code must appear in plaintext")
+        #expect(msg.localizedCaseInsensitiveContains("código"), "must label the code clearly")
+        #expect(!msg.contains("https://ruul.app"), "must not ship the broken universal link")
+        #expect(!msg.contains("http://"), "must not ship any dead http URL")
+    }
+
+    @Test("share message uppercases the code so it's easy to copy")
+    func shareMessageUppercases() {
+        let msg = InviteLinkGenerator.shareMessage(groupName: "G", code: "abc123")
+        #expect(msg.contains("ABC123"))
     }
 
     @Test("parseInviteCode extracts from custom scheme")

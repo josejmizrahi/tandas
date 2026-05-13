@@ -46,10 +46,6 @@ public struct GroupInfoSheet: View {
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.info")
 
-    private var url: URL {
-        InviteLinkGenerator.universal(code: group.inviteCode)
-    }
-
     private var shareMessage: String {
         InviteLinkGenerator.shareMessage(groupName: group.name, code: group.inviteCode)
     }
@@ -378,7 +374,10 @@ public struct GroupInfoSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             sectionLabel("INVITAR")
             codeCard
-            linkRow
+            // Beta 1 W1-5: previous `linkRow` rendered the universal
+            // https://ruul.app/invite/<code> URL — broken until AASA
+            // ships. Removed; codeCard already exposes the canonical
+            // affordance and shareButton sends the plaintext message.
             shareButton
         }
     }
@@ -419,24 +418,14 @@ public struct GroupInfoSheet: View {
         .sensoryFeedback(.success, trigger: copied)
     }
 
-    private var linkRow: some View {
-        Text(url.absoluteString)
-            .ruulTextStyle(RuulTypography.callout)
-            .foregroundStyle(Color.ruulTextSecondary)
-            .lineLimit(2)
-            .padding(RuulSpacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulBackgroundRecessed)
-            )
-    }
-
     private var shareButton: some View {
+        // Beta 1 W1-5: share the plaintext message as the primary item.
+        // Previous `item: url` sent the dead https://ruul.app URL; tapping
+        // it in WhatsApp opened Safari to a 404 (no AASA wired). The
+        // message itself (with the uppercased code) is the affordance now.
         ShareLink(
-            item: url,
-            subject: Text("Te invito a \(group.name)"),
-            message: Text(shareMessage)
+            item: shareMessage,
+            subject: Text("Te invito a \(group.name)")
         ) {
             HStack {
                 Image(systemName: "square.and.arrow.up")
