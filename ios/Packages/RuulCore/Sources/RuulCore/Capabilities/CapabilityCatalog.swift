@@ -636,17 +636,18 @@ public struct MoneyCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["ledger"] }
     public var conflicts: [String] { [] }
-    /// Tier 6 slice 18 (mig 00136) shipped: balance projection views
-    /// (`member_balances_per_group` + `member_balances_per_resource`)
-    /// aggregate ledger_entries at read time, and MoneySectionView now
-    /// renders the top 3 non-zero balances inline. Remaining
-    /// `.incomplete` reasons (separate slices, not Beta 1 scope):
-    ///   - UI form for who-can-add / default-split / settlement /
-    ///     reminders (requiredFields/optionalFields still empty)
-    ///   - Settlement workflow (one-tap "salda ahora")
-    ///   - `fund` resource_type creation path (Tier 6 slice 19)
+    /// Tier 6 (mig 00136 + 00139 + 00140 + 00141) shipped:
+    ///   - balance projection views aggregate ledger_entries at read time
+    ///   - MoneySectionView renders top 3 non-zero balances inline
+    ///   - `fund` resource_type creatable via create_fund + wizard branch
+    ///   - fundDeposit emits on every contribution to a fund
+    ///   - fundThresholdReached emits once when cumulative deposits in
+    ///     the fund's currency cross target_amount_cents
+    /// `.incomplete` remains because the wizard form for who-can-add
+    /// / default-split / settlement is still empty, and the
+    /// settlement workflow ("salda ahora" one-tap) isn't wired.
     public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 6 slice 18 shipped balance projection. Remaining: who-can-add / split / settlement form + fund resource_type creation path.")
+        .incomplete(reason: "Tier 6 shipped balance projection + fund stack + deposit/threshold emitters. Remaining: who-can-add / split / settlement form + settlement workflow.")
     }
 }
 
