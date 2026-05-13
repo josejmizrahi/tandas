@@ -628,14 +628,18 @@ public struct VotingCapability: CapabilityBlock {
     public var displayName: String { "Votación" }
     public var summary: String { "Decisión colectiva con quórum y umbral." }
     public var enabledResourceTypes: [ResourceType] { [.proposal, .booking] }
-    public var requiredFields: [BuilderField] { [] }
-    public var optionalFields: [BuilderField] {
+    /// Tier 3 (2026-05-13) promoted quorum/threshold/anonymous to required
+    /// so step 3 of the wizard renders them. Pre-Tier-3 they were optional
+    /// and never surfaced — the wizard collected nothing and start_vote
+    /// silently used groups.governance defaults for every vote.
+    public var requiredFields: [BuilderField] {
         [
-            BuilderField(key: "quorumPercent",   label: "Quórum (%)", kind: .integer),
-            BuilderField(key: "thresholdPercent", label: "Umbral (%)", kind: .integer),
-            BuilderField(key: "anonymous",       label: "Anónimo",     kind: .boolean)
+            BuilderField(key: "quorumPercent",    label: "Quórum (%)",  kind: .integer),
+            BuilderField(key: "thresholdPercent", label: "Umbral (%)",  kind: .integer),
+            BuilderField(key: "anonymous",        label: "Anónimo",     kind: .boolean)
         ]
     }
+    public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "voting.cast", label: "Votar", surface: .resourceDetail)]
@@ -649,12 +653,18 @@ public struct VotingCapability: CapabilityBlock {
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
-    /// Tier 0 audit 2026-05-12: enabledResourceTypes = [proposal, booking]
-    /// — both raise in build_resource_from_draft. quorum/threshold/anon
-    /// in optionalFields means step 3 doesn't surface them. start_vote
-    /// reads groups.governance, not capability_config voting.
+    /// Tier 3 (mig 00130) shipped: start_vote now consults
+    /// `p_payload.capability_config.voting` before falling back to
+    /// `groups.governance`. The remaining .incomplete blocker is the
+    /// resource-creation side — neither `proposal` nor `booking` is yet
+    /// creatable via `build_resource_from_draft`, so no wizard reaches
+    /// this capability today. When those resource types ship, the
+    /// caller (LiveVoteRepository or equivalent) must pluck the cap
+    /// config off `resource_capabilities.config.voting` and forward it
+    /// in `p_payload.capability_config.voting` to make the wizard's
+    /// values stick on each vote opened against that resource.
     public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 3: needs proposal/booking resource_types creatable + start_vote reading capability_config voting.")
+        .incomplete(reason: "Tier 5+: ship proposal/booking creation paths so the wizard can actually persist voting cap_config (start_vote already reads it as of Tier 3 / mig 00130).")
     }
 }
 
