@@ -115,7 +115,13 @@ serve(withSentry(async (req) => {
     let producedFor = 0;
     let latest: Date | null = null;
     for (const ts of next) {
-      const created = await createOccurrence(supabase, s, ts);
+      // Cycle number is 1-indexed: the very first ever occurrence of a
+      // series is cycle 1, the second is cycle 2, etc. Both already
+      // materialized rows AND ones produced earlier in THIS run count
+      // toward the cycle, so rotation rolls forward correctly across
+      // cron invocations.
+      const cycle = alreadyGenerated + producedFor + 1;
+      const created = await createOccurrence(supabase, s, ts, cycle);
       if (created.error) {
         result.errors.push({ series_id: s.id, error: created.error });
         // Don't abort the whole series — try the next timestamp; the
@@ -218,11 +224,19 @@ async function loadSeriesState(
  * For `event`: calls create_event_v2(p_series_id=...). The mig 00126
  * RPC honors ON CONFLICT (series_id, starts_at) DO NOTHING, so a
  * concurrent or repeated run is idempotent.
+ *
+ * Tier 5 Beta (mig 00132): if the series carries a rotation
+ * capability_config (metadata.capability_configs.rotation), resolve
+ * the host via next_host_for_series(series_id, cycle) and forward it
+ * via p_host_id. When no rotation config is present, p_host_id stays
+ * null and create_event_v2 falls back to legacy
+ * next_host_for_group() (groups.rotation_enabled + group_members.turn_order).
  */
 async function createOccurrence(
   supabase: SupabaseClient,
   s: SeriesRow,
   ts: Date,
+  cycle: number,
 ): Promise<{ error: string | null; skipped: boolean }> {
   switch (s.resource_type) {
     case "event": {
@@ -231,6 +245,33 @@ async function createOccurrence(
       const durationMinutes = (s.metadata?.["duration_minutes"] as number | undefined) ?? 180;
       const description = s.metadata?.["description"] as string | undefined;
       const coverImageName = s.metadata?.["cover_image_name"] as string | undefined;
+
+      // Resolve rotation host BEFORE the create call so we can pass
+      // p_host_id explicitly. The RPC's own host resolution
+      // (next_host_for_group on groups.rotation_enabled) still acts
+      // as the legacy fallback when p_host_id stays null here.
+      let resolvedHostId: string | null = null;
+      const rotationCfg = (s.metadata as Record<string, unknown>)?.["capability_configs"];
+      const hasRotation = rotationCfg
+        && typeof rotationCfg === "object"
+        && rotationCfg !== null
+        && "rotation" in (rotationCfg as Record<string, unknown>);
+      if (hasRotation) {
+        const { data: hostId, error: hostErr } = await supabase.rpc("next_host_for_series", {
+          p_series_id: s.id,
+          p_cycle:     cycle,
+        });
+        if (hostErr) {
+          // Sentry breadcrumb via console.error; don't abort the
+          // occurrence creation — fall back to legacy host resolution.
+          console.error(
+            `auto-generate-events: next_host_for_series failed for series ${s.id} cycle ${cycle}`,
+            hostErr,
+          );
+        } else if (typeof hostId === "string" && hostId.length > 0) {
+          resolvedHostId = hostId;
+        }
+      }
 
       const { error } = await supabase.rpc("create_event_v2", {
         p_group_id:              s.group_id,
@@ -242,6 +283,7 @@ async function createOccurrence(
         p_apply_rules:           true,
         p_is_recurring_generated: true,
         p_series_id:             s.id,
+        p_host_id:               resolvedHostId,
       });
       // Idempotency: the RPC's ON CONFLICT clause makes a repeat a
       // no-op, returning the existing row. PostgREST surfaces this as

@@ -362,15 +362,59 @@ public struct RotationCapability: CapabilityBlock {
     public var id: String { "rotation" }
     public var displayName: String { "Rotación" }
     public var summary: String { "Asigna un rol o turno rotativamente entre los miembros." }
+    /// Founder decision 2026-05-13: rotation is a capability on
+    /// `resource_series` for Tier 5 Beta. Only events (recurring) are
+    /// in scope today — slot/position remain declarative future scope.
+    /// The wizard reaches this capability when configuring a series.
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .position] }
     public var requiredFields: [BuilderField] {
-        [BuilderField(key: "purpose", label: "Para qué rola", kind: .text,
-                      helpText: "host, payout, slot, etc.")]
+        [
+            BuilderField(
+                key: "purpose",
+                label: "Para qué rola",
+                kind: .text,
+                helpText: "host, payout, slot, etc."
+            ),
+            BuilderField(
+                key: "participants",
+                label: "Miembros que rotan",
+                kind: .multiPicker,
+                helpText: "Selecciona quiénes entran al ciclo de rotación."
+            ),
+            BuilderField(
+                key: "order",
+                label: "Orden",
+                kind: .picker,
+                options: [
+                    .init(value: .string("sequential"), label: "En orden (1 → 2 → 3 → 1)"),
+                    .init(value: .string("random"),     label: "Aleatorio determinístico")
+                ]
+            ),
+            BuilderField(
+                key: "frequency",
+                label: "Frecuencia",
+                kind: .picker,
+                options: [
+                    .init(value: .string("every_event"), label: "Cada ocurrencia")
+                ],
+                // Tier 5 Beta scope: only every_event ships. Adding
+                // every_n_events is a follow-up that requires the
+                // generator to divide cycle by N before lookup.
+                dependsOn: nil
+            )
+        ]
     }
     public var optionalFields: [BuilderField] {
         [
-            BuilderField(key: "orderStrategy", label: "Orden", kind: .picker),
-            BuilderField(key: "swapPolicy", label: "Política de cambio", kind: .picker)
+            BuilderField(
+                key: "replacementPolicy",
+                label: "Si el elegido no está",
+                kind: .picker,
+                options: [
+                    .init(value: .string("skip_to_next"),         label: "Pasa al siguiente"),
+                    .init(value: .string("host_stays_until_swap"), label: "Se queda hasta swap")
+                ]
+            )
         ]
     }
     public var suggestedRules: [RuleTemplate] {
@@ -409,13 +453,21 @@ public struct RotationCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["participants"] }
     public var conflicts: [String] { [] }
-    /// Tier 0 audit 2026-05-12: orderStrategy + swapPolicy declared as
-    /// `.picker` with NO options → BuilderFieldRenderer would fall to
-    /// free text. Runtime: `next_host_for_group` reads
-    /// `groups.turn_order`, NOT capability_config rotation. The toggle
-    /// promises behavior nothing delivers.
+    /// Tier 5 Beta (mig 00132) shipped backend: `next_host_for_series`
+    /// reads `resource_series.metadata.capability_configs.rotation` and
+    /// the cron generator forwards the resolved host_id to
+    /// create_event_v2. Remaining `.incomplete` reasons:
+    ///   1. Wizard renderer doesn't natively handle a "multiPicker over
+    ///      group members" — needs a special case in BuilderFieldRenderer
+    ///      to populate options from group_members instead of a static
+    ///      PickerOption[] list.
+    ///   2. ResourceDetail doesn't yet surface next-host preview
+    ///      ("Próximo anfitrión: <name>").
+    ///   3. Inbox/activity entry for "Te toca ser anfitrión" not wired
+    ///      from the resolved host_id on upcoming events.
+    /// All three are scoped within Tier 5 Beta and gate `.stable`.
     public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 5: rotation as standalone capability needs participant selector + order policy + runtime that reads capability_config.")
+        .incomplete(reason: "Tier 5 Beta: backend rotation ships (mig 00132 + auto-generate-events). UI surfaces remaining: member-aware multiPicker renderer + next-host preview in ResourceDetail + inbox host-assignment entry.")
     }
 }
 
