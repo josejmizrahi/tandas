@@ -627,6 +627,7 @@ public struct HomeView: View {
         case .rsvpPending:             return "checkmark.circle.fill"
         case .fineProposalReview:      return "doc.text.magnifyingglass"
         case .ruleChangeApplyPending:  return "list.bullet.clipboard.fill"
+        case .hostAssigned:            return "person.crop.circle.badge.checkmark"
         case .slotPending:             return "ticket.fill"
         case .votePending:             return "hand.raised.fill"
         case .contributionDue:         return "banknote.fill"

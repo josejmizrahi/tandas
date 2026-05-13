@@ -830,6 +830,15 @@ public struct MainTabView: View {
             if let vote = try? await app.voteRepo.vote(id: action.referenceId) {
                 voteDetailRouteFromInbox = VoteDetailRouteContext(vote: vote)
             }
+        case .hostAssigned:
+            // Tier 5 Beta: the host-assigned inbox row points at the
+            // event itself (reference_id === events.id). Open the
+            // resource detail so the host can see when + where + the
+            // rotation context (next-host preview, policy).
+            if let event = try? await app.eventRepo.event(action.referenceId) {
+                detailRoute = event
+                selectedTab = .home
+            }
         case .slotPending, .contributionDue, .compensationDue:
             // Not used by V1 template — no-op for now.
             break
