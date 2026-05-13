@@ -1,4 +1,4 @@
-// Tier 6 slice 19 (mig 00137) acceptance: fund resource_type creation.
+// Tier 6 slice 19 (mig 00139) acceptance: fund resource_type creation.
 //
 // Three scenarios:
 //   1. build_resource_from_draft with resource_type='fund' inserts a row

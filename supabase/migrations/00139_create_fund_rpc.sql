@@ -1,4 +1,10 @@
--- 00137 — Tier 6 slice 19: `fund` resource_type creation path.
+-- 00139 — Tier 6 slice 19: `fund` resource_type creation path.
+-- (Originally landed on main as 00137_create_fund_rpc.sql and was
+-- applied to prod under that name; renumbered to 00139 to clear the
+-- 00137/00138 slots that the Beta 1 Consolidation parallel session
+-- shipped concurrently — template_fines_opt_in_default + cast_vote_for_key_share.
+-- Prod state is unaffected: supabase records migrations by timestamp,
+-- not filename, so the rename is metadata-only on the filesystem.)
 --
 -- Background
 -- ==========
@@ -90,7 +96,7 @@ as $$
 $$;
 
 comment on function public.is_known_system_event_type(text) is
-  'Whitelist check for system_events.event_type values. Mirrors the SystemEventType Swift enum. Update + redeploy whenever the enum grows. CHECK constraint system_events_event_type_known_chk (00095) enforces this at INSERT time. v6 (00137): added fundCreated.';
+  'Whitelist check for system_events.event_type values. Mirrors the SystemEventType Swift enum. Update + redeploy whenever the enum grows. CHECK constraint system_events_event_type_known_chk (00095) enforces this at INSERT time. v6 (00139): added fundCreated.';
 
 -- =========================================================
 -- 2. create_fund RPC
@@ -292,7 +298,7 @@ begin
     );
 
   when 'fund' then
-    -- Tier 6 slice 19 (mig 00137): wizard-driven fund creation.
+    -- Tier 6 slice 19 (mig 00139): wizard-driven fund creation.
     -- Mirrors the asset branch — name required, target_amount_cents
     -- + currency optional in basic_fields. target_amount_cents is a
     -- soft goal (UI shows progress vs target); not a hard limit.
@@ -379,4 +385,4 @@ end;
 $$;
 
 comment on function public.build_resource_from_draft(uuid, text, jsonb, text[], jsonb, jsonb, jsonb) is
-  'Atomic ResourceWizard submit. v4 (00137): added `fund` branch — calls create_fund with name + optional targetAmountCents + currency from basic_fields. Series-level capability_configs envelope (Tier 5) preserved. rsvp.deadline thread (Tier 2) preserved.';
+  'Atomic ResourceWizard submit. v4 (00139): added `fund` branch — calls create_fund with name + optional targetAmountCents + currency from basic_fields. Series-level capability_configs envelope (Tier 5) preserved. rsvp.deadline thread (Tier 2) preserved.';

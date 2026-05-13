@@ -1,4 +1,4 @@
--- Rollback 00137 — drop create_fund + restore 00132 build_resource_from_draft
+-- Rollback 00139 — drop create_fund + restore 00132 build_resource_from_draft
 -- (no fund branch). Existing fund rows in `resources` stay — they're real
 -- group state. Removing them is a manual cleanup if needed.
 

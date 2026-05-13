@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 /// ResourceBuilder for Fund resources (caja común, vaquita, pot rotatorio).
-/// Tier 6 slice 19 (mig 00137): atomic submit via `build_resource_from_draft`
+/// Tier 6 slice 19 (mig 00139): atomic submit via `build_resource_from_draft`
 /// → server-side `create_fund` RPC. Stores name + optional target in
 /// `resources.metadata`.
 ///
