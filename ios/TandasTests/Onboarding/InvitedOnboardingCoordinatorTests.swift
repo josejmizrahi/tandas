@@ -1,10 +1,12 @@
 import Testing
 import Foundation
-import SwiftData
 import RuulUI
 import RuulCore
 import RuulFeatures
 @testable import Tandas
+
+// See FounderOnboardingCoordinatorTests for why we use the in-memory
+// store instead of a SwiftData ModelContainer on this hot path.
 
 @Suite("InvitedOnboardingCoordinator")
 @MainActor
@@ -14,15 +16,11 @@ struct InvitedOnboardingCoordinatorTests {
         seedGroup: Group? = nil,
         groupRepo: MockGroupsRepository? = nil,
         otp: MockOTPService = .init()
-    ) async throws -> (InvitedOnboardingCoordinator, MockGroupsRepository, MockInviteRepository, MockOTPService) {
+    ) -> (InvitedOnboardingCoordinator, MockGroupsRepository, MockInviteRepository, MockOTPService) {
         let groups = groupRepo ?? MockGroupsRepository(seed: seedGroup.map { [$0] } ?? [])
         let invites = MockInviteRepository()
         let analytics = MockAnalyticsService()
-        let container = try ModelContainer(
-            for: OnboardingProgress.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        let manager = OnboardingProgressManager(context: container.mainContext)
+        let manager = InMemoryOnboardingProgressStore()
         let coord = InvitedOnboardingCoordinator(
             inviteCode: seedGroup?.inviteCode ?? "abc12345",
             groupRepo: groups,
@@ -50,7 +48,7 @@ struct InvitedOnboardingCoordinatorTests {
     @Test("happy path advances welcome → tour")
     func happyPath() async throws {
         let g = sampleGroup(code: "abc12345")
-        let (coord, _, _, otp) = try await makeCoordinator(seedGroup: g)
+        let (coord, _, _, otp) = makeCoordinator(seedGroup: g)
         await coord.start()
         #expect(coord.preview != nil)
         #expect(coord.currentStep == .welcome)
@@ -74,7 +72,7 @@ struct InvitedOnboardingCoordinatorTests {
     @Test("invalid invite code → error")
     func invalidCode() async throws {
         let groups = MockGroupsRepository(seed: [])
-        let (coord, _, _, _) = try await makeCoordinator(groupRepo: groups)
+        let (coord, _, _, _) = makeCoordinator(groupRepo: groups)
         await coord.start()
         #expect(coord.error == .inviteCodeInvalid)
         #expect(coord.preview == nil)
@@ -83,7 +81,7 @@ struct InvitedOnboardingCoordinatorTests {
     @Test("OTP 3 fails → tooManyAttempts, stays on otp step")
     func otpThreeStrikes() async throws {
         let g = sampleGroup(code: "abc12345")
-        let (coord, _, _, otp) = try await makeCoordinator(seedGroup: g)
+        let (coord, _, _, otp) = makeCoordinator(seedGroup: g)
         await coord.start()
         await coord.acceptInvitation()
         coord.displayName = "X"

@@ -33,7 +33,7 @@ public final class FounderOnboardingCoordinator {
     private let ruleRepo: any RuleRepository
     private let profileRepo: (any ProfileRepository)?
     private let analytics: any AnalyticsService
-    private let progress: OnboardingProgressManager
+    private let progress: any OnboardingProgressPersisting
     private let sessionId: UUID = UUID()
     private let startedAt: Date = .now
     private var stepEnteredAt: Date = .now
@@ -46,7 +46,7 @@ public final class FounderOnboardingCoordinator {
         ruleRepo: any RuleRepository,
         otp: any OTPService,
         analytics: any AnalyticsService,
-        progress: OnboardingProgressManager,
+        progress: any OnboardingProgressPersisting,
         profileRepo: (any ProfileRepository)? = nil
     ) {
         self.groupRepo = groupRepo

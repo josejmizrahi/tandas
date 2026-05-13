@@ -1,9 +1,14 @@
 import Testing
 import Foundation
-import SwiftData
 import RuulCore
 import RuulFeatures
 @testable import Tandas
+
+// SwiftData ModelContainer initialization on Xcode 26.3 simulators hangs
+// the test process for ~12s and then kills the runner. Switching to
+// `InMemoryOnboardingProgressStore` (production protocol, same surface)
+// keeps these tests deterministic on CI while still exercising the
+// coordinator's persistence path end-to-end.
 
 @Suite("FounderOnboardingCoordinator")
 @MainActor
@@ -16,13 +21,9 @@ struct FounderOnboardingCoordinatorTests {
         inviteRepo: MockInviteRepository = .init(),
         ruleRepo: MockRuleRepository = .init(),
         otp: MockOTPService = .init()
-    ) throws -> (FounderOnboardingCoordinator, MockGroupsRepository, MockInviteRepository, MockRuleRepository, MockOTPService, MockAnalyticsService) {
+    ) -> (FounderOnboardingCoordinator, MockGroupsRepository, MockInviteRepository, MockRuleRepository, MockOTPService, MockAnalyticsService) {
         let analytics = MockAnalyticsService()
-        let container = try ModelContainer(
-            for: OnboardingProgress.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        let manager = OnboardingProgressManager(context: container.mainContext)
+        let manager = InMemoryOnboardingProgressStore()
         let coord = FounderOnboardingCoordinator(
             groupRepo: groupRepo,
             inviteRepo: inviteRepo,
@@ -38,7 +39,7 @@ struct FounderOnboardingCoordinatorTests {
 
     @Test("full happy path: welcome → identity → group → preset → invite → confirm")
     func happyPath() async throws {
-        let (coord, groups, _, _, _, _) = try makeCoordinator()
+        let (coord, groups, _, _, _, _) = makeCoordinator()
         await coord.start()
 
         await coord.advanceFromWelcome()
@@ -67,7 +68,7 @@ struct FounderOnboardingCoordinatorTests {
 
     @Test("blank preset creates bare group without seeding rules")
     func blankPreset() async throws {
-        let (coord, _, _, _, _, _) = try makeCoordinator()
+        let (coord, _, _, _, _, _) = makeCoordinator()
         await coord.start()
         coord.displayName = "X"
         await coord.advanceFromIdentity()
@@ -80,7 +81,7 @@ struct FounderOnboardingCoordinatorTests {
 
     @Test("skip identity advances with empty name")
     func skipIdentity() async throws {
-        let (coord, _, _, _, _, _) = try makeCoordinator()
+        let (coord, _, _, _, _, _) = makeCoordinator()
         await coord.start()
         await coord.skipIdentity()
         #expect(coord.currentStep == .group)
@@ -89,7 +90,7 @@ struct FounderOnboardingCoordinatorTests {
 
     @Test("skip invite goes straight to confirm")
     func skipInvite() async throws {
-        let (coord, _, _, _, _, _) = try makeCoordinator()
+        let (coord, _, _, _, _, _) = makeCoordinator()
         await coord.start()
         coord.displayName = "X"
         await coord.advanceFromIdentity()
@@ -107,7 +108,7 @@ struct FounderOnboardingCoordinatorTests {
     func createGroupFailure() async throws {
         let groups = MockGroupsRepository()
         await groups.setNextError(.rpcFailed("server down"))
-        let (coord, _, _, _, _, _) = try makeCoordinator(groupRepo: groups)
+        let (coord, _, _, _, _, _) = makeCoordinator(groupRepo: groups)
         await coord.start()
         coord.displayName = "X"
         await coord.advanceFromIdentity()
@@ -130,11 +131,7 @@ struct FounderOnboardingCoordinatorTests {
         // by going through the JSON path (FounderStep enum doesn't have
         // .vocabulary anymore so we can't construct one directly).
         // Round-trip: persist 'vocabulary' as raw string, then restore.
-        let container = try ModelContainer(
-            for: OnboardingProgress.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        let manager = OnboardingProgressManager(context: container.mainContext)
+        let manager = InMemoryOnboardingProgressStore()
         let entity = OnboardingProgress(flowType: .founder)
         entity.founderStepRaw = "vocabulary"
         try manager.save(entity)

@@ -20,7 +20,7 @@ public final class InvitedOnboardingCoordinator {
     private let inviteRepo: any InviteRepository
     private let otp: any OTPService
     private let analytics: any AnalyticsService
-    private let progress: OnboardingProgressManager
+    private let progress: any OnboardingProgressPersisting
     private let sessionId: UUID = UUID()
     private let startedAt: Date = .now
     private var stepEnteredAt: Date = .now
@@ -34,7 +34,7 @@ public final class InvitedOnboardingCoordinator {
         inviteRepo: any InviteRepository,
         otp: any OTPService,
         analytics: any AnalyticsService,
-        progress: OnboardingProgressManager
+        progress: any OnboardingProgressPersisting
     ) {
         self.inviteCode = inviteCode
         self.groupRepo = groupRepo
