@@ -43,13 +43,24 @@ public actor LiveResourceDraftRepository: ResourceDraftRepository {
     public func build(_ draft: ResourceDraft) async throws -> UUID {
         // RPC return shape: a bare uuid. Decode into our wrapper struct
         // so the supabase-swift type inference keeps a non-optional path.
+        //
+        // ALL params are non-optional — PostgREST overload resolution
+        // requires the calling shape to match an existing function
+        // signature. Encoding `p_series_pattern` as `JSONConfig?` and
+        // sending nil caused JSON encoder to OMIT the key, which made
+        // PostgREST search for a 6-param overload of
+        // build_resource_from_draft. That overload doesn't exist, so
+        // every Activo / Fondo without a series got
+        // "Could not find the function … in the schema cache". Fix:
+        // always send a JSONConfig value (null or object) so all 7
+        // params are present in the envelope.
         struct Params: Encodable {
             let p_group_id: String
             let p_resource_type: String
             let p_basic_fields: JSONConfig
             let p_enabled_capabilities: [String]
             let p_capability_configs: JSONConfig
-            let p_series_pattern: JSONConfig?
+            let p_series_pattern: JSONConfig
             let p_initial_rules: [DraftRuleWire]
         }
 
@@ -80,7 +91,11 @@ public actor LiveResourceDraftRepository: ResourceDraftRepository {
                     p_basic_fields: basicFields,
                     p_enabled_capabilities: draft.enabledCapabilities,
                     p_capability_configs: capabilityConfigs,
-                    p_series_pattern: draft.seriesPattern,
+                    // Pre-fix this was `draft.seriesPattern` (Optional);
+                    // nil omitted the key → PostgREST 404. Send
+                    // JSONConfig.null when absent so the envelope
+                    // shape is always 7 keys.
+                    p_series_pattern: draft.seriesPattern ?? .null,
                     p_initial_rules: initialRules
                 ))
                 .execute()
