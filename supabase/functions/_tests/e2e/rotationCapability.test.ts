@@ -43,7 +43,14 @@ async function insertSeriesWithRotation(
     .insert({
       group_id: groupId,
       resource_type: "event",
-      pattern: { freq: "weekly", interval: 1, byweekday: ["TH"], endCondition: { type: "never" } },
+      pattern: {
+        frequency:    "weekly",
+        dayOfWeek:    4, // Thursday
+        hour:         20,
+        minute:       0,
+        endCondition: "never",
+        timezone:     "UTC",
+      },
       metadata: {
         title: "Cena rotativa (e2e)",
         duration_minutes: 180,
@@ -127,27 +134,28 @@ Deno.test("Tier 5: auto-generate-events forwards rotation host_id to occurrences
     });
     const userIds = group.members.map((m) => m.userId);
 
-    // Use the existing pattern that recurrenceGenerator.test.ts already
-    // validates: weekly Thursday starting tomorrow, never end. The cron
-    // generates ~9 occurrences in the 60-day horizon — we only inspect
-    // the first 3 for rotation correctness.
+    // Pattern shape matches recurrenceGenerator.test.ts (the flat
+    // weekly form supported by _shared/recurrence.ts): frequency +
+    // dayOfWeek + hour + minute + startDate + endCondition.
     const startDate = new Date();
     startDate.setUTCDate(startDate.getUTCDate() + 1); // tomorrow
     const startDateStr = startDate.toISOString().slice(0, 10);
     const dayOfWeek = startDate.getUTCDay();
-    const dayKeyMap = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 
     const { data: series, error: insErr } = await admin
       .from("resource_series")
       .insert({
         group_id: group.groupId,
         resource_type: "event",
+        active: true,
         pattern: {
-          freq:      "weekly",
-          interval:  1,
-          byweekday: [dayKeyMap[dayOfWeek]],
-          startDate: startDateStr,
-          endCondition: { type: "never" },
+          frequency:    "weekly",
+          dayOfWeek:    dayOfWeek,
+          hour:         20,
+          minute:       0,
+          startDate:    startDateStr,
+          endCondition: "never",
+          timezone:     "UTC",
         },
         metadata: {
           title: "Cena rotativa weekly (e2e)",
@@ -162,7 +170,6 @@ Deno.test("Tier 5: auto-generate-events forwards rotation host_id to occurrences
             },
           },
         },
-        active: true,
         created_by: userIds[0],
       })
       .select("id")
