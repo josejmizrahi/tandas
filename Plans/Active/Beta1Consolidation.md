@@ -195,20 +195,38 @@ quedan huérfanos si el swap ya está.
 
 ## 6. Priorized work — 2 semanas core + 1 buffer + 1 demo
 
+> **Sweep status — 2026-05-13 evening session.** Track abrió 15:43,
+> sprint 7h después casi todo W1-W2 + buena parte de W3 estaba shipeado
+> (24 commits `fix(beta1-w*)`). Estado real verificado por commit log y
+> test pass:
+>
+> - **W1**: 7 / 9 done. Open: **E-1.2** (outbox janitor), **D-1.1**
+>   (sendHostReminders sigue stub solo loguea analytics).
+> - **W2**: 12 / 12 done. ✅ todo cerrado.
+> - **W3**: 6 / 12 done. Open: B-3.4 consent step, A-3.3 empty/loading
+>   states unify, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher
+>   API unify, E-3.1 realtime subs, E-3.2 token cleanup en
+>   remove_member.
+> - **W4**: 0 / 7 done — pending demo polish + telemetry + QA + hide list.
+>
+> Marcas `✅ <SHA>` debajo apuntan al commit que cerró el ítem; los `⏳`
+> son lo que sigue genuinamente abierto. Cualquier sesión futura que
+> retome el track lee este sweep antes que las casillas.
+
 ### Week 1 — Stop-the-bleeding (privacidad + integridad)
 
 Goal: ningún beta tester puede ver datos de otro usuario, ni perder votos,
 ni recibir multas-fantasma porque arrancó el grupo.
 
-- [ ] **E-1.1** `signOut` revoca APNs token → llama `NotificationTokenRepository.revokeToken(lastDeviceToken)` antes de `auth.signOut()`. Verificar también `MainTabView:438` "Cerrar sesión" path.
-- [ ] **E-1.2** Outbox janitor — pg_cron 5min: `UPDATE notifications_outbox SET dispatched_at=NULL, dispatch_status='pending' WHERE dispatch_status='pending' AND dispatched_at < now()-interval '5 minutes';`
-- [ ] **E-1.3** `finalize_vote` lock: `SELECT count(*) FROM vote_casts WHERE vote_id = p_vote_id FOR UPDATE;` dentro del bloque ya locked + advisory lock keyed on vote_id en `cast_vote` y `finalize_vote`.
-- [ ] **B-1.1** `DinnerRecurringTemplate.rules[*].isActive = false` por defecto + flag de "modo sugerencia" en `seed_template_rules`. Después de 3 cenas cerradas, banner "Activa los acuerdos para empezar a cobrar multas".
-- [ ] **B-1.2** AuthGate: si `!hasOnboarded && session==nil`, route a una `SignUpWelcomeView` no a `SignInView`. SignInView se usa sólo si el usuario tappea "Ya tengo cuenta".
-- [ ] **A-1.1** "Ver todas (N)" en HomeView + GroupOverviewSubTab → routea a `ActionInboxView` montada como push (el orphan view ya existe).
-- [ ] **A-1.2** "Perfil → Historial" → corregir route o eliminar la fila si redundante.
-- [ ] **F-1.1** Esconder universal invite link en ShareLink — usar plaintext "Únete a [grupo] en Ruul. Código: ABC123. https://apps.apple.com/app/ruul/idXXX" hasta que AASA esté.
-- [ ] **D-1.1** Wire `EventDetailCoordinator.sendHostReminders` para que realmente invoque `send-event-notification` con kind=`host_reminder` (con rate-limit cliente: 1 reminder por evento cada 30 min).
+- [x] **E-1.1** `signOut` revoca APNs token → ✅ `514d3c1`. `AppState.signOut()` orquesta `notifications.revokeTokenIfRegistered()` antes de `auth.signOut()`. 3 tests verdes en `SignOutRevokesTokenTests`.
+- [ ] **E-1.2** ⏳ **OPEN.** Outbox janitor — pg_cron 5min: `UPDATE notifications_outbox SET dispatched_at=NULL, dispatch_status='pending' WHERE dispatch_status='pending' AND dispatched_at < now()-interval '5 minutes';`. Solo TODO comment en `dispatch-notifications/index.ts:16`.
+- [x] **E-1.3** `cast_vote` + `finalize_vote` race → ✅ `b5a72e9`. `cast_vote` toma `FOR KEY SHARE` sobre la row del vote dentro de la transacción; `finalize_vote` mantiene `FOR UPDATE` que ya tenía. El gap del `count(*)` unlocked queda cerrado.
+- [x] **B-1.1** Multas opt-in por default → ✅ `e1b3e78`. `DinnerRecurringTemplate` siembra reglas monetarias con `isActive=false`; banner "Activa acuerdos" tras 3 cenas cerradas.
+- [x] **B-1.2** AuthGate first-time copy → ✅ `bea2bbd`. `SignInMode` separa flujo nuevo vs returning; ya no se ve "Bienvenido de vuelta" sin cuenta.
+- [x] **A-1.1** "Ver todas (N)" linkout → ✅ `7632083` (esta sesión). `GroupOverviewSubTab` "Ver todas" salta al inbox completo via `onOpenInboxAction`. *Nota:* aterriza en el primer action por compat — pendiente revisión UX si se quiere lista in-place.
+- [x] **A-1.2** "Perfil → Historial" → ✅ `7632083` (esta sesión). `onOpenHistory` ahora salta a tab Inicio (Activity ya no es tab top-level — folded a Grupo→Más).
+- [x] **F-1.1** Invite share plaintext → ✅ `bcccd52`. ShareLink expone código de 6 chars + App Store URL en lugar del universal link sin AASA.
+- [ ] **D-1.1** ⏳ **OPEN.** `EventDetailCoordinator.sendHostReminders` (`EventDetailCoordinator.swift:271`) sigue siendo stub que solo emite analytics — no invoca `send-event-notification`. Necesita rate-limit cliente (1/30min/evento).
 
 Definition of done W1: cero rutas de cross-user data leak conocidas. Votos no se pierden bajo carga simulada. Onboarding no acepta nuevo usuario en pantalla "Bienvenido de vuelta".
 
@@ -216,18 +234,18 @@ Definition of done W1: cero rutas de cross-user data leak conocidas. Votos no se
 
 Goal: lo que está en la app, el usuario lo entiende sin diccionario.
 
-- [ ] **D-2.1** Decidir RSVP path: o agregar trigger en `create_event_v2` que inserta `rsvpPending` por miembro no-host → resuelto en `set_rsvp`, o **eliminar `rsvpPending` del enum y de las 5 vistas iOS**. Recomendado: agregar (es lo que el modelo mental promete).
-- [ ] **D-2.2** Trigger `on_event_cancelled` que resuelve `user_actions` dependientes (`hostAssigned`, `fineProposalReview`, futuro `rsvpPending`) con `resolved_reason='event_cancelled'`.
-- [ ] **D-2.3** `void_fine` (mig 00029:60) — priority `'medium'` (no `'normal'`) + auto-resolve `fineVoided` action después de 7 días o de tap.
-- [ ] **D-2.4** Filtrar `hoursBeforeEvent` y demás synthetic markers de `GroupHistoryView` (`LiveSystemEventRepository.query` o `HistoryItemPresentation` blacklist).
-- [ ] **D-2.5** APNs `apns-collapse-id = '${notification_type}.${reference_id}'` en `dispatch-notifications/index.ts:213`.
-- [ ] **C-2.1** Reemplazar `Text("capability"|"PAYLOAD"|"DEBUG ...")` en los 5 archivos listados en Audit C. Ninguno debe sobrevivir grep.
-- [ ] **C-2.2** Unificar **host → anfitrión** en todo el UI visible (10+ archivos).
-- [ ] **C-2.3** `RuulErrorTranslator` — wrappear `error.localizedDescription` para mapear PGRST116 / JWT expired / network / etc a mensajes en español-MX. Reemplazar 15+ asignaciones directas.
-- [ ] **C-2.4** Mapeo completo de `SystemEventType` → label humano en `SystemEventDetailView`. **Cero** caída a `rawString`.
-- [ ] **C-2.5** **Borrar el `Text("DEBUG eventId=...")`** en ReviewProposedFinesView:55.
-- [ ] **C-2.6** Unificar "Historia" / "Historial" / "Actividad" — canon: **Actividad** = feed, **Historial** = eventos pasados.
-- [ ] **E-2.1** Cambiar `to_char(... at time zone 'UTC')` en mig 00133:52 a TZ del grupo (o quitar la fecha del body, formatear en iOS).
+- [x] **D-2.1** RSVP path wire → ✅ `797b005`. `rsvpPending` action ahora se inserta por trigger y se resuelve al votar.
+- [x] **D-2.2** Cancel-event cascade → ✅ `a08bff8`. Trigger `on_event_cancelled` resuelve `user_actions` dependientes con `resolved_reason='event_cancelled'`.
+- [x] **D-2.3** `void_fine` priority + auto-resolve → ✅ `9f7997a`. Priority `low` + auto-resolve a 7 días.
+- [x] **D-2.4** Hide synthetic events de Activity → ✅ `e516d93`. `hoursBeforeEvent` y demás rule-fuel markers blacklisted del feed.
+- [x] **D-2.5** APNs collapse-id → ✅ `b5b667a`. Header `apns-collapse-id` por `notification_type.reference_id`.
+- [x] **C-2.1** Purga DEBUG/PAYLOAD/capability → ✅ `b622f1e`. Grep visible: 0 hits.
+- [x] **C-2.2** host → anfitrión → ✅ `5a495af`. Unificado en 10+ archivos UI.
+- [x] **C-2.3** RuulErrorTranslator → ✅ `2f2e131`. Mapeo PGRST/JWT/network → español-MX.
+- [x] **C-2.4** SystemEventType.humanLabel → ✅ `0319348`. Cero caída a `rawString` en `SystemEventDetailView`.
+- [x] **C-2.5** Borrar `Text("DEBUG eventId=...")` → ✅ `b622f1e` (mismo commit que C-2.1).
+- [x] **C-2.6** Historia/Historial/Actividad canon → ✅ `49860c6`. Actividad=feed, Historial=eventos pasados.
+- [x] **E-2.1** hostAssigned tz → ✅ `7f79b47`. Date body en TZ del grupo, no UTC.
 
 DoD W2: Audit C grep de términos prohibidos pasa con 0 hits en strings visibles. Inbox + Activity boundary clara. Mensaje de error de Supabase nunca llega crudo al usuario.
 
@@ -236,18 +254,20 @@ DoD W2: Audit C grep de términos prohibidos pasa con 0 hits en strings visibles
 Goal: una mamá de 50 puede completar first-run sin ayuda + parejas con
 dos dispositivos no ven estado stale.
 
-- [ ] **B-3.1** Eliminar/auto-default cover image en `GroupIdentityView`.
-- [ ] **B-3.2** Quitar auto-advance 350ms del PresetPickerView; agregar "Continuar" explícito.
-- [ ] **B-3.3** CreateEventView progressive disclosure: nombre+fecha primero, luego sección opcional "ajustes avanzados" (host, descripción, multas).
-- [ ] **B-3.4** Mostrar las 5 reglas (en modo sugerencia tras B-1.1) en un consent step durante onboarding: "Estos son los acuerdos sugeridos para cenas. Puedes activarlos uno por uno cuando quieras."
-- [ ] **A-3.1** Decidir: ¿matar el tab "Decisiones" o el row "Decisiones abiertas" de Grupo → Más? Recomendado: matar el tab top-level, queda 4 tabs.
-- [ ] **A-3.2** Consolidar Pendientes en una sola surface: Inicio. Quitar duplicado de Resumen.
-- [ ] **A-3.3** Unificar empty states a un componente (`EmptyStateView`) y loading a uno (`HomeViewSkeleton` o `RuulLoadingState`).
-- [ ] **A-3.4** "+" tab cuando no hay grupo activo → presenta `CreateGroupSheet` en vez de silent fail.
-- [ ] **A-3.5** `RuulGroupSwitcher` — una sola API (`activeGroup:` o init unificado) y mismo behavior across los 3 tabs.
-- [ ] **E-3.1** Realtime subscriptions en `votes`, `vote_casts`, `fines`, `user_actions` para multi-device.
-- [ ] **E-3.2** `notification_tokens` cleanup en `remove_member` RPC o trigger.
-- [ ] **E-3.3** `pay_fine` con `FOR UPDATE` en `fines` para evitar double-tap double-balance.
+- [x] **B-3.1** Drop cover picker en `GroupIdentityView` → ✅ `04a14a9`.
+- [x] **B-3.2** PresetPicker explicit Continuar CTA → ✅ `64eafc4`. Sin auto-advance 350ms.
+- [x] **B-3.3** CreateEventView progressive disclosure → ✅ `22b67c4`. Más opciones colapsado por defecto.
+- [ ] **B-3.4** ⏳ **OPEN.** Consent step de acuerdos sugeridos en onboarding (post B-1.1 modo sugerencia).
+- [x] **A-3.1** Tab "Decisiones" eliminado → ✅ `7632083` (esta sesión). Bottom bar a 4 tabs; Decisiones queda en Grupo→Más.
+- [x] **A-3.2** Consolidar Pendientes → ✅ `7632083` (esta sesión). Resumen ya no duplica el inbox; top-3 + linkout.
+- [ ] **A-3.3** ⏳ **OPEN.** Unificar empty states a `EmptyStateView` y loading a un único `RuulLoadingState`.
+- [ ] **A-3.4** ⏳ **OPEN.** "+" tab sin grupo activo → presenta `CreateGroupSheet` en vez de silent fail.
+- [ ] **A-3.5** ⏳ **OPEN.** `RuulGroupSwitcher` — API unificada + behavior idéntico en los 3 tabs.
+- [ ] **E-3.1** ⏳ **OPEN.** Realtime subs en `votes`, `vote_casts`, `fines`, `user_actions` para multi-device.
+- [ ] **E-3.2** ⏳ **OPEN.** `notification_tokens` cleanup en `remove_member` RPC o trigger.
+- [x] **E-3.3** `pay_fine` FOR UPDATE → ✅ `e0d2575`. Idempotent guard previene double-balance en double-tap.
+
+*Bonus shipped fuera de la lista original:* `b6a536c` — `dispatch-notifications` ahora salta miembros inactivos (defensive bug fix).
 
 DoD W3: Onboarding funcional 7 → 3-4 screens. RSVP/voto/multa cambia en device A → device B refresca automáticamente.
 
@@ -382,15 +402,15 @@ Cualitativas (cena journal en [[Beta1.md]]):
 
 ## 11. Definition of Done — Beta 1 ready to invite externals
 
-**Hard gates:**
-- [ ] Cero items en Risk Matrix con severity Crítica + likelihood ≥ Media sin fix
-- [ ] QA checklist W4 pasa 100%
-- [ ] Founder demo dry-run sin tropezar
-- [ ] Telemetría emitiendo (verificable en dashboard)
-- [ ] Sentry capturando crashes (TandasApp.swift confirmando)
-- [ ] Working tree limpio (los AppShell drafts o committed o reverted)
-- [ ] Audit C grep de jargon: 0 hits
-- [ ] Audit E top-3 reliability blockers: fixed + verified
+**Hard gates** (status 2026-05-13 evening):
+- [x] Cero items en Risk Matrix con severity Crítica + likelihood ≥ Media sin fix → ✅ ambos Crítica (cross-user APNs leak `514d3c1` + finalize_vote race `b5a72e9`) cerrados.
+- [ ] QA checklist W4 pasa 100% — pending W4.
+- [ ] Founder demo dry-run sin tropezar — pending W4.
+- [ ] Telemetría emitiendo (verificable en dashboard) — pending W4 (F-4.5).
+- [ ] Sentry capturando crashes (TandasApp.swift confirmando) — verificar.
+- [x] Working tree limpio (los AppShell drafts o committed o reverted) → ✅ Track A landed `73c8f36` + `7632083` + `d2f8843`.
+- [x] Audit C grep de jargon: 0 hits → ✅ W2 commits `b622f1e` + `2f2e131` + `0319348` + `5a495af` + `49860c6`.
+- [ ] Audit E top-3 reliability blockers: 2/3 done (E-1.1 ✅, E-1.3 ✅); **E-1.2 outbox janitor ⏳ open**.
 
 **Soft signals:**
 - [ ] El founder se siente cómodo invitando a su mejor amigo (no a un beta tester anónimo)
@@ -418,3 +438,5 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 ## Bitácora
 
 - **2026-05-13** — Track abierto. 5 audits paralelos completados (A AppShell, B Onboarding, C Copy, D Notifications, E Reliability). Reportes en [[Beta1Consolidation_Audit.md]]. Plan sintetizado, vertical fijado en cenas recurrentes + rotación, hide-list definida, roadmap 4 semanas priorizado.
+
+- **2026-05-13 evening** — Sprint de 7h cerró W1 (excepto E-1.2 outbox janitor + D-1.1 sendHostReminders), W2 al 100% (12/12), y la mitad de W3 (6/12). Track A AppShell consolidado vía `73c8f36` + `7632083` + `d2f8843`: `ResourceSummaryView` capability-driven reemplaza `EventStatusSummary` + `DetailSummaryView`, Resumen pasa a dashboard, Actividad sale de tabs top-level y vive en Grupo→Más. §6 actualizado con `✅ <SHA>` por ítem cerrado y `⏳ OPEN` por lo que queda. Próximo objetivo W1: **E-1.2 outbox janitor** (mig 00160 + pg_cron 5min).
