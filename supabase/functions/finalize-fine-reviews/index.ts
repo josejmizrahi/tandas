@@ -35,7 +35,7 @@ serve(withSentry(async (req) => {
 
   const { data: expired, error: selErr } = await supabase
     .from("fine_review_periods")
-    .select("id, event_id, proposed_at, expires_at")
+    .select("id, resource_id, proposed_at, expires_at")
     .is("officialized_at", null)
     .lt("expires_at", startedAt.toISOString())
     .limit(BATCH_LIMIT);
@@ -55,7 +55,7 @@ serve(withSentry(async (req) => {
   }
 
   let officializedFines = 0;
-  const errors: Array<{ event_id: string; error: string }> = [];
+  const errors: Array<{ resource_id: string; error: string }> = [];
 
   for (const rp of expired) {
     const { error: rpErr } = await supabase
@@ -63,21 +63,20 @@ serve(withSentry(async (req) => {
       .update({ officialized_at: startedAt.toISOString() })
       .eq("id", rp.id);
     if (rpErr) {
-      errors.push({ event_id: rp.event_id, error: `review_period: ${rpErr.message}` });
+      errors.push({ resource_id: rp.resource_id, error: `review_period: ${rpErr.message}` });
       continue;
     }
 
-    // Read proposed fines for this event from the projection.
-    // Post-Step 3c: status is derived; reading from fines_view ensures we
-    // only target fines that are actually still 'proposed' (no atom yet,
-    // no open appeal, no payment/void).
+    // Read proposed fines for this resource from the projection.
+    // Post-§14 step 5c-ii: legacy event_id column dropped; resource_id
+    // is the canonical handle (events are resources via mig 00039).
     const { data: fines, error: finesSelErr } = await supabase
       .from("fines_view")
       .select("id, group_id, user_id, amount, resource_id, rule_id, reason")
-      .eq("event_id", rp.event_id)
+      .eq("resource_id", rp.resource_id)
       .eq("status", "proposed");
     if (finesSelErr) {
-      errors.push({ event_id: rp.event_id, error: `fines select: ${finesSelErr.message}` });
+      errors.push({ resource_id: rp.resource_id, error: `fines select: ${finesSelErr.message}` });
       continue;
     }
 
@@ -117,7 +116,7 @@ serve(withSentry(async (req) => {
           recorded_by: null,
         });
       if (atomErr) {
-        errors.push({ event_id: rp.event_id, error: `atom insert: ${atomErr.message}` });
+        errors.push({ resource_id: rp.resource_id, error: `atom insert: ${atomErr.message}` });
         continue;
       }
 
@@ -131,9 +130,9 @@ serve(withSentry(async (req) => {
             recipient_member_id: memberRow.id,
             notification_type: "fineOfficialized",
             payload: {
-              fine_id:  fine.id,
-              event_id: rp.event_id,
-              amount:   fine.amount,
+              fine_id:     fine.id,
+              resource_id: rp.resource_id,
+              amount:      fine.amount,
             },
             deep_link: `ruul://fine/${fine.id}`,
           });

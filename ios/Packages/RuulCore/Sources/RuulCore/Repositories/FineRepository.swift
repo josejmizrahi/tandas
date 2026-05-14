@@ -65,7 +65,9 @@ public actor MockFineRepository: FineRepository {
     }
 
     public func fines(forEventId: UUID) async throws -> [Fine] {
-        fines.filter { $0.eventId == forEventId }
+        // §14 step 5c-ii: filter by resourceId — eventId column is gone
+        // from the projection (events.id == resources.id via mig 00039).
+        fines.filter { $0.resourceId == forEventId }
     }
 
     public func fine(id: UUID) async throws -> Fine? {
@@ -191,10 +193,13 @@ public actor LiveFineRepository: FineRepository {
     }
 
     public func fines(forEventId: UUID) async throws -> [Fine] {
+        // §14 step 5c-ii: fines.event_id was dropped; resource_id is the
+        // canonical handle. Events are resources via the 00039 dual-write,
+        // so the same UUID works for both meanings.
         try await client
             .from("fines_view")
             .select("*")
-            .eq("event_id", value: forEventId.uuidString.lowercased())
+            .eq("resource_id", value: forEventId.uuidString.lowercased())
             .order("created_at", ascending: false)
             .execute()
             .value
@@ -240,13 +245,15 @@ public actor LiveFineRepository: FineRepository {
         eventId: UUID?,
         resourceId: UUID?
     ) async throws -> Fine {
+        // §14 step 5c-ii: issue_manual_fine collapsed p_event_id and
+        // p_resource_id into a single p_resource_id arg. eventId still
+        // works as a callsite alias because events.id == resources.id.
         struct Params: Encodable {
             let p_group_id: String
             let p_user_id: String
             let p_amount: Decimal
             let p_reason: String
             let p_rule_id: String?
-            let p_event_id: String?
             let p_resource_id: String?
         }
         return try await client
@@ -256,7 +263,6 @@ public actor LiveFineRepository: FineRepository {
                 p_amount: amount,
                 p_reason: reason,
                 p_rule_id: nil,
-                p_event_id: eventId?.uuidString.lowercased(),
                 p_resource_id: (resourceId ?? eventId)?.uuidString.lowercased()
             ))
             .execute()

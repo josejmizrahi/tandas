@@ -221,10 +221,12 @@ async function buildContext(
       // dropped in mig 00151 — projection derives status from atoms +
       // votes + review_periods. New fines start as 'proposed' (no atoms
       // yet, no open vote, no expired review_period).
+      // §14 step 5c-ii: fines.event_id was dropped; resource_id is the
+      // canonical handle for both V1 events and Phase 2 non-event
+      // resources.
       const { data, error } = await supabase
         .from("fines")
         .insert({
-          event_id: args.event_id,
           resource_id: args.resource_id,
           group_id: args.group_id,
           user_id: userId,

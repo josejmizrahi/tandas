@@ -152,18 +152,14 @@ export interface CheckInLike {
  * Side-effect interface so the engine stays pure. The cron function passes a
  * Supabase-backed implementation; tests pass an in-memory recorder.
  *
- * `resource_id` is the polymorphic FK introduced by migration 00041 (audit
- * doc § 5.3 items 9+11). For V1 events `resource_id == event_id` (resources.id
- * mirrors events.id post-00040 backfill). For Phase 2 non-event resources
- * (slot decline, fund non-contribution), `event_id` is null and only
- * `resource_id` carries the reference. Sinks write both during cohabitation;
- * `event_id` drops out post-Phase 2 cleanup.
+ * `resource_id` is the polymorphic FK to public.resources. Post §14 step
+ * 5c-ii the legacy `event_id` column on fines was dropped, so sinks now
+ * write only `resource_id` (events are resources via the 00039 dual-write).
  */
 export interface ConsequenceSink {
   proposeFine(args: {
     rule_id: UUID;
     group_id: UUID;
-    event_id: UUID | null;
     resource_id: UUID;
     member_id: UUID;
     amount: number;
@@ -419,18 +415,12 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       return failure(rule.id, target.member_id, "fine config missing amount / base+step");
     }
 
-    // event_id is the legacy V1 FK to events(id). For Phase 2 non-event
-    // resources (slots, bookings, etc.) the slot id isn't in events, so
-    // setting event_id = resource_id triggers the fines_event_id_fkey
-    // constraint. Send null instead — resource_id (mig 00041 polymorphic
-    // FK to resources) is the canonical Phase 2 reference. For V1 events
-    // both fields receive the same UUID since events mirror to resources
-    // 1:1 via trigger 00039.
-    const isEventResource = context.resource?.resource_type === "event";
+    // Post §14 step 5c-ii: fines.event_id column dropped. resource_id is
+    // the canonical handle whether the resource is a V1 event or a
+    // Phase 2 non-event (slot, fund, asset).
     const fineId = await context.sink.proposeFine({
       rule_id: rule.id,
       group_id: rule.group_id,
-      event_id: isEventResource ? target.resource_id : null,
       resource_id: target.resource_id,
       member_id: target.member_id,
       amount,
