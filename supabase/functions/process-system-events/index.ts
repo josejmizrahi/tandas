@@ -205,12 +205,10 @@ async function buildContext(
         throw new Error(`proposeFine: member ${args.member_id} not found in group ${args.group_id}`);
       }
 
-      // Idempotency check: scope by resource_id (polymorphic, post-00041)
-      // rather than event_id so the dedup also applies to Phase 2 fines
-      // attached to non-event resources. For V1 events resource_id ==
-      // event_id so behavior is unchanged.
+      // §14 Step 3c: idempotency check reads from fines_view so status
+      // is derived (post column drop in mig 00151).
       const { data: existing } = await supabase
-        .from("fines")
+        .from("fines_view")
         .select("id")
         .eq("resource_id", args.resource_id)
         .eq("user_id", userId)
@@ -219,12 +217,13 @@ async function buildContext(
         .maybeSingle();
       if (existing) return existing.id as string;
 
+      // INSERT to the underlying fines table. The fines.status column was
+      // dropped in mig 00151 — projection derives status from atoms +
+      // votes + review_periods. New fines start as 'proposed' (no atoms
+      // yet, no open vote, no expired review_period).
       const { data, error } = await supabase
         .from("fines")
         .insert({
-          // V1 cohabitation: write both columns. event_id is the legacy
-          // event-locked FK, resource_id (00041) is the polymorphic FK.
-          // For V1 events both carry the same UUID.
           event_id: args.event_id,
           resource_id: args.resource_id,
           group_id: args.group_id,
@@ -233,7 +232,6 @@ async function buildContext(
           amount: args.amount,
           reason: args.reason,
           details: args.evidence,
-          status: "proposed",
           auto_generated: true,
         })
         .select("id")

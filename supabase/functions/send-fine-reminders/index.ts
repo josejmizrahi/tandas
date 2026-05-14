@@ -37,8 +37,14 @@ serve(withSentry(async (_req) => {
   const minAgeCutoff = new Date(startedAt);
   minAgeCutoff.setDate(minAgeCutoff.getDate() - THRESHOLDS_DAYS[0]);
 
+  // §14 Step 3c: read derived status/paid/waived from fines_view.
+  // The projection ensures status='officialized' implies !paid && !waived
+  // (those are terminal states above officialized in the precedence) but
+  // we keep the explicit filters for clarity. Updates to fine.details
+  // below still go to the underlying fines table (details is a stored
+  // column, not derived).
   const { data: fines, error: selErr } = await supabase
-    .from("fines")
+    .from("fines_view")
     .select("id, group_id, user_id, amount, created_at, details")
     .eq("status", "officialized")
     .eq("paid", false)
