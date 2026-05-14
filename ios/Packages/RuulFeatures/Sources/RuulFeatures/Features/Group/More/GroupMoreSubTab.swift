@@ -20,6 +20,10 @@ public struct GroupMoreSubTab: View {
     /// changing how decisions are taken is one tap from the group home,
     /// not buried behind the Inicio header icon.
     public let onOpenGroupRules: () -> Void
+    /// Push GroupHistoryView (timeline completa del grupo). nil ⇒ entry oculta.
+    /// AppShell.md: la Actividad ya no es tab top-level — vive aquí como
+    /// linkout para no pelearse con el dashboard de Resumen.
+    public let onOpenActivity: (() -> Void)?
 
     public init(
         openVotesCount: Int,
@@ -27,7 +31,8 @@ public struct GroupMoreSubTab: View {
         onOpenRules: @escaping () -> Void,
         onOpenVotes: @escaping () -> Void,
         onOpenFines: @escaping () -> Void,
-        onOpenGroupRules: @escaping () -> Void
+        onOpenGroupRules: @escaping () -> Void,
+        onOpenActivity: (() -> Void)? = nil
     ) {
         self.openVotesCount = openVotesCount
         self.outstandingFinesCount = outstandingFinesCount
@@ -35,6 +40,7 @@ public struct GroupMoreSubTab: View {
         self.onOpenVotes = onOpenVotes
         self.onOpenFines = onOpenFines
         self.onOpenGroupRules = onOpenGroupRules
+        self.onOpenActivity = onOpenActivity
     }
 
     public var body: some View {
@@ -42,12 +48,41 @@ public struct GroupMoreSubTab: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 groupRulesSection
                 operationsSection
+                if onOpenActivity != nil {
+                    activitySection
+                }
             }
             .padding(.horizontal, RuulSpacing.screenPadding)
             .padding(.top, RuulSpacing.xs)
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
+    }
+
+    /// History timeline linkout. Past = memoria del grupo; vive aquí en
+    /// lugar de en una tab dedicada para mantener el bottom bar limpio.
+    @ViewBuilder
+    private var activitySection: some View {
+        if let onOpenActivity {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("ACTIVIDAD")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .padding(.horizontal, RuulSpacing.xxs)
+                VStack(spacing: 0) {
+                    row(icon: "clock.arrow.circlepath",
+                        label: "Historial del grupo",
+                        sublabel: "Todo lo que ha pasado: eventos, multas, votos, reglas",
+                        trailing: { EmptyView() },
+                        action: onOpenActivity)
+                }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                )
+            }
+        }
     }
 
     /// Group-level governance — the social system. Permissions, decisions,

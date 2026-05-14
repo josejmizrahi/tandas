@@ -36,6 +36,9 @@ public struct GroupTabView: View {
     public let onOpenDecisiones: () -> Void
     public let onOpenSanciones: () -> Void
     public let onOpenGroupRules: () -> Void
+    /// Push GroupHistoryView (timeline completa del grupo). Cuando nil
+    /// la entry "Historial del grupo" en Más se oculta.
+    public let onOpenActivity: (() -> Void)?
 
     @State private var selectedSubTab: GroupSubTab
     @State private var openVotesCount: Int = 0
@@ -56,7 +59,8 @@ public struct GroupTabView: View {
         onOpenAcuerdos: @escaping () -> Void,
         onOpenDecisiones: @escaping () -> Void,
         onOpenSanciones: @escaping () -> Void,
-        onOpenGroupRules: @escaping () -> Void
+        onOpenGroupRules: @escaping () -> Void,
+        onOpenActivity: (() -> Void)? = nil
     ) {
         self.activeGroup = activeGroup
         self.userId = userId
@@ -74,6 +78,7 @@ public struct GroupTabView: View {
         self.onOpenDecisiones = onOpenDecisiones
         self.onOpenSanciones = onOpenSanciones
         self.onOpenGroupRules = onOpenGroupRules
+        self.onOpenActivity = onOpenActivity
         self._selectedSubTab = State(initialValue: .overview)
     }
 
@@ -123,14 +128,12 @@ public struct GroupTabView: View {
         case .overview:
             GroupOverviewSubTab(
                 group: activeGroup,
-                upcomingEvents: upcomingEvents,
-                myRSVPs: myRSVPs,
                 inboxCoordinator: inboxCoordinator,
                 userId: userId,
-                onOpenEvent: onOpenEvent,
-                onOpenFine: onOpenFine,
                 onOpenInboxAction: onOpenInboxAction,
-                onGoToMoney: { selectedSubTab = .money }
+                onGoToMoney: { selectedSubTab = .money },
+                onJumpToResources: { selectedSubTab = .resources },
+                onJumpToMembers: { selectedSubTab = .members }
             )
         case .resources:
             GroupResourcesSubTab(group: activeGroup, onOpenEvent: onOpenEvent)
@@ -149,7 +152,8 @@ public struct GroupTabView: View {
                 onOpenRules: onOpenAcuerdos,
                 onOpenVotes: onOpenDecisiones,
                 onOpenFines: onOpenSanciones,
-                onOpenGroupRules: onOpenGroupRules
+                onOpenGroupRules: onOpenGroupRules,
+                onOpenActivity: onOpenActivity
             )
         }
     }
@@ -221,6 +225,68 @@ private struct GroupResourcesSubTab: View {
     @State private var opened: ResourceRow?
     @State private var isLoading: Bool = true
 
+    /// Polymorphic time-bound metadata keys. Any resource that exposes
+    /// one of these in the future moves to the top of the catalog.
+    /// Mirror the same key priority used elsewhere (memoria
+    /// `feedback_no_hardcoded_verticals`).
+    private static let timeBoundKeys = [
+        "starts_at", "startsAt", "due_at", "dueAt",
+        "deadline_at", "deadlineAt", "next_at", "nextAt"
+    ]
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private let relativeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.unitsStyle = .full
+        return f
+    }()
+
+    /// Extracts the next-occurrence date from a resource's metadata.
+    /// Polymorphic: any resource type works as long as it puts a date
+    /// string under one of `timeBoundKeys`.
+    private func nextAt(for row: ResourceRow) -> Date? {
+        for key in Self.timeBoundKeys {
+            if case let .string(s)? = row.metadata[key],
+               let date = Self.isoFormatter.date(from: s) {
+                return date
+            }
+        }
+        return nil
+    }
+
+    /// Single sorted list. Future-dated first (ascending by date), then
+    /// always-on (no nextAt), then past-dated last (descending by date).
+    /// Status-closed resources sink within their tier so the active stuff
+    /// floats to the top.
+    private var sortedResources: [ResourceRow] {
+        let now = Date.now
+        return resources.sorted { lhs, rhs in
+            let lhsAt = nextAt(for: lhs)
+            let rhsAt = nextAt(for: rhs)
+            let lhsFuture = (lhsAt ?? .distantPast) > now
+            let rhsFuture = (rhsAt ?? .distantPast) > now
+            let lhsPast   = (lhsAt != nil) && !lhsFuture
+            let rhsPast   = (rhsAt != nil) && !rhsFuture
+
+            // Tier 1: future-dated, ASC
+            if lhsFuture && rhsFuture { return (lhsAt ?? now) < (rhsAt ?? now) }
+            if lhsFuture { return true }
+            if rhsFuture { return false }
+            // Tier 2: always-on (no nextAt at all)
+            if !lhsPast && !rhsPast { return lhs.createdAt > rhs.createdAt }
+            if !lhsPast { return true }
+            if !rhsPast { return false }
+            // Tier 3: past, DESC
+            return (lhsAt ?? .distantPast) > (rhsAt ?? .distantPast)
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
@@ -236,11 +302,12 @@ private struct GroupResourcesSubTab: View {
                     )
                     .padding(.top, RuulSpacing.xl)
                 } else {
-                    ForEach(resources) { row in
+                    headerSummary
+                    ForEach(sortedResources) { row in
                         Button {
                             tap(row)
                         } label: {
-                            resourceCard(row)
+                            resourceCard(row, at: nextAt(for: row))
                         }
                         .buttonStyle(.plain)
                     }
@@ -257,7 +324,26 @@ private struct GroupResourcesSubTab: View {
         }
     }
 
-    private func resourceCard(_ row: ResourceRow) -> some View {
+    /// Header strip: total count + "próximos arriba" hint. Lets the user
+    /// know the ordering rule at a glance without a separate "Próximamente"
+    /// section (memoria — Home is the forward feed, not Grupo).
+    private var headerSummary: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("\(resources.count) recursos")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+            Spacer()
+            if sortedResources.contains(where: { (nextAt(for: $0) ?? .distantPast) > .now }) {
+                Text("PRÓXIMOS ARRIBA")
+                    .font(.ruulMicro.weight(.semibold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .tracking(0.5)
+            }
+        }
+        .padding(.horizontal, RuulSpacing.xxs)
+    }
+
+    private func resourceCard(_ row: ResourceRow, at: Date?) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             ZStack {
                 Circle().fill(Color.ruulSurface).frame(width: 40, height: 40)
@@ -269,9 +355,17 @@ private struct GroupResourcesSubTab: View {
                 Text(displayNameFor(row))
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
-                Text(row.resourceType.humanLabel)
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(row.resourceType.humanLabel)
+                    if let at = at {
+                        Text("·")
+                        Text(relativeFormatter.localizedString(for: at, relativeTo: .now))
+                            .foregroundStyle(at > .now ? Color.ruulTextSecondary : Color.ruulTextTertiary)
+                    }
+                }
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -295,11 +389,11 @@ private struct GroupResourcesSubTab: View {
     private func iconFor(_ type: ResourceType) -> String {
         switch type {
         case .event:        return "calendar"
-        case .asset:        return "key.fill"
-        case .slot:         return "ticket"
         case .fund:         return "banknote"
-        case .booking:      return "calendar.badge.checkmark"
-        case .contribution: return "arrow.up.bin"
+        case .asset:        return "key.fill"
+        case .space:        return "mappin.and.ellipse"
+        case .slot:         return "ticket"
+        case .right:        return "person.badge.key.fill"
         default:            return "square.dashed"
         }
     }
@@ -307,10 +401,7 @@ private struct GroupResourcesSubTab: View {
     /// Tap routing: an event resource opens the rich event-specific
     /// surface (cover/parallax/RSVP) via the parent's onOpenEvent
     /// callback. Everything else opens the universal capability-driven
-    /// `ResourceDetailSheet`. Splitting by type here — instead of
-    /// hiding events from the list — keeps the polymorphic semantics
-    /// ("an event is a resource") visible while preserving the polished
-    /// EventDetailView UX.
+    /// `ResourceDetailSheet`.
     private func tap(_ row: ResourceRow) {
         if row.resourceType == .event {
             Task { await openEvent(rowId: row.id) }
@@ -321,8 +412,6 @@ private struct GroupResourcesSubTab: View {
 
     @MainActor
     private func openEvent(rowId: UUID) async {
-        // resources.id mirrors events.id post mig 00039 so the lookup
-        // is a single primary-key fetch.
         if let event = try? await app.eventRepo.event(rowId) {
             onOpenEvent(event)
         }
@@ -331,10 +420,7 @@ private struct GroupResourcesSubTab: View {
     @MainActor
     private func load() async {
         defer { isLoading = false }
-        // Polymorphic list across every resource type the group can
-        // host. Events included — they're resources too. The tap router
-        // decides which detail surface to present.
-        let types: [ResourceType] = [.event, .asset, .slot, .fund, .booking, .contribution]
+        let types: [ResourceType] = [.event, .asset, .slot, .fund, .space, .right]
         do {
             resources = try await app.resourceRepo.list(
                 in: group.id,

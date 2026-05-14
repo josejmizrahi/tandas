@@ -38,6 +38,10 @@ public struct MainTabView: View {
     /// la paginación sobrevivan al cambio de tab (antes se construía lazy
     /// adentro de Profile.onOpenHistory).
     @State private var groupHistoryCoordinator: GroupHistoryCoordinator?
+    /// Push GroupHistoryView desde Grupo → Más → "Historial del grupo".
+    /// AppShell.md: Actividad ya no es tab top-level — vive como linkout
+    /// adentro de Grupo para no competir con el dashboard de Resumen.
+    @State private var groupHistoryRoute: Bool = false
     @State private var fineDetailRoute: Fine?
     @State private var reviewProposedRoute: Event?
     @State private var voteOnAppealRoute: AppealRouteContext?
@@ -978,8 +982,16 @@ public struct MainTabView: View {
                             openVotesRoute = OpenVotesRouteContext(id: group.id)
                         },
                         onOpenSanciones: { sancionesRoute = true },
-                        onOpenGroupRules: { groupRulesSettingsPresented = true }
+                        onOpenGroupRules: { groupRulesSettingsPresented = true },
+                        onOpenActivity: { groupHistoryRoute = true }
                     )
+                    .navigationDestination(isPresented: $groupHistoryRoute) {
+                        if let coord = groupHistoryCoordinator {
+                            GroupHistoryView(coordinator: coord)
+                                .navigationTitle("Actividad")
+                                .navigationBarTitleDisplayMode(.large)
+                        }
+                    }
                     .navigationDestination(item: $openVotesRoute) { _ in
                         openVotesDestination
                     }

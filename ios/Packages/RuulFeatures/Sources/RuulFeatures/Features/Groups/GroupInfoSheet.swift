@@ -3,7 +3,6 @@ import UIKit
 import OSLog
 import RuulUI
 import RuulCore
-import RuulCore
 
 /// RuulCore.Group info sheet shown from HomeView header (person.badge.plus icon).
 /// Three sections in priority order:
