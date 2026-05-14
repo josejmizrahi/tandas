@@ -209,7 +209,9 @@ public struct GroupSettingsSheet: View {
             } catch {
                 log.warning("update group config failed: \(error.localizedDescription)")
                 await MainActor.run {
-                    self.error = "No pudimos guardar los cambios: \(error.localizedDescription)"
+                    // W2-C2: ruulUserMessage handles PGRST/JWT/URLError
+                    // patterns; raw .localizedDescription leaked English.
+                    self.error = "No pudimos guardar los cambios. \(error.ruulUserMessage)"
                 }
             }
         }

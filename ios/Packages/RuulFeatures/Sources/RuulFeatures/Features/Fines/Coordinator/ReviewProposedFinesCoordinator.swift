@@ -48,7 +48,9 @@ public final class ReviewProposedFinesCoordinator {
             let updated = try await fineRepo.officialize(fineId: fineId)
             replaceLocal(updated)
         } catch {
-            self.error = error.localizedDescription
+            // W2-C2: translate to Spanish-MX so PostgREST/JWT/network
+            // messages don't leak straight into the inbox banner.
+            self.error = error.ruulUserMessage
         }
     }
 
@@ -60,7 +62,7 @@ public final class ReviewProposedFinesCoordinator {
             let updated = try await fineRepo.void(fineId: fineId, reason: reason)
             replaceLocal(updated)
         } catch {
-            self.error = error.localizedDescription
+            self.error = error.ruulUserMessage
         }
     }
 

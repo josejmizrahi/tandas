@@ -332,7 +332,10 @@ public final class ResourceWizardCoordinator {
             self.error = userFacing(error: e)
             return false
         } catch {
-            self.error = "No pudimos crear el recurso: \(error.localizedDescription)"
+            // W2-C2: pass through RuulErrorTranslator so PostgREST /
+            // network / auth errors land as friendly Spanish copy
+            // instead of leaking the raw English message.
+            self.error = "No pudimos crear el recurso. \(error.ruulUserMessage)"
             return false
         }
     }

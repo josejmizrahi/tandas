@@ -267,7 +267,10 @@ public struct SignInView: View {
                 }
             } catch {
                 await MainActor.run {
-                    self.error = "No pudimos enviar el código: \(error.localizedDescription)"
+                    // W2-C2: translator filters raw English from Twilio /
+                    // GoTrue / network. Was "...el código: Network connection
+                    // lost. (Domain=NSURLErrorDomain ...)".
+                    self.error = "No pudimos enviar el código. \(error.ruulUserMessage)"
                 }
             }
         }
@@ -320,7 +323,8 @@ public struct SignInView: View {
                     // session; AuthGate routes automatically.
                 } catch {
                     await MainActor.run {
-                        self.error = "No pudimos verificar con Apple: \(error.localizedDescription)"
+                        // W2-C2: filter raw Apple/Supabase Auth strings.
+                        self.error = "No pudimos verificar con Apple. \(error.ruulUserMessage)"
                     }
                 }
             }
