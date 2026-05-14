@@ -200,8 +200,9 @@ quedan huérfanos si el swap ya está.
 > (24 commits `fix(beta1-w*)`). Estado real verificado por commit log y
 > test pass:
 >
-> - **W1**: 7 / 9 done. Open: **E-1.2** (outbox janitor), **D-1.1**
->   (sendHostReminders sigue stub solo loguea analytics).
+> - **W1**: 8 / 9 done. Open: **D-1.1** (sendHostReminders sigue
+>   stub solo loguea analytics). E-1.2 outbox janitor cerrado en
+>   `83fccbd` (mig 00160).
 > - **W2**: 12 / 12 done. ✅ todo cerrado.
 > - **W3**: 6 / 12 done. Open: B-3.4 consent step, A-3.3 empty/loading
 >   states unify, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher
@@ -219,7 +220,7 @@ Goal: ningún beta tester puede ver datos de otro usuario, ni perder votos,
 ni recibir multas-fantasma porque arrancó el grupo.
 
 - [x] **E-1.1** `signOut` revoca APNs token → ✅ `514d3c1`. `AppState.signOut()` orquesta `notifications.revokeTokenIfRegistered()` antes de `auth.signOut()`. 3 tests verdes en `SignOutRevokesTokenTests`.
-- [ ] **E-1.2** ⏳ **OPEN.** Outbox janitor — pg_cron 5min: `UPDATE notifications_outbox SET dispatched_at=NULL, dispatch_status='pending' WHERE dispatch_status='pending' AND dispatched_at < now()-interval '5 minutes';`. Solo TODO comment en `dispatch-notifications/index.ts:16`.
+- [x] **E-1.2** Outbox janitor → ✅ `83fccbd` (mig 00160). `reset_stale_outbox_claims()` SECURITY DEFINER + pg_cron `*/5 * * * *`. Lockdown: ejecutable solo por `service_role` (revoke from public/anon/authenticated). Verificado en prod: smoke test = 0 orphans, cron registrado, grants correctos.
 - [x] **E-1.3** `cast_vote` + `finalize_vote` race → ✅ `b5a72e9`. `cast_vote` toma `FOR KEY SHARE` sobre la row del vote dentro de la transacción; `finalize_vote` mantiene `FOR UPDATE` que ya tenía. El gap del `count(*)` unlocked queda cerrado.
 - [x] **B-1.1** Multas opt-in por default → ✅ `e1b3e78`. `DinnerRecurringTemplate` siembra reglas monetarias con `isActive=false`; banner "Activa acuerdos" tras 3 cenas cerradas.
 - [x] **B-1.2** AuthGate first-time copy → ✅ `bea2bbd`. `SignInMode` separa flujo nuevo vs returning; ya no se ve "Bienvenido de vuelta" sin cuenta.
@@ -410,7 +411,7 @@ Cualitativas (cena journal en [[Beta1.md]]):
 - [ ] Sentry capturando crashes (TandasApp.swift confirmando) — verificar.
 - [x] Working tree limpio (los AppShell drafts o committed o reverted) → ✅ Track A landed `73c8f36` + `7632083` + `d2f8843`.
 - [x] Audit C grep de jargon: 0 hits → ✅ W2 commits `b622f1e` + `2f2e131` + `0319348` + `5a495af` + `49860c6`.
-- [ ] Audit E top-3 reliability blockers: 2/3 done (E-1.1 ✅, E-1.3 ✅); **E-1.2 outbox janitor ⏳ open**.
+- [x] Audit E top-3 reliability blockers → ✅ 3/3 done (E-1.1 `514d3c1`, E-1.3 `b5a72e9`, E-1.2 `83fccbd`).
 
 **Soft signals:**
 - [ ] El founder se siente cómodo invitando a su mejor amigo (no a un beta tester anónimo)
@@ -439,4 +440,6 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 
 - **2026-05-13** — Track abierto. 5 audits paralelos completados (A AppShell, B Onboarding, C Copy, D Notifications, E Reliability). Reportes en [[Beta1Consolidation_Audit.md]]. Plan sintetizado, vertical fijado en cenas recurrentes + rotación, hide-list definida, roadmap 4 semanas priorizado.
 
-- **2026-05-13 evening** — Sprint de 7h cerró W1 (excepto E-1.2 outbox janitor + D-1.1 sendHostReminders), W2 al 100% (12/12), y la mitad de W3 (6/12). Track A AppShell consolidado vía `73c8f36` + `7632083` + `d2f8843`: `ResourceSummaryView` capability-driven reemplaza `EventStatusSummary` + `DetailSummaryView`, Resumen pasa a dashboard, Actividad sale de tabs top-level y vive en Grupo→Más. §6 actualizado con `✅ <SHA>` por ítem cerrado y `⏳ OPEN` por lo que queda. Próximo objetivo W1: **E-1.2 outbox janitor** (mig 00160 + pg_cron 5min).
+- **2026-05-13 evening** — Sprint de 7h cerró W1 (excepto E-1.2 outbox janitor + D-1.1 sendHostReminders), W2 al 100% (12/12), y la mitad de W3 (6/12). Track A AppShell consolidado vía `73c8f36` + `7632083` + `d2f8843`: `ResourceSummaryView` capability-driven reemplaza `EventStatusSummary` + `DetailSummaryView`, Resumen pasa a dashboard, Actividad sale de tabs top-level y vive en Grupo→Más. §6 actualizado con `✅ <SHA>` por ítem cerrado y `⏳ OPEN` por lo que queda.
+
+- **2026-05-13 late** — E-1.2 cerrado (`83fccbd` + mig 00160). `reset_stale_outbox_claims()` SECURITY DEFINER + pg_cron `reset-stale-outbox-every-5-minutes` ejecutándose en prod. Audit E top-3 reliability blockers ahora 3/3 done. **Único pendiente W1: D-1.1** (`EventDetailCoordinator.sendHostReminders` sigue stub que solo emite analytics — needs wire al `send-event-notification` con kind=`host_reminder` + rate-limit cliente 1/30min/evento).
