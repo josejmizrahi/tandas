@@ -185,15 +185,16 @@ async function loadSeriesState(
   | { error: string; alreadyGenerated: 0; after: null }
 > {
   if (s.resource_type === "event") {
+    // §14 step 5c-iii.A: reads from events_view (resources projection).
     const { count: countErr, error: countQueryErr } = await supabase
-      .from("events")
+      .from("events_view")
       .select("id", { count: "exact", head: true })
       .eq("series_id", s.id);
     if (countQueryErr) return { error: countQueryErr.message, alreadyGenerated: 0, after: null };
     const alreadyGenerated = countErr ?? 0;
 
     const { data: latest, error: latestErr } = await supabase
-      .from("events")
+      .from("events_view")
       .select("starts_at")
       .eq("series_id", s.id)
       .order("starts_at", { ascending: false })

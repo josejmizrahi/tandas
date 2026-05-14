@@ -157,8 +157,9 @@ async function buildContext(
         ev = (evResult.data as EventsViewRow | null) ?? null;
 
         if (ev) {
+          // §14 step 5c-iii.A: reads from attendance_view (atoms projection).
           const attResult = await supabase
-            .from("event_attendance")
+            .from("attendance_view")
             .select("user_id, rsvp_status, rsvp_at, cancelled_same_day, arrived_at")
             .eq("event_id", event.resource_id);
           attendance = (attResult.data as EventAttendanceRow[] | null) ?? [];

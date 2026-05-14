@@ -26,8 +26,9 @@ serve(withSentry(async (_req) => {
   const startedAt = new Date();
 
   // Candidate events: active, deadline already passed.
+  // §14 step 5c-iii.A: reads from events_view (resources projection).
   const { data: candidates, error: selErr } = await supabase
-    .from("events")
+    .from("events_view")
     .select("id, group_id, rsvp_deadline, starts_at, status")
     .in("status", ["scheduled", "in_progress"])
     .not("rsvp_deadline", "is", null)

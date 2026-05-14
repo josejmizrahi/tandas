@@ -55,8 +55,9 @@ serve(withSentry(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+  // §14 step 5c-iii.A: reads from events_view (resources projection).
   const { data: event, error: eventErr } = await supabase
-    .from("events")
+    .from("events_view")
     .select("*, groups(name, event_label)")
     .eq("id", event_id)
     .single();
@@ -140,9 +141,10 @@ async function resolveTargets(
     case "host_reminder":
     case "deadline_warning": {
       // Pending RSVPs for this event.
+      // §14 step 5c-iii.A: reads from attendance_view (atoms projection).
       const eventId = event.id as string;
       const { data } = await supabase
-        .from("event_attendance")
+        .from("attendance_view")
         .select("user_id")
         .eq("event_id", eventId)
         .eq("rsvp_status", "pending");

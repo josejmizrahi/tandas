@@ -25,8 +25,10 @@ serve(withSentry(async (req) => {
   const now = getNow(req);
   const cutoff = new Date(now.getTime() - CLOSE_AFTER_HOURS * 60 * 60 * 1000);
 
+  // §14 step 5c-iii.A: read from events_view (resources projection); writes
+  // below still target the events table until 5c-iii.C refactors them.
   const { data: stale, error: selErr } = await supabase
-    .from("events")
+    .from("events_view")
     .select("id, group_id, host_id, starts_at, status")
     .in("status", ["scheduled", "in_progress"])
     .lt("starts_at", cutoff.toISOString())

@@ -123,8 +123,9 @@ serve(withSentry(async (req) => {
     const upperBoundIso = new Date(upperBoundMs).toISOString();
     const lowerBoundIso = new Date(lowerBoundMs).toISOString();
 
+    // §14 step 5c-iii.A: reads from events_view (resources projection).
     const { data: candidates, error: candErr } = await supabase
-      .from("events")
+      .from("events_view")
       .select("id, group_id, starts_at")
       .in("status", ["scheduled", "in_progress"])
       .gt("starts_at", lowerBoundIso)
