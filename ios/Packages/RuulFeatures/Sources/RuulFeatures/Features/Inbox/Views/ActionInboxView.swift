@@ -43,6 +43,10 @@ public struct ActionInboxView: View {
                                     timeRemaining: nil,
                                     onTap: { onOpenAction(action) }
                                 )
+                                .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+                                    content
+                                        .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+                                }
                             }
                         }
                         .padding(.horizontal, RuulSpacing.lg)
@@ -50,6 +54,8 @@ public struct ActionInboxView: View {
                         .padding(.bottom, RuulSpacing.s12)
                     }
                     .scrollIndicators(.hidden)
+                    .contentMargins(RuulSpacing.md, for: .scrollIndicators)
+                    .scrollEdgeEffectStyle(.soft, for: .vertical)
                     .refreshable { await coordinator.refresh() }
                     .transition(.opacity)
                 }

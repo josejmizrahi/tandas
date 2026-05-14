@@ -110,6 +110,10 @@ public struct MyFeedView: View {
         ) {
             if let group { onSelectEvent(event, group) }
         }
+        .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+            content
+                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+        }
     }
 
     // MARK: - Compact row

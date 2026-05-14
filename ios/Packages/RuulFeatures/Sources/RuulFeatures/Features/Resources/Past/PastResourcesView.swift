@@ -57,6 +57,10 @@ public struct PastResourcesView: View {
                             myStatus: nil,
                             isHostedByMe: event.hostId == userId
                         ) { onOpenEvent(event) }
+                        .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+                            content
+                                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+                        }
                     }
                 }
                 .padding(RuulSpacing.lg)

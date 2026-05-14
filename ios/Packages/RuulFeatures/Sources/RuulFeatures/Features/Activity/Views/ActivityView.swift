@@ -36,6 +36,8 @@ public struct ActivityView: View {
                 }
                 .padding(RuulSpacing.md)
             }
+            .contentMargins(RuulSpacing.md, for: .scrollIndicators)
+            .scrollEdgeEffectStyle(.soft, for: .vertical)
         }
         // W2-C5: canon = "Actividad" for the group's system_events feed;
         // "Historial" reserved for past-events listing (PastResourcesView).
@@ -193,6 +195,10 @@ public struct ActivityView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+                    content
+                        .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+                }
                 .onAppear {
                     // Trigger pagination on the last visible row. When chip
                     // filter is active we still compare against the full

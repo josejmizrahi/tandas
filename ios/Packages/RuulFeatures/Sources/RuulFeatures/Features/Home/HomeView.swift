@@ -74,6 +74,8 @@ public struct HomeView: View {
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
+            .contentMargins(RuulSpacing.md, for: .scrollIndicators)
+            .scrollEdgeEffectStyle(.soft, for: .vertical)
             .refreshable {
                 async let h: Void = coordinator.refresh(force: true)
                 async let i: Void? = inboxCoordinator?.refresh()
