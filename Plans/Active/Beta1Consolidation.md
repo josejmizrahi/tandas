@@ -178,7 +178,7 @@ quedan huérfanos si el swap ya está.
 | `EventDetailCoordinator.sendHostReminders` es stub | Alta | Cierta | D (W2) |
 | Orphan inbox rows tras cancelar evento | Media | Alta | D (W2) |
 | `pay_fine` double-tap doble suma a `fund_balance` | Media | Baja | E (W3) |
-| `notification_tokens` no se limpia al remover miembro | Media | Media | E (W3) |
+| `notification_tokens` no se limpia al remover miembro | ✅ Cerrado | — | `b6a536c` (E-3.2 — dispatcher filtra `active=true`, no requiere cleanup) |
 | `hostAssigned` formatea fecha en UTC | Baja | Cierta MX | E (W2) |
 | `system_events` sin unique constraints | Baja | Baja (cron serializa) | E (W4 opcional) |
 
@@ -204,10 +204,11 @@ quedan huérfanos si el swap ya está.
 >   `83fccbd` (mig 00160). D-1.1 sendHostReminders wired en `9c1020b`
 >   (`EventNotificationDispatcher` actor + 30min rate-limit + 5 tests).
 > - **W2**: 12 / 12 done. ✅ todo cerrado.
-> - **W3**: 6 / 12 done. Open: B-3.4 consent step, A-3.3 empty/loading
+> - **W3**: 7 / 12 done. Open: B-3.4 consent step, A-3.3 empty/loading
 >   states unify, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher
->   API unify, E-3.1 realtime subs, E-3.2 token cleanup en
->   remove_member.
+>   API unify, E-3.1 realtime subs. (E-3.2 cerrado retroactivamente
+>   por `b6a536c` — el commit que el sweep original etiquetó como
+>   "bonus" era de hecho la solución arquitectónica de E-3.2.)
 > - **W4**: 0 / 7 done — pending demo polish + telemetry + QA + hide list.
 >
 > Marcas `✅ <SHA>` debajo apuntan al commit que cerró el ítem; los `⏳`
@@ -265,10 +266,8 @@ dos dispositivos no ven estado stale.
 - [ ] **A-3.4** ⏳ **OPEN.** "+" tab sin grupo activo → presenta `CreateGroupSheet` en vez de silent fail.
 - [ ] **A-3.5** ⏳ **OPEN.** `RuulGroupSwitcher` — API unificada + behavior idéntico en los 3 tabs.
 - [ ] **E-3.1** ⏳ **OPEN.** Realtime subs en `votes`, `vote_casts`, `fines`, `user_actions` para multi-device.
-- [ ] **E-3.2** ⏳ **OPEN.** `notification_tokens` cleanup en `remove_member` RPC o trigger.
+- [x] **E-3.2** Token cleanup en remoción → ✅ `b6a536c`. Resuelto en `dispatch-notifications` v6 con filtro `group_members.active = true` (runtime scoping). El commit body argumenta el porqué: tokens son user-scoped, no group-scoped — borrarlos en `remove_member` rompería las pushes legítimas de un usuario que sigue activo en otros grupos. La solución arquitectónica correcta es en el dispatch boundary. Junto con E-1.1 (`signOut` revoca token local), cubre ambas rutas: usuario se va (E-1.1) + admin remueve usuario (E-3.2). Removidos dejan de recibir pushes del grupo en ≤1 dispatch tick (~60s).
 - [x] **E-3.3** `pay_fine` FOR UPDATE → ✅ `e0d2575`. Idempotent guard previene double-balance en double-tap.
-
-*Bonus shipped fuera de la lista original:* `b6a536c` — `dispatch-notifications` ahora salta miembros inactivos (defensive bug fix).
 
 DoD W3: Onboarding funcional 7 → 3-4 screens. RSVP/voto/multa cambia en device A → device B refresca automáticamente.
 
@@ -444,4 +443,6 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 
 - **2026-05-13 late** — E-1.2 cerrado (`83fccbd` + mig 00160). `reset_stale_outbox_claims()` SECURITY DEFINER + pg_cron `reset-stale-outbox-every-5-minutes` ejecutándose en prod. Audit E top-3 reliability blockers ahora 3/3 done. **Único pendiente W1: D-1.1** (`EventDetailCoordinator.sendHostReminders` sigue stub que solo emite analytics — needs wire al `send-event-notification` con kind=`host_reminder` + rate-limit cliente 1/30min/evento).
 
-- **2026-05-13 closeout** — **W1 cerrado al 100%.** D-1.1 wired en `9c1020b`: `EventNotificationDispatcher` actor protocol (Mock + Live) en RuulCore, `EventDetailCoordinator` invoca el edge fn vía dispatcher inyectado, rate-limit 30min/evento dentro del actor (compartido entre coordinators), errores rate-limited surfacean como mensaje friendly via el envelope `error`. 5 tests verdes en `SendHostRemindersTests` (host invoca / non-host short-circuits / nil dispatcher fallback / rate-limited surface / edge failure). Próximo objetivo: W3 leftovers (B-3.4 consent step, A-3.3 empty/loading states, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API, E-3.1 realtime, E-3.2 token cleanup en remove_member) o W4 (telemetry / hide list / QA / demo).
+- **2026-05-13 closeout** — **W1 cerrado al 100%.** D-1.1 wired en `9c1020b`: `EventNotificationDispatcher` actor protocol (Mock + Live) en RuulCore, `EventDetailCoordinator` invoca el edge fn vía dispatcher inyectado, rate-limit 30min/evento dentro del actor (compartido entre coordinators), errores rate-limited surfacean como mensaje friendly via el envelope `error`. 5 tests verdes en `SendHostRemindersTests` (host invoca / non-host short-circuits / nil dispatcher fallback / rate-limited surface / edge failure). Próximo objetivo: W3 leftovers (B-3.4 consent step, A-3.3 empty/loading states, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API, E-3.1 realtime) o W4 (telemetry / hide list / QA / demo).
+
+- **2026-05-13 late closeout** — **E-3.2 re-clasificado.** Sub-batch 1 (reliability) arrancó como `E-3.2 + E-3.1`. Auditoría reveló que `b6a536c` (mismo día, 19:33) ya cierra E-3.2: el commit body argumenta explícitamente la decisión arquitectónica (tokens user-scoped, no group-scoped → fix en dispatch boundary, no en `remove_member`). El sweep original lo había etiquetado como "bonus" por error. §5 risk matrix + §6 W3 actualizados. W3 ahora 7 / 12 done. Sub-batch sigue con E-3.1 (realtime subs) como único trabajo real pendiente del reliability cluster.
