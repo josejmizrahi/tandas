@@ -8,8 +8,8 @@ import RuulCore
 ///   1. Cover (optional)         — parallax hero when an image URL exists
 ///   2. Header                   — identity (`EventHeroTitleBlock` for events,
 ///                                  `DetailHeaderView` for other types)
-///   3. Summary                  — compact status block (`EventStatusSummary`
-///                                  for events, metadata-rows otherwise)
+///   3. Summary                  — `ResourceSummaryView`, capability-driven
+///                                  across every resource type
 ///   4. Needs Attention          — inbox actions filtered to this resource
 ///   5. Primary Actions          — top CTA (RSVP intent for events)
 ///   6. Secondary Actions strip  — money-flavored chips (Gasto / Aportación / Payout)
@@ -82,11 +82,11 @@ public struct UniversalResourceDetailView: View {
 
     @ViewBuilder
     private var summaryZone: some View {
-        if context.usesEventHero {
-            EventStatusSummary(context: context)
-        } else {
-            DetailSummaryView(context: context)
-        }
+        // AppShell 2026-05-12: single capability-driven summary view across
+        // every resource type. Replaces the per-type branch (EventStatusSummary
+        // for events / DetailSummaryView for others) per memoria
+        // `project_resource_detail_capability_driven`.
+        ResourceSummaryView(context: context)
     }
 
     /// Top padding when no cover is present. Clears the floating

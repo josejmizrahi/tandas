@@ -30,7 +30,7 @@ public enum ResourceType: Codable, Sendable, Hashable {
 extension ResourceType {
     /// Human-facing label for this resource type, in the singular. Single
     /// source of truth — view layers (HomeView, GroupTabView,
-    /// ResourceDetailSheet, DetailSummaryView) must read from here instead
+    /// ResourceDetailSheet, ResourceSummaryView) must read from here instead
     /// of inlining their own switch. Phrasing leans colloquial Mexican
     /// Spanish to match the social register of the product, not the
     /// taxonomy used in code/migrations.

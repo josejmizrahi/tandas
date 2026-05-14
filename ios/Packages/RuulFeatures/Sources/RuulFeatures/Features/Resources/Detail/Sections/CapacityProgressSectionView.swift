@@ -24,10 +24,10 @@ public struct CapacityProgressSectionView: View {
     )
 
     public var body: some View {
-        // For events, the summary zone (`EventStatusSummary`) already
-        // surfaces "X de Y confirmados" textually. Repeating the same
-        // count as a bar here would just thicken the rhythm without
-        // adding info. Other resource types still get the visual bar.
+        // For events, `ResourceSummaryView` already surfaces "X de Y
+        // confirmados" textually. Repeating the same count as a bar here
+        // would just thicken the rhythm without adding info. Other resource
+        // types still get the visual bar.
         if context.usesEventHero {
             EmptyView()
         } else if let capacityMax {
