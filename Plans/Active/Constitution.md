@@ -87,7 +87,7 @@ Estos 6 pasos son la deuda concreta para alinear la base con la constitución. N
 
    **§14 step 5 cerrado 2026-05-13.** Las tablas legacy `events` y `event_attendance` están físicamente fuera del schema. La verdad histórica vive en `public.resources` (objects) + `public.rsvp_actions` y `public.check_in_actions` (atoms) — conforme al artículo 7 de la constitución.
 
-   *Tech debt diferido*: 4 e2e tests (`autoCloseAndDeadline.test.ts`, `recurrenceGenerator.test.ts`, `rotationCapability.test.ts`, `rsvpDeadlineFromCapabilityConfig.test.ts`) aún hacen `from("events")` / `from("event_attendance")` directo y necesitarán migrar a `events_view` / `attendance_view` antes de la próxima corrida. No bloquea producción.
+   *Tech debt cerrado* (`fe0b27f`, 2026-05-13): los 4 e2e tests (`autoCloseAndDeadline.test.ts`, `recurrenceGenerator.test.ts`, `rotationCapability.test.ts`, `rsvpDeadlineFromCapabilityConfig.test.ts`) ya están migrados a `events_view` (9 callsites convertidos). Mecánico — same columns disponibles en la vista drop-in de mig 00156.
 
    Razón del split: la auditoría 2026‑05‑13 reveló 19 funciones SQL tocando `events`/`event_attendance` (no 6+), 6 edge fns + 12 archivos Swift/TS, y 5 triggers a re‑implementar. Blast radius cubre el ciclo completo de evento (create/RSVP/check‑in/close/cancel/cron). Ejecutar 5c‑iii+iv en una sola corrida sin testing dedicado es alto riesgo de regresión silenciosa en producción.
 
