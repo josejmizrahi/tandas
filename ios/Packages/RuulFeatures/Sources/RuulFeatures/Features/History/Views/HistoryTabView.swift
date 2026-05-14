@@ -34,12 +34,10 @@ public struct HistoryTabView: View {
 
     private var header: some View {
         HStack {
-            RuulGroupSwitcher(
-                activeGroupName: activeGroup.name,
-                activeCategory: activeGroup.category,
-                activeInitials: activeGroup.initials,
-                onTap: onSwitchGroup
-            )
+            // Beta 1 W3 A-3.5: convenience init for API consistency. This
+            // surface is currently orphan per §7 hide list — kept aligned
+            // anyway so a future revival doesn't drift.
+            RuulGroupSwitcher(activeGroup: activeGroup, onTap: onSwitchGroup)
             Spacer()
         }
         .padding(.horizontal, RuulSpacing.screenPadding)

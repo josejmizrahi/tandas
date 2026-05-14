@@ -110,12 +110,12 @@ public struct GroupTabView: View {
 
     private var header: some View {
         HStack {
-            RuulGroupSwitcher(
-                activeGroupName: activeGroup.name,
-                activeCategory: activeGroup.category,
-                activeInitials: activeGroup.initials,
-                onTap: onSwitchGroup
-            )
+            // Beta 1 W3 A-3.5: convenience init keeps the API uniform with
+            // the other two header callsites (MainTabView decisionsTab,
+            // HomeView). HomeView wraps the switcher in a richer header
+            // with greeting + icon buttons — documented exception, not an
+            // API inconsistency.
+            RuulGroupSwitcher(activeGroup: activeGroup, onTap: onSwitchGroup)
             Spacer()
         }
         .padding(.horizontal, RuulSpacing.screenPadding)
