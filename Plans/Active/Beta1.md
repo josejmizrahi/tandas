@@ -3,7 +3,7 @@
 > Status: **active**, freeze arquitectónico **levantado el 2026-05-08**.
 > Arrancado 2026-05-07. Las cenas siguen documentándose en § 5 como
 > señal cualitativa, pero ya no bloquean Phase 2 — el founder decidió
-> arrancar refactor de primitives directo (`Plans/Active/Primitives.md`).
+> arrancar refactor de primitives directo (`Plans/Completed/Primitives.md`).
 > El propósito original era comportamiento humano sobre correctness
 > técnica; ahora corren en paralelo.
 
@@ -34,7 +34,7 @@ Solo después de Beta 1 se decide qué primitiva de Fase 2 priorizar:
 
 > **2026-05-08 — Freeze levantado.** El founder decidió saltar el
 > journal-of-cenas como gating de Phase 2 y arrancar refactor de
-> primitives según `Plans/Active/Primitives.md`. Trabajo arquitectónico
+> primitives según `Plans/Completed/Primitives.md`. Trabajo arquitectónico
 > nuevo permitido a partir de hoy. Las cenas reales siguen siendo
 > señal cualitativa útil pero ya no bloquean nada. Las reglas
 > originales abajo se conservan como referencia histórica del intento.
@@ -173,7 +173,7 @@ Beta 1 se cierra cuando se cumple **una** de:
 - Pasaron 6 semanas calendar (lo que cierre primero — evitar perfecto-enemigo-bueno).
 
 **Insumo arquitectónico para esta decisión**: ver
-`Plans/Active/Primitives.md` — documento canónico que ubica cada
+`Plans/Completed/Primitives.md` — documento canónico que ubica cada
 candidata (Rotation, Slot, Asset, Fund, Booking, Contribution…) en
 niveles L1–L5 y aplica la regla de Resource (§5). **No abrir
 primitives nuevas sin chequear contra ese doc.** El journal manda
@@ -271,7 +271,7 @@ Cosas que **no** se hacen en Beta 1, aunque el bug-itch tienta:
 
 ## 10. Cómo se relaciona con otros docs
 
-- `Plans/Active/Roadmap.md` — north star de las 6 fases.
+- `Plans/Archive/Roadmap.md` — north star de las 6 fases.
 - `Plans/Completed/Audit-2026-05-06.md` — los 5 items pre-Fase 2 ya
   cerrados (consolidación arquitectónica completa).
 - `docs/README.md` — mapa canónico de docs.

@@ -8,7 +8,7 @@
 
 ## Por qué este doc existe
 
-Plans/Active/Primitives.md § 1 nombró el patrón Atom/Projection como
+Plans/Completed/Primitives.md § 1 nombró el patrón Atom/Projection como
 canónico — varias primitives existentes ya lo siguen
 (`system_events` → History, `vote_casts` → `vote_counts_view`,
 `events` → `events_view`, etc.). Pero **ningún tipo Swift ni
@@ -198,14 +198,14 @@ append-only as of 2026-05-14.
   sección "Trigger anti-mutation" con el shape real.
 
 **No se modifica** por sprints o tareas — eso vive en
-`Plans/Active/Roadmap.md` o ADRs.
+`Plans/Archive/Roadmap.md` o ADRs.
 
 ---
 
 ## Referencias cruzadas
 
-- `Plans/Active/Primitives.md` § 1 — patrón base.
-- `Plans/Active/Phase2Readiness.md` — primitives ready for Phase 2.
+- `Plans/Completed/Primitives.md` § 1 — patrón base.
+- `Plans/Completed/Phase2Readiness.md` — primitives ready for Phase 2.
 - `ios/Packages/RuulCore/Sources/RuulCore/PlatformModels/AtomProjection.swift` —
   marker protocols.
 - `ios/Packages/RuulCore/Sources/RuulCore/PlatformModels/SystemEvent.swift` —

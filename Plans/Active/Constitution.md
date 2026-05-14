@@ -1,8 +1,8 @@
 # Ruul — Constitución arquitectónica
 
 **Status:** Canónico desde 2026-05-13. Founder directive.
-**Reemplaza/consolida:** `Primitives.md` (la fórmula), `Taxonomy_Resources_and_Capabilities.md` (Resources × Capabilities), `AtomProjection.md` (atoms/projections), `L1_Audit_2026-05-10.md` (deuda L1).
-**Companion:** `Roadmap.md` (ejecución), `OpenPlatform_Phase0_2026-05-10.md` (phasing), `Beta1Consolidation.md` (vertical actual).
+**Reemplaza/consolida:** `Plans/Completed/Primitives.md` (la fórmula), `Plans/Completed/Taxonomy_Resources_and_Capabilities.md` (Resources × Capabilities), `Plans/Completed/L1_Audit_2026-05-10.md` (deuda L1). El companion `Plans/Active/AtomProjection.md` sigue activo con la guard coverage matrix.
+**Companion:** `Plans/Archive/Roadmap.md` (ejecución histórica, números pre-Constitution stale), `Plans/Completed/OpenPlatform_Phase0_2026-05-10.md` (phasing pre-Constitution), `Plans/Active/Beta1Consolidation.md` (vertical actual — closed 40/40 al 2026-05-14, ref para QA + demo).
 
 > **Ruul es un Human Coordination Operating System.**
 > No es una app de eventos, ni un calendario social, ni un splitwise, ni una colección de verticales. Es la infraestructura para que grupos humanos persistentes coordinen recursos, reglas, actos y memoria de manera auditable y extensible.
