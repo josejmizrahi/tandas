@@ -122,11 +122,11 @@ sanction, badge, reward) con la misma forma derivada.
 
 | Tabla / view | Tipo | Notas |
 |---|---|---|
-| `public.system_events` | Atom | append-only, source of truth |
-| `public.vote_casts` | Atom | one ballot per member per vote |
+| `public.system_events` | Atom | append-only, source of truth. Guarded by `system_events_atom_guard` (mig 00162) — partial guard: business columns rejected; only the one-way `processed_at: null → ts` transition allowed for the rule-engine cron. |
+| `public.vote_casts` | Atom | append-only post-mig 00163. Every cast inserts a new row; latest-per-(vote, member) wins in `vote_counts_view` + `finalize_vote`. Guarded by `vote_casts_atom_guard` (BEFORE UPDATE OR DELETE). |
 | `public.vote_ballots` | Atom (legacy) | reemplazada por vote_casts post-mig 00020 |
-| `public.events` | Atom-ish | `closed_at` muta una vez al cierre. OK por ser estado terminal. |
-| `public.events_view` | Projection | resolución de recurrencia + RSVP join |
+| `public.events` | dropped | mig 00159 — events live as `resources WHERE resource_type='event'` |
+| `public.events_view` | Projection | drop-in compatible view sobre `resources.metadata` |
 | `public.group_members` | Atom-ish | `active`, `joined_at` mutables; ok porque transición es one-way |
 | `public.group_members_with_founder` | Projection | join con `groups.created_by` |
 | `public.invites` | Atom-ish | `used_at` mutable terminal |
@@ -155,22 +155,35 @@ La convención es forward-only.
 
 ---
 
-## Trigger anti-mutation (futuro, opcional)
+## Trigger anti-mutation (implementado)
 
-Una capa adicional para tablas que conformen `Atom` server-side
-sería un `BEFORE UPDATE` trigger que rechaza UPDATEs que toquen
-business columns:
+`public.atom_no_mutation_guard()` (mig 00103) — BEFORE UPDATE OR
+DELETE → raise `check_violation`. Cobertura actual:
 
-```sql
-create function public.atom_no_mutation_guard() returns trigger ...
-do $$ begin
-  raise exception 'atom row % is append-only; UPDATE rejected', new.id;
-end $$;
-```
+| Atom | Guard | Migration |
+|---|---|---|
+| `public.ledger_entries` | `ledger_entries_atom_guard` | 00103 |
+| `public.rsvp_actions` | `rsvp_actions_atom_guard` | 00103 |
+| `public.check_in_actions` | `check_in_actions_atom_guard` | 00154 |
+| `public.system_events` | `system_events_atom_guard` (partial) | 00162 |
+| `public.vote_casts` | `vote_casts_atom_guard` | 00163 |
 
-Documentado pero **no implementado todavía**. Ejecutar cuando
-llegue el primer atom nuevo (probablemente `LedgerEntry` en
-Phase 3).
+`system_events` uses a **partial guard** (`system_events_processed_at_only_guard`)
+that allows the single legitimate mutation — `processed_at: null →
+timestamp` by the rule-engine cron. Every other column is locked, and
+DELETE is always rejected. Any future column added to `system_events`
+is automatically protected because the guard compares
+`to_jsonb(old) - 'processed_at'` against the same on `new` — fails
+closed.
+
+`vote_casts` switched to a fully append-only pattern in mig 00163
+(Constitution audit Gap 2): start_vote still pre-seeds `pending`
+rows, but cast_vote INSERT-s a new row each time and
+`vote_counts_view` / `finalize_vote` fold to latest-per-(vote, member).
+Re-cast supported by inserting another row.
+
+All 5 canonical atoms listed in Constitution §7 are now DB-enforced
+append-only as of 2026-05-14.
 
 ---
 
