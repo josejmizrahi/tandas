@@ -3,7 +3,7 @@ import RuulUI
 import RuulCore
 
 /// Compact list row for events. The workhorse cell across MyFeedView,
-/// PastEventsView, and any future "list of events" surface.
+/// PastResourcesView, and any future "list of events" surface.
 ///
 /// Visual model (Apple Invites compact pattern):
 ///

@@ -2,7 +2,7 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-public struct PastEventsView: View {
+public struct PastResourcesView: View {
     public let group: RuulCore.Group
     public let userId: UUID
     public let eventRepo: any EventRepository

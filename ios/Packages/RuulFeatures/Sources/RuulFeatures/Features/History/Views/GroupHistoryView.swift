@@ -33,7 +33,7 @@ public struct GroupHistoryView: View {
             .padding(RuulSpacing.md)
         }
         // W2-C5: canon = "Actividad" for the group's system_events feed;
-        // "Historial" reserved for past-events listing (PastEventsView).
+        // "Historial" reserved for past-events listing (PastResourcesView).
         // "Historia" dropped entirely.
         .navigationTitle("Actividad")
         .navigationBarTitleDisplayMode(.large)
