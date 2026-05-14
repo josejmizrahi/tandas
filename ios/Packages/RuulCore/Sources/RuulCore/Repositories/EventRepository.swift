@@ -355,26 +355,33 @@ public actor LiveEventRepository: EventRepository {
     }
 
     public func updateEvent(_ id: UUID, patch: EventPatch) async throws -> Event {
-        var payload: [String: AnyJSON] = [:]
-        if let v = patch.title              { payload["title"] = .string(v) }
-        if let v = patch.description        { payload["description"] = .string(v) }
-        if let v = patch.coverImageName     { payload["cover_image_name"] = .string(v) }
-        if let v = patch.coverImageURL      { payload["cover_image_url"] = .string(v.absoluteString) }
-        if let v = patch.startsAt           { payload["starts_at"] = .string(ISO8601DateFormatter().string(from: v)) }
-        if let v = patch.durationMinutes    { payload["duration_minutes"] = .integer(v) }
-        if let v = patch.locationName       { payload["location"] = .string(v) }
-        if let v = patch.locationLat        { payload["location_lat"] = .double(v) }
-        if let v = patch.locationLng        { payload["location_lng"] = .double(v) }
-        if let v = patch.hostId             { payload["host_id"] = .string(v.uuidString.lowercased()) }
-        if let v = patch.applyRules         { payload["apply_rules"] = .bool(v) }
+        // §14 step 5c-iv: events table is gone. Patch fields land in
+        // resources.metadata via the update_event_metadata RPC. Key
+        // vocabulary unchanged so the field-by-field assembly below is
+        // the same; the iOS-facing API (EventPatch) stays as-is.
+        var patchJSON: [String: AnyJSON] = [:]
+        if let v = patch.title              { patchJSON["title"] = .string(v) }
+        if let v = patch.description        { patchJSON["description"] = .string(v) }
+        if let v = patch.coverImageName     { patchJSON["cover_image_name"] = .string(v) }
+        if let v = patch.coverImageURL      { patchJSON["cover_image_url"] = .string(v.absoluteString) }
+        if let v = patch.startsAt           { patchJSON["starts_at"] = .string(ISO8601DateFormatter().string(from: v)) }
+        if let v = patch.durationMinutes    { patchJSON["duration_minutes"] = .integer(v) }
+        if let v = patch.locationName       { patchJSON["location_name"] = .string(v) }
+        if let v = patch.locationLat        { patchJSON["location_lat"] = .double(v) }
+        if let v = patch.locationLng        { patchJSON["location_lng"] = .double(v) }
+        if let v = patch.hostId             { patchJSON["host_id"] = .string(v.uuidString.lowercased()) }
+        if let v = patch.applyRules         { patchJSON["apply_rules"] = .bool(v) }
 
+        struct Params: Encodable {
+            let p_event_id: String
+            let p_patch: AnyJSON
+        }
         do {
             return try await client
-                .from("events")
-                .update(payload)
-                .eq("id", value: id.uuidString.lowercased())
-                .select()
-                .single()
+                .rpc("update_event_metadata", params: Params(
+                    p_event_id: id.uuidString.lowercased(),
+                    p_patch: .object(patchJSON)
+                ))
                 .execute()
                 .value
         } catch {

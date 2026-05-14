@@ -49,12 +49,12 @@ serve(withSentry(async (req) => {
     });
   }
 
+  // §14 step 5c-iv: events table dropped. Close-by-batch via the new
+  // bulk_close_stale_events RPC which does per-row jsonb_set on
+  // resources.metadata.closed_at without trampling other metadata keys.
   const ids = stale.map((e) => e.id);
-  const closedAt = now.toISOString();
   const { error: updErr } = await supabase
-    .from("events")
-    .update({ status: "completed", closed_at: closedAt })
-    .in("id", ids);
+    .rpc("bulk_close_stale_events", { p_ids: ids });
 
   if (updErr) {
     console.error("auto-close update failed", updErr);
