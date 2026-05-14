@@ -9,6 +9,11 @@ public struct CreateEventView: View {
 
     @State private var coverPickerPresented = false
     @State private var photosPickerItem: PhotosPickerItem?
+    /// W3-B3: collapsed by default. Audit Track B flagged the 7-section
+    /// CreateEventView as overwhelming for first-time users; description
+    /// + apply-rules toggle now sit behind a tap so the primary path is
+    /// just name + date + (host if rotation).
+    @State private var moreOptionsExpanded = false
 
     public var body: some View {
         NavigationStack {
@@ -25,8 +30,7 @@ public struct CreateEventView: View {
                     }
                     locationSection
                     hostSection
-                    descriptionSection
-                    rulesToggleSection
+                    moreOptionsDisclosure
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.md)
@@ -175,6 +179,26 @@ public struct CreateEventView: View {
             isOn: $coordinator.draft.applyRules,
             description: "Si está apagado, este evento no genera multas al cerrarse."
         )
+    }
+
+    /// W3-B3: progressive disclosure. Less-important fields (description
+    /// + apply-rules) live behind "Más opciones" so first-time users
+    /// see a clean name+date+host primary path. Existing power users
+    /// expand once and the state survives the screen session.
+    @ViewBuilder
+    private var moreOptionsDisclosure: some View {
+        DisclosureGroup(isExpanded: $moreOptionsExpanded) {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                descriptionSection
+                rulesToggleSection
+            }
+            .padding(.top, RuulSpacing.md)
+        } label: {
+            Text("Más opciones")
+                .ruulTextStyle(RuulTypography.headline)
+                .foregroundStyle(Color.ruulTextPrimary)
+        }
+        .tint(Color.ruulTextSecondary)
     }
 
     private var publishButton: some View {
