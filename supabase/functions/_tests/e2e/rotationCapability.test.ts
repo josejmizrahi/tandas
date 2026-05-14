@@ -178,8 +178,9 @@ Deno.test("Tier 5: hostAssigned user_action emitted for each rotation-resolved o
     if (!r.ok) throw new Error(`auto-generate-events failed: ${JSON.stringify(r.body)}`);
 
     // Read the first 3 events generated.
+    // §14 step 5c-iv: events table dropped — read via projection.
     const { data: events, error: evErr } = await admin
-      .from("events")
+      .from("events_view")
       .select("id, host_id, cycle_number, created_by")
       .eq("series_id", seriesId)
       .order("starts_at", { ascending: true })
@@ -270,8 +271,9 @@ Deno.test("Tier 5: auto-generate-events forwards rotation host_id to occurrences
     if (!r.ok) throw new Error(`auto-generate-events failed: ${JSON.stringify(r.body)}`);
 
     // Fetch the first 3 occurrences by starts_at asc.
+    // §14 step 5c-iv: events table dropped — read via projection.
     const { data: events, error: evErr } = await admin
-      .from("events")
+      .from("events_view")
       .select("id, host_id, starts_at, cycle_number")
       .eq("series_id", seriesId)
       .order("starts_at", { ascending: true })

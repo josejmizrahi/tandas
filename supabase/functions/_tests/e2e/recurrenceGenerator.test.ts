@@ -76,8 +76,9 @@ Deno.test("recurrence: weekly Thursday, never end → cron generates horizon-wor
     const run1 = await invokeCron("auto-generate-events");
     assertEquals(run1.ok, true, `auto-generate-events run 1 failed: ${JSON.stringify(run1.body)}`);
 
+    // §14 step 5c-iv: events table dropped — read via projection.
     const { data: events1, error: e1Err } = await admin
-      .from("events")
+      .from("events_view")
       .select("id, series_id, starts_at")
       .eq("series_id", series.id)
       .order("starts_at", { ascending: true });
@@ -113,7 +114,7 @@ Deno.test("recurrence: weekly Thursday, never end → cron generates horizon-wor
     assertEquals(run2.ok, true, `auto-generate-events run 2 failed: ${JSON.stringify(run2.body)}`);
 
     const { data: events2, error: e2Err } = await admin
-      .from("events")
+      .from("events_view")
       .select("id")
       .eq("series_id", series.id);
     if (e2Err) throw new Error(`events select run 2: ${e2Err.message}`);
@@ -180,7 +181,7 @@ Deno.test("recurrence: after_count caps the series at exactly count occurrences"
     await invokeCron("auto-generate-events");
 
     const { data: events } = await admin
-      .from("events")
+      .from("events_view")
       .select("id, starts_at")
       .eq("series_id", series.id)
       .order("starts_at", { ascending: true });
@@ -189,7 +190,7 @@ Deno.test("recurrence: after_count caps the series at exactly count occurrences"
     // Re-run: stays at 3.
     await invokeCron("auto-generate-events");
     const { data: events2 } = await admin
-      .from("events")
+      .from("events_view")
       .select("id")
       .eq("series_id", series.id);
     assertEquals(events2?.length, 3, "idempotent — re-run stays at count");
@@ -240,7 +241,7 @@ Deno.test("recurrence: until_date caps the series at the last occurrence on/befo
     await invokeCron("auto-generate-events");
 
     const { data: events } = await admin
-      .from("events")
+      .from("events_view")
       .select("starts_at")
       .eq("series_id", series.id)
       .order("starts_at", { ascending: true });

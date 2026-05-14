@@ -390,8 +390,9 @@ Deno.test("auto-close-events emits eventClosed → rule engine fires no-show fin
     );
 
     // STATE: event flipped to completed
+    // §14 step 5c-iv: reads via events_view (events table dropped).
     const { data: closedEvent } = await admin
-      .from("events")
+      .from("events_view")
       .select("status, closed_at")
       .eq("id", eventId)
       .single();

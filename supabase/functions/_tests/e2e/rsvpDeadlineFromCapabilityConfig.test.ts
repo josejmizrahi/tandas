@@ -52,8 +52,9 @@ async function buildEventDraft(args: BuildDraftArgs): Promise<string> {
 }
 
 async function fetchEventDeadline(resourceId: string): Promise<{ rsvp_deadline: string; starts_at: string }> {
+  // §14 step 5c-iv: events table dropped — read via projection.
   const { data, error } = await admin
-    .from("events")
+    .from("events_view")
     .select("rsvp_deadline, starts_at")
     .eq("id", resourceId)
     .single();
