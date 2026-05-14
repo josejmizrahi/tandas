@@ -41,7 +41,7 @@ public struct RootShell: View {
             .tabItem { Label("Inicio", systemImage: "house.fill") }
             .tag(RootTab.home)
 
-            InboxTab()
+            InboxTab(inbox: inboxCoordinator)
                 .tabItem { Label("Inbox", systemImage: "tray.fill") }
                 .tag(RootTab.inbox)
                 .badge(inboxCoordinator?.actions.count ?? 0)
