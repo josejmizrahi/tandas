@@ -223,8 +223,9 @@ public struct ProfileView: View {
             }
             divider
             // W2-C5: "Historia" → "Actividad". The destination is the
-            // group's system_events feed (GroupHistoryView), which is
-            // canonically named "Actividad" per the UX dictionary.
+            // group's system_events feed (ActivityView in
+            // Features/Activity/), which is canonically named
+            // "Actividad" per the UX dictionary.
             navRow(icon: "clock.arrow.circlepath", label: "Actividad del grupo", trailing: { EmptyView() }, action: onOpenHistory)
         }
     }

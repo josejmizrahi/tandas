@@ -30,9 +30,10 @@ public struct RulesView: View {
     /// (MainTabView) in G3 to push `OpenVotesListView`. For G2 it can be
     /// a no-op closure.
     public var onSeeOpenVotes: () -> Void = {}
-    /// Tap callback for a rule card. Wired by the parent
-    /// (GroupTabView → MainTabView) para pushear `RuleDetailView` en el
-    /// groupTab `NavigationStack`. Default no-op para callsites legacy.
+    /// Tap callback for a rule card. Wired by the presenting surface
+    /// (currently sheet- or push-based since the standalone Decisions
+    /// tab dissolved in Pass 2) to navigate to `RuleDetailView`.
+    /// Default no-op for callsites that don't push.
     public var onSelectRule: (GroupRule) -> Void = { _ in }
 
     public init(

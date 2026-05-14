@@ -21,8 +21,9 @@ public protocol SystemEventRepository: Actor {
     /// Lists recent system events for a group (chronological desc).
     func recent(groupId: UUID, limit: Int) async throws -> [SystemEvent]
 
-    /// Filtered + paginated query for the GroupHistoryView. All filter
-    /// fields except `groupId` are optional. Returns chronological desc.
+    /// Filtered + paginated query for `ActivityView` (the Activity tab
+    /// timeline). All filter fields except `groupId` are optional.
+    /// Returns chronological desc.
     func query(filter: SystemEventFilter, limit: Int, offset: Int) async throws -> [SystemEvent]
 }
 

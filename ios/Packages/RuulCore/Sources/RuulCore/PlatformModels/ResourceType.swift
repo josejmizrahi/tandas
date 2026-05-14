@@ -39,9 +39,9 @@ extension ResourceType {
 
 extension ResourceType {
     /// Human-facing label for this resource type, in the singular. Single
-    /// source of truth — view layers (HomeView, GroupTabView,
-    /// ResourceDetailSheet, ResourceSummaryView) must read from here instead
-    /// of inlining their own switch. Phrasing leans colloquial Mexican
+    /// source of truth — view layers (HomeView, ResourceDetailSheet,
+    /// ResourceSummaryView, etc.) must read from here instead of
+    /// inlining their own switch. Phrasing leans colloquial Mexican
     /// Spanish to match the social register of the product, not the
     /// taxonomy used in code/migrations.
     public var humanLabel: String {

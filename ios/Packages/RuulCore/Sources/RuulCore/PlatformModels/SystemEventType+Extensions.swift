@@ -74,9 +74,10 @@ public extension SystemEventType {
     /// emitted by crons / triggers to give the rule engine something
     /// to evaluate against — never user-meaningful.
     ///
-    /// Beta 1 W2-D3: GroupHistoryView used to clutter with
-    /// "Quedan horas para un evento" rows from `hoursBeforeEvent`
-    /// (every recurring event × every reminder horizon). Audit Track D #6.
+    /// Beta 1 W2-D3: the Activity timeline (then GroupHistoryView,
+    /// now ActivityView) used to clutter with "Quedan horas para un
+    /// evento" rows from `hoursBeforeEvent` (every recurring event ×
+    /// every reminder horizon). Audit Track D #6.
     var isHiddenFromUserActivity: Bool {
         switch self {
         case .hoursBeforeEvent,
