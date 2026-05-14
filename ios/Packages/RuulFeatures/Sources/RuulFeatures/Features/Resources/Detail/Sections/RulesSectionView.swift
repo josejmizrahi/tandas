@@ -26,7 +26,7 @@ public struct RulesSectionView: View {
             Button(action: context.onPresentRules) {
                 HStack(spacing: RuulSpacing.md) {
                     Image(systemName: "list.bullet.clipboard.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
                         .foregroundStyle(Color.ruulAccent)
                         .frame(width: 28)
                         .accessibilityHidden(true)
@@ -40,7 +40,7 @@ public struct RulesSectionView: View {
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
+                        .ruulTextStyle(RuulTypography.labelSmSemibold)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                 }

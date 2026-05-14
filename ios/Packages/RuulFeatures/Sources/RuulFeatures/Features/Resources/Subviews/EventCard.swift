@@ -167,7 +167,7 @@ public struct EventCard: View {
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
+                .ruulTextStyle(RuulTypography.microBold)
                 .accessibilityHidden(true)
             Text(text)
                 .ruulTextStyle(RuulTypography.sectionLabel)
@@ -204,7 +204,7 @@ public struct EventCard: View {
         }()
         return HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
+                .ruulTextStyle(RuulTypography.microBold)
                 .accessibilityHidden(true)
             Text(label)
                 .ruulTextStyle(RuulTypography.sectionLabel)

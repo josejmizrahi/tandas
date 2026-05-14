@@ -52,7 +52,7 @@ public struct ShareEventSheet: View {
                 ShareLink(item: shareMessage) {
                     HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .semibold))
+                            .ruulTextStyle(RuulTypography.subheadSemibold)
                             .accessibilityHidden(true)
                         Text("Compartir link")
                             .ruulTextStyle(RuulTypography.body)
@@ -70,7 +70,7 @@ public struct ShareEventSheet: View {
                     } label: {
                         HStack(spacing: RuulSpacing.xs) {
                             Image(systemName: "calendar.badge.plus")
-                                .font(.system(size: 16, weight: .semibold))
+                                .ruulTextStyle(RuulTypography.subheadSemibold)
                                 .accessibilityHidden(true)
                             Text("Agregar a Calendario")
                                 .ruulTextStyle(RuulTypography.body)

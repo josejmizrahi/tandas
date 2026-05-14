@@ -86,7 +86,7 @@ public struct CheckInSectionView: View {
         RuulCard(.tile, tint: .ruulPositive) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 26, weight: .bold))
+                    .ruulTextStyle(RuulTypography.titleLarge)
                     .foregroundStyle(Color.ruulPositive)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {

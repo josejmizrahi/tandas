@@ -185,7 +185,7 @@ public struct RuleDetailView: View {
     private func consequenceRow(_ cons: GroupRule.ConsequenceEnvelope) -> some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "arrow.right.circle.fill")
-                .font(.system(size: 14, weight: .medium))
+                .ruulTextStyle(RuulTypography.callout)
                 .foregroundStyle(Color.ruulNegative)
                 .frame(width: 24)
                 .padding(.top, 2)

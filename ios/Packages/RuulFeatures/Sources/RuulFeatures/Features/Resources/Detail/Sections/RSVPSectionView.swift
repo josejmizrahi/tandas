@@ -138,7 +138,7 @@ public struct RSVPSectionView: View {
                             .foregroundStyle(Color.ruulTextTertiary)
                         Spacer()
                         Image(systemName: expanded.contains(status) ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
+                            .ruulTextStyle(RuulTypography.caption)
                             .foregroundStyle(Color.ruulTextTertiary)
                             .accessibilityHidden(true)
                     }

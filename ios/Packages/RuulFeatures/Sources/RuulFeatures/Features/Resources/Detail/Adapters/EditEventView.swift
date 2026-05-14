@@ -79,7 +79,7 @@ public struct EditEventView: View {
                         .frame(height: 180)
                 }
                 Image(systemName: "camera.fill")
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulOnImage)
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulImageBadge, in: Circle())

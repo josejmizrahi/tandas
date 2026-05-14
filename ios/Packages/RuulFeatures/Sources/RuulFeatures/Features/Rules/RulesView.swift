@@ -135,7 +135,7 @@ public struct RulesView: View {
                     EditRulesView(coordinator: makeEditCoordinator())
                 } label: {
                     Image(systemName: "pencil")
-                        .font(.system(size: 16, weight: .medium))
+                        .ruulTextStyle(RuulTypography.subheadMedium)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(width: 36, height: 36)
                         .background(Color.ruulSurface, in: Circle())
@@ -179,7 +179,7 @@ public struct RulesView: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
+                    .ruulTextStyle(RuulTypography.captionBold)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }

@@ -86,7 +86,7 @@ public struct ScheduleSectionView: View {
     private func row(icon: String, label: String, trailing: String) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
+                .ruulTextStyle(RuulTypography.labelSemibold)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .frame(width: 24)
             Text(label)

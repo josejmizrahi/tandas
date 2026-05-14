@@ -155,7 +155,7 @@ struct AddResourceRuleSheet: View {
                         .fill(Color.ruulAccent.opacity(isSelected ? 0.18 : 0.10))
                         .frame(width: 36, height: 36)
                     Image(systemName: shape.icon ?? "circle")
-                        .font(.system(size: 16, weight: .regular))
+                        .font(RuulTypography.subheadMedium.font)
                         .foregroundStyle(Color.ruulAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -172,7 +172,7 @@ struct AddResourceRuleSheet: View {
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
+                        .ruulTextStyle(RuulTypography.calloutBold)
                         .foregroundStyle(Color.ruulAccent)
                 }
             }

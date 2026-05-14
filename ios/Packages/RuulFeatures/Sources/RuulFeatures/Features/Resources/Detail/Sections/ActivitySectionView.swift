@@ -89,7 +89,7 @@ public struct ActivitySectionView: View {
     private func activityRow(_ event: SystemEvent) -> some View {
         HStack(spacing: RuulSpacing.md) {
             Image(systemName: iconFor(event))
-                .font(.system(size: 14, weight: .semibold))
+                .ruulTextStyle(RuulTypography.labelSemibold)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .frame(width: 28)
                 .accessibilityHidden(true)

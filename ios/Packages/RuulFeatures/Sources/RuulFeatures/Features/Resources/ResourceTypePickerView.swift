@@ -78,7 +78,7 @@ public struct ResourceTypePickerView: View {
                     .fill(isImplemented ? Color.ruulAccent.opacity(0.15) : Color.ruulSurface)
                     .frame(width: 48, height: 48)
                 Image(systemName: icon)
-                    .font(.system(size: 22, weight: .regular))
+                    .font(RuulTypography.titleMedium.font)
                     .foregroundStyle(isImplemented ? Color.ruulAccent : Color.ruulTextTertiary)
             }
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
@@ -104,7 +104,7 @@ public struct ResourceTypePickerView: View {
             Spacer()
             if isImplemented {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }

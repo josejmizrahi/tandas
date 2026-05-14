@@ -48,7 +48,7 @@ public struct DetailHeaderView: View {
                 .fill(Color.ruulAccent.opacity(0.18))
                 .frame(width: 52, height: 52)
             Image(systemName: ResourceTypeChrome.resolve(context.resource.resourceType).symbol)
-                .font(.system(size: 22, weight: .semibold))
+                .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulAccent)
         }
     }

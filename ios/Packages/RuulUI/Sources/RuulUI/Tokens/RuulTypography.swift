@@ -51,6 +51,47 @@ public enum RuulTypography {
     public static let statSmall      = RuulTextStyle(font: .system(size: 13, weight: .bold,     design: .monospaced), tracking: 0,     lineHeight: 1.20)
     public static let statMedium     = RuulTextStyle(font: .system(size: 17, weight: .bold,     design: .monospaced), tracking: -0.10, lineHeight: 1.15)
     public static let statHero       = RuulTextStyle(font: .system(size: 48, weight: .heavy,    design: .monospaced), tracking: -1.20, lineHeight: 1.05)
+
+    // MARK: - Pass 3 Task 4 additions — used by 3+ Features/ sites without a clean prior match.
+
+    /// 22pt medium — section sub-headers, sheet titles where semibold is too heavy.
+    public static let titleMedium    = RuulTextStyle(font: .system(size: 22, weight: .medium,   design: .default), tracking: -0.22, lineHeight: 1.20)
+
+    /// 18pt medium — headlines that need a lighter touch than `.headline` (18pt semibold).
+    public static let headlineMedium = RuulTextStyle(font: .system(size: 18, weight: .medium,   design: .default), tracking: -0.18, lineHeight: 1.30)
+
+    /// 16pt semibold — sub-section headers, action row labels.
+    public static let subheadSemibold = RuulTextStyle(font: .system(size: 16, weight: .semibold, design: .default), tracking: -0.10, lineHeight: 1.35)
+
+    /// 16pt medium — secondary action labels, list row secondary text.
+    public static let subheadMedium  = RuulTextStyle(font: .system(size: 16, weight: .medium,   design: .default), tracking: -0.10, lineHeight: 1.35)
+
+    /// 16pt bold — nav bar labels, prominent row titles.
+    public static let subheadBold    = RuulTextStyle(font: .system(size: 16, weight: .bold,     design: .default), tracking: -0.10, lineHeight: 1.35)
+
+    /// 14pt semibold — metadata labels, pill badges, secondary headings.
+    public static let labelSemibold  = RuulTextStyle(font: .system(size: 14, weight: .semibold, design: .default), tracking: 0,     lineHeight: 1.40)
+
+    /// 14pt bold — emphasis within callout-sized text.
+    public static let calloutBold    = RuulTextStyle(font: .system(size: 14, weight: .bold,     design: .default), tracking: 0,     lineHeight: 1.40)
+
+    /// 14pt regular — descriptive body text at callout size.
+    public static let calloutRegular = RuulTextStyle(font: .system(size: 14, weight: .regular,  design: .default), tracking: 0,     lineHeight: 1.40)
+
+    /// 13pt semibold — compact action labels, inline badges.
+    public static let labelSmSemibold = RuulTextStyle(font: .system(size: 13, weight: .semibold, design: .default), tracking: 0,    lineHeight: 1.35)
+
+    /// 11pt semibold — micro-labels, inline status tags.
+    public static let microSemibold  = RuulTextStyle(font: .system(size: 11, weight: .semibold, design: .default), tracking: 0.2,  lineHeight: 1.30)
+
+    /// 12pt bold — emphasis labels at caption size, badge text.
+    public static let captionBold    = RuulTextStyle(font: .system(size: 12, weight: .bold,     design: .default), tracking: 0.12, lineHeight: 1.35)
+
+    /// 10pt bold — badge counts, minimal pill chips.
+    public static let microBold      = RuulTextStyle(font: .system(size: 10, weight: .bold,     design: .default), tracking: 0.2,  lineHeight: 1.25)
+
+    /// 4pt regular — tiny bullet-dot icons used as list bullets alongside caption text.
+    public static let bulletDot      = RuulTextStyle(font: .system(size: 4,  weight: .regular,  design: .default), tracking: 0,    lineHeight: 1.0)
 }
 
 // MARK: - RuulTextStyle

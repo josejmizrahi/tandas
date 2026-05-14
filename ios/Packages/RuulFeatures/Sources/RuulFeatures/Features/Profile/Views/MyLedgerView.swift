@@ -225,7 +225,7 @@ public struct MyLedgerView: View {
                     .fill(Color.ruulBackgroundRecessed)
                     .frame(width: 36, height: 36)
                 Image(systemName: icon(for: entry.type))
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -287,7 +287,7 @@ public struct MyLedgerView: View {
                     .fill(Color.ruulSurface)
                     .frame(width: 80, height: 80)
                 Image(systemName: "tray")
-                    .font(.system(size: 32, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(spacing: RuulSpacing.xs) {

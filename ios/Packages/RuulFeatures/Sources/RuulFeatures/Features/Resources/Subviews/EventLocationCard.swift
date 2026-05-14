@@ -61,7 +61,7 @@ public struct EventLocationCard: View {
     private var addressRow: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
-                .font(.system(size: 16, weight: .semibold))
+                .ruulTextStyle(RuulTypography.subheadSemibold)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
@@ -78,7 +78,7 @@ public struct EventLocationCard: View {
             }
             Spacer()
             Image(systemName: "arrow.up.right.square")
-                .font(.system(size: 14, weight: .semibold))
+                .ruulTextStyle(RuulTypography.labelSemibold)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
         }

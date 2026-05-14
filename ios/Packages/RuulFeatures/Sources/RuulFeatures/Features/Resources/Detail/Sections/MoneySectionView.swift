@@ -63,7 +63,7 @@ public struct MoneySectionView: View {
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
+                            .ruulTextStyle(RuulTypography.captionBold)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                     .padding(RuulSpacing.md)
@@ -86,7 +86,7 @@ public struct MoneySectionView: View {
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .ruulTextStyle(RuulTypography.captionBold)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
                 .padding(RuulSpacing.md)
@@ -176,7 +176,7 @@ public struct MoneySectionView: View {
 
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: owesGroup ? "arrow.up.right.circle" : "arrow.down.left.circle")
-                .font(.system(size: 14, weight: .semibold))
+                .ruulTextStyle(RuulTypography.labelSemibold)
                 .foregroundStyle(owesGroup ? Color.ruulTextSecondary : Color.ruulAccent)
                 .frame(width: 22)
             Text(labelText)
@@ -253,7 +253,7 @@ public struct MoneySectionView: View {
         ZStack {
             Circle().fill(Color.ruulAccent.opacity(0.15)).frame(width: 36, height: 36)
             Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
+                .ruulTextStyle(RuulTypography.subheadSemibold)
                 .foregroundStyle(Color.ruulAccent)
         }
     }

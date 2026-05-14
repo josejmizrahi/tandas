@@ -76,7 +76,7 @@ public struct RSVPAvatarStrip: View {
                 RuulAvatar(name: name, imageURL: profile?.avatarURL, size: .medium)
                 if rsvp.isCheckedIn {
                     Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 12, weight: .bold))
+                        .ruulTextStyle(RuulTypography.captionBold)
                         .foregroundStyle(Color.ruulPositive)
                         .padding(2)
                         .background(Color.ruulBackground, in: Circle())
@@ -116,7 +116,7 @@ public struct RSVPAvatarStrip: View {
     private var emptyState: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 18, weight: .regular))
+                .ruulTextStyle(RuulTypography.bodyLarge)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
             Text("Sin confirmaciones aún")

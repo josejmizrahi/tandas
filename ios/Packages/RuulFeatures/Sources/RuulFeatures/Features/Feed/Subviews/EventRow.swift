@@ -115,7 +115,7 @@ public struct EventRow: View {
             if let location = event.locationName, !location.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "mappin")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(RuulTypography.microSemibold.font)
                     Text(location)
                         .ruulTextStyle(RuulTypography.caption)
                         .lineLimit(1)
@@ -190,7 +190,7 @@ public struct EventRow: View {
         }()
         return HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .ruulTextStyle(RuulTypography.microSemibold)
             Text(label)
                 .ruulTextStyle(RuulTypography.sectionLabel)
         }

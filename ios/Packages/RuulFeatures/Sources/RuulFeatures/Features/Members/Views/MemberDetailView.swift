@@ -71,7 +71,7 @@ public struct MemberDetailView: View {
                 ForEach(rolesList, id: \.self) { role in
                     HStack(spacing: RuulSpacing.sm) {
                         Image(systemName: roleIcon(role))
-                            .font(.system(size: 14, weight: .medium))
+                            .ruulTextStyle(RuulTypography.callout)
                             .foregroundStyle(Color.ruulAccent)
                             .frame(width: 24)
                             .accessibilityHidden(true)
@@ -101,7 +101,7 @@ public struct MemberDetailView: View {
                 .foregroundStyle(Color.ruulTextSecondary)
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 14, weight: .medium))
+                    .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulInfo)
                     .frame(width: 24)
                     .accessibilityHidden(true)

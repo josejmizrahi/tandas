@@ -113,7 +113,7 @@ public struct GroupSwitcherSheet: View {
                 Spacer()
                 if isActive {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20, weight: .medium))
+                        .ruulTextStyle(RuulTypography.headlineMedium)
                         .foregroundStyle(Color.ruulAccent)
                         .accessibilityHidden(true)
                 }
@@ -136,7 +136,7 @@ public struct GroupSwitcherSheet: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
+                    .ruulTextStyle(RuulTypography.titleMedium)
                     .foregroundStyle(Color.ruulAccent)
                     .frame(width: 44, height: 44)
                     .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
@@ -151,7 +151,7 @@ public struct GroupSwitcherSheet: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }

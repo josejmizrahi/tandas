@@ -164,7 +164,7 @@ struct ResourceLedgerSheet: View {
                     .fill(Color.ruulAccent.opacity(0.12))
                     .frame(width: 32, height: 32)
                 Image(systemName: icon)
-                    .font(.system(size: 14, weight: .regular))
+                    .ruulTextStyle(RuulTypography.calloutRegular)
                     .foregroundStyle(Color.ruulAccent)
             }
             VStack(alignment: .leading, spacing: 2) {

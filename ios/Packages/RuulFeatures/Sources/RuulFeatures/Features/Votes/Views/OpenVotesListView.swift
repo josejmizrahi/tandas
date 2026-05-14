@@ -93,7 +93,7 @@ public struct OpenVotesListView: View {
         let alreadyCast = coordinator.hasCast(vote.id)
         return HStack(spacing: RuulSpacing.sm) {
             voteTypeIcon(vote.voteType)
-                .font(.system(size: 18, weight: .medium))
+                .ruulTextStyle(RuulTypography.headlineMedium)
                 .foregroundStyle(alreadyCast ? Color.ruulTextTertiary : Color.ruulAccent)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
@@ -107,7 +107,7 @@ public struct OpenVotesListView: View {
                 HStack(spacing: RuulSpacing.xs) {
                     if alreadyCast {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 11, weight: .semibold))
+                            .ruulTextStyle(RuulTypography.microSemibold)
                             .foregroundStyle(Color.ruulPositive)
                             .accessibilityHidden(true)
                         Text("Ya votaste")
@@ -124,7 +124,7 @@ public struct OpenVotesListView: View {
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
+                .ruulTextStyle(RuulTypography.captionBold)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
         }

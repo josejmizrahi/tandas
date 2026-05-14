@@ -135,7 +135,7 @@ public struct ResourceWizardSheet: View {
                     .fill(Color.ruulAccent.opacity(0.15))
                     .frame(width: 36, height: 36)
                 Image(systemName: builder.icon)
-                    .font(.system(size: 17, weight: .regular))
+                    .ruulTextStyle(RuulTypography.bodyLarge)
                     .foregroundStyle(Color.ruulAccent)
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -191,7 +191,7 @@ public struct ResourceWizardSheet: View {
     private var emptyCapabilitiesView: some View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 32))
+                .ruulTextStyle(RuulTypography.displayMedium)
                 .foregroundStyle(Color.ruulTextSecondary)
             Text("Listo, no necesitas configurar nada más.")
                 .ruulTextStyle(RuulTypography.body)
@@ -752,7 +752,7 @@ private struct WizardTypePicker: View {
         VStack(spacing: RuulSpacing.xs) {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: chrome.symbol)
-                    .font(.system(size: 28, weight: .regular))
+                    .font(RuulTypography.titleLarge.font)
                     .foregroundStyle(isImplemented ? chrome.semanticColor : Color.ruulTextTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if !isImplemented {

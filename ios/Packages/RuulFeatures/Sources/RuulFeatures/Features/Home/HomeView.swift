@@ -206,7 +206,7 @@ public struct HomeView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 18, weight: .medium))
+                .ruulTextStyle(RuulTypography.headlineMedium)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 40, height: 40)
                 .background(Color.ruulSurface, in: Circle())
@@ -369,7 +369,7 @@ public struct HomeView: View {
                     .ruulTextStyle(RuulTypography.headline)
                 Spacer()
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 14, weight: .bold))
+                    .ruulTextStyle(RuulTypography.calloutBold)
                     .accessibilityHidden(true)
             }
             .foregroundStyle(Color.ruulOnImageInverse)
@@ -399,7 +399,7 @@ public struct HomeView: View {
                 .foregroundStyle(Color.ruulOnImage)
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
+                .ruulTextStyle(RuulTypography.captionBold)
                 .foregroundStyle(Color.ruulOnImageSecondary)
                 .accessibilityHidden(true)
         }
@@ -447,7 +447,7 @@ public struct HomeView: View {
                         .fill(Color.ruulSurface)
                         .frame(width: 40, height: 40)
                     Image(systemName: ResourceTypeChrome.resolve(row.resourceType).symbol)
-                        .font(.system(size: 18, weight: .regular))
+                        .ruulTextStyle(RuulTypography.bodyLarge)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -460,7 +460,7 @@ public struct HomeView: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             .padding(RuulSpacing.md)
@@ -550,7 +550,7 @@ public struct HomeView: View {
                     .fill(Color.ruulSurface)
                     .frame(width: 80, height: 80)
                 Image(systemName: variant.icon)
-                    .font(.system(size: 32, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .accessibilityHidden(true)
             }
@@ -734,7 +734,7 @@ public struct HomeView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .accessibilityHidden(true)
                 Text(caption.uppercased())
@@ -766,13 +766,13 @@ public struct HomeView: View {
             Button(action: onOpenPastEvents) {
                 HStack(spacing: RuulSpacing.xs) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 14, weight: .semibold))
+                        .ruulTextStyle(RuulTypography.labelSemibold)
                         .accessibilityHidden(true)
                     Text("Ver historial")
                         .ruulTextStyle(RuulTypography.headline)
                     Spacer()
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .ruulTextStyle(RuulTypography.captionBold)
                         .accessibilityHidden(true)
                 }
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -806,7 +806,7 @@ public struct HomeView: View {
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
+                .ruulTextStyle(RuulTypography.microBold)
                 .accessibilityHidden(true)
             Text(text)
                 .ruulTextStyle(RuulTypography.sectionLabel)

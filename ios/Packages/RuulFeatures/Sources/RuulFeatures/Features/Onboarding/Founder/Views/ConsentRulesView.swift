@@ -67,7 +67,7 @@ public struct ConsentRulesView: View {
     private var footnote: some View {
         HStack(alignment: .top, spacing: RuulSpacing.xs) {
             Image(systemName: "info.circle")
-                .font(.system(size: 14))
+                .ruulTextStyle(RuulTypography.callout)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, 2)
                 .accessibilityHidden(true)

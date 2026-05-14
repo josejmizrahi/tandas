@@ -83,7 +83,7 @@ public struct AddManualFineSheet: View {
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
+                        .ruulTextStyle(RuulTypography.subheadBold)
                         .foregroundStyle(Color.ruulAccent)
                 }
             }

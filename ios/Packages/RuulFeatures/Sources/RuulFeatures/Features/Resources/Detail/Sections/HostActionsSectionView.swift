@@ -133,7 +133,7 @@ public struct HostActionsSectionView: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.md) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.subheadSemibold)
                     .foregroundStyle(tint == .ruulTextPrimary ? Color.ruulTextSecondary : tint)
                     .frame(width: 28)
                     .accessibilityHidden(true)
@@ -150,7 +150,7 @@ public struct HostActionsSectionView: View {
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSmSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }
@@ -175,7 +175,7 @@ public struct HostActionsSectionView: View {
     private func autoGenerateRow(interactor: any EventInteractor) -> some View {
         HStack(alignment: .top, spacing: RuulSpacing.md) {
             Image(systemName: "arrow.triangle.2.circlepath")
-                .font(.system(size: 16, weight: .semibold))
+                .ruulTextStyle(RuulTypography.subheadSemibold)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .frame(width: 28)
                 .accessibilityHidden(true)

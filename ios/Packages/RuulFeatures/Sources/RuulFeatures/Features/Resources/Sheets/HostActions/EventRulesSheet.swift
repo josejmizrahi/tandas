@@ -127,7 +127,7 @@ struct ResourceRulesSheet: View {
                         .fill(Color.ruulAccent.opacity(isInherited ? 0.06 : 0.12))
                         .frame(width: 32, height: 32)
                     Image(systemName: "list.bullet.clipboard.fill")
-                        .font(.system(size: 14, weight: .regular))
+                        .ruulTextStyle(RuulTypography.calloutRegular)
                         .foregroundStyle(isInherited ? Color.ruulTextSecondary : Color.ruulAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {

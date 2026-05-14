@@ -258,7 +258,7 @@ public struct FineDetailView: View {
                                 .ruulTextStyle(RuulTypography.callout)
                             Spacer()
                             Image(systemName: "arrow.right")
-                                .font(.system(size: 12, weight: .bold))
+                                .ruulTextStyle(RuulTypography.captionBold)
                                 .accessibilityHidden(true)
                         }
                         .foregroundStyle(Color.ruulTextPrimary)

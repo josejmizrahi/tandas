@@ -291,7 +291,7 @@ public struct GroupInfoSheet: View {
         } label: {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 18, weight: .medium))
+                    .ruulTextStyle(RuulTypography.headlineMedium)
                     .foregroundStyle(Color.ruulAccent)
                     .frame(width: 36, height: 36)
                     .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
@@ -306,7 +306,7 @@ public struct GroupInfoSheet: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }
@@ -333,7 +333,7 @@ public struct GroupInfoSheet: View {
         } label: {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "person.2.badge.gearshape")
-                    .font(.system(size: 18, weight: .medium))
+                    .ruulTextStyle(RuulTypography.headlineMedium)
                     .foregroundStyle(Color.ruulAccent)
                     .frame(width: 36, height: 36)
                     .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
@@ -348,7 +348,7 @@ public struct GroupInfoSheet: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }
@@ -397,7 +397,7 @@ public struct GroupInfoSheet: View {
                 }
                 Spacer()
                 Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc")
-                    .font(.system(size: 20, weight: .medium))
+                    .ruulTextStyle(RuulTypography.headlineMedium)
                     .foregroundStyle(copied ? Color.ruulPositive : Color.ruulTextSecondary)
                     .accessibilityHidden(true)
             }
@@ -428,7 +428,7 @@ public struct GroupInfoSheet: View {
         ) {
             HStack {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(RuulTypography.headline.font)
                     .accessibilityHidden(true)
                 Text("Compartir")
                     .ruulTextStyle(RuulTypography.body)
@@ -526,7 +526,7 @@ public struct GroupInfoSheet: View {
                         ProgressView().tint(Color.ruulNegative)
                     } else {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16, weight: .medium))
+                            .ruulTextStyle(RuulTypography.subheadMedium)
                             .accessibilityHidden(true)
                         Text("Salir del grupo")
                             .ruulTextStyle(RuulTypography.body)

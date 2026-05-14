@@ -74,7 +74,7 @@ public struct PresetPickerView: View {
                         .fill(isSelected ? Color.ruulAccent.opacity(0.15) : Color.ruulSurface)
                         .frame(width: 48, height: 48)
                     Image(systemName: preset.icon)
-                        .font(.system(size: 22, weight: .regular))
+                        .font(RuulTypography.titleMedium.font)
                         .foregroundStyle(isSelected ? Color.ruulAccent : Color.ruulTextSecondary)
                 }
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
@@ -89,7 +89,7 @@ public struct PresetPickerView: View {
                         ForEach(preset.sampleResources, id: \.self) { sample in
                             HStack(spacing: RuulSpacing.xxs) {
                                 Image(systemName: "circle.fill")
-                                    .font(.system(size: 4))
+                                    .font(RuulTypography.bulletDot.font)
                                     .foregroundStyle(Color.ruulTextTertiary)
                                 Text(sample)
                                     .ruulTextStyle(RuulTypography.caption)
@@ -103,7 +103,7 @@ public struct PresetPickerView: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Color.ruulAccent)
-                        .font(.system(size: 22))
+                        .ruulTextStyle(RuulTypography.title)
                         .transition(.scale.combined(with: .opacity))
                 }
             }

@@ -142,7 +142,7 @@ public struct ResourceSummaryView: View {
     private func heroView(_ hero: HeroStat) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.sm) {
             Image(systemName: hero.icon)
-                .font(.system(size: 18, weight: .semibold))
+                .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(hero.tone.foregroundColor)
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
@@ -206,7 +206,7 @@ public struct ResourceSummaryView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: tile.icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.microSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text(tile.label.uppercased())
                     .font(.ruulMicro.weight(.semibold))

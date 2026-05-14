@@ -102,7 +102,7 @@ public struct RotationSectionView: View {
             if let next = snapshot.upcomingHosts.first {
                 HStack(spacing: RuulSpacing.sm) {
                     Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 28))
+                        .ruulTextStyle(RuulTypography.titleLarge)
                         .foregroundStyle(Color.ruulAccent)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(next.displayName)
@@ -142,7 +142,7 @@ public struct RotationSectionView: View {
                 ForEach(snapshot.upcomingHosts) { host in
                     VStack(spacing: RuulSpacing.xxs) {
                         Image(systemName: "person.circle")
-                            .font(.system(size: 24))
+                            .ruulTextStyle(RuulTypography.title)
                             .foregroundStyle(Color.ruulTextSecondary)
                         Text(host.displayName)
                             .ruulTextStyle(RuulTypography.caption)

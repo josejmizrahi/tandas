@@ -340,7 +340,7 @@ public struct ProfileView: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
+                    .ruulTextStyle(RuulTypography.subheadMedium)
                     .foregroundStyle(
                         disabled
                             ? Color.ruulTextTertiary
@@ -359,7 +359,7 @@ public struct ProfileView: View {
                 trailing()
                 if !disabled {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .ruulTextStyle(RuulTypography.captionBold)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                 }

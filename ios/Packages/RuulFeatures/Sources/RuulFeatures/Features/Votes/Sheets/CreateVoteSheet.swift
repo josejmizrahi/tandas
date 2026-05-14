@@ -70,7 +70,7 @@ public struct CreateVoteSheet: View {
         Button(action: onTap) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
+                    .ruulTextStyle(RuulTypography.titleMedium)
                     .foregroundStyle(enabled ? Color.ruulAccent : Color.ruulTextTertiary)
                     .frame(width: 44, height: 44)
                     .background(Color.ruulSurface, in: Circle())
@@ -87,7 +87,7 @@ public struct CreateVoteSheet: View {
                 Spacer()
                 if enabled {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .ruulTextStyle(RuulTypography.captionBold)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                 }

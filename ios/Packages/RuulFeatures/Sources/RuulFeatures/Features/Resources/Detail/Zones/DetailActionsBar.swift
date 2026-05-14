@@ -96,7 +96,7 @@ public struct DetailActionsBar: View {
         Button(action: a.run) {
             HStack(spacing: RuulSpacing.xxs) {
                 Image(systemName: a.icon)
-                    .font(.system(size: 13, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.labelSmSemibold)
                     .accessibilityHidden(true)
                 Text(a.label)
                     .ruulTextStyle(RuulTypography.callout)

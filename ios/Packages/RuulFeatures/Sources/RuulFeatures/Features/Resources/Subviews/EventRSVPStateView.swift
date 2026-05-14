@@ -80,7 +80,7 @@ public struct EventRSVPStateView: View {
                         .stroke(Color.ruulSeparator, lineWidth: 1)
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
-                        .font(.system(size: 13, weight: .bold))
+                        .ruulTextStyle(RuulTypography.captionBold)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .accessibilityHidden(true)
                 }
@@ -105,7 +105,7 @@ public struct EventRSVPStateView: View {
     private var plusOnesRow: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.2.fill")
-                .font(.system(size: 13, weight: .bold))
+                .ruulTextStyle(RuulTypography.captionBold)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
             Text("Llevo a más gente")
@@ -142,7 +142,7 @@ public struct EventRSVPStateView: View {
     private func stepperButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
+                .ruulTextStyle(RuulTypography.captionBold)
                 .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                 .frame(width: 26, height: 26)
                 .background(Color.ruulBackground)
@@ -308,7 +308,7 @@ public struct EventRSVPStateView: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.xxs) {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .bold))
+                    .ruulTextStyle(RuulTypography.captionBold)
                     .accessibilityHidden(true)
                 Text(label)
                     .ruulTextStyle(RuulTypography.callout)

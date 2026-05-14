@@ -46,7 +46,7 @@ public struct EventHeroTitleBlock: View {
             if let countdown {
                 HStack(spacing: 6) {
                     Image(systemName: "clock.fill")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(RuulTypography.sectionLabel.font)
                         .foregroundStyle(Color.ruulWarning)
                         .accessibilityHidden(true)
                     Text(countdown)

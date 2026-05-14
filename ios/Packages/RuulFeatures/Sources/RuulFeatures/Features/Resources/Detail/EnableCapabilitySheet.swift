@@ -120,7 +120,7 @@ public struct EnableCapabilitySheet: View {
                         ProgressView()
                     } else {
                         Image(systemName: iconFor(block.id))
-                            .font(.system(size: 16, weight: .semibold))
+                            .ruulTextStyle(RuulTypography.subheadSemibold)
                             .foregroundStyle(Color.ruulAccent)
                     }
                 }
@@ -136,7 +136,7 @@ public struct EnableCapabilitySheet: View {
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .bold))
+                    .ruulTextStyle(RuulTypography.calloutBold)
                     .foregroundStyle(Color.ruulAccent)
             }
             .padding(RuulSpacing.md)
@@ -156,7 +156,7 @@ public struct EnableCapabilitySheet: View {
             ZStack {
                 Circle().fill(Color.ruulSurface).frame(width: 72, height: 72)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 28, weight: .semibold))
+                    .ruulTextStyle(RuulTypography.titleLarge)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(spacing: RuulSpacing.xs) {

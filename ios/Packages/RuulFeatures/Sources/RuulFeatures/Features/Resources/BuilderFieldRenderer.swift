@@ -210,7 +210,7 @@ public struct BuilderFieldRenderer: View {
                 .foregroundStyle(Color.ruulTextSecondary)
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "exclamationmark.circle")
-                    .font(.system(size: 14, weight: .regular))
+                    .ruulTextStyle(RuulTypography.calloutRegular)
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text(note)
                     .ruulTextStyle(RuulTypography.caption)

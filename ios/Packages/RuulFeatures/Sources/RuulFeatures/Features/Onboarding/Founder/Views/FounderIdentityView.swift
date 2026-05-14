@@ -117,7 +117,7 @@ public struct FounderIdentityView: View {
                     )
                 }
                 Image(systemName: "camera.fill")
-                    .font(.system(size: RuulSize.iconSmall, weight: .semibold))
+                    .font(RuulTypography.labelSemibold.font)
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulTextPrimary, in: Circle())

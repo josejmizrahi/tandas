@@ -58,7 +58,7 @@ public struct CheckInScannerView: View {
         HStack {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 32))
+                    .ruulTextStyle(RuulTypography.displayMedium)
                     .foregroundStyle(Color.ruulOnImage, Color.ruulImageBadge)
                     .accessibilityHidden(true)
             }
@@ -141,7 +141,7 @@ public struct CheckInScannerView: View {
     private func feedbackCard(icon: String, color: Color, title: String) -> some View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: icon)
-                .font(.system(size: 60, weight: .bold))
+                .ruulTextStyle(RuulTypography.displayHero)
                 .foregroundStyle(Color.ruulOnImage, color)
                 .accessibilityHidden(true)
             Text(title)
@@ -160,7 +160,7 @@ public struct CheckInScannerView: View {
         VStack(spacing: RuulSpacing.lg) {
             Spacer()
             Image(systemName: "camera.fill")
-                .font(.system(size: 60))
+                .ruulTextStyle(RuulTypography.displayHero)
                 .foregroundStyle(Color.ruulOnImageSecondary)
                 .accessibilityHidden(true)
             Text("Necesitamos permiso de cámara")
@@ -185,7 +185,7 @@ public struct CheckInScannerView: View {
         VStack(spacing: RuulSpacing.md) {
             Spacer()
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 50))
+                .ruulTextStyle(RuulTypography.displayHero)
                 .foregroundStyle(Color.ruulOnImageSecondary)
                 .accessibilityHidden(true)
             Text(msg)
