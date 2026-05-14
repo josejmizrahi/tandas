@@ -4,12 +4,12 @@ import OSLog
 import RuulCore
 import RuulUI
 
-/// Loads + paginates `SystemEvent`s for `GroupHistoryView`. Holds the
+/// Loads + paginates `SystemEvent`s for `ActivityView`. Holds the
 /// active filter state; refilters by re-querying (no client-side
 /// filtering — server does it).
 @Observable
 @MainActor
-public final class GroupHistoryCoordinator {
+public final class ActivityCoordinator {
     public let groupId: UUID
     private let repo: any SystemEventRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "history")

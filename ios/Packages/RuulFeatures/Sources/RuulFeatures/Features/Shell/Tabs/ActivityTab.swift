@@ -1,17 +1,25 @@
 import SwiftUI
 import RuulCore
 
-/// Placeholder for the Activity tab body. Pass 2 Task 4 fills this in
-/// with `ActivityView` + filter chips (renamed from `GroupHistoryView`).
 @MainActor
 public struct ActivityTab: View {
-    public init() {}
+    @Environment(AppState.self) private var app
+    let coordinator: ActivityCoordinator?
+
+    public init(activity: ActivityCoordinator?) {
+        self.coordinator = activity
+    }
 
     public var body: some View {
-        Color.clear
-            .overlay {
+        NavigationStack {
+            if let coord = coordinator {
+                ActivityView(coordinator: coord)
+                    .environment(app)
+            } else {
                 ProgressView()
                     .controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
     }
 }

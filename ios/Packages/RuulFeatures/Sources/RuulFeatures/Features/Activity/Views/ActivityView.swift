@@ -2,21 +2,21 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// History timeline for the active group. Reads paginated SystemEvents
-/// via `GroupHistoryCoordinator`. Filters: event type, date range.
+/// Activity timeline for the active group. Reads paginated SystemEvents
+/// via `ActivityCoordinator`. Filters: event type, date range.
 /// (Member filter + CSV export deferred to V1.x per Plans/Phase1.md
 /// decision B.)
-public struct GroupHistoryView: View {
-    @State var coordinator: GroupHistoryCoordinator
+public struct ActivityView: View {
+    @State var coordinator: ActivityCoordinator
     @State private var detailEvent: SystemEvent?
     @State private var showFilters: Bool = false
     /// Optional: cuando set, el `SystemEventDetailView` muestra un CTA
     /// "Ver detalle" que routea al destination real (multa / voto /
-    /// evento / regla). El forwarding pasa por `HistoryTabView` →
+    /// evento / regla). El forwarding pasa por `ActivityTabView` →
     /// `MainTabView.routeFromHistoryEvent(_:)`.
     public var onOpenRelated: ((SystemEvent) -> Void)? = nil
 
-    public init(coordinator: GroupHistoryCoordinator, onOpenRelated: ((SystemEvent) -> Void)? = nil) {
+    public init(coordinator: ActivityCoordinator, onOpenRelated: ((SystemEvent) -> Void)? = nil) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenRelated = onOpenRelated
     }
@@ -191,12 +191,12 @@ public struct GroupHistoryView: View {
 
 }
 
-/// Filter editor presented as a sheet over GroupHistoryView.
+/// Filter editor presented as a sheet over ActivityView.
 public struct HistoryFilterSheet: View {
-    @Bindable var coordinator: GroupHistoryCoordinator
+    @Bindable var coordinator: ActivityCoordinator
     public let dismiss: () -> Void
 
-    public init(coordinator: GroupHistoryCoordinator, dismiss: @escaping () -> Void) {
+    public init(coordinator: ActivityCoordinator, dismiss: @escaping () -> Void) {
         self.coordinator = coordinator
         self.dismiss = dismiss
     }

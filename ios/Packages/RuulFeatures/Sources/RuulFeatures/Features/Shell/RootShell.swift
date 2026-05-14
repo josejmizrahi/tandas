@@ -21,7 +21,7 @@ public struct RootShell: View {
     @State private var rulesCoordinator: RulesCoordinator?
     @State private var profileCoordinator: ProfileCoordinator?
     @State private var myFinesCoordinator: MyFinesCoordinator?
-    @State private var groupHistoryCoordinator: GroupHistoryCoordinator?
+    @State private var activityCoordinator: ActivityCoordinator?
 
     /// Per-group member directory cache — mirrors MainTabView.memberDirectory.
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
@@ -50,7 +50,7 @@ public struct RootShell: View {
                 .tabItem { Label("Crear", systemImage: "plus.circle.fill") }
                 .tag(RootTab.create)
 
-            ActivityTab()
+            ActivityTab(activity: activityCoordinator)
                 .tabItem { Label("Actividad", systemImage: "clock.arrow.circlepath") }
                 .tag(RootTab.activity)
 
@@ -144,12 +144,13 @@ public struct RootShell: View {
         )
         shellState.rulesCoordinator = rulesCoordinator
 
-        // Fase 4b: history es tab top-level. Construimos su coordinator en el
+        // Fase 4b: activity es tab top-level. Construimos su coordinator en el
         // mismo rebuild para que el cambio de grupo refresque el filtro.
-        groupHistoryCoordinator = GroupHistoryCoordinator(
+        activityCoordinator = ActivityCoordinator(
             groupId: group.id,
             repo: app.systemEventRepo
         )
+        shellState.activityCoordinator = activityCoordinator
 
         // Fire initial refreshes for non-Home coordinators that don't have
         // their own `.task { refresh() }` on view appear.

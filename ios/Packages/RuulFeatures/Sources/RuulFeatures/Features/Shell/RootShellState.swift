@@ -28,6 +28,7 @@ public final class RootShellState {
     public var profileCoordinator: ProfileCoordinator?
     public var homeCoordinator: HomeCoordinator?
     public var myFinesCoordinator: MyFinesCoordinator?
+    public var activityCoordinator: ActivityCoordinator?
 
     // MARK: - Object payloads for fullScreenCover(item:) presentations
     // These parallel the route-stack signal for presentations that need a
