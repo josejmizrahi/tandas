@@ -55,17 +55,7 @@ public struct ResourceSummaryView: View {
     }
 
     private var typeLabel: String { context.resource.resourceType.humanLabel }
-    private var typeIcon: String {
-        switch context.resource.resourceType {
-        case .event:        return "calendar"
-        case .fund:         return "banknote"
-        case .asset:        return "building.2"
-        case .space:        return "mappin.and.ellipse"
-        case .slot:         return "ticket"
-        case .right:        return "person.badge.key.fill"
-        case .unknown:      return "circle"
-        }
-    }
+    private var typeIcon: String { ResourceTypeChrome.resolve(context.resource.resourceType).symbol }
 
     /// Maps free-form `resourceStatus` strings to a badge presentation.
     /// Falls back to nil for "default" states ("open", "active", "draft")

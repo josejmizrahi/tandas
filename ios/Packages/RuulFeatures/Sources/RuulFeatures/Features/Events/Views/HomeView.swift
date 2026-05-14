@@ -437,7 +437,7 @@ public struct HomeView: View {
                     Circle()
                         .fill(Color.ruulSurface)
                         .frame(width: 40, height: 40)
-                    Image(systemName: iconFor(row.resourceType))
+                    Image(systemName: ResourceTypeChrome.resolve(row.resourceType).symbol)
                         .font(.system(size: 18, weight: .regular))
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
@@ -471,17 +471,6 @@ public struct HomeView: View {
         if case let .string(name) = row.metadata["name"] { return name }
         if case let .string(title) = row.metadata["title"] { return title }
         return row.resourceType.humanLabel
-    }
-
-    private func iconFor(_ type: ResourceType) -> String {
-        switch type {
-        case .fund:         return "banknote"
-        case .asset:        return "key.fill"
-        case .space:        return "mappin.and.ellipse"
-        case .slot:         return "ticket"
-        case .right:        return "person.badge.key.fill"
-        default:            return "square.dashed"
-        }
     }
 
     /// Capability-aware empty state per OpenPlatform S2. Reads the active

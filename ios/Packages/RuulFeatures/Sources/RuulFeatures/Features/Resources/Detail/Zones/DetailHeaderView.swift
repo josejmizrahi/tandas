@@ -47,21 +47,9 @@ public struct DetailHeaderView: View {
             Circle()
                 .fill(Color.ruulAccent.opacity(0.18))
                 .frame(width: 52, height: 52)
-            Image(systemName: iconFor(context.resource.resourceType))
+            Image(systemName: ResourceTypeChrome.resolve(context.resource.resourceType).symbol)
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Color.ruulAccent)
-        }
-    }
-
-    private func iconFor(_ type: ResourceType) -> String {
-        switch type {
-        case .event:        return "calendar.badge.clock"
-        case .fund:         return "banknote"
-        case .asset:        return "key.fill"
-        case .space:        return "mappin.and.ellipse"
-        case .slot:         return "ticket"
-        case .right:        return "person.badge.key.fill"
-        case .unknown:      return "square.dashed"
         }
     }
 

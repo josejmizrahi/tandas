@@ -346,7 +346,7 @@ private struct GroupResourcesSubTab: View {
         HStack(spacing: RuulSpacing.sm) {
             ZStack {
                 Circle().fill(Color.ruulSurface).frame(width: 40, height: 40)
-                Image(systemName: iconFor(row.resourceType))
+                Image(systemName: ResourceTypeChrome.resolve(row.resourceType).symbol)
                     .font(.system(size: 18, weight: .regular))
                     .foregroundStyle(Color.ruulTextPrimary)
             }
@@ -383,18 +383,6 @@ private struct GroupResourcesSubTab: View {
         if case let .string(s) = row.metadata["name"]  { return s }
         if case let .string(s) = row.metadata["title"] { return s }
         return row.resourceType.humanLabel
-    }
-
-    private func iconFor(_ type: ResourceType) -> String {
-        switch type {
-        case .event:        return "calendar"
-        case .fund:         return "banknote"
-        case .asset:        return "key.fill"
-        case .space:        return "mappin.and.ellipse"
-        case .slot:         return "ticket"
-        case .right:        return "person.badge.key.fill"
-        default:            return "square.dashed"
-        }
     }
 
     /// Tap routing: an event resource opens the rich event-specific

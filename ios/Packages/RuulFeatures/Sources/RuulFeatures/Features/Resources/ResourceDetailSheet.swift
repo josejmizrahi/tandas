@@ -183,20 +183,10 @@ public struct ResourceDetailSheet: View {
         return group.createdBy == userId
     }
 
-    /// `ResourceType` lacks a public string accessor; derive it locally
-    /// so the polymorphic Context structs (which need a raw string)
-    /// stay decoupled from the enum's Codable wire format.
-    private var resourceTypeString: String {
-        switch resource.resourceType {
-        case .event:           return "event"
-        case .fund:            return "fund"
-        case .asset:           return "asset"
-        case .space:           return "space"
-        case .slot:            return "slot"
-        case .right:           return "right"
-        case .unknown(let s):  return s
-        }
-    }
+    /// Raw wire-format string for the resource type ("event", "fund", etc.).
+    /// Feeds `ResourceLedgerContext` and `ResourceRuleContext` which use it
+    /// for analytics / catalog filtering — not user-facing display.
+    private var resourceTypeString: String { resource.resourceType.rawString }
 
     @MainActor
     private func load() async {
