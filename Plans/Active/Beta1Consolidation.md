@@ -204,11 +204,10 @@ quedan huérfanos si el swap ya está.
 >   `83fccbd` (mig 00160). D-1.1 sendHostReminders wired en `9c1020b`
 >   (`EventNotificationDispatcher` actor + 30min rate-limit + 5 tests).
 > - **W2**: 12 / 12 done. ✅ todo cerrado.
-> - **W3**: 8 / 12 done. Open: B-3.4 consent step, A-3.3 empty/loading
->   states unify, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher
->   API unify. (E-3.2 cerrado retroactivamente por `b6a536c`; E-3.1
->   cerrado en `5b8981a` + `ad30558` + `65144e7` — sub-batch 1
->   reliability completo.)
+> - **W3**: 10 / 12 done. Open: B-3.4 consent step, A-3.3
+>   empty/loading states unify. (Sub-batch 2 cerrado 2026-05-13:
+>   A-3.4 `91d6c52` + A-3.5 `10dda39`. Reliability cluster
+>   sub-batch 1 cerrado antes.)
 > - **W4**: 0 / 7 done — pending demo polish + telemetry + QA + hide list.
 >
 > Marcas `✅ <SHA>` debajo apuntan al commit que cerró el ítem; los `⏳`
@@ -263,8 +262,8 @@ dos dispositivos no ven estado stale.
 - [x] **A-3.1** Tab "Decisiones" eliminado → ✅ `7632083` (esta sesión). Bottom bar a 4 tabs; Decisiones queda en Grupo→Más.
 - [x] **A-3.2** Consolidar Pendientes → ✅ `7632083` (esta sesión). Resumen ya no duplica el inbox; top-3 + linkout.
 - [ ] **A-3.3** ⏳ **OPEN.** Unificar empty states a `EmptyStateView` y loading a un único `RuulLoadingState`.
-- [ ] **A-3.4** ⏳ **OPEN.** "+" tab sin grupo activo → presenta `CreateGroupSheet` en vez de silent fail.
-- [ ] **A-3.5** ⏳ **OPEN.** `RuulGroupSwitcher` — API unificada + behavior idéntico en los 3 tabs.
+- [x] **A-3.4** "+" tab silent fail → ✅ `91d6c52`. `createTabIntercept` ahora ruta al `CreateGroupSheet` cuando no hay grupo activo (re-usa el sheet + state ya declarado). Audit Track A 4.5 cerrado.
+- [x] **A-3.5** `RuulGroupSwitcher` API unify → ✅ `10dda39`. `GroupTabView` y `HistoryTabView` migrados al init convenience `RuulGroupSwitcher(activeGroup:onTap:)` que ya usaban MainTabView decisionsTab + HomeView. Layout (HStack + Spacer + screen-padding) idéntico entre MainTabView decisionsTab y GroupTabView; HomeView documentado como excepción legítima (header con greeting + icon buttons).
 - [x] **E-3.1** Realtime subs → ✅ `5b8981a` + `ad30558` + `65144e7`. Server: `mig 00161` añade las 4 tablas a `supabase_realtime` + ALTER REPLICA IDENTITY FULL (necesario para que RLS evalúe quals sobre columnas no-PK). iOS: `MultiDeviceChangeFeed` actor (Mock + Live) emite kicks tagged por tabla + recordId; AppState abre/cierra los 4 canales con el ciclo de auth. 6 coordinators wired: InboxCoordinator (`.userAction`), OpenVotesCoordinator (`.vote` + `.voteCast`), VoteDetailCoordinator (filtra por voteId + cualquier `.voteCast`), MyFinesCoordinator + ReviewProposedFinesCoordinator (`.fine`), FineDetailCoordinator (filtra por fineId). 3 tests nuevos verdes en `MultiDeviceChangeFeedTests`. **Tech debt diferido**: `RSVPRealtimeService` quedó silently broken desde mig 00159 (tabla `event_attendance` dropeada); fuera de scope de W3-E3.1, slated para follow-up con `rsvp_actions` / `attendance_view`.
 - [x] **E-3.2** Token cleanup en remoción → ✅ `b6a536c`. Resuelto en `dispatch-notifications` v6 con filtro `group_members.active = true` (runtime scoping). El commit body argumenta el porqué: tokens son user-scoped, no group-scoped — borrarlos en `remove_member` rompería las pushes legítimas de un usuario que sigue activo en otros grupos. La solución arquitectónica correcta es en el dispatch boundary. Junto con E-1.1 (`signOut` revoca token local), cubre ambas rutas: usuario se va (E-1.1) + admin remueve usuario (E-3.2). Removidos dejan de recibir pushes del grupo en ≤1 dispatch tick (~60s).
 - [x] **E-3.3** `pay_fine` FOR UPDATE → ✅ `e0d2575`. Idempotent guard previene double-balance en double-tap.
@@ -446,5 +445,7 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 - **2026-05-13 closeout** — **W1 cerrado al 100%.** D-1.1 wired en `9c1020b`: `EventNotificationDispatcher` actor protocol (Mock + Live) en RuulCore, `EventDetailCoordinator` invoca el edge fn vía dispatcher inyectado, rate-limit 30min/evento dentro del actor (compartido entre coordinators), errores rate-limited surfacean como mensaje friendly via el envelope `error`. 5 tests verdes en `SendHostRemindersTests` (host invoca / non-host short-circuits / nil dispatcher fallback / rate-limited surface / edge failure). Próximo objetivo: W3 leftovers (B-3.4 consent step, A-3.3 empty/loading states, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API, E-3.1 realtime) o W4 (telemetry / hide list / QA / demo).
 
 - **2026-05-13 late closeout** — **E-3.2 re-clasificado.** Sub-batch 1 (reliability) arrancó como `E-3.2 + E-3.1`. Auditoría reveló que `b6a536c` (mismo día, 19:33) ya cierra E-3.2: el commit body argumenta explícitamente la decisión arquitectónica (tokens user-scoped, no group-scoped → fix en dispatch boundary, no en `remove_member`). El sweep original lo había etiquetado como "bonus" por error. §5 risk matrix + §6 W3 actualizados. W3 ahora 7 / 12 done. Sub-batch sigue con E-3.1 (realtime subs) como único trabajo real pendiente del reliability cluster.
+
+- **2026-05-13 sub-batch 2 close** — **A-3.4 + A-3.5 done; group-switching UX cluster cerrado.** A-3.4 (`91d6c52`): `createTabIntercept` ahora ruta al `CreateGroupSheet` cuando no hay grupo activo; el silent-fail del Audit Track A 4.5 deja de existir. A-3.5 (`10dda39`): `GroupTabView` y `HistoryTabView` migrados al init convenience del `RuulGroupSwitcher` que MainTabView decisionsTab + HomeView ya usaban — los 4 callsites comparten ahora la misma firma; HomeView documentado como excepción legítima por su header enriquecido. W3 ahora 10/12. Pendientes: B-3.4 consent step + A-3.3 empty/loading unify. Build verde.
 
 - **2026-05-13 sub-batch 1 close** — **E-3.1 done; W3 reliability cluster cerrado.** `mig 00161` agrega `user_actions`/`votes`/`vote_casts`/`fines` a la publicación `supabase_realtime` con `REPLICA IDENTITY FULL` (necesario para que RLS evalúe quals sobre columnas no-PK). `MultiDeviceChangeFeed` actor (Mock + Live) en RuulCore emite kicks por tabla + recordId; AppState abre/cierra los 4 canales con el ciclo de auth. 6 coordinators wired (Inbox, OpenVotes, VoteDetail, MyFines, ReviewProposedFines, FineDetail) — cada uno filtra por table + opcionalmente por recordId y dispara su propio refresh(). 3 tests nuevos en `MultiDeviceChangeFeedTests` (contract del Mock + wiring end-to-end). Build verde, 160/160 tests pasando (157 previos + 3 nuevos). W3 ahora 8/12. Pendientes: B-3.4 consent step, A-3.3 empty/loading unify, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API. Tech debt nuevo identificado: `RSVPRealtimeService` quedó silently broken desde mig 00159 (event_attendance dropeada); fuera de scope de E-3.1, slated para follow-up con `rsvp_actions`/`attendance_view`.
