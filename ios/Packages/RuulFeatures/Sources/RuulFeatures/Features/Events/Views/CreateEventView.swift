@@ -5,7 +5,7 @@ import RuulCore
 
 public struct CreateEventView: View {
     @Environment(\.dismiss) private var dismiss
-    @Bindable var coordinator: EventCreationCoordinator
+    @Bindable var coordinator: ResourceCreationCoordinator
 
     @State private var coverPickerPresented = false
     @State private var photosPickerItem: PhotosPickerItem?

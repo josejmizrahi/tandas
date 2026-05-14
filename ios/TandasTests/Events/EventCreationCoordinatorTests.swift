@@ -5,9 +5,9 @@ import RuulCore
 import RuulFeatures
 @testable import Tandas
 
-@Suite("EventCreationCoordinator")
+@Suite("ResourceCreationCoordinator")
 @MainActor
-struct EventCreationCoordinatorTests {
+struct ResourceCreationCoordinatorTests {
     private func sampleGroup() -> Group {
         Group(
             id: UUID(),
@@ -22,11 +22,11 @@ struct EventCreationCoordinatorTests {
         group: Group? = nil,
         hasExistingEvents: Bool = false,
         eventRepo: MockEventRepository = .init()
-    ) -> (EventCreationCoordinator, MockEventRepository, MockAnalyticsService) {
+    ) -> (ResourceCreationCoordinator, MockEventRepository, MockAnalyticsService) {
         let g = group ?? sampleGroup()
         let analytics = MockAnalyticsService()
         let lifecycle = EventLifecycleService(eventRepo: eventRepo)
-        let coord = EventCreationCoordinator(
+        let coord = ResourceCreationCoordinator(
             group: g,
             hasExistingEvents: hasExistingEvents,
             suggestedDate: .now.addingTimeInterval(86_400),

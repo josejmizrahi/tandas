@@ -10,7 +10,7 @@ import RuulCore
 /// time, not edit time.
 public struct EditEventView: View {
     @Environment(\.dismiss) private var dismiss
-    @Bindable var coordinator: EventEditCoordinator
+    @Bindable var coordinator: ResourceEditCoordinator
 
     @State private var coverPickerPresented = false
     @State private var photosPickerItem: PhotosPickerItem?

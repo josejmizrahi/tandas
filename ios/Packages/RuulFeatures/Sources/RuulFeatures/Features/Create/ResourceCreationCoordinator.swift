@@ -5,7 +5,7 @@ import RuulUI
 import RuulCore
 
 @Observable @MainActor
-public final class EventCreationCoordinator {
+public final class ResourceCreationCoordinator {
     public var draft: EventDraft
     public private(set) var isPublishing: Bool = false
     public private(set) var error: EventError?

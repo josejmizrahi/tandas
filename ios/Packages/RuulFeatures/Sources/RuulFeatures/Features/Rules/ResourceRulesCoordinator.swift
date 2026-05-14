@@ -3,7 +3,7 @@ import Observation
 import OSLog
 import RuulCore
 
-// NOTE: file name still "EventRulesCoordinator.swift" for git history
+// NOTE: type was renamed from EventRulesCoordinator to ResourceRulesCoordinator
 // continuity; the type is the polymorphic `ResourceRulesCoordinator`
 // that drives the rules surface for ANY Resource — events, assets,
 // funds, slots. Founder framing 2026-05-10: rules apply to any

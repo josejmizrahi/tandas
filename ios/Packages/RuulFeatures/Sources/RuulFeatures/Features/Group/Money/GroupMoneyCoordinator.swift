@@ -221,7 +221,7 @@ public final class GroupMoneyCoordinator {
     }
 
     /// Resolves the current user's `group_members.id` for this group.
-    /// Same pattern as EventLedgerCoordinator — used by the quick-action
+    /// Same pattern as ResourceLedgerCoordinator — used by the quick-action
     /// flows that need a `from_member` (settlement / contribution forms).
     public var currentMemberId: UUID? {
         members.first(where: { $0.member.userId == currentUserId })?.member.id

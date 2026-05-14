@@ -1156,7 +1156,7 @@ public struct MainTabView: View {
     @ViewBuilder
     private func eventEditScreen(_ event: Event) -> some View {
         if let group = app.groups.first(where: { $0.id == event.groupId }) {
-            let editCoord = EventEditCoordinator(
+            let editCoord = ResourceEditCoordinator(
                 event: event,
                 group: group,
                 eventRepo: app.eventRepo,

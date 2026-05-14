@@ -4,7 +4,7 @@ import OSLog
 import RuulUI
 import RuulCore
 
-/// Coordinator for editing an existing event. Mirrors EventCreationCoordinator
+/// Coordinator for editing an existing event. Mirrors ResourceCreationCoordinator
 /// but seeds the draft from the current event and submits via
 /// `EventRepository.updateEvent(_:patch:)` rather than create.
 ///
@@ -12,7 +12,7 @@ import RuulCore
 /// vs. the original — minimizes payload + avoids triggering unnecessary
 /// PostgREST notifications on no-op updates.
 @Observable @MainActor
-public final class EventEditCoordinator {
+public final class ResourceEditCoordinator {
     public var draft: EventDraft
     public private(set) var isSaving: Bool = false
     public private(set) var error: EventError?
