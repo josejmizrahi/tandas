@@ -72,6 +72,13 @@ public final class AppState {
     /// dynamic rule-builder forms — mig 00084 is the canonical source.
     public var ruleShapeRegistry: RuleShapeRegistry = .v1Fallback
 
+    /// Pass 1 frontend remodel: A/B flag between legacy `MainTabView`
+    /// (Features/Events) and new `RootShell` (Features/Shell). Default
+    /// `false` until Task 18 flips it. Read by `AuthGate` to pick the
+    /// post-auth root view; lives on `AppState` so debug builds can
+    /// toggle it from a hidden gesture without rebuilding.
+    public var useNewShell: Bool = false
+
     /// Resolves runtime capabilities for the active group based on its
     /// template + activeModules. Computed so it always reflects the latest
     /// `moduleRegistry`; refreshing the registry post-boot automatically
