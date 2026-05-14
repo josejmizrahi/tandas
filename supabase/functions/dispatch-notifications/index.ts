@@ -136,11 +136,12 @@ serve(withSentry(async (_req) => {
     }
 
     const apnsBody = buildApnsBody(row);
+    const collapseId = buildCollapseId(row);
     let lastErr: string | null = null;
     let anySuccess = false;
 
     for (const token of userTokens) {
-      const result = await sendApns(token, apnsBody, jwt);
+      const result = await sendApns(token, apnsBody, jwt, collapseId);
       if (result.ok) {
         anySuccess = true;
       } else {
@@ -193,6 +194,35 @@ function buildApnsBody(row: OutboxRow): Record<string, unknown> {
   };
 }
 
+// Beta 1 W2-D2: apns-collapse-id eliminates duplicate banners on
+// multi-device and on dispatcher retries. Two notifications with the
+// same collapse-id replace each other instead of stacking — Apple
+// caps the id at 64 bytes.
+//
+// Strategy: derive an entity-stable id from the payload's well-known
+// keys (vote_id, fine_id, event_id, resource_id, rule_id) prefixed by
+// notification_type so different events on the same entity stay
+// separate (e.g. voteOpened vs voteResolved on the same vote keep their
+// own banners). Falls back to outbox row id when no entity key is
+// present — that case gets no collapse benefit but each row is unique
+// so still safe.
+export function buildCollapseId(row: OutboxRow): string {
+  const payload = row.payload ?? {};
+  const refRaw =
+    (payload.vote_id as string | undefined) ??
+    (payload.fine_id as string | undefined) ??
+    (payload.event_id as string | undefined) ??
+    (payload.resource_id as string | undefined) ??
+    (payload.rule_id as string | undefined) ??
+    row.id;
+  // group_id prefix is short (8 chars) so different groups with the
+  // same entity_id (can't happen for UUIDs but defensive) collapse
+  // separately; ref tail truncated to fit Apple's 64-byte limit.
+  const groupPrefix = row.group_id.slice(0, 8);
+  const candidate = `${row.notification_type}.${groupPrefix}.${refRaw}`;
+  return candidate.slice(0, 64);
+}
+
 // ============================================================================
 // APNs HTTP/2 send (Deno's fetch uses HTTP/2 transparently when available)
 // ============================================================================
@@ -201,6 +231,7 @@ async function sendApns(
   token: string,
   body: Record<string, unknown>,
   jwt: string,
+  collapseId: string,
 ): Promise<{ ok: true; status: 200; apnsId: string | null } | { ok: false; status: number; error: string }> {
   const url = `${APNS_HOST}/3/device/${token}`;
   let res: Response;
@@ -212,6 +243,9 @@ async function sendApns(
         "apns-topic": APNS_BUNDLE_ID,
         "apns-push-type": "alert",
         "apns-priority": "10",
+        // W2-D2: collapse-id replaces a prior banner with the same id
+        // instead of stacking. Multi-device + retry dedup.
+        "apns-collapse-id": collapseId,
         "content-type": "application/json",
       },
       body: JSON.stringify(body),
