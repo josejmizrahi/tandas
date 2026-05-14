@@ -284,7 +284,8 @@ public struct EventDetailHost: View {
             walletService: app.walletService,
             analytics: EventAnalytics(analytics: app.analytics),
             realtimeFactory: app.realtimeFactory,
-            systemEvents: app.systemEventEmitter
+            systemEvents: app.systemEventEmitter,
+            notificationDispatcher: app.eventNotificationDispatcher
         )
     }
 

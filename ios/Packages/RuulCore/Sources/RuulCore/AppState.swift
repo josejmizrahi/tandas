@@ -87,6 +87,9 @@ public final class AppState {
     public let notificationTokenRepo: any NotificationTokenRepository
     public let eventLifecycle: EventLifecycleService
     public let notifications: NotificationService?
+    /// Triggers `send-event-notification` edge fn (host reminders, etc.)
+    /// with a per-event 30-min rate limit. Beta 1 W1 D-1.1.
+    public let eventNotificationDispatcher: any EventNotificationDispatcher
     public let walletService: any WalletPassService
     public let analytics: any AnalyticsService
 
@@ -161,6 +164,7 @@ public final class AppState {
         rsvpActionRepo: any RsvpActionRepository,
         resourceDraftRepo: any ResourceDraftRepository,
         notifications: NotificationService? = nil,
+        eventNotificationDispatcher: any EventNotificationDispatcher = MockEventNotificationDispatcher(),
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
         realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil
@@ -219,6 +223,7 @@ public final class AppState {
         ])
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
+        self.eventNotificationDispatcher = eventNotificationDispatcher
         self.walletService = walletService
         self.analytics = analytics
         self.realtimeFactory = realtimeFactory

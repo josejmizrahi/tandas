@@ -29,6 +29,7 @@ public final class EventDetailCoordinator {
     private let checkInRepo: any CheckInRepository
     private let lifecycle: EventLifecycleService
     private let notifications: NotificationService?
+    private let notificationDispatcher: (any EventNotificationDispatcher)?
     public let walletService: any WalletPassService
     private let analytics: EventAnalytics
     private let realtimeFactory: ((UUID) -> RSVPRealtimeService)?
@@ -47,7 +48,8 @@ public final class EventDetailCoordinator {
         walletService: any WalletPassService,
         analytics: EventAnalytics,
         realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil,
-        systemEvents: SystemEventEmitter? = nil
+        systemEvents: SystemEventEmitter? = nil,
+        notificationDispatcher: (any EventNotificationDispatcher)? = nil
     ) {
         self.event = event
         self.group = group
@@ -58,6 +60,7 @@ public final class EventDetailCoordinator {
         self.checkInRepo = checkInRepo
         self.lifecycle = lifecycle
         self.notifications = notifications
+        self.notificationDispatcher = notificationDispatcher
         self.walletService = walletService
         self.analytics = analytics
         self.realtimeFactory = realtimeFactory
@@ -271,10 +274,47 @@ public final class EventDetailCoordinator {
     public func sendHostReminders() async -> Int {
         guard viewerRole == .host else { return 0 }
         let pendingCount = rsvps.filter { $0.status == .pending }.count
-        // Real send: send-event-notification writes outbox rows; dispatcher cron
-        // delivers APNs (outbox-first, dispatcher pending).
-        await analytics.hostReminderSent(eventId: event.id, recipientCount: pendingCount)
-        return pendingCount
+
+        // Real path: invoke send-event-notification(kind=host_reminder).
+        // The edge fn resolves recipients server-side (pending RSVPs from
+        // attendance_view), writes one outbox row per recipient. APNs
+        // delivery is the dispatch-notifications cron's job.
+        //
+        // Rate-limit lives in the dispatcher actor (1 send / 30 min /
+        // event). When the limit hits, we surface a friendly notice via
+        // the error envelope — the existing toast/alert pathway already
+        // handles `error` presentation.
+        let count: Int
+        if let dispatcher = notificationDispatcher {
+            do {
+                count = try await dispatcher.sendHostReminder(eventId: event.id)
+            } catch let EventNotificationDispatchError.rateLimited(nextAt) {
+                self.error = CoordinatorError(
+                    title: "Ya recordaste hace poco",
+                    message: "Espera \(formattedRateLimitWait(until: nextAt)) para volver a notificar a quienes faltan.",
+                    isRetryable: false
+                )
+                return 0
+            } catch {
+                self.error = CoordinatorError.from(error, fallback: "No pudimos enviar el recordatorio")
+                return 0
+            }
+        } else {
+            // No dispatcher injected (preview / unit tests). Synthesize
+            // the count from the local pending list so the analytics
+            // call still records something meaningful.
+            count = pendingCount
+        }
+
+        await analytics.hostReminderSent(eventId: event.id, recipientCount: count)
+        return count
+    }
+
+    private func formattedRateLimitWait(until date: Date) -> String {
+        let secs = Int(max(0, date.timeIntervalSinceNow))
+        let mins = (secs + 59) / 60
+        if mins <= 1 { return "1 minuto" }
+        return "\(mins) minutos"
     }
 
     public func toggleAutoGenerate(_ enabled: Bool) async {

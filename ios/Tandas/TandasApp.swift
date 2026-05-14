@@ -79,6 +79,7 @@ struct TandasApp: App {
                 rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
                 notifications: NotificationService(tokenRepo: notifTokens),
+                eventNotificationDispatcher: MockEventNotificationDispatcher(),
                 walletService: StubWalletPassService(),
                 analytics: analytics
             ))
@@ -141,6 +142,7 @@ struct TandasApp: App {
                 rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
                 notifications: NotificationService(tokenRepo: notifTokens),
+                eventNotificationDispatcher: LiveEventNotificationDispatcher(client: client),
                 walletService: StubWalletPassService(),
                 analytics: analytics,
                 realtimeFactory: { eventId in
