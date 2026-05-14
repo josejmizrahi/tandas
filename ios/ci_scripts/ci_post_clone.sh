@@ -25,6 +25,41 @@ brew install xcodegen
 # CWD is ios/ci_scripts/; project.yml is at ios/project.yml.
 cd "$(dirname "$0")/.."
 
+# ----------------------------------------------------------------------
+# Materialize Tandas.local.xcconfig from env vars.
+#
+# `ios/Tandas.local.xcconfig` is gitignored (contains Supabase URL +
+# publishable anon key + Sentry DSN). project.yml references it for
+# both Debug and Release configs, so xcodegen's spec validation fails
+# if the file isn't on disk.
+#
+# Xcode Cloud injects env vars set in App Store Connect (Workflow →
+# Environment). We read them here; if absent we write stubs that let
+# the build compile (the app would fail at runtime trying to reach
+# Supabase, but Xcode Cloud's compile/test pass is what matters for
+# the CI signal).
+#
+# The `https:/$()/` escape is xcconfig syntax for `//` — xcconfig
+# treats raw `//` as a comment marker; `$()` is an empty variable
+# substitution that breaks the comment without changing the URL.
+# ----------------------------------------------------------------------
+
+XCCFG=Tandas.local.xcconfig
+echo "→ Materializing ${XCCFG} from env vars (Xcode Cloud Workflow → Environment)..."
+
+cat > "${XCCFG}" <<EOF
+TANDAS_SUPABASE_URL = ${TANDAS_SUPABASE_URL:-https:/\$()/stub.example.com}
+TANDAS_SUPABASE_ANON_KEY = ${TANDAS_SUPABASE_ANON_KEY:-stub_anon_key}
+SENTRY_DSN = ${SENTRY_DSN:-}
+EOF
+
+if [[ -z "${TANDAS_SUPABASE_URL:-}" ]]; then
+  echo "⚠  TANDAS_SUPABASE_URL not set; build will compile with stub but app can't reach Supabase."
+fi
+if [[ -z "${SENTRY_DSN:-}" ]]; then
+  echo "⚠  SENTRY_DSN not set; SentrySDK will skip init (graceful no-op per TandasApp.startSentry)."
+fi
+
 echo "→ Generating Tandas.xcodeproj from project.yml..."
 xcodegen generate
 
