@@ -96,11 +96,18 @@ serve(withSentry(async (_req) => {
   // Resolve recipient_member_id → user_id → tokens (per-row map). One
   // recipient may have multiple tokens (multiple devices). We send to
   // each.
+  //
+  // W3-E2: filter members by active=true. If a member was removed
+  // (group_members.active=false) between the outbox row being queued
+  // and this dispatch tick, we drop their pushes here. The user's
+  // notification_tokens row stays (they might be active in other
+  // groups), but they no longer receive pushes for groups they left.
   const memberIds = [...new Set(rows.map((r) => r.recipient_member_id))];
   const { data: members } = await supabase
     .from("group_members")
     .select("id, user_id")
-    .in("id", memberIds);
+    .in("id", memberIds)
+    .eq("active", true);
 
   const userIdByMember = new Map<string, string>(
     ((members ?? []) as Array<{ id: string; user_id: string }>).map((m) => [m.id, m.user_id]),
@@ -125,6 +132,18 @@ serve(withSentry(async (_req) => {
   for (const row of rows) {
     const userId = userIdByMember.get(row.recipient_member_id);
     const userTokens = userId ? (tokensByUser.get(userId) ?? []) : [];
+
+    if (!userId) {
+      // W3-E2: member is inactive (or never existed) — skip with a
+      // distinct reason so SQL audits can tell post-removal pushes
+      // apart from genuine "user has no APNs token yet" cases.
+      await supabase.rpc("mark_outbox_skipped", {
+        p_outbox_id: row.id,
+        p_reason: "member inactive",
+      });
+      summary.skipped += 1;
+      continue;
+    }
 
     if (userTokens.length === 0) {
       await supabase.rpc("mark_outbox_skipped", {
