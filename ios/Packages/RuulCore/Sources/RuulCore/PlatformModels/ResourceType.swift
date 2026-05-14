@@ -8,7 +8,7 @@ import Foundation
 // `resources.resource_type`, `resource_series.resource_type`,
 // `group_policies.target_resource_type`, `rule_shapes.valid_resource_types`
 // (migración 00147).
-public enum ResourceType: Codable, Sendable, Hashable {
+public enum ResourceType: Codable, Sendable, Hashable, CaseIterable {
     /// Ocurrencia temporal coordinada (cena, junta, partido, ceremonia).
     case event
     /// Pool monetario del grupo (cochinito, tanda, fondo común, presupuesto).
@@ -25,6 +25,16 @@ public enum ResourceType: Codable, Sendable, Hashable {
     /// Defensive case for forward/backward codec compatibility. Server CHECK
     /// constraints prevent this from ever arriving from canonical sources.
     case unknown(String)
+}
+
+extension ResourceType {
+    /// The 6 canonical cases, excluding the defensive `unknown` case.
+    /// `unknown` cannot participate in `allCases` because it carries an
+    /// associated value; only concrete server values belong in exhaustive
+    /// iteration (e.g., chrome lookups, capability resolution).
+    public static var allCases: [ResourceType] {
+        [.event, .fund, .asset, .space, .slot, .right]
+    }
 }
 
 extension ResourceType {
