@@ -17,8 +17,11 @@ public struct PresetPickerView: View {
             stepCount: FounderStep.allCases.count,
             title: "¿Para qué será \(coord.draft.name.isEmpty ? "tu grupo" : coord.draft.name)?",
             subtitle: "Elige cómo arrancar. Puedes agregar más después.",
-            primaryCTA: nil,
-            canContinue: false
+            // W3-B2: explicit "Continuar" CTA — previously the screen
+            // auto-advanced 350ms after tap, making the preset choice
+            // irreversible without a back button. Audit B "Bad defaults".
+            primaryCTA: continueCTA,
+            canContinue: selected != nil
         ) {
             VStack(spacing: RuulSpacing.md) {
                 ForEach(OnboardingPreset.all) { preset in
@@ -28,6 +31,16 @@ public struct PresetPickerView: View {
         }
     }
 
+    /// Show the primary CTA only after a preset is tapped; until then
+    /// the card itself is the only affordance. Locked while the
+    /// coordinator is materializing the group.
+    private var continueCTA: (String, Bool, () -> Void)? {
+        guard let preset = selected else { return nil }
+        return ("Continuar", coord.isLoading, {
+            Task { await coord.selectPreset(preset) }
+        })
+    }
+
     private var progressValue: Double {
         Double(FounderStep.preset.index) / Double(FounderStep.allCases.count - 1)
     }
@@ -35,12 +48,10 @@ public struct PresetPickerView: View {
     private func presetCard(for preset: OnboardingPreset) -> some View {
         let isSelected = selected?.id == preset.id
         return Button {
+            // W3-B2: tap only selects — the explicit "Continuar" CTA
+            // performs the irreversible action. Removed the 350ms
+            // DispatchQueue auto-advance.
             withAnimation(.ruulSnappy) { selected = preset }
-            // Auto-advance 350ms after selection so the user feels the
-            // pick land before the screen swaps.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                Task { await coord.selectPreset(preset) }
-            }
         } label: {
             HStack(alignment: .top, spacing: RuulSpacing.md) {
                 ZStack {
