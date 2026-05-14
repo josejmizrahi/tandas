@@ -80,14 +80,17 @@ public struct SystemEventDetailView: View {
     private var metadataCard: some View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                row("Tipo", event.eventType.rawString)
+                // W2-C3: humanLabel covers every case; rawString stays internal.
+                row("Tipo", event.eventType.humanLabel)
                 row("Cuándo", Self.absoluteFormatter.string(from: event.occurredAt))
                 if let name = memberName {
                     row("Miembro", name)
                 }
-                if let resourceId = event.resourceId {
-                    row("Recurso", resourceId.uuidString.prefix(8) + "…")
-                }
+                // W2-C3: uuidString.prefix(8) leak removed — a hash
+                // fragment doesn't identify a resource to the user. If
+                // the parent has a resolved name it should pass it
+                // through (future hookup); for now we omit the row
+                // when we can't show a meaningful identifier.
                 row("Procesado",
                     event.processedAt.map { Self.absoluteFormatter.string(from: $0) } ?? "Pendiente")
             }
@@ -116,21 +119,10 @@ public struct SystemEventDetailView: View {
         }
     }
 
-    private var titleText: String {
-        switch event.eventType {
-        case .eventClosed:    return "Evento cerrado"
-        case .voteOpened:     return "Votación abierta"
-        case .voteCast:       return "Voto emitido"
-        case .voteResolved:   return "Votación cerrada"
-        case .appealCreated:  return "Apelación abierta"
-        case .appealResolved: return "Apelación resuelta"
-        case .fineOfficialized: return "Multa oficializada"
-        case .fineVoided:     return "Multa anulada"
-        case .finePaid:       return "Multa pagada"
-        case .checkInRecorded: return "Check-in"
-        default: return event.eventType.rawString
-        }
-    }
+    // W2-C3: single source of truth — humanLabel covers every case
+    // with Spanish-MX copy. No more partial switches falling through
+    // to rawString.
+    private var titleText: String { event.eventType.humanLabel }
 
     private func row(_ key: String, _ value: String) -> some View {
         HStack {
