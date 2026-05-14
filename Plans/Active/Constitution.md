@@ -75,6 +75,16 @@ Estos 6 pasos son la deuda concreta para alinear la base con la constitución. N
 
 5. **Consolidar events en `resources`.** Migrar lectores restantes de `events` / `event_attendance` a `resources WHERE resource_type='event'` / `rsvp_actions`. Drop trigger `events_sync_to_resources` y tablas legacy.
 
+   Plan ejecutado en sub‑pasos (2026‑05‑13):
+   - **5a ✅** (`mig 00152`) — `events_view` ahora proyecta DESDE `resources WHERE resource_type='event'`. Único reader (`process-system-events`) sigue verde porque la shape de columnas no cambió.
+   - **5b ✅** (`mig 00153`) — `rsvp_actions` recibe writer por primera vez vía trigger en `event_attendance`. Backfill de 13 históricos. La atom table había estado huérfana desde mig 00078.
+   - **5c‑i ✅** (`mig 00154`) — Nueva atom `check_in_actions` + trigger + `attendance_view` projection (rsvp ∪ check‑in, latest‑per‑(resource,member)). Parity 13/13 con `event_attendance` en todo campo excepto `no_show` (que resultó columna muerta).
+   - **5c‑ii ✅** (`mig 00155`) — Drop columnas `event_id` de `fines` y `fine_review_periods`; rewire FKs y RPCs a `resource_id`. `on_fine_inserted` / `officialize_fine` leen `host_id` de `resources.metadata`. Edge fns `finalize-fine-reviews` v10 y `process-system-events` v14 redesplegados.
+   - **5c‑iii** ⏳ pendiente — Refactor de 5 writers V2 (`create_event_v2`, `set_rsvp_v2`, `check_in_v2`, `cancel_event`, `close_event`) para escribir `resources` + atoms directamente. Drop de 5 triggers en `events` (sync, set_auto_no_show, updated_at, cancel cascade, host assigned) o reimplementación equivalente en `resources`. Drop V1 RPCs muertos (`create_event`, `set_rsvp`, `check_in_attendee`, `evaluate_event_rules` legacy, etc.).
+   - **5c‑iv** ⏳ pendiente — Migrar 6 edge fns (`send-event-notification`, `auto-generate-events`, `auto-close-events`, `emit-deadline-events`, `emit-event-reminder-events`, `process-system-events`) + 2 repos Swift (`EventRepository.swift` 6 reads, `RSVPRepository.swift` 2 reads) + 4 e2e tests para leer de `attendance_view` y `events_view` sobre `resources`. Drop `event_attendance`, drop `events`.
+
+   Razón del split: la auditoría 2026‑05‑13 reveló 19 funciones SQL tocando `events`/`event_attendance` (no 6+), 6 edge fns + 12 archivos Swift/TS, y 5 triggers a re‑implementar. Blast radius cubre el ciclo completo de evento (create/RSVP/check‑in/close/cancel/cron). Ejecutar 5c‑iii+iv en una sola corrida sin testing dedicado es alto riesgo de regresión silenciosa en producción.
+
 6. **Sólo después de 1‑5**, abrir cualquier construcción nueva. Candidatos en orden de prioridad cuando llegue su turno:
    - `documents` polimórficos (Phase 3, layer evidencia)
    - `tasks` polimórficos (Phase 3, layer acción)
