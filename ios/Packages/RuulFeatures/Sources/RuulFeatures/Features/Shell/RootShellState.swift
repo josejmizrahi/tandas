@@ -70,13 +70,13 @@ public final class RootShellState {
     }
 }
 
-/// Tab inventory preserved 1:1 from legacy `MainTabView` so Pass 1 is
-/// pure refactor. Pass 2 changes the inventory to match `AppShell.md`.
+/// Tab inventory matching `AppShell.md` canonical 5-tab layout.
+/// Pass 2 renames .group → .inbox and .decisions → .activity.
 public enum RootTab: String, Sendable, Hashable, CaseIterable {
     case home
-    case group
+    case inbox
     case create
-    case decisions
+    case activity
     case profile
 }
 

@@ -40,24 +40,19 @@ public struct RootShell: View {
             )
             .tabItem { Label("Inicio", systemImage: "house.fill") }
             .tag(RootTab.home)
-            .badge(inboxCoordinator?.actions.count ?? 0)
 
-            GroupTab(
-                rules: rulesCoordinator,
-                myFines: myFinesCoordinator,
-                inbox: inboxCoordinator,
-                home: homeCoordinator
-            )
-            .tabItem { Label("Grupo", systemImage: "person.3.fill") }
-            .tag(RootTab.group)
+            InboxTab()
+                .tabItem { Label("Inbox", systemImage: "tray.fill") }
+                .tag(RootTab.inbox)
+                .badge(inboxCoordinator?.actions.count ?? 0)
 
             CreateTabIntercept()
                 .tabItem { Label("Crear", systemImage: "plus.circle.fill") }
                 .tag(RootTab.create)
 
-            DecisionsTab(rules: rulesCoordinator)
-                .tabItem { Label("Decisiones", systemImage: "hand.raised.fill") }
-                .tag(RootTab.decisions)
+            ActivityTab()
+                .tabItem { Label("Actividad", systemImage: "clock.arrow.circlepath") }
+                .tag(RootTab.activity)
 
             ProfileTab(profile: profileCoordinator)
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle.fill") }

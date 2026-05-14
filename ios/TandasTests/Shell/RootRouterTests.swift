@@ -46,8 +46,8 @@ struct RootRouterTests {
     @Test("non-create tab selection updates selectedTab normally")
     func normalTab() {
         let (router, state) = makeRouter()
-        router.handleTabSelection(.group, hasActiveGroup: true)
-        #expect(state.selectedTab == .group)
+        router.handleTabSelection(.inbox, hasActiveGroup: true)
+        #expect(state.selectedTab == .inbox)
         #expect(state.activeRoutes.isEmpty)
     }
 
