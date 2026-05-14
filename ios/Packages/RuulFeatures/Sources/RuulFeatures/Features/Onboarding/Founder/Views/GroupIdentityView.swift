@@ -34,13 +34,12 @@ public struct GroupIdentityView: View {
                     suggestionChips
                 }
 
-                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                    Text("Cover")
-                        .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                    RuulCoverPicker(selectedCoverId: $bindable.draft.coverImageName)
-                        .padding(.horizontal, -RuulSpacing.lg) // bleed past container padding
-                }
+                // W3-B1: cover picker removed from onboarding. Audit B
+                // flagged it as a vanity decision added before the user
+                // has any sense of the product. draft.coverImageName
+                // stays nil; RuulCoverCatalog.cover(named:) falls back
+                // to .sunset. Founders can pick a cover later in group
+                // settings (once that surface lands).
 
                 if let error = coord.error, case .createGroupFailed = error {
                     Text(error.localizedDescription)
