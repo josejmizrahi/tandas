@@ -75,6 +75,9 @@ public final class ReviewProposedFinesCoordinator {
             // W2-C2: translate to Spanish-MX so PostgREST/JWT/network
             // messages don't leak straight into the inbox banner.
             self.error = error.ruulUserMessage
+            // Beta 1 W4 F-4.5 TODO: emit `error_shown` when this coordinator
+            // gains an injected AnalyticsService. High-traffic error paths
+            // (auth, settings save, inbox resolve) already covered.
         }
     }
 

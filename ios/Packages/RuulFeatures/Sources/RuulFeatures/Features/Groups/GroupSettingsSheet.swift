@@ -180,6 +180,14 @@ public struct GroupSettingsSheet: View {
                             slug: GroupModule.basicFines.id,
                             enabled: finesEnabled
                         )
+                        // Beta 1 W4 F-4.5: module-flip telemetry. Only
+                        // fired after the RPC succeeds so we don't count
+                        // failed attempts as flips.
+                        let beta = BetaAnalytics(analytics: app.analytics)
+                        await beta.moduleToggled(
+                            moduleSlug: GroupModule.basicFines.id,
+                            enabled: finesEnabled
+                        )
                     case .adminOnly:
                         throw CapabilityGovernanceError.adminOnly
                     case .voteRequired:
@@ -213,6 +221,10 @@ public struct GroupSettingsSheet: View {
                     // patterns; raw .localizedDescription leaked English.
                     self.error = "No pudimos guardar los cambios. \(error.ruulUserMessage)"
                 }
+                // Beta 1 W4 F-4.5: error telemetry. Bucket-coded so the
+                // pipeline aggregates without seeing the raw message.
+                let beta = BetaAnalytics(analytics: app.analytics)
+                await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
             }
         }
     }

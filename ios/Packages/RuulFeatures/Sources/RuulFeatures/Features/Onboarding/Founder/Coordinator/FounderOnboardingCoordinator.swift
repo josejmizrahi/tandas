@@ -179,6 +179,11 @@ public final class FounderOnboardingCoordinator {
             draft.eventVocabulary = vocab
         }
 
+        // Beta 1 W4 F-4.5: emit per-preset pick so the analytics pipeline
+        // can split funnel by template before group creation completes.
+        let beta = BetaAnalytics(analytics: analytics)
+        await beta.groupTemplatePicked(templateId: preset.templateId)
+
         do {
             let group = try await groupRepo.createInitial(draft)
             createdGroup = group

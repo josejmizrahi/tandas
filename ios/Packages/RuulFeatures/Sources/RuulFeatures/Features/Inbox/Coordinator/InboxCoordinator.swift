@@ -17,6 +17,10 @@ public final class InboxCoordinator {
     private let groupId: UUID?
     private let userActionRepo: any UserActionRepository
     private let groupsRepo: (any GroupsRepository)?
+    /// Beta 1 W4 F-4.5: nil-safe analytics injection so `inbox_action_resolved`
+    /// fires when the user taps through a row. Default nil keeps preview /
+    /// mock callers working without rewiring AppState.
+    private let analytics: (any AnalyticsService)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "inbox")
 
     /// Beta 1 W3 E-3.1: subscribes to the cross-device feed so that when
@@ -33,12 +37,14 @@ public final class InboxCoordinator {
         groupId: UUID?,
         userActionRepo: any UserActionRepository,
         groupsRepo: (any GroupsRepository)? = nil,
-        changeFeed: (any MultiDeviceChangeFeed)? = nil
+        changeFeed: (any MultiDeviceChangeFeed)? = nil,
+        analytics: (any AnalyticsService)? = nil
     ) {
         self.userId = userId
         self.groupId = groupId
         self.userActionRepo = userActionRepo
         self.groupsRepo = groupsRepo
+        self.analytics = analytics
         if let feed = changeFeed {
             self.changeFeedTask = Task { [weak self] in
                 for await change in feed.changes {
@@ -83,9 +89,19 @@ public final class InboxCoordinator {
     /// auto-resolve in some cases (e.g. casting an appeal vote resolves the
     /// `appealVotePending` row), so this is mostly for "tapped" semantics.
     public func resolve(actionId: UUID) async {
+        // Capture the action_type before the local removal so we can emit
+        // an accurate telemetry event even after `actions` no longer holds
+        // the row.
+        let actionType = actions.first(where: { $0.id == actionId })?.actionType
         do {
             try await userActionRepo.resolve(actionId: actionId)
             actions.removeAll { $0.id == actionId }
+            // Beta 1 W4 F-4.5: per-resolution telemetry. Drops silently
+            // when analytics not injected (preview / mock paths).
+            if let analytics, let actionType {
+                let beta = BetaAnalytics(analytics: analytics)
+                await beta.inboxActionResolved(actionType: actionType.rawValue)
+            }
         } catch {
             log.warning("resolve failed: \(error.localizedDescription)")
         }

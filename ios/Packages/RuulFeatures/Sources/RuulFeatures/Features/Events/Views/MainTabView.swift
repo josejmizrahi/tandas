@@ -1293,7 +1293,8 @@ public struct MainTabView: View {
             groupId: nil,                   // 14.2 — cross-group inbox
             userActionRepo: app.userActionRepo,
             groupsRepo: app.groupsRepo,
-            changeFeed: app.multiDeviceChangeFeed
+            changeFeed: app.multiDeviceChangeFeed,
+            analytics: app.analytics
         )
         myFinesCoordinator = MyFinesCoordinator(
             userId: userId,

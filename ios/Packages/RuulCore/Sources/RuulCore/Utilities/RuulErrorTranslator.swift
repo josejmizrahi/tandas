@@ -66,6 +66,52 @@ public enum RuulErrorTranslator {
         return "Algo salió mal. Inténtalo de nuevo."
     }
 
+    /// Stable analytics-friendly bucket for `error`. Never user-facing —
+    /// emitted alongside `error_shown` telemetry (Beta 1 W4 F-4.5) so we
+    /// can aggregate "which error class is hitting beta users most" in
+    /// the analytics pipeline. Bucket strings are intentionally coarse
+    /// (no PII, no UUIDs, no free text from the error description).
+    public static func errorCode(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet,
+                 .networkConnectionLost,
+                 .dataNotAllowed,
+                 .internationalRoamingOff:           return "url_offline"
+            case .timedOut:                          return "url_timeout"
+            case .cannotFindHost,
+                 .cannotConnectToHost,
+                 .dnsLookupFailed:                   return "url_unreachable"
+            case .userCancelledAuthentication,
+                 .userAuthenticationRequired:       return "url_auth_required"
+            default:                                 return "url_other"
+            }
+        }
+
+        let raw = (error as? LocalizedError)?.errorDescription
+            ?? error.localizedDescription
+        let lower = raw.lowercased()
+
+        if lower.contains("pgrst116")              { return "pgrst_not_found" }
+        if lower.contains("pgrst301")              { return "pgrst_jwt_expired" }
+        if lower.contains("jwt expired") || lower.contains("jwt is expired") {
+            return "jwt_expired"
+        }
+        if lower.contains("invalid token") || lower.contains("invalid jwt") {
+            return "jwt_invalid"
+        }
+        if lower.contains("invalid login credentials") || lower.contains("invalid otp") {
+            return "otp_invalid"
+        }
+        if lower.contains("rate limit") || lower.contains("too many requests") {
+            return "rate_limited"
+        }
+        if lower.contains("network connection") || lower.contains("offline") {
+            return "network_offline"
+        }
+        return "generic"
+    }
+
     private static func urlMessage(for error: URLError) -> String {
         switch error.code {
         case .notConnectedToInternet,

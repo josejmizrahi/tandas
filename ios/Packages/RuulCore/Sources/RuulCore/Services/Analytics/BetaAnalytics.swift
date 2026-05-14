@@ -59,6 +59,35 @@ public struct BetaAnalytics: Sendable {
     public func notificationTapped(kind: String) async {
         await analytics.track(.notificationTapped(kind: kind))
     }
+
+    // MARK: - Beta 1 W4 F-4.5 — additional telemetry
+
+    /// Fired when the founder picks a starter preset in onboarding.
+    /// Pairs with `groupCreated` so we can compute "of users who chose
+    /// dinner, how many actually ran ≥1 event?".
+    public func groupTemplatePicked(templateId: String?) async {
+        await analytics.track(.groupTemplatePicked(templateId: templateId))
+    }
+
+    /// Fired when an inbox action is resolved by tap-through. The
+    /// dispatcher backend also auto-resolves (e.g. fine_voided after
+    /// 7 days), but this event only covers the user-initiated path.
+    public func inboxActionResolved(actionType: String) async {
+        await analytics.track(.inboxActionResolved(actionType: actionType))
+    }
+
+    /// Fired when a group admin flips a module on/off from Group →
+    /// Settings → Acuerdos.
+    public func moduleToggled(moduleSlug: String, enabled: Bool) async {
+        await analytics.track(.moduleToggled(moduleSlug: moduleSlug, enabled: enabled))
+    }
+
+    /// Fired when an error banner / inline message lands in front of
+    /// the user. `code` is the bucket from `RuulErrorTranslator.errorCode`
+    /// (pgrst_*, jwt_*, network, etc.) — never the raw message.
+    public func errorShown(code: String) async {
+        await analytics.track(.errorShown(code: code))
+    }
 }
 
 public extension AnalyticsEvent {
@@ -99,5 +128,30 @@ public extension AnalyticsEvent {
 
     public static func notificationTapped(kind: String) -> AnalyticsEvent {
         .untyped(name: "notification_tapped", properties: ["kind": .string(kind)])
+    }
+
+    public static func groupTemplatePicked(templateId: String?) -> AnalyticsEvent {
+        .untyped(name: "group_template_picked", properties: [
+            "template": templateId.map(AnalyticsValue.string) ?? .null
+        ])
+    }
+
+    public static func inboxActionResolved(actionType: String) -> AnalyticsEvent {
+        .untyped(name: "inbox_action_resolved", properties: [
+            "action_type": .string(actionType)
+        ])
+    }
+
+    public static func moduleToggled(moduleSlug: String, enabled: Bool) -> AnalyticsEvent {
+        .untyped(name: "module_toggled", properties: [
+            "module": .string(moduleSlug),
+            "on_off": .bool(enabled)
+        ])
+    }
+
+    public static func errorShown(code: String) -> AnalyticsEvent {
+        .untyped(name: "error_shown", properties: [
+            "code": .string(code)
+        ])
     }
 }

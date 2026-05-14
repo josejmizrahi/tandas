@@ -272,6 +272,9 @@ public struct SignInView: View {
                     // lost. (Domain=NSURLErrorDomain ...)".
                     self.error = "No pudimos enviar el código. \(error.ruulUserMessage)"
                 }
+                // Beta 1 W4 F-4.5: bucket-coded telemetry.
+                let beta = BetaAnalytics(analytics: app.analytics)
+                await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
             }
         }
     }
@@ -326,6 +329,9 @@ public struct SignInView: View {
                         // W2-C2: filter raw Apple/Supabase Auth strings.
                         self.error = "No pudimos verificar con Apple. \(error.ruulUserMessage)"
                     }
+                    // Beta 1 W4 F-4.5: bucket-coded telemetry.
+                    let beta = BetaAnalytics(analytics: app.analytics)
+                    await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
                 }
             }
         case .failure:

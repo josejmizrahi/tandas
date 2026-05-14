@@ -336,6 +336,11 @@ public final class ResourceWizardCoordinator {
             // network / auth errors land as friendly Spanish copy
             // instead of leaking the raw English message.
             self.error = "No pudimos crear el recurso. \(error.ruulUserMessage)"
+            // Beta 1 W4 F-4.5 TODO: emit `error_shown` here once this
+            // coordinator gains an injected AnalyticsService. The first
+            // three high-traffic error paths (auth OTP send, Apple sign-in,
+            // group settings save) already emit via BetaAnalytics; this
+            // path covers ResourceWizard submit failures.
             return false
         }
     }
