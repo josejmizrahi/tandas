@@ -73,11 +73,13 @@ public final class AppState {
     public var ruleShapeRegistry: RuleShapeRegistry = .v1Fallback
 
     /// Pass 1 frontend remodel: A/B flag between legacy `MainTabView`
-    /// (Features/Events) and new `RootShell` (Features/Shell). Default
-    /// `false` until Task 18 flips it. Read by `AuthGate` to pick the
-    /// post-auth root view; lives on `AppState` so debug builds can
-    /// toggle it from a hidden gesture without rebuilding.
-    public var useNewShell: Bool = false
+    /// (Features/Events) and new `RootShell` (Features/Shell). Flipped
+    /// to `true` at Task 17 cutover — `RootShell` is now the default.
+    /// Read by `AuthGate` to pick the post-auth root view; lives on
+    /// `AppState` so debug builds can toggle it from a hidden gesture
+    /// without rebuilding. Task 18+ will delete legacy MainTabView
+    /// path entirely (and this flag with it).
+    public var useNewShell: Bool = true
 
     /// Resolves runtime capabilities for the active group based on its
     /// template + activeModules. Computed so it always reflects the latest
