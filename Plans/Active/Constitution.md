@@ -71,7 +71,7 @@ Estos 6 pasos son la deuda concreta para alinear la base con la constitución. N
 
 3. **Refactor `fines.status` a projection.** Crear `fines_view` derivada de `ledger_entries + votes + fine_review_periods`. Drop column `fines.status` y triggers `fines_after_status_change`, `fines_resolve_fine_pending`.
 
-4. **Consolidar dinero en `ledger_entries`.** Migrar filas vivas de `expenses`, `expense_shares`, `pots`, `pot_entries` a `ledger_entries` con metadata adecuada. Drop tablas legacy.
+4. **Consolidar dinero en `ledger_entries`.** ✅ **YA HECHO** en `mig 00064_drop_orphan_v1_tables.sql` (2026‑04‑XX). Las tablas `expenses`, `expense_shares`, `pots`, `pot_entries`, `payments`, `vote_ballots` no existían cuando se redactó §14 — eran legacy placeholders dropeados antes. Auditado 2026‑05‑13: cero readers Swift/TS, cero FK refs, cero rows. Step considerado completo retroactivamente.
 
 5. **Consolidar events en `resources`.** Migrar lectores restantes de `events` / `event_attendance` a `resources WHERE resource_type='event'` / `rsvp_actions`. Drop trigger `events_sync_to_resources` y tablas legacy.
 
