@@ -51,11 +51,7 @@ struct AuthGate: View {
                 // "¿Cómo te llamas?" mid-flow.
                 onboardingFlow
             } else {
-                if app.useNewShell {
-                    RootShell()
-                } else {
-                    MainTabView()
-                }
+                RootShell()
             }
         }
         .task { await app.start() }
