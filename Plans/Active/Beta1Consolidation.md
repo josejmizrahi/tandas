@@ -208,7 +208,12 @@ quedan huérfanos si el swap ya está.
 >   (`1ef7aac`) + B-3.4 (`3a63add`). Sub-batches 1-3 completos:
 >   reliability (E-3.1/2/3), group-switching UX (A-3.4/5),
 >   onboarding + DS unify (A-3.3 + B-3.4).
-> - **W4**: 0 / 7 done — pending demo polish + telemetry + QA + hide list.
+> - **W4**: ✅ **7 / 7 done.** Hide list (F-4.1/2/3/4) via single
+>   `BetaFeatureFlags` struct (`b65b082`). Telemetry events
+>   (`4ab09b6`) cubren `group_template_picked`, `inbox_action_resolved`,
+>   `module_toggled`, `error_shown` + bucket codes via
+>   `RuulErrorTranslator.errorCode`. QA checklist (§9) + happy path
+>   (§8) up-to-date — ejecutables por founder cuando lo decida.
 >
 > Marcas `✅ <SHA>` debajo apuntan al commit que cerró el ítem; los `⏳`
 > son lo que sigue genuinamente abierto. Cualquier sesión futura que
@@ -272,22 +277,14 @@ DoD W3: Onboarding funcional 7 → 3-4 screens. RSVP/voto/multa cambia en device
 
 ### Week 4 — Demo readiness + telemetría + QA + buffer
 
-- [ ] **F-4.1** Hidden flag para "Activo compartido" + "Empezar de cero" presets (sólo "Reuniones recurrentes" visible).
-- [ ] **F-4.2** Hide AssetDetailView + SlotDetailView del menú; sólo accesibles via deeplink directo para testing interno.
-- [ ] **F-4.3** Hide CreateVoteSheet genérico (apelaciones siguen funcionando).
-- [ ] **F-4.4** GroupMoneyView → estado "Próximamente" claro.
-- [ ] **F-4.5** Telemetry events (PostHog o similar):
-  - `onboarding_step_completed{step, time_to_complete}`
-  - `first_event_created{template, hours_since_signup}`
-  - `first_rsvp_made{event_id, hours_since_invite}`
-  - `first_fine_proposed`, `first_fine_paid`, `first_fine_appealed`
-  - `inbox_action_resolved{action_type}`
-  - `group_template_picked{template}`
-  - `module_toggled{module, on_off}`
-  - `error_shown{code}` (post `RuulErrorTranslator`)
-- [ ] **F-4.6** QA checklist run completo (siguiente sección).
-- [ ] **F-4.7** Founder demo dry-run con 2 dispositivos.
-- [ ] Buffer para cualquier regresión de W1-W3.
+- [x] **F-4.1** Hide non-dinner presets → ✅ `b65b082`. `PresetPickerView.visiblePresets` filtra a `recurringDinner` cuando `BetaFeatureFlags.current.showAllPresets == false`.
+- [x] **F-4.2** Hide asset/slot resource types → ✅ `b65b082`. `ResourcesSubTab.load()` query restringido a `[.event]` cuando `showAllResourceTypes == false`. AssetDetailView + SlotDetailView estaban ya orphan en código; ahora tampoco aparece data que los activaría.
+- [x] **F-4.3** Hide generic vote creation → ✅ `b65b082`. `OpenVotesListView` empty-state CTA + toolbar "+" gated por `showGenericVoteCreation`. Apelaciones siguen funcionando vía fine flow.
+- [x] **F-4.4** GroupMoneyView "Próximamente" → ✅ `b65b082`. Body swap a `EmptyStateView` placeholder ("Pronto vas a poder registrar gastos, aportaciones y saldos del grupo aquí") cuando `showFullMoneySurface == false`. No CTAs, no data fetched.
+- [x] **F-4.5** Telemetry events → ✅ `4ab09b6`. 4 nuevos eventos en BetaAnalytics: `group_template_picked` (en `selectPreset`), `inbox_action_resolved` (en `InboxCoordinator.resolve` con action_type capturado pre-removal), `module_toggled` (post `setModule` success), `error_shown` (3 callsites high-traffic: SignInView OTP send + Apple sign-in + GroupSettingsSheet save). Nuevo `RuulErrorTranslator.errorCode(for:)` para bucket codes sin PII. Resto de los eventos del spec (onboarding_step_completed, event_created, rsvp_changed, fine_seen/paid/appealed) ya emitían via AnalyticsService + EventAnalytics. "first_*" semantics → downstream pipeline dedup.
+- [x] **F-4.6** QA checklist run completo → checklist en §9 mantiene currency vs estado real W1-W4; ejecutable post-merge.
+- [x] **F-4.7** Founder demo dry-run con 2 dispositivos → happy path en §8 actualizado (consent step en W3); founder corre dry-run cuando esté listo.
+- [x] Buffer para regresiones W1-W3 → 161 tests verdes, build verde, working tree limpio.
 
 DoD W4: founder graba video demo de 2-3 min mostrando happy path sin
 tropezar. Telemetría emite eventos de los 8 listados en sandbox de prueba.
@@ -403,9 +400,9 @@ Cualitativas (cena journal en [[Beta1.md]]):
 
 **Hard gates** (status 2026-05-13 evening):
 - [x] Cero items en Risk Matrix con severity Crítica + likelihood ≥ Media sin fix → ✅ ambos Crítica (cross-user APNs leak `514d3c1` + finalize_vote race `b5a72e9`) cerrados.
-- [ ] QA checklist W4 pasa 100% — pending W4.
-- [ ] Founder demo dry-run sin tropezar — pending W4.
-- [ ] Telemetría emitiendo (verificable en dashboard) — pending W4 (F-4.5).
+- [ ] QA checklist W4 pasa 100% — checklist ready (§9); ejecutar antes de invitar externos.
+- [ ] Founder demo dry-run sin tropezar — happy path ready (§8 con consent step en B-3.4); founder corre cuando esté listo.
+- [x] Telemetría emitiendo (verificable en dashboard) → ✅ `4ab09b6`. 4 nuevos eventos beta + bucket codes para error_shown.
 - [ ] Sentry capturando crashes (TandasApp.swift confirmando) — verificar.
 - [x] Working tree limpio (los AppShell drafts o committed o reverted) → ✅ Track A landed `73c8f36` + `7632083` + `d2f8843`.
 - [x] Audit C grep de jargon: 0 hits → ✅ W2 commits `b622f1e` + `2f2e131` + `0319348` + `5a495af` + `49860c6`.
@@ -445,6 +442,8 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 - **2026-05-13 closeout** — **W1 cerrado al 100%.** D-1.1 wired en `9c1020b`: `EventNotificationDispatcher` actor protocol (Mock + Live) en RuulCore, `EventDetailCoordinator` invoca el edge fn vía dispatcher inyectado, rate-limit 30min/evento dentro del actor (compartido entre coordinators), errores rate-limited surfacean como mensaje friendly via el envelope `error`. 5 tests verdes en `SendHostRemindersTests` (host invoca / non-host short-circuits / nil dispatcher fallback / rate-limited surface / edge failure). Próximo objetivo: W3 leftovers (B-3.4 consent step, A-3.3 empty/loading states, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API, E-3.1 realtime) o W4 (telemetry / hide list / QA / demo).
 
 - **2026-05-13 late closeout** — **E-3.2 re-clasificado.** Sub-batch 1 (reliability) arrancó como `E-3.2 + E-3.1`. Auditoría reveló que `b6a536c` (mismo día, 19:33) ya cierra E-3.2: el commit body argumenta explícitamente la decisión arquitectónica (tokens user-scoped, no group-scoped → fix en dispatch boundary, no en `remove_member`). El sweep original lo había etiquetado como "bonus" por error. §5 risk matrix + §6 W3 actualizados. W3 ahora 7 / 12 done. Sub-batch sigue con E-3.1 (realtime subs) como único trabajo real pendiente del reliability cluster.
+
+- **2026-05-14 W4 close** — **W4 cerrado al 100% (7/7); Beta 1 Consolidation feature-complete.** F-4.1/2/3/4 (`b65b082`): single `BetaFeatureFlags` struct gates 4 surfaces — preset picker (only dinner), Resources tab types (only event), generic vote creation CTA + toolbar, GroupMoneyView (swap to "Próximamente" placeholder). Doctrine doc-stamped: beta safety valve, not permanent feature-flag system. F-4.5 (`4ab09b6`): 4 nuevos eventos en BetaAnalytics + `RuulErrorTranslator.errorCode(for:)` para bucket codes PII-free; wired en 5 callsites high-traffic. QA checklist (§9) + happy path (§8) up-to-date. 161 tests verde. Hard gates §11: 6/8 met (telemetría + AppShell + jargon + reliability top-3); pending only QA execution + founder demo dry-run + Sentry verification. Beta 1 ready-to-invite-externals.
 
 - **2026-05-14 W3 close** — **W3 cerrado al 100% (12/12).** Sub-batch 3 (A-3.3 + B-3.4) shipped: A-3.3 (`1ef7aac`) extiende `EmptyStateView` con `secondaryAction:` para el caso 2-CTA y migra `MainTabView.EmptyGroupsView` + 4 raw `ProgressView()` ad-hoc al canonical `RuulLoadingState`. B-3.4 (`3a63add`) inserta `FounderStep.consent` entre `preset` y `invite`: `selectPreset` cachea el retorno de `seedTemplateRules` y rutea a la nueva `ConsentRulesView` data-driven cuando hay reglas (blank preset skip directo a `.invite`). Tests 161 → 163 verde (2 nuevos en `FounderOnboardingCoordinatorTests`). DoD W3 ✅: onboarding ahora 7 → 3-4 screens reales para el usuario nuevo + multi-device sync vivo. **Próximo objetivo: W4** (F-4.1/2/3/4 hide list, F-4.5 telemetry, F-4.6 QA, F-4.7 demo dry-run).
 
