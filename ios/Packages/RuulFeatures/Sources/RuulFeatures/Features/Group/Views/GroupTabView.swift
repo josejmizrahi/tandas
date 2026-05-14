@@ -9,6 +9,13 @@ import RuulCore
 ///
 /// Governance (reglas + votos + multas) vive ahora un nivel más abajo
 /// adentro de "Más" — Acuerdos / Decisiones / Sanciones.
+///
+/// **Deprecated in Pass 2** — the Group tab dissolves per AppShell.md:
+/// sub-tabs distribute to Inbox + Activity + GroupInfoSheet. The
+/// warning at the single callsite inside `GroupTab.swift` is expected
+/// and is the visible signal driving Pass 2 work. Don't add new
+/// dependencies on this view.
+@available(*, deprecated, message: "Pass 2 deletes this — GroupTab dissolves into Inbox + Activity + GroupInfoSheet per AppShell.md")
 @MainActor
 public struct GroupTabView: View {
     @Environment(AppState.self) private var app
