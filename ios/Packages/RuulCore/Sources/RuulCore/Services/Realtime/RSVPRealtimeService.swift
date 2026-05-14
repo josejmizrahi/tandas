@@ -2,29 +2,46 @@ import Foundation
 import Supabase
 import OSLog
 
-/// Real-time subscription to `event_attendance` row changes for a specific
-/// event. When ANY user's RSVP changes, emits a typed `Change` event so the
-/// EventDetailCoordinator can update its local state without a manual refetch.
+/// Real-time subscription for a specific event resource. Watches the
+/// `rsvp_actions` and `check_in_actions` atoms (mig 00153/00154) and
+/// emits a kick whenever a row for this resource lands. The consumer
+/// (EventDetailCoordinator) refetches its RSVP list from
+/// `attendance_view` on each kick.
 ///
-/// Lifecycle:
-/// - Caller `init` with the active event id.
+/// Why a kick instead of a typed payload
+/// =====================================
+/// Pre-mig 00159, `RSVPRealtimeService` subscribed to `event_attendance`
+/// and decoded each row directly into `RSVP`. Mig 00159 dropped that
+/// table — the canonical RSVP truth now lives split across two atoms
+/// (`rsvp_actions` for status changes, `check_in_actions` for arrival)
+/// and is folded back via the `attendance_view` projection. There's no
+/// single atom row shape that maps 1:1 to `RSVP`, so the realtime layer
+/// emits invalidation kicks instead. Consumer refetches the merged
+/// view shape — same pattern as `MultiDeviceChangeFeed` (W3 E-3.1).
+///
+/// Lifecycle
+/// =========
+/// - Caller `init` with the active event id (which is the resource_id
+///   for events post-mig 00159).
 /// - Caller observes `changes` (AsyncStream) and `await subscribe()`.
 /// - On view disappear, caller `await unsubscribe()`.
 ///
-/// Backed by Supabase Realtime v2 (`client.realtimeV2`). Falls back to a
-/// no-op stream if Realtime isn't available (offline, server unreachable,
-/// etc.) — clients still work via manual refresh + optimistic updates.
+/// Falls back to a no-op stream if Realtime isn't available — clients
+/// still work via manual refresh + optimistic updates.
 public actor RSVPRealtimeService {
     public enum Change: Sendable {
-        case upsert(RSVP)
-        case delete(rsvpId: UUID)
+        /// Something in this event's RSVP / check-in atoms changed.
+        /// Consumer refetches the attendance projection.
+        case kick
     }
 
     private let client: SupabaseClient
     private let eventId: UUID
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "rsvp.realtime")
 
-    private var channel: RealtimeChannelV2?
+    private var rsvpChannel: RealtimeChannelV2?
+    private var checkInChannel: RealtimeChannelV2?
+    private var consumerTasks: [Task<Void, Never>] = []
     private var continuation: AsyncStream<Change>.Continuation?
     public nonisolated let changes: AsyncStream<Change>
 
@@ -41,127 +58,50 @@ public actor RSVPRealtimeService {
     }
 
     public func subscribe() async {
-        guard channel == nil else { return }
-        let ch = client.realtimeV2.channel("event-attendance-\(eventId.uuidString)")
-
-        let insertChanges = ch.postgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "event_attendance",
-            filter: "event_id=eq.\(eventId.uuidString.lowercased())"
-        )
-        let updateChanges = ch.postgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "event_attendance",
-            filter: "event_id=eq.\(eventId.uuidString.lowercased())"
-        )
-        let deleteChanges = ch.postgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "event_attendance",
-            filter: "event_id=eq.\(eventId.uuidString.lowercased())"
-        )
-
-        await ch.subscribe()
-        channel = ch
-
-        // Spin up consumers — one task per change kind, all yielding to the
-        // same continuation.
-        Task { [weak self] in
-            for await action in insertChanges {
-                guard let self else { return }
-                await self.handleInsertOrUpdate(action.record)
-            }
-        }
-        Task { [weak self] in
-            for await action in updateChanges {
-                guard let self else { return }
-                await self.handleInsertOrUpdate(action.record)
-            }
-        }
-        Task { [weak self] in
-            for await action in deleteChanges {
-                guard let self else { return }
-                await self.handleDelete(action.oldRecord)
-            }
-        }
+        guard rsvpChannel == nil else { return }
+        rsvpChannel    = await openChannel(table: "rsvp_actions",     name: "rsvp-\(eventId.uuidString)")
+        checkInChannel = await openChannel(table: "check_in_actions", name: "checkin-\(eventId.uuidString)")
     }
 
     public func unsubscribe() async {
-        await channel?.unsubscribe()
-        channel = nil
+        for task in consumerTasks { task.cancel() }
+        consumerTasks.removeAll()
+        await rsvpChannel?.unsubscribe()
+        await checkInChannel?.unsubscribe()
+        rsvpChannel = nil
+        checkInChannel = nil
         continuation?.finish()
         continuation = nil
     }
 
-    // MARK: - Decoders
+    // MARK: - Channel plumbing
 
-    private func handleInsertOrUpdate(_ record: [String: AnyJSON]) async {
-        guard let rsvp = decodeRSVP(record) else {
-            log.warning("could not decode RSVP from record: \(String(describing: record))")
-            return
-        }
-        continuation?.yield(.upsert(rsvp))
+    private func openChannel(table: String, name: String) async -> RealtimeChannelV2 {
+        let channel = client.realtimeV2.channel(name)
+        let filter = "resource_id=eq.\(eventId.uuidString.lowercased())"
+
+        // Atoms are append-only (guarded by mig 00103), so only INSERT
+        // events are meaningful. Subscribing to update/delete is harmless
+        // but would never fire under normal operation.
+        let inserts = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: table,
+            filter: filter
+        )
+
+        consumerTasks.append(Task { [weak self] in
+            for await _ in inserts {
+                guard let self else { return }
+                await self.kick()
+            }
+        })
+
+        await channel.subscribe()
+        return channel
     }
 
-    private func handleDelete(_ oldRecord: [String: AnyJSON]) async {
-        guard let idString = oldRecord["id"]?.stringValue,
-              let id = UUID(uuidString: idString)
-        else {
-            log.warning("delete record missing id")
-            return
-        }
-        continuation?.yield(.delete(rsvpId: id))
-    }
-
-    private func decodeRSVP(_ record: [String: AnyJSON]) -> RSVP? {
-        // Realtime payloads are AnyJSON dicts; re-encode → decode through
-        // JSONDecoder using the same Codable + CodingKeys we use in the
-        // repo. Cheaper than building a hand-decoder.
-        do {
-            let data = try JSONSerialization.data(withJSONObject: record.toFoundation())
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(RSVP.self, from: data)
-        } catch {
-            log.warning("decode failed: \(error.localizedDescription)")
-            return nil
-        }
-    }
-}
-
-// MARK: - AnyJSON helpers
-
-private extension AnyJSON {
-    public var stringValue: String? {
-        if case .string(let s) = self { return s }
-        return nil
-    }
-}
-
-private extension Dictionary where Key == String, Value == AnyJSON {
-    /// Convert AnyJSON dict back to a Foundation-compatible dict so
-    /// JSONSerialization can re-encode it for Codable.decode.
-    public func toFoundation() -> [String: Any] {
-        var out: [String: Any] = [:]
-        for (k, v) in self {
-            out[k] = v.toFoundationValue()
-        }
-        return out
-    }
-}
-
-private extension AnyJSON {
-    public func toFoundationValue() -> Any {
-        switch self {
-        case .null:           return NSNull()
-        case .bool(let b):    return b
-        case .integer(let i): return i
-        case .double(let d):  return d
-        case .string(let s):  return s
-        case .array(let a):   return a.map { $0.toFoundationValue() }
-        case .object(let o):  return o.toFoundation()
-        }
+    private func kick() async {
+        continuation?.yield(.kick)
     }
 }

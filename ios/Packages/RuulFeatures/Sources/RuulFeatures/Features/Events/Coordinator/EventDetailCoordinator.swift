@@ -369,11 +369,12 @@ public final class EventDetailCoordinator {
 
     private func applyRealtimeChange(_ change: RSVPRealtimeService.Change) async {
         switch change {
-        case .upsert(let rsvp):
-            updateLocalRSVPList(with: rsvp)
-            if rsvp.userId == userId { myRSVP = rsvp }
-        case .delete(let rsvpId):
-            rsvps.removeAll { $0.id == rsvpId }
+        case .kick:
+            // Post-mig 00164 (Constitution audit Gap 6): the realtime
+            // service no longer decodes payload rows because the canonical
+            // RSVP shape (attendance_view) merges two atoms — there's no
+            // single row to upsert. Refetch the merged projection.
+            await refresh()
         }
     }
 
