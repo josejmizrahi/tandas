@@ -38,7 +38,7 @@ public protocol LedgerRepository: Actor {
     ) async throws -> LedgerEntry
 
     /// Tier 6 final: records a one-tap settlement via the dedicated
-    /// `record_settlement` RPC (mig 00143). Bilateral — both
+    /// `record_settlement` RPC (mig 00145). Bilateral — both
     /// fromMemberId + toMemberId required, amount must be positive,
     /// both members must belong to the group. The balance projection
     /// views update automatically.

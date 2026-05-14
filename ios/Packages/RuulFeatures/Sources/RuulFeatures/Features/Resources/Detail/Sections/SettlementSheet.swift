@@ -13,7 +13,7 @@ import RuulCore
 ///
 /// Submit path:
 ///   LedgerRepository.recordSettlement → record_settlement RPC
-///   (mig 00143). Balance projection views (mig 00136) refresh
+///   (mig 00145). Balance projection views (mig 00136) refresh
 ///   automatically on the next read.
 public struct SettlementSheet: View {
     @Environment(AppState.self) private var app

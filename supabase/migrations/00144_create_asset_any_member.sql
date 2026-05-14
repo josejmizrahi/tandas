@@ -1,5 +1,11 @@
--- 00142 — Relax `create_asset` permission from `assignSlot` to
+-- 00144 — Relax `create_asset` permission from `assignSlot` to
 -- `is_group_member`.
+-- (Originally landed on main as 00142_create_asset_any_member.sql and
+-- was applied to prod under that name; renumbered to 00144 to clear
+-- the 00142 slot — the Beta 1 Consolidation parallel session also
+-- shipped 00142_void_fine_priority_low_and_auto_resolve.sql. Prod
+-- state is unaffected: supabase records migrations by timestamp,
+-- not filename.)
 --
 -- Background
 -- ==========
@@ -43,7 +49,7 @@ begin
     raise exception 'not authenticated' using errcode = '42501';
   end if;
 
-  -- Tier 6 alignment (00142): any group member can create an asset.
+  -- Tier 6 alignment (00144): any group member can create an asset.
   -- Slot assignment still requires assignSlot — see assign_slot RPC.
   if not public.is_group_member(p_group_id, v_caller_id) then
     raise exception 'not a member of this group' using errcode = '42501';
@@ -79,4 +85,4 @@ end;
 $$;
 
 comment on function public.create_asset(uuid, text, int) is
-  'Phase 2 Slice 2.3 — create a new asset (palco/cabaña/casa). v2 (00142): any group member may call (was assignSlot-gated, which broke recurring_dinner groups whose roles lack that permission). Slot assignment remains gated by assignSlot in assign_slot RPC.';
+  'Phase 2 Slice 2.3 — create a new asset (palco/cabaña/casa). v2 (00144): any group member may call (was assignSlot-gated, which broke recurring_dinner groups whose roles lack that permission). Slot assignment remains gated by assignSlot in assign_slot RPC.';

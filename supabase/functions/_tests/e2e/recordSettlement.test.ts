@@ -1,4 +1,4 @@
-// Tier 6 final (mig 00143) acceptance: record_settlement RPC.
+// Tier 6 final (mig 00145) acceptance: record_settlement RPC.
 //
 // Happy path:
 //   - alice paid $100 expense for the group → group "owes" alice $100

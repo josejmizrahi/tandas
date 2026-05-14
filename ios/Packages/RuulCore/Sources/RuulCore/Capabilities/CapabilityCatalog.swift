@@ -636,7 +636,7 @@ public struct MoneyCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["ledger"] }
     public var conflicts: [String] { [] }
-    /// Tier 6 closed end-to-end (mig 00136 → 00143):
+    /// Tier 6 closed end-to-end (mig 00136 → 00145):
     ///   - balance projection views aggregate ledger_entries at read time
     ///   - MoneySectionView renders top 3 non-zero balances inline
     ///   - `fund` resource_type creatable via create_fund + wizard branch
@@ -670,7 +670,7 @@ public struct LedgerCapability: CapabilityBlock {
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
-    /// Tier 6 closed (mig 00136 → 00143): ledger atoms feed
+    /// Tier 6 closed (mig 00136 → 00145): ledger atoms feed
     /// balance projection views, MoneySectionView renders inline
     /// balances, record_settlement + SettlementSheet wire the bilateral
     /// payment loop. A dedicated group-wide ledger surface (separate

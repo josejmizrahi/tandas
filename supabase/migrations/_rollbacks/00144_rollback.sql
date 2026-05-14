@@ -1,4 +1,4 @@
--- Rollback 00142 — restore the 00070 body of create_asset
+-- Rollback 00144 — restore the 00070 body of create_asset
 -- (assignSlot-gated). Existing asset rows stay.
 
 create or replace function public.create_asset(

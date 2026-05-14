@@ -1,4 +1,8 @@
--- 00143 — Tier 6 final: record_settlement RPC for one-tap "Salda ahora".
+-- 00145 — Tier 6 final: record_settlement RPC for one-tap "Salda ahora".
+-- (Renumbered from 00143 because the Beta 1 Consolidation parallel
+-- session shipped 00143_host_assigned_user_tz.sql concurrently. Mine
+-- has NOT been applied to prod yet — that's why this rename is just
+-- filesystem cleanup, no rollback gymnastics required.)
 --
 -- Background
 -- ==========
