@@ -33,6 +33,19 @@ public struct GroupMoneyView: View {
     }
 
     public var body: some View {
+        // Beta 1 W4 F-4.4: the full money surface (ledger entries,
+        // ious, funds, settlements) is not Beta 1-ready. The tab
+        // remains visible inside Grupo → Más so the user knows it
+        // exists, but the body swaps to a "Próximamente" placeholder
+        // until the post-beta money cluster lands.
+        if BetaFeatureFlags.current.showFullMoneySurface {
+            fullMoneyBody
+        } else {
+            comingSoonBody
+        }
+    }
+
+    private var fullMoneyBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 quickActions
@@ -54,6 +67,19 @@ public struct GroupMoneyView: View {
         .scrollIndicators(.hidden)
         .refreshable { await coordinator.refresh() }
         .task { await coordinator.refresh() }
+    }
+
+    /// Beta 1 W4 F-4.4 placeholder. Single empty-state hero with a
+    /// "Próximamente" message — no CTAs, no quick-actions, no data
+    /// fetched. Lets the founder describe the future without
+    /// promising it works today.
+    private var comingSoonBody: some View {
+        EmptyStateView(
+            systemImage: "creditcard",
+            title: "Próximamente",
+            message: "Pronto vas a poder registrar gastos, aportaciones y saldos del grupo aquí. Mientras tanto, las multas siguen funcionando en su propia sección."
+        )
+        .padding(.top, RuulSpacing.s10)
     }
 
     // MARK: - Quick actions

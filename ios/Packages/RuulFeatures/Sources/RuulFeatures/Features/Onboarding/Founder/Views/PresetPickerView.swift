@@ -24,11 +24,26 @@ public struct PresetPickerView: View {
             canContinue: selected != nil
         ) {
             VStack(spacing: RuulSpacing.md) {
-                ForEach(OnboardingPreset.all) { preset in
+                // Beta 1 W4 F-4.1: hide every preset except "Reuniones
+                // recurrentes" while the beta flag is active. The other
+                // two cards (Activo compartido / Empezar de cero) seed
+                // surfaces that are not Beta 1-ready.
+                ForEach(visiblePresets) { preset in
                     presetCard(for: preset)
                 }
             }
         }
+    }
+
+    /// Beta 1 W4 F-4.1: filtered preset list. Beta mode shows only
+    /// recurring_dinner because shared_resource and blank trigger
+    /// surfaces that are still hidden (slot/asset detail, bare groups
+    /// with no template). Flip `BetaFeatureFlags.showAllPresets` for
+    /// internal dev.
+    private var visiblePresets: [OnboardingPreset] {
+        BetaFeatureFlags.current.showAllPresets
+            ? OnboardingPreset.all
+            : OnboardingPreset.all.filter { $0.id == OnboardingPreset.recurringDinner.id }
     }
 
     /// Show the primary CTA only after a preset is tapped; until then

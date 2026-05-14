@@ -29,11 +29,15 @@ public struct OpenVotesListView: View {
                     RuulLoadingState()
                         .transition(.opacity)
                 } else if coordinator.openVotes.isEmpty {
+                    // Beta 1 W4 F-4.3: hide the "Crear votación" CTA
+                    // while generic vote creation is gated. Appeal-driven
+                    // votes still open from the fine flow.
                     EmptyStateView(
                         systemImage: "hand.raised",
                         title: "No hay votos abiertos",
                         message: "Cuando el grupo abra una votación, aparecerá acá.",
-                        primaryAction: ("Crear votación", onCreateVote)
+                        primaryAction: BetaFeatureFlags.current.showGenericVoteCreation
+                            ? ("Crear votación", onCreateVote) : nil
                     )
                     .padding(.top, RuulSpacing.s10)
                     .transition(.opacity)
@@ -69,12 +73,17 @@ public struct OpenVotesListView: View {
         }
         .navigationTitle("Votos abiertos")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: onCreateVote) {
-                    Image(systemName: "plus")
-                        .accessibilityHidden(true)
+            // Beta 1 W4 F-4.3: gate the toolbar "+" too. With the
+            // CTA hidden in both places, beta users can only land on
+            // an appeal-driven vote (opened from the fines flow).
+            if BetaFeatureFlags.current.showGenericVoteCreation {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: onCreateVote) {
+                        Image(systemName: "plus")
+                            .accessibilityHidden(true)
+                    }
+                    .accessibilityLabel("Crear votación")
                 }
-                .accessibilityLabel("Crear votación")
             }
         }
         .task { await coordinator.refresh() }

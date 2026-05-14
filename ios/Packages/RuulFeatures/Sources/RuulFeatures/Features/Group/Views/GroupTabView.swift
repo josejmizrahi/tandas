@@ -419,7 +419,14 @@ private struct GroupResourcesSubTab: View {
     @MainActor
     private func load() async {
         defer { isLoading = false }
-        let types: [ResourceType] = [.event, .asset, .slot, .fund, .space, .right]
+        // Beta 1 W4 F-4.2: hide asset/slot/fund/space/right resource
+        // types from the Resources tab until those surfaces are
+        // Beta 1-polished. `.event` is the only supported user-facing
+        // type today. Flip `BetaFeatureFlags.showAllResourceTypes`
+        // for internal dev.
+        let types: [ResourceType] = BetaFeatureFlags.current.showAllResourceTypes
+            ? [.event, .asset, .slot, .fund, .space, .right]
+            : [.event]
         do {
             resources = try await app.resourceRepo.list(
                 in: group.id,
