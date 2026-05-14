@@ -52,11 +52,10 @@ public struct ReviewProposedFinesView: View {
                     if !coordinator.resolved.isEmpty {
                         resolvedSection
                     }
-                    Text("DEBUG eventId=\(coordinator.event.id.uuidString.prefix(8)) loaded=\(coordinator.fines.count) proposed=\(coordinator.proposed.count) resolved=\(coordinator.resolved.count)")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                        .textSelection(.enabled)
-                        .padding(.top, RuulSpacing.lg)
+                    // Beta 1 W2-C1: removed the DEBUG residual that
+                    // leaked "DEBUG eventId=... loaded=N proposed=N
+                    // resolved=N" — devtool string visible to users
+                    // in prod build.
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.s12)

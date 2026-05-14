@@ -195,15 +195,16 @@ public struct GroupSettingsSheet: View {
                 }
             } catch CapabilityGovernanceError.adminOnly {
                 await MainActor.run {
-                    self.error = "Solo los admins pueden activar o desactivar capabilities en este grupo."
+                    // Beta 1 W2-C1: "capabilities" → "funciones" (UX dictionary).
+                    self.error = "Solo los admins pueden activar o apagar funciones en este grupo."
                 }
             } catch CapabilityGovernanceError.voteRequired {
                 await MainActor.run {
-                    self.error = "Este grupo requiere votación para activar capabilities. La flow llega en una próxima versión."
+                    self.error = "Este grupo necesita votación para activar funciones nuevas. Pronto vas a poder hacerlo desde acá."
                 }
             } catch CapabilityGovernanceError.denied(let reason) {
                 await MainActor.run {
-                    self.error = "No se puede cambiar esta capability: \(reason)."
+                    self.error = "No pudimos cambiar esta función: \(reason)."
                 }
             } catch {
                 log.warning("update group config failed: \(error.localizedDescription)")

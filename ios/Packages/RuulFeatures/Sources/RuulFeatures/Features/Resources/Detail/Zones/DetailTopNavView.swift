@@ -52,12 +52,16 @@ public struct DetailTopNavView: View {
                     presenter?.onPresentEditEvent()
                 }
             }
-            // "Activar capability" only when the surrounding shell actually
-            // wires a handler (non-events). For events the cap set is hard-
-            // seeded by migrations 00109/00110 — surfacing a no-op menu
-            // item would just confuse the user.
+            // "Agregar función" only when the surrounding shell actually
+            // wires a handler (non-events). For events the function set
+            // is hard-seeded by migrations 00109/00110 — surfacing a
+            // no-op menu item would just confuse the user.
+            //
+            // Beta 1 W2-C1: button label was "Activar capability" which
+            // leaked the internal model term. "Función" is the canonical
+            // user-facing translation per the UX dictionary.
             if !context.usesEventHero {
-                Button("Activar capability", systemImage: "plus.circle") {
+                Button("Agregar función", systemImage: "plus.circle") {
                     context.onPresentEnableCapability()
                 }
             }

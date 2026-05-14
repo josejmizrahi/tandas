@@ -273,7 +273,8 @@ public struct ResourceWizardSheet: View {
     private var rulesContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                Text("Estos acuerdos van con las capacidades que escogiste. Apaga lo que no quieras.")
+                // Beta 1 W2-C1: "capacidades" → "lo que activaste arriba" (drops the leaked model term).
+                Text("Estos acuerdos van con lo que activaste arriba. Apaga lo que no quieras.")
                     .ruulTextStyle(RuulTypography.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .padding(.leading, RuulSpacing.xxs)

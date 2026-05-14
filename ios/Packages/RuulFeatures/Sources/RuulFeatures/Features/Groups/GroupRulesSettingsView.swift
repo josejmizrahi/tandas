@@ -48,7 +48,8 @@ public struct GroupRulesSettingsView: View {
                             ("¿Quién puede activar/desactivar acuerdos?",
                                 coordinator.humanAnswer(for: .ruleToggle),
                                 true),
-                            ("¿Quién puede activar capabilities?",
+                            // Beta 1 W2-C1: "capabilities" → "funciones nuevas".
+                            ("¿Quién puede activar funciones nuevas?",
                                 coordinator.humanAnswer(for: .capabilityEnable),
                                 true),
                         ])
