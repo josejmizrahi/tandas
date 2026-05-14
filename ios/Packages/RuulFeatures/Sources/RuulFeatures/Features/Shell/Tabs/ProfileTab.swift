@@ -2,11 +2,11 @@ import SwiftUI
 import RuulCore
 
 /// Thin tab wrapper for Profile. Embeds ProfileView inside a NavigationStack.
-/// All navigation callbacks are no-op stubs for Pass 1 — they will be
-/// wired to RootRouter actions when RootShell is assembled in Task 9.
+/// Navigation callbacks are wired to RootRouter via @Environment injection.
 @MainActor
 public struct ProfileTab: View {
     @Environment(AppState.self) private var app
+    @Environment(RootRouter.self) private var router
     let profileCoordinator: ProfileCoordinator?
 
     public init(profile: ProfileCoordinator?) {
@@ -18,11 +18,18 @@ public struct ProfileTab: View {
             if let coord = profileCoordinator {
                 ProfileView(
                     coordinator: coord,
-                    onOpenMyFines: {},
-                    onOpenHistory: {},
-                    onOpenSettings: {},
-                    onEditProfile: {},
-                    onSignOut: {}
+                    onOpenMyFines: { router.openSanciones() },
+                    onOpenHistory: { router.selectTab(.home) },
+                    onOpenSettings: { router.openSettings() },
+                    onEditProfile: { router.openEditProfile() },
+                    onSignOut: {
+                        Task { try? await app.signOut() }
+                    },
+                    groupScope: app.activeGroup != nil ? ProfileView.GroupScopeContext(
+                        onOpenMembers: { router.openMembers() },
+                        onOpenGovernance: {},
+                        onLeaveGroup: {}
+                    ) : nil
                 )
                 .environment(app)
             } else {

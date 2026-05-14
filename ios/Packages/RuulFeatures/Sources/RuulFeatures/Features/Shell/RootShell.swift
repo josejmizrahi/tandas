@@ -12,8 +12,8 @@ import RuulUI
 public struct RootShell: View {
     @Environment(AppState.self) private var app
 
-    @State private var shellState = RootShellState()
-    @State private var router: RootRouter?
+    @State private var shellState: RootShellState
+    @State private var router: RootRouter
 
     // Coordinator state — built/rebuilt whenever the active group changes.
     @State private var homeCoordinator: HomeCoordinator?
@@ -26,7 +26,11 @@ public struct RootShell: View {
     /// Per-group member directory cache — mirrors MainTabView.memberDirectory.
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
 
-    public init() {}
+    public init() {
+        let state = RootShellState()
+        _shellState = State(initialValue: state)
+        _router = State(initialValue: RootRouter(state: state))
+    }
 
     public var body: some View {
         TabView(selection: tabBinding) {
@@ -62,17 +66,18 @@ public struct RootShell: View {
         .tint(app.activeGroup?.category.ramp.accent ?? Color.ruulTextPrimary)
         .tabBarMinimizeBehavior(.onScrollDown)
         .animation(.ruulGroupSwitch, value: app.activeGroupId)
-        .modifier(SheetsIfReady(router: router))
-        .task { await bootstrap() }
+        .environment(router)
+        .modifier(RootShellSheets(router: router))
+        .task { await rebuildCoordinators() }
         .task(id: app.activeGroupId) { await rebuildCoordinators() }
         .onChange(of: app.pendingEventDeepLink) { _, link in
-            guard let link, let router else { return }
+            guard let link else { return }
             router.handle(eventDeepLink: link)
             app.consumeEventDeepLink()
         }
         .onChange(of: app.pendingRuleChangeDeepLink) { _, link in
-            guard let link, let router else { return }
-            Task { await handleRuleChangeDeepLink(link, router: router) }
+            guard let link else { return }
+            Task { await handleRuleChangeDeepLink(link) }
         }
     }
 
@@ -82,18 +87,9 @@ public struct RootShell: View {
         Binding(
             get: { shellState.selectedTab },
             set: { tab in
-                router?.handleTabSelection(tab, hasActiveGroup: app.activeGroup != nil)
+                router.handleTabSelection(tab, hasActiveGroup: app.activeGroup != nil)
             }
         )
-    }
-
-    // MARK: - Bootstrap
-
-    private func bootstrap() async {
-        if router == nil {
-            router = RootRouter(state: shellState)
-        }
-        await rebuildCoordinators()
     }
 
     // MARK: - Coordinator construction
@@ -198,10 +194,7 @@ public struct RootShell: View {
     /// from the repo, switches active group if needed, then routes via
     /// RootRouter.handleRuleChange so the sheet presenter in RootShellSheets
     /// fires.
-    private func handleRuleChangeDeepLink(
-        _ link: RuleChangeDeepLink,
-        router: RootRouter
-    ) async {
+    private func handleRuleChangeDeepLink(_ link: RuleChangeDeepLink) async {
         defer { app.consumeRuleChangeDeepLink() }
 
         for group in app.groups {
@@ -224,18 +217,3 @@ public struct RootShell: View {
     }
 }
 
-// MARK: - Sheet guard
-
-/// Apply sheets only once the router exists (avoids a nil-router crash on
-/// first render before bootstrap() has run).
-private struct SheetsIfReady: ViewModifier {
-    let router: RootRouter?
-
-    func body(content: Content) -> some View {
-        if let router {
-            content.modifier(RootShellSheets(router: router))
-        } else {
-            content
-        }
-    }
-}

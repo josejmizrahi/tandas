@@ -99,4 +99,95 @@ public final class RootRouter {
             pendingActionId: pendingActionId
         )))
     }
+
+    // MARK: - Resource navigation (payload + route push pairs)
+
+    /// Opens an event in the detail cover. Stores the full Event on
+    /// shellState (so RootShellSheets can read it) and pushes the route.
+    public func openEvent(_ event: Event) {
+        state.activeEvent = event
+        state.push(.eventDetail(event.id))
+    }
+
+    public func openEditEvent(_ event: Event) {
+        state.activeEditEvent = event
+        state.push(.editEvent)
+    }
+
+    public func openScanner(_ coordinator: CheckInScannerCoordinator) {
+        state.activeScannerCoordinator = coordinator
+        state.push(.scanner(coordinator.event.id))
+    }
+
+    public func openFineDetail(_ fineId: UUID) {
+        state.push(.fineDetail(fineId))
+    }
+
+    public func openPastEvents() {
+        state.push(.past)
+    }
+
+    public func openFeed() {
+        state.push(.feed)
+    }
+
+    public func openGroupHistory() {
+        state.push(.groupHistory)
+    }
+
+    public func openAcuerdos() {
+        state.push(.acuerdos)
+    }
+
+    public func openSanciones() {
+        state.push(.sanciones)
+    }
+
+    public func openGroupRulesSettings() {
+        state.push(.groupRulesSettings)
+    }
+
+    public func openGroupSwitcher() {
+        state.push(.groupSwitcher)
+    }
+
+    public func openInviteShare() {
+        state.push(.inviteShare)
+    }
+
+    public func openSettings() {
+        state.push(.settings)
+    }
+
+    public func openEditProfile() {
+        state.push(.editProfile)
+    }
+
+    public func openMembers() {
+        state.push(.members)
+    }
+
+    public func openOpenVotes(_ ctx: OpenVotesRouteContext) {
+        state.push(.openVotes(ctx))
+    }
+
+    public func openVoteDetail(_ ctx: VoteDetailRouteContext) {
+        state.push(.voteDetail(ctx))
+    }
+
+    public func openVoteOnAppeal(_ ctx: AppealRouteContext) {
+        state.push(.voteOnAppeal(ctx))
+    }
+
+    public func openCreateVotePicker() {
+        state.push(.createVotePicker)
+    }
+
+    public func openCreateGeneralProposal() {
+        state.push(.createGeneralProposal)
+    }
+
+    public func openCreateRuleChange(initialRule: GroupRule? = nil) {
+        state.push(.createRuleChange(initialRule))
+    }
 }
