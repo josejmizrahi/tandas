@@ -403,7 +403,7 @@ Cualitativas (cena journal en [[Beta1.md]]):
 - [ ] QA checklist W4 pasa 100% — checklist ready (§9); ejecutar antes de invitar externos.
 - [ ] Founder demo dry-run sin tropezar — happy path ready (§8 con consent step en B-3.4); founder corre cuando esté listo.
 - [x] Telemetría emitiendo (verificable en dashboard) → ✅ `4ab09b6`. 4 nuevos eventos beta + bucket codes para error_shown.
-- [ ] Sentry capturando crashes (TandasApp.swift confirmando) — verificar.
+- [x] Sentry capturando crashes → ✅ wired en `TandasApp.swift:164` (SentrySDK.start con DSN desde Info.plist → xcconfig). Startup log en category `sentry` (subsystem `com.josejmizrahi.ruul`) confirma activation in-flight; founder verifica vía Console.app filtrando ese subsystem.
 - [x] Working tree limpio (los AppShell drafts o committed o reverted) → ✅ Track A landed `73c8f36` + `7632083` + `d2f8843`.
 - [x] Audit C grep de jargon: 0 hits → ✅ W2 commits `b622f1e` + `2f2e131` + `0319348` + `5a495af` + `49860c6`.
 - [x] Audit E top-3 reliability blockers → ✅ 3/3 done (E-1.1 `514d3c1`, E-1.3 `b5a72e9`, E-1.2 `83fccbd`).

@@ -162,10 +162,12 @@ struct TandasApp: App {
     /// rule_id metadata that callers attach via tags survives. Privacy
     /// Policy v1.1 discloses Sentry as a third-party processor.
     private static func startSentry() {
+        let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "sentry")
         let dsn = (Bundle.main.object(forInfoDictionaryKey: "SentryDSN") as? String) ?? ""
         guard !dsn.isEmpty else {
             // No DSN configured (e.g., local dev with stub xcconfig). Skip
             // SDK init; SentrySDK calls become no-ops.
+            log.info("Sentry inactive — no DSN configured in Info.plist")
             return
         }
         let shortVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
@@ -188,6 +190,12 @@ struct TandasApp: App {
                 return event
             }
         }
+        // Beta 1 §11 hard-gate verification: founder can confirm Sentry is
+        // alive by streaming the device log (Console.app → filter
+        // `subsystem:com.josejmizrahi.ruul category:sentry`) on first
+        // launch and seeing this line.
+        let dsnTail = dsn.suffix(8)
+        log.info("Sentry active — release=ruul-ios@\(shortVersion)+\(buildNumber) dsn=…\(dsnTail)")
     }
 
     var body: some Scene {
