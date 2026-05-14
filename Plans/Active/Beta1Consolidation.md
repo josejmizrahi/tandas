@@ -204,10 +204,10 @@ quedan huérfanos si el swap ya está.
 >   `83fccbd` (mig 00160). D-1.1 sendHostReminders wired en `9c1020b`
 >   (`EventNotificationDispatcher` actor + 30min rate-limit + 5 tests).
 > - **W2**: 12 / 12 done. ✅ todo cerrado.
-> - **W3**: 10 / 12 done. Open: B-3.4 consent step, A-3.3
->   empty/loading states unify. (Sub-batch 2 cerrado 2026-05-13:
->   A-3.4 `91d6c52` + A-3.5 `10dda39`. Reliability cluster
->   sub-batch 1 cerrado antes.)
+> - **W3**: ✅ **12 / 12 done.** Cerrado 2026-05-14 con A-3.3
+>   (`1ef7aac`) + B-3.4 (`3a63add`). Sub-batches 1-3 completos:
+>   reliability (E-3.1/2/3), group-switching UX (A-3.4/5),
+>   onboarding + DS unify (A-3.3 + B-3.4).
 > - **W4**: 0 / 7 done — pending demo polish + telemetry + QA + hide list.
 >
 > Marcas `✅ <SHA>` debajo apuntan al commit que cerró el ítem; los `⏳`
@@ -258,10 +258,10 @@ dos dispositivos no ven estado stale.
 - [x] **B-3.1** Drop cover picker en `GroupIdentityView` → ✅ `04a14a9`.
 - [x] **B-3.2** PresetPicker explicit Continuar CTA → ✅ `64eafc4`. Sin auto-advance 350ms.
 - [x] **B-3.3** CreateEventView progressive disclosure → ✅ `22b67c4`. Más opciones colapsado por defecto.
-- [ ] **B-3.4** ⏳ **OPEN.** Consent step de acuerdos sugeridos en onboarding (post B-1.1 modo sugerencia).
+- [x] **B-3.4** Consent step de acuerdos sugeridos → ✅ `3a63add`. Nuevo `FounderStep.consent` entre `preset` y `invite`. `selectPreset` ahora cachea las reglas devueltas por `seedTemplateRules` en `templateRulePreviews` y rutea a `.consent` cuando hay reglas (skip a `.invite` cuando "Empezar de cero" no siembra ninguna). Nueva view `ConsentRulesView` data-driven (no vertical hardcoded) — render cards con nombre de regla + "En modo sugerencia". Footnote: "Podrás revisar y activar cada acuerdo desde Reglas cuando estén todos listos". 2 tests nuevos en `FounderOnboardingCoordinatorTests` (happy-path extendido + `consentReceivesSeededRules` que verifica B-1.1 invariant: `isActive=false` en todas las reglas).
 - [x] **A-3.1** Tab "Decisiones" eliminado → ✅ `7632083` (esta sesión). Bottom bar a 4 tabs; Decisiones queda en Grupo→Más.
 - [x] **A-3.2** Consolidar Pendientes → ✅ `7632083` (esta sesión). Resumen ya no duplica el inbox; top-3 + linkout.
-- [ ] **A-3.3** ⏳ **OPEN.** Unificar empty states a `EmptyStateView` y loading a un único `RuulLoadingState`.
+- [x] **A-3.3** Empty + loading unify → ✅ `1ef7aac`. `EmptyStateView` extendido con `secondaryAction:` para el caso 2-CTA (`MainTabView.EmptyGroupsView` migrado, pierde ~25 líneas de layout bespoke). 4 `ProgressView()` ad-hoc migrados a `RuulLoadingState()` (GroupTabView Resources subtab, OnboardingRootView bootstrap fallback en B-3.4 commit, EditRulesView load branch, EditMembersSheet initial-load). Scope: solo screen-level — section-internal placeholders (RSVPSection "Sin confirmaciones aún", etc.) son design pattern distinto y se quedaron. Button-inline `scaleEffect(0.6)` spinners también out of scope.
 - [x] **A-3.4** "+" tab silent fail → ✅ `91d6c52`. `createTabIntercept` ahora ruta al `CreateGroupSheet` cuando no hay grupo activo (re-usa el sheet + state ya declarado). Audit Track A 4.5 cerrado.
 - [x] **A-3.5** `RuulGroupSwitcher` API unify → ✅ `10dda39`. `GroupTabView` y `HistoryTabView` migrados al init convenience `RuulGroupSwitcher(activeGroup:onTap:)` que ya usaban MainTabView decisionsTab + HomeView. Layout (HStack + Spacer + screen-padding) idéntico entre MainTabView decisionsTab y GroupTabView; HomeView documentado como excepción legítima (header con greeting + icon buttons).
 - [x] **E-3.1** Realtime subs → ✅ `5b8981a` + `ad30558` + `65144e7`. Server: `mig 00161` añade las 4 tablas a `supabase_realtime` + ALTER REPLICA IDENTITY FULL (necesario para que RLS evalúe quals sobre columnas no-PK). iOS: `MultiDeviceChangeFeed` actor (Mock + Live) emite kicks tagged por tabla + recordId; AppState abre/cierra los 4 canales con el ciclo de auth. 6 coordinators wired: InboxCoordinator (`.userAction`), OpenVotesCoordinator (`.vote` + `.voteCast`), VoteDetailCoordinator (filtra por voteId + cualquier `.voteCast`), MyFinesCoordinator + ReviewProposedFinesCoordinator (`.fine`), FineDetailCoordinator (filtra por fineId). 3 tests nuevos verdes en `MultiDeviceChangeFeedTests`. **Tech debt diferido**: `RSVPRealtimeService` quedó silently broken desde mig 00159 (tabla `event_attendance` dropeada); fuera de scope de W3-E3.1, slated para follow-up con `rsvp_actions` / `attendance_view`.
@@ -445,6 +445,8 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 - **2026-05-13 closeout** — **W1 cerrado al 100%.** D-1.1 wired en `9c1020b`: `EventNotificationDispatcher` actor protocol (Mock + Live) en RuulCore, `EventDetailCoordinator` invoca el edge fn vía dispatcher inyectado, rate-limit 30min/evento dentro del actor (compartido entre coordinators), errores rate-limited surfacean como mensaje friendly via el envelope `error`. 5 tests verdes en `SendHostRemindersTests` (host invoca / non-host short-circuits / nil dispatcher fallback / rate-limited surface / edge failure). Próximo objetivo: W3 leftovers (B-3.4 consent step, A-3.3 empty/loading states, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API, E-3.1 realtime) o W4 (telemetry / hide list / QA / demo).
 
 - **2026-05-13 late closeout** — **E-3.2 re-clasificado.** Sub-batch 1 (reliability) arrancó como `E-3.2 + E-3.1`. Auditoría reveló que `b6a536c` (mismo día, 19:33) ya cierra E-3.2: el commit body argumenta explícitamente la decisión arquitectónica (tokens user-scoped, no group-scoped → fix en dispatch boundary, no en `remove_member`). El sweep original lo había etiquetado como "bonus" por error. §5 risk matrix + §6 W3 actualizados. W3 ahora 7 / 12 done. Sub-batch sigue con E-3.1 (realtime subs) como único trabajo real pendiente del reliability cluster.
+
+- **2026-05-14 W3 close** — **W3 cerrado al 100% (12/12).** Sub-batch 3 (A-3.3 + B-3.4) shipped: A-3.3 (`1ef7aac`) extiende `EmptyStateView` con `secondaryAction:` para el caso 2-CTA y migra `MainTabView.EmptyGroupsView` + 4 raw `ProgressView()` ad-hoc al canonical `RuulLoadingState`. B-3.4 (`3a63add`) inserta `FounderStep.consent` entre `preset` y `invite`: `selectPreset` cachea el retorno de `seedTemplateRules` y rutea a la nueva `ConsentRulesView` data-driven cuando hay reglas (blank preset skip directo a `.invite`). Tests 161 → 163 verde (2 nuevos en `FounderOnboardingCoordinatorTests`). DoD W3 ✅: onboarding ahora 7 → 3-4 screens reales para el usuario nuevo + multi-device sync vivo. **Próximo objetivo: W4** (F-4.1/2/3/4 hide list, F-4.5 telemetry, F-4.6 QA, F-4.7 demo dry-run).
 
 - **2026-05-13 sub-batch 2 close** — **A-3.4 + A-3.5 done; group-switching UX cluster cerrado.** A-3.4 (`91d6c52`): `createTabIntercept` ahora ruta al `CreateGroupSheet` cuando no hay grupo activo; el silent-fail del Audit Track A 4.5 deja de existir. A-3.5 (`10dda39`): `GroupTabView` y `HistoryTabView` migrados al init convenience del `RuulGroupSwitcher` que MainTabView decisionsTab + HomeView ya usaban — los 4 callsites comparten ahora la misma firma; HomeView documentado como excepción legítima por su header enriquecido. W3 ahora 10/12. Pendientes: B-3.4 consent step + A-3.3 empty/loading unify. Build verde.
 
