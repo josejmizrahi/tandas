@@ -1,0 +1,60 @@
+# SwiftLint config — Ruul iOS app
+#
+# Pass 3 of the frontend remodel introduces two custom rules that
+# enforce the typography + date-formatting discipline the design
+# system requires (DP §3, §5):
+#
+#   no_system_font          — forbid `.font(.system(...))` in app code
+#   no_ad_hoc_dateformatter — forbid `DateFormatter()` in app code
+#
+# Both rules surface as errors so any future PR that reintroduces
+# ad-hoc fonts/formatters fails at lint time. New typography needs
+# a token in RuulTypography first; new date formats need a helper
+# in Date+RuulFormatting.
+#
+# Local install: `brew install swiftlint`
+# CI: Xcode Cloud + GitHub Actions runners pick it up if present.
+# When swiftlint is absent the rules silently no-op — the build
+# stays green but the discipline isn't enforced. Worth installing.
+
+included:
+  - ios
+
+excluded:
+  - ios/.build
+  - ios/build
+  - ios/DerivedData
+  - "**/*.generated.swift"
+
+custom_rules:
+  no_system_font:
+    name: "No .font(.system(...))"
+    regex: '\.font\(\.system\('
+    message: "Use RuulTypography tokens via .ruulTextStyle(...) instead of .font(.system(...)). If no token matches, add one to RuulTypography.swift first."
+    severity: error
+    excluded:
+      - "ios/Packages/RuulUI/Sources/RuulUI/Tokens/RuulTypography.swift"
+      - "ios/Packages/RuulUI/Sources/RuulUI/Tokens/RuulTypography+DSAliases.swift"
+
+  no_ad_hoc_dateformatter:
+    name: "No DateFormatter()"
+    # Word-boundary anchor avoids matching ISO8601DateFormatter() which
+    # is intentionally allowed for serialization (not display).
+    regex: '\bDateFormatter\(\)'
+    message: "Use Date+RuulFormatting helpers (.ruulShortTime, .ruulMediumDate, etc.) instead of DateFormatter(). Add a helper to Date+RuulFormatting.swift if a new shape is needed. ISO8601DateFormatter() is allowed for serialization."
+    severity: error
+    excluded:
+      - "ios/Packages/RuulUI/Sources/RuulUI/Modifiers/Date+RuulFormatting.swift"
+
+# Default rules: keep SwiftLint's stock set on but don't fail noise on
+# things the codebase already accepts. Tune per-project as needed.
+disabled_rules:
+  - line_length            # tracked separately
+  - todo                   # TODO/FIXME comments allowed; Pass 3 added several intentional ones
+  - identifier_name        # SwiftUI conventions clash with stock rule (e.g. `app`, `id`)
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - first_where
+  - sorted_first_last
