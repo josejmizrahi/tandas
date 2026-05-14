@@ -106,6 +106,24 @@ public final class ResourceWizardCoordinator {
         step = .fields
     }
 
+    /// Select a resource type by value. Looks up the registered builder for
+    /// the type and forwards to `selectBuilder`. When no builder exists yet
+    /// (e.g. `.space`, `.right` in Pass 2), sets `error` so the caller can
+    /// surface a friendly message rather than silently doing nothing.
+    ///
+    /// Callers that already hold a builder reference should prefer
+    /// `selectBuilder(_:)` directly to avoid the redundant registry lookup.
+    public func selectType(_ type: ResourceType) {
+        if let builder = registry.builder(for: type) {
+            selectBuilder(builder)
+        } else {
+            // Builder not yet registered — type is "Próximamente". The
+            // TypePicker normally prevents tapping these tiles (disabled),
+            // but guard here as a safety net.
+            error = "Este tipo de recurso aún no está disponible."
+        }
+    }
+
     public func goBack() {
         switch step {
         case .typePicker: return

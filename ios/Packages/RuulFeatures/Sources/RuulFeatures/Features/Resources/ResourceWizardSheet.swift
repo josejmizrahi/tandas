@@ -69,9 +69,11 @@ public struct ResourceWizardSheet: View {
     private var content: some View {
         switch coordinator.step {
         case .typePicker:
-            ResourceTypePickerView(registry: coordinator.registry) { _, builder in
-                coordinator.selectBuilder(builder)
-            }
+            WizardTypePicker(
+                group: coordinator.group,
+                registry: coordinator.registry,
+                onSelect: { type in coordinator.selectType(type) }
+            )
             .transition(.move(edge: .trailing).combined(with: .opacity))
 
         case .fields:
@@ -593,5 +595,195 @@ public struct ResourceWizardSheet: View {
             defaultCapabilitiesByType: defaults
         )
         coordinator = real
+    }
+}
+
+// MARK: - WizardCategory
+
+/// Six display categories shown as horizontal chips in the TypePicker step.
+/// Types can appear in multiple categories (e.g. `.event` is in both
+/// `.popular` and `.coordination`). The mapping is intentionally simple for
+/// Pass 2; Pass 3 polish can refine based on telemetry or group template.
+private enum WizardCategory: String, CaseIterable, Identifiable {
+    case popular
+    case coordination
+    case money
+    case sharedThings
+    case governance
+    case custom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .popular:      return "Populares"
+        case .coordination: return "Coordinación"
+        case .money:        return "Dinero"
+        case .sharedThings: return "Cosas compartidas"
+        case .governance:   return "Gobernanza"
+        case .custom:       return "Custom"
+        }
+    }
+
+    var types: [ResourceType] {
+        switch self {
+        case .popular:      return [.event, .fund]
+        case .coordination: return [.event, .slot]
+        case .money:        return [.fund]
+        case .sharedThings: return [.asset, .space]
+        case .governance:   return [.right]
+        case .custom:       return [.event, .fund, .asset, .space, .slot, .right]
+        }
+    }
+}
+
+// MARK: - WizardTypePicker
+
+/// Step 1 of the ResourceWizard: categorized tile grid.
+///
+/// Renders a horizontal row of category chips (`WizardCategory`) and a
+/// 2-column tile grid for the types in the selected category. Tiles for
+/// types that don't yet have a registered builder appear disabled with a
+/// "Próximamente" badge — consistent with the founder rule "Create Resource
+/// must never lie."
+///
+/// Pass 2: `CapabilityResolver.creatableTypes(group:)` returns all 6
+/// canonical types; the registry's `isImplemented(_:)` gates tappability.
+private struct WizardTypePicker: View {
+    let group: RuulCore.Group
+    let registry: ResourceBuilderRegistry
+    let onSelect: (ResourceType) -> Void
+
+    @State private var selectedCategory: WizardCategory = .popular
+    private let resolver = CapabilityResolver()
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                categoryChips
+                tileGrid
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.lg)
+            .padding(.bottom, RuulSpacing.xxl)
+        }
+    }
+
+    // MARK: Category chips
+
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: RuulSpacing.xs) {
+                ForEach(WizardCategory.allCases) { cat in
+                    chipButton(cat)
+                }
+            }
+        }
+    }
+
+    private func chipButton(_ cat: WizardCategory) -> some View {
+        Button {
+            withAnimation(.ruulSnappy) { selectedCategory = cat }
+        } label: {
+            Text(cat.label)
+                .ruulTextStyle(RuulTypography.callout)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.vertical, RuulSpacing.xs)
+                .background(
+                    Capsule()
+                        .fill(selectedCategory == cat
+                              ? Color.ruulAccent
+                              : Color.ruulSurface)
+                )
+                .foregroundStyle(selectedCategory == cat
+                                 ? .white
+                                 : Color.ruulTextSecondary)
+                .overlay(
+                    Capsule()
+                        .stroke(selectedCategory == cat
+                                ? Color.clear
+                                : Color.ruulSeparator,
+                                lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .animation(.ruulSnappy, value: selectedCategory)
+    }
+
+    // MARK: Tile grid
+
+    private var creatableSet: Set<ResourceType> {
+        Set(resolver.creatableTypes(group: group))
+    }
+
+    private var typesInCategory: [ResourceType] {
+        selectedCategory.types.filter { creatableSet.contains($0) }
+    }
+
+    private var tileGrid: some View {
+        LazyVGrid(
+            columns: [.init(.adaptive(minimum: 140), spacing: RuulSpacing.sm)],
+            spacing: RuulSpacing.sm
+        ) {
+            ForEach(typesInCategory, id: \.self) { type in
+                typeTile(type)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func typeTile(_ type: ResourceType) -> some View {
+        let chrome = ResourceTypeChrome.resolve(type)
+        let implemented = registry.isImplemented(type)
+        if implemented {
+            Button {
+                onSelect(type)
+            } label: {
+                tileContent(chrome: chrome, isImplemented: true)
+            }
+            .buttonStyle(.ruulPress)
+        } else {
+            tileContent(chrome: chrome, isImplemented: false)
+                .accessibilityLabel("\(chrome.labelKey), próximamente")
+                .accessibilityHint("Este tipo de recurso aún no se puede crear.")
+                .accessibilityAddTraits(.isStaticText)
+                .allowsHitTesting(false)
+                .opacity(0.50)
+        }
+    }
+
+    private func tileContent(chrome: ResourceTypeChrome, isImplemented: Bool) -> some View {
+        VStack(spacing: RuulSpacing.xs) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: chrome.symbol)
+                    .font(.system(size: 28, weight: .regular))
+                    .foregroundStyle(isImplemented ? chrome.semanticColor : Color.ruulTextTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !isImplemented {
+                    Text("Pronto")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .padding(.horizontal, RuulSpacing.xxs)
+                        .padding(.vertical, 2)
+                        .background(Color.ruulSurface, in: Capsule())
+                        .overlay(Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                }
+            }
+            Text(chrome.labelKey)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(isImplemented ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+        }
+        .frame(maxWidth: .infinity, minHeight: 88)
+        .padding(RuulSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                .fill(Color.ruulSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 1)
+        )
     }
 }
