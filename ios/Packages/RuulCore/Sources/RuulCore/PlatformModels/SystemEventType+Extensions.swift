@@ -69,6 +69,32 @@ public extension SystemEventType {
         }
     }
 
+    /// True if this event type is purely rule-engine fuel and should
+    /// NOT appear in the user-facing Activity feed. Synthetic markers
+    /// emitted by crons / triggers to give the rule engine something
+    /// to evaluate against — never user-meaningful.
+    ///
+    /// Beta 1 W2-D3: GroupHistoryView used to clutter with
+    /// "Quedan horas para un evento" rows from `hoursBeforeEvent`
+    /// (every recurring event × every reminder horizon). Audit Track D #6.
+    var isHiddenFromUserActivity: Bool {
+        switch self {
+        case .hoursBeforeEvent,
+             .rsvpDeadlinePassed,
+             .eventDescriptionMissing:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// All event types currently considered rule-fuel and hidden from
+    /// the Activity feed. Used by `SystemEventRepository` query/recent
+    /// to apply a `NOT IN` filter at the SQL layer.
+    static var userHiddenActivityTypes: [SystemEventType] {
+        [.hoursBeforeEvent, .rsvpDeadlinePassed, .eventDescriptionMissing]
+    }
+
     /// True if Sprint 1a / V1 has a TriggerEvaluator implementation.
     var isImplementedInV1: Bool {
         switch self {

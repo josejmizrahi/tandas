@@ -81,7 +81,7 @@ public actor MockSystemEventRepository: SystemEventRepository {
 
     public func recent(groupId: UUID, limit: Int) async throws -> [SystemEvent] {
         emitted
-            .filter { $0.groupId == groupId }
+            .filter { $0.groupId == groupId && !$0.eventType.isHiddenFromUserActivity }
             .sorted { $0.occurredAt > $1.occurredAt }
             .prefix(limit)
             .map { $0 }
@@ -91,6 +91,12 @@ public actor MockSystemEventRepository: SystemEventRepository {
         let filtered = emitted
             .filter { ev in
                 guard ev.groupId == filter.groupId else { return false }
+                // W2-D3: hide rule-fuel synthetic events from Activity.
+                // If a caller explicitly filters BY a hidden type, honor
+                // that — they're doing debug/admin work.
+                if filter.eventType == nil && ev.eventType.isHiddenFromUserActivity {
+                    return false
+                }
                 if let m = filter.memberId, ev.memberId != m { return false }
                 if let t = filter.eventType, ev.eventType != t { return false }
                 if let r = filter.resourceId, ev.resourceId != r { return false }
@@ -139,10 +145,14 @@ public actor LiveSystemEventRepository: SystemEventRepository {
     }
 
     public func recent(groupId: UUID, limit: Int) async throws -> [SystemEvent] {
-        try await client
+        // W2-D3: filter rule-fuel synthetic events at the SQL layer.
+        let hidden = SystemEventType.userHiddenActivityTypes.map(\.rawString)
+        let hiddenList = "(" + hidden.joined(separator: ",") + ")"
+        return try await client
             .from("system_events")
             .select("*")
             .eq("group_id", value: groupId.uuidString.lowercased())
+            .not("event_type", operator: .in, value: hiddenList)
             .order("occurred_at", ascending: false)
             .limit(limit)
             .execute()
@@ -159,6 +169,13 @@ public actor LiveSystemEventRepository: SystemEventRepository {
         }
         if let t = filter.eventType {
             q = q.eq("event_type", value: t.rawString)
+        } else {
+            // W2-D3: when the caller hasn't pinned an eventType, hide
+            // rule-fuel synthetic events. Explicit filter by a hidden
+            // type still works (debug/admin path).
+            let hidden = SystemEventType.userHiddenActivityTypes.map(\.rawString)
+            let hiddenList = "(" + hidden.joined(separator: ",") + ")"
+            q = q.not("event_type", operator: .in, value: hiddenList)
         }
         if let r = filter.resourceId {
             q = q.eq("resource_id", value: r.uuidString.lowercased())
