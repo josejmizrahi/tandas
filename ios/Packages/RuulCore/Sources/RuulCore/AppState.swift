@@ -134,6 +134,11 @@ public final class AppState {
     /// preview environments — coordinator falls back to manual refresh.
     public let realtimeFactory: ((UUID) -> RSVPRealtimeService)?
 
+    /// Cross-device sync feed (Beta 1 W3 E-3.1). nil in mock / preview;
+    /// AppState `start()` activates it once a session is live, and
+    /// `signOut()` tears it down before clearing the session.
+    public let multiDeviceChangeFeed: (any MultiDeviceChangeFeed)?
+
     public init(
         auth: any AuthService,
         profileRepo: any ProfileRepository,
@@ -167,7 +172,8 @@ public final class AppState {
         eventNotificationDispatcher: any EventNotificationDispatcher = MockEventNotificationDispatcher(),
         walletService: any WalletPassService = StubWalletPassService(),
         analytics: any AnalyticsService = LogAnalyticsService(),
-        realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil
+        realtimeFactory: ((UUID) -> RSVPRealtimeService)? = nil,
+        multiDeviceChangeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.auth = auth
         self.profileRepo = profileRepo
@@ -227,6 +233,7 @@ public final class AppState {
         self.walletService = walletService
         self.analytics = analytics
         self.realtimeFactory = realtimeFactory
+        self.multiDeviceChangeFeed = multiDeviceChangeFeed
         self.eventLifecycle = EventLifecycleService(eventRepo: eventRepo)
         if let raw = UserDefaults.standard.string(forKey: Self.activeGroupKey),
            let id = UUID(uuidString: raw) {
@@ -297,9 +304,14 @@ public final class AppState {
                 async let shapes:  Void = loadRuleShapeRegistry()
                 _ = await (modules, shapes)
                 await refreshProfileAndGroups()
+                // Beta 1 W3 E-3.1: open cross-device realtime channels
+                // once we have a session. RLS scopes incoming rows so a
+                // single un-filtered channel per table is enough.
+                await multiDeviceChangeFeed?.start()
             } else {
                 self.profile = nil
                 self.groups = []
+                await multiDeviceChangeFeed?.stop()
             }
             self.isBootstrapping = false
         }
@@ -339,6 +351,7 @@ public final class AppState {
     /// the server-side revoke didn't reach the DB.
     public func signOut() async throws {
         await notifications?.revokeTokenIfRegistered()
+        await multiDeviceChangeFeed?.stop()
         try await auth.signOut()
     }
 

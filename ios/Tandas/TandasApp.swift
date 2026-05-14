@@ -147,7 +147,8 @@ struct TandasApp: App {
                 analytics: analytics,
                 realtimeFactory: { eventId in
                     RSVPRealtimeService(client: client, eventId: eventId)
-                }
+                },
+                multiDeviceChangeFeed: LiveMultiDeviceChangeFeed(client: client)
             )
             state.moduleRegistryLoader = LiveModuleRegistry(client: client)
             state.ruleShapeRepo = LiveRuleShapeRepository(client: client)
