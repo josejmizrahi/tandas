@@ -193,8 +193,7 @@ private extension AppState {
     }
 }
 
-/// ISO date formatter with sensible defaults for slot ranges. Built per
-/// call to dodge the non-Sendable static-formatter issue under Swift 6.
+/// ISO date formatter with sensible defaults for slot ranges.
 enum ResourceRowDateFormatter {
     static func short(_ raw: String) -> String {
         let isoFrac = ISO8601DateFormatter()
@@ -203,10 +202,7 @@ enum ResourceRowDateFormatter {
         isoPlain.formatOptions = [.withInternetDateTime]
         let date = isoFrac.date(from: raw) ?? isoPlain.date(from: raw)
         guard let date else { return raw }
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f.string(from: date)
+        return date.ruulMediumDateTime
     }
 }
 

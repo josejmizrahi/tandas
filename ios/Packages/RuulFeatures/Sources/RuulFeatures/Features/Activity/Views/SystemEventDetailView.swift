@@ -26,14 +26,6 @@ public struct SystemEventDetailView: View {
         self.relatedActionLabel = relatedActionLabel
     }
 
-    private static let absoluteFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.dateStyle = .long
-        f.timeStyle = .short
-        return f
-    }()
-
     public var body: some View {
         ModalSheetTemplate(
             title: titleText,
@@ -82,7 +74,7 @@ public struct SystemEventDetailView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 // W2-C3: humanLabel covers every case; rawString stays internal.
                 row("Tipo", event.eventType.humanLabel)
-                row("Cuándo", Self.absoluteFormatter.string(from: event.occurredAt))
+                row("Cuándo", event.occurredAt.ruulLongDateTime)
                 if let name = memberName {
                     row("Miembro", name)
                 }
@@ -92,7 +84,7 @@ public struct SystemEventDetailView: View {
                 // through (future hookup); for now we omit the row
                 // when we can't show a meaningful identifier.
                 row("Procesado",
-                    event.processedAt.map { Self.absoluteFormatter.string(from: $0) } ?? "Pendiente")
+                    event.processedAt.map { $0.ruulLongDateTime } ?? "Pendiente")
             }
         }
     }

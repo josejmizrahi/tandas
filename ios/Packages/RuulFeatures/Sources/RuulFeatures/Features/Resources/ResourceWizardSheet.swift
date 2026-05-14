@@ -496,11 +496,7 @@ public struct ResourceWizardSheet: View {
         case .string(let s):
             if field.kind == .date || field.kind == .dateTime || field.kind == .time,
                let parsed = ISO8601DateFormatter().date(from: s) {
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "es_MX")
-                formatter.dateStyle = .medium
-                formatter.timeStyle = (field.kind == .date) ? .none : .short
-                return formatter.string(from: parsed)
+                return (field.kind == .date) ? parsed.ruulMediumDate : parsed.ruulMediumDateTime
             }
             return s.isEmpty ? "—" : s
         case .int(let i):    return String(i)

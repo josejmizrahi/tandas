@@ -107,8 +107,8 @@ public struct ResourceSummaryView: View {
     private var scheduleHero: HeroStat? {
         guard let startsAt = resolvedStartsAt else { return nil }
         return HeroStat(
-            title: heroDateFormatter.string(from: startsAt),
-            subtitle: heroDayFormatter.string(from: startsAt),
+            title: startsAt.ruulEventDayTitle,
+            subtitle: startsAt.ruulEventTimeOfDay,
             icon: "clock",
             tone: .info
         )
@@ -332,7 +332,7 @@ public struct ResourceSummaryView: View {
     }
 
     private var relativeCreated: String {
-        relativeFormatter.localizedString(for: context.resource.createdAt, relativeTo: .now)
+        context.resource.createdAt.ruulRelative
     }
 
     // MARK: - Derived helpers
@@ -398,30 +398,9 @@ public struct ResourceSummaryView: View {
 
     // MARK: - Formatters
 
-    private let heroDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.dateFormat = "EEEE d 'de' MMMM"
-        return f
-    }()
-
-    private let heroDayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.dateFormat = "HH:mm 'h'"
-        return f
-    }()
-
     private let isoFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    private let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.unitsStyle = .full
         return f
     }()
 }

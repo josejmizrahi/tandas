@@ -169,11 +169,7 @@ public struct MemberDetailView: View {
     }
 
     private var joinedFormatted: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "es_MX")
-        formatter.dateStyle = .long
-        formatter.timeStyle = .none
-        return "Se unió el \(formatter.string(from: memberWithProfile.member.joinedAt))"
+        "Se unió el \(memberWithProfile.member.joinedAt.ruulLongDate)"
     }
 }
 
