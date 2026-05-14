@@ -67,4 +67,12 @@ struct RootRouterTests {
         router.dismissTop()
         #expect(state.activeRoutes.isEmpty)
     }
+
+    @Test("openResource(id:) pushes eventDetail route")
+    func openResource() {
+        let (router, state) = makeRouter()
+        let id = UUID()
+        router.openResource(id: id)
+        #expect(state.activeRoutes == [.eventDetail(id)])
+    }
 }

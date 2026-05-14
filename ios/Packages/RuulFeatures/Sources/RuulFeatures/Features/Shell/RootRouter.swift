@@ -102,6 +102,17 @@ public final class RootRouter {
 
     // MARK: - Resource navigation (payload + route push pairs)
 
+    /// Polymorphic detail entry: pushes a `RootRoute.eventDetail` for now
+    /// (Pass 1 keeps the route name event-shaped for compatibility with
+    /// EventDeepLink). Future passes can fork on resource_type.
+    ///
+    /// Note: this does NOT set `state.activeEvent`. Use this only when
+    /// you have just the resource id and the detail view can hydrate
+    /// itself; otherwise call `openEvent(_:)` which carries the full model.
+    public func openResource(id: UUID) {
+        state.push(.eventDetail(id))
+    }
+
     /// Opens an event in the detail cover. Stores the full Event on
     /// shellState (so RootShellSheets can read it) and pushes the route.
     public func openEvent(_ event: Event) {
