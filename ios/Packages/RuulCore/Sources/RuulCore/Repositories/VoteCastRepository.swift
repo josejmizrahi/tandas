@@ -2,12 +2,15 @@ import Foundation
 import Supabase
 
 /// Reads + casts ballots on a `Vote`. RLS allows each member to SELECT
-/// only their own row on `vote_casts` (anonymity). Aggregate counts come
+/// only their own rows on `vote_casts` (anonymity). Aggregate counts come
 /// from `vote_counts_view` which bypasses RLS.
 ///
-/// `cast_vote` is a SECURITY DEFINER RPC that updates the caller's existing
-/// pending cast (seeded by `start_vote` for all eligible members at open
-/// time). It also emits the `voteCast` system event.
+/// `cast_vote` is a SECURITY DEFINER RPC. Post-mig 00163 (Constitution §7
+/// append-only refactor) every cast inserts a new vote_casts row; the
+/// latest row per (vote, member) determines the member's current ballot.
+/// `start_vote` still pre-seeds one `pending` row per eligible member at
+/// vote-open time. Readers compute "latest per member" to derive the
+/// current state. Re-cast is supported: another insert lands.
 public protocol VoteCastRepository: Actor {
     /// The caller's own ballot for a vote, if eligible. RLS returns nil
     /// when caller is not a member of the vote's group.
@@ -16,8 +19,9 @@ public protocol VoteCastRepository: Actor {
     /// Aggregated anonymous counts for a vote. Reads `vote_counts_view`.
     func counts(voteId: UUID) async throws -> VoteCounts?
 
-    /// Records the caller's vote choice via the `cast_vote` RPC. Idempotent
-    /// — re-casting updates the existing row. Throws if vote is closed.
+    /// Records the caller's vote choice via the `cast_vote` RPC. Post-mig
+    /// 00163 every call inserts a new vote_casts row; re-cast supported
+    /// because latest-per-(vote, member) wins. Throws if vote is closed.
     func cast(voteId: UUID, choice: VoteChoice) async throws
 }
 
@@ -74,11 +78,15 @@ public actor LiveVoteCastRepository: VoteCastRepository {
     public init(client: SupabaseClient) { self.client = client }
 
     public func myCast(voteId: UUID, userMemberId: UUID) async throws -> VoteCast? {
+        // Post-mig 00163: vote_casts is append-only. Multiple rows per
+        // (vote, member) are expected (pending pre-seed + each cast).
+        // Order by created_at DESC so the latest row wins.
         let rows: [VoteCast] = try await client
             .from("vote_casts")
             .select("*")
             .eq("vote_id",   value: voteId.uuidString.lowercased())
             .eq("member_id", value: userMemberId.uuidString.lowercased())
+            .order("created_at", ascending: false)
             .limit(1)
             .execute()
             .value
