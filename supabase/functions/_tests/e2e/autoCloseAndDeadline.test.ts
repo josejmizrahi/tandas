@@ -167,7 +167,7 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
     console.log("[diag] fine_review_periods after finalize:", JSON.stringify(rpAfter));
 
     const { data: fineAfter } = await admin
-      .from("fines")
+      .from("fines_view")
       .select("id, status, amount, event_id, resource_id, auto_generated")
       .eq("id", fine.id)
       .single();
@@ -238,9 +238,11 @@ Deno.test("rsvpDeadlinePassed → fine → start_fine_appeal → vote passed →
       expectedAmount: 150,
     });
 
-    // Waived flag + reason populated (mig 00123).
+    // Waived flag + reason populated (mig 00123). Read from fines_view
+    // so the assertion sees the derived projection (waived = exists
+    // fine_voided atom for this fine_id).
     const { data: voidedFine } = await admin
-      .from("fines")
+      .from("fines_view")
       .select("waived, waived_at, waived_reason")
       .eq("id", fine.id)
       .single();
@@ -427,7 +429,7 @@ Deno.test("auto-close-events emits eventClosed → rule engine fires no-show fin
     // Carla should have ZERO fines (RSVP'd declined → no-show rule
     // doesn't apply because she wasn't 'going').
     const { data: carlaFines } = await admin
-      .from("fines")
+      .from("fines_view")
       .select("id")
       .eq("group_id", group.groupId)
       .eq("user_id", carla.userId);

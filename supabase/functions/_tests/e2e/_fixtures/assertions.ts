@@ -21,7 +21,10 @@ export interface FineAssertion {
 }
 
 export async function assertFineState(a: FineAssertion): Promise<{ id: string; rule_id: string }> {
-  let q = admin.from("fines").select("id, status, amount, rule_id")
+  // §14 Step 3b: read from fines_view so assertions see derived status
+  // (paid/voided/in_appeal/officialized) consistent with the projection
+  // that production iOS clients read.
+  let q = admin.from("fines_view").select("id, status, amount, rule_id")
     .eq("group_id", a.groupId)
     .eq("user_id",  a.userId);
   if (a.fineId) q = q.eq("id", a.fineId);

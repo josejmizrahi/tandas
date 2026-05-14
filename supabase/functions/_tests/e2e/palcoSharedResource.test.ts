@@ -183,8 +183,9 @@ Deno.test("palco shared_resource scenario — 5 family members, 17 slots, 1 no-s
     assertEquals(procResp.ok, true, "process-system-events must return 2xx");
 
     // hijo1 gets a fine row (auto_generated=true, status='proposed').
+    // Read from fines_view so status reflects the projection.
     const { data: fines } = await admin
-      .from("fines")
+      .from("fines_view")
       .select("id, user_id, amount, status, reason, auto_generated, resource_id")
       .eq("group_id", group.groupId);
     assertEquals(fines?.length, 1, "exactly one fine must be proposed");

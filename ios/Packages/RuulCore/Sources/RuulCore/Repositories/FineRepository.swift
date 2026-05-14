@@ -177,8 +177,12 @@ public actor LiveFineRepository: FineRepository {
     public init(client: SupabaseClient) { self.client = client }
 
     public func myFines(userId: UUID) async throws -> [Fine] {
+        // §14 Step 3b: read from fines_view (status/paid/waived derived
+        // from atoms + votes + review_periods). Writes still go to the
+        // fines table via RPCs (issue_manual_fine, officialize_fine,
+        // pay_fine, void_fine, start_fine_appeal).
         try await client
-            .from("fines")
+            .from("fines_view")
             .select("*")
             .eq("user_id", value: userId.uuidString.lowercased())
             .order("created_at", ascending: false)
@@ -188,7 +192,7 @@ public actor LiveFineRepository: FineRepository {
 
     public func fines(forEventId: UUID) async throws -> [Fine] {
         try await client
-            .from("fines")
+            .from("fines_view")
             .select("*")
             .eq("event_id", value: forEventId.uuidString.lowercased())
             .order("created_at", ascending: false)
@@ -198,7 +202,7 @@ public actor LiveFineRepository: FineRepository {
 
     public func fine(id: UUID) async throws -> Fine? {
         try? await client
-            .from("fines")
+            .from("fines_view")
             .select("*")
             .eq("id", value: id.uuidString.lowercased())
             .single()
@@ -260,22 +264,15 @@ public actor LiveFineRepository: FineRepository {
     }
 
     public func pay(fineId: UUID) async throws -> Fine {
-        // Legacy pay_fine RPC sets paid=true; the on_fine_status_change
-        // trigger will flip status to 'paid'. Use raw update for now since
-        // pay_fine returns void, not the row.
-        struct Update: Encodable {
-            let paid: Bool
-            let paid_at: String
-            let status: String
-        }
+        // §14 Step 3a/3b: pay_fine RPC handles the fines table write +
+        // emits the fine_paid atom that the projection reads. Earlier
+        // versions did a raw UPDATE bypassing the RPC, which skipped the
+        // atom emission and the permission/fund-balance checks. RPC
+        // returns void, so we re-fetch from fines_view to get derived
+        // status='paid'.
+        struct Params: Encodable { let p_fine_id: String }
         try await client
-            .from("fines")
-            .update(Update(
-                paid: true,
-                paid_at: ISO8601DateFormatter().string(from: .now),
-                status: "paid"
-            ))
-            .eq("id", value: fineId.uuidString.lowercased())
+            .rpc("pay_fine", params: Params(p_fine_id: fineId.uuidString.lowercased()))
             .execute()
         guard let updated = try await fine(id: fineId) else {
             throw NSError(domain: "LiveFineRepository", code: 404)
