@@ -339,7 +339,8 @@ public final class ResourceRulesCoordinator {
         }
         // Pre-00122 wording + post-00122 fallback ("admin only" string).
         if raw.contains("only group admins or the event host") {
-            return "Sólo el host del evento o un admin pueden crear reglas aquí."
+            // W2-C4: "host" → "anfitrión".
+            return "Sólo el anfitrión del evento o un admin pueden crear reglas aquí."
         }
         if raw.contains("only group admins") {
             return "Sólo los admins del grupo pueden crear reglas para este recurso."

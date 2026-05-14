@@ -50,7 +50,8 @@ public final class ResourceLedgerCoordinator {
             case .expense:      return "Yo pagué algo por el grupo. El sistema lo cuenta a mi favor."
             case .contribution: return "Yo aporté dinero al evento. Suma a un pot común."
             case .settlement:   return "Yo le pagué directo a otro miembro (cierre de cuenta)."
-            case .payout:       return "El grupo (pot común) le paga a un miembro — ej. reembolso al host."
+            // W2-C4: "host" → "anfitrión".
+            case .payout:       return "El grupo (pot común) le paga a un miembro — ej. reembolso al anfitrión."
             }
         }
 

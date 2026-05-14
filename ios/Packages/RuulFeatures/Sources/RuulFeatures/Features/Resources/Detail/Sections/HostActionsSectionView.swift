@@ -38,7 +38,8 @@ public struct HostActionsSectionView: View {
     private func content(interactor: any EventInteractor) -> some View {
         let event = interactor.event
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            Text("Como host")
+            // W2-C4: "host" → "anfitrión" canon.
+            Text("Como anfitrión")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .padding(.horizontal, RuulSpacing.xxs)

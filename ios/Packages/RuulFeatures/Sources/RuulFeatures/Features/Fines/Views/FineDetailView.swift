@@ -359,7 +359,8 @@ public struct FineDetailView: View {
                 // DS v3 §13: sticky CTA chrome — Liquid Glass real.
                 .ruulGlass(Rectangle(), material: .regular)
             case .proposed:
-                Text("Esta multa se oficializa después de 24h. Si no aplica, espera a que el host la revise — o contacta directo.")
+                // W2-C4: "host" → "anfitrión".
+                Text("Esta multa se oficializa después de 24h. Si no aplica, espera a que el anfitrión la revise — o contacta directo.")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .multilineTextAlignment(.center)

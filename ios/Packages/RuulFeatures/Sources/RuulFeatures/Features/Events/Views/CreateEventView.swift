@@ -139,7 +139,8 @@ public struct CreateEventView: View {
         // can assign manually post-creation via the rotation module's UI.
         if rotationActive {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Host")
+                // W2-C4: "Host" → "Anfitrión" canon.
+                Text("Anfitrión")
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulTextSecondary)
                 RuulCard(.glass) {

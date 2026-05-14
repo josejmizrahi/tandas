@@ -44,7 +44,8 @@ struct ResourceRulesSheet: View {
                     title: "Sin reglas aplicables",
                     message: coordinator.canCreate
                         ? "Agrega reglas que sólo apliquen a este evento. Las del grupo seguirán aplicando."
-                        : "Sólo el host o un admin pueden crear reglas específicas para este evento."
+                        // W2-C4: "host" → "anfitrión".
+                        : "Sólo el anfitrión o un admin pueden crear reglas específicas para este evento."
                 )
                 .padding(.vertical, RuulSpacing.md)
             } else {

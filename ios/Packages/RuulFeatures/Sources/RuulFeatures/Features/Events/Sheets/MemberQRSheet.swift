@@ -24,7 +24,8 @@ public struct MemberQRSheet: View {
             primaryCTA: ("Listo", { isPresented = false })
         ) {
             VStack(spacing: RuulSpacing.lg) {
-                Text("Muestra este código al host para marcar tu llegada.")
+                // W2-C4: "host" → "anfitrión".
+                Text("Muestra este código al anfitrión para marcar tu llegada.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
