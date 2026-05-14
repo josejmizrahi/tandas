@@ -120,13 +120,22 @@ public struct HomeView: View {
     /// capped at sensible limits — the section labels show "200+" if we
     /// hit the cap so users still get a useful signal for long-running
     /// groups. Failures collapse the section instead of surfacing.
+    ///
+    /// Past-event count uses `resourceRepo` (polymorphic) filtered to
+    /// `.event` rows with terminal statuses ("completed" / "cancelled").
+    /// Date-bound precision is not needed here — it's a heuristic counter.
     @MainActor
     private func loadGroupMemory() async {
         guard let groupId = app.activeGroup?.id else {
             groupMemory = .empty
             return
         }
-        async let pastTask = (try? await app.eventRepo.pastEvents(in: groupId, limit: 200)) ?? []
+        async let pastTask = (try? await app.resourceRepo.list(
+            in: groupId,
+            types: [.event],
+            statuses: ["completed", "cancelled"],
+            limit: 200
+        )) ?? []
         async let votesTask = (try? await app.voteRepo.votes(for: groupId)) ?? []
         let past = await pastTask
         let votes = await votesTask
