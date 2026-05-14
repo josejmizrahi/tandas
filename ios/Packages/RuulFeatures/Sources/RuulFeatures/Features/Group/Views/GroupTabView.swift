@@ -291,8 +291,7 @@ private struct GroupResourcesSubTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
+                    RuulLoadingState()
                         .padding(.top, RuulSpacing.xxl)
                 } else if resources.isEmpty {
                     EmptyStateView(

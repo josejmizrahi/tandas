@@ -32,7 +32,7 @@ public struct EditRulesView: View {
     @ViewBuilder
     private var content: some View {
         if coordinator.isLoading && coordinator.rules.isEmpty {
-            ProgressView().tint(Color.ruulAccent)
+            RuulLoadingState()
         } else if coordinator.rules.isEmpty {
             emptyState
         } else {

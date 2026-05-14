@@ -134,9 +134,7 @@ public struct EditMembersSheet: View {
     @ViewBuilder
     private var content: some View {
         if isLoading && rows.isEmpty {
-            ProgressView()
-                .tint(Color.ruulAccent)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            RuulLoadingState()
         } else if let loadError, rows.isEmpty {
             VStack(spacing: RuulSpacing.sm) {
                 Text("No pudimos cargar los miembros.")

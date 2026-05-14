@@ -1,22 +1,30 @@
 import SwiftUI
 
 /// Empty state — used when a list has no items, a search returns nothing, etc.
+///
+/// `secondaryAction` is rendered as a `.glass` button below the primary one.
+/// Use it sparingly: the cross-app empty-states with two equally-weighted
+/// CTAs are rare (e.g. "no groups yet" → Crear / Unirme). Most empties
+/// have at most one CTA.
 public struct EmptyStateView: View {
     private let systemImage: String
     private let title: String
     private let message: String?
     private let primaryAction: (label: String, perform: () -> Void)?
+    private let secondaryAction: (label: String, perform: () -> Void)?
 
     public init(
         systemImage: String,
         title: String,
         message: String? = nil,
-        primaryAction: (label: String, perform: () -> Void)? = nil
+        primaryAction: (label: String, perform: () -> Void)? = nil,
+        secondaryAction: (label: String, perform: () -> Void)? = nil
     ) {
         self.systemImage = systemImage
         self.title = title
         self.message = message
         self.primaryAction = primaryAction
+        self.secondaryAction = secondaryAction
     }
 
     public var body: some View {
@@ -34,8 +42,15 @@ public struct EmptyStateView: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            if let primaryAction {
-                RuulButton(primaryAction.label, style: .primary, size: .medium, action: primaryAction.perform)
+            if primaryAction != nil || secondaryAction != nil {
+                VStack(spacing: RuulSpacing.sm) {
+                    if let primaryAction {
+                        RuulButton(primaryAction.label, style: .primary, size: .medium, action: primaryAction.perform)
+                    }
+                    if let secondaryAction {
+                        RuulButton(secondaryAction.label, style: .glass, size: .medium, action: secondaryAction.perform)
+                    }
+                }
             }
         }
         .padding(RuulSpacing.xxl)

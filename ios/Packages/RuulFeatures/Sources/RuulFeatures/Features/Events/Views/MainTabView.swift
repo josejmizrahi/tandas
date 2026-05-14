@@ -1062,43 +1062,24 @@ public struct MainTabView: View {
         }
     }
 
-    /// Empty-state hero for users with no groups. Lives next to homeTab
-    /// since it shares the same NavigationStack and CTA bindings.
+    /// Empty-state hero for users with no groups. Beta 1 W3 A-3.3:
+    /// migrated to the canonical `EmptyStateView` primitive with both
+    /// primary + secondary CTAs (`EmptyStateView` gained
+    /// `secondaryAction` support in the same commit).
     private struct EmptyGroupsView: View {
         let onCreate: () -> Void
         let onJoin: () -> Void
 
         var body: some View {
-            VStack(spacing: RuulSpacing.lg) {
+            VStack(spacing: 0) {
                 Spacer(minLength: RuulSpacing.xxl)
-                RuulIconBadge("person.3", size: .large)
-                VStack(spacing: RuulSpacing.xs) {
-                    Text("Aún no tienes grupos")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text("Crea uno nuevo o únete a uno con código de invitación.")
-                        .ruulTextStyle(RuulTypography.body)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, RuulSpacing.lg)
-                }
-                VStack(spacing: RuulSpacing.sm) {
-                    RuulButton(
-                        "Crear grupo",
-                        style: .primary,
-                        size: .large,
-                        fillsWidth: true,
-                        action: onCreate
-                    )
-                    RuulButton(
-                        "Unirme con código",
-                        style: .glass,
-                        size: .large,
-                        fillsWidth: true,
-                        action: onJoin
-                    )
-                }
-                .padding(.horizontal, RuulSpacing.lg)
+                EmptyStateView(
+                    systemImage: "person.3",
+                    title: "Aún no tienes grupos",
+                    message: "Crea uno nuevo o únete a uno con código de invitación.",
+                    primaryAction: (label: "Crear grupo", perform: onCreate),
+                    secondaryAction: (label: "Unirme con código", perform: onJoin)
+                )
                 Spacer()
             }
         }
