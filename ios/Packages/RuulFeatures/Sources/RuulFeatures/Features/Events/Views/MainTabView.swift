@@ -178,8 +178,16 @@ public struct MainTabView: View {
             get: { selectedTab },
             set: { newTab in
                 if newTab == .create {
+                    // Beta 1 W3 A-3.4: with no active group the only thing
+                    // "+" can usefully mean is "create your first group".
+                    // The previous behavior was a silent no-op — user
+                    // tapped "+", nothing happened, no feedback. Now we
+                    // route them to CreateGroupSheet (already wired
+                    // below via `createGroupPresented`).
                     if app.activeGroup != nil {
                         creationRoute = true
+                    } else {
+                        createGroupPresented = true
                     }
                     // intentionally leave selectedTab as-is
                 } else {
