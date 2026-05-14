@@ -218,9 +218,11 @@ public actor LiveEventRepository: EventRepository {
     public init(client: SupabaseClient) { self.client = client }
 
     public func upcomingEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
+        // §14 step 5c-iii.B: reads go through events_view (resources projection).
+        // Writers below (updateEvent) still hit the events table.
         do {
             return try await client
-                .from("events")
+                .from("events_view")
                 .select("*")
                 .eq("group_id", value: groupId.uuidString.lowercased())
                 .in("status", values: ["scheduled", "in_progress"])
@@ -239,7 +241,7 @@ public actor LiveEventRepository: EventRepository {
         let ids = groupIds.map { $0.uuidString.lowercased() }
         do {
             return try await client
-                .from("events")
+                .from("events_view")
                 .select("*")
                 .in("group_id", values: ids)
                 .in("status", values: ["scheduled", "in_progress"])
@@ -256,7 +258,7 @@ public actor LiveEventRepository: EventRepository {
     public func pastEvents(in groupId: UUID, limit: Int) async throws -> [Event] {
         do {
             return try await client
-                .from("events")
+                .from("events_view")
                 .select("*")
                 .eq("group_id", value: groupId.uuidString.lowercased())
                 .in("status", values: ["completed", "cancelled"])
@@ -276,7 +278,7 @@ public actor LiveEventRepository: EventRepository {
         let twoWeeksAgo = Date.now.addingTimeInterval(-14 * 86_400)
         do {
             return try await client
-                .from("events")
+                .from("events_view")
                 .select("*")
                 .in("status", values: ["scheduled", "in_progress", "completed"])
                 .gte("starts_at", value: ISO8601DateFormatter().string(from: twoWeeksAgo))
@@ -292,7 +294,7 @@ public actor LiveEventRepository: EventRepository {
     public func event(_ id: UUID) async throws -> Event {
         do {
             return try await client
-                .from("events")
+                .from("events_view")
                 .select("*")
                 .eq("id", value: id.uuidString.lowercased())
                 .single()

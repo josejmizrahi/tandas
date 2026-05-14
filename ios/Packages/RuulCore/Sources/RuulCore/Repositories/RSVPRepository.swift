@@ -76,9 +76,11 @@ public actor LiveRSVPRepository: RSVPRepository {
     public init(client: SupabaseClient) { self.client = client }
 
     public func rsvps(for eventId: UUID) async throws -> [RSVP] {
+        // §14 step 5c-iii.B: reads from attendance_view (atoms projection).
+        // Writers (setRSVP RPC) still target the events tables.
         do {
             return try await client
-                .from("event_attendance")
+                .from("attendance_view")
                 .select("*")
                 .eq("event_id", value: eventId.uuidString.lowercased())
                 .execute()
@@ -91,7 +93,7 @@ public actor LiveRSVPRepository: RSVPRepository {
     public func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP? {
         do {
             let row: RSVP? = try? await client
-                .from("event_attendance")
+                .from("attendance_view")
                 .select("*")
                 .eq("event_id", value: eventId.uuidString.lowercased())
                 .eq("user_id", value: userId.uuidString.lowercased())
