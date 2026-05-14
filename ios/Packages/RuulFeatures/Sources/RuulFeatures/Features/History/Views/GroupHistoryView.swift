@@ -32,7 +32,10 @@ public struct GroupHistoryView: View {
             }
             .padding(RuulSpacing.md)
         }
-        .navigationTitle("Historia")
+        // W2-C5: canon = "Actividad" for the group's system_events feed;
+        // "Historial" reserved for past-events listing (PastEventsView).
+        // "Historia" dropped entirely.
+        .navigationTitle("Actividad")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
