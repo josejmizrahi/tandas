@@ -37,7 +37,7 @@ struct FounderOnboardingCoordinatorTests {
 
     // MARK: - Happy path
 
-    @Test("full happy path: welcome → identity → group → preset → invite → confirm")
+    @Test("full happy path: welcome → identity → group → preset → consent → invite → confirm")
     func happyPath() async throws {
         let (coord, groups, _, _, _, _) = makeCoordinator()
         await coord.start()
@@ -54,14 +54,39 @@ struct FounderOnboardingCoordinatorTests {
         #expect(coord.currentStep == .preset)
 
         await coord.selectPreset(.recurringDinner)
-        #expect(coord.currentStep == .invite)
+        // Beta 1 W3 B-3.4: dinner template seeds rules, so the coordinator
+        // routes through the consent step before invite.
+        #expect(coord.currentStep == .consent)
         #expect(coord.createdGroup != nil)
+        #expect(!coord.templateRulePreviews.isEmpty)
+
+        await coord.advanceFromConsent()
+        #expect(coord.currentStep == .invite)
 
         await coord.advanceFromInvite()
         #expect(coord.currentStep == .confirm)
 
         let listed = try await groups.listMine()
         #expect(listed.count == 1)
+    }
+
+    @Test("dinner preset populates templateRulePreviews before consent")
+    func consentReceivesSeededRules() async throws {
+        let (coord, _, _, _, _, _) = makeCoordinator()
+        await coord.start()
+        coord.displayName = "X"
+        await coord.advanceFromIdentity()
+        coord.draft.name = "G"
+        await coord.advanceFromGroupIdentity()
+        await coord.selectPreset(.recurringDinner)
+
+        #expect(coord.currentStep == .consent)
+        // MockRuleRepository's seedTemplateRules returns the 5 dinner
+        // rules; the coordinator stores them on templateRulePreviews so
+        // ConsentRulesView can render them.
+        #expect(coord.templateRulePreviews.count == 5)
+        // B-1.1: every monetary fine ships in modo sugerencia.
+        #expect(coord.templateRulePreviews.allSatisfy { $0.isActive == false })
     }
 
     // MARK: - Preset variations
@@ -97,6 +122,9 @@ struct FounderOnboardingCoordinatorTests {
         coord.draft.name = "G"
         await coord.advanceFromGroupIdentity()
         await coord.selectPreset(.recurringDinner)
+        // Dinner seeds rules → consent step appears before invite (B-3.4).
+        #expect(coord.currentStep == .consent)
+        await coord.advanceFromConsent()
         await coord.skipInvite()
         #expect(coord.currentStep == .confirm)
         #expect(coord.pendingInvites.isEmpty)

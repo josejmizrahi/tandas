@@ -41,7 +41,7 @@ public struct OnboardingRootView: View {
                     }
                 }
             } else {
-                ProgressView()
+                RuulLoadingState()
             }
         }
         .task { await bootstrap() }
@@ -137,6 +137,8 @@ private struct FounderFlow: View {
             GroupIdentityView()
         case .preset:
             PresetPickerView()
+        case .consent:
+            ConsentRulesView()
         case .invite:
             InviteMembersView()
         case .confirm:

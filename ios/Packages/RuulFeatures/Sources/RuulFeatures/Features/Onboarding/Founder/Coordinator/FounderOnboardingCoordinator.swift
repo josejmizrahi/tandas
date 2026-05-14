@@ -28,6 +28,12 @@ public final class FounderOnboardingCoordinator {
     public private(set) var error: OnboardingError?
     public private(set) var isLoading: Bool = false
 
+    /// Beta 1 W3 B-3.4: rules seeded by the chosen template. Populated by
+    /// `selectPreset(_:)` so the consent step can render them before
+    /// inviting members. Empty when the user picked "Empezar de cero"
+    /// (no template) — in that case the consent step is skipped.
+    public private(set) var templateRulePreviews: [OnboardingRule] = []
+
     private let groupRepo: any GroupsRepository
     private let inviteRepo: any InviteRepository
     private let ruleRepo: any RuleRepository
@@ -116,6 +122,7 @@ public final class FounderOnboardingCoordinator {
         case "invite":          return .invite
         case "confirm":         return .confirm
         case "templateSelect":  return .preset    // legacy → preset
+        case "consent":         return .consent
         case "vocabulary",
              "rules",
              "governance":      return .invite    // post-group legacy steps
@@ -179,19 +186,28 @@ public final class FounderOnboardingCoordinator {
             // Seed module rules ONLY when the preset has a template — bare
             // groups start with no rules and let the user add them via the
             // ResourceWizard on demand.
-            if preset.templateId != nil {
+            //
+            // Beta 1 W3 B-3.4: cache the seeded rules so the consent step
+            // can display them. For "Empezar de cero" (no templateId) the
+            // cache stays empty and the consent step is skipped.
+            if let templateId = preset.templateId {
                 do {
-                    _ = try await ruleRepo.seedTemplateRules(
-                        templateId: preset.templateId!,
+                    templateRulePreviews = try await ruleRepo.seedTemplateRules(
+                        templateId: templateId,
                         groupId: group.id
                     )
                 } catch {
                     log.warning("seedTemplateRules failed: \(error.localizedDescription)")
+                    templateRulePreviews = []
                 }
+            } else {
+                templateRulePreviews = []
             }
 
             await complete(step: .preset)
-            try? await transition(to: .invite)
+            // Route through consent only when there are rules to consent
+            // to. Blank presets fast-forward to the invite step.
+            try? await transition(to: templateRulePreviews.isEmpty ? .invite : .consent)
         } catch {
             self.error = .createGroupFailed(error.localizedDescription)
             await analytics.track(.stepFailed(
@@ -200,6 +216,16 @@ public final class FounderOnboardingCoordinator {
                 errorType: "create_group"
             ))
         }
+    }
+
+    /// Beta 1 W3 B-3.4: consent step exit. Pure forward — no mutation
+    /// because the rules were seeded in modo sugerencia (`isActive=false`,
+    /// per B-1.1) at preset selection time. The founder activates them
+    /// later from the Rules tab. Step exists to surface the rules so the
+    /// first-time user understands what's behind the curtain.
+    public func advanceFromConsent() async {
+        await complete(step: .consent)
+        try? await transition(to: .invite)
     }
 
     public func advanceFromInvite() async {

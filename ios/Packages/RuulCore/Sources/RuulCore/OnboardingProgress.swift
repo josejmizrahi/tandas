@@ -56,13 +56,17 @@ public enum FounderStep: String, CaseIterable, Codable, Sendable {
     case identity   // founder personal name + avatar
     case group      // group identity (name + cover)
     case preset     // choose starter preset OR "empezar de cero"
+    case consent    // Beta 1 W3 B-3.4 — read the template's suggested rules
+                    // before inviting members. Only entered when the chosen
+                    // preset seeded ≥1 rule; "Empezar de cero" skips straight
+                    // to invite.
     case invite     // invite members (optional skip)
     case confirm    // landing screen
 
     public var index: Int { Self.allCases.firstIndex(of: self) ?? 0 }
 
     public static let visibleSteps: [FounderStep] = [
-        .identity, .group, .preset, .invite, .confirm
+        .identity, .group, .preset, .consent, .invite, .confirm
     ]
 
     public var visibleIndex: Int {
