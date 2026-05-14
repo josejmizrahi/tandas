@@ -25,12 +25,20 @@ public final class FineDetailCoordinator {
     private let analytics: (any AnalyticsService)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "fines.detail")
 
+    /// Beta 1 W3 E-3.1: multi-device sync. Refreshes when this fine
+    /// changes server-side (paid / voided / appealed). nil in preview/mock.
+    // Swift 6: deinit is nonisolated. Task is Sendable; the
+    // nonisolated(unsafe) annotation asserts the property is only mutated
+    // inside the main-actor-isolated init.
+    nonisolated(unsafe) private var changeFeedTask: Task<Void, Never>?
+
     public init(
         fine: Fine,
         userId: UUID,
         fineRepo: any FineRepository,
         appealRepo: any AppealRepository,
-        analytics: (any AnalyticsService)? = nil
+        analytics: (any AnalyticsService)? = nil,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.fine = fine
         self.userId = userId
@@ -38,7 +46,21 @@ public final class FineDetailCoordinator {
         self.fineRepo = fineRepo
         self.appealRepo = appealRepo
         self.analytics = analytics
+        if let feed = changeFeed {
+            let myFineId = fine.id
+            self.changeFeedTask = Task { [weak self] in
+                for await change in feed.changes {
+                    if Task.isCancelled { return }
+                    guard let self else { return }
+                    if change.table == .fine && change.recordId == myFineId {
+                        await self.refresh()
+                    }
+                }
+            }
+        }
     }
+
+    deinit { changeFeedTask?.cancel() }
 
     /// Beta 1 instrumentation (Plans/Active/Beta1.md §4): emit fine_seen
     /// the first time the detail surface renders for this fine. View

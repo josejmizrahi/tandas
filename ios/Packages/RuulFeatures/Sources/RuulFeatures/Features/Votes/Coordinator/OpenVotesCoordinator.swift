@@ -26,17 +26,38 @@ public final class OpenVotesCoordinator {
 
     private let cacheTTL: TimeInterval = 60
 
+    /// Beta 1 W3 E-3.1: multi-device sync. Listens for `votes` /
+    /// `vote_casts` changes and triggers a refresh. nil in preview/mock.
+    // Swift 6: deinit is nonisolated. Task is Sendable; the
+    // nonisolated(unsafe) annotation asserts the property is only mutated
+    // inside the main-actor-isolated init.
+    nonisolated(unsafe) private var changeFeedTask: Task<Void, Never>?
+
     public init(
         group: Group,
         voteRepo: any VoteRepository,
         castRepo: (any VoteCastRepository)? = nil,
-        userMemberId: UUID? = nil
+        userMemberId: UUID? = nil,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.group = group
         self.voteRepo = voteRepo
         self.castRepo = castRepo
         self.userMemberId = userMemberId
+        if let feed = changeFeed {
+            self.changeFeedTask = Task { [weak self] in
+                for await change in feed.changes {
+                    if Task.isCancelled { return }
+                    guard let self else { return }
+                    if change.table == .vote || change.table == .voteCast {
+                        await self.refresh(force: true)
+                    }
+                }
+            }
+        }
     }
+
+    deinit { changeFeedTask?.cancel() }
 
     public func refresh(force: Bool = false) async {
         if !force, let last = lastRefreshedAt,

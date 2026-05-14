@@ -507,7 +507,8 @@ public struct MainTabView: View {
             OpenVotesListView(
                 coordinator: OpenVotesCoordinator(
                     group: group,
-                    voteRepo: app.voteRepo
+                    voteRepo: app.voteRepo,
+                    changeFeed: app.multiDeviceChangeFeed
                 ),
                 onSelectVote: { vote in
                     voteDetailRoute = VoteDetailRouteContext(vote: vote)
@@ -596,7 +597,8 @@ public struct MainTabView: View {
                 userMemberId: userMemberId,
                 voteRepo: app.voteRepo,
                 castRepo: app.voteCastRepo,
-                analytics: app.analytics
+                analytics: app.analytics,
+                changeFeed: app.multiDeviceChangeFeed
             )
         } else {
             EmptyView()
@@ -679,7 +681,8 @@ public struct MainTabView: View {
             userId: app.session?.user.id ?? UUID(),
             fineRepo: app.fineRepo,
             appealRepo: app.appealRepo,
-            analytics: app.analytics
+            analytics: app.analytics,
+            changeFeed: app.multiDeviceChangeFeed
         )
         let userId = app.session?.user.id ?? UUID()
         let governance = app.governance
@@ -746,6 +749,7 @@ public struct MainTabView: View {
         ReviewProposedDestinationContainer(
             event: event,
             fineRepo: app.fineRepo,
+            changeFeed: app.multiDeviceChangeFeed,
             memberLookup: { userId in
                 memberDirectory[userId]?.displayName ?? "Miembro"
             },
@@ -1299,12 +1303,14 @@ public struct MainTabView: View {
             userId: userId,
             groupId: nil,                   // 14.2 — cross-group inbox
             userActionRepo: app.userActionRepo,
-            groupsRepo: app.groupsRepo
+            groupsRepo: app.groupsRepo,
+            changeFeed: app.multiDeviceChangeFeed
         )
         myFinesCoordinator = MyFinesCoordinator(
             userId: userId,
             fineRepo: app.fineRepo,
-            groupsRepo: app.groupsRepo
+            groupsRepo: app.groupsRepo,
+            changeFeed: app.multiDeviceChangeFeed
         )
         profileCoordinator = ProfileCoordinator(
             userId: userId,
@@ -1560,7 +1566,8 @@ private struct VoteDetailDestinationContainer: View {
         userMemberId: UUID,
         voteRepo: any VoteRepository,
         castRepo: any VoteCastRepository,
-        analytics: any AnalyticsService
+        analytics: any AnalyticsService,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.vote = vote
         self.group = group
@@ -1574,7 +1581,8 @@ private struct VoteDetailDestinationContainer: View {
             userMemberId: userMemberId,
             voteRepo: voteRepo,
             castRepo: castRepo,
-            analytics: analytics
+            analytics: analytics,
+            changeFeed: changeFeed
         ))
     }
 
@@ -1596,6 +1604,7 @@ private struct ReviewProposedDestinationContainer: View {
     init(
         event: Event,
         fineRepo: any FineRepository,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil,
         memberLookup: @escaping (UUID) -> String,
         onSelectFine: @escaping (Fine) -> Void
     ) {
@@ -1605,7 +1614,8 @@ private struct ReviewProposedDestinationContainer: View {
         self.onSelectFine = onSelectFine
         self._coord = State(wrappedValue: ReviewProposedFinesCoordinator(
             event: event,
-            fineRepo: fineRepo
+            fineRepo: fineRepo,
+            changeFeed: changeFeed
         ))
     }
 

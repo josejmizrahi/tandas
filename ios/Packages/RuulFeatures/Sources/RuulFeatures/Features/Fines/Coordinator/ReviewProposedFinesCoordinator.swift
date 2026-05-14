@@ -14,10 +14,34 @@ public final class ReviewProposedFinesCoordinator {
     private let fineRepo: any FineRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "fines.review")
 
-    public init(event: Event, fineRepo: any FineRepository) {
+    /// Beta 1 W3 E-3.1: multi-device sync. Listens for `fines` changes
+    /// and triggers a refresh. nil in preview/mock.
+    // Swift 6: deinit is nonisolated. Task is Sendable; the
+    // nonisolated(unsafe) annotation asserts the property is only mutated
+    // inside the main-actor-isolated init.
+    nonisolated(unsafe) private var changeFeedTask: Task<Void, Never>?
+
+    public init(
+        event: Event,
+        fineRepo: any FineRepository,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
+    ) {
         self.event = event
         self.fineRepo = fineRepo
+        if let feed = changeFeed {
+            self.changeFeedTask = Task { [weak self] in
+                for await change in feed.changes {
+                    if Task.isCancelled { return }
+                    guard let self else { return }
+                    if change.table == .fine {
+                        await self.refresh()
+                    }
+                }
+            }
+        }
     }
+
+    deinit { changeFeedTask?.cancel() }
 
     public func refresh() async {
         isLoading = true

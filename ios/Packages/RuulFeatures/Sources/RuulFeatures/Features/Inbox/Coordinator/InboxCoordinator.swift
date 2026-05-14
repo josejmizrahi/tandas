@@ -19,17 +19,40 @@ public final class InboxCoordinator {
     private let groupsRepo: (any GroupsRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "inbox")
 
+    /// Beta 1 W3 E-3.1: subscribes to the cross-device feed so that when
+    /// the user resolves an action on device A, device B's inbox refreshes
+    /// within one realtime tick. nil for previews / mock paths.
+    // Swift 6: deinit is nonisolated, so the cancellation handle must be
+    // reachable from nonisolated context. Task is Sendable; the
+    // nonisolated(unsafe) annotation is just an assertion that we only
+    // assign during the main-actor-isolated init and read in deinit.
+    nonisolated(unsafe) private var changeFeedTask: Task<Void, Never>?
+
     public init(
         userId: UUID,
         groupId: UUID?,
         userActionRepo: any UserActionRepository,
-        groupsRepo: (any GroupsRepository)? = nil
+        groupsRepo: (any GroupsRepository)? = nil,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.userId = userId
         self.groupId = groupId
         self.userActionRepo = userActionRepo
         self.groupsRepo = groupsRepo
+        if let feed = changeFeed {
+            self.changeFeedTask = Task { [weak self] in
+                for await change in feed.changes {
+                    if Task.isCancelled { return }
+                    guard let self else { return }
+                    if change.table == .userAction {
+                        await self.refresh()
+                    }
+                }
+            }
+        }
     }
+
+    deinit { changeFeedTask?.cancel() }
 
     public func refresh() async {
         isLoading = true

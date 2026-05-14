@@ -26,13 +26,21 @@ public final class VoteDetailCoordinator {
     public var alreadyVoted: Bool { (myCast?.choice ?? .pending) != .pending }
     public var voteIsClosed: Bool { vote.status != .open }
 
+    /// Beta 1 W3 E-3.1: multi-device sync. Listens for `votes` or
+    /// `vote_casts` changes; refreshes when one matches this vote.
+    // Swift 6: deinit is nonisolated. Task is Sendable; the
+    // nonisolated(unsafe) annotation asserts the property is only mutated
+    // inside the main-actor-isolated init.
+    nonisolated(unsafe) private var changeFeedTask: Task<Void, Never>?
+
     public init(
         vote: Vote,
         group: Group,
         userMemberId: UUID,
         voteRepo: any VoteRepository,
         castRepo: any VoteCastRepository,
-        analytics: (any AnalyticsService)? = nil
+        analytics: (any AnalyticsService)? = nil,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.vote = vote
         self.group = group
@@ -40,7 +48,25 @@ public final class VoteDetailCoordinator {
         self.voteRepo = voteRepo
         self.castRepo = castRepo
         self.analytics = analytics
+        if let feed = changeFeed {
+            let myVoteId = vote.id
+            self.changeFeedTask = Task { [weak self] in
+                for await change in feed.changes {
+                    if Task.isCancelled { return }
+                    guard let self else { return }
+                    // `votes` events filter by id; `vote_casts` events
+                    // arrive only for the user's own casts (RLS-scoped)
+                    // so any cast change is worth refreshing the tally.
+                    if (change.table == .vote && change.recordId == myVoteId)
+                        || change.table == .voteCast {
+                        await self.refresh()
+                    }
+                }
+            }
+        }
     }
+
+    deinit { changeFeedTask?.cancel() }
 
     public func refresh() async {
         isLoading = true
