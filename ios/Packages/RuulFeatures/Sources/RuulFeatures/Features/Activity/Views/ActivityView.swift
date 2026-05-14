@@ -10,6 +10,7 @@ public struct ActivityView: View {
     @State var coordinator: ActivityCoordinator
     @State private var detailEvent: SystemEvent?
     @State private var showFilters: Bool = false
+    @State private var selectedChip: ActivityChip = .all
     /// Optional: cuando set, el `SystemEventDetailView` muestra un CTA
     /// "Ver detalle" que routea al destination real (multa / voto /
     /// evento / regla). El forwarding pasa por `ActivityTabView` →
@@ -22,15 +23,19 @@ public struct ActivityView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                header
-                if coordinator.hasAnyFilter {
-                    activeFilterBar
+        VStack(spacing: 0) {
+            chipsStrip
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                    header
+                    if coordinator.hasAnyFilter {
+                        activeFilterBar
+                    }
+                    content
                 }
-                content
+                .padding(RuulSpacing.md)
             }
-            .padding(RuulSpacing.md)
         }
         // W2-C5: canon = "Actividad" for the group's system_events feed;
         // "Historial" reserved for past-events listing (PastResourcesView).
@@ -77,12 +82,39 @@ public struct ActivityView: View {
         }
     }
 
+    // MARK: - Chips strip
+
+    private var chipsStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: RuulSpacing.xs) {
+                ForEach(ActivityChip.allCases) { chip in
+                    RuulChip(
+                        chip.label,
+                        style: chip == selectedChip
+                            ? .selectable(isSelected: true)
+                            : .selectable(isSelected: false)
+                    ) {
+                        withAnimation(.ruulSnappy) { selectedChip = chip }
+                    }
+                }
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.vertical, RuulSpacing.sm)
+        }
+        .background(Color.ruulBackground)
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text("\(coordinator.events.count) eventos")
+            Text("\(visibleEvents.count) eventos")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
+    }
+
+    private var visibleEvents: [SystemEvent] {
+        guard selectedChip != .all else { return coordinator.events }
+        return coordinator.events.filter { selectedChip.matches($0.eventType) }
     }
 
     private var activeFilterBar: some View {
@@ -132,7 +164,7 @@ public struct ActivityView: View {
             } else if coordinator.events.isEmpty && coordinator.isLoading {
                 RuulLoadingState()
                     .transition(.opacity)
-            } else if coordinator.events.isEmpty {
+            } else if visibleEvents.isEmpty {
                 emptyState
                     .transition(.opacity)
             } else {
@@ -142,12 +174,12 @@ public struct ActivityView: View {
         }
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.events.isEmpty)
+        .animation(.linear(duration: RuulDuration.fast), value: visibleEvents.isEmpty)
     }
 
     private var timelineList: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(coordinator.events.enumerated()), id: \.element.id) { index, ev in
+            ForEach(Array(visibleEvents.enumerated()), id: \.element.id) { index, ev in
                 let presentation = HistoryItemPresentation(event: ev)
                 Button { detailEvent = ev } label: {
                     RuulTimelineItem(
@@ -157,11 +189,14 @@ public struct ActivityView: View {
                         timestamp: presentation.timestamp,
                         tone: presentation.tone,
                         isFirst: index == 0,
-                        isLast: index == coordinator.events.count - 1
+                        isLast: index == visibleEvents.count - 1
                     )
                 }
                 .buttonStyle(.plain)
                 .onAppear {
+                    // Trigger pagination on the last visible row. When chip
+                    // filter is active we still compare against the full
+                    // coordinator list so we don't stall pagination mid-filter.
                     if ev.id == coordinator.events.last?.id, coordinator.hasMore {
                         Task { await coordinator.loadMore() }
                     }
@@ -189,6 +224,91 @@ public struct ActivityView: View {
         .padding(.top, RuulSpacing.s8)
     }
 
+}
+
+// MARK: - ActivityChip
+
+/// Categories for the horizontal filter strip at the top of ActivityView.
+///
+/// Category → SystemEventType mapping:
+///   Dinero (6):      fineOfficialized, fineVoided, finePaid, fineReminderSent, fundDeposit, fundThresholdReached
+///   Recursos (12):   eventCreated, eventClosed, rsvpDeadlinePassed, hoursBeforeEvent, rsvpSubmitted,
+///                    rsvpChangedSameDay, checkInRecorded, checkInMissed, eventDescriptionMissing,
+///                    slotAssigned, slotDeclined, slotExpired, slotSwapRequested, slotSwapApproved,
+///                    bookingCreated, bookingCancelled, bookingExpired, assetCreated, fundCreated
+///   Gobernanza (7):  appealCreated, appealResolved, voteOpened, voteCast, voteResolved,
+///                    ruleEnabledChanged, ruleAmountChanged, pendingChangeApplied
+///   Miembros (2):    positionChanged, memberJoined, memberLeft
+///   (unknown) falls through to .resources at runtime)
+private enum ActivityChip: String, CaseIterable, Identifiable {
+    case all
+    case money
+    case resources
+    case governance
+    case members
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all:        return "Todo"
+        case .money:      return "Dinero"
+        case .resources:  return "Recursos"
+        case .governance: return "Gobernanza"
+        case .members:    return "Miembros"
+        }
+    }
+
+    func matches(_ eventType: SystemEventType) -> Bool {
+        switch self {
+        case .all:
+            return true
+
+        case .money:
+            switch eventType {
+            case .fineOfficialized, .fineVoided, .finePaid, .fineReminderSent,
+                 .fundDeposit, .fundThresholdReached:
+                return true
+            default:
+                return false
+            }
+
+        case .resources:
+            switch eventType {
+            case .eventCreated, .eventClosed, .rsvpDeadlinePassed, .hoursBeforeEvent,
+                 .rsvpSubmitted, .rsvpChangedSameDay, .checkInRecorded, .checkInMissed,
+                 .eventDescriptionMissing,
+                 .slotAssigned, .slotDeclined, .slotExpired,
+                 .slotSwapRequested, .slotSwapApproved,
+                 .bookingCreated, .bookingCancelled, .bookingExpired,
+                 .assetCreated, .fundCreated:
+                return true
+            default:
+                // .unknown(_) and any future unrecognized event types surface
+                // here — least surprising default for user-facing timelines.
+                return true
+            }
+
+        case .governance:
+            switch eventType {
+            case .appealCreated, .appealResolved,
+                 .voteOpened, .voteCast, .voteResolved,
+                 .ruleEnabledChanged, .ruleAmountChanged,
+                 .pendingChangeApplied:
+                return true
+            default:
+                return false
+            }
+
+        case .members:
+            switch eventType {
+            case .memberJoined, .memberLeft, .positionChanged:
+                return true
+            default:
+                return false
+            }
+        }
+    }
 }
 
 /// Filter editor presented as a sheet over ActivityView.
