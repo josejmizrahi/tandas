@@ -130,6 +130,7 @@ sanction, badge, reward) con la misma forma derivada.
 | `public.group_members` | Atom-ish | `active`, `joined_at` mutables; ok porque transición es one-way |
 | `public.group_members_with_founder` | Projection | join con `groups.created_by` |
 | `public.invites` | Atom-ish | `used_at` mutable terminal |
+| `public.user_actions` | Atom-ish | `resolved_at` mutable terminal (null → ts). Guarded by `user_actions_resolution_guard` (mig 00166) — rejects DELETE and any business-column mutation; allows only the one-way resolution flip. Constitution Article 8 reclassification (2026-05-14): not a projection, despite the original §8 example list. |
 | `public.invite_preview` | Projection | view sobre invites |
 | `public.fines` | Instrument | mutable status, no atom |
 | `public.votes` | Instrument | mutable status, no atom |
@@ -167,6 +168,7 @@ DELETE → raise `check_violation`. Cobertura actual:
 | `public.check_in_actions` | `check_in_actions_atom_guard` | 00154 |
 | `public.system_events` | `system_events_atom_guard` (partial) | 00162 |
 | `public.vote_casts` | `vote_casts_atom_guard` | 00163 |
+| `public.user_actions` | `user_actions_resolution_guard` (partial, Atom-ish) | 00166 |
 
 `system_events` uses a **partial guard** (`system_events_processed_at_only_guard`)
 that allows the single legitimate mutation — `processed_at: null →

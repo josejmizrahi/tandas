@@ -27,7 +27,7 @@ Cualquier sesión (humana o IA) que toque arquitectura lee este documento antes 
 
 7. **Atoms son la única verdad histórica.** Append‑only, sin UPDATE/DELETE, protegidos por trigger `*_atom_guard`. Atoms canónicos: `system_events`, `ledger_entries`, `rsvp_actions`, `vote_casts`. Futuros: `bookings` (Phase 2), `document_versions` (Phase futuro), `task_events` (Phase futuro).
 
-8. **Projections son estado derivado.** Nunca persisten verdad independiente. Recomputables a partir de atoms + workflows + relaciones. Ejemplos: `attendance_view`, `balance_view`, `fines_view`, `vote_counts`, `event_resources_view`, `user_actions` inbox.
+8. **Projections son estado derivado.** Nunca persisten verdad independiente. Recomputables a partir de atoms + workflows + relaciones. Ejemplos: `attendance_view`, `balance_view`, `fines_view`, `vote_counts_view`, `events_view`. Nota: `user_actions` no es projection — es Atom-ish con transición one-way `resolved_at: null → ts` (mismo patrón que `group_members.active` / `invites.used_at`). Guard de mig 00166 enforza la terminal-transition; cualquier otra mutación raise check_violation.
 
 9. **Rules gobiernan acciones, no son objetos.** Estructura `WHEN trigger → IF conditions → THEN consequences`. Evaluadas por engine determinístico server‑only sobre `system_events`. Scope resolution jerárquico: `occurrence > resource > series > module > group`. Behavior rules ≠ governance policies (artículo separado).
 
