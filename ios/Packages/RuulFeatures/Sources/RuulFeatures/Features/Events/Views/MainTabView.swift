@@ -1472,7 +1472,7 @@ public struct MainTabView: View {
 /// en el flow desde `RuleDetailView` (donde no hay action que resolver).
 /// `proposedAmount` es nil cuando el push viene desde el detail view (el
 /// sheet siembra con el flat actual de la rule).
-public struct RuleEditRouteContext: Identifiable, Hashable {
+public struct RuleEditRouteContext: Identifiable, Hashable, Sendable {
     public let rule: GroupRule
     public let group: RuulCore.Group
     public let proposedAmount: Int?
@@ -1490,7 +1490,7 @@ public struct RuleEditRouteContext: Identifiable, Hashable {
 /// Identifiable wrapper for the `OpenVotesListView` push destination on
 /// the groupTab stack (post-Fase 4b). The id is the active group's id so
 /// SwiftUI rebuilds the destination on group switch.
-public struct OpenVotesRouteContext: Identifiable, Hashable {
+public struct OpenVotesRouteContext: Identifiable, Hashable, Sendable {
     public let id: UUID
 
     public init(id: UUID) {
@@ -1501,7 +1501,7 @@ public struct OpenVotesRouteContext: Identifiable, Hashable {
 /// Identifiable wrapper for the `VoteDetailView` push destination. Post-Fase
 /// 4b vive en groupTab stack (vote-row tap from `OpenVotesListView`) y en
 /// homeTab stack (`.votePending` desde sección Pendientes). Identity es vote id.
-public struct VoteDetailRouteContext: Identifiable, Hashable {
+public struct VoteDetailRouteContext: Identifiable, Hashable, Sendable {
     public let vote: Vote
 
     public init(vote: Vote) {
@@ -1523,7 +1523,7 @@ extension CheckInScannerCoordinator: Identifiable {
 }
 
 // Wrapper used by ruulSheet(item:) when routing the appellant vote screen.
-public struct AppealRouteContext: Identifiable, Hashable {
+public struct AppealRouteContext: Identifiable, Hashable, Sendable {
     public let appeal: Appeal
     public let fine: Fine
 
