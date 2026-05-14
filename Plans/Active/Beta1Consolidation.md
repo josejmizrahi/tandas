@@ -200,9 +200,9 @@ quedan huérfanos si el swap ya está.
 > (24 commits `fix(beta1-w*)`). Estado real verificado por commit log y
 > test pass:
 >
-> - **W1**: 8 / 9 done. Open: **D-1.1** (sendHostReminders sigue
->   stub solo loguea analytics). E-1.2 outbox janitor cerrado en
->   `83fccbd` (mig 00160).
+> - **W1**: ✅ **9 / 9 done.** E-1.2 outbox janitor cerrado en
+>   `83fccbd` (mig 00160). D-1.1 sendHostReminders wired en `9c1020b`
+>   (`EventNotificationDispatcher` actor + 30min rate-limit + 5 tests).
 > - **W2**: 12 / 12 done. ✅ todo cerrado.
 > - **W3**: 6 / 12 done. Open: B-3.4 consent step, A-3.3 empty/loading
 >   states unify, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher
@@ -227,7 +227,7 @@ ni recibir multas-fantasma porque arrancó el grupo.
 - [x] **A-1.1** "Ver todas (N)" linkout → ✅ `7632083` (esta sesión). `GroupOverviewSubTab` "Ver todas" salta al inbox completo via `onOpenInboxAction`. *Nota:* aterriza en el primer action por compat — pendiente revisión UX si se quiere lista in-place.
 - [x] **A-1.2** "Perfil → Historial" → ✅ `7632083` (esta sesión). `onOpenHistory` ahora salta a tab Inicio (Activity ya no es tab top-level — folded a Grupo→Más).
 - [x] **F-1.1** Invite share plaintext → ✅ `bcccd52`. ShareLink expone código de 6 chars + App Store URL en lugar del universal link sin AASA.
-- [ ] **D-1.1** ⏳ **OPEN.** `EventDetailCoordinator.sendHostReminders` (`EventDetailCoordinator.swift:271`) sigue siendo stub que solo emite analytics — no invoca `send-event-notification`. Necesita rate-limit cliente (1/30min/evento).
+- [x] **D-1.1** sendHostReminders wire → ✅ `9c1020b`. Nuevo `EventNotificationDispatcher` actor (Mock + Live) en `RuulCore/Services/Notifications/`; coordinator invoca `send-event-notification` kind=`host_reminder`. Rate-limit 30min/evento dentro del actor (compartido entre coordinators). Errores rate-limited surfacean como "Ya recordaste hace poco / Espera N minutos". 5 tests verdes en `SendHostRemindersTests`.
 
 Definition of done W1: cero rutas de cross-user data leak conocidas. Votos no se pierden bajo carga simulada. Onboarding no acepta nuevo usuario en pantalla "Bienvenido de vuelta".
 
@@ -443,3 +443,5 @@ Si el "soft signal" del founder dice no — el plan no terminó. Más W4 buffer.
 - **2026-05-13 evening** — Sprint de 7h cerró W1 (excepto E-1.2 outbox janitor + D-1.1 sendHostReminders), W2 al 100% (12/12), y la mitad de W3 (6/12). Track A AppShell consolidado vía `73c8f36` + `7632083` + `d2f8843`: `ResourceSummaryView` capability-driven reemplaza `EventStatusSummary` + `DetailSummaryView`, Resumen pasa a dashboard, Actividad sale de tabs top-level y vive en Grupo→Más. §6 actualizado con `✅ <SHA>` por ítem cerrado y `⏳ OPEN` por lo que queda.
 
 - **2026-05-13 late** — E-1.2 cerrado (`83fccbd` + mig 00160). `reset_stale_outbox_claims()` SECURITY DEFINER + pg_cron `reset-stale-outbox-every-5-minutes` ejecutándose en prod. Audit E top-3 reliability blockers ahora 3/3 done. **Único pendiente W1: D-1.1** (`EventDetailCoordinator.sendHostReminders` sigue stub que solo emite analytics — needs wire al `send-event-notification` con kind=`host_reminder` + rate-limit cliente 1/30min/evento).
+
+- **2026-05-13 closeout** — **W1 cerrado al 100%.** D-1.1 wired en `9c1020b`: `EventNotificationDispatcher` actor protocol (Mock + Live) en RuulCore, `EventDetailCoordinator` invoca el edge fn vía dispatcher inyectado, rate-limit 30min/evento dentro del actor (compartido entre coordinators), errores rate-limited surfacean como mensaje friendly via el envelope `error`. 5 tests verdes en `SendHostRemindersTests` (host invoca / non-host short-circuits / nil dispatcher fallback / rate-limited surface / edge failure). Próximo objetivo: W3 leftovers (B-3.4 consent step, A-3.3 empty/loading states, A-3.4 "+" tab silent fail, A-3.5 RuulGroupSwitcher API, E-3.1 realtime, E-3.2 token cleanup en remove_member) o W4 (telemetry / hide list / QA / demo).
