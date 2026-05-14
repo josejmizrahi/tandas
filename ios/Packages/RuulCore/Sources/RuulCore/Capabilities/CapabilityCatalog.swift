@@ -636,19 +636,20 @@ public struct MoneyCapability: CapabilityBlock {
     }
     public var dependencies: [String] { ["ledger"] }
     public var conflicts: [String] { [] }
-    /// Tier 6 (mig 00136 + 00139 + 00140 + 00141) shipped:
+    /// Tier 6 closed end-to-end (mig 00136 → 00143):
     ///   - balance projection views aggregate ledger_entries at read time
     ///   - MoneySectionView renders top 3 non-zero balances inline
     ///   - `fund` resource_type creatable via create_fund + wizard branch
     ///   - fundDeposit emits on every contribution to a fund
-    ///   - fundThresholdReached emits once when cumulative deposits in
-    ///     the fund's currency cross target_amount_cents
-    /// `.incomplete` remains because the wizard form for who-can-add
-    /// / default-split / settlement is still empty, and the
-    /// settlement workflow ("salda ahora" one-tap) isn't wired.
-    public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 6 shipped balance projection + fund stack + deposit/threshold emitters. Remaining: who-can-add / split / settlement form + settlement workflow.")
-    }
+    ///   - fundThresholdReached emits once when cumulative deposits cross
+    ///     target_amount_cents in the fund's currency
+    ///   - record_settlement RPC + SettlementSheet UI: any member can
+    ///     register a bilateral payment; balance views refresh on read
+    /// Out of Tier 6 Beta scope (deliberately deferred):
+    ///   - wizard form for who-can-add / default-split / reminders
+    ///     (Beta 1 Consolidation says "no new wizard features")
+    ///   - automated split (one-tap "divide la cena entre todos")
+    public var status: CapabilityStatus { .stable }
 }
 
 // ledger — append-only money atoms
@@ -669,17 +670,14 @@ public struct LedgerCapability: CapabilityBlock {
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
-    /// Tier 6 slice 18 (mig 00136) shipped: `member_balances_per_group`
-    /// + `member_balances_per_resource` SQL views aggregate
-    /// ledger_entries at read time. iOS `BalanceRepository` reads them;
-    /// MoneySectionView surfaces top-3 non-zero balances inline.
-    /// `.incomplete` stays because the ledger_view projection
-    /// descriptor (`scope: .group`) isn't yet rendered on its own
-    /// surface — only inline inside MoneySection. A dedicated
-    /// group-wide ledger surface is a follow-up slice.
-    public var status: CapabilityStatus {
-        .incomplete(reason: "Tier 6 slice 18 shipped balance projection (views + iOS repo + inline render). Remaining: dedicated group-wide ledger surface.")
-    }
+    /// Tier 6 closed (mig 00136 → 00143): ledger atoms feed
+    /// balance projection views, MoneySectionView renders inline
+    /// balances, record_settlement + SettlementSheet wire the bilateral
+    /// payment loop. A dedicated group-wide ledger surface (separate
+    /// from MoneySection's resource-scoped roll-up) is intentionally
+    /// out-of-scope for Beta — per-resource visibility covers the
+    /// canonical use cases without adding a tab/surface duplication.
+    public var status: CapabilityStatus { .stable }
 }
 
 // voting — collective decision

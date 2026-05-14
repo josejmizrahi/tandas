@@ -17,6 +17,7 @@ public struct MoneySectionView: View {
 
     @State private var topBalances: [MemberBalance] = []
     @State private var hasLoaded: Bool = false
+    @State private var settlementSheetPresented: Bool = false
 
     public static let definition = CapabilitySection(
         id: "money",
@@ -43,6 +44,34 @@ public struct MoneySectionView: View {
             if !topBalances.isEmpty {
                 balancesCard
             }
+            // Tier 6 final: "Registrar pago" surfaces when the current
+            // user owes someone (any negative-net row that's theirs).
+            // Tapping opens SettlementSheet → record_settlement RPC.
+            if currentUserOwes {
+                Button {
+                    settlementSheetPresented = true
+                } label: {
+                    HStack(spacing: RuulSpacing.sm) {
+                        iconBadge(systemName: "checkmark.circle")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Registrar pago")
+                                .ruulTextStyle(RuulTypography.headline)
+                                .foregroundStyle(Color.ruulTextPrimary)
+                            Text("Salda parte o todo de lo que debes")
+                                .ruulTextStyle(RuulTypography.caption)
+                                .foregroundStyle(Color.ruulTextSecondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Color.ruulTextTertiary)
+                    }
+                    .padding(RuulSpacing.md)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .cardBackground()
+            }
             Button(action: context.onPresentLedger) {
                 HStack(spacing: RuulSpacing.sm) {
                     iconBadge(systemName: "arrow.left.arrow.right")
@@ -67,6 +96,50 @@ public struct MoneySectionView: View {
             .cardBackground()
         }
         .task { await loadBalances() }
+        .sheet(isPresented: $settlementSheetPresented) {
+            SettlementSheet(
+                groupId: context.group.id,
+                resourceId: context.resource.id,
+                currency: settlementCurrency,
+                members: Array(context.memberDirectory.values),
+                suggestedToMemberId: largestPositiveMemberId,
+                onDidSettle: {
+                    // Force re-fetch so the inline rows reflect the
+                    // settlement immediately. Without the reset
+                    // .task wouldn't re-run.
+                    hasLoaded = false
+                    topBalances = []
+                    Task { await loadBalances() }
+                }
+            )
+        }
+    }
+
+    /// True when one of the inline balance rows belongs to the current
+    /// user AND has net < 0. Used to surface the "Registrar pago"
+    /// button only when there's something to settle.
+    private var currentUserOwes: Bool {
+        topBalances.contains { balance in
+            balance.netCents < 0 && isCurrentUserMember(balance.memberId)
+        }
+    }
+
+    /// Member with the largest positive net (the canonical "to" target
+    /// of a settlement). nil when there's no positive row in scope.
+    private var largestPositiveMemberId: UUID? {
+        topBalances
+            .filter { $0.netCents > 0 }
+            .sorted { $0.netCents > $1.netCents }
+            .first?.memberId
+    }
+
+    /// Currency to settle in. We prefer the currency of the row the
+    /// current user owes (multi-currency groups can have different
+    /// debts in different currencies). Fallback to MXN.
+    private var settlementCurrency: String {
+        topBalances.first { balance in
+            balance.netCents < 0 && isCurrentUserMember(balance.memberId)
+        }?.currency ?? "MXN"
     }
 
     /// Top 3 non-zero balances sorted by `|netCents|` descending. The

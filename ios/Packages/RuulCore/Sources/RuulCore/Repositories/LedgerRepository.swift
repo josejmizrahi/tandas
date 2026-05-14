@@ -36,6 +36,21 @@ public protocol LedgerRepository: Actor {
         currency: String,
         metadata: JSONConfig
     ) async throws -> LedgerEntry
+
+    /// Tier 6 final: records a one-tap settlement via the dedicated
+    /// `record_settlement` RPC (mig 00143). Bilateral — both
+    /// fromMemberId + toMemberId required, amount must be positive,
+    /// both members must belong to the group. The balance projection
+    /// views update automatically.
+    func recordSettlement(
+        groupId: UUID,
+        fromMemberId: UUID,
+        toMemberId: UUID,
+        amountCents: Int64,
+        currency: String,
+        resourceId: UUID?,
+        note: String?
+    ) async throws -> LedgerEntry
 }
 
 // MARK: - Mock
@@ -77,6 +92,33 @@ public actor MockLedgerRepository: LedgerRepository {
             groupId: groupId,
             resourceId: resourceId,
             type: type,
+            amountCents: amountCents,
+            currency: currency,
+            fromMemberId: fromMemberId,
+            toMemberId: toMemberId,
+            metadata: metadata
+        )
+        entries.append(entry)
+        return entry
+    }
+
+    public func recordSettlement(
+        groupId: UUID,
+        fromMemberId: UUID,
+        toMemberId: UUID,
+        amountCents: Int64,
+        currency: String = "MXN",
+        resourceId: UUID? = nil,
+        note: String? = nil
+    ) async throws -> LedgerEntry {
+        var metadata: JSONConfig = .object([:])
+        if let note, !note.isEmpty {
+            metadata = .object(["note": .string(note)])
+        }
+        let entry = LedgerEntry(
+            groupId: groupId,
+            resourceId: resourceId,
+            type: "settlement",
             amountCents: amountCents,
             currency: currency,
             fromMemberId: fromMemberId,
@@ -203,6 +245,42 @@ public actor LiveLedgerRepository: LedgerRepository {
                     p_to_member_id: toMemberId?.uuidString.lowercased(),
                     p_currency: currency,
                     p_metadata: metadata
+                ))
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func recordSettlement(
+        groupId: UUID,
+        fromMemberId: UUID,
+        toMemberId: UUID,
+        amountCents: Int64,
+        currency: String = "MXN",
+        resourceId: UUID? = nil,
+        note: String? = nil
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_from_member_id: String
+            let p_to_member_id: String
+            let p_amount_cents: Int64
+            let p_currency: String
+            let p_resource_id: String?
+            let p_note: String?
+        }
+        do {
+            return try await client
+                .rpc("record_settlement", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_from_member_id: fromMemberId.uuidString.lowercased(),
+                    p_to_member_id: toMemberId.uuidString.lowercased(),
+                    p_amount_cents: amountCents,
+                    p_currency: currency,
+                    p_resource_id: resourceId?.uuidString.lowercased(),
+                    p_note: note?.isEmpty == true ? nil : note
                 ))
                 .execute()
                 .value
