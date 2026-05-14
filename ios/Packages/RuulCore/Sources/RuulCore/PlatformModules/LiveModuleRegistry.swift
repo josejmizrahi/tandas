@@ -34,7 +34,6 @@ private struct ModuleRow: Decodable, Sendable {
     let name: String
     let description: String?
     let provided_rules: [String]
-    let provided_resource_types: [String]
     let provided_system_event_types: [String]
     let provided_tabs: [String]
     /// New in mig 00078. Optional decode for forward-compat with deployments
@@ -49,7 +48,6 @@ private struct ModuleRow: Decodable, Sendable {
             name: name,
             description: description ?? "",
             providedRules: provided_rules,
-            providedResourceTypes: provided_resource_types.compactMap(decodeJSONString),
             providedSystemEventTypes: provided_system_event_types.compactMap(decodeJSONString),
             providedTabs: provided_tabs,
             providedCapabilityBlocks: provided_capability_blocks ?? [],

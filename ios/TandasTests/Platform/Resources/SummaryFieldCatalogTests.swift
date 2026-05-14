@@ -60,11 +60,12 @@ final class SummaryFieldCatalogTests: XCTestCase {
     // MARK: - Catalog shape
 
     func test_catalogReturnsEmptyForUnconfiguredType() {
-        // Phase 2 types (booking, assignment, rotation, etc.) have no V1
-        // catalog entries yet — view collapses to empty rather than crashing.
-        XCTAssertTrue(SummaryFieldCatalog.v1.fields(for: .booking).isEmpty)
-        XCTAssertTrue(SummaryFieldCatalog.v1.fields(for: .contribution).isEmpty)
-        XCTAssertTrue(SummaryFieldCatalog.v1.fields(for: .rotation).isEmpty)
+        // Canonical types without a V1 catalog entry collapse to empty
+        // rather than crashing. Post-Constitution §1 art. 2 the enum is
+        // {event, fund, asset, space, slot, right}; V1 has fields for
+        // event/asset/fund/slot, so space + right return empty.
+        XCTAssertTrue(SummaryFieldCatalog.v1.fields(for: .space).isEmpty)
+        XCTAssertTrue(SummaryFieldCatalog.v1.fields(for: .right).isEmpty)
     }
 
     func test_eventFields_orderedHostThenLocationThenCapacity() {

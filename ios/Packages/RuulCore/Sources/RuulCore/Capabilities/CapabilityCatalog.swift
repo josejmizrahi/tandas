@@ -222,7 +222,7 @@ public struct ScheduleCapability: CapabilityBlock {
     public var id: String { "schedule" }
     public var displayName: String { "Horario" }
     public var summary: String { "Fecha, hora y duración." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
     public var requiredFields: [BuilderField] {
         [BuilderField(key: "startsAt", label: "Empieza", kind: .dateTime)]
     }
@@ -248,7 +248,7 @@ public struct RecurrenceCapability: CapabilityBlock {
     public var id: String { "recurrence" }
     public var displayName: String { "Repetir" }
     public var summary: String { "Genera ocurrencias automáticamente según un patrón." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .contribution] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     /// Founder framing 2026-05-12 (Tier 1.1): full pattern surface so
     /// the cron generator (auto-generate-events post-Tier-1.5) has
     /// every field it needs to compute occurrences without legacy
@@ -366,7 +366,7 @@ public struct RotationCapability: CapabilityBlock {
     /// `resource_series` for Tier 5 Beta. Only events (recurring) are
     /// in scope today — slot/position remain declarative future scope.
     /// The wizard reaches this capability when configuring a series.
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .position] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
     public var requiredFields: [BuilderField] {
         [
             BuilderField(
@@ -475,7 +475,7 @@ public struct AssignmentCapability: CapabilityBlock {
     public var id: String { "assignment" }
     public var displayName: String { "Asignación" }
     public var summary: String { "Asigna una tarea a un miembro específico." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .position] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
     public var requiredFields: [BuilderField] {
         [
             BuilderField(key: "assignee", label: "Asignado a", kind: .memberPicker),
@@ -564,7 +564,7 @@ public struct DeadlineCapability: CapabilityBlock {
     public var id: String { "deadline" }
     public var displayName: String { "Fecha límite" }
     public var summary: String { "Define una hora a la que algo debe estar resuelto." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
     public var requiredFields: [BuilderField] {
         [BuilderField(key: "deadlineAt", label: "Cuándo", kind: .dateTime)]
     }
@@ -589,7 +589,7 @@ public struct ApprovalCapability: CapabilityBlock {
     public var id: String { "approval" }
     public var displayName: String { "Aprobación" }
     public var summary: String { "Requiere aprobación antes de tomar efecto." }
-    public var enabledResourceTypes: [ResourceType] { [.booking, .guestPass] }
+    public var enabledResourceTypes: [ResourceType] { [.slot, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
         [
@@ -620,7 +620,7 @@ public struct MoneyCapability: CapabilityBlock {
     public var id: String { "money" }
     public var displayName: String { "Dinero" }
     public var summary: String { "Gastos, aportaciones y multas asociadas a este recurso." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .booking, .fund] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -658,7 +658,7 @@ public struct LedgerCapability: CapabilityBlock {
     public var id: String { "ledger" }
     public var displayName: String { "Ledger" }
     public var summary: String { "Asientos contables atómicos." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .booking, .fund] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -686,7 +686,11 @@ public struct VotingCapability: CapabilityBlock {
     public var id: String { "voting" }
     public var displayName: String { "Votación" }
     public var summary: String { "Decisión colectiva con quórum y umbral." }
-    public var enabledResourceTypes: [ResourceType] { [.proposal, .booking] }
+    /// Voting is a governance workflow that can subject ANY resource:
+    /// fines (appeals on events), rule changes (any scope), member
+    /// removals, fund threshold adjustments, asset acquisitions, etc.
+    /// Universal — enabled for the full canonical 6.
+    public var enabledResourceTypes: [ResourceType] { [.event, .fund, .asset, .space, .slot, .right] }
     /// Tier 3 (2026-05-13) promoted quorum/threshold/anonymous to required
     /// so step 3 of the wizard renders them. Pre-Tier-3 they were optional
     /// and never surfaced — the wizard collected nothing and start_vote
@@ -803,7 +807,7 @@ public struct SwapCapability: CapabilityBlock {
     public var id: String { "swap" }
     public var displayName: String { "Cambios" }
     public var summary: String { "Permite intercambiar slots o turnos entre miembros." }
-    public var enabledResourceTypes: [ResourceType] { [.slot, .booking] }
+    public var enabledResourceTypes: [ResourceType] { [.slot] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
         [
@@ -836,7 +840,7 @@ public struct CapacityCapability: CapabilityBlock {
     public var id: String { "capacity" }
     public var displayName: String { "Cupo" }
     public var summary: String { "Límite de cuántos miembros pueden ocupar el recurso." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .asset, .guestPass] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .asset, .right] }
     public var requiredFields: [BuilderField] {
         [BuilderField(key: "max", label: "Cupo máximo", kind: .integer)]
     }
@@ -858,7 +862,7 @@ public struct GuestAccessCapability: CapabilityBlock {
     public var id: String { "guest_access" }
     public var displayName: String { "Invitados" }
     public var summary: String { "Permite que los miembros traigan acompañantes externos al grupo." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .asset] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .asset] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
         [
@@ -922,7 +926,7 @@ public struct ExpirationCapability: CapabilityBlock {
     public var id: String { "expiration" }
     public var displayName: String { "Expira" }
     public var summary: String { "El recurso se libera o cierra automáticamente al pasar la fecha." }
-    public var enabledResourceTypes: [ResourceType] { [.slot, .booking, .guestPass, .proposal] }
+    public var enabledResourceTypes: [ResourceType] { [.slot, .right] }
     public var requiredFields: [BuilderField] {
         [BuilderField(key: "expiresAt", label: "Expira", kind: .dateTime)]
     }
@@ -944,7 +948,7 @@ public struct CancellationCapability: CapabilityBlock {
     public var id: String { "cancellation" }
     public var displayName: String { "Cancelación" }
     public var summary: String { "Define quién puede cancelar y con cuánta anticipación." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
         [
@@ -975,7 +979,7 @@ public struct ReminderCapability: CapabilityBlock {
     public var id: String { "reminder" }
     public var displayName: String { "Recordatorios" }
     public var summary: String { "Avisa a los miembros antes de la fecha límite o del evento." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .contribution, .assignment] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "hoursBefore", label: "Horas antes", kind: .integer)]
@@ -1006,8 +1010,7 @@ public struct StatusCapability: CapabilityBlock {
     /// enumerate the cases explicitly — `unknown` is omitted because it
     /// is the forward-compat sentinel, not a wireable type.
     public var enabledResourceTypes: [ResourceType] {
-        [.event, .slot, .booking, .fund, .position, .assignment,
-         .rotation, .asset, .guestPass, .contribution, .proposal]
+        [.event, .fund, .asset, .space, .slot, .right]
     }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
@@ -1029,8 +1032,7 @@ public struct DescriptionCapability: CapabilityBlock {
     public var displayName: String { "Descripción" }
     public var summary: String { "Texto libre que describe el recurso." }
     public var enabledResourceTypes: [ResourceType] {
-        [.event, .slot, .booking, .fund, .position, .assignment,
-         .rotation, .asset, .guestPass, .contribution, .proposal]
+        [.event, .fund, .asset, .space, .slot, .right]
     }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
@@ -1070,7 +1072,7 @@ public struct LocationCapability: CapabilityBlock {
     public var id: String { "location" }
     public var displayName: String { "Lugar" }
     public var summary: String { "Dirección o sitio físico donde sucede el recurso." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .booking, .asset] }
+    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .asset] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] {
         [
@@ -1095,8 +1097,7 @@ public struct HistoryCapability: CapabilityBlock {
     public var displayName: String { "Historial" }
     public var summary: String { "Bitácora de cambios del recurso, derivada de system_events." }
     public var enabledResourceTypes: [ResourceType] {
-        [.event, .slot, .booking, .fund, .position, .assignment,
-         .rotation, .asset, .guestPass, .contribution, .proposal]
+        [.event, .fund, .asset, .space, .slot, .right]
     }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }

@@ -169,18 +169,11 @@ public struct AssetDetailView: View {
             slots = allSlots.filter { row in
                 row.metadata["asset_id"]?.stringValue == asset.id.uuidString.lowercased()
             }
-            // Bookings: same filter via slot_id ∈ slots.id
-            let allBookings = try await appState.resourceRepo.list(
-                in: asset.groupId,
-                types: [.booking],
-                statuses: ["active"],
-                limit: 200
-            )
-            let slotIds = Set(slots.map { $0.id.uuidString.lowercased() })
-            bookings = allBookings.filter { row in
-                guard let sid = row.metadata["slot_id"]?.stringValue else { return false }
-                return slotIds.contains(sid)
-            }
+            // Bookings are deferred to Phase 2 as a separate atom table per
+            // Constitution §14 cleanup item 6. Until then this section
+            // collapses to empty — the UI gracefully shows "no bookings".
+            bookings = []
+            _ = slots // suppress unused warning while bookings query is gone
             loadError = nil
         } catch {
             loadError = error.localizedDescription

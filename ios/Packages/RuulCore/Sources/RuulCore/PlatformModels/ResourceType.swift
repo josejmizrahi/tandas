@@ -1,38 +1,29 @@
 import Foundation
 
 // @codegen:enum
+//
+// Canonical 6 resource types per `Plans/Active/Constitution.md` §1 art. 2.
+// Cualquier subtype nuevo pasa el filtro ontológico (§13) antes de añadirse.
+// El backend (Postgres) enforza estos 6 valores vía CHECK constraints en
+// `resources.resource_type`, `resource_series.resource_type`,
+// `group_policies.target_resource_type`, `rule_shapes.valid_resource_types`
+// (migración 00147).
 public enum ResourceType: Codable, Sendable, Hashable {
-    /// V1 — the only implemented type. Lives in `events` table; queried via
-    /// `events_view` which projects to a Resource shape.
+    /// Ocurrencia temporal coordinada (cena, junta, partido, ceremonia).
     case event
-
-    // V2+ types — declared here so the platform model is V4-ready. Edge
-    // function rule engine ignores types it doesn't know about; Swift code
-    // throws a clear error if it sees one before the matching template
-    // ships.
-
-    /// Boleto, cupo, lugar — Fase 2 (shared_resource template).
-    /// Una ventana de uso de un Asset.
-    case slot
-    /// Reserva de un Slot por un Member — Fase 2.
-    case booking
-    /// Caja, fondo común — Fase 3.
+    /// Pool monetario del grupo (cochinito, tanda, fondo común, presupuesto).
     case fund
-    /// Lugar en rotación.
-    case position
-    /// "A quién le toca" — Fase 2 (rotating_position module).
-    case assignment
-    /// Orden rotativo sobre Members o Resources — Fase 2.
-    case rotation
-    /// Palco, cabaña, casa — Fase 2 (recurso físico/digital compartido).
+    /// Objeto físico o digital compartido (palco, vehículo, doc, IP, contenido).
     case asset
-    /// Invitado temporal con permisos limitados — Fase 2 (guest_pass module).
-    case guestPass
-    /// Aporte a tanda — Fase 3.
-    case contribution
-    /// Cambio sugerido a cualquier Resource/Rule/Policy — Fase 5.
-    case proposal
+    /// Lugar físico o virtual reservable (salón, cancha, sala, espacio común).
+    case space
+    /// Ventana de capacidad reservable (turno, slot horario, asiento).
+    case slot
+    /// Derecho/acceso compartido (membresía externa, equity, custodia, uso).
+    case right
 
+    /// Defensive case for forward/backward codec compatibility. Server CHECK
+    /// constraints prevent this from ever arriving from canonical sources.
     case unknown(String)
 }
 
@@ -46,36 +37,26 @@ extension ResourceType {
     public var humanLabel: String {
         switch self {
         case .event:        return "Evento"
-        case .slot:         return "Turno"
-        case .booking:      return "Reserva"
         case .fund:         return "Fondo"
-        case .position:     return "Posición"
-        case .assignment:   return "Encargo"
-        case .rotation:     return "Rotación"
         case .asset:        return "Activo"
-        case .guestPass:    return "Invitado"
-        case .contribution: return "Cuota"
-        case .proposal:     return "Propuesta"
+        case .space:        return "Espacio"
+        case .slot:         return "Turno"
+        case .right:        return "Acceso"
         case .unknown(let raw): return raw
         }
     }
 
     /// Plural form of `humanLabel`. Used for section headers ("Tus turnos",
-    /// "Tus cuotas") and counters. Keep parity with `humanLabel` when adding
+    /// "Tus fondos") and counters. Keep parity with `humanLabel` when adding
     /// new cases.
     public var humanLabelPlural: String {
         switch self {
         case .event:        return "Eventos"
-        case .slot:         return "Turnos"
-        case .booking:      return "Reservas"
         case .fund:         return "Fondos"
-        case .position:     return "Posiciones"
-        case .assignment:   return "Encargos"
-        case .rotation:     return "Rotaciones"
         case .asset:        return "Activos"
-        case .guestPass:    return "Invitados"
-        case .contribution: return "Cuotas"
-        case .proposal:     return "Propuestas"
+        case .space:        return "Espacios"
+        case .slot:         return "Turnos"
+        case .right:        return "Accesos"
         case .unknown(let raw): return raw
         }
     }

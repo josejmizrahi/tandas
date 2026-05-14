@@ -3,16 +3,11 @@
 
 export const resourceTypeValues = [
   "event",
-  "slot",
-  "booking",
   "fund",
-  "position",
-  "assignment",
-  "rotation",
   "asset",
-  "guestPass",
-  "contribution",
-  "proposal",
+  "space",
+  "slot",
+  "right",
 ] as const;
 
 export type ResourceType = (typeof resourceTypeValues)[number];

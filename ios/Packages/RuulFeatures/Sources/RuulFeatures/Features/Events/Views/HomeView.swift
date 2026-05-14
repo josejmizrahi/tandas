@@ -139,7 +139,7 @@ public struct HomeView: View {
     @MainActor
     private func loadNonEventResources() async {
         guard let groupId = app.activeGroup?.id else { return }
-        let types: [ResourceType] = [.asset, .slot, .fund, .booking, .contribution]
+        let types: [ResourceType] = [.asset, .slot, .fund, .space, .right]
         do {
             let rows = try await app.resourceRepo.list(
                 in: groupId,
@@ -475,11 +475,11 @@ public struct HomeView: View {
 
     private func iconFor(_ type: ResourceType) -> String {
         switch type {
-        case .asset:        return "key.fill"
-        case .slot:         return "ticket"
         case .fund:         return "banknote"
-        case .booking:      return "calendar.badge.checkmark"
-        case .contribution: return "arrow.up.bin"
+        case .asset:        return "key.fill"
+        case .space:        return "mappin.and.ellipse"
+        case .slot:         return "ticket"
+        case .right:        return "person.badge.key.fill"
         default:            return "square.dashed"
         }
     }

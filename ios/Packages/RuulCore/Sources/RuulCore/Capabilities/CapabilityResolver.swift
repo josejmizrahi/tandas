@@ -61,10 +61,12 @@ public struct CapabilityResolver: Sendable {
 
     // MARK: - Resource types
 
-    /// Resource types the group's active modules + template support.
-    /// Combines `template.config.effectiveResourceTypes` (declared support
-    /// with `[.event]` default for templates that predate the resourceTypes
-    /// field) with `module.providedResourceTypes` for each active module.
+    /// Resource types the group's template supports.
+    /// Reads `template.config.effectiveResourceTypes` only. Constitution §1
+    /// art. 6: modules NO declaran resource_types — los types son del
+    /// platform. Si en el futuro un grupo necesita habilitar/deshabilitar
+    /// types específicos, eso vive en template.config o en group.settings,
+    /// no en module manifests.
     /// Falls back to `[.event]` when no template is loaded yet.
     public func availableResourceTypes(for group: Group, template: Template?) -> Set<ResourceType> {
         var out: Set<ResourceType> = []
@@ -73,14 +75,8 @@ public struct CapabilityResolver: Sendable {
             out.formUnion(template.config.effectiveResourceTypes)
         }
 
-        for moduleId in group.effectiveActiveModules {
-            if let module = modules.module(id: moduleId) {
-                out.formUnion(module.providedResourceTypes)
-            }
-        }
-
         // Defensive: V1 groups must always at least have `.event` available
-        // since `events` is the only Resource type with full UI today.
+        // since events is the only Resource type with full UI today.
         if out.isEmpty {
             out.insert(.event)
         }

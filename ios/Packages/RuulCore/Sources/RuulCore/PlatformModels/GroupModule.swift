@@ -17,11 +17,12 @@ public struct GroupModule: Identifiable, Sendable, Codable, Hashable {
     public let name: String
     public let description: String
     public let providedRules: [String]                  // rule template names
-    public let providedResourceTypes: [ResourceType]
     public let providedSystemEventTypes: [SystemEventType]
     public let providedTabs: [String]                   // tab ids if module adds chrome
     /// Capability block ids this module provides (mig 00078). Drives the
     /// expanded `CapabilityResolver` and the ResourceWizard surface.
+    /// Constitution §1 art. 6: modules provide capabilities + rules + system
+    /// events. NO declaran resource_types — los types son del platform.
     public let providedCapabilityBlocks: [String]
     public let dependencies: [String]                   // other module ids needed
     public let conflictsWith: [String]                  // mutually exclusive modules
@@ -31,7 +32,6 @@ public struct GroupModule: Identifiable, Sendable, Codable, Hashable {
         name: String,
         description: String,
         providedRules: [String] = [],
-        providedResourceTypes: [ResourceType] = [],
         providedSystemEventTypes: [SystemEventType] = [],
         providedTabs: [String] = [],
         providedCapabilityBlocks: [String] = [],
@@ -42,7 +42,6 @@ public struct GroupModule: Identifiable, Sendable, Codable, Hashable {
         self.name = name
         self.description = description
         self.providedRules = providedRules
-        self.providedResourceTypes = providedResourceTypes
         self.providedSystemEventTypes = providedSystemEventTypes
         self.providedTabs = providedTabs
         self.providedCapabilityBlocks = providedCapabilityBlocks

@@ -61,8 +61,7 @@ struct ResourceCard: View {
                 // conformer. Si esto se rompe es bug, no UI fallback.
                 UnknownResourceCard(resource: resource)
             }
-        case .slot, .booking, .fund, .position, .assignment, .rotation,
-             .asset, .guestPass, .contribution, .proposal, .unknown:
+        case .fund, .asset, .space, .slot, .right, .unknown:
             UnknownResourceCard(resource: resource)
         }
     }

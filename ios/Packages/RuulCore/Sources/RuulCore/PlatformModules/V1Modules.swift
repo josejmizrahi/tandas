@@ -29,7 +29,6 @@ public extension GroupModule {
             DinnerRecurringTemplate.RuleSlug.noShow,
             DinnerRecurringTemplate.RuleSlug.hostNoMenu,
         ],
-        providedResourceTypes: [],
         providedSystemEventTypes: [
             .fineOfficialized,
             .finePaid,
@@ -49,7 +48,6 @@ public extension GroupModule {
         name: "Host rotativo",
         description: "El rol de host rota entre miembros automáticamente al cerrar cada evento.",
         providedRules: [],
-        providedResourceTypes: [],
         providedSystemEventTypes: [
             .positionChanged,
         ],
@@ -66,7 +64,6 @@ public extension GroupModule {
         name: "RSVP",
         description: "Respuestas de asistencia: voy, tal vez, no voy. Auto-creadas al crearse un evento.",
         providedRules: [],
-        providedResourceTypes: [],
         providedSystemEventTypes: [
             .rsvpSubmitted,
             .rsvpChangedSameDay,
@@ -85,7 +82,6 @@ public extension GroupModule {
         name: "Check-in",
         description: "Registro de llegada al evento: self check-in, manual o QR. Habilita reglas de tardanza.",
         providedRules: [],
-        providedResourceTypes: [],
         providedSystemEventTypes: [
             .checkInRecorded,
             .checkInMissed,
@@ -103,7 +99,6 @@ public extension GroupModule {
         name: "Apelación con votación",
         description: "Si un miembro apela una multa, el grupo vota anónimamente si cancelarla.",
         providedRules: [],
-        providedResourceTypes: [],
         providedSystemEventTypes: [
             .voteOpened,
             .voteCast,

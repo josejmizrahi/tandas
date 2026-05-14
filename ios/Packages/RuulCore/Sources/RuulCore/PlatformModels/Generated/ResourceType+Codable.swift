@@ -6,30 +6,20 @@ import Foundation
 extension ResourceType {
     public static let knownCases: [ResourceType] = [
         .event,
-        .slot,
-        .booking,
         .fund,
-        .position,
-        .assignment,
-        .rotation,
         .asset,
-        .guestPass,
-        .contribution,
-        .proposal,
+        .space,
+        .slot,
+        .right,
     ]
 
     public static let knownRawValues: Set<String> = [
         "event",
-        "slot",
-        "booking",
         "fund",
-        "position",
-        "assignment",
-        "rotation",
         "asset",
-        "guestPass",
-        "contribution",
-        "proposal",
+        "space",
+        "slot",
+        "right",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -45,16 +35,11 @@ extension ResourceType {
     public var rawString: String {
         switch self {
         case .event: return "event"
-        case .slot: return "slot"
-        case .booking: return "booking"
         case .fund: return "fund"
-        case .position: return "position"
-        case .assignment: return "assignment"
-        case .rotation: return "rotation"
         case .asset: return "asset"
-        case .guestPass: return "guestPass"
-        case .contribution: return "contribution"
-        case .proposal: return "proposal"
+        case .space: return "space"
+        case .slot: return "slot"
+        case .right: return "right"
         case .unknown(let s): return s
         }
     }
@@ -62,16 +47,11 @@ extension ResourceType {
     public static func from(raw: String) -> ResourceType {
         switch raw {
         case "event": return .event
-        case "slot": return .slot
-        case "booking": return .booking
         case "fund": return .fund
-        case "position": return .position
-        case "assignment": return .assignment
-        case "rotation": return .rotation
         case "asset": return .asset
-        case "guestPass": return .guestPass
-        case "contribution": return .contribution
-        case "proposal": return .proposal
+        case "space": return .space
+        case "slot": return .slot
+        case "right": return .right
         default: return .unknown(raw)
         }
     }

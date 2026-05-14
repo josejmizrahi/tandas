@@ -189,16 +189,11 @@ public struct ResourceDetailSheet: View {
     private var resourceTypeString: String {
         switch resource.resourceType {
         case .event:           return "event"
-        case .slot:            return "slot"
-        case .booking:         return "booking"
         case .fund:            return "fund"
-        case .position:        return "position"
-        case .assignment:      return "assignment"
-        case .rotation:        return "rotation"
         case .asset:           return "asset"
-        case .guestPass:       return "guestPass"
-        case .contribution:    return "contribution"
-        case .proposal:        return "proposal"
+        case .space:           return "space"
+        case .slot:            return "slot"
+        case .right:           return "right"
         case .unknown(let s):  return s
         }
     }

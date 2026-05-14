@@ -31,7 +31,7 @@ public final class ResourceBuilderRegistry {
     /// The wizard renders builders' cards enabled and the rest as
     /// "próximamente" placeholders.
     public static let surfaceTypes: [ResourceType] = [
-        .event, .asset, .slot, .fund, .contribution, .proposal
+        .event, .asset, .slot, .fund
     ]
 
     public func isImplemented(_ type: ResourceType) -> Bool {
@@ -41,16 +41,11 @@ public final class ResourceBuilderRegistry {
     private static func key(for type: ResourceType) -> String {
         switch type {
         case .event:            return "event"
-        case .slot:             return "slot"
-        case .booking:          return "booking"
         case .fund:             return "fund"
-        case .position:         return "position"
-        case .assignment:       return "assignment"
-        case .rotation:         return "rotation"
         case .asset:            return "asset"
-        case .guestPass:        return "guest_pass"
-        case .contribution:     return "contribution"
-        case .proposal:         return "proposal"
+        case .space:            return "space"
+        case .slot:             return "slot"
+        case .right:            return "right"
         case .unknown(let raw): return raw
         }
     }
@@ -60,23 +55,13 @@ public final class ResourceBuilderRegistry {
     public static func placeholderInfo(for type: ResourceType) -> (displayName: String, icon: String, summary: String)? {
         switch type {
         case .slot:
-            return ("Slot", "ticket", "Ventana de uso de un activo. Crea un activo primero.")
+            return ("Turno", "ticket", "Ventana de uso de un activo. Crea un activo primero.")
         case .fund:
             return ("Fondo", "banknote", "Caja común para aportaciones y payouts.")
-        case .contribution:
-            return ("Aportación", "arrow.up.bin", "Aporte recurrente o único a un fondo.")
-        case .proposal:
-            return ("Propuesta", "checklist", "Propuesta abierta a votación.")
-        case .booking:
-            return ("Reserva", "calendar.badge.checkmark", "Reclamar un slot.")
-        case .guestPass:
-            return ("Invitado", "person.crop.circle.badge.plus", "Acceso temporal para alguien fuera del grupo.")
-        case .position:
-            return ("Posición", "person.line.dotted.person", "Lugar en una rotación.")
-        case .assignment:
-            return ("Tarea", "checkmark.circle.badge.questionmark", "Responsabilidad asignada a alguien.")
-        case .rotation:
-            return ("Rotación", "arrow.triangle.2.circlepath", "Orden rotativo entre miembros.")
+        case .space:
+            return ("Espacio", "mappin.and.ellipse", "Lugar reservable: salón, cancha, sala.")
+        case .right:
+            return ("Acceso", "person.badge.key.fill", "Derecho/acceso compartido: membresía, equity, custodia.")
         default:
             return nil
         }

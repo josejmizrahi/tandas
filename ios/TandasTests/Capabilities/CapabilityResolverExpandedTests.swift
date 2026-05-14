@@ -62,11 +62,13 @@ struct CapabilityResolverExpandedTests {
 
     @Test("canVote available when appeal_voting module is on")
     func canVoteGated() {
+        // Test predicates module gating, not the resource type — any
+        // canonical type works since canVote scope is module-driven.
         let g1 = makeGroup(activeModules: ["basic_fines", "rsvp", "check_in"])
-        #expect(!resolver.canVote(on: .proposal, in: g1, catalog: catalog))
+        #expect(!resolver.canVote(on: .event, in: g1, catalog: catalog))
 
         let g2 = makeGroup(activeModules: ["basic_fines", "rsvp", "check_in", "appeal_voting"])
-        #expect(resolver.canVote(on: .proposal, in: g2, catalog: catalog))
+        #expect(resolver.canVote(on: .event, in: g2, catalog: catalog))
     }
 
     @Test("availableSections is union across active modules")

@@ -56,16 +56,11 @@ public struct DetailHeaderView: View {
     private func iconFor(_ type: ResourceType) -> String {
         switch type {
         case .event:        return "calendar.badge.clock"
-        case .asset:        return "key.fill"
-        case .slot:         return "ticket"
         case .fund:         return "banknote"
-        case .booking:      return "calendar.badge.checkmark"
-        case .contribution: return "arrow.up.bin"
-        case .position:     return "person.fill.badge.plus"
-        case .assignment:   return "checkmark.square"
-        case .rotation:     return "arrow.triangle.2.circlepath"
-        case .guestPass:    return "person.crop.circle.badge.plus"
-        case .proposal:     return "doc.text"
+        case .asset:        return "key.fill"
+        case .space:        return "mappin.and.ellipse"
+        case .slot:         return "ticket"
+        case .right:        return "person.badge.key.fill"
         case .unknown:      return "square.dashed"
         }
     }
