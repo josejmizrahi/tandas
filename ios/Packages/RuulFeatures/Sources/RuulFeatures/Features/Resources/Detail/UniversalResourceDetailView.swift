@@ -42,6 +42,7 @@ public struct UniversalResourceDetailView: View {
                                 startsAt: parseStartsAt(),
                                 endsAt: parseEndsAt()
                             )
+                            inlineActionBar
                             if !shouldHideQuickFacts {
                                 ResourceQuickFactsView(facts: quickFacts)
                             }
@@ -58,9 +59,6 @@ public struct UniversalResourceDetailView: View {
             }
             .scrollIndicators(.hidden)
             .ignoresSafeArea(edges: .top)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
-            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -318,6 +316,58 @@ public struct UniversalResourceDetailView: View {
         case .archive:
             break  // no archive endpoint yet
         }
+    }
+
+    // MARK: - Inline action bar (Luma pattern)
+
+    /// Inline action row that replaces the sticky-bottom CTA. Shows the
+    /// resolved `PrimaryAction` as the primary tile (filled, leftmost)
+    /// plus the top 2 `SecondaryAction`s as secondary tiles. The rest of
+    /// the secondaries still live in the `⋯` toolbar menu for overflow.
+    /// Collapses to `EmptyView` when nothing is dispatchable.
+    @ViewBuilder
+    private var inlineActionBar: some View {
+        let actions = inlineActions
+        if !actions.isEmpty {
+            RuulInlineActionBar(actions: actions)
+                .padding(.horizontal, RuulSpacing.s6)
+        }
+    }
+
+    private var inlineActions: [RuulInlineActionBar.Action] {
+        var out: [RuulInlineActionBar.Action] = []
+        if primaryAction.kind != .none {
+            out.append(
+                RuulInlineActionBar.Action(
+                    id: "primary",
+                    label: primaryAction.label,
+                    symbol: primaryAction.symbol ?? "checkmark",
+                    style: .primary,
+                    isDestructive: primaryAction.style == .destructive,
+                    perform: { [self] in dispatchPrimary() }
+                )
+            )
+        }
+        // Promote the top secondaries into the inline row. Cap at 2 so
+        // the bar stays at the Luma sweet spot (3 tiles incl. primary).
+        // Skip kinds that don't have a working dispatch yet
+        // (.addToCalendar / .archive) so we never show dead affordances.
+        let promotable = secondaryActions.filter { action in
+            action.kind != .addToCalendar && action.kind != .archive
+        }
+        for action in promotable.prefix(2) {
+            out.append(
+                RuulInlineActionBar.Action(
+                    id: "secondary.\(action.id)",
+                    label: action.label,
+                    symbol: action.symbol,
+                    style: .secondary,
+                    isDestructive: action.isDestructive,
+                    perform: { [self] in dispatchSecondary(action) }
+                )
+            )
+        }
+        return out
     }
 }
 
