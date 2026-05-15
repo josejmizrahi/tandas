@@ -147,6 +147,9 @@ public final class AppState {
     /// N-call orchestration that risked orphan rows on partial failure.
     /// Founder framing 2026-05-11 #5.
     public let resourceDraftRepo: any ResourceDraftRepository
+    /// Right resource_type lifecycle: transfer/delegate/revoke/suspend/
+    /// restore/exercise/updateMetadata. Mig 00198 + 00199.
+    public let rightRepo: any RightRepository
     /// Pilot ResourceBuilder for events. Phase 2+ adds builders for slot,
     /// fund, asset following the same shape.
     public let eventBuilder: EventResourceBuilder
@@ -196,6 +199,7 @@ public final class AppState {
         fundRepo: any FundRepository,
         rsvpActionRepo: any RsvpActionRepository,
         resourceDraftRepo: any ResourceDraftRepository,
+        rightRepo: any RightRepository,
         notifications: NotificationService? = nil,
         eventNotificationDispatcher: any EventNotificationDispatcher = MockEventNotificationDispatcher(),
         walletService: any WalletPassService = StubWalletPassService(),
@@ -232,6 +236,7 @@ public final class AppState {
         self.fundRepo = fundRepo
         self.rsvpActionRepo = rsvpActionRepo
         self.resourceDraftRepo = resourceDraftRepo
+        self.rightRepo = rightRepo
         let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,

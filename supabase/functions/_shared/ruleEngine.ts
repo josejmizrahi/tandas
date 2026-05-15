@@ -358,6 +358,155 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
       },
     }];
   },
+
+  // (mig 00198 + 00199) Right resource_type lifecycle atoms. The atom
+  // payloads carry the right-specific context the engine needs
+  // (holder, delegate, target_capability, …) so condition evaluators
+  // don't need to round-trip to the resource. Every evaluator below
+  // projects the *current holder* as the rule target — that's the
+  // member whose claim is being tracked, and it's what consequence
+  // executors will fine/notify/transfer when relevant.
+  //
+  // event.resource_id is the right's id itself (not its target). The
+  // right's target_resource_id (the asset the right governs) lives in
+  // event.payload.target_resource_id when relevant.
+  rightCreated: async (event, _rule, _context) => {
+    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
+    if (!holderMemberId || !event.resource_id) return [];
+    return [{
+      member_id: holderMemberId,
+      resource_id: event.resource_id,
+      context: {
+        holder_member_id:   holderMemberId,
+        target_resource_id: event.payload?.target_resource_id ?? null,
+        target_capability:  event.payload?.target_capability ?? null,
+        scope:              event.payload?.scope ?? null,
+        priority:           event.payload?.priority ?? null,
+        exclusive:          event.payload?.exclusive ?? null,
+        transferable:       event.payload?.transferable ?? null,
+        delegable:          event.payload?.delegable ?? null,
+        divisible:          event.payload?.divisible ?? null,
+        expires_at:         event.payload?.expires_at ?? null,
+        source:             event.payload?.source ?? null,
+        source_atom_id:     event.id,
+      },
+    }];
+  },
+
+  rightTransferred: async (event, _rule, _context) => {
+    const toMemberId = (event.payload?.to_member_id as string | undefined) ?? event.member_id;
+    if (!toMemberId || !event.resource_id) return [];
+    return [{
+      member_id: toMemberId,
+      resource_id: event.resource_id,
+      context: {
+        from_member_id:  event.payload?.from_member_id ?? null,
+        to_member_id:    toMemberId,
+        transferred_by:  event.payload?.transferred_by ?? null,
+        reason:          event.payload?.reason ?? null,
+        source_atom_id:  event.id,
+      },
+    }];
+  },
+
+  rightDelegated: async (event, _rule, _context) => {
+    const delegateMemberId = (event.payload?.delegate_member_id as string | undefined) ?? event.member_id;
+    if (!delegateMemberId || !event.resource_id) return [];
+    return [{
+      member_id: delegateMemberId,
+      resource_id: event.resource_id,
+      context: {
+        delegate_member_id: delegateMemberId,
+        until:              event.payload?.until ?? null,
+        delegated_by:       event.payload?.delegated_by ?? null,
+        reason:             event.payload?.reason ?? null,
+        source_atom_id:     event.id,
+      },
+    }];
+  },
+
+  // Revoke + Suspend + Restore: event.payload doesn't carry the holder
+  // (the action targets the right, not a specific member). We resolve
+  // the current holder from the resource so consequences (notification,
+  // audit) can address the affected party.
+  rightRevoked: async (event, _rule, context) => {
+    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        previous_status: event.payload?.previous_status ?? null,
+        revoked_by:      event.payload?.revoked_by ?? null,
+        reason:          event.payload?.reason ?? null,
+        source_atom_id:  event.id,
+      },
+    }];
+  },
+
+  rightSuspended: async (event, _rule, context) => {
+    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        until:          event.payload?.until ?? null,
+        suspended_by:   event.payload?.suspended_by ?? null,
+        reason:         event.payload?.reason ?? null,
+        source_atom_id: event.id,
+      },
+    }];
+  },
+
+  rightRestored: async (event, _rule, context) => {
+    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        restored_by:    event.payload?.restored_by ?? null,
+        reason:         event.payload?.reason ?? null,
+        source_atom_id: event.id,
+      },
+    }];
+  },
+
+  // (mig 00199) Cron-emitted when metadata.expires_at <= now(). Holder
+  // is in the payload (resolved by expire_due_rights). Useful for "warn
+  // the holder X days before expiration"-style rules anchored on the
+  // atom rather than a polling read.
+  rightExpired: async (event, _rule, _context) => {
+    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderMemberId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        expired_at:       event.payload?.expired_at ?? null,
+        holder_member_id: holderMemberId ?? null,
+        name:             event.payload?.name ?? null,
+        source:           event.payload?.source ?? null,
+        source_atom_id:   event.id,
+      },
+    }];
+  },
+
+  rightExercised: async (event, _rule, _context) => {
+    const exerciserMemberId = (event.payload?.exercised_by_member_id as string | undefined) ?? event.member_id;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: exerciserMemberId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        exercised_by_user_id:   event.payload?.exercised_by_user_id ?? null,
+        exercised_by_member_id: exerciserMemberId ?? null,
+        right_context:          event.payload?.context ?? {},
+        source_atom_id:         event.id,
+      },
+    }];
+  },
 };
 
 // =============================================================================
