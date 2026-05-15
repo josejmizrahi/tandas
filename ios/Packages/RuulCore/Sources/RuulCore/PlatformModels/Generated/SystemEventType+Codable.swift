@@ -55,6 +55,8 @@ extension SystemEventType {
         .memberCapabilityOverridden,
         .ledgerEntryCreated,
         .warningEmitted,
+        .resourceLinked,
+        .resourceUnlinked,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -108,6 +110,8 @@ extension SystemEventType {
         "memberCapabilityOverridden",
         "ledgerEntryCreated",
         "warningEmitted",
+        "resourceLinked",
+        "resourceUnlinked",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -172,6 +176,8 @@ extension SystemEventType {
         case .memberCapabilityOverridden: return "memberCapabilityOverridden"
         case .ledgerEntryCreated: return "ledgerEntryCreated"
         case .warningEmitted: return "warningEmitted"
+        case .resourceLinked: return "resourceLinked"
+        case .resourceUnlinked: return "resourceUnlinked"
         case .unknown(let s): return s
         }
     }
@@ -228,6 +234,8 @@ extension SystemEventType {
         case "memberCapabilityOverridden": return .memberCapabilityOverridden
         case "ledgerEntryCreated": return .ledgerEntryCreated
         case "warningEmitted": return .warningEmitted
+        case "resourceLinked": return .resourceLinked
+        case "resourceUnlinked": return .resourceUnlinked
         default: return .unknown(raw)
         }
     }

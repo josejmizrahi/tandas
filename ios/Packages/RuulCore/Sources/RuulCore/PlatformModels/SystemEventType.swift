@@ -118,5 +118,14 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// Payload: `{rule_id, target_member_id, reason, source_atom_id}`.
     case warningEmitted
 
+    // MARK: - Resource links (mig 00198 — event uses space/asset/fund/right)
+    /// Emitted by `link_resource_to_event`. Payload:
+    /// `{link_id, link_kind, to_resource_id, to_resource_type, linked_by}`.
+    /// Plans/Active/EventResource.md §12.
+    case resourceLinked
+    /// Emitted by `unlink_resource_from_event`. Same payload shape as
+    /// `resourceLinked` with `unlinked_by` instead of `linked_by`.
+    case resourceUnlinked
+
     case unknown(String)
 }
