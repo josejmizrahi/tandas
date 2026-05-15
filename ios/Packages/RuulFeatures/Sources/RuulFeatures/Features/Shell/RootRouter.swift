@@ -174,8 +174,12 @@ public final class RootRouter {
         state.push(.editProfile)
     }
 
-    public func openMembers() {
-        state.push(.members)
+    public func openMembersList() {
+        state.push(.membersList)
+    }
+
+    public func openMembersAdmin() {
+        state.push(.membersAdmin)
     }
 
     public func openOpenVotes(_ ctx: OpenVotesRouteContext) {

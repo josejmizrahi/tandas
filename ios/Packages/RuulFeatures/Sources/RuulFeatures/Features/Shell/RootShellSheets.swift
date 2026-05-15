@@ -157,12 +157,31 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
-            // MARK: Members sheet
-            .fullScreenCover(isPresented: boolBinding(for: .members)) {
-                if let activeGroup = app.activeGroup {
-                    EditMembersSheet(group: activeGroup)
+            // MARK: Members list cover (read-only, everyone)
+            .fullScreenCover(isPresented: boolBinding(for: .membersList)) {
+                if let activeGroup = app.activeGroup, let uid = app.session?.user.id {
+                    NavigationStack {
+                        MembersListView(coordinator: MembersCoordinator(
+                            group: activeGroup,
+                            actorUserId: uid,
+                            groupsRepo: app.groupsRepo
+                        ))
                         .environment(app)
+                    }
+                }
+            }
 
+            // MARK: Members admin cover (admin actions)
+            .fullScreenCover(isPresented: boolBinding(for: .membersAdmin)) {
+                if let activeGroup = app.activeGroup, let uid = app.session?.user.id {
+                    NavigationStack {
+                        MembersAdminView(coordinator: MembersCoordinator(
+                            group: activeGroup,
+                            actorUserId: uid,
+                            groupsRepo: app.groupsRepo
+                        ))
+                        .environment(app)
+                    }
                 }
             }
 
@@ -566,7 +585,7 @@ private struct GroupHomeSheetContent: View {
         NavigationStack(path: $path) {
             GroupHomeView(
                 coordinator: coord,
-                onOpenMembers: { router.openMembers() },
+                onOpenMembers: { router.openMembersAdmin() },
                 onOpenGovernance: { path.append(GroupNav.governance) },
                 onOpenRulePresets: { path.append(GroupNav.rulePresets) },
                 onLeaveGroup: {

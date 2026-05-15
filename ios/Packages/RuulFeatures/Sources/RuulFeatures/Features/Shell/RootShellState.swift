@@ -110,5 +110,6 @@ public enum RootRoute: Sendable, Hashable {
     case createGeneralProposal
     case createRuleChange(GroupRule?)
     case editProfile            // EditProfileSheet (profile editor)
-    case members                // EditMembersSheet (group member management)
+    case membersList            // MembersListView (read-only, everyone)
+    case membersAdmin           // MembersAdminView (admin actions)
 }
