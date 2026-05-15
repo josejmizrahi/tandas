@@ -34,7 +34,7 @@ public struct ResourcePrimaryCTA: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, RuulSpacing.s4)
-                .foregroundStyle(Color.ruulOnImage)
+                .foregroundStyle(Color.ruulTextInverse)
                 .background(
                     RoundedRectangle(cornerRadius: RuulRadius.lg)
                         .fill(backgroundColor)

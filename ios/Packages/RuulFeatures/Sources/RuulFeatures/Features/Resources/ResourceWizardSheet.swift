@@ -858,7 +858,7 @@ private struct WizardTypePicker: View {
                               : Color.ruulSurface)
                 )
                 .foregroundStyle(selectedCategory == cat
-                                 ? .white
+                                 ? Color.ruulTextInverse
                                  : Color.ruulTextSecondary)
                 .overlay(
                     Capsule()

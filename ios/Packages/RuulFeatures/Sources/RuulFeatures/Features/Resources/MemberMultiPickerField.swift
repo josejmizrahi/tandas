@@ -101,7 +101,7 @@ struct MemberMultiPickerField: View {
                 if let pos = entry.position {
                     Text("\(pos + 1)")
                         .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulOnImage)
+                        .foregroundStyle(Color.ruulTextInverse)
                         .frame(width: 22, height: 22)
                         .background(Circle().fill(Color.ruulAccent))
                 } else {
