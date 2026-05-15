@@ -26,26 +26,27 @@ public actor RightResourceBuilder: ResourceBuilder {
         "Acceso, prioridad, equity o custodia que alguien tiene sobre algo."
 
     public nonisolated var requiredFields: [BuilderField] {
-        // V1 MVP: minimal create surface — `name` + `holder`. The RPC's
-        // remaining knobs (scope/priority/exclusive/transferable/
+        // V1 MVP: minimal create surface — just `name`. The right's
+        // holder defaults to the caller server-side (mig 00201), and
+        // the remaining knobs (scope/priority/exclusive/transferable/
         // delegable/divisible/expires_at/target_resource/target_capability)
-        // accept server-side defaults; their values get set later via the
-        // dedicated lifecycle RPCs (transfer_right, delegate_right, …).
-        // A richer wizard surface comes in a follow-up slice — same
-        // pattern as FundResourceBuilder which only surfaces `name` today
-        // and leaves target_amount_cents as a metadata follow-up.
+        // accept server-side defaults too. All of them can be reset via
+        // the dedicated lifecycle RPCs (transfer_right, delegate_right,
+        // update_right_metadata, …).
+        //
+        // Why `holderMemberId` isn't here yet: BuilderFieldRenderer's
+        // `.memberPicker` kind renders disabled today
+        // ("Selector de miembros no disponible — Próximamente"); making
+        // holderMemberId a required field would block the entire wizard
+        // submit until the picker ships. Defaulting to the creator gets
+        // the create-flow working today; a future slice adds an explicit
+        // holder picker for "grant right to David" UX.
         [
             BuilderField(
                 key: "name",
                 label: "Nombre",
                 kind: .text,
                 placeholder: "ej: Prioridad de reserva en el palco"
-            ),
-            BuilderField(
-                key: "holderMemberId",
-                label: "Titular",
-                kind: .memberPicker,
-                helpText: "Miembro del grupo que tiene el derecho."
             )
         ]
     }
@@ -72,9 +73,9 @@ public actor RightResourceBuilder: ResourceBuilder {
         guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
-        guard draft.basicFields["holderMemberId"]?.uuidValue != nil else {
-            throw ResourceBuilderError.missingRequiredField("holderMemberId")
-        }
+        // holderMemberId is optional in the wizard's basic_fields (mig 00201):
+        // when absent, create_right defaults to the caller's membership. The
+        // Swift side mirrors that — submitting without a holder is valid.
 
         do {
             let resourceId = try await draftRepo.build(draft)
