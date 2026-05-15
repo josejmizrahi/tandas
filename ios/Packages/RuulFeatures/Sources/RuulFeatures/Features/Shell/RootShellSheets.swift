@@ -182,7 +182,8 @@ public struct RootShellSheets: ViewModifier {
             .fullScreenCover(isPresented: boolBinding(for: .createVotePicker)) {
                 CreateVoteSheet(
                     onPickGeneralProposal: { router.present(.createGeneralProposal) },
-                    onPickRuleChange: { router.present(.createRuleChange(nil)) }
+                    onPickRuleChange: { router.present(.createRuleChange(nil)) },
+                    onPickMemberRemoval: { router.present(.createMemberRemoval) }
                 )
 
             }
@@ -245,6 +246,27 @@ public struct RootShellSheets: ViewModifier {
 
                 }
                 let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
+            }
+
+            // MARK: Create member-removal sheet
+            .fullScreenCover(isPresented: boolBinding(for: .createMemberRemoval), onDismiss: {
+                Task {
+                    async let i: Void? = router.state.inboxCoordinator?.refresh()
+                    _ = await i
+                }
+            }) {
+                if let group = app.activeGroup,
+                   let member = currentGroupMember(in: group) {
+                    CreateMemberRemovalSheet(
+                        coordinator: CreateMemberRemovalCoordinator(
+                            group: group,
+                            creatorMemberId: member.id,
+                            prefilledTarget: nil,
+                            voteRepo: app.voteRepo,
+                            groupsRepo: app.groupsRepo
+                        )
+                    )
+                }
             }
 
             // MARK: Navigation-push routes (no sheet presentation)
