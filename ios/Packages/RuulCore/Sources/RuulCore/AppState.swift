@@ -325,6 +325,12 @@ public final class AppState {
     /// can assign a `MockResourceLinkRepository` directly.
     public var resourceLinkRepo: (any ResourceLinkRepository)?
 
+    /// `event_lifecycle_view` gateway (mig 00207, Plans/Active/
+    /// EventResource.md §17 — derived state from atoms). Optional so
+    /// existing AppState constructors don't break; readers degrade to
+    /// `resources.status` when nil. Wired by `TandasApp` in live mode.
+    public var eventLifecycleRepo: (any EventLifecycleRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
