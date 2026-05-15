@@ -50,7 +50,7 @@ custom_rules:
     message: "Use Date+RuulFormatting helpers (.ruulShortTime, .ruulMediumDate, etc.) instead of DateFormatter(). Add a helper to Date+RuulFormatting.swift if a new shape is needed. ISO8601DateFormatter() is allowed for serialization."
     severity: error
     excluded:
-      - "ios/Packages/RuulUI/Sources/RuulUI/Modifiers/Date+RuulFormatting.swift"
+      - "ios/Packages/RuulCore/Sources/RuulCore/Utilities/Date+RuulFormatting.swift"
 
 # Default rules: keep SwiftLint's stock set on but don't fail noise on
 # things the codebase already accepts. Tune per-project as needed.
