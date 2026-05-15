@@ -173,7 +173,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
         RuleBuilderTemplate(
             id: "expense_threshold_vote",
             displayNameES: "Voto por gasto grande",
-            descriptionES: "Cuando alguien registre un movimiento de dinero mayor a X pesos, se abre automáticamente una votación para que el grupo lo ratifique o lo cuestione. (Fase 1: el voto es informativo; el gasto NO se reversa si pierde la votación.)",
+            descriptionES: "Cuando alguien registre un movimiento de dinero mayor a X pesos, se abre automáticamente una votación. Si el grupo la rechaza, el gasto se reversa con un reembolso automático.",
             category: "money",
             templateKind: "governance",
             requiredCapabilities: ["ledger", "voting"],

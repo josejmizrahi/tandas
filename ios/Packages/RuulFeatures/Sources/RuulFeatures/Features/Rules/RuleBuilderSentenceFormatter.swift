@@ -48,7 +48,7 @@ public enum RuleBuilderSentenceFormatter {
 
         case "expense_threshold_vote":
             let cents = paramInt(params, "threshold_cents") ?? 500_000
-            return "Si alguien registra un gasto mayor a \(currency(cents / 100)), se abre una votación automática para que el grupo decida."
+            return "Si alguien registra un gasto mayor a \(currency(cents / 100)), se abre una votación. Si el grupo la rechaza, el gasto se reversa automáticamente."
 
         default:
             return template.descriptionES
@@ -77,7 +77,7 @@ public enum RuleBuilderSentenceFormatter {
         case "expense_threshold_warning":
             footnote = "El aviso queda en el feed de actividad del grupo. Los administradores lo ven al momento; no se cobra ni se abre votación. Útil para detectar gastos grandes sin pre-aprobación."
         case "expense_threshold_vote":
-            footnote = "El voto aparece en Decisiones del grupo. Fase 1: informativo — si el voto se pierde, el gasto NO se reversa automáticamente. (Fase 2 agregará reverso automático.)"
+            footnote = "El voto aparece en Decisiones del grupo. Si pierde, se inserta un reembolso automático que anula el gasto original (mismo monto, link al gasto en el historial)."
         default:
             footnote = ""
         }
