@@ -31,32 +31,40 @@ public struct UniversalResourceDetailView: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    coverHero
-                    ResourceDetailPanel {
-                        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
-                            DetailAttentionView(context: context)
-                            ResourceTitleBlock(
-                                context: context,
-                                startsAt: parseStartsAt(),
-                                endsAt: parseEndsAt()
-                            )
-                            if !shouldHideQuickFacts {
-                                ResourceQuickFactsView(facts: quickFacts)
+            ZStack {
+                // Luma signature: the whole screen wears the cover's
+                // palette as a soft, blurred ambient field. Bottom-most
+                // layer; scroll content + sticky CTA render on top.
+                RuulAmbientBackground(
+                    palette: ResourceAmbientPalette.resolve(for: context)
+                )
+                ScrollView {
+                    VStack(spacing: 0) {
+                        coverHero
+                        ResourceDetailPanel(surface: .ambientGlass) {
+                            VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                                DetailAttentionView(context: context)
+                                ResourceTitleBlock(
+                                    context: context,
+                                    startsAt: parseStartsAt(),
+                                    endsAt: parseEndsAt()
+                                )
+                                if !shouldHideQuickFacts {
+                                    ResourceQuickFactsView(facts: quickFacts)
+                                }
+                                sections
+                                SettingsSectionView(
+                                    onPresentEnableCapability: shouldShowEnableCapability
+                                        ? context.onPresentEnableCapability
+                                        : nil,
+                                    onArchive: nil
+                                )
                             }
-                            sections
-                            SettingsSectionView(
-                                onPresentEnableCapability: shouldShowEnableCapability
-                                    ? context.onPresentEnableCapability
-                                    : nil,
-                                onArchive: nil
-                            )
                         }
                     }
                 }
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
             .ignoresSafeArea(edges: .top)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
