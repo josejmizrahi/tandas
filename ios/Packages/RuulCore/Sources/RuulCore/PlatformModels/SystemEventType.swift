@@ -60,6 +60,13 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// fund lock. Payload: `{unlocked_by, previous_locked_at}`.
     case fundUnlocked
 
+    // MARK: - Space (mig 00203)
+    /// Emitted by `create_space` (mig 00203) when a new space resource
+    /// lands. Payload: `{name, capacity?, location_name?, location_lat?,
+    /// location_lng?, description?}`. Drives "X creó el espacio Y" in
+    /// the activity feed.
+    case spaceCreated
+
     // MARK: - Rotation / membership
     case positionChanged
     case memberJoined

@@ -54,6 +54,9 @@ public extension SystemEventType {
         case .fundLocked:             return "Fondo bloqueado"
         case .fundUnlocked:           return "Fondo desbloqueado"
 
+        // Space (mig 00203)
+        case .spaceCreated:           return "Espacio creado"
+
         // Rotation / membership
         case .positionChanged:        return "Cambio de turno"
         case .memberJoined:           return "Miembro nuevo"
@@ -171,6 +174,7 @@ public extension SystemEventType {
              .assetCreated,
              .fundCreated, .fundDeposit, .fundThresholdReached,
              .fundLocked, .fundUnlocked,
+             .spaceCreated,
              .positionChanged,
              .ruleEnabledChanged, .ruleAmountChanged,
              .pendingChangeApplied,
