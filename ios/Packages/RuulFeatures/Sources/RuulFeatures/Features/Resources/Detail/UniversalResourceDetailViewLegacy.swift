@@ -19,7 +19,7 @@ import RuulCore
 /// Two chrome layers sit on top of the scroll content:
 ///   - `DetailTopNavView`        — floating glass nav (close, share, more menu)
 ///   - `DetailStickyFooterView`  — bottom-pinned CTA via `safeAreaInset`
-public struct UniversalResourceDetailView: View {
+public struct UniversalResourceDetailViewLegacy: View {
     public let context: ResourceDetailContext
 
     public init(context: ResourceDetailContext) {
@@ -123,7 +123,7 @@ public struct UniversalResourceDetailView: View {
 
 #if DEBUG
 #Preview("Event — guest viewer") {
-    Text("UniversalResourceDetailView needs AppState + AppState-bound repos to render the dynamic section catalog. See `EventDetailHostShowcase` in the showcase target for a wired live preview.")
+    Text("UniversalResourceDetailViewLegacy needs AppState + AppState-bound repos to render the dynamic section catalog. See `EventDetailHostShowcase` in the showcase target for a wired live preview.")
         .multilineTextAlignment(.center)
         .padding(RuulSpacing.lg)
         .background(Color.ruulBackground)

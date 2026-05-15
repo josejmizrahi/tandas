@@ -99,7 +99,7 @@ public struct ResourceDetailSheet: View {
     @ViewBuilder
     private var content: some View {
         if let group = parentGroup {
-            UniversalResourceDetailView(context: context(for: group))
+            UniversalResourceDetailViewLegacy(context: context(for: group))
         } else {
             ZStack {
                 Color.ruulBackground.ignoresSafeArea()

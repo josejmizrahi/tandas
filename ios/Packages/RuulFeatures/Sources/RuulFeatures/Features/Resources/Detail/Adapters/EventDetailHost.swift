@@ -90,7 +90,7 @@ public struct EventDetailHost: View {
 
     @ViewBuilder
     private func hosted(coordinator: EventDetailCoordinator) -> some View {
-        UniversalResourceDetailView(context: detailContext(coordinator: coordinator))
+        UniversalResourceDetailViewLegacy(context: detailContext(coordinator: coordinator))
             .environment(\.eventInteractor, coordinator)
             .environment(\.eventDetailPresenter, presenter)
             .task { await coordinator.refresh() }
