@@ -140,7 +140,7 @@ public struct EnableCapabilitySheet: View {
                     .foregroundStyle(Color.ruulAccent)
             }
             .padding(RuulSpacing.md)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)

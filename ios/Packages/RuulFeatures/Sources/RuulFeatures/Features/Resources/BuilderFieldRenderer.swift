@@ -78,7 +78,7 @@ public struct BuilderFieldRenderer: View {
                 TextEditor(text: stringBinding())
                     .frame(minHeight: 80)
                     .padding(RuulSpacing.sm)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                    .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                     .overlay(
                         RoundedRectangle(cornerRadius: RuulRadius.medium)
                             .stroke(Color.ruulSeparator, lineWidth: 1)
@@ -111,7 +111,7 @@ public struct BuilderFieldRenderer: View {
                     .tint(Color.ruulAccent)
             }
             .padding(RuulSpacing.md)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium)
                     .stroke(Color.ruulSeparator, lineWidth: 1)

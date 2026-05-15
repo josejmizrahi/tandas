@@ -33,7 +33,7 @@ public struct CancelAttendanceSheet: View {
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                     .padding(RuulSpacing.sm)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+                    .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                             .stroke(Color.ruulSeparator, lineWidth: 0.5)

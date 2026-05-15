@@ -84,7 +84,7 @@ public struct MemberDetailView: View {
             }
             .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                     .strokeBorder(Color.ruulSeparator, lineWidth: 0.5)
@@ -112,7 +112,7 @@ public struct MemberDetailView: View {
             }
             .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                     .strokeBorder(Color.ruulSeparator, lineWidth: 0.5)

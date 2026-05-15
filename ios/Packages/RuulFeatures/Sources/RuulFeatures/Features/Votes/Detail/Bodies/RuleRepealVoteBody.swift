@@ -66,7 +66,7 @@ public struct RuleRepealVoteBody: View {
             Spacer()
         }
         .padding(RuulSpacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .stroke(Color.ruulNegative.opacity(0.25), lineWidth: 1)
@@ -85,7 +85,7 @@ public struct RuleRepealVoteBody: View {
         }
         .padding(RuulSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous))
     }
 
     /// Extracts the rule title from `vote.title`. The convention set by

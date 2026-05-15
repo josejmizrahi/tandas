@@ -42,12 +42,21 @@ private struct RuulCardSurfaceModifier: ViewModifier {
                 .background(Color.ruulSurface, in: shape)
                 .ruulElevation(.sm)
         case .glass:
-            // The Luma move: `.ultraThinMaterial` blurs whatever ambient
-            // the parent is showing and tints toward the system surface.
-            // No elevation — the material's own edge sub-shadow is
-            // enough to lift the card.
+            // 2026-05-15: dropped `.ultraThinMaterial` because on the
+            // warm-cream canvas it rendered as a visibly LIGHTER frost
+            // — cards read as "stamps with a gray contorno" instead of
+            // "lifted glass". The material needs ambient color behind
+            // it to refract; on a flat canvas there's nothing to grab.
+            //
+            // The new glass card is canvas-colored fill + soft drop
+            // shadow. On canvas screens the fill matches the bg so the
+            // edge is invisible — only the shadow telegraphs lift. On
+            // ambient surfaces (event detail) the canvas-colored fill
+            // sits a step away from the tinted bg so the card reads as
+            // "a piece of canvas raised up", still quiet but defined.
             content
-                .background(.ultraThinMaterial, in: shape)
+                .background(Color.ruulBackgroundCanvas, in: shape)
+                .ruulElevation(.sm)
         case .recessed:
             content
                 .background(Color.ruulBackgroundRecessed, in: shape)

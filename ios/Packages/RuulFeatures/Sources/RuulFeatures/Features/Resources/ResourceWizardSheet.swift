@@ -368,7 +368,7 @@ public struct ResourceWizardSheet: View {
         }
         .frame(maxWidth: .infinity)
         .padding(RuulSpacing.xl)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
     }
 
     private func capabilityRow(for block: any CapabilityBlock) -> some View {
@@ -510,7 +510,7 @@ public struct ResourceWizardSheet: View {
             .tint(Color.ruulAccent)
         }
         .padding(RuulSpacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -560,7 +560,7 @@ public struct ResourceWizardSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RuulSpacing.lg)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -590,7 +590,7 @@ public struct ResourceWizardSheet: View {
                     }
                 }
             }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -619,7 +619,7 @@ public struct ResourceWizardSheet: View {
                         }
                         .padding(.horizontal, RuulSpacing.md)
                         .padding(.vertical, RuulSpacing.sm)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                     }
                 }
             }
@@ -649,7 +649,7 @@ public struct ResourceWizardSheet: View {
                         }
                         .padding(.horizontal, RuulSpacing.md)
                         .padding(.vertical, RuulSpacing.sm)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                     }
                 }
             }

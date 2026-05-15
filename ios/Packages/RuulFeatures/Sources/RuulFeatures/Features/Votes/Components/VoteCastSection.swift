@@ -64,7 +64,7 @@ private struct VoteCastButtons: View {
                 Spacer()
             }
             .padding(RuulSpacing.md)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -90,7 +90,7 @@ private struct VoteAlreadyCastView: View {
             Spacer()
         }
         .padding(RuulSpacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
     }
 
     private func display(for choice: VoteChoice?) -> (String, Color, String) {
@@ -125,7 +125,7 @@ private struct VoteResolvedView: View {
             }
         }
         .padding(RuulSpacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
     }
 
     private struct Displayed {

@@ -214,7 +214,7 @@ public struct ProfileView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(RuulSpacing.md)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -266,7 +266,7 @@ public struct ProfileView: View {
                 .foregroundStyle(Color.ruulNegative)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, RuulSpacing.md)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                         .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -290,7 +290,7 @@ public struct ProfileView: View {
             VStack(spacing: 0) {
                 content()
             }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)

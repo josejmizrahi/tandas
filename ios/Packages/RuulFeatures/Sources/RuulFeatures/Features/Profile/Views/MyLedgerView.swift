@@ -104,7 +104,7 @@ public struct MyLedgerView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RuulSpacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -128,7 +128,7 @@ public struct MyLedgerView: View {
                 )
             }
             .padding(RuulSpacing.md)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -325,7 +325,7 @@ public struct MyLedgerView: View {
             }
             .padding(.horizontal, RuulSpacing.xxs)
             VStack(spacing: 0) { content() }
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                         .stroke(Color.ruulSeparator, lineWidth: 0.5)
