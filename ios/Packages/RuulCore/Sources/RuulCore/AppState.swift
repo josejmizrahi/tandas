@@ -249,12 +249,17 @@ public final class AppState {
         // via build_resource_from_draft. Picker card flips from
         // "Próximamente" to creatable.
         let fundBuilder = FundResourceBuilder(draftRepo: resourceDraftRepo)
+        // mig 00198: canonical `right` resource_type creation path. The
+        // sixth Resource type — normative claims (derechos, equity,
+        // membresías externas, custodia). Routes through
+        // build_resource_from_draft → create_right RPC.
+        let rightBuilder = RightResourceBuilder(draftRepo: resourceDraftRepo)
         // SlotResourceBuilder requires picking a parent Asset via a
         // resource picker that isn't wired yet. Re-register once R.1
         // (BuilderFieldRenderer.resourcePicker) loads real resources.
         self.eventBuilder = eventBuilder
         self.resourceBuilders = ResourceBuilderRegistry(builders: [
-            eventBuilder, assetBuilder, fundBuilder
+            eventBuilder, assetBuilder, fundBuilder, rightBuilder
         ])
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications

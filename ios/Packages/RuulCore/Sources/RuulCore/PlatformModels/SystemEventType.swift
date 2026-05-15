@@ -126,5 +126,34 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// Payload: `{rule_id, target_member_id, reason, source_atom_id}`.
     case warningEmitted
 
+    // MARK: - Right (Layer 4 resource_type='right') lifecycle — mig 00198
+    /// Emitted by `create_right` when a new normative claim is
+    /// materialised. Payload carries holder + target_resource + target
+    /// capability + scope/priority/transferable/delegable/divisible knobs.
+    case rightCreated
+    /// Emitted by `transfer_right` — a transferable right was reassigned
+    /// to a new holder. Payload: `{from_member_id, to_member_id,
+    /// transferred_by, reason}`.
+    case rightTransferred
+    /// Emitted by `delegate_right` — holder unchanged, delegate stored
+    /// in metadata. Payload: `{delegate_member_id, until, delegated_by,
+    /// reason}`.
+    case rightDelegated
+    /// Emitted by `revoke_right` — status flipped to `revoked`. Payload:
+    /// `{previous_status, revoked_by, reason}`.
+    case rightRevoked
+    /// Emitted by the right-expiration cron / consequence when `expires_at`
+    /// is reached (reserved; cron lands in a follow-up slice).
+    case rightExpired
+    /// Emitted by `exercise_right` — holder or delegate used the right.
+    /// Payload: `{exercised_by_user_id, exercised_by_member_id, context}`.
+    case rightExercised
+    /// Emitted by `suspend_right` — temporary lift planned via
+    /// `metadata.suspended_until`. Payload: `{until, suspended_by, reason}`.
+    case rightSuspended
+    /// Emitted by `restore_right` — suspension cleared (or status lifted
+    /// back to `active` from `revoked`).
+    case rightRestored
+
     case unknown(String)
 }

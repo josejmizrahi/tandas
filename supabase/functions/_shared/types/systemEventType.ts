@@ -54,6 +54,14 @@ export const systemEventTypeValues = [
   "memberCapabilityOverridden",
   "ledgerEntryCreated",
   "warningEmitted",
+  "rightCreated",
+  "rightTransferred",
+  "rightDelegated",
+  "rightRevoked",
+  "rightExpired",
+  "rightExercised",
+  "rightSuspended",
+  "rightRestored",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

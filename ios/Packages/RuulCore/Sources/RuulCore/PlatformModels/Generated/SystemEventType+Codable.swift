@@ -57,6 +57,14 @@ extension SystemEventType {
         .memberCapabilityOverridden,
         .ledgerEntryCreated,
         .warningEmitted,
+        .rightCreated,
+        .rightTransferred,
+        .rightDelegated,
+        .rightRevoked,
+        .rightExpired,
+        .rightExercised,
+        .rightSuspended,
+        .rightRestored,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -112,6 +120,14 @@ extension SystemEventType {
         "memberCapabilityOverridden",
         "ledgerEntryCreated",
         "warningEmitted",
+        "rightCreated",
+        "rightTransferred",
+        "rightDelegated",
+        "rightRevoked",
+        "rightExpired",
+        "rightExercised",
+        "rightSuspended",
+        "rightRestored",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -178,6 +194,14 @@ extension SystemEventType {
         case .memberCapabilityOverridden: return "memberCapabilityOverridden"
         case .ledgerEntryCreated: return "ledgerEntryCreated"
         case .warningEmitted: return "warningEmitted"
+        case .rightCreated: return "rightCreated"
+        case .rightTransferred: return "rightTransferred"
+        case .rightDelegated: return "rightDelegated"
+        case .rightRevoked: return "rightRevoked"
+        case .rightExpired: return "rightExpired"
+        case .rightExercised: return "rightExercised"
+        case .rightSuspended: return "rightSuspended"
+        case .rightRestored: return "rightRestored"
         case .unknown(let s): return s
         }
     }
@@ -236,6 +260,14 @@ extension SystemEventType {
         case "memberCapabilityOverridden": return .memberCapabilityOverridden
         case "ledgerEntryCreated": return .ledgerEntryCreated
         case "warningEmitted": return .warningEmitted
+        case "rightCreated": return .rightCreated
+        case "rightTransferred": return .rightTransferred
+        case "rightDelegated": return .rightDelegated
+        case "rightRevoked": return .rightRevoked
+        case "rightExpired": return .rightExpired
+        case "rightExercised": return .rightExercised
+        case "rightSuspended": return .rightSuspended
+        case "rightRestored": return .rightRestored
         default: return .unknown(raw)
         }
     }
