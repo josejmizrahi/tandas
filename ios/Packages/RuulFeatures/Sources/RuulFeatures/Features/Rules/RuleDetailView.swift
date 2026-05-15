@@ -33,6 +33,16 @@ public struct RuleDetailView: View {
         self.onProposeChange = onProposeChange
     }
 
+    @State private var paramsCoordinator: EditRuleParamsCoordinator?
+
+    /// Looks up the `RuleBuilderTemplate` for this rule by matching `rule.slug`
+    /// to `template.id`. Returns nil when the rule has no slug or the template
+    /// isn't in the in-memory catalog (module-seeded or legacy rules).
+    private var templateForRule: RuleBuilderTemplate? {
+        guard let slug = rule.slug else { return nil }
+        return app.ruleTemplates.first(where: { $0.id == slug })
+    }
+
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
@@ -51,6 +61,10 @@ public struct RuleDetailView: View {
         .ruulAmbientScreen(palette: nil)
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(item: $paramsCoordinator) { coord in
+            EditRuleParamsSheet(coordinator: coord)
+                .environment(app)
+        }
     }
 
     // MARK: - Hero
@@ -119,6 +133,22 @@ public struct RuleDetailView: View {
                     fillsWidth: true,
                     action: onEdit
                 )
+                if let template = templateForRule,
+                   let repo = app.ruleTemplateRepo {
+                    RuulButton(
+                        "Editar parámetros",
+                        systemImage: "slider.horizontal.3",
+                        style: .secondary,
+                        fillsWidth: true,
+                        action: {
+                            paramsCoordinator = EditRuleParamsCoordinator(
+                                rule: rule,
+                                template: template,
+                                ruleTemplateRepo: repo
+                            )
+                        }
+                    )
+                }
                 RuulButton(
                     "Proponer cambio al grupo",
                     systemImage: "text.bubble",
