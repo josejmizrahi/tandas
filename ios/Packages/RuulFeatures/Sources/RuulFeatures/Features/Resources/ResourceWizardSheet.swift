@@ -222,7 +222,7 @@ public struct ResourceWizardSheet: View {
         .padding(.vertical, RuulSpacing.xs)
         .background(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .fill(Color.ruulSurface)
+                .fill(.ultraThinMaterial)
         )
         .ruulElevation(.sm)
     }
@@ -368,7 +368,7 @@ public struct ResourceWizardSheet: View {
         }
         .frame(maxWidth: .infinity)
         .padding(RuulSpacing.xl)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
     }
 
     private func capabilityRow(for block: any CapabilityBlock) -> some View {
@@ -420,7 +420,7 @@ public struct ResourceWizardSheet: View {
         }
         .background(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulSurface)
+                .fill(.ultraThinMaterial)
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
@@ -510,7 +510,7 @@ public struct ResourceWizardSheet: View {
             .tint(Color.ruulAccent)
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -560,7 +560,7 @@ public struct ResourceWizardSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RuulSpacing.lg)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -590,7 +590,7 @@ public struct ResourceWizardSheet: View {
                     }
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -619,7 +619,7 @@ public struct ResourceWizardSheet: View {
                         }
                         .padding(.horizontal, RuulSpacing.md)
                         .padding(.vertical, RuulSpacing.sm)
-                        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                     }
                 }
             }
@@ -649,7 +649,7 @@ public struct ResourceWizardSheet: View {
                         }
                         .padding(.horizontal, RuulSpacing.md)
                         .padding(.vertical, RuulSpacing.sm)
-                        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                     }
                 }
             }
@@ -944,7 +944,7 @@ private struct WizardTypePicker: View {
         .padding(RuulSpacing.md)
         .background(
             RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .fill(Color.ruulSurface)
+                .fill(.ultraThinMaterial)
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)

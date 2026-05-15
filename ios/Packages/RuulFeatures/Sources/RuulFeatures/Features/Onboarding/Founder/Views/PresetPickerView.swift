@@ -111,7 +111,7 @@ public struct PresetPickerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)

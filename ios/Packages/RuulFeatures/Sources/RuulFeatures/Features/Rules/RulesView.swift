@@ -279,7 +279,7 @@ public struct RulesView: View {
             .padding(RuulSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
@@ -314,7 +314,7 @@ public struct RulesView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)

@@ -117,7 +117,7 @@ public struct RotationSectionView: View {
                 .padding(RuulSpacing.md)
                 .background(
                     RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                        .fill(Color.ruulSurface)
+                        .fill(.ultraThinMaterial)
                 )
             } else {
                 Text("Sin anfitrión asignado para el próximo turno")
@@ -126,7 +126,7 @@ public struct RotationSectionView: View {
                     .padding(RuulSpacing.md)
                     .background(
                         RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                            .fill(Color.ruulSurface)
+                            .fill(.ultraThinMaterial)
                     )
             }
         }
@@ -158,7 +158,7 @@ public struct RotationSectionView: View {
             .padding(RuulSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
         }
     }
@@ -198,7 +198,7 @@ public struct RotationSectionView: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)

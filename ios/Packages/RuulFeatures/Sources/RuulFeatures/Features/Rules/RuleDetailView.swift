@@ -174,7 +174,7 @@ public struct RuleDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .fill(Color.ruulSurface)
+                        .fill(.ultraThinMaterial)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)

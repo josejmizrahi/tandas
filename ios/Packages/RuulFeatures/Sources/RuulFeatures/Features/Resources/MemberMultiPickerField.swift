@@ -77,7 +77,7 @@ struct MemberMultiPickerField: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)

@@ -93,7 +93,7 @@ public struct CreateVoteSheet: View {
                 }
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)

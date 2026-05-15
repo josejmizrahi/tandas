@@ -66,7 +66,7 @@ public struct AppealFineSheet: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)

@@ -90,7 +90,7 @@ public struct EditRulesView: View {
             .padding(RuulSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
@@ -109,7 +109,7 @@ public struct EditRulesView: View {
             .padding(RuulSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
         case .directWrite:
             EmptyView()
@@ -169,7 +169,7 @@ public struct EditRulesView: View {
             .padding(RuulSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)

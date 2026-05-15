@@ -74,7 +74,7 @@ struct ResourceLedgerSheet: View {
         }
         .padding(RuulSpacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -115,7 +115,7 @@ struct ResourceLedgerSheet: View {
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
@@ -190,7 +190,7 @@ struct ResourceLedgerSheet: View {
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
