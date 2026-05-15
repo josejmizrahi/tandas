@@ -15,6 +15,7 @@ public extension SystemEventType {
         // Event lifecycle
         case .eventCreated:           return "Evento creado"
         case .eventClosed:            return "Evento cerrado"
+        case .eventCancelled:         return "Evento cancelado"
         case .rsvpDeadlinePassed:     return "Cerró el plazo de confirmación"
         case .hoursBeforeEvent:       return "Antes del evento"
 
@@ -35,6 +36,30 @@ public extension SystemEventType {
         case .bookingCancelled:       return "Reserva cancelada"
         case .bookingExpired:         return "Reserva expirada"
         case .assetCreated:           return "Recurso creado"
+        case .assetTransferred:       return "Recurso transferido"
+        case .assetAssigned:          return "Recurso asignado"
+        case .assetReturned:          return "Recurso devuelto"
+        case .assetUsed:              return "Recurso usado"
+        case .assetCheckedOut:        return "Recurso prestado"
+        case .assetCheckedIn:         return "Recurso devuelto al grupo"
+        case .custodyAssigned:        return "Custodia asignada"
+        case .custodyReleased:        return "Custodia liberada"
+        case .maintenanceLogged:      return "Mantenimiento registrado"
+        case .maintenanceCompleted:   return "Mantenimiento completado"
+        case .damageReported:         return "Daño reportado"
+        case .valuationRecorded:      return "Valuación registrada"
+        case .resourceLinked:         return "Recurso vinculado"
+        case .resourceUnlinked:       return "Recurso desvinculado"
+
+        // Right (Phase 2)
+        case .rightCreated:           return "Derecho creado"
+        case .rightTransferred:       return "Derecho transferido"
+        case .rightDelegated:         return "Derecho delegado"
+        case .rightRevoked:           return "Derecho revocado"
+        case .rightExpired:           return "Derecho expirado"
+        case .rightExercised:         return "Derecho ejercido"
+        case .rightSuspended:         return "Derecho suspendido"
+        case .rightRestored:          return "Derecho restaurado"
 
         // Fines + appeals + votes
         case .fineOfficialized:       return "Multa oficializada"
@@ -171,7 +196,15 @@ public extension SystemEventType {
              .slotAssigned, .slotDeclined, .slotExpired,
              .slotSwapRequested, .slotSwapApproved,
              .bookingCreated, .bookingCancelled, .bookingExpired,
-             .assetCreated,
+             .assetCreated, .assetTransferred, .assetAssigned,
+             .assetReturned, .assetUsed, .assetCheckedOut,
+             .assetCheckedIn, .custodyAssigned, .custodyReleased,
+             .maintenanceLogged, .maintenanceCompleted, .damageReported,
+             .valuationRecorded, .resourceLinked, .resourceUnlinked,
+             .eventCancelled,
+             .rightCreated, .rightTransferred, .rightDelegated,
+             .rightRevoked, .rightExpired, .rightExercised,
+             .rightSuspended, .rightRestored,
              .fundCreated, .fundDeposit, .fundThresholdReached,
              .fundLocked, .fundUnlocked,
              .spaceCreated,

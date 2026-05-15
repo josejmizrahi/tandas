@@ -74,16 +74,15 @@ public struct ResourceDetailSheet: View {
             }
         }
         .fullScreenCover(isPresented: $enableCapabilityPresented) {
-            EnableCapabilitySheet(
+            ManageCapabilitiesSheet(
                 resourceId: resource.id,
                 resourceType: resource.resourceType,
-                alreadyEnabled: enabledCapabilitySet,
-                onEnabled: { _ in
+                enabled: capabilities,
+                onChanged: {
                     // Refresh capabilities so the new section renders.
                     Task { await reloadCapabilities() }
                 }
             )
-
         }
     }
 
