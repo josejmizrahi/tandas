@@ -90,16 +90,7 @@ public struct ResourceDetailSheet: View {
     @ViewBuilder
     private var content: some View {
         if let group = parentGroup {
-            // Asset uses its dedicated 7-tab spec UI (Overview / Activity /
-            // Custody / Bookings / Maintenance / Rights / Rules) per the
-            // canonical asset spec §22 — the universal scroll-with-sections
-            // layout doesn't fit assets' separation of custody / ownership /
-            // checkouts the same way.
-            if resource.resourceType == .asset {
-                AssetDetailView(asset: resource)
-            } else {
-                UniversalResourceDetailView(context: context(for: group))
-            }
+            UniversalResourceDetailView(context: context(for: group))
         } else {
             ZStack {
                 Color.ruulBackgroundCanvas.ignoresSafeArea()
