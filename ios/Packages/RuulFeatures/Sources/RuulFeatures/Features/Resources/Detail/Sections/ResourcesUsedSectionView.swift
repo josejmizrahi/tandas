@@ -13,10 +13,9 @@ import RuulUI
 /// `resourceLinkRepo` isn't wired (mock/preview without the repo) or the
 /// resource isn't an event.
 ///
-/// Read-only in v1: lists active links with an unlink action per row.
-/// Attach UI (picker over the group's space/asset/fund/right resources)
-/// lands in a follow-up; the empty state surfaces a stub button to make
-/// the affordance discoverable.
+/// "Vincular" surfaces a sheet (`LinkResourcePickerSheet`) listing
+/// candidate space/asset/fund/right resources in the group; tapping a row
+/// calls `link_resource_to_event` and refreshes inline.
 public struct ResourcesUsedSectionView: View {
     @Environment(AppState.self) private var app
     public let context: ResourceDetailContext
@@ -26,6 +25,7 @@ public struct ResourcesUsedSectionView: View {
     @State private var hasLoaded: Bool = false
     @State private var isMutating: Bool = false
     @State private var errorMessage: String?
+    @State private var pickerPresented: Bool = false
 
     public init(context: ResourceDetailContext) {
         self.context = context
@@ -33,10 +33,45 @@ public struct ResourcesUsedSectionView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            sectionHeader("RECURSOS", count: links.isEmpty ? nil : links.count)
+            header
             content
         }
         .task { await loadIfNeeded() }
+        .sheet(isPresented: $pickerPresented) {
+            LinkResourcePickerSheet(
+                eventId: context.resource.id,
+                groupId: context.resource.groupId,
+                alreadyLinkedIds: Set(links.map { $0.toResourceId }),
+                onLinked: { _ in
+                    Task { await refresh() }
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("RECURSOS")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+            if !links.isEmpty {
+                Text("\(links.count)")
+                    .ruulTextStyle(RuulTypography.statSmall)
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            Spacer()
+            Button {
+                pickerPresented = true
+            } label: {
+                Label("Vincular", systemImage: "plus")
+                    .ruulTextStyle(RuulTypography.labelSmSemibold)
+                    .foregroundStyle(Color.ruulAccent)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Vincular un recurso al evento")
+        }
+        .padding(.horizontal, RuulSpacing.xxs)
     }
 
     @ViewBuilder
@@ -59,21 +94,30 @@ public struct ResourcesUsedSectionView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        HStack(spacing: RuulSpacing.sm) {
-            iconBadge(systemName: "link")
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Sin recursos vinculados")
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                Text("Vincula un espacio, asset o fondo que use este evento.")
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .multilineTextAlignment(.leading)
+        Button {
+            pickerPresented = true
+        } label: {
+            HStack(spacing: RuulSpacing.sm) {
+                iconBadge(systemName: "link")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sin recursos vinculados")
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Vincula un espacio, asset o fondo que use este evento.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .ruulTextStyle(RuulTypography.captionBold)
+                    .foregroundStyle(Color.ruulTextTertiary)
             }
-            Spacer(minLength: 0)
+            .padding(RuulSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .padding(RuulSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.plain)
         .cardBackground()
     }
 
@@ -111,6 +155,13 @@ public struct ResourcesUsedSectionView: View {
 
     private func loadIfNeeded() async {
         guard !hasLoaded else { return }
+        await refresh()
+    }
+
+    /// Re-fetches links + target rows from scratch. Used after attach /
+    /// unlink mutates the link set so the section reflects the new state
+    /// without relying on stale optimistic updates for the target lookup.
+    private func refresh() async {
         guard let repo = app.resourceLinkRepo else {
             hasLoaded = true
             return
