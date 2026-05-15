@@ -26,7 +26,7 @@ struct HomeCoordinatorTests {
         let userId = UUID()
         let events = [sampleEvent(in: group, daysAhead: 7), sampleEvent(in: group, daysAhead: 14)]
         let repo = MockEventRepository(seed: events)
-        let coord = HomeCoordinator(group: group, userId: userId, eventRepo: repo, rsvpRepo: MockRSVPRepository())
+        let coord = HomeCoordinator(group: group, userId: userId, eventRepo: repo, rsvpRepo: MockRSVPRepository(), resourceRepo: MockResourceRepository())
 
         await coord.refresh(force: true)
         #expect(coord.upcomingEvents.count == 2)
@@ -37,7 +37,7 @@ struct HomeCoordinatorTests {
     func refreshCached() async {
         let group = sampleGroup()
         let repo = MockEventRepository(seed: [sampleEvent(in: group, daysAhead: 1)])
-        let coord = HomeCoordinator(group: group, userId: UUID(), eventRepo: repo, rsvpRepo: MockRSVPRepository())
+        let coord = HomeCoordinator(group: group, userId: UUID(), eventRepo: repo, rsvpRepo: MockRSVPRepository(), resourceRepo: MockResourceRepository())
 
         await coord.refresh(force: false)
         let firstFetched = coord.lastRefreshedAt
@@ -48,7 +48,7 @@ struct HomeCoordinatorTests {
     @Test("empty group has nil nextEvent")
     func emptyGroup() async {
         let group = sampleGroup()
-        let coord = HomeCoordinator(group: group, userId: UUID(), eventRepo: MockEventRepository(), rsvpRepo: MockRSVPRepository())
+        let coord = HomeCoordinator(group: group, userId: UUID(), eventRepo: MockEventRepository(), rsvpRepo: MockRSVPRepository(), resourceRepo: MockResourceRepository())
         await coord.refresh(force: true)
         #expect(coord.nextEvent == nil)
         #expect(coord.upcomingEvents.isEmpty)

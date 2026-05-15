@@ -8,6 +8,7 @@ import RuulCore
 public final class HomeCoordinator {
     public private(set) var nextEvent: Event?
     public private(set) var upcomingEvents: [Event] = []
+    public private(set) var upcomingResources: [ResourceRow] = []
 
     /// Resource-shaped accessor sobre `nextEvent`. V1: el único concrete
     /// resource es Event. Ya no se envuelve en un wrapper — Event conforma
@@ -34,6 +35,7 @@ public final class HomeCoordinator {
     private let userId: UUID
     private let eventRepo: any EventRepository
     private let rsvpRepo: any RSVPRepository
+    private let resourceRepo: any ResourceRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "home")
 
     private let cacheTTL: TimeInterval = 5 * 60
@@ -48,13 +50,15 @@ public final class HomeCoordinator {
         allGroups: [Group],
         userId: UUID,
         eventRepo: any EventRepository,
-        rsvpRepo: any RSVPRepository
+        rsvpRepo: any RSVPRepository,
+        resourceRepo: any ResourceRepository
     ) {
         self.group = group
         self.allGroups = allGroups.isEmpty ? [group] : allGroups
         self.userId = userId
         self.eventRepo = eventRepo
         self.rsvpRepo = rsvpRepo
+        self.resourceRepo = resourceRepo
     }
 
     /// Convenience init — single-group mode (back-compat for tests/previews).
@@ -64,14 +68,16 @@ public final class HomeCoordinator {
         group: Group,
         userId: UUID,
         eventRepo: any EventRepository,
-        rsvpRepo: any RSVPRepository
+        rsvpRepo: any RSVPRepository,
+        resourceRepo: any ResourceRepository
     ) {
         self.init(
             group: group,
             allGroups: [group],
             userId: userId,
             eventRepo: eventRepo,
-            rsvpRepo: rsvpRepo
+            rsvpRepo: rsvpRepo,
+            resourceRepo: resourceRepo
         )
     }
 
@@ -111,6 +117,21 @@ public final class HomeCoordinator {
             self.error = CoordinatorError.from(error, fallback: "No pudimos cargar tus eventos")
             log.warning("home refresh failed: \(error.localizedDescription)")
         }
+        // Fetch non-event resources (fund/asset/slot/space) independently so an
+        // error here never blocks the event feed. Sequential per-group to keep
+        // logic simple; batch optimisation deferred.
+        let groupIds = isCrossGroupsMode ? allGroups.map(\.id) : [group.id]
+        var allRows: [ResourceRow] = []
+        for gid in groupIds {
+            let rows = (try? await resourceRepo.list(
+                in: gid,
+                types: [.fund, .asset, .slot, .space],
+                statuses: nil,
+                limit: 20
+            )) ?? []
+            allRows.append(contentsOf: rows)
+        }
+        upcomingResources = allRows
     }
 
     public func clearError() { error = nil }
