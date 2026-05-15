@@ -24,9 +24,10 @@ const memberAlice = { id: "ma00000000-0000-0000-0000-000000000001", user_id: "ua
 const memberBob   = { id: "mb00000000-0000-0000-0000-000000000001", user_id: "ub00000000-0000-0000-0000-000000000001", active: true };
 const memberCarla = { id: "mc00000000-0000-0000-0000-000000000001", user_id: "uc00000000-0000-0000-0000-000000000001", active: true };
 
-function captureSink(): { sink: ConsequenceSink; captured: unknown[]; warnings: unknown[] } {
+function captureSink(): { sink: ConsequenceSink; captured: unknown[]; warnings: unknown[]; votes: unknown[] } {
   const captured: unknown[] = [];
   const warnings: unknown[] = [];
+  const votes: unknown[] = [];
   const sink: ConsequenceSink = {
     proposeFine: async (args) => {
       captured.push(args);
@@ -36,8 +37,12 @@ function captureSink(): { sink: ConsequenceSink; captured: unknown[]; warnings: 
       warnings.push(args);
       return `warning-${warnings.length}`;
     },
+    startVote: async (args) => {
+      votes.push(args);
+      return `vote-${votes.length}`;
+    },
   };
-  return { sink, captured, warnings };
+  return { sink, captured, warnings, votes };
 }
 
 function baseContext(extras: Partial<RuleContext>): RuleContext {
@@ -1223,4 +1228,58 @@ Deno.test("ledgerEntryCreated → no targets if event.member_id is null", async 
   assertEquals(results.length, 0);
   assertEquals(captured.length, 0);
   assertEquals(warnings.length, 0);
+});
+
+Deno.test("expense_threshold_vote: startVote consequence opens ledger_review vote above threshold", async () => {
+  const { sink, captured, warnings, votes } = captureSink();
+  const rule = makeRule(
+    "Voto por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "amountAbove", config: { threshold_cents: 500000 } }],
+    [{ type: "startVote", config: { vote_type: "ledger_review" } }],
+  );
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("ledgerEntryCreated", {
+    id: "se-ledger-vote",
+    member_id: memberAlice.id,
+    payload: {
+      ledger_entry_id: "le-vote-1",
+      type: "expense",
+      amount_cents: 700000,  // $7000 — above $5000 threshold
+      currency: "MXN",
+    },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, true);
+  assertEquals(captured.length, 0);
+  assertEquals(warnings.length, 0);
+  assertEquals(votes.length, 1);
+  const v = votes[0] as { vote_type: string; reference_id: string; rule_id: string };
+  assertEquals(v.vote_type, "ledger_review");
+  assertEquals(v.reference_id, "le-vote-1");
+  assertEquals(v.rule_id, rule.id);
+});
+
+Deno.test("startVote: short-circuits when ledger_entry_id missing from context", async () => {
+  const { sink, votes } = captureSink();
+  const rule = makeRule(
+    "Voto por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "startVote", config: { vote_type: "ledger_review" } }],
+  );
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("ledgerEntryCreated", {
+    member_id: memberAlice.id,
+    payload: { amount_cents: 700000 },  // no ledger_entry_id
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, false);
+  assertEquals(votes.length, 0);
 });

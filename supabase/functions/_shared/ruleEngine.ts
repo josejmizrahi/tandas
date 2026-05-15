@@ -181,6 +181,21 @@ export interface ConsequenceSink {
     source_atom_id: UUID;
     payload: Record<string, unknown>;
   }): Promise<UUID>;
+
+  /**
+   * Opens a `ledger_review` vote for the `startVote` consequence. Phase 1:
+   * vote is informational — `finalize_vote` doesn't auto-void the ledger
+   * entry. Returns the new votes.id. Per mig 00194.
+   */
+  startVote(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    vote_type: string;
+    reference_id: UUID;
+    title: string;
+    description: string | null;
+    payload: Record<string, unknown>;
+  }): Promise<UUID>;
 }
 
 // =============================================================================
@@ -482,6 +497,42 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       member_id: target.member_id,
       created_resource_ids: [fineId],
       emitted_event_types: [],
+      error: null,
+    };
+  },
+
+  // (mig 00194) Opens a `ledger_review` vote when a rule fires on a ledger
+  // entry that crossed a threshold. Phase 1: vote is informational; the
+  // referenced ledger entry is NOT auto-voided on fail. Used by
+  // `expense_threshold_vote` template.
+  startVote: async (cons, target, rule, context) => {
+    const ledgerEntryId = target.context.ledger_entry_id as UUID | undefined;
+    if (!ledgerEntryId) {
+      return failure(rule.id, target.member_id, "startVote requires ledger_entry_id in target context");
+    }
+    const voteType = (cons.config.vote_type as string | undefined) ?? "ledger_review";
+    const title = (cons.config.title as string | undefined) ?? rule.name;
+    const voteId = await context.sink.startVote({
+      rule_id: rule.id,
+      group_id: rule.group_id,
+      vote_type: voteType,
+      reference_id: ledgerEntryId,
+      title,
+      description: (cons.config.description as string | undefined) ?? null,
+      payload: {
+        source_atom_id: target.context.source_atom_id ?? null,
+        amount_cents:   target.context.amount_cents ?? null,
+        currency:       target.context.currency ?? null,
+        ledger_type:    target.context.type ?? null,
+        recorder_member_id: target.member_id,
+      },
+    });
+    return {
+      success: true,
+      rule_id: rule.id,
+      member_id: target.member_id,
+      created_resource_ids: [voteId],
+      emitted_event_types: ["voteOpened"],
       error: null,
     };
   },

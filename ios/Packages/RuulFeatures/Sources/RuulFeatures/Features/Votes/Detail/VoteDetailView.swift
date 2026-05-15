@@ -52,7 +52,8 @@ public struct VoteDetailView: View {
         case .memberRemoval:     MemberRemovalVoteBody(coordinator: coordinator)
         case .fundWithdrawal,
              .roleAssignment,
-             .slotDispute:       GenericVoteBody(coordinator: coordinator)
+             .slotDispute,
+             .ledgerReview:      GenericVoteBody(coordinator: coordinator)
         }
     }
 }
@@ -85,6 +86,7 @@ private struct VoteHeader: View {
         case .fundWithdrawal:   return "Retirar fondos"
         case .roleAssignment:   return "Asignar rol"
         case .slotDispute:      return "Disputa de slot"
+        case .ledgerReview:     return "Revisión de gasto"
         }
     }
 }

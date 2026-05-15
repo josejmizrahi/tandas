@@ -262,6 +262,25 @@ async function buildContext(
       if (error) throw new Error(`emitWarning record_system_event failed: ${error.message}`);
       return data as string;
     },
+
+    // (mig 00194) Opens a vote via canonical start_vote RPC. Returns
+    // votes.id. Caller's vote_type must pass is_known_vote_type whitelist
+    // (mig 00194 added 'ledger_review').
+    startVote: async (args) => {
+      const { data, error } = await supabase.rpc("start_vote", {
+        p_group_id:     args.group_id,
+        p_vote_type:    args.vote_type,
+        p_reference_id: args.reference_id,
+        p_title:        args.title,
+        p_description:  args.description,
+        p_payload:      {
+          rule_id: args.rule_id,
+          ...args.payload,
+        },
+      });
+      if (error) throw new Error(`startVote start_vote failed: ${error.message}`);
+      return data as string;
+    },
   };
 
   return {

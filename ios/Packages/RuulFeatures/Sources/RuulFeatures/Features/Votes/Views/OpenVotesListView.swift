@@ -146,6 +146,7 @@ public struct OpenVotesListView: View {
         case .fundWithdrawal:   return Image(systemName: "banknote")
         case .roleAssignment:   return Image(systemName: "person.badge.shield.checkmark")
         case .slotDispute:      return Image(systemName: "ticket")
+        case .ledgerReview:     return Image(systemName: "dollarsign.circle")
         }
     }
 }

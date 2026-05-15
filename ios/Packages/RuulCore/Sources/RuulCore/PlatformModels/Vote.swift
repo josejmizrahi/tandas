@@ -71,6 +71,12 @@ public enum VoteType: String, Codable, Sendable, Hashable, CaseIterable {
     case roleAssignment   = "role_assignment"
     case generalProposal  = "general_proposal"
     case slotDispute      = "slot_dispute"
+    /// Retroactive review of a ledger entry. Opened by the `startVote`
+    /// consequence (rule engine) when a ledger entry crosses a threshold.
+    /// Phase 1: vote is informational — outcome doesn't auto-void the
+    /// entry. Phase 2 (deferred) wires `finalize_vote` to refund on fail.
+    /// Per mig 00194.
+    case ledgerReview     = "ledger_review"
 }
 
 /// Lifecycle state of a `Vote`. Mirrors the `votes.status` text column.

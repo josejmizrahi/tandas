@@ -146,6 +146,7 @@ private struct TemplateCard: View {
         case "no_rsvp_fine":              return "bell.slash"
         case "host_no_menu_fine":         return "fork.knife"
         case "expense_threshold_warning": return "dollarsign.circle"
+        case "expense_threshold_vote":    return "hand.raised"
         default:                          return "list.bullet.rectangle"
         }
     }
