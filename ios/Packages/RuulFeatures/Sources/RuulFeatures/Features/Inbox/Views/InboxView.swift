@@ -154,7 +154,7 @@ private struct FilteredInboxList: View {
 
     var body: some View {
         ZStack {
-            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             if actions.isEmpty && isLoading {
                 RuulLoadingState()
                     .transition(.opacity)

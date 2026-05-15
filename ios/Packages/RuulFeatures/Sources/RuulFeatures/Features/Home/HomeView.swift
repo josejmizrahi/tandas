@@ -81,7 +81,7 @@ public struct HomeView: View {
             async let m: Void = loadGroupMemory()
             _ = await (h, i, r, m)
         }
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .task {
             async let h: Void = coordinator.refresh()
             async let i: Void? = inboxCoordinator?.refresh()

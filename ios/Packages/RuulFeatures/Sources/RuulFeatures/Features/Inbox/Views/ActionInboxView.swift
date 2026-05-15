@@ -18,7 +18,7 @@ public struct ActionInboxView: View {
 
     public var body: some View {
         contentLayer
-            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .ruulAmbientScreen(palette: nil)
             .task { await coordinator.refresh() }
     }
 

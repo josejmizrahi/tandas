@@ -34,12 +34,18 @@ private struct RuulAmbientScreenModifier: ViewModifier {
     let style: RuulAmbientBackground.Style
 
     func body(content: Content) -> some View {
-        if let palette {
-            ZStack {
+        ZStack {
+            // Canvas always sits at the bottom of the screen stack so
+            // callers can pass `palette: nil` to opt out of the mesh
+            // tint and still get a deterministic background. List /
+            // dashboard screens (Home, Inbox, Activity, Profile)
+            // typically want this — no cover anchor, so the ambient
+            // mesh would read as "the screen is colored" rather than
+            // "the entity wears a color".
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            if let palette, !palette.isEmpty {
                 RuulAmbientBackground(palette: palette, style: style)
-                content
             }
-        } else {
             content
         }
     }

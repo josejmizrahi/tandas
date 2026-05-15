@@ -109,7 +109,7 @@ public struct ProfileView: View {
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
     }
 

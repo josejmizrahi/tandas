@@ -40,7 +40,7 @@ public struct ActivityView: View {
             .contentMargins(RuulSpacing.md, for: .scrollIndicators)
             .scrollEdgeEffectStyle(.soft, for: .vertical)
         }
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         // W2-C5: canon = "Actividad" for the group's system_events feed;
         // "Historial" reserved for past-events listing (PastResourcesView).
         // "Historia" dropped entirely.
