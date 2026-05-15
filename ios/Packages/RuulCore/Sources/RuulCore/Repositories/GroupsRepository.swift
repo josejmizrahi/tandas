@@ -66,17 +66,23 @@ public protocol GroupsRepository: Actor {
 /// resource_series, governance jsonb), so this struct shrinks to the
 /// fields that still belong on the bare Group.
 public struct GroupConfigPatch: Sendable, Equatable {
+    public var name: String?
+    public var description: String?
     public var initialEventVocabulary: String?
     public var coverImageName: String?
     public var currency: String?
     public var timezone: String?
 
     public init(
+        name: String? = nil,
+        description: String? = nil,
         initialEventVocabulary: String? = nil,
         coverImageName: String? = nil,
         currency: String? = nil,
         timezone: String? = nil
     ) {
+        self.name = name
+        self.description = description
         self.initialEventVocabulary = initialEventVocabulary
         self.coverImageName = coverImageName
         self.currency = currency
@@ -190,8 +196,8 @@ public actor MockGroupsRepository: GroupsRepository {
         if let v = patch.initialEventVocabulary { settings.eventVocabulary = v }
         let updated = Group(
             id: g.id,
-            name: g.name,
-            description: g.description,
+            name: patch.name ?? g.name,
+            description: patch.description ?? g.description,
             currency: patch.currency ?? g.currency,
             timezone: patch.timezone ?? g.timezone,
             inviteCode: g.inviteCode,
@@ -574,6 +580,8 @@ public actor LiveGroupsRepository: GroupsRepository {
         // remaining settings (vocabulary, currency, timezone, cover image)
         // patch via PostgREST update. RLS gates by admin via groups_update.
         struct Patch: Encodable {
+            let name: String?
+            let description: String?
             let cover_image_name: String?
             let currency: String?
             let timezone: String?
@@ -589,6 +597,8 @@ public actor LiveGroupsRepository: GroupsRepository {
             let g: Group = try await client
                 .from("groups")
                 .update(Patch(
+                    name: patch.name,
+                    description: patch.description,
                     cover_image_name: patch.coverImageName,
                     currency: patch.currency,
                     timezone: patch.timezone,
