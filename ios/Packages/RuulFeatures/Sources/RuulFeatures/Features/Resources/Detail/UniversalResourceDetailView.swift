@@ -232,6 +232,13 @@ public struct UniversalResourceDetailView: View {
             RulesSectionView(context: context)
                 .padding(.horizontal, RuulSpacing.s6)
         }
+        if context.resource.resourceType == .event {
+            // Plans/Active/EventResource.md §12 — "event uses space/asset/
+            // fund/right". Hidden for non-event resources and on builds
+            // without `resourceLinkRepo` wired (mocks/previews).
+            ResourcesUsedSectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
+        }
         if context.enabledCapabilities.contains("activity") {
             ActivitySectionView(context: context)
                 .padding(.horizontal, RuulSpacing.s6)

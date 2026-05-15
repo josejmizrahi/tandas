@@ -295,6 +295,13 @@ public final class AppState {
     /// `MockRuleTemplateRepository.defaultBetaCatalog`.
     public var ruleTemplateRepo: (any RuleTemplateRepository)?
 
+    /// `resource_links` gateway (mig 00198, Plans/Active/EventResource.md
+    /// §12 — event uses space/asset/fund/right). Optional so existing
+    /// AppState constructors don't break; UI sections degrade to a hidden
+    /// state when nil. Wired by `TandasApp` in live mode; mocks/previews
+    /// can assign a `MockResourceLinkRepository` directly.
+    public var resourceLinkRepo: (any ResourceLinkRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
