@@ -1,15 +1,19 @@
 import SwiftUI
 import RuulUI
 
-/// Rounded-corner panel that "slides up" over the cover hero. Holds
-/// the scroll content (sections, quick facts, etc.). The cover hero
-/// sits behind it ignoring safe area top; the panel's top corners
-/// reveal the cover bottom for the Apple Invites visual.
+/// Vertical container for the detail screen's section stack. Pure
+/// content scaffolding — no chrome, no offset, no background.
 ///
-/// Background can be a solid canvas (legacy) or `.ultraThinMaterial`
-/// (Luma ambient — when the detail screen renders a tinted bg from
-/// the cover palette behind everything, the glass material lets that
-/// tint bleed through the panel).
+/// Visual ownership shifted in the 2026-05-15 Luma refresh: the cover
+/// hero is now a discrete rounded card with margins on all four sides,
+/// so the panel no longer "slides up" to overlap it. Sections render
+/// directly on the screen's ambient palette layer; opaque section
+/// cards (RSVP / Money / Rules) provide their own definition.
+///
+/// The `Surface` parameter is kept for source-compat with call sites
+/// that still pass it (`.ambientGlass`) — both cases now render the
+/// same transparent container. The param will go away in a future
+/// cleanup once callers drop it.
 @MainActor
 public struct ResourceDetailPanel<Content: View>: View {
     public enum Surface: Sendable, Hashable {
@@ -17,14 +21,13 @@ public struct ResourceDetailPanel<Content: View>: View {
         case ambientGlass
     }
 
-    let surface: Surface
     let content: Content
 
     public init(
         surface: Surface = .ambientGlass,
         @ViewBuilder content: () -> Content
     ) {
-        self.surface = surface
+        _ = surface  // legacy — kept for source-compat; see type doc
         self.content = content()
     }
 
@@ -33,49 +36,25 @@ public struct ResourceDetailPanel<Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, RuulSpacing.s6)
-        .background(panelBackground)
-        // Pull up to overlap the cover bottom for the slides-up effect.
-        .offset(y: -RuulRadius.xl)
-    }
-
-    @ViewBuilder
-    private var panelBackground: some View {
-        let shape = UnevenRoundedRectangle(
-            topLeadingRadius: RuulRadius.xl,
-            topTrailingRadius: RuulRadius.xl,
-            style: .continuous
-        )
-        switch surface {
-        case .canvas:
-            shape.fill(Color.ruulBackgroundCanvas)
-        case .ambientGlass:
-            // ultraThinMaterial: blurs whatever ambient bg the parent
-            // is rendering and tints it slightly toward the system
-            // surface. Cards inside the panel (RSVP, Money, Rules)
-            // keep their `ruulSurface` opaque fill so they stay
-            // readable against the glass.
-            shape.fill(.ultraThinMaterial)
-        }
+        .padding(.vertical, RuulSpacing.lg)
     }
 }
 
 #if DEBUG
-#Preview("Panel over cover") {
-    ZStack(alignment: .top) {
-        Color.green.frame(height: 360)
+#Preview("Panel over ambient") {
+    ZStack {
+        Color.ruulBackgroundCanvas.ignoresSafeArea()
         VStack(spacing: 0) {
-            Spacer().frame(height: 280)
+            Spacer().frame(height: 200)
             ResourceDetailPanel {
-                VStack(alignment: .leading, spacing: RuulSpacing.s4) {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
                     Text("Section A").ruulTextStyle(RuulTypography.subheadSemibold)
                     Text("Section B").ruulTextStyle(RuulTypography.body)
                     Text("Section C").ruulTextStyle(RuulTypography.body)
                 }
-                .padding(.horizontal, RuulSpacing.s6)
+                .padding(.horizontal, RuulSpacing.lg)
             }
         }
     }
-    .ignoresSafeArea()
 }
 #endif

@@ -65,7 +65,6 @@ public struct UniversalResourceDetailView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .ignoresSafeArea(edges: .top)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
             }

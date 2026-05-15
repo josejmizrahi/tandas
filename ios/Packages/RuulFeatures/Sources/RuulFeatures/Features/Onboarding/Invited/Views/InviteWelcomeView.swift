@@ -86,13 +86,13 @@ public struct InviteWelcomeView: View {
         VStack(spacing: RuulSpacing.xs) {
             Text("Te invitan a unirte a")
                 .ruulTextStyle(RuulTypography.bodyLarge)
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(Color.ruulOnImageSecondary)
             Text(preview.groupName)
                 .ruulTextStyle(RuulTypography.displayLarge)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.ruulOnImage)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
-                .shadow(color: .black.opacity(0.25), radius: 16, x: 0, y: 4)
+                .shadow(color: Color.ruulImageTextShadow, radius: RuulSpacing.md, x: 0, y: 4)
         }
     }
 
@@ -107,8 +107,8 @@ public struct InviteWelcomeView: View {
             RuulCoverView(cover)
             LinearGradient(
                 colors: [
-                    Color.black.opacity(0),
-                    Color.black.opacity(0.55)
+                    Color.ruulImageVignetteMid.opacity(0),
+                    Color.ruulImageVignetteDeep
                 ],
                 startPoint: .center,
                 endPoint: .bottom
@@ -116,11 +116,11 @@ public struct InviteWelcomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(preview.groupName)
                     .ruulTextStyle(RuulTypography.title)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(2)
                 Text(metaCopy(for: preview))
                     .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Color.ruulOnImageSecondary)
             }
             .padding(RuulSpacing.lg)
         }
@@ -143,15 +143,10 @@ public struct InviteWelcomeView: View {
             } label: {
                 Text("Aceptar invitación")
                     .ruulTextStyle(RuulTypography.bodyLarge)
-                    // Hardcoded black: paired with the hardcoded-white
-                    // capsule below, this is the deliberate Tripsy-style
-                    // "ready to commit" affordance — high-contrast pop
-                    // regardless of light/dark theme. Don't swap for a
-                    // semantic token; both colors are joined at the hip.
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(Color.ruulOnImageInverse)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 56)
-                    .background(Capsule().fill(Color.white))
+                    .background(Capsule().fill(Color.ruulImagePillSolid))
                     .ruulElevation(.sm)
             }
             .buttonStyle(.ruulPress)

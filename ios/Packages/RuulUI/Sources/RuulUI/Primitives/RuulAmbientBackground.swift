@@ -22,6 +22,23 @@ public struct RuulAmbientBackground: View {
         /// Vivid tint — closer to the source palette, less dimmed.
         /// Used for hero / cover-adjacent surfaces.
         case vivid
+
+        /// Per-style saturation applied to the blurred mesh.
+        var saturation: Double {
+            switch self {
+            case .soft:  return 0.85
+            case .vivid: return 1.0
+            }
+        }
+
+        /// Bottom-fade opacity that converges toward the canvas color
+        /// so foreground text stays legible without flattening tint.
+        var bottomFadeOpacity: Double {
+            switch self {
+            case .soft:  return 0.55
+            case .vivid: return 0.25
+            }
+        }
     }
 
     public init(palette: [Color], style: Style = .soft) {
@@ -41,8 +58,8 @@ public struct RuulAmbientBackground: View {
                 ],
                 colors: paddedPalette
             )
-            .blur(radius: 80)
-            .saturation(style == .soft ? 0.85 : 1.0)
+            .blur(radius: RuulSize.blurAmbient)
+            .saturation(style.saturation)
             // Bottom fade to recessed canvas so foreground text stays
             // legible without flattening the overall tint. The fade
             // sits on top of the blurred mesh so the bottom 30% of

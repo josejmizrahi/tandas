@@ -343,6 +343,12 @@ public extension Color {
     /// Translucent white border for pills over images.
     static var ruulImagePillBorder: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.30)) }
 
+    /// Solid white pill background over an image — the high-contrast
+    /// "ready to commit" affordance (Tripsy invite-accept pattern).
+    /// Always opaque white regardless of theme; pair with
+    /// `ruulOnImageInverse` (black) for the label.
+    static var ruulImagePillSolid: Color { Color(uiColor: UIColor.white) }
+
     /// Vignette gradient mid-stop (20% black) for image-content readability.
     static var ruulImageVignetteMid: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.20)) }
 
@@ -358,4 +364,33 @@ public extension Color {
     /// Text/icon colored to contrast a SOLID white pill placed over an image
     /// (always black, regardless of scheme — the pill is always white).
     static var ruulOnImageInverse: Color { Color(uiColor: UIColor.black) }
+
+    // MARK: - Glass-quiet fills (Luma input pattern)
+    //
+    // Theme-adaptive soft fill that reads as "barely-there" against
+    // any underlying surface — almost invisible over a glass sheet,
+    // just enough shape on a solid bg. Used for input fields, soft
+    // chips, and any control that should pick up the ambient/material
+    // tint of its parent rather than imposing its own opaque fill.
+
+    /// Default rest-state fill for inputs / soft chips on any surface.
+    /// 6% primary-text tint — adapts: light mode → faint black wash,
+    /// dark mode → faint white wash.
+    static var ruulFillGlass: Color {
+        Color(uiColor: UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(white: 1.0, alpha: 0.06)
+                : UIColor(white: 0.0, alpha: 0.06)
+        })
+    }
+
+    /// Slightly stronger glass fill for hover / pressed / selected
+    /// variants of the soft chip pattern. 10% primary-text tint.
+    static var ruulFillGlassStrong: Color {
+        Color(uiColor: UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(white: 1.0, alpha: 0.12)
+                : UIColor(white: 0.0, alpha: 0.10)
+        })
+    }
 }

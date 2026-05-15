@@ -48,30 +48,21 @@ public struct ResourceCoverHero: View {
     }
 
     public var body: some View {
-        GeometryReader { geo in
-            let frame = geo.frame(in: .global)
-            let pull = max(0, -frame.minY)
-            let push = max(0, frame.minY)
-
-            ZStack(alignment: .bottomLeading) {
-                coverContent
-                    .frame(width: geo.size.width, height: max(coverHeight + pull, coverHeight))
-                    .offset(y: -push * 0.5)
-                    .clipped()
-                vignette
-                bottomOverlay
-                if let pill = statusPill {
-                    statusPillOverlay(pill)
-                }
+        ZStack(alignment: .bottomLeading) {
+            coverContent
+            vignette
+            bottomOverlay
+            if let pill = statusPill {
+                statusPillOverlay(pill)
             }
-            .frame(width: geo.size.width, height: coverHeight)
         }
-        .frame(height: coverHeight)
+        .frame(height: RuulSize.coverHero)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
+        .ruulElevation(.md)
+        .padding(.horizontal, RuulSpacing.lg)
+        .padding(.top, RuulSpacing.sm)
+        .padding(.bottom, RuulSpacing.lg)
     }
-
-    // MARK: - Private constants
-
-    private var coverHeight: CGFloat { 360 }
 
     // MARK: - Cover content
 
@@ -123,8 +114,8 @@ public struct ResourceCoverHero: View {
     private var vignette: some View {
         LinearGradient(
             colors: [
-                Color.black.opacity(0),
-                Color.black.opacity(0.60)
+                Color.ruulImageVignetteMid.opacity(0),
+                Color.ruulImageVignetteDeep
             ],
             startPoint: .center,
             endPoint: .bottom
@@ -137,17 +128,17 @@ public struct ResourceCoverHero: View {
                 Spacer()
                 HStack(spacing: RuulSpacing.s1) {
                     Circle()
-                        .fill(.white)
+                        .fill(Color.ruulOnImage)
                         .frame(width: 6, height: 6)
                     Text(pill.label)
                         .ruulTextStyle(RuulTypography.captionBold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.ruulOnImage)
                 }
                 .padding(.horizontal, RuulSpacing.s2)
                 .padding(.vertical, 6)
                 .background(Capsule().fill(pill.color.opacity(0.85)))
                 .padding(.trailing, RuulSpacing.s4)
-                .padding(.top, RuulSpacing.s7)
+                .padding(.top, RuulSpacing.s4)
             }
             Spacer()
         }
@@ -164,21 +155,22 @@ public struct ResourceCoverHero: View {
                     }
                 }
                 .ruulTextStyle(RuulTypography.captionBold)
-                .foregroundStyle(.white.opacity(0.95))
+                .foregroundStyle(Color.ruulOnImageSecondary)
                 .textCase(.uppercase)
             }
             Text(title)
                 .ruulTextStyle(RuulTypography.displayLarge)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.ruulOnImage)
                 .lineLimit(3)
+                .shadow(color: Color.ruulImageTextShadow, radius: RuulSpacing.md, x: 0, y: 4)
             if let subtitle {
                 Text(subtitle)
                     .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Color.ruulOnImageSecondary)
                     .lineLimit(2)
             }
         }
-        .padding(RuulSpacing.s6)
+        .padding(RuulSpacing.lg)
     }
 }
 

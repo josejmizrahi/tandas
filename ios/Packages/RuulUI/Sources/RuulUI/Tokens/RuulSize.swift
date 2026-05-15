@@ -15,6 +15,16 @@ public enum RuulSize {
     // MARK: - Hero images / banners
     public static let heroBanner:     CGFloat = 180
     public static let heroLarge:      CGFloat = 240
+    /// Resource detail cover card (Luma-scale poster). Used by
+    /// `ResourceCoverHero` as a rounded-all-sides card inside the
+    /// detail screen — tall enough to read as a "poster", not a
+    /// thin banner.
+    public static let coverHero:      CGFloat = 480
+
+    // MARK: - Blur radii
+    /// Heavy ambient blur used by `RuulAmbientBackground` to smear a
+    /// resource palette into a continuous color field.
+    public static let blurAmbient:    CGFloat = 80
 
     // MARK: - Badges (small overlays on avatars/cards)
     public static let badgeSmall:     CGFloat = 24
