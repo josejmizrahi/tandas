@@ -63,4 +63,20 @@ fi
 echo "→ Generating Tandas.xcodeproj from project.yml..."
 xcodegen generate
 
-echo "→ Project regenerated; xcodebuild can now proceed."
+# ----------------------------------------------------------------------
+# Pre-resolve Swift Package Manager dependencies.
+#
+# Xcode Cloud invokes the main `xcodebuild` step with automatic
+# dependency resolution disabled, so it requires a `Package.resolved`
+# at `Tandas.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/`.
+# That file lives inside the gitignored .xcodeproj, so it never reaches
+# the repo — every fresh worker starts without it. We invoke the
+# resolver explicitly here (which is *not* subject to the disable
+# flag) so the archive step finds the resolved file already on disk.
+# ----------------------------------------------------------------------
+echo "→ Resolving Swift Package Manager dependencies..."
+xcodebuild -resolvePackageDependencies \
+  -project Tandas.xcodeproj \
+  -scheme Tandas
+
+echo "→ Project regenerated and packages resolved; xcodebuild can now proceed."
