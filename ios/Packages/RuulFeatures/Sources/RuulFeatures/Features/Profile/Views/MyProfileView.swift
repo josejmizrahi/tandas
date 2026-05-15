@@ -27,6 +27,11 @@ public struct MyProfileView: View {
     /// nil while loading or when zero.
     public var outstandingPillAmount: Decimal?
 
+    public var onChangePhone: (() -> Void)?
+    public var onChangeEmail: (() -> Void)?
+    public var onPickLanguage: (() -> Void)?
+    public var onPickTimezone: (() -> Void)?
+
     public init(
         coordinator: ProfileCoordinator,
         onOpenMyFines: @escaping () -> Void,
@@ -34,7 +39,11 @@ public struct MyProfileView: View {
         onEditProfile: @escaping () -> Void,
         onSignOut: @escaping () -> Void,
         onOpenMyLedger: (() -> Void)? = nil,
-        outstandingPillAmount: Decimal? = nil
+        outstandingPillAmount: Decimal? = nil,
+        onChangePhone: (() -> Void)? = nil,
+        onChangeEmail: (() -> Void)? = nil,
+        onPickLanguage: (() -> Void)? = nil,
+        onPickTimezone: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMyFines = onOpenMyFines
@@ -43,6 +52,10 @@ public struct MyProfileView: View {
         self.onSignOut = onSignOut
         self.onOpenMyLedger = onOpenMyLedger
         self.outstandingPillAmount = outstandingPillAmount
+        self.onChangePhone = onChangePhone
+        self.onChangeEmail = onChangeEmail
+        self.onPickLanguage = onPickLanguage
+        self.onPickTimezone = onPickTimezone
     }
 
     private var appearance: Binding<AppearanceOption> {
@@ -67,6 +80,8 @@ public struct MyProfileView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             hero
+                            identitySection
+                            preferencesSection
                             activitySection
                             settingsSection
                             appearanceSection
@@ -119,6 +134,55 @@ public struct MyProfileView: View {
     }
 
     // MARK: Sections
+
+    private var identitySection: some View {
+        sectionContainer(title: "IDENTIDAD") {
+            navRow(
+                icon: "phone",
+                label: "Teléfono",
+                trailing: { trailingValue(coordinator.profile?.phone ?? "—") },
+                action: { onChangePhone?() }
+            )
+            divider
+            navRow(
+                icon: "envelope",
+                label: "Correo",
+                trailing: { trailingValue(app.session?.user.email ?? "—") },
+                action: { onChangeEmail?() }
+            )
+        }
+    }
+
+    private var preferencesSection: some View {
+        sectionContainer(title: "PREFERENCIAS") {
+            navRow(
+                icon: "globe",
+                label: "Idioma",
+                trailing: { trailingValue(localeLabel(coordinator.profile?.locale)) },
+                action: { onPickLanguage?() }
+            )
+            divider
+            navRow(
+                icon: "clock",
+                label: "Zona horaria",
+                trailing: { trailingValue(coordinator.profile?.timezone ?? "—") },
+                action: { onPickTimezone?() }
+            )
+        }
+    }
+
+    private func trailingValue(_ s: String) -> some View {
+        Text(s)
+            .ruulTextStyle(RuulTypography.caption)
+            .foregroundStyle(Color.ruulTextSecondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+    }
+
+    private func localeLabel(_ code: String?) -> String {
+        guard let code, let entry = LanguagePickerView.supported.first(where: { $0.code == code }) else { return "—" }
+        return entry.label
+    }
 
     private var activitySection: some View {
         sectionContainer(title: "TU ACTIVIDAD") {

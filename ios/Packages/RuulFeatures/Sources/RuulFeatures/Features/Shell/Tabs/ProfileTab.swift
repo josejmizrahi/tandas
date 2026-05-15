@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulCore
+import RuulUI
 
 /// Thin tab wrapper for "Yo" (Nivel 0). Embeds MyProfileView inside a
 /// NavigationStack and forwards navigation to the RootRouter.
@@ -10,24 +11,40 @@ public struct ProfileTab: View {
     let profileCoordinator: ProfileCoordinator?
     let myFinesCoordinator: MyFinesCoordinator?
 
+    @State private var path = NavigationPath()
+    @State private var showChangePhone = false
+    @State private var showChangeEmail = false
+
+    private enum ProfileNav: Hashable { case language, timezone }
+
     public init(profile: ProfileCoordinator?, myFines: MyFinesCoordinator?) {
         self.profileCoordinator = profile
         self.myFinesCoordinator = myFines
     }
 
     public var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             if let coord = profileCoordinator {
                 MyProfileView(
                     coordinator: coord,
                     onOpenMyFines: { router.openSanciones() },
                     onOpenHistory: { router.selectTab(.home) },
                     onEditProfile: { router.openEditProfile() },
-                    onSignOut: {
-                        Task { try? await app.signOut() }
-                    },
-                    outstandingPillAmount: myFinesCoordinator?.totalOutstanding
+                    onSignOut: { Task { try? await app.signOut() } },
+                    outstandingPillAmount: myFinesCoordinator?.totalOutstanding,
+                    onChangePhone: { showChangePhone = true },
+                    onChangeEmail: { showChangeEmail = true },
+                    onPickLanguage: { path.append(ProfileNav.language) },
+                    onPickTimezone: { path.append(ProfileNav.timezone) }
                 )
+                .navigationDestination(for: ProfileNav.self) { dest in
+                    switch dest {
+                    case .language: LanguagePickerView()
+                    case .timezone: TimezonePickerView()
+                    }
+                }
+                .sheet(isPresented: $showChangePhone) { ChangePhoneFlow() }
+                .sheet(isPresented: $showChangeEmail) { ChangeEmailFlow() }
                 .environment(app)
                 .task { await myFinesCoordinator?.refresh() }
             } else {
