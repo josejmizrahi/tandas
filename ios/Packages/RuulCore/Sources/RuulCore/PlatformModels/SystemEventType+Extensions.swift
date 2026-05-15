@@ -88,6 +88,37 @@ public extension SystemEventType {
         case .ledgerEntryCreated:     return "Movimiento de dinero registrado"
         case .warningEmitted:         return "Aviso emitido por regla"
 
+        // Right lifecycle (mig 00198 — right_resource_canonical)
+        case .rightCreated:           return "Derecho creado"
+        case .rightTransferred:       return "Derecho transferido"
+        case .rightDelegated:         return "Derecho delegado"
+        case .rightRevoked:           return "Derecho revocado"
+        case .rightExpired:           return "Derecho expirado"
+        case .rightExercised:         return "Derecho ejercido"
+        case .rightSuspended:         return "Derecho suspendido"
+        case .rightRestored:          return "Derecho restaurado"
+
+        // Asset universal atoms (mig 00203 — canonical asset spec §13)
+        case .assetTransferred:       return "Activo transferido"
+        case .assetAssigned:          return "Activo asignado"
+        case .assetReturned:          return "Activo devuelto"
+        case .custodyAssigned:        return "Custodia asignada"
+        case .custodyReleased:        return "Custodia liberada"
+        case .maintenanceLogged:      return "Mantenimiento registrado"
+        case .maintenanceCompleted:   return "Mantenimiento completado"
+        case .damageReported:         return "Daño reportado"
+        case .assetUsed:              return "Activo usado"
+        case .assetCheckedOut:        return "Activo prestado"
+        case .assetCheckedIn:         return "Activo devuelto a custodia"
+        case .valuationRecorded:      return "Valuación registrada"
+
+        // Resource links (mig 00202 — event uses space/asset/fund/right)
+        case .resourceLinked:         return "Recurso vinculado"
+        case .resourceUnlinked:       return "Recurso desvinculado"
+
+        // Event lifecycle (mig 00203 — eventCancelled)
+        case .eventCancelled:         return "Evento cancelado"
+
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
         }
@@ -146,7 +177,15 @@ public extension SystemEventType {
              .groupRenamed, .governanceUpdated,
              .resourceArchived, .resourceUnarchived, .resourceRenamed,
              .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden,
-             .ledgerEntryCreated, .warningEmitted:
+             .ledgerEntryCreated, .warningEmitted,
+             .rightCreated, .rightTransferred, .rightDelegated, .rightRevoked,
+             .rightExpired, .rightExercised, .rightSuspended, .rightRestored,
+             .assetTransferred, .assetAssigned, .assetReturned,
+             .custodyAssigned, .custodyReleased,
+             .maintenanceLogged, .maintenanceCompleted, .damageReported,
+             .assetUsed, .assetCheckedOut, .assetCheckedIn, .valuationRecorded,
+             .resourceLinked, .resourceUnlinked,
+             .eventCancelled:
             return false
         case .unknown:
             return false

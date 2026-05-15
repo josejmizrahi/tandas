@@ -285,6 +285,67 @@ public struct HistoryItemPresentation {
             self.icon = "chart.line.uptrend.xyaxis"
             self.title = "\(actor) registró el valor"
             self.tone = .neutral
+
+        // Fund lock lifecycle (mig 00202_fund_writers_balance_lifecycle)
+        case .fundLocked:
+            self.icon = "lock.fill"
+            self.title = "\(actor) bloqueó un fondo"
+            self.tone = .warning
+        case .fundUnlocked:
+            self.icon = "lock.open"
+            self.title = "\(actor) desbloqueó un fondo"
+            self.tone = .info
+
+        // Right lifecycle (mig 00198_right_resource_canonical)
+        case .rightCreated:
+            self.icon = "key.fill"
+            self.title = "\(actor) creó un derecho"
+            self.tone = .info
+        case .rightTransferred:
+            self.icon = "arrow.left.arrow.right"
+            self.title = "\(actor) transfirió un derecho"
+            self.tone = .info
+        case .rightDelegated:
+            self.icon = "person.2.fill"
+            self.title = "\(actor) delegó un derecho"
+            self.tone = .info
+        case .rightRevoked:
+            self.icon = "xmark.octagon"
+            self.title = "\(actor) revocó un derecho"
+            self.tone = .negative
+        case .rightExpired:
+            self.icon = "clock.badge.xmark"
+            self.title = "Un derecho expiró"
+            self.tone = .neutral
+        case .rightExercised:
+            self.icon = "checkmark.seal.fill"
+            self.title = "\(actor) ejerció un derecho"
+            self.tone = .positive
+        case .rightSuspended:
+            self.icon = "pause.circle"
+            self.title = "\(actor) suspendió un derecho"
+            self.tone = .warning
+        case .rightRestored:
+            self.icon = "arrow.clockwise.circle"
+            self.title = "\(actor) restauró un derecho"
+            self.tone = .positive
+
+        // Resource links (mig 00202_event_resource_links)
+        case .resourceLinked:
+            self.icon = "link"
+            self.title = "\(actor) vinculó un recurso al evento"
+            self.tone = .info
+        case .resourceUnlinked:
+            self.icon = "link.badge.plus"
+            self.title = "\(actor) desvinculó un recurso del evento"
+            self.tone = .neutral
+
+        // Event lifecycle — eventCancelled (mig 00203_event_cancelled_atom)
+        case .eventCancelled:
+            self.icon = "xmark.circle"
+            self.title = "\(actor) canceló el evento"
+            self.tone = .negative
+
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"
