@@ -101,16 +101,9 @@ public struct ResourceWizardSheet: View {
         if let builder = coordinator.selectedBuilder {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                    wizardCoverHero(for: builder)
                     headerForBuilder(builder)
-                    ForEach(Array(builder.requiredFields.enumerated()), id: \.offset) { _, field in
-                        BuilderFieldRenderer(
-                            field: field,
-                            values: Binding(
-                                get: { coordinator.basicFields },
-                                set: { coordinator.basicFields = $0 }
-                            )
-                        )
-                    }
+                    fieldStack(builder: builder)
                     RuulButton(
                         "Continuar",
                         style: .primary,
@@ -125,6 +118,182 @@ public struct ResourceWizardSheet: View {
                 .padding(.top, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.xxl)
             }
+        }
+    }
+
+    /// Procedural mesh-gradient cover preview keyed off the resource
+    /// type. Anchors the wizard step in visual identity the way Luma's
+    /// create form does — the user always sees "what kind of thing
+    /// they're building" before they fill anything in. Same gradient
+    /// for every resource of a given type so the cover reads as a
+    /// stamp, not a per-event picker (which lives elsewhere).
+    private func wizardCoverHero(for builder: any ResourceBuilder) -> some View {
+        let cover = coverFor(type: builder.resourceType)
+        return RuulCoverView(cover)
+            .frame(height: 140)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
+            .ruulElevation(.sm)
+    }
+
+    private func coverFor(type: ResourceType) -> RuulCover {
+        switch type {
+        case .event:   return .sunset
+        case .fund:    return .mint
+        case .asset:   return .ember
+        case .space:   return .lilac
+        case .slot:    return .ocean
+        case .right:   return .midnight
+        case .unknown: return .clay
+        }
+    }
+
+    /// Walks the builder's required fields and groups consecutive
+    /// date/time/dateTime kinds into a single timeline card (Luma-style
+    /// "Comenzar / Fin" pattern). Non-date fields fall through to the
+    /// existing renderer one per row. Honors the same `dependsOn` gate
+    /// the renderer applies so conditional fields stay hidden.
+    @ViewBuilder
+    private func fieldStack(builder: any ResourceBuilder) -> some View {
+        let groups = groupedFields(builder.requiredFields)
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+            ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                switch group {
+                case .single(let field):
+                    BuilderFieldRenderer(
+                        field: field,
+                        values: basicFieldsBinding()
+                    )
+                case .timeline(let fields):
+                    timelineCard(fields: fields)
+                }
+            }
+        }
+    }
+
+    private func basicFieldsBinding() -> Binding<[String: JSONConfig]> {
+        Binding(
+            get: { coordinator.basicFields },
+            set: { coordinator.basicFields = $0 }
+        )
+    }
+
+    /// Wizard-step grouping. A run of ≥2 date-shaped fields becomes a
+    /// single timeline card; a single date field stays as `.single` so
+    /// it renders with the regular `BuilderFieldRenderer` chrome.
+    private enum FieldGroup {
+        case single(BuilderField)
+        case timeline([BuilderField])
+    }
+
+    private func groupedFields(_ fields: [BuilderField]) -> [FieldGroup] {
+        var out: [FieldGroup] = []
+        var run: [BuilderField] = []
+        for field in fields {
+            if Self.isDateLike(field.kind) {
+                run.append(field)
+            } else {
+                if run.count >= 2 { out.append(.timeline(run)) }
+                else { run.forEach { out.append(.single($0)) } }
+                run.removeAll(keepingCapacity: true)
+                out.append(.single(field))
+            }
+        }
+        if run.count >= 2 { out.append(.timeline(run)) }
+        else { run.forEach { out.append(.single($0)) } }
+        return out
+    }
+
+    private static func isDateLike(_ kind: BuilderField.Kind) -> Bool {
+        kind == .date || kind == .time || kind == .dateTime
+    }
+
+    /// Timeline card: vertical line with a dot per date row, mirroring
+    /// Luma's "Comenzar / Fin" treatment. The first dot is a filled
+    /// circle, subsequent dots are hollow rings to convey progression.
+    private func timelineCard(fields: [BuilderField]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(fields.enumerated()), id: \.offset) { idx, field in
+                timelineRow(field: field, isFirst: idx == 0, isLast: idx == fields.count - 1)
+                if idx < fields.count - 1 {
+                    Divider().padding(.leading, RuulSpacing.xxl + RuulSpacing.md)
+                }
+            }
+        }
+        .padding(.vertical, RuulSpacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                .fill(Color.ruulSurface)
+        )
+        .ruulElevation(.sm)
+    }
+
+    private func timelineRow(field: BuilderField, isFirst: Bool, isLast: Bool) -> some View {
+        HStack(alignment: .center, spacing: RuulSpacing.md) {
+            timelineMarker(isFirst: isFirst, isLast: isLast)
+                .frame(width: RuulSpacing.lg)
+            HStack {
+                Text(field.label)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Spacer(minLength: RuulSpacing.sm)
+                DatePicker(
+                    "",
+                    selection: dateBinding(for: field),
+                    displayedComponents: dateComponents(for: field.kind)
+                )
+                .labelsHidden()
+                .datePickerStyle(.compact)
+            }
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+    }
+
+    /// Vertical timeline rail: solid line through the dot. Filled dot
+    /// for the first row, hollow ring for the rest. Trims the line at
+    /// the top of the first row and the bottom of the last row so the
+    /// rail doesn't bleed past the card edges.
+    private func timelineMarker(isFirst: Bool, isLast: Bool) -> some View {
+        ZStack {
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(isFirst ? Color.clear : Color.ruulSeparator)
+                    .frame(width: 1.5)
+                Rectangle()
+                    .fill(isLast ? Color.clear : Color.ruulSeparator)
+                    .frame(width: 1.5)
+            }
+            Circle()
+                .strokeBorder(Color.ruulAccent, lineWidth: 2)
+                .background(
+                    Circle().fill(isFirst ? Color.ruulAccent : Color.clear)
+                )
+                .frame(width: 10, height: 10)
+        }
+    }
+
+    private func dateBinding(for field: BuilderField) -> Binding<Date> {
+        Binding(
+            get: {
+                guard case let .string(raw)? = coordinator.basicFields[field.key] else {
+                    return .now.addingTimeInterval(86_400)
+                }
+                return BuilderFieldRenderer.parseDateString(raw) ?? .now.addingTimeInterval(86_400)
+            },
+            set: { newDate in
+                coordinator.basicFields[field.key] = .string(
+                    BuilderFieldRenderer.formatDate(newDate, kind: field.kind)
+                )
+            }
+        )
+    }
+
+    private func dateComponents(for kind: BuilderField.Kind) -> DatePickerComponents {
+        switch kind {
+        case .date:     return [.date]
+        case .time:     return [.hourAndMinute]
+        case .dateTime: return [.date, .hourAndMinute]
+        default:        return [.date, .hourAndMinute]
         }
     }
 
