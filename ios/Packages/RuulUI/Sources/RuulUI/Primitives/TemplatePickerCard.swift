@@ -46,7 +46,8 @@ public struct TemplatePickerCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(RuulSpacing.lg)
             .background(Color.ruulSurface, in: shape)
-            .overlay(borderOverlay)
+            .ruulElevation(.sm)
+            .overlay(selectedBorder)
             .overlay(alignment: .topTrailing) { selectionBadge }
             .opacity(isComingSoon ? 0.55 : 1.0)
         }
@@ -63,9 +64,8 @@ public struct TemplatePickerCard: View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             ZStack {
                 Circle()
-                    .fill(Color.ruulBackground)
+                    .fill(Color.ruulBackgroundRecessed)
                     .frame(width: 44, height: 44)
-                    .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
@@ -81,10 +81,7 @@ public struct TemplatePickerCard: View {
                             .foregroundStyle(Color.ruulTextTertiary)
                             .padding(.horizontal, RuulSpacing.xs)
                             .padding(.vertical, 2)
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-                            )
+                            .background(Color.ruulBackgroundRecessed, in: Capsule())
                     }
                 }
                 Text(subtitle)
@@ -121,12 +118,13 @@ public struct TemplatePickerCard: View {
         RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
     }
 
+    /// Selected ring only — unselected cards rely on elevation + surface
+    /// for definition (no hairline). Keeps unselected feeling soft and
+    /// "settled into the canvas" the way Luma cards do.
     @ViewBuilder
-    private var borderOverlay: some View {
+    private var selectedBorder: some View {
         if isSelected {
             shape.stroke(Color.ruulTextPrimary, lineWidth: 2)
-        } else {
-            shape.stroke(Color.ruulSeparator, lineWidth: 0.5)
         }
     }
 

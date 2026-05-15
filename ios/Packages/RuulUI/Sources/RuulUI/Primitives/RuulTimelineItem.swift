@@ -80,9 +80,8 @@ public struct RuulTimelineItem: View {
             }
             ZStack {
                 Circle()
-                    .fill(Color.ruulBackground)
+                    .fill(Color.ruulBackgroundRecessed)
                     .frame(width: 28, height: 28)
-                    .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color.ruulTextPrimary)

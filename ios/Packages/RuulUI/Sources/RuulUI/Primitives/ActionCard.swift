@@ -69,10 +69,10 @@ public struct ActionCard: View {
                 Spacer(minLength: 0)
                 trailingColumn
             }
-            .padding(RuulSpacing.md)
+            .padding(RuulSpacing.lg)
             .frame(maxWidth: .infinity)
             .background(Color.ruulSurface, in: shape)
-            .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
+            .ruulElevation(.sm)
         }
         .buttonStyle(.ruulPress)
         .accessibilityElement(children: .combine)
@@ -87,9 +87,8 @@ public struct ActionCard: View {
     private var iconBadge: some View {
         ZStack {
             Circle()
-                .fill(Color.ruulBackground)
+                .fill(Color.ruulBackgroundRecessed)
                 .frame(width: 40, height: 40)
-                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
