@@ -1,0 +1,76 @@
+# RuulUI conventions
+
+Quick reference for "which primitive do I reach for". Keep this file
+in sync as the DS evolves; PRs touching `Primitives/` or `Patterns/`
+should update the row below.
+
+## Surfaces (screens, sheets, cards)
+
+| Need                         | Use                                    |
+|------------------------------|----------------------------------------|
+| Screen with active group     | `.ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)` |
+| List/dashboard screen        | `.ruulAmbientScreen(palette: nil)` (canvas only) |
+| Modal (any flow)             | `.fullScreenCover(...) + .ruulSheetChrome(detents:)` |
+| Card body (default)          | `.ruulCardSurface(.glass)` — no chrome, paired with `RuulSeparatedRows` for separator |
+| Card body (elevated)         | `.ruulCardSurface(.solid)` — opaque + soft elevation |
+| Card body (inset row)        | `.ruulCardSurface(.recessed)` |
+
+## Lists
+
+| Need                         | Use                                    |
+|------------------------------|----------------------------------------|
+| Repeating rows + separator   | `RuulSeparatedRows(items:) { row }` |
+| Section header (CAPS + count)| `RuulListSectionHeader("LABEL", count: n)` |
+| Section header w/ trailing   | `RuulListSectionHeader("LABEL") { trailing }` |
+| Empty state                  | `EmptyStateView(...)` |
+| Error state                  | `ErrorStateView(...)` |
+| Loading state                | `RuulLoadingState()` |
+
+## Identity surfaces (cover hero, ambient)
+
+| Need                         | Use                                    |
+|------------------------------|----------------------------------------|
+| Resource detail cover        | `ResourceCoverHero(palette:height:...)` — pass `palette` + per-type `height` |
+| Full-screen ambient layer    | `RuulAmbientBackground(palette:style:)` — `.soft` for global, `.vivid` for hero-adjacent |
+| Per-group palette            | `Group.ambientPalette` (UUID-determined cover from catalog) |
+| Per-resource palette         | `ResourceAmbientPalette.resolve(for: ctx)` |
+
+## Inputs, buttons, badges
+
+| Need                         | Use                                    |
+|------------------------------|----------------------------------------|
+| Primary CTA                  | `RuulButton(.., style: .primary, size: .large)` |
+| Soft glass input             | `RuulTextField` / `RuulPhoneField` (already glass-fill) |
+| Status pill (positive/etc.)  | `RuulBadge(tone:)` |
+| Selectable filter chip       | `RuulChip(style: .selectable(...))` |
+| Solid CTA over an image      | hardcoded `Color.ruulImagePillSolid` + `ruulOnImageInverse` (Tripsy pattern; deliberate override) |
+
+## Don't
+
+- Don't put `.ruulAmbientScreen(palette: …)` inside a modal — the
+  modal's `.ruulSheetChrome` / `.fullScreenCover` chrome already
+  paints the canvas. Adding another canvas layer just stacks.
+- Don't hand-roll section headers — use `RuulListSectionHeader`.
+- Don't hand-roll lists with `VStack { ForEach }` — use
+  `RuulSeparatedRows` so spacing + hairline match every other list.
+- Don't reach for `Color.gray` / raw hex / `cornerRadius: 12` — pick
+  the matching token (`RuulColors`, `RuulRadius`, `RuulSpacing`,
+  `RuulOpacity`, `RuulSize`).
+- Don't reach for `.sheet(...)` — app-wide policy is
+  `.fullScreenCover(...) + .ruulSheetChrome(detents:)` (the chrome
+  modifier's presentation modifiers are silent no-ops inside
+  fullScreenCover, but the call site reads consistently).
+
+## Tokens
+
+- **Radii**: `RuulRadius.sm/.md/.lg/.xl` or aliases
+  `small/.medium/.large/.extraLarge/.card/.hero/.pill/.circle`
+- **Spacing**: `RuulSpacing.s0…s12` or aliases `xxs/xs/sm/md/lg/xl/xxl`
+  (+ `.micro` for 6pt, `.s0_5` for 2pt)
+- **Opacity**: `RuulOpacity.subtle (.08) / .medium (.14) / .disabled (.5)`
+- **Color**: `Color.ruulBackgroundCanvas / .ruulSurface / .ruulText* /
+  .ruulSeparator / .ruulFillGlass / .ruulOnImage* / etc.`
+- **Size**: `RuulSize.avatar* / .iconBadge* / .icon* / .heroBanner /
+  .heroLarge / .coverHero / .blurAmbient`
+- **Typography**: `RuulTypography.displayLarge/.title/.headline/.body/
+  .callout/.caption/.sectionLabel/.statSmall/...`

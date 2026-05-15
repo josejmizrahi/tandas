@@ -605,15 +605,7 @@ public struct HomeView: View {
     private var pendingsSection: some View {
         if let coord = inboxCoordinator, !coord.actions.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("PENDIENTES")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                    Spacer()
-                    Text("\(coord.actions.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
+                RuulListSectionHeader("PENDIENTES", count: coord.actions.count)
                 RuulSeparatedRows(items: Array(coord.actions.prefix(3))) { action in
                     ActionCard(
                         icon: pendingIcon(for: action.actionType),

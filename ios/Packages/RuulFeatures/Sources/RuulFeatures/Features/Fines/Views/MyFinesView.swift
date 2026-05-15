@@ -114,15 +114,7 @@ public struct MyFinesView: View {
     @ViewBuilder
     private func section<Content: View>(title: String, count: Int, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                Spacer()
-                Text("\(count)")
-                    .ruulTextStyle(RuulTypography.statSmall)
-                    .foregroundStyle(Color.ruulTextTertiary)
-            }
+            RuulListSectionHeader(title, count: count)
             VStack(spacing: RuulSpacing.sm) { content() }
         }
     }
