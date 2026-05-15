@@ -88,7 +88,16 @@ public struct CapabilityCatalog: Sendable {
         // strings when iOS reads resource_capabilities.
         DescriptionCapability(),
         HostActionsCapability(),
-        LocationCapability()
+        LocationCapability(),
+        // Asset universal blocks — mig 00199 (canonical asset spec §8).
+        // Backend RPCs in mig 00200, projections in mig 00201.
+        CustodyCapability(),
+        MaintenanceCapability(),
+        ValuationCapability(),
+        TransferCapability(),
+        AccessCapability(),
+        DelegationCapability(),
+        InventoryCapability()
     ])
 }
 
@@ -1109,6 +1118,199 @@ public struct HistoryCapability: CapabilityBlock {
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "activity_feed", displayName: "Actividad", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// MARK: - Asset universal blocks (mig 00199 — canonical asset spec §8)
+//
+// The 7 capability blocks that make `resource_type='asset'` mean
+// "objeto persistente socialmente gobernable" rather than "palco
+// container for slots". Backed by mig 00200 RPCs (assign_custody,
+// log_maintenance, record_valuation, transfer_asset, …) and mig
+// 00201 projections (asset_current_custodian_view,
+// asset_valuation_view, asset_maintenance_status_view,
+// asset_usage_history_view).
+
+// custody — who physically/operationally holds the asset
+public struct CustodyCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "custody" }
+    public var displayName: String { "Custodia" }
+    public var summary: String { "Quién tiene físicamente el activo. Independiente de la propiedad." }
+    public var enabledResourceTypes: [ResourceType] { [.asset] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [
+            CapabilityAction(id: "custody.assign",  label: "Asignar custodio",  surface: .resourceDetail),
+            CapabilityAction(id: "custody.release", label: "Liberar custodia",  surface: .resourceDetail)
+        ]
+    }
+    public var routes: [CapabilityRoute] {
+        [CapabilityRoute(id: "custody.current", label: "Custodia", icon: "person.text.rectangle")]
+    }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "current_custodian", displayName: "Custodio actual", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// maintenance — service / inspection / repair
+public struct MaintenanceCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "maintenance" }
+    public var displayName: String { "Mantenimiento" }
+    public var summary: String { "Reportar daños, registrar reparaciones, recordar service." }
+    public var enabledResourceTypes: [ResourceType] { [.asset, .space] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [
+            CapabilityAction(id: "maintenance.log",    label: "Registrar mantenimiento", surface: .resourceDetail),
+            CapabilityAction(id: "maintenance.report", label: "Reportar daño",            surface: .resourceDetail)
+        ]
+    }
+    public var routes: [CapabilityRoute] {
+        [CapabilityRoute(id: "maintenance.list", label: "Mantenimiento", icon: "wrench.and.screwdriver")]
+    }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "maintenance_status", displayName: "Mantenimiento", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// valuation — value-over-time append-only series
+public struct ValuationCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "valuation" }
+    public var displayName: String { "Valuación" }
+    public var summary: String { "Registrar el valor del activo en el tiempo." }
+    public var enabledResourceTypes: [ResourceType] { [.asset, .fund, .right] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "valuation.record", label: "Registrar valor", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] {
+        [CapabilityRoute(id: "valuation.history", label: "Valuación", icon: "chart.line.uptrend.xyaxis")]
+    }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "current_valuation", displayName: "Valor actual", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// transfer — move ownership across members or to/from the group
+public struct TransferCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "transfer" }
+    public var displayName: String { "Transferencia" }
+    public var summary: String { "Mover ownership del activo a otro miembro o al grupo." }
+    public var enabledResourceTypes: [ResourceType] { [.asset, .right] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "transfer.execute", label: "Transferir", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "ownership", displayName: "Propiedad", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// access — who can use the asset and under what terms
+public struct AccessCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "access" }
+    public var displayName: String { "Acceso" }
+    public var summary: String { "Quién puede usar el activo y bajo qué condiciones." }
+    public var enabledResourceTypes: [ResourceType] { [.asset, .space, .right] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] { [] }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] { [] }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+    /// Spec §8 lists access; v1 catalog declares it but the runtime
+    /// enforcement (per-member access lists, time windows, override)
+    /// lives in a follow-up. Marked incomplete so the wizard hides it.
+    public var status: CapabilityStatus {
+        .incomplete(reason: "Asset spec §8: access list + time windows + override RPC pending.")
+    }
+}
+
+// delegation — temporary loan to a non-custodian
+public struct DelegationCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "delegation" }
+    public var displayName: String { "Delegación" }
+    public var summary: String { "Prestar el activo temporalmente a un no-custodio." }
+    public var enabledResourceTypes: [ResourceType] { [.asset, .right] }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [
+            CapabilityAction(id: "delegation.checkOut", label: "Prestar",   surface: .resourceDetail),
+            CapabilityAction(id: "delegation.checkIn",  label: "Devolver",  surface: .resourceDetail)
+        ]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "current_holder", displayName: "Quién lo tiene", scope: .resource)]
+    }
+    public var dependencies: [String] { ["custody"] }
+    public var conflicts: [String] { [] }
+    /// check_out_asset / check_in_asset RPCs ship in mig 00200 + the
+    /// AssetLifecycleRepository. Marked stable; iOS surfaces the actions
+    /// directly.
+}
+
+// inventory — count units of the asset
+public struct InventoryCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "inventory" }
+    public var displayName: String { "Inventario" }
+    public var summary: String { "Contar unidades del activo (stock, cupos, copias)." }
+    public var enabledResourceTypes: [ResourceType] { [.asset] }
+    public var requiredFields: [BuilderField] {
+        [BuilderField(key: "unitLabel", label: "Unidad", kind: .text, placeholder: "ej: piezas, kg, copias")]
+    }
+    public var optionalFields: [BuilderField] {
+        [
+            BuilderField(key: "currentCount", label: "Stock actual", kind: .integer),
+            BuilderField(key: "lowStockThreshold", label: "Umbral mínimo", kind: .integer)
+        ]
+    }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "inventory.recordUsage", label: "Registrar uso", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] {
+        [CapabilityRoute(id: "inventory.summary", label: "Inventario", icon: "shippingbox")]
+    }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "stock_count", displayName: "Stock", scope: .resource)]
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }

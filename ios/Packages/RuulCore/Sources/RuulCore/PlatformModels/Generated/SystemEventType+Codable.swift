@@ -65,6 +65,18 @@ extension SystemEventType {
         .rightExercised,
         .rightSuspended,
         .rightRestored,
+        .assetTransferred,
+        .assetAssigned,
+        .assetReturned,
+        .custodyAssigned,
+        .custodyReleased,
+        .maintenanceLogged,
+        .maintenanceCompleted,
+        .damageReported,
+        .assetUsed,
+        .assetCheckedOut,
+        .assetCheckedIn,
+        .valuationRecorded,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -128,6 +140,18 @@ extension SystemEventType {
         "rightExercised",
         "rightSuspended",
         "rightRestored",
+        "assetTransferred",
+        "assetAssigned",
+        "assetReturned",
+        "custodyAssigned",
+        "custodyReleased",
+        "maintenanceLogged",
+        "maintenanceCompleted",
+        "damageReported",
+        "assetUsed",
+        "assetCheckedOut",
+        "assetCheckedIn",
+        "valuationRecorded",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -202,6 +226,18 @@ extension SystemEventType {
         case .rightExercised: return "rightExercised"
         case .rightSuspended: return "rightSuspended"
         case .rightRestored: return "rightRestored"
+        case .assetTransferred: return "assetTransferred"
+        case .assetAssigned: return "assetAssigned"
+        case .assetReturned: return "assetReturned"
+        case .custodyAssigned: return "custodyAssigned"
+        case .custodyReleased: return "custodyReleased"
+        case .maintenanceLogged: return "maintenanceLogged"
+        case .maintenanceCompleted: return "maintenanceCompleted"
+        case .damageReported: return "damageReported"
+        case .assetUsed: return "assetUsed"
+        case .assetCheckedOut: return "assetCheckedOut"
+        case .assetCheckedIn: return "assetCheckedIn"
+        case .valuationRecorded: return "valuationRecorded"
         case .unknown(let s): return s
         }
     }
@@ -268,6 +304,18 @@ extension SystemEventType {
         case "rightExercised": return .rightExercised
         case "rightSuspended": return .rightSuspended
         case "rightRestored": return .rightRestored
+        case "assetTransferred": return .assetTransferred
+        case "assetAssigned": return .assetAssigned
+        case "assetReturned": return .assetReturned
+        case "custodyAssigned": return .custodyAssigned
+        case "custodyReleased": return .custodyReleased
+        case "maintenanceLogged": return .maintenanceLogged
+        case "maintenanceCompleted": return .maintenanceCompleted
+        case "damageReported": return .damageReported
+        case "assetUsed": return .assetUsed
+        case "assetCheckedOut": return .assetCheckedOut
+        case "assetCheckedIn": return .assetCheckedIn
+        case "valuationRecorded": return .valuationRecorded
         default: return .unknown(raw)
         }
     }

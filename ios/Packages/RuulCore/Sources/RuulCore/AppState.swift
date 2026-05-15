@@ -128,6 +128,11 @@ public final class AppState {
     /// assign_slot, book_slot, request_slot_swap). Polymorphic over
     /// `resources` table; consumed by Asset/Slot/Booking UI in Slice 2.4.
     public let slotLifecycleRepo: any SlotLifecycleRepository
+    /// Canonical asset spec lifecycle (mig 00200): custody, maintenance,
+    /// valuation, transfer, checkout, usage, damage. Asset becomes a
+    /// universal "objeto persistente socialmente gobernable" rather
+    /// than a palco-shaped slot container.
+    public let assetLifecycleRepo: any AssetLifecycleRepository
 
     // OpenPlatform Capability Foundation (post BigBang mig 00078)
     public let resourceSeriesRepo: any ResourceSeriesRepository
@@ -192,6 +197,7 @@ public final class AppState {
         fineRepo: any FineRepository,
         resourceRepo: any ResourceRepository,
         slotLifecycleRepo: any SlotLifecycleRepository,
+        assetLifecycleRepo: any AssetLifecycleRepository,
         resourceSeriesRepo: any ResourceSeriesRepository,
         resourceCapabilityRepo: any ResourceCapabilityRepository,
         ledgerRepo: any LedgerRepository,
@@ -229,6 +235,7 @@ public final class AppState {
         self.fineRepo = fineRepo
         self.resourceRepo = resourceRepo
         self.slotLifecycleRepo = slotLifecycleRepo
+        self.assetLifecycleRepo = assetLifecycleRepo
         self.resourceSeriesRepo = resourceSeriesRepo
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo

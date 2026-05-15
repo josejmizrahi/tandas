@@ -62,6 +62,18 @@ export const systemEventTypeValues = [
   "rightExercised",
   "rightSuspended",
   "rightRestored",
+  "assetTransferred",
+  "assetAssigned",
+  "assetReturned",
+  "custodyAssigned",
+  "custodyReleased",
+  "maintenanceLogged",
+  "maintenanceCompleted",
+  "damageReported",
+  "assetUsed",
+  "assetCheckedOut",
+  "assetCheckedIn",
+  "valuationRecorded",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];
