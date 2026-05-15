@@ -619,8 +619,9 @@ public struct HomeView: View {
                         .ruulTextStyle(RuulTypography.statSmall)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
-                VStack(spacing: RuulSpacing.xs) {
-                    ForEach(coord.actions.prefix(3)) { action in
+                VStack(spacing: 0) {
+                    let visible = Array(coord.actions.prefix(3))
+                    ForEach(Array(visible.enumerated()), id: \.element.id) { idx, action in
                         ActionCard(
                             icon: pendingIcon(for: action.actionType),
                             meta: pendingMeta(for: action, coordinator: coord),
@@ -632,6 +633,11 @@ public struct HomeView: View {
                                 Task { await onInboxActionTap(action) }
                             }
                         )
+                        if idx < visible.count - 1 {
+                            Divider()
+                                .background(Color.ruulSeparator)
+                                .padding(.leading, RuulSpacing.lg + RuulSpacing.xxl)
+                        }
                     }
                 }
             }

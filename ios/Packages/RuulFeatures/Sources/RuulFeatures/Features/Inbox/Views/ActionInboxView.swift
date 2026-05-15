@@ -38,8 +38,8 @@ public struct ActionInboxView: View {
                     .transition(.opacity)
             } else {
                 ScrollView {
-                    VStack(spacing: RuulSpacing.sm) {
-                        ForEach(coordinator.actions) { action in
+                    VStack(spacing: 0) {
+                        ForEach(Array(coordinator.actions.enumerated()), id: \.element.id) { idx, action in
                             ActionCard(
                                 icon: icon(for: action.actionType),
                                 meta: meta(for: action),
@@ -52,6 +52,11 @@ public struct ActionInboxView: View {
                             .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+                            }
+                            if idx < coordinator.actions.count - 1 {
+                                Divider()
+                                    .background(Color.ruulSeparator)
+                                    .padding(.leading, RuulSpacing.lg + RuulSpacing.xxl)
                             }
                         }
                     }

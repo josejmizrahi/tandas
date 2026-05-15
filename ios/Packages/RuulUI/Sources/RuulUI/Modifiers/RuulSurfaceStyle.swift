@@ -34,33 +34,34 @@ private struct RuulCardSurfaceModifier: ViewModifier {
     let style: RuulSurfaceStyle
     let radius: CGFloat
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         switch style {
         case .solid:
             content
-                .background(Color.ruulSurface, in: shape)
+                .background(Color.ruulSurface, in: shapeFor(radius))
                 .ruulElevation(.sm)
         case .glass:
-            // 2026-05-15: dropped `.ultraThinMaterial` because on the
-            // warm-cream canvas it rendered as a visibly LIGHTER frost
-            // — cards read as "stamps with a gray contorno" instead of
-            // "lifted glass". The material needs ambient color behind
-            // it to refract; on a flat canvas there's nothing to grab.
+            // 2026-05-15: dropped card chrome entirely — no fill, no
+            // shadow, no border. The "contorno gris" complaint and the
+            // gray-stamp look come from any card chrome that contrasts
+            // against the canvas. Rows now look like Apple Settings /
+            // Mail list items: plain content separated by hairline
+            // dividers (the parent stack supplies the divider between
+            // siblings via `VStack(spacing: 0)` + `Divider()` or the
+            // `.ruulSeparatedRows()` helper on RuulUI).
             //
-            // The new glass card is canvas-colored fill + soft drop
-            // shadow. On canvas screens the fill matches the bg so the
-            // edge is invisible — only the shadow telegraphs lift. On
-            // ambient surfaces (event detail) the canvas-colored fill
-            // sits a step away from the tinted bg so the card reads as
-            // "a piece of canvas raised up", still quiet but defined.
+            // `radius` is intentionally unused for `.glass` — list rows
+            // are square. Other variants still honor it.
             content
-                .background(Color.ruulBackgroundCanvas, in: shape)
-                .ruulElevation(.sm)
         case .recessed:
             content
-                .background(Color.ruulBackgroundRecessed, in: shape)
+                .background(Color.ruulBackgroundRecessed, in: shapeFor(radius))
         }
+    }
+
+    private func shapeFor(_ r: CGFloat) -> RoundedRectangle {
+        RoundedRectangle(cornerRadius: r, style: .continuous)
     }
 }
 
