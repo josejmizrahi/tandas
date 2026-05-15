@@ -44,6 +44,9 @@ export const systemEventTypeValues = [
   "groupUnarchived",
   "groupRenamed",
   "governanceUpdated",
+  "resourceArchived",
+  "resourceUnarchived",
+  "resourceRenamed",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

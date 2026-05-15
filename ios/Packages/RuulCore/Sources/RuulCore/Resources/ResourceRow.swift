@@ -19,6 +19,10 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
     public let createdBy: UUID?
     public let createdAt: Date
     public let updatedAt: Date
+    /// Soft-delete timestamp (mig 00184). Non-nil = archived; the row is
+    /// hidden from default member SELECTs and surfaced only to the
+    /// group's founder for restore via `unarchive_resource`.
+    public let archivedAt: Date?
 
     public enum CodingKeys: String, CodingKey {
         case id, status, metadata
@@ -27,6 +31,7 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
         case createdBy      = "created_by"
         case createdAt      = "created_at"
         case updatedAt      = "updated_at"
+        case archivedAt     = "archived_at"
     }
 
     public init(
@@ -37,7 +42,8 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
         metadata: JSONConfig = .empty,
         createdBy: UUID? = nil,
         createdAt: Date,
-        updatedAt: Date
+        updatedAt: Date,
+        archivedAt: Date? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -47,6 +53,7 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
         self.createdBy = createdBy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.archivedAt = archivedAt
     }
 
     /// Tolerant decoder: missing `metadata` falls back to `.empty`,
@@ -63,11 +70,16 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
         let createdAt      = try c.decode(Date.self, forKey: .createdAt)
         self.createdAt     = createdAt
         self.updatedAt     = (try? c.decode(Date.self, forKey: .updatedAt)) ?? createdAt
+        self.archivedAt    = try c.decodeIfPresent(Date.self, forKey: .archivedAt)
     }
 
     /// `Resource.resourceStatus` requirement. The wire column is `status`;
     /// this passthrough lets `ResourceRow` wear the polymorphic protocol
     /// without duplicating storage.
     public var resourceStatus: String { status }
+
+    /// True when `archived_at` is set. UI hides such resources from active
+    /// lists; only the founder can see + restore them.
+    public var isArchived: Bool { archivedAt != nil }
 }
 

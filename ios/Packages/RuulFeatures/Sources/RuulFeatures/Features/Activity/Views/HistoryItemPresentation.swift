@@ -190,6 +190,18 @@ public struct HistoryItemPresentation {
             self.icon = "scalemass"
             self.title = "\(actor) actualizó la gobernanza"
             self.tone = .neutral
+        case .resourceArchived:
+            self.icon = "archivebox"
+            self.title = "\(actor) archivó un recurso"
+            self.tone = .neutral
+        case .resourceUnarchived:
+            self.icon = "tray.and.arrow.up"
+            self.title = "\(actor) restauró un recurso"
+            self.tone = .info
+        case .resourceRenamed:
+            self.icon = "pencil"
+            self.title = "\(actor) renombró un recurso"
+            self.tone = .neutral
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"

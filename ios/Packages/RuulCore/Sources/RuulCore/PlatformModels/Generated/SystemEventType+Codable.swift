@@ -47,6 +47,9 @@ extension SystemEventType {
         .groupUnarchived,
         .groupRenamed,
         .governanceUpdated,
+        .resourceArchived,
+        .resourceUnarchived,
+        .resourceRenamed,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -92,6 +95,9 @@ extension SystemEventType {
         "groupUnarchived",
         "groupRenamed",
         "governanceUpdated",
+        "resourceArchived",
+        "resourceUnarchived",
+        "resourceRenamed",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -148,6 +154,9 @@ extension SystemEventType {
         case .groupUnarchived: return "groupUnarchived"
         case .groupRenamed: return "groupRenamed"
         case .governanceUpdated: return "governanceUpdated"
+        case .resourceArchived: return "resourceArchived"
+        case .resourceUnarchived: return "resourceUnarchived"
+        case .resourceRenamed: return "resourceRenamed"
         case .unknown(let s): return s
         }
     }
@@ -196,6 +205,9 @@ extension SystemEventType {
         case "groupUnarchived": return .groupUnarchived
         case "groupRenamed": return .groupRenamed
         case "governanceUpdated": return .governanceUpdated
+        case "resourceArchived": return .resourceArchived
+        case "resourceUnarchived": return .resourceUnarchived
+        case "resourceRenamed": return .resourceRenamed
         default: return .unknown(raw)
         }
     }

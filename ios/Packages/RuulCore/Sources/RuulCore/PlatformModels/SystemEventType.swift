@@ -87,5 +87,14 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// (ruleEnabledChanged/ruleAmountChanged) which audit `public.rules`.
     case governanceUpdated
 
+    // MARK: - Resource (Layer 3) lifecycle — mig 00186
+    /// `resources.archived_at` flipped null → set (via `archive_resource`).
+    /// Generic across all resource_types (event/fund/asset/slot/space/right).
+    case resourceArchived
+    /// `resources.archived_at` flipped set → null (via `unarchive_resource`).
+    case resourceUnarchived
+    /// `resources.metadata.title` or `metadata.name` changed.
+    case resourceRenamed
+
     case unknown(String)
 }

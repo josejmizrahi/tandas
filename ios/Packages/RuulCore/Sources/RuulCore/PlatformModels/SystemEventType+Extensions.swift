@@ -72,6 +72,11 @@ public extension SystemEventType {
         case .groupRenamed:           return "Grupo renombrado"
         case .governanceUpdated:      return "Gobernanza actualizada"
 
+        // Resource lifecycle (mig 00186)
+        case .resourceArchived:       return "Recurso archivado"
+        case .resourceUnarchived:     return "Recurso restaurado"
+        case .resourceRenamed:        return "Recurso renombrado"
+
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
         }
@@ -126,7 +131,8 @@ public extension SystemEventType {
              .pendingChangeApplied,
              .inviteCodeRotated,
              .groupCreated, .groupArchived, .groupUnarchived,
-             .groupRenamed, .governanceUpdated:
+             .groupRenamed, .governanceUpdated,
+             .resourceArchived, .resourceUnarchived, .resourceRenamed:
             return false
         case .unknown:
             return false
