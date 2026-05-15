@@ -138,12 +138,6 @@ public struct RootShellSheets: ViewModifier {
                 voteOnAppealSheet(ctx)
             }
 
-            // MARK: Settings sheet
-            .sheet(isPresented: boolBinding(for: .settings)) {
-                SettingsSheet()
-                    .ruulSheetChrome(detents: [.medium, .large])
-            }
-
             // MARK: Edit profile sheet
             .sheet(isPresented: boolBinding(for: .editProfile), onDismiss: {
                 Task { await router.state.profileCoordinator?.refresh() }
