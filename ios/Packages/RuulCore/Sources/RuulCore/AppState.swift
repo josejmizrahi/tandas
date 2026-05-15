@@ -162,6 +162,11 @@ public final class AppState {
     /// asset windows. Writes go through `slotLifecycleRepo` (assign/book/swap)
     /// or `resourceDraftRepo` (wizard-driven create).
     public let slotRepo: any SlotRepository
+    /// Bookings atom (mig 00216): append-only claims on slots. Read-only
+    /// surface; writes flow through `slotLifecycleRepo.bookSlot` (which
+    /// the refactored `book_slot` RPC now persists into this table
+    /// instead of polymorphic resources).
+    public let bookingRepo: any BookingRepository
     /// Pilot ResourceBuilder for events. Phase 2+ adds builders for slot,
     /// fund, asset following the same shape.
     public let eventBuilder: EventResourceBuilder
@@ -215,6 +220,7 @@ public final class AppState {
         rightRepo: any RightRepository,
         spaceRepo: any SpaceRepository,
         slotRepo: any SlotRepository,
+        bookingRepo: any BookingRepository,
         notifications: NotificationService? = nil,
         eventNotificationDispatcher: any EventNotificationDispatcher = MockEventNotificationDispatcher(),
         walletService: any WalletPassService = StubWalletPassService(),
@@ -255,6 +261,7 @@ public final class AppState {
         self.rightRepo = rightRepo
         self.spaceRepo = spaceRepo
         self.slotRepo = slotRepo
+        self.bookingRepo = bookingRepo
         let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,

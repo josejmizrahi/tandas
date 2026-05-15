@@ -80,16 +80,17 @@ Definidos en
 |---|---|---|
 | `SystemEvent` | `Atom` | `public.system_events` |
 | `VoteCast` | `Atom` | `public.vote_casts` |
-| `Fund` (mig 00198) | `Projection` | `public.fund_balance_view` |
+| `LedgerEntry` | `Atom` | `public.ledger_entries` |
+| `RsvpAction` | `Atom` | `public.rsvp_actions` |
+| `Booking` (mig 00216) | `Atom` | `public.bookings` |
+| `Fund` (mig 00202) | `Projection` | `public.fund_balance_view` |
 
 Conformancias futuras (cuando los tipos existan en código):
 
 | Tipo Swift | Protocol | SQL |
 |---|---|---|
-| `LedgerEntry` (Phase 3) | `Atom` | `public.ledger_entries` |
 | `Contribution` (Phase 3) | `Atom` | `public.contributions` |
 | `Payout` (Phase 3) | `Atom` | `public.payouts` |
-| `Booking` (Phase 2) | `Atom` | `public.bookings` |
 | `Balance` (Phase 3) | `Projection` | `public.balances_view` |
 | `AttendanceSummary` | `Projection` | `public.attendance_view` |
 | `History` | `Projection` | computed from `system_events` |
@@ -170,6 +171,7 @@ DELETE → raise `check_violation`. Cobertura actual:
 | `public.system_events` | `system_events_atom_guard` (partial) | 00162 |
 | `public.vote_casts` | `vote_casts_atom_guard` | 00163 |
 | `public.user_actions` | `user_actions_resolution_guard` (partial, Atom-ish) | 00166 |
+| `public.bookings` | `bookings_atom_guard` | 00216 |
 
 `system_events` uses a **partial guard** (`system_events_processed_at_only_guard`)
 that allows the single legitimate mutation — `processed_at: null →
