@@ -53,6 +53,7 @@ struct TandasApp: App {
             let draftRepo = MockResourceDraftRepository()
             let rights = MockRightRepository()
             let spaces = MockSpaceRepository()
+            let slots = MockSlotRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -86,6 +87,7 @@ struct TandasApp: App {
                 resourceDraftRepo: draftRepo,
                 rightRepo: rights,
                 spaceRepo: spaces,
+                slotRepo: slots,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 eventNotificationDispatcher: MockEventNotificationDispatcher(),
                 walletService: StubWalletPassService(),
@@ -124,6 +126,7 @@ struct TandasApp: App {
             let draftRepo = LiveResourceDraftRepository(client: client)
             let rights = LiveRightRepository(client: client)
             let spaces = LiveSpaceRepository(client: client)
+            let slots = LiveSlotRepository(client: client)
             let analytics = LogAnalyticsService()
             let state = AppState(
                 auth: auth,
@@ -157,6 +160,7 @@ struct TandasApp: App {
                 resourceDraftRepo: draftRepo,
                 rightRepo: rights,
                 spaceRepo: spaces,
+                slotRepo: slots,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 eventNotificationDispatcher: LiveEventNotificationDispatcher(client: client),
                 walletService: StubWalletPassService(),

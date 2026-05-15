@@ -158,6 +158,10 @@ public final class AppState {
     /// Space resource_type (mig 00203): list / get / create reservable
     /// venues. No dedicated table — reads `resources WHERE resource_type='space'`.
     public let spaceRepo: any SpaceRepository
+    /// Slot resource_type (mig 00070 + 00204): typed reads of reservable
+    /// asset windows. Writes go through `slotLifecycleRepo` (assign/book/swap)
+    /// or `resourceDraftRepo` (wizard-driven create).
+    public let slotRepo: any SlotRepository
     /// Pilot ResourceBuilder for events. Phase 2+ adds builders for slot,
     /// fund, asset following the same shape.
     public let eventBuilder: EventResourceBuilder
@@ -210,6 +214,7 @@ public final class AppState {
         resourceDraftRepo: any ResourceDraftRepository,
         rightRepo: any RightRepository,
         spaceRepo: any SpaceRepository,
+        slotRepo: any SlotRepository,
         notifications: NotificationService? = nil,
         eventNotificationDispatcher: any EventNotificationDispatcher = MockEventNotificationDispatcher(),
         walletService: any WalletPassService = StubWalletPassService(),
@@ -249,6 +254,7 @@ public final class AppState {
         self.resourceDraftRepo = resourceDraftRepo
         self.rightRepo = rightRepo
         self.spaceRepo = spaceRepo
+        self.slotRepo = slotRepo
         let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,
@@ -275,12 +281,15 @@ public final class AppState {
         // reservable venues (salón, cancha, sala). Routes through
         // build_resource_from_draft → create_space RPC.
         let spaceBuilder = SpaceResourceBuilder(draftRepo: resourceDraftRepo)
-        // SlotResourceBuilder requires picking a parent Asset via a
-        // resource picker that isn't wired yet. Re-register once R.1
-        // (BuilderFieldRenderer.resourcePicker) loads real resources.
+        // mig 00204: slot resource_type creation path. Reservable window
+        // of a parent asset. The `BuilderField.resourcePicker` (shipped
+        // commit 7e29b8d) is what unblocked the assetId selection from
+        // the wizard; mig 00204 closes the SQL side. Routes through
+        // build_resource_from_draft → create_slot RPC.
+        let slotBuilder = SlotResourceBuilder(draftRepo: resourceDraftRepo)
         self.eventBuilder = eventBuilder
         self.resourceBuilders = ResourceBuilderRegistry(builders: [
-            eventBuilder, assetBuilder, fundBuilder, rightBuilder, spaceBuilder
+            eventBuilder, assetBuilder, fundBuilder, rightBuilder, spaceBuilder, slotBuilder
         ])
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications
