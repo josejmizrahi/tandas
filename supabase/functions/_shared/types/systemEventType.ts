@@ -62,6 +62,7 @@ export const systemEventTypeValues = [
   "rightExercised",
   "rightSuspended",
   "rightRestored",
+  "rightExpiringSoon",
   "assetTransferred",
   "assetAssigned",
   "assetReturned",

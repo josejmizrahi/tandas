@@ -65,6 +65,7 @@ extension SystemEventType {
         .rightExercised,
         .rightSuspended,
         .rightRestored,
+        .rightExpiringSoon,
         .assetTransferred,
         .assetAssigned,
         .assetReturned,
@@ -143,6 +144,7 @@ extension SystemEventType {
         "rightExercised",
         "rightSuspended",
         "rightRestored",
+        "rightExpiringSoon",
         "assetTransferred",
         "assetAssigned",
         "assetReturned",
@@ -232,6 +234,7 @@ extension SystemEventType {
         case .rightExercised: return "rightExercised"
         case .rightSuspended: return "rightSuspended"
         case .rightRestored: return "rightRestored"
+        case .rightExpiringSoon: return "rightExpiringSoon"
         case .assetTransferred: return "assetTransferred"
         case .assetAssigned: return "assetAssigned"
         case .assetReturned: return "assetReturned"
@@ -313,6 +316,7 @@ extension SystemEventType {
         case "rightExercised": return .rightExercised
         case "rightSuspended": return .rightSuspended
         case "rightRestored": return .rightRestored
+        case "rightExpiringSoon": return .rightExpiringSoon
         case "assetTransferred": return .assetTransferred
         case "assetAssigned": return .assetAssigned
         case "assetReturned": return .assetReturned

@@ -154,6 +154,12 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// Emitted by `restore_right` — suspension cleared (or status lifted
     /// back to `active` from `revoked`).
     case rightRestored
+    /// Emitted by the `notify-rights-expiring-soon-daily` cron (mig 00203)
+    /// when a right enters its pre-expiry warning window (default 14 days).
+    /// Idempotent — `metadata.expiration_warning_emitted` flags emitted
+    /// rights so subsequent runs skip them. Drives the
+    /// `right_expiration_warning` rule template.
+    case rightExpiringSoon
 
     // MARK: - Asset universal atoms — mig 00199 (canonical asset spec §13)
     /// Asset ownership moved to another member or back to the group.
