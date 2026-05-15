@@ -81,6 +81,13 @@ public final class AppState {
     /// path entirely (and this flag with it).
     public var useNewShell: Bool = true
 
+    /// Detail-redesign A/B flag. Default `false` until D-V2 Task 15
+    /// flip after manual smoke. When true, EventDetailHost presents
+    /// the new `UniversalResourceDetailView` (cover hero + sticky CTA
+    /// + nav-bar chrome). When false, falls back to
+    /// `UniversalResourceDetailViewLegacy` (the pre-redesign layout).
+    public var useNewDetail: Bool = false
+
     /// Resolves runtime capabilities for the active group based on its
     /// template + activeModules. Computed so it always reflects the latest
     /// `moduleRegistry`; refreshing the registry post-boot automatically
