@@ -35,58 +35,123 @@ public struct InviteWelcomeView: View {
         }
     }
 
+    /// Tripsy-style invite layout: avatar stack → headline → poster card
+    /// with embedded title+meta → primary CTA pill → secondary text button.
+    /// The cover anchors visual weight in the middle of the screen so the
+    /// invitation reads like a printed poster rather than a settings page.
     private func previewLayout(for preview: InvitePreview) -> some View {
-        VStack(spacing: RuulSpacing.xxl) {
-            Spacer()
-            cover(for: preview)
-            VStack(spacing: RuulSpacing.sm) {
-                Text("Te invitaron a \(preview.groupName)")
-                    .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .multilineTextAlignment(.center)
-                Text(metaCopy(for: preview))
-                    .ruulTextStyle(RuulTypography.bodyLarge)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .multilineTextAlignment(.center)
-            }
+        VStack(spacing: RuulSpacing.xl) {
+            Spacer(minLength: RuulSpacing.lg)
             avatarStack(for: preview)
-            Spacer()
-            HStack(spacing: RuulSpacing.xs) {
-                RuulButton("Ahorita no", style: .glass, size: .large, fillsWidth: true, action: onDecline)
-                RuulButton("Unirme", style: .primary, size: .large, fillsWidth: true) {
-                    Task { await coord.acceptInvitation() }
-                }
-            }
-            .padding(.horizontal, RuulSpacing.lg)
-            .padding(.bottom, RuulSpacing.lg)
+            headline(for: preview)
+            posterCard(for: preview)
+            Spacer(minLength: 0)
+            actionStack
         }
+        .padding(.horizontal, RuulSpacing.lg)
+        .padding(.bottom, RuulSpacing.lg)
     }
 
-    private func cover(for preview: InvitePreview) -> some View {
-        let cover = RuulCoverCatalog.cover(named: preview.coverImageName)
-        return RuulCoverView(cover)
-            .frame(height: RuulSize.heroBanner)
-            .padding(.horizontal, RuulSpacing.lg)
-    }
+    // MARK: - Avatar stack (top)
 
-    private func metaCopy(for preview: InvitePreview) -> String {
-        // Capability-agnostic preview post BigBang. Event vocabulary +
-        // frequency move to a Phase 2 enriched preview view that joins
-        // active ResourceSeries.
-        "\(preview.memberCount) miembros"
-    }
-
+    @ViewBuilder
     private func avatarStack(for preview: InvitePreview) -> some View {
         let names = preview.recentMemberNames ?? []
         let people = names.prefix(5).enumerated().map { idx, name in
             RuulAvatarStack.Person(id: "\(idx)", name: name)
         }
-        return SwiftUI.Group {
-            if !people.isEmpty {
-                RuulAvatarStack(people: Array(people), size: .large, maxVisible: 5)
-            } else {
-                EmptyView()
+        if !people.isEmpty {
+            RuulAvatarStack(people: Array(people), size: .large, maxVisible: 5)
+        } else {
+            EmptyView()
+        }
+    }
+
+    // MARK: - Headline
+
+    private func headline(for preview: InvitePreview) -> some View {
+        VStack(spacing: RuulSpacing.xs) {
+            Text("Te invitan a unirte a")
+                .ruulTextStyle(RuulTypography.bodyLarge)
+                .foregroundStyle(Color.ruulTextSecondary)
+            Text(preview.groupName)
+                .ruulTextStyle(RuulTypography.displayLarge)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+        }
+    }
+
+    // MARK: - Poster card
+
+    /// The hero element: large rounded cover card with the group name and
+    /// meta overlaid at the bottom over a dark fade. Mirrors the Tripsy
+    /// travel-invite poster pattern.
+    private func posterCard(for preview: InvitePreview) -> some View {
+        let cover = RuulCoverCatalog.cover(named: preview.coverImageName)
+        return ZStack(alignment: .bottomLeading) {
+            RuulCoverView(cover)
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0),
+                    Color.black.opacity(0.55)
+                ],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                Text(preview.groupName)
+                    .ruulTextStyle(RuulTypography.title)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                Text(metaCopy(for: preview))
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(.white.opacity(0.85))
             }
+            .padding(RuulSpacing.lg)
+        }
+        .aspectRatio(0.78, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
+        .ruulElevation(.lg)
+    }
+
+    private func metaCopy(for preview: InvitePreview) -> String {
+        let count = preview.memberCount
+        return "\(count) \(count == 1 ? "miembro" : "miembros")"
+    }
+
+    // MARK: - Action stack (bottom)
+
+    private var actionStack: some View {
+        VStack(spacing: RuulSpacing.sm) {
+            Button {
+                Task { await coord.acceptInvitation() }
+            } label: {
+                Text("Aceptar invitación")
+                    .ruulTextStyle(RuulTypography.bodyLarge)
+                    // Hardcoded black: paired with the hardcoded-white
+                    // capsule below, this is the deliberate Tripsy-style
+                    // "ready to commit" affordance — high-contrast pop
+                    // regardless of light/dark theme. Don't swap for a
+                    // semantic token; both colors are joined at the hip.
+                    .foregroundStyle(Color.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 56)
+                    .background(Capsule().fill(Color.white))
+                    .ruulElevation(.sm)
+            }
+            .buttonStyle(.ruulPress)
+            .accessibilityLabel("Aceptar invitación")
+
+            Button(action: onDecline) {
+                Text("Ahora no")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 36)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ahora no")
         }
     }
 }
