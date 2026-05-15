@@ -22,15 +22,14 @@ import RuulCore
 ///   └─────────────────────────────────────┘
 public struct MyLedgerView: View {
     @Bindable var coordinator: MyLedgerCoordinator
+    @Environment(AppState.self) private var app
 
     public init(coordinator: MyLedgerCoordinator) {
         self.coordinator = coordinator
     }
 
     public var body: some View {
-        ZStack {
-            Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
+        SwiftUI.Group {
                 if let err = coordinator.error {
                     ErrorStateView(
                         error: CoordinatorError(
@@ -65,9 +64,9 @@ public struct MyLedgerView: View {
                     .transition(.opacity)
                 }
             }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.hasAnyActivity)
-        }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.hasAnyActivity)
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         .task { await coordinator.refresh() }
         .navigationTitle("Mis movimientos")
         .navigationBarTitleDisplayMode(.large)

@@ -8,6 +8,7 @@ import RuulCore
 /// everything 24h after the event closes.
 public struct ReviewProposedFinesView: View {
     @Bindable var coordinator: ReviewProposedFinesCoordinator
+    @Environment(AppState.self) private var app
     public let memberLookup: (UUID) -> String
 
     public init(coordinator: ReviewProposedFinesCoordinator, memberLookup: @escaping (UUID) -> String, onSelectFine: @escaping (Fine) -> Void = { _ in }) {

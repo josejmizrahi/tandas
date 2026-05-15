@@ -10,6 +10,7 @@ import RuulCore
 /// `EditRulesCoordinator` built from the same dependencies.
 public struct RulesView: View {
     @Bindable var coordinator: RulesCoordinator
+    @Environment(AppState.self) private var app
     /// `VoteRepository` is needed by `EditRulesCoordinator.openRepealVote`.
     /// `RulesCoordinator` itself doesn't use it, so the view holds it
     /// directly to avoid leaking the dependency into the read-side coord.
@@ -86,57 +87,55 @@ public struct RulesView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.rules.isEmpty {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.lg)
-                        .transition(.opacity)
-                } else if coordinator.isLoading && coordinator.rules.isEmpty {
-                    RuulLoadingState()
-                        .transition(.opacity)
-                } else if coordinator.rules.isEmpty {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                            header
-                            emptyStateBody
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.md)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
+        SwiftUI.Group {
+            if let error = coordinator.error, coordinator.rules.isEmpty {
+                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.lg)
                     .transition(.opacity)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                            header
-                            // "Votos abiertos" link removed — votes have their
-                                // own sub-tab post-Plan1 cleanup. RulesView stays
-                                // focused on rule list + governance.
-                            VStack(spacing: RuulSpacing.sm) {
-                                ForEach(coordinator.rules) { rule in
-                                    ruleCard(rule)
-                                }
-                            }
-                            footnote
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.md)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
+            } else if coordinator.isLoading && coordinator.rules.isEmpty {
+                RuulLoadingState()
                     .transition(.opacity)
+            } else if coordinator.rules.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                        header
+                        emptyStateBody
+                    }
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.md)
+                    .padding(.bottom, RuulSpacing.s12)
                 }
+                .scrollIndicators(.hidden)
+                .refreshable { await coordinator.refresh() }
+                .transition(.opacity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                        header
+                        // "Votos abiertos" link removed — votes have their
+                            // own sub-tab post-Plan1 cleanup. RulesView stays
+                            // focused on rule list + governance.
+                        VStack(spacing: RuulSpacing.sm) {
+                            ForEach(coordinator.rules) { rule in
+                                ruleCard(rule)
+                            }
+                        }
+                        footnote
+                    }
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.md)
+                    .padding(.bottom, RuulSpacing.s12)
+                }
+                .scrollIndicators(.hidden)
+                .refreshable { await coordinator.refresh() }
+                .transition(.opacity)
             }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         .task { await coordinator.refresh() }
         .sheet(item: $builderCoord) { coord in
             RuleBuilderView(coord: coord) {

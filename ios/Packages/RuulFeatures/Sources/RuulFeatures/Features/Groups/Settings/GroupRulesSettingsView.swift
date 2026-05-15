@@ -12,6 +12,7 @@ import RuulCore
 /// previews until per-question editing ships in V2.
 public struct GroupRulesSettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: GroupRulesCoordinator
 
     public init(coordinator: GroupRulesCoordinator) {
@@ -78,7 +79,7 @@ public struct GroupRulesSettingsView: View {
                 .padding(.top, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackground.ignoresSafeArea())
+            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }

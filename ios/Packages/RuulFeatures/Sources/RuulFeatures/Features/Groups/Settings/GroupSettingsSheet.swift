@@ -47,7 +47,7 @@ public struct GroupSettingsSheet: View {
                 .padding(.bottom, RuulSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color.ruulBackground.ignoresSafeArea())
+            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") { dismiss() }

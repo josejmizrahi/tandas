@@ -75,43 +75,41 @@ public struct ProfileView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.profile == nil {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.lg)
-                        .transition(.opacity)
-                } else if coordinator.profile == nil && coordinator.isLoading {
-                    RuulLoadingState()
-                        .transition(.opacity)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                            hero
-                            statusHero
-                            if !coordinator.isAllClear {
-                                statTiles
-                            }
-                            activitySection
-                            settingsSection
-                            if let groupScope { groupScopeSection(groupScope) }
-                            signOutButton
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.xs)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
+        SwiftUI.Group {
+            if let error = coordinator.error, coordinator.profile == nil {
+                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.lg)
                     .transition(.opacity)
+            } else if coordinator.profile == nil && coordinator.isLoading {
+                RuulLoadingState()
+                    .transition(.opacity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                        hero
+                        statusHero
+                        if !coordinator.isAllClear {
+                            statTiles
+                        }
+                        activitySection
+                        settingsSection
+                        if let groupScope { groupScopeSection(groupScope) }
+                        signOutButton
+                    }
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.xs)
+                    .padding(.bottom, RuulSpacing.s12)
                 }
+                .scrollIndicators(.hidden)
+                .refreshable { await coordinator.refresh() }
+                .transition(.opacity)
             }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
         }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         .task { await coordinator.refresh() }
     }
 

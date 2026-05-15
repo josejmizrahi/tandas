@@ -52,7 +52,7 @@ public struct GroupSwitcherSheet: View {
                 .padding(.horizontal, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackground.ignoresSafeArea())
+            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }

@@ -20,6 +20,7 @@ import RuulCore
 /// requieren refrescar el `RulesCoordinator` del padre y re-pushear la
 /// destination — V1 acepta esa stale window (rare race en práctica).
 public struct RuleDetailView: View {
+    @Environment(AppState.self) private var app
     public let rule: GroupRule
     public let canEditRules: Bool
     public let onEdit: () -> Void
@@ -47,7 +48,7 @@ public struct RuleDetailView: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .background(Color.ruulBackground.ignoresSafeArea())
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
     }

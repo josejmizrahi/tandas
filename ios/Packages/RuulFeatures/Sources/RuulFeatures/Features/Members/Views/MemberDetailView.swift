@@ -32,7 +32,7 @@ public struct MemberDetailView: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .background(Color.ruulBackground.ignoresSafeArea())
+        .ruulAmbientScreen(palette: group.ambientPalette)
         .navigationTitle("Miembro")
         .navigationBarTitleDisplayMode(.inline)
     }

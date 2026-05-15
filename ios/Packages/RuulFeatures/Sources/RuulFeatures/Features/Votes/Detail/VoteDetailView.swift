@@ -11,6 +11,7 @@ import RuulCore
 /// nuevo al switch.
 public struct VoteDetailView: View {
     @Bindable var coordinator: VoteDetailCoordinator
+    @Environment(AppState.self) private var app
 
     public var body: some View {
         ScrollView {
@@ -37,7 +38,7 @@ public struct VoteDetailView: View {
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
-        .background(Color.ruulBackground.ignoresSafeArea())
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
     }

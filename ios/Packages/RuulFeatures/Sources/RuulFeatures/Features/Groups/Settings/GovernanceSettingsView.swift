@@ -50,7 +50,7 @@ public struct GovernanceSettingsView: View {
                 .padding(.top, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .background(Color.ruulBackground.ignoresSafeArea())
+            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") { dismiss() }
