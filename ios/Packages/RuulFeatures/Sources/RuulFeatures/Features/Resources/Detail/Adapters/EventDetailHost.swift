@@ -104,13 +104,7 @@ public struct EventDetailHost: View {
 
     @ViewBuilder
     private func hosted(coordinator: EventDetailCoordinator) -> some View {
-        SwiftUI.Group {
-            if app.useNewDetail {
-                UniversalResourceDetailView(context: detailContext(coordinator: coordinator))
-            } else {
-                UniversalResourceDetailViewLegacy(context: detailContext(coordinator: coordinator))
-            }
-        }
+        UniversalResourceDetailView(context: detailContext(coordinator: coordinator))
             .environment(\.eventInteractor, coordinator)
             .environment(\.eventDetailPresenter, presenter)
             .task { await coordinator.refresh() }
