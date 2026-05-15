@@ -63,9 +63,9 @@ public struct EventDetailHost: View {
     // One @State enum so individual bools don't pollute the storage map.
     @State private var sheet: Sheet?
 
-    private enum Sheet: Identifiable, Hashable {
+    public enum Sheet: Identifiable, Hashable {
         case share, qr, cancelEvent, cancelAttendance, remindAttendees, closeEvent, manualFine, ledger, rules, attendees
-        var id: Self { self }
+        public var id: Self { self }
     }
 
     // MARK: - Body
@@ -110,102 +110,18 @@ public struct EventDetailHost: View {
             .task { await coordinator.refresh() }
             .task { await coordinator.startRealtime() }
             .onDisappear { coordinator.stopRealtime() }
-            .ruulSheet(isPresented: bindingForSheet(.share)) {
-                ShareEventSheet(
-                    isPresented: bindingForSheet(.share),
-                    event: coordinator.event,
-                    groupVocabulary: group.eventVocabulary,
-                    hostName: hostName(for: coordinator.event),
-                    onAddToCalendar: { addToCalendar(event: coordinator.event) }
-                )
-            }
-            .ruulSheet(isPresented: bindingForSheet(.qr)) {
-                MemberQRSheet(
-                    isPresented: bindingForSheet(.qr),
-                    eventId: coordinator.event.id,
-                    memberId: coordinator.myRSVP?.userId ?? currentUserId,
-                    eventTitle: coordinator.event.title
-                )
-            }
-            .ruulSheet(isPresented: bindingForSheet(.cancelEvent)) {
-                CancelEventSheet(isPresented: bindingForSheet(.cancelEvent)) { reason in
-                    Task { await coordinator.cancelEvent(reason: reason) }
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.cancelAttendance)) {
-                CancelAttendanceSheet(
-                    isPresented: bindingForSheet(.cancelAttendance),
-                    isAfterDeadline: isAfterRSVPDeadline(coordinator: coordinator)
-                ) { reason in
-                    Task { await coordinator.setRSVP(.declined, plusOnes: 0, reason: reason) }
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.remindAttendees)) {
-                RemindAttendeesSheet(
-                    isPresented: bindingForSheet(.remindAttendees),
-                    pendingCount: coordinator.rsvps.filter { $0.status == .pending }.count,
-                    eventTitle: coordinator.event.title,
-                    vocabulary: group.eventVocabulary
-                ) {
-                    Task { _ = await coordinator.sendHostReminders() }
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.closeEvent)) {
-                CloseEventSheet(
-                    isPresented: bindingForSheet(.closeEvent),
-                    vocabulary: group.eventVocabulary
-                ) {
-                    Task { await coordinator.closeEvent(autoGenerateEnabled: false) }
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.manualFine)) {
-                if let manualFineCoordinator {
-                    AddManualFineSheet(
-                        isPresented: bindingForSheet(.manualFine),
-                        coordinator: manualFineCoordinator,
-                        currentUserId: currentUserId
-                    )
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.ledger)) {
-                if let ledgerCoordinator {
-                    ResourceLedgerSheet(
-                        isPresented: bindingForSheet(.ledger),
-                        coordinator: ledgerCoordinator,
-                        groupVocabulary: group.eventVocabulary
-                    )
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.rules)) {
-                if let rulesCoordinator {
-                    ResourceRulesSheet(
-                        isPresented: bindingForSheet(.rules),
-                        coordinator: rulesCoordinator
-                    )
-                }
-            }
-            .ruulSheet(isPresented: bindingForSheet(.attendees)) {
-                AttendeesListSheet(
-                    rsvps: coordinator.rsvps,
-                    memberDirectory: memberDirectory
-                ) { userId in
-                    sheet = nil
-                    if let mwp = memberDirectory[userId] {
-                        attendeeRoute = mwp
-                    }
-                }
-            }
-            .sheet(item: $attendeeRoute) { mwp in
-                NavigationStack {
-                    MemberDetailView(
-                        memberWithProfile: mwp,
-                        group: group,
-                        isCurrentUser: mwp.member.userId == currentUserId
-                    )
-                }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-            }
+            .eventDetailSheets(EventDetailSheets.Bindings(
+                coordinator: coordinator,
+                group: group,
+                currentUserId: currentUserId,
+                memberDirectory: memberDirectory,
+                calendarService: calendarService,
+                sheet: $sheet,
+                attendeeRoute: $attendeeRoute,
+                manualFineCoordinator: manualFineCoordinator,
+                ledgerCoordinator: ledgerCoordinator,
+                rulesCoordinator: rulesCoordinator
+            ))
             .onChange(of: sheet) { _, newValue in
                 Task { await prepareCoordinator(for: newValue) }
             }
@@ -256,25 +172,6 @@ public struct EventDetailHost: View {
             onPresentEditEvent: { onEditEvent(coordinator?.event ?? event) },
             onPresentAttendeesList: { sheet = .attendees },
             canIssueManualFine: canIssueManualFine
-        )
-    }
-
-    // MARK: - Bindings
-
-    /// A two-way `Binding<Bool>` over a single sheet case so each sheet
-    /// modifier can drive the shared `sheet` enum without exposing the
-    /// rest of the cases. Setting false from a sheet just clears the
-    /// route if it currently matches.
-    private func bindingForSheet(_ kind: Sheet) -> Binding<Bool> {
-        Binding(
-            get: { sheet == kind },
-            set: { newValue in
-                if newValue {
-                    sheet = kind
-                } else if sheet == kind {
-                    sheet = nil
-                }
-            }
         )
     }
 
@@ -361,25 +258,6 @@ public struct EventDetailHost: View {
             )
         default:
             break
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func hostName(for event: Event) -> String? {
-        guard let hostId = event.hostId else { return nil }
-        return memberDirectory[hostId]?.displayName
-    }
-
-    private func isAfterRSVPDeadline(coordinator: EventDetailCoordinator) -> Bool {
-        guard let deadline = coordinator.event.rsvpDeadline else { return false }
-        return Date.now > deadline
-    }
-
-    private func addToCalendar(event: Event) {
-        guard let calendarService else { return }
-        Task {
-            _ = try? await calendarService.addToCalendar(event, vocabulary: group.eventVocabulary)
         }
     }
 
