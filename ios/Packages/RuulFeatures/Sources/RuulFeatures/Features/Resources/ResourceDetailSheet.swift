@@ -18,6 +18,7 @@ import RuulCore
 /// them when the user doesn't tap.
 public struct ResourceDetailSheet: View {
     @Environment(AppState.self) private var app
+    @Environment(RootRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
 
     public let resource: ResourceRow
@@ -87,6 +88,75 @@ public struct ResourceDetailSheet: View {
         capabilities = (try? await app.resourceCapabilityRepo.list(resourceId: resource.id)) ?? []
     }
 
+    /// Dispatches the `Necesita atención` tap. Mirrors the action-type
+    /// switch in `HomeTab.handleInboxAction` so the same UserAction
+    /// behaves consistently no matter where the user opens it (Inbox
+    /// list, Home pendings strip, or here from a resource detail). For
+    /// surfaces that already live on this screen (rsvp on an event-like
+    /// resource, contribution on a fund) we resolve the action row so it
+    /// stops nagging — the user is already at the right place.
+    @MainActor
+    private func handleInboxAction(_ action: UserAction) async {
+        switch action.actionType {
+        case .finePending, .fineVoided:
+            if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
+                router.openFine(fine)
+            }
+        case .appealVotePending:
+            if let appeal = try? await app.appealRepo.appeal(id: action.referenceId),
+               let fine = try? await app.fineRepo.fine(id: appeal.fineId) {
+                router.openVoteOnAppeal(AppealRouteContext(appeal: appeal, fine: fine))
+            }
+        case .votePending:
+            if let vote = try? await app.voteRepo.vote(id: action.referenceId) {
+                router.openVoteDetail(VoteDetailRouteContext(vote: vote))
+            }
+        case .fineProposalReview, .hostAssigned, .rsvpPending:
+            // These reference an event that, for non-event resources,
+            // isn't this resource. Open the event detail.
+            if let event = try? await app.eventRepo.event(action.referenceId) {
+                router.openEvent(event)
+            }
+        case .ruleChangeApplyPending:
+            // Vote → rule → group fetch chain. Re-uses the same async
+            // shape as HomeTab.openRuleEditFromInbox.
+            guard let vote = try? await app.voteRepo.vote(id: action.referenceId),
+                  case .object(let payload) = vote.payload,
+                  case .int(let proposedAmount) = payload["proposed_amount"] ?? .null,
+                  let group = app.groups.first(where: { $0.id == action.groupId }),
+                  let rules = try? await app.ruleRepo.list(groupId: group.id),
+                  let rule = rules.first(where: { $0.id == vote.referenceId })
+            else { return }
+            router.handleRuleChange(
+                rule: rule,
+                group: group,
+                proposedAmount: proposedAmount,
+                pendingActionId: action.id
+            )
+        case .slotPending, .contributionDue, .compensationDue:
+            // Resource-scoped pendings — the user is already on the right
+            // detail. Resolve so the badge disappears and refresh.
+            try? await app.userActionRepo.resolve(actionId: action.id)
+            await refreshResourceActions()
+        }
+    }
+
+    @MainActor
+    private func refreshResourceActions() async {
+        guard let userId = app.session?.user.id else {
+            resourceActions = []
+            return
+        }
+        if let allActions = try? await app.userActionRepo.pending(
+            userId: userId,
+            groupId: resource.groupId
+        ) {
+            resourceActions = allActions.filter { $0.referenceId == resource.id }
+        } else {
+            resourceActions = []
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if let group = parentGroup {
@@ -114,9 +184,18 @@ public struct ResourceDetailSheet: View {
             attentionActions: resourceActions,
             onPresentLedger: { ledgerSheetPresented = true },
             onPresentRules:  { rulesSheetPresented = true },
-            onPresentEditResource:     { /* TODO Phase 2 */ },
+            // Non-event resources don't surface the "Editar detalles" menu
+            // item — commonSecondaryActions in CapabilityResolver doesn't
+            // include `.editDetails` for fund / asset / slot / space, so
+            // this closure is never invoked from the current entry points.
+            // Events route through EventDetailHost which wires its own
+            // edit path. Keep as no-op rather than crashing if a future
+            // resource type opts back in before its editor exists.
+            onPresentEditResource:     { },
             onPresentEnableCapability: { enableCapabilityPresented = true },
-            onOpenInboxAction: { _ in /* TODO Phase 2 */ }
+            onOpenInboxAction: { action in
+                await handleInboxAction(action)
+            }
         )
     }
 
