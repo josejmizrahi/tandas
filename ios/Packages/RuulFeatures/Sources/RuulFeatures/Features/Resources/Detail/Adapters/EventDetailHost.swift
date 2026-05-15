@@ -78,7 +78,21 @@ public struct EventDetailHost: View {
                 bootView
             }
         }
-        .task { await bootIfNeeded() }
+        .task {
+            guard coordinator == nil else { return }
+            let bootstrap = EventDetailBootstrap(
+                app: app,
+                event: event,
+                group: group,
+                currentUserId: currentUserId,
+                memberDirectory: memberDirectory
+            )
+            let result = await bootstrap.run()
+            coordinator = result.coordinator
+            enabledCapabilities = result.enabledCapabilities
+            attentionActions = result.attentionActions
+            canIssueManualFine = result.canIssueManualFine
+        }
     }
 
     private var bootView: some View {
@@ -95,9 +109,6 @@ public struct EventDetailHost: View {
             .environment(\.eventDetailPresenter, presenter)
             .task { await coordinator.refresh() }
             .task { await coordinator.startRealtime() }
-            .task { await loadCapabilities() }
-            .task { await loadAttentionActions() }
-            .task { canIssueManualFine = await computeCanIssueManualFine() }
             .onDisappear { coordinator.stopRealtime() }
             .ruulSheet(isPresented: bindingForSheet(.share)) {
                 ShareEventSheet(
@@ -269,38 +280,12 @@ public struct EventDetailHost: View {
 
     // MARK: - Async work
 
+    /// Inbox handler — dispatches a tapped action to its natural route.
+    /// RSVP-pending → focus the RSVP intent in place; fine-related →
+    /// open the appropriate sheet; everything else falls back to a
+    /// resolve mark-as-read so the action drops out of the list.
     @MainActor
-    private func bootIfNeeded() async {
-        guard coordinator == nil else { return }
-        coordinator = EventDetailCoordinator(
-            event: event,
-            group: group,
-            userId: currentUserId,
-            eventRepo: app.eventRepo,
-            rsvpRepo: app.rsvpRepo,
-            checkInRepo: app.checkInRepo,
-            lifecycle: app.eventLifecycle,
-            notifications: app.notifications,
-            walletService: app.walletService,
-            analytics: EventAnalytics(analytics: app.analytics),
-            realtimeFactory: app.realtimeFactory,
-            systemEvents: app.systemEventEmitter,
-            notificationDispatcher: app.eventNotificationDispatcher
-        )
-    }
-
-    @MainActor
-    private func loadCapabilities() async {
-        let caps = (try? await app.resourceCapabilityRepo.list(resourceId: event.id)) ?? []
-        enabledCapabilities = Set(caps.filter { $0.enabled }.map { $0.capabilityBlockId })
-    }
-
-    /// Hydrates the "Necesita atención" zone from the user_actions inbox,
-    /// keeping only rows whose `referenceId` matches this event. Filters
-    /// out resolved actions so the badge clears the moment the user
-    /// acts elsewhere.
-    @MainActor
-    private func loadAttentionActions() async {
+    private func refreshAttentionActions() async {
         let pending = (try? await app.userActionRepo.pending(
             userId: currentUserId,
             groupId: group.id
@@ -308,10 +293,6 @@ public struct EventDetailHost: View {
         attentionActions = pending.filter { $0.referenceId == event.id && $0.resolvedAt == nil }
     }
 
-    /// Inbox handler — dispatches a tapped action to its natural route.
-    /// RSVP-pending → focus the RSVP intent in place; fine-related →
-    /// open the appropriate sheet; everything else falls back to a
-    /// resolve mark-as-read so the action drops out of the list.
     @MainActor
     private func openInboxAction(_ action: UserAction, coordinator: EventDetailCoordinator) async {
         switch action.actionType {
@@ -320,34 +301,16 @@ public struct EventDetailHost: View {
             // it stops nagging. The user RSVPs via the Primary Actions
             // CTA.
             try? await app.userActionRepo.resolve(actionId: action.id)
-            await loadAttentionActions()
+            await refreshAttentionActions()
         case .finePending, .fineVoided, .fineProposalReview, .appealVotePending:
             // Fines live in their own surface; resolve the inbox row so
             // it disappears, and let the user navigate via the host
             // actions or MyFines.
             try? await app.userActionRepo.resolve(actionId: action.id)
-            await loadAttentionActions()
+            await refreshAttentionActions()
         default:
             try? await app.userActionRepo.resolve(actionId: action.id)
-            await loadAttentionActions()
-        }
-    }
-
-    @MainActor
-    private func computeCanIssueManualFine() async -> Bool {
-        let me = memberDirectory[currentUserId]?.member
-            ?? EventDetailHost.fallbackMember(userId: currentUserId, groupId: group.id)
-        do {
-            let decision = try await app.governance.canPerform(
-                .issueManualFine,
-                member: me,
-                in: group,
-                context: nil
-            )
-            if case .allowed = decision { return true }
-            return false
-        } catch {
-            return false
+            await refreshAttentionActions()
         }
     }
 
@@ -420,19 +383,4 @@ public struct EventDetailHost: View {
         }
     }
 
-    /// Synthetic inactive member used when the directory hasn't surfaced
-    /// the current user yet (anon sessions, just-joined races). Forces
-    /// the fail-closed governance gate to deny — manual fine CTA stays
-    /// hidden until the next directory refresh promotes the row.
-    private static func fallbackMember(userId: UUID, groupId: UUID) -> Member {
-        Member(
-            id: UUID(),
-            groupId: groupId,
-            userId: userId,
-            role: "member",
-            roles: [.member],
-            active: false,
-            joinedAt: .now
-        )
-    }
 }
