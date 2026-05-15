@@ -57,6 +57,7 @@ extension SystemEventType {
         .warningEmitted,
         .resourceLinked,
         .resourceUnlinked,
+        .eventCancelled,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -112,6 +113,7 @@ extension SystemEventType {
         "warningEmitted",
         "resourceLinked",
         "resourceUnlinked",
+        "eventCancelled",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -178,6 +180,7 @@ extension SystemEventType {
         case .warningEmitted: return "warningEmitted"
         case .resourceLinked: return "resourceLinked"
         case .resourceUnlinked: return "resourceUnlinked"
+        case .eventCancelled: return "eventCancelled"
         case .unknown(let s): return s
         }
     }
@@ -236,6 +239,7 @@ extension SystemEventType {
         case "warningEmitted": return .warningEmitted
         case "resourceLinked": return .resourceLinked
         case "resourceUnlinked": return .resourceUnlinked
+        case "eventCancelled": return .eventCancelled
         default: return .unknown(raw)
         }
     }

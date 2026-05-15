@@ -127,5 +127,13 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// `resourceLinked` with `unlinked_by` instead of `linked_by`.
     case resourceUnlinked
 
+    // MARK: - Event lifecycle (mig 00199 — Plans/Active/EventResource.md §8)
+    /// Emitted by trigger on `resources.status` → 'cancelled' (resource_type=
+    /// event). Distinct from `eventClosed`, which today still fires for
+    /// cancellations too via the legacy `cancel_event` RPC — drop in a
+    /// follow-up once consumers move to this. Payload:
+    /// `{title, previous_status, reason, cancelled_by}`.
+    case eventCancelled
+
     case unknown(String)
 }
