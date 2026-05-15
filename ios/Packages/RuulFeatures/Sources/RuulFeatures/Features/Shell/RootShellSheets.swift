@@ -269,10 +269,42 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
+            // MARK: Fine detail cover (item: state.activeFine)
+            // Originally planned as a per-tab navigationDestination push, but
+            // no tab actually wired the destination so the route was dead —
+            // tapping a `.finePending` action on Home / Inbox pushed the
+            // route to `state.activeRoutes` and nothing happened. Presenting
+            // as a fullScreenCover mirrors the eventDetail flow and makes
+            // the route reachable from every tab.
+            .fullScreenCover(item: activeFineItem, onDismiss: {
+                Task {
+                    await router.state.inboxCoordinator?.refresh()
+                    await router.state.myFinesCoordinator?.refresh()
+                }
+            }) { wrappedFine in
+                fineDetailScreen(wrappedFine.fine)
+            }
+
+            // MARK: Mis multas cover (Profile → "Mis multas")
+            .fullScreenCover(isPresented: boolBinding(for: .sanciones)) {
+                myFinesScreen
+            }
+
+            // MARK: Past events cover (Home → "Ver historial")
+            .fullScreenCover(isPresented: boolBinding(for: .past)) {
+                pastEventsScreen
+            }
+
+            // MARK: Vote detail cover (.votePending inbox action)
+            .fullScreenCover(item: voteDetailItem) { ctx in
+                voteDetailScreen(ctx)
+            }
+
             // MARK: Navigation-push routes (no sheet presentation)
-            // past, feed, groupHistory, acuerdos, sanciones, fineDetail,
-            // voteDetail, openVotes are .navigationDestination pushes wired
-            // inside per-tab NavigationStacks. No sheet branch needed here.
+            // feed, groupHistory, openVotes have no callers in the current
+            // shell — when callers are added, surface them with the same
+            // fullScreenCover pattern as the fine / past / voteDetail
+            // branches above.
     }
 
     // MARK: - Screen builders
@@ -361,6 +393,144 @@ public struct RootShellSheets: ViewModifier {
                     }
                 }
         }
+    }
+
+    @MainActor
+    private func fineDetailScreen(_ fine: Fine) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let coordinator = FineDetailCoordinator(
+            fine: fine,
+            userId: userId,
+            fineRepo: app.fineRepo,
+            appealRepo: app.appealRepo,
+            analytics: app.analytics,
+            changeFeed: app.multiDeviceChangeFeed
+        )
+        let groupId = fine.groupId
+        let memberDirectory = router.state.memberDirectory
+        return NavigationStack {
+            FineDetailView(
+                coordinator: coordinator,
+                onAppeal: nil,
+                onViewAppeal: { appeal in
+                    router.openVoteOnAppeal(AppealRouteContext(appeal: appeal, fine: fine))
+                },
+                computeCanVoidFine: { [app] in
+                    guard let group = app.groups.first(where: { $0.id == groupId }),
+                          let member = memberDirectory[userId]?.member,
+                          let decision = try? await app.governance.canPerform(
+                              .voidFine, member: member, in: group, context: nil
+                          )
+                    else { return false }
+                    if case .allowed = decision { return true }
+                    return false
+                },
+                makeVoidFineCoordinator: { [app, router] in
+                    VoidFineCoordinator(
+                        fine: fine,
+                        fineRepo: app.fineRepo,
+                        groupsRepo: app.groupsRepo,
+                        onSubmitted: { @MainActor in
+                            await router.state.inboxCoordinator?.refresh()
+                            await router.state.myFinesCoordinator?.refresh()
+                        }
+                    )
+                },
+                currentUserId: userId
+            )
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cerrar") {
+                        router.state.activeFine = nil
+                        while router.state.activeRoutes.contains(where: {
+                            if case .fineDetail = $0 { return true }
+                            return false
+                        }) {
+                            router.state.dismissTop()
+                        }
+                    }
+                }
+            }
+        }
+        .environment(app)
+    }
+
+    @MainActor @ViewBuilder
+    private var myFinesScreen: some View {
+        if let coord = router.state.myFinesCoordinator {
+            MyFinesScreenHost(
+                coordinator: coord,
+                onClose: {
+                    while router.state.contains(.sanciones) {
+                        router.state.dismissTop()
+                    }
+                }
+            )
+            .environment(app)
+        }
+    }
+
+    @MainActor @ViewBuilder
+    private var pastEventsScreen: some View {
+        if let group = app.activeGroup, let userId = app.session?.user.id {
+            NavigationStack {
+                PastResourcesView(
+                    group: group,
+                    userId: userId,
+                    eventRepo: app.eventRepo
+                ) { event in
+                    router.openEvent(event)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cerrar") {
+                            while router.state.contains(.past) {
+                                router.state.dismissTop()
+                            }
+                        }
+                    }
+                }
+            }
+            .environment(app)
+        }
+    }
+
+    @MainActor @ViewBuilder
+    private func voteDetailScreen(_ ctx: VoteDetailRouteContext) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let memberDirectory = router.state.memberDirectory
+        let group = app.groups.first(where: { $0.id == ctx.vote.groupId })
+        let userMemberId = memberDirectory[userId]?.member.id ?? UUID()
+        NavigationStack {
+            if let group {
+                VoteDetailView(coordinator: VoteDetailCoordinator(
+                    vote: ctx.vote,
+                    group: group,
+                    userMemberId: userMemberId,
+                    voteRepo: app.voteRepo,
+                    castRepo: app.voteCastRepo,
+                    analytics: app.analytics,
+                    changeFeed: app.multiDeviceChangeFeed
+                ))
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cerrar") {
+                            while router.state.activeRoutes.contains(where: {
+                                if case .voteDetail = $0 { return true }
+                                return false
+                            }) {
+                                router.state.dismissTop()
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("Grupo no encontrado")
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .padding()
+            }
+        }
+        .environment(app)
     }
 
     @MainActor @ViewBuilder
@@ -544,6 +714,45 @@ public struct RootShellSheets: ViewModifier {
         )
     }
 
+    /// Binding for the fine detail cover, driven by `state.activeFine`
+    /// (parallels `activeEventItem`). Returns nil when no `.fineDetail`
+    /// route is active or `activeFine` isn't populated, which keeps the
+    /// pure-id push path (`router.openFineDetail(id:)`, currently unused
+    /// outside deep links) a no-op until callers also set the model.
+    private var activeFineItem: Binding<IdentifiableFineWrapper?> {
+        Binding(
+            get: {
+                guard router.state.activeRoutes.contains(where: {
+                    if case .fineDetail = $0 { return true }
+                    return false
+                }), let fine = router.state.activeFine else { return nil }
+                return IdentifiableFineWrapper(fine: fine)
+            },
+            set: { newValue in
+                if newValue == nil {
+                    router.state.activeFine = nil
+                    while router.state.activeRoutes.contains(where: {
+                        if case .fineDetail = $0 { return true }
+                        return false
+                    }) {
+                        router.state.dismissTop()
+                    }
+                }
+            }
+        )
+    }
+
+    private var voteDetailItem: Binding<VoteDetailRouteContext?> {
+        itemBinding(
+            extract: { route in
+                if case .voteDetail(let ctx) = route { return ctx } else { return nil }
+            },
+            matches: { route in
+                if case .voteDetail = route { return true } else { return false }
+            }
+        )
+    }
+
     /// Binding for the appeal presented state (used by `VoteOnAppealSheet`
     /// which takes a `Binding<Bool>` rather than `item:`).
     private var appealPresentedBinding: Binding<Bool> {
@@ -701,6 +910,17 @@ private struct IdentifiableEventWrapper: Identifiable, Hashable {
     var id: UUID { event.id }
 }
 
+/// Wraps `Fine` in an `Identifiable` struct so `fullScreenCover(item:)`
+/// can drive the fine-detail cover via the shared `state.activeFine`
+/// payload. Identity is the fine's UUID — re-presenting with the same
+/// fine reuses the cover; a different fine triggers a fresh build.
+private struct IdentifiableFineWrapper: Identifiable, Hashable {
+    let fine: Fine
+    var id: UUID { fine.id }
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
 /// Wraps `CheckInScannerCoordinator` (which is a class) in a struct that is
 /// both `Identifiable` and `Hashable`. Identity is the event UUID.
 private struct IdentifiableScannerWrapper: Identifiable, Hashable {
@@ -720,6 +940,81 @@ private struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
         lhs.rule?.id == rhs.rule?.id
     }
     func hash(into hasher: inout Hasher) { hasher.combine(rule?.id) }
+}
+
+// MARK: - MyFinesScreenHost
+//
+// Owns its own NavigationStack so the .sanciones cover can navigate to a
+// per-fine detail screen without colliding with the .fineDetail cover
+// presenter at the shell level. The fine detail is pushed via the
+// navigationDestination(for: Fine.self) inside this stack rather than
+// going back through the router — that keeps the "open mis multas →
+// tap a fine → tap close" flow inside one cover, with the standard
+// nav-back affordance.
+@MainActor
+private struct MyFinesScreenHost: View {
+    @Environment(AppState.self) private var app
+    @Bindable var coordinator: MyFinesCoordinator
+    let onClose: () -> Void
+
+    @State private var path: [Fine] = []
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            MyFinesView(coordinator: coordinator) { fine in
+                path.append(fine)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cerrar", action: onClose)
+                }
+            }
+            .navigationDestination(for: Fine.self) { fine in
+                fineDetailDestination(for: fine)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func fineDetailDestination(for fine: Fine) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let coordinator = FineDetailCoordinator(
+            fine: fine,
+            userId: userId,
+            fineRepo: app.fineRepo,
+            appealRepo: app.appealRepo,
+            analytics: app.analytics,
+            changeFeed: app.multiDeviceChangeFeed
+        )
+        FineDetailView(
+            coordinator: coordinator,
+            onAppeal: nil,
+            onViewAppeal: nil,
+            computeCanVoidFine: { [app] in
+                guard let group = app.groups.first(where: { $0.id == fine.groupId }),
+                      let session = app.session,
+                      let rows = try? await app.groupsRepo.membersWithProfiles(of: fine.groupId),
+                      let member = rows.first(where: { $0.member.userId == session.user.id })?.member,
+                      let decision = try? await app.governance.canPerform(
+                          .voidFine, member: member, in: group, context: nil
+                      )
+                else { return false }
+                if case .allowed = decision { return true }
+                return false
+            },
+            makeVoidFineCoordinator: { [app] in
+                VoidFineCoordinator(
+                    fine: fine,
+                    fineRepo: app.fineRepo,
+                    groupsRepo: app.groupsRepo,
+                    onSubmitted: { @MainActor in
+                        await coordinator.refresh()
+                    }
+                )
+            },
+            currentUserId: userId
+        )
+    }
 }
 
 // MARK: - MembersAdminViewWrapper

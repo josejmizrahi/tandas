@@ -130,6 +130,19 @@ public final class RootRouter {
         state.push(.scanner(coordinator.event.id))
     }
 
+    /// Opens a fine in the detail cover. Stores the full Fine on
+    /// `state.activeFine` (so `RootShellSheets` can build the coordinator
+    /// synchronously) and pushes the route. Mirrors `openEvent(_:)`.
+    public func openFine(_ fine: Fine) {
+        state.activeFine = fine
+        state.push(.fineDetail(fine.id))
+    }
+
+    /// Pushes the `.fineDetail` route by id. Callers that only have a fine
+    /// id (deep links, push notifications) use this; the `RootShellSheets`
+    /// `activeFineItem` binding ignores the route when `state.activeFine`
+    /// is nil, so most call sites should prefer `openFine(_:)` with the
+    /// fetched model.
     public func openFineDetail(_ fineId: UUID) {
         state.push(.fineDetail(fineId))
     }

@@ -41,6 +41,11 @@ public final class RootShellState {
     /// Event being edited in the edit cover. Set before pushing `.editEvent`.
     public var activeEditEvent: Event?
 
+    /// Fine shown in the `.fineDetail` cover. Set before pushing the route
+    /// so the cover can build `FineDetailCoordinator` synchronously
+    /// (parallels `activeEvent`).
+    public var activeFine: Fine?
+
     /// QR scanner coordinator. Set before pushing `.scanner`.
     public var activeScannerCoordinator: CheckInScannerCoordinator?
 
