@@ -67,7 +67,7 @@ public struct InvitePreview: Codable, Sendable, Hashable {
     }
 }
 
-public struct PendingInvite: Identifiable, Sendable, Hashable {
+public struct PendingInvite: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
     public let phoneE164: String
     public let displayName: String?

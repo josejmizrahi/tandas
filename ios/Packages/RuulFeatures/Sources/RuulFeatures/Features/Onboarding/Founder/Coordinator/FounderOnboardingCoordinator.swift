@@ -89,6 +89,10 @@ public final class FounderOnboardingCoordinator {
             draft = decoded
         }
         if let name = entity.displayName { displayName = name }
+        if let data = entity.pendingInvitesJSON,
+           let decoded = try? JSONDecoder().decode([PendingInvite].self, from: data) {
+            pendingInvites = decoded
+        }
 
         if currentStep.index > FounderStep.group.index {
             if let groupId = entity.createdGroupId,
@@ -307,7 +311,25 @@ public final class FounderOnboardingCoordinator {
         if let data = try? JSONEncoder().encode(draft) {
             entity.draftJSON = data
         }
+        // Beta 1 polish: persist the pending-invites list so a founder who
+        // backgrounds the app mid-invite step keeps the numbers they
+        // already picked from contacts. Empty list ⇒ nil column so we
+        // don't store noise. Idempotent encode failure leaves the previous
+        // snapshot intact.
+        if pendingInvites.isEmpty {
+            entity.pendingInvitesJSON = nil
+        } else if let data = try? JSONEncoder().encode(pendingInvites) {
+            entity.pendingInvitesJSON = data
+        }
         try? progress.save(entity)
+    }
+
+    /// Public hook for InviteMembersView. View mutations on
+    /// `pendingInvites` (add from contacts, add manually, remove) call
+    /// this so the persistence layer captures the change immediately —
+    /// without it, killing the app after picking 5 numbers loses all 5.
+    public func persistPendingInvites() async {
+        await persist()
     }
 }
 

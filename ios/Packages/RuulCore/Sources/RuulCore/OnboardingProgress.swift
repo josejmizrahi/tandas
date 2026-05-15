@@ -17,6 +17,11 @@ public final class OnboardingProgress {
     public var displayName: String?
     public var phoneE164: String?
     public var createdGroupId: UUID?            // founder: id of the group created at step .group
+    /// JSON-encoded `[PendingInvite]` for the founder flow. Persisted so a
+    /// founder who closed the app mid-invite step doesn't lose the list of
+    /// numbers they already picked. Optional: empty / nil = no invites
+    /// pending. Read/written by `FounderOnboardingCoordinator`.
+    public var pendingInvitesJSON: Data?
     public var startedAt: Date
     public var lastUpdatedAt: Date
 

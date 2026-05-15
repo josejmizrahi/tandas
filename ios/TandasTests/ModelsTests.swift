@@ -31,7 +31,7 @@ struct ModelsTests {
 
     @Test("Profile.displayName empty means onboarding pending")
     func profileEmptyName() throws {
-        let json = #"{"id":"3F2504E0-4F89-11D3-9A0C-0305E82C3301","display_name":""}"#.data(using: .utf8)!
+        let json = #"{"id":"3F2504E0-4F89-11D3-9A0C-0305E82C3301","display_name":"","timezone":"America/Mexico_City","locale":"es-MX"}"#.data(using: .utf8)!
         let p = try JSONDecoder.tandas.decode(Profile.self, from: json)
         #expect(p.displayName.isEmpty)
         #expect(p.needsOnboarding)

@@ -36,12 +36,21 @@ public struct InviteMembersView: View {
             }
         }
         .ruulContactsPicker(isPresented: $contactsPresented) { picks in
+            var didAppend = false
             for pick in picks {
                 if let e164 = PhoneFormatter.smartE164(pick.phoneRaw) {
                     coord.pendingInvites.append(
                         PendingInvite(phoneE164: e164, displayName: pick.name)
                     )
+                    didAppend = true
                 }
+            }
+            // Beta 1 polish: persist after each contacts-picker batch so
+            // a force-quit between picks and "Continuar" doesn't lose the
+            // list. Skipping the call when nothing was appended avoids a
+            // wasted disk write.
+            if didAppend {
+                Task { await coord.persistPendingInvites() }
             }
         }
         .ruulSheet(isPresented: $manualEntryPresented) {
@@ -133,6 +142,7 @@ public struct InviteMembersView: View {
 
     private func remove(_ invite: PendingInvite) {
         coord.pendingInvites.removeAll { $0.id == invite.id }
+        Task { await coord.persistPendingInvites() }
     }
 
     @State private var manualPhone = ""
@@ -150,6 +160,7 @@ public struct InviteMembersView: View {
                     manualPhone = ""
                     manualName = ""
                     manualEntryPresented = false
+                    Task { await coord.persistPendingInvites() }
                 }
             })
         ) {

@@ -24,13 +24,20 @@ public struct RuulPillButton: View {
 
     private let symbol: String
     private let size: Size
+    private let accessibilityLabel: String?
     private let action: () -> Void
 
     @State private var triggerCount = 0
 
-    public init(symbol: String, size: Size = .regular, action: @escaping () -> Void) {
+    public init(
+        symbol: String,
+        size: Size = .regular,
+        accessibilityLabel: String? = nil,
+        action: @escaping () -> Void
+    ) {
         self.symbol = symbol
         self.size = size
+        self.accessibilityLabel = accessibilityLabel
         self.action = action
     }
 
@@ -64,6 +71,18 @@ public struct RuulPillButton: View {
         }
         .buttonStyle(.plain)
         .ruulHaptic(.light, trigger: triggerCount)
+        .modifier(OptionalAccessibilityLabel(label: accessibilityLabel))
+    }
+}
+
+private struct OptionalAccessibilityLabel: ViewModifier {
+    let label: String?
+    func body(content: Content) -> some View {
+        if let label {
+            content.accessibilityLabel(Text(label))
+        } else {
+            content
+        }
     }
 }
 

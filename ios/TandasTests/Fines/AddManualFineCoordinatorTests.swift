@@ -239,4 +239,20 @@ actor StubGroupsRepository: GroupsRepository {
     func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group {
         fatalError("not used in AddManualFineCoordinatorTests")
     }
+
+    func regenerateInviteCode(groupId: UUID) async throws -> String {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func updateAvatar(groupId: UUID, data: Data, contentType: String) async throws -> URL {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func archive(groupId: UUID) async throws {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func unarchive(groupId: UUID) async throws {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
 }
