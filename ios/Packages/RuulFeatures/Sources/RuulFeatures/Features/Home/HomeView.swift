@@ -36,7 +36,6 @@ public struct HomeView: View {
         self.resourceRefreshToken = resourceRefreshToken
     }
 
-    @State private var nonEventResources: [ResourceRow] = []
     @State private var openedResource: ResourceRow?
 
     @State private var groupMemory: GroupMemory = .empty
@@ -61,8 +60,7 @@ public struct HomeView: View {
                 header
                 nextEventSection
                 pendingsSection
-                resourcesSection
-                upcomingListSection
+                upcomingFeedSection
                 groupMemorySection
                 pastEventsLink
             }
@@ -76,18 +74,14 @@ public struct HomeView: View {
         .refreshable {
             async let h: Void = coordinator.refresh(force: true)
             async let i: Void? = inboxCoordinator?.refresh()
-            async let r: Void = loadNonEventResources()
             async let m: Void = loadGroupMemory()
-            _ = await (h, i, r, m)
+            _ = await (h, i, m)
         }
         .ruulAmbientScreen(palette: nil)
         .task {
             async let h: Void = coordinator.refresh()
             async let i: Void? = inboxCoordinator?.refresh()
             _ = await (h, i)
-        }
-        .task(id: resourceRefreshToken) {
-            await loadNonEventResources()
         }
         .task(id: resourceRefreshToken) {
             await loadGroupMemory()
@@ -99,7 +93,6 @@ public struct HomeView: View {
         // bleed into the new one (or vanish if the prior group had none,
         // which is exactly what hides the Memoria section silently).
         .task(id: app.activeGroup?.id) {
-            await loadNonEventResources()
             await loadGroupMemory()
         }
         .fullScreenCover(item: $openedResource) { row in
@@ -136,23 +129,6 @@ public struct HomeView: View {
             pastEventsCount: past.count,
             resolvedVotesCount: votes.filter { $0.status == .resolved }.count
         )
-    }
-
-    @MainActor
-    private func loadNonEventResources() async {
-        guard let groupId = app.activeGroup?.id else { return }
-        let types: [ResourceType] = [.asset, .slot, .fund, .space, .right]
-        do {
-            let rows = try await app.resourceRepo.list(
-                in: groupId,
-                types: types,
-                statuses: nil,
-                limit: 50
-            )
-            nonEventResources = rows
-        } catch {
-            // Silent — section just stays empty.
-        }
     }
 
     // MARK: - Header — Apple Sports style: tiny tracking-uppercase meta +
@@ -431,27 +407,73 @@ public struct HomeView: View {
         .padding(.top, RuulSpacing.xs)
     }
 
-    // MARK: - Empty state
+    // MARK: - Polymorphic upcoming feed
+
+    private struct UpcomingFeedItem: Identifiable {
+        let id: UUID
+        let kind: Kind
+        let sortDate: Date
+        enum Kind {
+            case event(Event)
+            case resource(ResourceRow)
+        }
+    }
+
+    private var upcomingFeed: [UpcomingFeedItem] {
+        let restEvents = Array(coordinator.upcomingEvents.dropFirst()).map { event in
+            UpcomingFeedItem(
+                id: event.id,
+                kind: .event(event),
+                sortDate: event.startsAt
+            )
+        }
+        let resources = coordinator.upcomingResources.map { row in
+            UpcomingFeedItem(
+                id: row.id,
+                kind: .resource(row),
+                sortDate: row.createdAt
+            )
+        }
+        return (restEvents + resources).sorted { $0.sortDate < $1.sortDate }
+    }
 
     @ViewBuilder
-    private var resourcesSection: some View {
-        if !nonEventResources.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+    private var upcomingFeedSection: some View {
+        if !upcomingFeed.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("LO QUE ESTÁN ORGANIZANDO")
+                    Text("PRÓXIMAS ACTIVIDADES")
                         .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
                     Spacer()
-                    Text("\(nonEventResources.count)")
+                    Text("\(upcomingFeed.count)")
                         .ruulTextStyle(RuulTypography.statSmall)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
                 VStack(spacing: RuulSpacing.xs) {
-                    ForEach(nonEventResources) { row in
-                        resourceCard(row)
+                    ForEach(upcomingFeed) { item in
+                        feedRow(item)
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func feedRow(_ item: UpcomingFeedItem) -> some View {
+        switch item.kind {
+        case .event(let event):
+            EventRow(
+                event: event,
+                originGroup: coordinator.isCrossGroupsMode
+                    ? coordinator.group(for: event)
+                    : nil,
+                myStatus: coordinator.myRSVPs[event.id]?.status
+            ) {
+                onOpenEvent(event)
+            }
+        case .resource(let row):
+            resourceCard(row)
         }
     }
 
@@ -645,42 +667,6 @@ public struct HomeView: View {
         case .medium: return .medium
         case .high:   return .high
         case .urgent: return .urgent
-        }
-    }
-
-    // MARK: - Upcoming list — section header + tile cards.
-
-    @ViewBuilder
-    private var upcomingListSection: some View {
-        let rest = Array(coordinator.upcomingEvents.dropFirst())
-        if !rest.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("PRÓXIMOS")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                    Spacer()
-                    Text("\(rest.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
-                // Apple Invites pattern: hero anchors the eye, rest are
-                // compact rows so the screen breathes. Heavy EventCards
-                // here would compete with the hero for attention.
-                VStack(spacing: RuulSpacing.xs) {
-                    ForEach(rest) { event in
-                        EventRow(
-                            event: event,
-                            originGroup: coordinator.isCrossGroupsMode
-                                ? coordinator.group(for: event)
-                                : nil,
-                            myStatus: coordinator.myRSVPs[event.id]?.status
-                        ) {
-                            onOpenEvent(event)
-                        }
-                    }
-                }
-            }
         }
     }
 

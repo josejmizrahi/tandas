@@ -102,7 +102,8 @@ public struct RootShell: View {
             allGroups: app.groups,
             userId: userId,
             eventRepo: app.eventRepo,
-            rsvpRepo: app.rsvpRepo
+            rsvpRepo: app.rsvpRepo,
+            resourceRepo: app.resourceRepo
         )
         shellState.homeCoordinator = homeCoordinator
 

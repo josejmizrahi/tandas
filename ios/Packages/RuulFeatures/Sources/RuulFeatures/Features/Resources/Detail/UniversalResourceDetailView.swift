@@ -37,69 +37,18 @@ public struct UniversalResourceDetailView: View {
 
     public var body: some View {
         NavigationStack {
-            ZStack {
-                // Luma signature: the whole screen wears the cover's
-                // palette as a soft, blurred ambient field. Bottom-most
-                // layer; scroll content + sticky CTA render on top.
-                RuulAmbientBackground(
-                    palette: ResourceAmbientPalette.resolve(for: context)
-                )
-                ScrollView {
-                    VStack(spacing: 0) {
-                        coverHero
-                        ResourceDetailPanel(surface: .ambientGlass) {
-                            VStack(alignment: .leading, spacing: RuulSpacing.s7) {
-                                DetailAttentionView(context: context)
-                                ResourceTitleBlock(
-                                    context: context,
-                                    startsAt: parseStartsAt(),
-                                    endsAt: parseEndsAt()
-                                )
-                                if !shouldHideQuickFacts {
-                                    ResourceQuickFactsView(facts: quickFacts)
-                                }
-                                sections
-                                SettingsSectionView(
-                                    onPresentEnableCapability: shouldShowEnableCapability
-                                        ? context.onPresentEnableCapability
-                                        : nil,
-                                    onArchive: nil
-                                )
-                            }
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        if let onDismiss = context.onDismiss {
-                            onDismiss()
-                        } else {
-                            dismiss()
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        ForEach(secondaryActions) { action in
-                            Button(role: action.isDestructive ? .destructive : nil) {
-                                dispatchSecondary(action)
-                            } label: {
-                                Label(action.label, systemImage: action.symbol)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
-                    }
+            SwiftUI.Group {
+                switch context.resource.resourceType {
+                case .fund:
+                    FundDetailView(fund: context.resource)
+                case .space:
+                    SpaceDetailView(space: context.resource)
+                default:
+                    // .right falls through so it gets the rich detail view
+                    // including activeRightAction sheet (exercise/transfer).
+                    // RightDetailView (minimal scaffold) reachable later via
+                    // an explicit nav from inside eventBodyInner if needed.
+                    eventBodyInner
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -136,6 +85,75 @@ public struct UniversalResourceDetailView: View {
         return id
     }
 
+    private var eventBodyInner: some View {
+        ZStack {
+            // Luma signature: the whole screen wears the cover's
+            // palette as a soft, blurred ambient field. Bottom-most
+            // layer; scroll content + sticky CTA render on top.
+            RuulAmbientBackground(
+                palette: ResourceAmbientPalette.resolve(for: context)
+            )
+            ScrollView {
+                VStack(spacing: 0) {
+                    coverHero
+                    ResourceDetailPanel(surface: .ambientGlass) {
+                        VStack(alignment: .leading, spacing: RuulSpacing.s7) {
+                            DetailAttentionView(context: context)
+                            ResourceTitleBlock(
+                                context: context,
+                                startsAt: parseStartsAt(),
+                                endsAt: parseEndsAt()
+                            )
+                            if !shouldHideQuickFacts {
+                                ResourceQuickFactsView(facts: quickFacts)
+                            }
+                            sections
+                            SettingsSectionView(
+                                onPresentEnableCapability: shouldShowEnableCapability
+                                    ? context.onPresentEnableCapability
+                                    : nil,
+                                onArchive: nil
+                            )
+                        }
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if let onDismiss = context.onDismiss {
+                        onDismiss()
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(secondaryActions) { action in
+                        Button(role: action.isDestructive ? .destructive : nil) {
+                            dispatchSecondary(action)
+                        } label: {
+                            Label(action.label, systemImage: action.symbol)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                }
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
     // MARK: - Cover hero
 
     @ViewBuilder
@@ -154,20 +172,8 @@ public struct UniversalResourceDetailView: View {
             coverImageURL: context.coverImageURL,
             groupCategory: context.group.category,
             palette: ResourceAmbientPalette.resolve(for: context),
-            height: coverHeightFor(context.resource.resourceType)
+            height: ResourceTypeChrome.resolve(context.resource.resourceType).coverHeroHeight
         )
-    }
-
-    /// Right-size the cover per resource type. Events carry rich
-    /// on-cover metadata (date / time / host / status pill) so they
-    /// earn the full Luma-poster 400pt. Non-event resources only
-    /// surface their title — anything taller is dead gradient space.
-    private func coverHeightFor(_ type: ResourceType) -> CGFloat {
-        switch type {
-        case .event:                          return RuulSize.coverHero
-        case .fund, .asset, .slot, .space,
-             .right, .unknown:                return RuulSize.heroLarge
-        }
     }
 
     private var dateLabel: String? {
