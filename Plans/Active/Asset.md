@@ -484,6 +484,8 @@ revaluation mensual                     → cron emite valuation.recorded
 
 Cada template es `WHEN <atom> → IF <conditions> → THEN <consequences>` server-side. UI las expone en el Template Gallery del Rule Builder (Phase 2).
 
+**Roadmap de implementación canónico:** `Plans/Active/AssetRules.md` — mapea cada template a sus shape IDs concretos, evaluators pseudocode y orden de migraciones (atoms → shapes → templates → cron → engine → iOS → tests).
+
 ---
 
 ## §19 — Asset NO es event
