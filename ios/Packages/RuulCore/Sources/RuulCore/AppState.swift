@@ -72,6 +72,13 @@ public final class AppState {
     /// dynamic rule-builder forms — mig 00084 is the canonical source.
     public var ruleShapeRegistry: RuleShapeRegistry = .v1Fallback
 
+    /// Catalog of curated rule templates for the Beta 1 Rule Builder.
+    /// Boots cold from `MockRuleTemplateRepository.defaultBetaCatalog`
+    /// (5 attendance-fine variants from mig 00182) and is refreshed by
+    /// `loadRuleTemplates()` after `list_rule_templates` returns. Drives
+    /// the Template Gallery + Param Form UI. Per Governance.md §0.5.
+    public var ruleTemplates: [RuleBuilderTemplate] = MockRuleTemplateRepository.defaultBetaCatalog
+
     /// Pass 1 frontend remodel: A/B flag between legacy `MainTabView`
     /// (Features/Events) and new `RootShell` (Features/Shell). Flipped
     /// to `true` at Task 17 cutover — `RootShell` is now the default.
@@ -283,6 +290,11 @@ public final class AppState {
     /// `TandasApp` in live mode. Mocks/previews rely on `v1Fallback`.
     public var ruleShapeRepo: (any RuleShapeRepository)?
 
+    /// Optional server loader for `ruleTemplates`. Wired by `TandasApp`
+    /// in live mode. Mocks/previews rely on the seed catalog in
+    /// `MockRuleTemplateRepository.defaultBetaCatalog`.
+    public var ruleTemplateRepo: (any RuleTemplateRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
@@ -309,6 +321,17 @@ public final class AppState {
         }
     }
 
+    /// Refreshes `ruleTemplates` from `list_rule_templates` (mig 00182).
+    /// Same resilience contract: silent on error, last-good catalog stays.
+    public func loadRuleTemplates() async {
+        guard let repo = ruleTemplateRepo else { return }
+        do {
+            self.ruleTemplates = try await repo.loadTemplates()
+        } catch {
+            // Keep seed catalog on failure.
+        }
+    }
+
     public func start() async {
         for await s in auth.sessionStream {
             self.session = s
@@ -316,9 +339,10 @@ public final class AppState {
                 // list_modules() RPC is grant-restricted to authenticated;
                 // refresh the catalog only once we have a session. v1Fallback
                 // covers the pre-auth surface.
-                async let modules: Void = loadModuleRegistry()
-                async let shapes:  Void = loadRuleShapeRegistry()
-                _ = await (modules, shapes)
+                async let modules:   Void = loadModuleRegistry()
+                async let shapes:    Void = loadRuleShapeRegistry()
+                async let templates: Void = loadRuleTemplates()
+                _ = await (modules, shapes, templates)
                 await refreshProfileAndGroups()
                 // Beta 1 W3 E-3.1: open cross-device realtime channels
                 // once we have a session. RLS scopes incoming rows so a

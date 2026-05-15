@@ -69,6 +69,31 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
+            // MARK: Acuerdos / Rule list sheet (Beta 1 Rule Builder entry).
+            // RootRoute.acuerdos was originally designed as a nav push in the
+            // Pass-1 plan but no destination was wired in any tab. We render
+            // it as a sheet here so the Beta 1 "+ Nueva regla" surface is
+            // reachable; if the team later wires the navigation push, this
+            // branch can be deleted without breaking the route.
+            .sheet(isPresented: boolBinding(for: .acuerdos)) {
+                if let coord = router.state.rulesCoordinator {
+                    NavigationStack {
+                        RulesView(
+                            coordinator: coord,
+                            voteRepo: app.voteRepo,
+                            policyRepo: app.policyRepo,
+                            actorUserId: app.session?.user.id ?? UUID(),
+                            userActionRepo: app.userActionRepo,
+                            ruleTemplates: app.ruleTemplates,
+                            ruleTemplateRepo: app.ruleTemplateRepo
+                        )
+                    }
+                    .environment(app)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+
             // MARK: Rule edit sheet (carries RuleEditRouteContext)
             .sheet(item: ruleEditItem, onDismiss: {
                 Task { await router.state.inboxCoordinator?.refresh() }

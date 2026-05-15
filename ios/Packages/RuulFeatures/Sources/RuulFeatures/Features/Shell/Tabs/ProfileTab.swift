@@ -28,7 +28,8 @@ public struct ProfileTab: View {
                     groupScope: app.activeGroup != nil ? ProfileView.GroupScopeContext(
                         onOpenMembers: { router.openMembers() },
                         onOpenGovernance: {},
-                        onLeaveGroup: {}
+                        onLeaveGroup: {},
+                        onOpenAcuerdos: { router.openAcuerdos() }
                     ) : nil
                 )
                 .environment(app)

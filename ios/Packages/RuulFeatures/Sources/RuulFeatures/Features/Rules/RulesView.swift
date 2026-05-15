@@ -35,6 +35,16 @@ public struct RulesView: View {
     /// tab dissolved in Pass 2) to navigate to `RuleDetailView`.
     /// Default no-op for callsites that don't push.
     public var onSelectRule: (GroupRule) -> Void = { _ in }
+    /// Beta 1 Rule Builder catalog. Loaded once at boot by AppState
+    /// (`loadRuleTemplates()`). Empty list disables the "+" entry point.
+    /// Per Plans/Active/Governance.md §0.5 + §10.
+    public let ruleTemplates: [RuleBuilderTemplate]
+    /// Server-backed publisher for the Rule Builder. nil in mock/preview
+    /// where the builder is hidden behind the same gating as the pencil.
+    public let ruleTemplateRepo: (any RuleTemplateRepository)?
+
+    /// Beta 1 builder sheet presentation handle.
+    @State private var builderCoord: RuleBuilderCoordinator?
 
     public init(
         coordinator: RulesCoordinator,
@@ -42,6 +52,8 @@ public struct RulesView: View {
         policyRepo: any GroupPolicyRepository,
         actorUserId: UUID,
         userActionRepo: (any UserActionRepository)? = nil,
+        ruleTemplates: [RuleBuilderTemplate] = [],
+        ruleTemplateRepo: (any RuleTemplateRepository)? = nil,
         onSeeOpenVotes: @escaping () -> Void = {},
         onSelectRule: @escaping (GroupRule) -> Void = { _ in }
     ) {
@@ -50,8 +62,27 @@ public struct RulesView: View {
         self.policyRepo = policyRepo
         self.actorUserId = actorUserId
         self.userActionRepo = userActionRepo
+        self.ruleTemplates = ruleTemplates
+        self.ruleTemplateRepo = ruleTemplateRepo
         self.onSeeOpenVotes = onSeeOpenVotes
         self.onSelectRule = onSelectRule
+    }
+
+    /// Becomes true when the user is admin AND the builder dependencies
+    /// are wired (live mode). Hidden in preview/mock where repo is nil.
+    private var canShowBuilder: Bool {
+        coordinator.canEditRules
+        && ruleTemplateRepo != nil
+        && !ruleTemplates.isEmpty
+    }
+
+    private func openBuilder() {
+        guard let repo = ruleTemplateRepo, !ruleTemplates.isEmpty else { return }
+        builderCoord = RuleBuilderCoordinator(
+            group: coordinator.group,
+            templates: ruleTemplates,
+            repo: repo
+        )
     }
 
     public var body: some View {
@@ -101,6 +132,12 @@ public struct RulesView: View {
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
         }
         .task { await coordinator.refresh() }
+        .sheet(item: $builderCoord) { coord in
+            RuleBuilderView(coord: coord) {
+                builderCoord = nil
+                Task { await coordinator.refresh() }
+            }
+        }
     }
 
     /// Builds a fresh `EditRulesCoordinator` reusing the read-side coord's
@@ -131,6 +168,19 @@ public struct RulesView: View {
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             Spacer(minLength: 0)
+            if canShowBuilder {
+                Button(action: openBuilder) {
+                    Image(systemName: "plus")
+                        .ruulTextStyle(RuulTypography.subheadMedium)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(Color.ruulSurface, in: Circle())
+                        .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                        .accessibilityHidden(true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Nueva regla")
+            }
             if coordinator.canEditRules {
                 NavigationLink {
                     EditRulesView(coordinator: makeEditCoordinator())

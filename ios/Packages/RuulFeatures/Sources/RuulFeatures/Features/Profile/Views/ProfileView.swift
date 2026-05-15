@@ -58,6 +58,20 @@ public struct ProfileView: View {
         let onOpenMembers: () -> Void
         let onOpenGovernance: () -> Void
         let onLeaveGroup: () -> Void
+        /// Beta 1 Rule Builder entry. nil ⇒ row is hidden (mock/preview).
+        let onOpenAcuerdos: (() -> Void)?
+
+        public init(
+            onOpenMembers: @escaping () -> Void,
+            onOpenGovernance: @escaping () -> Void,
+            onLeaveGroup: @escaping () -> Void,
+            onOpenAcuerdos: (() -> Void)? = nil
+        ) {
+            self.onOpenMembers = onOpenMembers
+            self.onOpenGovernance = onOpenGovernance
+            self.onLeaveGroup = onLeaveGroup
+            self.onOpenAcuerdos = onOpenAcuerdos
+        }
     }
 
     public var body: some View {
@@ -304,6 +318,15 @@ public struct ProfileView: View {
                 action: scope.onOpenMembers
             )
             divider
+            if let onOpenAcuerdos = scope.onOpenAcuerdos {
+                navRow(
+                    icon: "list.bullet.clipboard",
+                    label: "Acuerdos",
+                    trailing: { EmptyView() },
+                    action: onOpenAcuerdos
+                )
+                divider
+            }
             navRow(
                 icon: "scale.3d",
                 label: "Gobernanza",

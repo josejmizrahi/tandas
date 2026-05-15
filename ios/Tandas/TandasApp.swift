@@ -152,6 +152,7 @@ struct TandasApp: App {
             )
             state.moduleRegistryLoader = LiveModuleRegistry(client: client)
             state.ruleShapeRepo = LiveRuleShapeRepository(client: client)
+            state.ruleTemplateRepo = LiveRuleTemplateRepository(client: client)
             _appState = State(initialValue: state)
         }
     }
