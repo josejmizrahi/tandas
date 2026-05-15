@@ -1,4 +1,9 @@
--- 00198 — fund operations slice: writers + balance projection + lifecycle.
+-- 00202 — fund operations slice: writers + balance projection + lifecycle.
+--
+-- (Filed as 00198 in the original PR; renumbered to 00202 because mig
+-- 00198 was reused by `right_resource_canonical` shipped in parallel.
+-- Supabase records migrations by version timestamp, not filename, so
+-- the rename is metadata-only on the filesystem. Prod state unaffected.)
 --
 -- Builds on mig 00139 (create_fund) and mig 00136 (member balance views)
 -- to ship the read + write surface that turns `resource_type='fund'` from
@@ -81,6 +86,12 @@ language sql
 immutable parallel safe
 set search_path = pg_catalog
 as $function$
+  -- Snapshot of the prod array at the time this migration was authored
+  -- (post event_resource_links + event_cancelled_atom) plus the two new
+  -- fund lock atoms. Preserving the full array on `create or replace`
+  -- is mandatory — Postgres replaces the body wholesale, so omitting any
+  -- entry silently drops support for that event_type at INSERT time
+  -- (enforced by `system_events_event_type_known_chk`).
   select p_event_type = any (array[
     'eventClosed', 'eventCreated', 'rsvpDeadlinePassed', 'hoursBeforeEvent',
     'rsvpSubmitted', 'rsvpChangedSameDay', 'checkInRecorded', 'checkInMissed',
@@ -92,15 +103,17 @@ as $function$
     'appealCreated', 'appealResolved',
     'voteOpened', 'voteCast', 'voteResolved',
     'fundCreated', 'fundDeposit', 'fundThresholdReached',
-    -- mig 00198: fund lock lifecycle
-    'fundLocked', 'fundUnlocked',
     'positionChanged', 'memberJoined', 'memberLeft',
     'ruleEnabledChanged', 'ruleAmountChanged',
     'pendingChangeApplied', 'inviteCodeRotated',
     'groupCreated', 'groupArchived', 'groupUnarchived', 'groupRenamed', 'governanceUpdated',
     'resourceArchived', 'resourceUnarchived', 'resourceRenamed',
     'capabilityToggled', 'capabilityConfigUpdated', 'memberCapabilityOverridden',
-    'ledgerEntryCreated', 'warningEmitted'
+    'ledgerEntryCreated', 'warningEmitted',
+    'resourceLinked', 'resourceUnlinked',
+    'eventCancelled',
+    -- mig 00202: fund lock lifecycle
+    'fundLocked', 'fundUnlocked'
   ]);
 $function$;
 
@@ -236,7 +249,7 @@ revoke execute on function public.fund_contribute(uuid, bigint, text, text) from
 grant  execute on function public.fund_contribute(uuid, bigint, text, text) to authenticated;
 
 comment on function public.fund_contribute(uuid, bigint, text, text) is
-  'Records a contribution to a fund. Validates resource is type=fund, not archived, amount > 0, caller is group member. Calls record_ledger_entry with type=contribution, from=caller_member, to=NULL, resource_id=fund. Currency falls through fund.metadata.currency then to MXN. Mig 00198.';
+  'Records a contribution to a fund. Validates resource is type=fund, not archived, amount > 0, caller is group member. Calls record_ledger_entry with type=contribution, from=caller_member, to=NULL, resource_id=fund. Currency falls through fund.metadata.currency then to MXN. Mig 00202.';
 
 -- =============================================================================
 -- 4. fund_record_expense RPC
@@ -318,7 +331,7 @@ revoke execute on function public.fund_record_expense(uuid, bigint, uuid, text, 
 grant  execute on function public.fund_record_expense(uuid, bigint, uuid, text, text) to authenticated;
 
 comment on function public.fund_record_expense(uuid, bigint, uuid, text, text) is
-  'Records an expense from a fund to a recipient member. Validates resource is type=fund, not archived, amount > 0, recipient is required, caller is group member. Calls record_ledger_entry with type=expense, from=NULL, to=p_to_member_id, resource_id=fund. Vendor expenses (no recipient) are out of scope for this slice — they would not register in the direction-based balance projection. Mig 00198.';
+  'Records an expense from a fund to a recipient member. Validates resource is type=fund, not archived, amount > 0, recipient is required, caller is group member. Calls record_ledger_entry with type=expense, from=NULL, to=p_to_member_id, resource_id=fund. Vendor expenses (no recipient) are out of scope for this slice — they would not register in the direction-based balance projection. Mig 00202.';
 
 -- =============================================================================
 -- 5. fund_lock / fund_unlock RPCs
@@ -397,7 +410,7 @@ revoke execute on function public.fund_lock(uuid, text) from public, anon;
 grant  execute on function public.fund_lock(uuid, text) to authenticated;
 
 comment on function public.fund_lock(uuid, text) is
-  'Admin-only soft lock on a fund. Stamps locked_at / locked_by / locked_reason into resources.metadata and emits fundLocked. Does NOT block writers — Constitution §9 delegates lock-aware behavior to rules. Rejects relock of an already-locked fund. Mig 00198.';
+  'Admin-only soft lock on a fund. Stamps locked_at / locked_by / locked_reason into resources.metadata and emits fundLocked. Does NOT block writers — Constitution §9 delegates lock-aware behavior to rules. Rejects relock of an already-locked fund. Mig 00202.';
 
 create or replace function public.fund_unlock(p_fund_id uuid)
 returns void
@@ -464,4 +477,4 @@ revoke execute on function public.fund_unlock(uuid) from public, anon;
 grant  execute on function public.fund_unlock(uuid) to authenticated;
 
 comment on function public.fund_unlock(uuid) is
-  'Admin-only lock release on a fund. Clears locked_at / locked_by / locked_reason from resources.metadata and emits fundUnlocked. Rejects if fund is not locked. Mig 00198.';
+  'Admin-only lock release on a fund. Clears locked_at / locked_by / locked_reason from resources.metadata and emits fundUnlocked. Rejects if fund is not locked. Mig 00202.';
