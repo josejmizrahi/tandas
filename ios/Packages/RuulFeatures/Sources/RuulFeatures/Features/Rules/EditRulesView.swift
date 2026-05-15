@@ -18,7 +18,7 @@ public struct EditRulesView: View {
         .task { await coordinator.refresh() }
         .navigationTitle("Editar acuerdos")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $sheetRule) { rule in
+        .fullScreenCover(item: $sheetRule) { rule in
             NavigationStack {
                 EditRuleSheet(
                     rule: rule,

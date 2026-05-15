@@ -96,7 +96,7 @@ public struct MoneySectionView: View {
             .cardBackground()
         }
         .task { await loadBalances() }
-        .sheet(isPresented: $settlementSheetPresented) {
+        .fullScreenCover(isPresented: $settlementSheetPresented) {
             SettlementSheet(
                 groupId: context.group.id,
                 resourceId: context.resource.id,

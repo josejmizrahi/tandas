@@ -73,7 +73,7 @@ public struct ResourceDetailSheet: View {
                 rulesCoordinator = makeRulesCoordinator()
             }
         }
-        .sheet(isPresented: $enableCapabilityPresented) {
+        .fullScreenCover(isPresented: $enableCapabilityPresented) {
             EnableCapabilitySheet(
                 resourceId: resource.id,
                 resourceType: resource.resourceType,

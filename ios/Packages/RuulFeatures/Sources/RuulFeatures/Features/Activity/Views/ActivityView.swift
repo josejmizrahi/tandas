@@ -59,7 +59,7 @@ public struct ActivityView: View {
         }
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
-        .sheet(item: $detailEvent) { ev in
+        .fullScreenCover(item: $detailEvent) { ev in
             SystemEventDetailView(
                 event: ev,
                 memberName: nil,
@@ -76,7 +76,7 @@ public struct ActivityView: View {
             )
             .ruulSheetChrome(detents: [.medium, .large])
         }
-        .sheet(isPresented: $showFilters) {
+        .fullScreenCover(isPresented: $showFilters) {
             HistoryFilterSheet(coordinator: coordinator) {
                 showFilters = false
             }

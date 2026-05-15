@@ -209,7 +209,7 @@ private extension UIImage {
         ))
     )
     return Color.ruulBackground.ignoresSafeArea()
-        .sheet(isPresented: .constant(true)) {
+        .fullScreenCover(isPresented: .constant(true)) {
             EditProfileSheet(coordinator: coord)
         }
 }

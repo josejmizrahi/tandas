@@ -38,7 +38,7 @@ public extension View {
         detents: Set<PresentationDetent> = [.medium, .large],
         @ViewBuilder content: @escaping (Item) -> Sheet
     ) -> some View {
-        self.sheet(item: item) { wrapped in
+        self.fullScreenCover(item: item) { wrapped in
             content(wrapped).ruulSheetChrome(detents: detents)
         }
     }
@@ -48,7 +48,7 @@ public extension View {
         detents: Set<PresentationDetent> = [.medium, .large],
         @ViewBuilder content: @escaping () -> Sheet
     ) -> some View {
-        self.sheet(isPresented: isPresented) {
+        self.fullScreenCover(isPresented: isPresented) {
             content().ruulSheetChrome(detents: detents)
         }
     }

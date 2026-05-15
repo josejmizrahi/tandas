@@ -22,7 +22,7 @@ public struct RootShellSheets: ViewModifier {
     public func body(content: Content) -> some View {
         content
             // MARK: Group management sheets
-            .sheet(isPresented: boolBinding(for: .groupSwitcher)) {
+            .fullScreenCover(isPresented: boolBinding(for: .groupSwitcher)) {
                 GroupSwitcherSheet(
                     onCreateGroup: { router.present(.createGroup) },
                     onJoinGroup: { router.present(.joinGroup) }
@@ -30,7 +30,7 @@ public struct RootShellSheets: ViewModifier {
                 .environment(app)
                 .ruulSheetChrome(detents: [.medium, .large])
             }
-            .sheet(isPresented: boolBinding(for: .createGroup)) {
+            .fullScreenCover(isPresented: boolBinding(for: .createGroup)) {
                 CreateGroupSheet { _ in
                     // AppState.activeGroupId is set inside the sheet;
                     // RootShell.rebuildCoordinators fires reactively.
@@ -38,21 +38,21 @@ public struct RootShellSheets: ViewModifier {
                 .environment(app)
                 .ruulSheetChrome(detents: [.large])
             }
-            .sheet(isPresented: boolBinding(for: .joinGroup)) {
+            .fullScreenCover(isPresented: boolBinding(for: .joinGroup)) {
                 JoinGroupSheet { _ in
                     // Same: group switch is reactive via activeGroupId.
                 }
                 .environment(app)
                 .ruulSheetChrome(detents: [.large])
             }
-            .sheet(isPresented: boolBinding(for: .inviteShare)) {
+            .fullScreenCover(isPresented: boolBinding(for: .inviteShare)) {
                 if let group = app.activeGroup {
                     GroupInfoSheet(group: group)
                         .environment(app)
                         .ruulSheetChrome(detents: [.large])
                 }
             }
-            .sheet(isPresented: boolBinding(for: .groupRulesSettings)) {
+            .fullScreenCover(isPresented: boolBinding(for: .groupRulesSettings)) {
                 if let group = app.activeGroup {
                     GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
                         group: group,
@@ -70,7 +70,7 @@ public struct RootShellSheets: ViewModifier {
             // it as a sheet here so the Beta 1 "+ Nueva regla" surface is
             // reachable; if the team later wires the navigation push, this
             // branch can be deleted without breaking the route.
-            .sheet(isPresented: boolBinding(for: .acuerdos)) {
+            .fullScreenCover(isPresented: boolBinding(for: .acuerdos)) {
                 if let coord = router.state.rulesCoordinator {
                     NavigationStack {
                         RulesView(
@@ -89,7 +89,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Rule edit sheet (carries RuleEditRouteContext)
-            .sheet(item: ruleEditItem, onDismiss: {
+            .fullScreenCover(item: ruleEditItem, onDismiss: {
                 Task { await router.state.inboxCoordinator?.refresh() }
             }) { ctx in
                 ruleEditSheet(ctx)
@@ -97,7 +97,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Resource creation cover (value-less; "+" tab intercept)
-            .sheet(isPresented: boolBinding(for: .createCover)) {
+            .fullScreenCover(isPresented: boolBinding(for: .createCover)) {
                 if let group = app.activeGroup {
                     ResourceWizardSheet(
                         group: group,
@@ -112,13 +112,15 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
-            // MARK: Event detail sheet (item: state.activeEvent)
-            // 2026-05-15: was `.fullScreenCover`; unified to `.sheet`
-            // so event detail matches `ResourceDetailSheet` (fund / asset
-            // / etc.) — same presentation, same chrome, same dismissal.
-            // Both paths render `UniversalResourceDetailView` underneath,
-            // so they're now interchangeable in look-and-feel.
-            .sheet(item: activeEventItem, onDismiss: {
+            // MARK: Event detail (item: state.activeEvent)
+            // App-wide policy 2026-05-15: every modal route is a
+            // `.fullScreenCover`. Sheet detents / drag indicators are
+            // intentionally absent — modals are full takeovers with an
+            // explicit close action. `.ruulSheetChrome(...)` is left in
+            // place because its presentation modifiers are silent no-ops
+            // inside a fullScreenCover (the material / corner radius /
+            // detents only apply to `.sheet`).
+            .fullScreenCover(item: activeEventItem, onDismiss: {
                 Task {
                     async let h: Void = router.state.homeCoordinator?.refresh(force: true) ?? ()
                     async let i: Void? = router.state.inboxCoordinator?.refresh()
@@ -145,7 +147,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Edit profile sheet
-            .sheet(isPresented: boolBinding(for: .editProfile), onDismiss: {
+            .fullScreenCover(isPresented: boolBinding(for: .editProfile), onDismiss: {
                 Task { await router.state.profileCoordinator?.refresh() }
             }) {
                 if let pCoord = router.state.profileCoordinator {
@@ -155,7 +157,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Members sheet
-            .sheet(isPresented: boolBinding(for: .members)) {
+            .fullScreenCover(isPresented: boolBinding(for: .members)) {
                 if let activeGroup = app.activeGroup {
                     EditMembersSheet(group: activeGroup)
                         .environment(app)
@@ -164,7 +166,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Create-vote picker sheet
-            .sheet(isPresented: boolBinding(for: .createVotePicker)) {
+            .fullScreenCover(isPresented: boolBinding(for: .createVotePicker)) {
                 CreateVoteSheet(
                     onPickGeneralProposal: { router.present(.createGeneralProposal) },
                     onPickRuleChange: { router.present(.createRuleChange(nil)) }
@@ -173,7 +175,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Create general proposal sheet
-            .sheet(isPresented: boolBinding(for: .createGeneralProposal), onDismiss: {
+            .fullScreenCover(isPresented: boolBinding(for: .createGeneralProposal), onDismiss: {
                 Task {
                     async let r: Void? = router.state.rulesCoordinator?.refresh()
                     async let i: Void? = router.state.inboxCoordinator?.refresh()
@@ -202,7 +204,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Create rule-change sheet (carries optional GroupRule)
-            .sheet(item: createRuleChangeItem, onDismiss: {
+            .fullScreenCover(item: createRuleChangeItem, onDismiss: {
                 Task {
                     async let r: Void? = router.state.rulesCoordinator?.refresh()
                     async let i: Void? = router.state.inboxCoordinator?.refresh()

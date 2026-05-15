@@ -78,7 +78,7 @@ public struct AssetDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showCreateSlot) {
+        .fullScreenCover(isPresented: $showCreateSlot) {
             CreateSlotSheet(asset: asset) { Task { await refresh() } }
         }
         .task { await refresh() }

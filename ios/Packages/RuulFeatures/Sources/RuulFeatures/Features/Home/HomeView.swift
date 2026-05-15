@@ -102,7 +102,7 @@ public struct HomeView: View {
             await loadNonEventResources()
             await loadGroupMemory()
         }
-        .sheet(item: $openedResource) { row in
+        .fullScreenCover(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
                 .ruulSheetChrome(detents: [.medium, .large])
         }

@@ -138,7 +138,7 @@ public struct EventDetailSheets: ViewModifier {
                     }
                 }
             }
-            .sheet(item: b.attendeeRoute) { mwp in
+            .fullScreenCover(item: b.attendeeRoute) { mwp in
                 NavigationStack {
                     MemberDetailView(
                         memberWithProfile: mwp,

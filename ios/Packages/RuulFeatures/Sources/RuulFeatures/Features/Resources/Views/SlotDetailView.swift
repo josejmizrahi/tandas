@@ -69,10 +69,10 @@ public struct SlotDetailView: View {
         }
         .navigationTitle("Cupo")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showAssignSheet) {
+        .fullScreenCover(isPresented: $showAssignSheet) {
             AssignSlotSheet(slot: slot, members: members) { Task { await refresh() } }
         }
-        .sheet(isPresented: $showSwapSheet) {
+        .fullScreenCover(isPresented: $showSwapSheet) {
             RequestSwapSheet(slot: slot, members: members.filter { $0.id != currentMemberId }) { _ in
                 Task { await refresh() }
             }

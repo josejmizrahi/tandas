@@ -82,7 +82,7 @@ public enum RootTab: String, Sendable, Hashable, CaseIterable {
 }
 
 /// Sheet / cover routes presented above the tab content. Each case maps to
-/// one `.sheet(...)` or `.fullScreenCover(...)` slot inside
+/// one `.fullScreenCover(...)` or `.fullScreenCover(...)` slot inside
 /// `RootShellSheets`. Cases that carry context use small Hashable
 /// payload types (defined as public structs at the bottom of MainTabView.swift).
 public enum RootRoute: Sendable, Hashable {

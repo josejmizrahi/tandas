@@ -43,8 +43,8 @@ public struct ProfileTab: View {
                     case .timezone: TimezonePickerView()
                     }
                 }
-                .sheet(isPresented: $showChangePhone) { ChangePhoneFlow() }
-                .sheet(isPresented: $showChangeEmail) { ChangeEmailFlow() }
+                .fullScreenCover(isPresented: $showChangePhone) { ChangePhoneFlow() }
+                .fullScreenCover(isPresented: $showChangeEmail) { ChangeEmailFlow() }
                 .environment(app)
                 .task { await myFinesCoordinator?.refresh() }
             } else {

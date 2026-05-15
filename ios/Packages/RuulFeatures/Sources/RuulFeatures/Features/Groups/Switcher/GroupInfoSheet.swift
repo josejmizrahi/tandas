@@ -100,19 +100,19 @@ public struct GroupInfoSheet: View {
             await loadMembers()
             await loadTemplateDisplayName()
         }
-        .sheet(isPresented: $settingsPresented) {
+        .fullScreenCover(isPresented: $settingsPresented) {
             GroupSettingsSheet(group: currentGroup)
                 .environment(app)
                 .ruulSheetChrome(detents: [.large])
         }
-        .sheet(isPresented: $governancePresented) {
+        .fullScreenCover(isPresented: $governancePresented) {
             GovernanceSettingsView(group: currentGroup) { updated in
                 liveGroup = updated
             }
             .environment(app)
             .ruulSheetChrome(detents: [.large])
         }
-        .sheet(isPresented: $groupRulesPresented) {
+        .fullScreenCover(isPresented: $groupRulesPresented) {
             GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
                 group: currentGroup,
                 actorUserId: app.session?.user.id ?? UUID(),
@@ -121,7 +121,7 @@ public struct GroupInfoSheet: View {
             .environment(app)
             .ruulSheetChrome(detents: [.large])
         }
-        .sheet(isPresented: $editMembersPresented, onDismiss: {
+        .fullScreenCover(isPresented: $editMembersPresented, onDismiss: {
             // Refresh the read-only list under the entry button so removed
             // rows or reorders show up immediately.
             Task { await loadMembers() }
