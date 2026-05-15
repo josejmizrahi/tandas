@@ -22,6 +22,7 @@ extension ConditionType {
         .rotationPositionEquals,
         .slotIsUnassigned,
         .slotExpiresInHours,
+        .daysBeforeExpiry,
         .amountAbove,
     ]
 
@@ -43,6 +44,7 @@ extension ConditionType {
         "rotationPositionEquals",
         "slotIsUnassigned",
         "slotExpiresInHours",
+        "daysBeforeExpiry",
         "amountAbove",
     ]
 
@@ -75,6 +77,7 @@ extension ConditionType {
         case .rotationPositionEquals: return "rotationPositionEquals"
         case .slotIsUnassigned: return "slotIsUnassigned"
         case .slotExpiresInHours: return "slotExpiresInHours"
+        case .daysBeforeExpiry: return "daysBeforeExpiry"
         case .amountAbove: return "amountAbove"
         case .unknown(let s): return s
         }
@@ -99,6 +102,7 @@ extension ConditionType {
         case "rotationPositionEquals": return .rotationPositionEquals
         case "slotIsUnassigned": return .slotIsUnassigned
         case "slotExpiresInHours": return .slotExpiresInHours
+        case "daysBeforeExpiry": return .daysBeforeExpiry
         case "amountAbove": return .amountAbove
         default: return .unknown(raw)
         }
