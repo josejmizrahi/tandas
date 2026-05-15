@@ -174,7 +174,7 @@ public struct RotationSectionView: View {
                     HStack(spacing: RuulSpacing.sm) {
                         Text("\(idx + 1)")
                             .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Color.ruulOnImage)
                             .frame(width: 22, height: 22)
                             .background(
                                 Circle()

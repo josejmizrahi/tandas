@@ -105,10 +105,10 @@ public struct EditProfileSheet: View {
 
                 if coordinator.isUploadingAvatar {
                     Circle()
-                        .fill(Color.black.opacity(0.35))
+                        .fill(Color.ruulOverlayDim)
                         .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
                     ProgressView()
-                        .tint(.white)
+                        .tint(Color.ruulOnImage)
                 }
 
                 Image(systemName: "camera.fill")

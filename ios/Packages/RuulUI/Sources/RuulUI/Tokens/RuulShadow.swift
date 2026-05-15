@@ -1,14 +1,9 @@
 import SwiftUI
 
-/// Shadow extensions per DS doc §2.5. ruul uses VERY subtle shadows.
-public extension View {
-    func ruulShadowSubtle() -> some View {
-        shadow(color: .black.opacity(0.04), radius: 8,  x: 0, y: 2)
-    }
-    func ruulShadowMedium() -> some View {
-        shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 4)
-    }
-    func ruulShadowElevated() -> some View {
-        shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 8)
-    }
-}
+// Shadow helpers live on `RuulElevation` now — see `RuulElevation.swift`.
+// The previous `ruulShadowSubtle/Medium/Elevated` helpers were
+// hardcoded `.black.opacity(...)` (didn't adapt to dark mode) and had
+// zero callers. Deleted 2026-05-15. Use `.ruulElevation(.sm/.md/.lg)`
+// — those drive their color through `RuulColors.default.shadowSm/Md/
+// Lg`, which is theme-adaptive (slate-tinted in light, deeper black
+// in dark, plus high-contrast bumps).
