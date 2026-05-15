@@ -21,6 +21,11 @@ import RuulCore
 struct ResourceRulesSheet: View {
     @Binding var isPresented: Bool
     @Bindable var coordinator: ResourceRulesCoordinator
+    @Environment(AppState.self) private var app
+
+    /// Rule Builder presentation handle. Non-nil when admin opens the "+"
+    /// button to create a resource-scoped rule via the template catalog.
+    @State private var ruleBuilderCoord: RuleBuilderCoordinator?
 
     public init(
         isPresented: Binding<Bool>,
@@ -79,6 +84,12 @@ struct ResourceRulesSheet: View {
                 isPresented: $coordinator.addSheetPresented,
                 coordinator: coordinator
             )
+        }
+        .fullScreenCover(item: $ruleBuilderCoord) { coord in
+            RuleBuilderView(coord: coord) {
+                ruleBuilderCoord = nil
+            }
+            .environment(app)
         }
     }
 
@@ -174,13 +185,35 @@ struct ResourceRulesSheet: View {
     private var addRuleCTA: some View {
         RuulButton(
             "Agregar regla para este evento",
+            systemImage: "plus",
             style: .primary,
             size: .large,
             fillsWidth: true
         ) {
+            openRuleBuilder()
+        }
+    }
+
+    /// Opens the template-catalog Rule Builder with the resource scope
+    /// pre-set when templates are available (live mode). Falls back to the
+    /// legacy catalog-free form when `app.ruleTemplates` is empty (preview /
+    /// mock).
+    private func openRuleBuilder() {
+        guard coordinator.canCreate else { return }
+        guard let repo = app.ruleTemplateRepo,
+              !app.ruleTemplates.isEmpty,
+              let group = app.groups.first(where: { $0.id == coordinator.groupId }) else {
+            // Legacy fallback — shape-based raw form.
             coordinator.resetForm()
             coordinator.addSheetPresented = true
+            return
         }
+        ruleBuilderCoord = RuleBuilderCoordinator(
+            group: group,
+            templates: app.ruleTemplates,
+            repo: repo,
+            initialScope: .resource(coordinator.resourceId)
+        )
     }
 
     // MARK: - Helpers
