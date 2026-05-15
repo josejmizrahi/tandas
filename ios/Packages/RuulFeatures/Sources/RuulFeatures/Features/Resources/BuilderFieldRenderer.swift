@@ -192,11 +192,16 @@ public struct BuilderFieldRenderer: View {
             )
 
         case .resourcePicker:
-            // Tier 0: cross-resource picker not wired. Asking the user
-            // to paste a UUID was hostile UX; render disabled until a
-            // real resource browser ships.
-            unavailableField(
-                note: "Selector de recurso no disponible — Próximamente."
+            // Slice 9: wires the picker against ResourceRepository.list
+            // for the active group. Type filtering deferred until
+            // BuilderField carries a `validResourceTypes` hint — current
+            // consumers (SlotResourceBuilder.assetId, RightResourceBuilder
+            // .targetResourceId) work fine with the flat list at typical
+            // group sizes.
+            ResourcePickerField(
+                label: field.label,
+                helpText: field.helpText,
+                binding: jsonValueBinding()
             )
         }
     }
