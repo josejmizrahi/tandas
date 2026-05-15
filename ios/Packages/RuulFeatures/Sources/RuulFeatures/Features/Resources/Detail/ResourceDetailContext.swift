@@ -87,37 +87,3 @@ public struct ResourceDetailContext {
     }
 }
 
-public extension ResourceDetailContext {
-    /// Optional cover image URL derived from `resource.metadata.cover_image_url`.
-    /// Returns nil when the metadata key is absent or doesn't parse as a URL.
-    /// Used by `DetailCoverView` for the parallax hero on event-shaped resources.
-    var coverImageURL: URL? {
-        guard let raw = resource.metadata["cover_image_url"]?.stringValue,
-              !raw.isEmpty else { return nil }
-        return URL(string: raw)
-    }
-
-    /// Optional fallback cover name derived from
-    /// `resource.metadata.cover_image_name`. Resolved by `RuulCoverCatalog`
-    /// when no image URL is set, so the hero always has something to render.
-    var coverImageName: String? {
-        resource.metadata["cover_image_name"]?.stringValue
-    }
-
-    /// True only when the resource has a real cover image URL. Without
-    /// one, the detail page falls back to a magazine title block (no
-    /// animated gradient hero) so the layout stays magazine-clean
-    /// instead of trying to fill empty space with decoration.
-    var hasCoverHero: Bool {
-        coverImageURL != nil
-    }
-
-    /// True when the resource's identity zone should use the event-style
-    /// hero title block (large title + date + countdown + status pills)
-    /// instead of the generic `DetailHeaderView` (icon badge + title +
-    /// type label). Events get the rich treatment; other types stay on
-    /// the compact identity strip.
-    var usesEventHero: Bool {
-        resource.resourceType == .event
-    }
-}

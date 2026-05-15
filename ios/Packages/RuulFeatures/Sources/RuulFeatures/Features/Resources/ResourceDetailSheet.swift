@@ -36,14 +36,6 @@ public struct ResourceDetailSheet: View {
     public var body: some View {
         NavigationStack {
             content
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cerrar") { dismiss() }
-                            .foregroundStyle(Color.ruulTextSecondary)
-                    }
-                }
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         }
         .task { await load() }
         .ruulSheet(isPresented: $ledgerSheetPresented) {
@@ -77,12 +69,13 @@ public struct ResourceDetailSheet: View {
             ManageCapabilitiesSheet(
                 resourceId: resource.id,
                 resourceType: resource.resourceType,
-                enabled: capabilities,
+                enabled: capabilities.filter { $0.enabled },
                 onChanged: {
                     // Refresh capabilities so the new section renders.
                     Task { await reloadCapabilities() }
                 }
             )
+
         }
     }
 
