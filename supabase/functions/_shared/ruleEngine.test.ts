@@ -30,11 +30,15 @@ function captureSink(): {
   warnings: unknown[];
   votes: unknown[];
   transfers: unknown[];
+  revokes: unknown[];
+  suspends: unknown[];
 } {
   const captured: unknown[] = [];
   const warnings: unknown[] = [];
   const votes: unknown[] = [];
   const transfers: unknown[] = [];
+  const revokes: unknown[] = [];
+  const suspends: unknown[] = [];
   const sink: ConsequenceSink = {
     proposeFine: async (args) => {
       captured.push(args);
@@ -52,8 +56,16 @@ function captureSink(): {
       transfers.push(args);
       return args.right_id;
     },
+    revokeRight: async (args) => {
+      revokes.push(args);
+      return args.right_id;
+    },
+    suspendRight: async (args) => {
+      suspends.push(args);
+      return args.right_id;
+    },
   };
-  return { sink, captured, warnings, votes, transfers };
+  return { sink, captured, warnings, votes, transfers, revokes, suspends };
 }
 
 function baseContext(extras: Partial<RuleContext>): RuleContext {
