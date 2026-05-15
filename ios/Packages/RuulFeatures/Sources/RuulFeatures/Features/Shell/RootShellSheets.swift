@@ -112,8 +112,13 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
-            // MARK: Event detail cover (item: state.activeEvent)
-            .fullScreenCover(item: activeEventItem, onDismiss: {
+            // MARK: Event detail sheet (item: state.activeEvent)
+            // 2026-05-15: was `.fullScreenCover`; unified to `.sheet`
+            // so event detail matches `ResourceDetailSheet` (fund / asset
+            // / etc.) — same presentation, same chrome, same dismissal.
+            // Both paths render `UniversalResourceDetailView` underneath,
+            // so they're now interchangeable in look-and-feel.
+            .sheet(item: activeEventItem, onDismiss: {
                 Task {
                     async let h: Void = router.state.homeCoordinator?.refresh(force: true) ?? ()
                     async let i: Void? = router.state.inboxCoordinator?.refresh()
@@ -121,6 +126,7 @@ public struct RootShellSheets: ViewModifier {
                 }
             }) { wrappedEvent in
                 eventDetailScreen(wrappedEvent.event)
+                    .ruulSheetChrome(detents: [.large])
             }
 
             // MARK: Event edit cover (item: state.activeEditEvent)
