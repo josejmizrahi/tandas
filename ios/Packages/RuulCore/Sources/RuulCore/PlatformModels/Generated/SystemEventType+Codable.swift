@@ -35,6 +35,8 @@ extension SystemEventType {
         .fundCreated,
         .fundDeposit,
         .fundThresholdReached,
+        .fundLocked,
+        .fundUnlocked,
         .positionChanged,
         .memberJoined,
         .memberLeft,
@@ -88,6 +90,8 @@ extension SystemEventType {
         "fundCreated",
         "fundDeposit",
         "fundThresholdReached",
+        "fundLocked",
+        "fundUnlocked",
         "positionChanged",
         "memberJoined",
         "memberLeft",
@@ -152,6 +156,8 @@ extension SystemEventType {
         case .fundCreated: return "fundCreated"
         case .fundDeposit: return "fundDeposit"
         case .fundThresholdReached: return "fundThresholdReached"
+        case .fundLocked: return "fundLocked"
+        case .fundUnlocked: return "fundUnlocked"
         case .positionChanged: return "positionChanged"
         case .memberJoined: return "memberJoined"
         case .memberLeft: return "memberLeft"
@@ -208,6 +214,8 @@ extension SystemEventType {
         case "fundCreated": return .fundCreated
         case "fundDeposit": return .fundDeposit
         case "fundThresholdReached": return .fundThresholdReached
+        case "fundLocked": return .fundLocked
+        case "fundUnlocked": return .fundUnlocked
         case "positionChanged": return .positionChanged
         case "memberJoined": return .memberJoined
         case "memberLeft": return .memberLeft

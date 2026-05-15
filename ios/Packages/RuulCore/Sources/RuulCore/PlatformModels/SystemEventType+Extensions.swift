@@ -51,6 +51,8 @@ public extension SystemEventType {
         case .fundCreated:            return "Fondo creado"
         case .fundDeposit:            return "Aportación al fondo"
         case .fundThresholdReached:   return "Fondo llegó a su meta"
+        case .fundLocked:             return "Fondo bloqueado"
+        case .fundUnlocked:           return "Fondo desbloqueado"
 
         // Rotation / membership
         case .positionChanged:        return "Cambio de turno"
@@ -135,6 +137,7 @@ public extension SystemEventType {
              .bookingCreated, .bookingCancelled, .bookingExpired,
              .assetCreated,
              .fundCreated, .fundDeposit, .fundThresholdReached,
+             .fundLocked, .fundUnlocked,
              .positionChanged,
              .ruleEnabledChanged, .ruleAmountChanged,
              .pendingChangeApplied,

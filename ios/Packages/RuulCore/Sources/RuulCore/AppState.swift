@@ -137,6 +137,10 @@ public final class AppState {
     /// `ledger_entries`. Read-time aggregation, no cache. MoneySectionView
     /// renders top balances inline; group-wide views use balancesForGroup.
     public let balanceRepo: any BalanceRepository
+    /// Mig 00198: per-fund balance + lifecycle (contribute/expense/lock).
+    /// Reads from `fund_balance_view`; writers wrap `record_ledger_entry`
+    /// with fund-specific invariants. Fund detail views read here.
+    public let fundRepo: any FundRepository
     public let rsvpActionRepo: any RsvpActionRepository
     /// Atomic ResourceWizard submit — calls `build_resource_from_draft`
     /// RPC (mig 00101). Builders that route through this avoid the
@@ -189,6 +193,7 @@ public final class AppState {
         resourceCapabilityRepo: any ResourceCapabilityRepository,
         ledgerRepo: any LedgerRepository,
         balanceRepo: any BalanceRepository,
+        fundRepo: any FundRepository,
         rsvpActionRepo: any RsvpActionRepository,
         resourceDraftRepo: any ResourceDraftRepository,
         notifications: NotificationService? = nil,
@@ -224,6 +229,7 @@ public final class AppState {
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo
         self.balanceRepo = balanceRepo
+        self.fundRepo = fundRepo
         self.rsvpActionRepo = rsvpActionRepo
         self.resourceDraftRepo = resourceDraftRepo
         let eventBuilder = EventResourceBuilder(

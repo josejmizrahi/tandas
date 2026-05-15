@@ -51,6 +51,14 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     case fundCreated
     case fundDeposit
     case fundThresholdReached
+    /// Emitted by `fund_lock` (mig 00198) when an admin places a fund
+    /// in locked state. Payload: `{locked_by, locked_reason}`. Rule
+    /// engine consumes this to short-circuit policy-gated writers; the
+    /// canonical RPCs themselves do not consult lock state (Constitution §9).
+    case fundLocked
+    /// Emitted by `fund_unlock` (mig 00198) when an admin releases a
+    /// fund lock. Payload: `{unlocked_by, previous_locked_at}`.
+    case fundUnlocked
 
     // MARK: - Rotation / membership
     case positionChanged

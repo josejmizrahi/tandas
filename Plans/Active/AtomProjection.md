@@ -80,6 +80,7 @@ Definidos en
 |---|---|---|
 | `SystemEvent` | `Atom` | `public.system_events` |
 | `VoteCast` | `Atom` | `public.vote_casts` |
+| `Fund` (mig 00198) | `Projection` | `public.fund_balance_view` |
 
 Conformancias futuras (cuando los tipos existan en código):
 

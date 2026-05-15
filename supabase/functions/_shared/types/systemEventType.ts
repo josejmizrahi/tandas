@@ -32,6 +32,8 @@ export const systemEventTypeValues = [
   "fundCreated",
   "fundDeposit",
   "fundThresholdReached",
+  "fundLocked",
+  "fundUnlocked",
   "positionChanged",
   "memberJoined",
   "memberLeft",
