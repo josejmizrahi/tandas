@@ -42,6 +42,7 @@ struct TandasApp: App {
             let fines = MockFineRepository()
             let resources = MockResourceRepository()
             let slotLifecycle = MockSlotLifecycleRepository()
+            let assetLifecycle = MockAssetLifecycleRepository()
             let resourceSeries = MockResourceSeriesRepository()
             let resourceCapabilities = MockResourceCapabilityRepository()
             let ledger = MockLedgerRepository()
@@ -74,6 +75,7 @@ struct TandasApp: App {
                 fineRepo: fines,
                 resourceRepo: resources,
                 slotLifecycleRepo: slotLifecycle,
+                assetLifecycleRepo: assetLifecycle,
                 resourceSeriesRepo: resourceSeries,
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
@@ -109,6 +111,7 @@ struct TandasApp: App {
             let fines = LiveFineRepository(client: client)
             let resources = LiveResourceRepository(client: client)
             let slotLifecycle = LiveSlotLifecycleRepository(client: client)
+            let assetLifecycle = LiveAssetLifecycleRepository(client: client)
             let resourceSeries = LiveResourceSeriesRepository(client: client)
             let resourceCapabilities = LiveResourceCapabilityRepository(client: client)
             let ledger = LiveLedgerRepository(client: client)
@@ -141,6 +144,7 @@ struct TandasApp: App {
                 fineRepo: fines,
                 resourceRepo: resources,
                 slotLifecycleRepo: slotLifecycle,
+                assetLifecycleRepo: assetLifecycle,
                 resourceSeriesRepo: resourceSeries,
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,

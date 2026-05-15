@@ -5,19 +5,27 @@ import OSLog
 /// Wraps `SlotLifecycleRepository.createAsset` from Phase 2 Slice 2.3.
 public actor AssetResourceBuilder: ResourceBuilder {
     public nonisolated let resourceType: ResourceType = .asset
-    public nonisolated let displayName: String = "Activo compartido"
+    public nonisolated let displayName: String = "Activo del grupo"
     public nonisolated let icon: String = "key.fill"
-    public nonisolated let summary: String = "Palco, casa, cancha, membresía. Cosa persistente que se usa por turnos."
+    public nonisolated let summary: String = "Coche, palco, herramientas, IP, equity. Cosa que se posee, custodia, presta o gobierna."
 
     public nonisolated var requiredFields: [BuilderField] {
         [
             BuilderField(key: "name", label: "Nombre",
-                         kind: .text, placeholder: "ej: Palco Azul")
+                         kind: .text, placeholder: "ej: Palco Azul, Camioneta del grupo, Cámara")
         ]
     }
 
+    /// Spec §8: capabilities that ANY asset can wear. The wizard
+    /// surfaces these (filtered by CapabilityStatus) in step 3.
+    /// `slot` is intentionally NOT a capability — slots are a
+    /// separate resource_type per spec §18.
     public nonisolated var optionalCapabilities: [String] {
-        ["ownership", "capacity", "slot", "booking", "guest_access", "rules", "voting"]
+        [
+            "custody", "maintenance", "valuation", "transfer",
+            "inventory", "booking", "capacity", "guest_access",
+            "delegation", "access", "voting", "rules", "history"
+        ]
     }
 
     private let slotRepo: any SlotLifecycleRepository

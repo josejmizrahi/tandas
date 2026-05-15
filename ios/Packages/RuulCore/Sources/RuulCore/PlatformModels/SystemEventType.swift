@@ -155,21 +155,54 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// back to `active` from `revoked`).
     case rightRestored
 
-    // MARK: - Asset universal atoms (mig 00198_asset_universal_atoms,
-    // applied to prod but source SQL not yet committed). Surfaced here
-    // so the codegen sync test stays green and event-driven consumers can
-    // pattern-match on the canonical names.
+    // MARK: - Asset universal atoms — mig 00199 (canonical asset spec §13)
+    /// Asset ownership moved to another member or back to the group.
+    /// Emitted by `transfer_asset(p_asset_id, p_to_member_id, p_notes)`.
+    /// Payload: `{transferred_by, from_member_id, to_member_id, notes}`.
     case assetTransferred
+    /// Asset assigned to a member for ongoing operational responsibility.
+    /// Reserved for the assignment workflow; not emitted by a v1 RPC.
     case assetAssigned
+    /// Counterpart of `assetAssigned` — assignment ended/returned.
     case assetReturned
+    /// A custodian was designated. Emitted by
+    /// `assign_custody(p_asset_id, p_custodian_member_id, p_notes)`.
+    /// Payload: `{assigned_by, notes}`. `member_id` = custodian.
     case custodyAssigned
+    /// Custody released — asset returns to group-level custody. Emitted
+    /// by `release_custody(p_asset_id, p_notes)`. Payload:
+    /// `{released_by, notes}`. `member_id` = previous custodian.
     case custodyReleased
+    /// A maintenance task was logged (service / inspection / repair).
+    /// Emitted by `log_maintenance(asset, kind, notes, cost, currency)`.
+    /// Payload: `{logged_by, kind, notes, cost_cents, currency, status}`.
     case maintenanceLogged
+    /// A previously-logged maintenance task was marked done. Emitted by
+    /// `complete_maintenance(p_maintenance_event_id, p_notes)`. Payload:
+    /// `{completed_by, notes, maintenance_event_id}`.
     case maintenanceCompleted
+    /// A damage incident was reported. Emitted by
+    /// `report_damage(asset, severity, notes, estimated_cost, currency)`.
+    /// Payload: `{reported_by, severity, notes, estimated_cost_cents,
+    /// currency}`. Severity bounded: minor|moderate|major|total.
     case damageReported
+    /// Asset was used (free-form usage atom). Emitted by
+    /// `record_asset_usage(asset, notes, units)`.
+    /// Payload: `{used_by, notes, units}`.
     case assetUsed
+    /// Asset checked out for temporary holding. Emitted by
+    /// `check_out_asset(asset, to_member, expected_return, notes)`.
+    /// Payload: `{checked_out_by, expected_return_at, notes}`.
+    /// `member_id` = holder.
     case assetCheckedOut
+    /// Asset returned (closes a prior checkout). Emitted by
+    /// `check_in_asset(asset, condition_notes)`.
+    /// Payload: `{checked_in_by, condition_notes}`.
+    /// `member_id` = previous holder.
     case assetCheckedIn
+    /// A new valuation point was recorded. Emitted by
+    /// `record_valuation(asset, value_cents, currency, source, notes)`.
+    /// Payload: `{recorded_by, value_cents, currency, source, notes}`.
     case valuationRecorded
 
     // MARK: - Resource links (mig 00202 — event uses space/asset/fund/right)

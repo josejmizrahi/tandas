@@ -237,6 +237,54 @@ public struct HistoryItemPresentation {
             self.icon = "exclamationmark.triangle"
             self.title = "Aviso emitido por regla"
             self.tone = .warning
+        case .assetTransferred:
+            self.icon = "arrow.left.arrow.right"
+            self.title = "\(actor) transfirió un activo"
+            self.tone = .info
+        case .assetAssigned:
+            self.icon = "person.crop.circle.badge.checkmark"
+            self.title = "\(actor) recibió un activo"
+            self.tone = .info
+        case .assetReturned:
+            self.icon = "arrow.uturn.backward"
+            self.title = "\(actor) devolvió un activo"
+            self.tone = .neutral
+        case .custodyAssigned:
+            self.icon = "person.text.rectangle"
+            self.title = "\(actor) quedó como custodio"
+            self.tone = .info
+        case .custodyReleased:
+            self.icon = "person.crop.rectangle.badge.xmark"
+            self.title = "\(actor) liberó la custodia"
+            self.tone = .neutral
+        case .maintenanceLogged:
+            self.icon = "wrench.and.screwdriver"
+            self.title = "\(actor) registró mantenimiento"
+            self.tone = .info
+        case .maintenanceCompleted:
+            self.icon = "checkmark.seal"
+            self.title = "Se cerró un mantenimiento"
+            self.tone = .positive
+        case .damageReported:
+            self.icon = "exclamationmark.triangle.fill"
+            self.title = "\(actor) reportó un daño"
+            self.tone = .warning
+        case .assetUsed:
+            self.icon = "hand.tap"
+            self.title = "\(actor) usó un activo"
+            self.tone = .neutral
+        case .assetCheckedOut:
+            self.icon = "arrow.up.right.square"
+            self.title = "\(actor) sacó prestado un activo"
+            self.tone = .info
+        case .assetCheckedIn:
+            self.icon = "arrow.down.left.square"
+            self.title = "Se devolvió un activo"
+            self.tone = .positive
+        case .valuationRecorded:
+            self.icon = "chart.line.uptrend.xyaxis"
+            self.title = "\(actor) registró el valor"
+            self.tone = .neutral
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"
