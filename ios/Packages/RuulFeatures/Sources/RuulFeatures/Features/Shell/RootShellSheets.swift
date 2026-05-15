@@ -572,16 +572,20 @@ private struct GroupHomeSheetContent: View {
     @State private var showRotateCode = false
     @State private var showInvite = false
     @State private var showLeave = false
+    @State private var showMembersAdminInvite = false
 
-    private enum GroupNav: Hashable { case modules, currency, timezone, governance, rulePresets }
+    private enum GroupNav: Hashable {
+        case modules, currency, timezone, governance, rulePresets,
+             membersList, membersAdmin
+    }
 
     var body: some View {
         let coord = GroupHomeCoordinator(groupId: group.id, groupsRepo: app.groupsRepo)
         NavigationStack(path: $path) {
             GroupHomeView(
                 coordinator: coord,
-                onOpenMembersList: { router.openMembersList() },
-                onOpenMembersAdmin: { router.openMembersAdmin() },
+                onOpenMembersList: { path.append(GroupNav.membersList) },
+                onOpenMembersAdmin: { path.append(GroupNav.membersAdmin) },
                 onOpenGovernance: { path.append(GroupNav.governance) },
                 onOpenRulePresets: { path.append(GroupNav.rulePresets) },
                 onLeaveGroup: {
@@ -622,7 +626,28 @@ private struct GroupHomeSheetContent: View {
                         policyRepo: app.policyRepo
                     ))
                     .environment(app)
+                case .membersList:
+                    MembersListView(coordinator: MembersCoordinator(
+                        group: group,
+                        actorUserId: app.session?.user.id ?? UUID(),
+                        groupsRepo: app.groupsRepo
+                    ))
+                    .environment(app)
+                case .membersAdmin:
+                    MembersAdminView(
+                        coordinator: MembersCoordinator(
+                            group: group,
+                            actorUserId: app.session?.user.id ?? UUID(),
+                            groupsRepo: app.groupsRepo
+                        ),
+                        onInviteTap: { showMembersAdminInvite = true }
+                    )
+                    .environment(app)
                 }
+            }
+            .fullScreenCover(isPresented: $showMembersAdminInvite) {
+                InviteMembersFromGroupView(group: group)
+                    .environment(app)
             }
             .fullScreenCover(isPresented: $showEditIdentity) {
                 EditGroupIdentitySheet(groupId: group.id)

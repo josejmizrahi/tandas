@@ -32,46 +32,44 @@ public struct GovernanceView: View {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.governance")
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                    modifyRulesCard
-                    createVotesCard
-                    removeMembersCard
-                    modifyGovernanceCard
-                    votingConfigCard
-                    if let error {
-                        Text(error)
-                            .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulNegative)
-                    }
-                }
-                .padding(.horizontal, RuulSpacing.lg)
-                .padding(.top, RuulSpacing.lg)
-                .padding(.bottom, RuulSpacing.xxl)
-            }
-            .ruulAmbientScreen(palette: nil)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Gobierno")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(isSaving ? "Guardando…" : "Guardar") {
-                        Task { await save() }
-                    }
-                    .foregroundStyle(hasChanges ? Color.ruulAccent : Color.ruulTextTertiary)
-                    .disabled(!hasChanges || isSaving)
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                modifyRulesCard
+                createVotesCard
+                removeMembersCard
+                modifyGovernanceCard
+                votingConfigCard
+                if let error {
+                    Text(error)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulNegative)
                 }
             }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.lg)
+            .padding(.bottom, RuulSpacing.xxl)
         }
+        .ruulAmbientScreen(palette: nil)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cancelar") { dismiss() }
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Gobierno")
+                    .ruulTextStyle(RuulTypography.headline)
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(isSaving ? "Guardando…" : "Guardar") {
+                    Task { await save() }
+                }
+                .foregroundStyle(hasChanges ? Color.ruulAccent : Color.ruulTextTertiary)
+                .disabled(!hasChanges || isSaving)
+            }
+        }
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         .onAppear { hydrate() }
     }
 
