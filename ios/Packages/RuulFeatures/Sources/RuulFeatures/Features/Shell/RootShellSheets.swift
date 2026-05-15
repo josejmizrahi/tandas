@@ -46,10 +46,30 @@ public struct RootShellSheets: ViewModifier {
 
             }
             .fullScreenCover(isPresented: boolBinding(for: .inviteShare)) {
-                if let group = app.activeGroup {
-                    GroupInfoSheet(group: group)
+                if let activeGroup = app.activeGroup {
+                    let coord = GroupHomeCoordinator(
+                        groupId: activeGroup.id,
+                        groupsRepo: app.groupsRepo
+                    )
+                    NavigationStack {
+                        GroupHomeView(
+                            coordinator: coord,
+                            onOpenMembers: { router.openMembers() },
+                            onOpenGovernance: { router.present(.groupRulesSettings) },
+                            onOpenRulePresets: { router.present(.groupRulesSettings) },
+                            onLeaveGroup: {
+                                Task {
+                                    try? await app.groupsRepo.leave(activeGroup.id)
+                                    await app.refreshProfileAndGroups()
+                                    router.dismissTop()
+                                }
+                            },
+                            onShareInvite: {
+                                router.present(.groupHome)
+                            }
+                        )
                         .environment(app)
-
+                    }
                 }
             }
             .fullScreenCover(isPresented: boolBinding(for: .groupRulesSettings)) {

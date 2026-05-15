@@ -30,7 +30,7 @@ public struct HomeTab: View {
                     onOpenEvent: { event in router.openEvent(event) },
                     onOpenPastEvents: { router.openPastEvents() },
                     onInvitePeople: { router.openInviteShare() },
-                    onSwitchGroup: { router.openGroupSwitcher() }
+                    onSwitchGroup: { router.openGroupHome() }
                 )
                 .environment(app)
             } else {
