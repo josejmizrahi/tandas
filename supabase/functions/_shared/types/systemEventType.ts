@@ -78,6 +78,7 @@ export const systemEventTypeValues = [
   "resourceLinked",
   "resourceUnlinked",
   "eventCancelled",
+  "eventStarted",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

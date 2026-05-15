@@ -349,6 +349,11 @@ public struct HistoryItemPresentation {
             self.icon = "xmark.circle"
             self.title = "\(actor) canceló el evento"
             self.tone = .negative
+        // Event lifecycle — eventStarted (mig 00208, cron-emitted)
+        case .eventStarted:
+            self.icon = "play.circle"
+            self.title = "El evento empezó"
+            self.tone = .info
 
         case .unknown:
             self.icon = "questionmark.circle"

@@ -29,6 +29,12 @@ public struct EventLifecycleProjection: Projection, Codable, Sendable, Hashable 
     /// not been closed via the lifecycle path.
     public let closedAt: Date?
 
+    /// Timestamp of the most recent `eventStarted` atom (mig 00208).
+    /// Nil when the cron has not yet emitted the atom (e.g. event hasn't
+    /// started, or first cron tick after deploy). When present, this is
+    /// the atom-authoritative answer to "when did this event start?".
+    public let startedAt: Date?
+
     // Derived booleans (computed inside the view; do not mutate)
     public let isCancelled: Bool
     public let isClosed: Bool
@@ -44,6 +50,7 @@ public struct EventLifecycleProjection: Projection, Codable, Sendable, Hashable 
         case cancelledByUser    = "cancelled_by_user"
         case cancellationReason = "cancellation_reason"
         case closedAt           = "closed_at"
+        case startedAt          = "started_at"
         case isCancelled        = "is_cancelled"
         case isClosed           = "is_closed"
         case isLive             = "is_live"

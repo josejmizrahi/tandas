@@ -227,6 +227,11 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// follow-up once consumers move to this. Payload:
     /// `{title, previous_status, reason, cancelled_by}`.
     case eventCancelled
+    /// Emitted by the `emit-event-started-atoms` cron (mig 00208) when an
+    /// event's `starts_at` elapses and no `eventCancelled` atom exists.
+    /// Lets the rule engine and `event_lifecycle_view` derive `is_live`
+    /// from atoms instead of the clock. Payload: `{starts_at, title, host_id}`.
+    case eventStarted
 
     case unknown(String)
 }
