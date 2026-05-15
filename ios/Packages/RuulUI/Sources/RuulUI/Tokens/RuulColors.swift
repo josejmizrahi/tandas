@@ -107,14 +107,17 @@ public extension RuulColors {
 // MARK: - Hex constants (single source of truth, easy to tune)
 
 private enum Hex {
-    // Light — Apple Sports vibe: pure white canvas, near-white elevated.
-    // Content (event covers) supplies all the color; chrome stays monochrome.
-    static let lightCanvas: UInt32 = 0xFFFFFF
-    static let lightElevated: UInt32 = 0xF5F5F7
-    static let lightRecessed: UInt32 = 0xEEEEF0
+    // Light — warm off-white canvas that pairs with `.ultraThinMaterial`
+    // glass cards for a translucent feel across the whole app. Pure
+    // white was too clinical; cards on white-on-white reads as
+    // "stamps", not "lifted glass". The subtle warmth gives glass
+    // surfaces something to refract.
+    static let lightCanvas: UInt32 = 0xF6F4EF
+    static let lightElevated: UInt32 = 0xFBFAF7
+    static let lightRecessed: UInt32 = 0xEDEAE3
     static let lightCanvasHC: UInt32 = 0xFFFFFF
     static let lightElevatedHC: UInt32 = 0xFFFFFF
-    static let lightRecessedHC: UInt32 = 0xE0E0E2
+    static let lightRecessedHC: UInt32 = 0xE0DCD5
 
     static let lightGlassThin: UInt32 = 0xFFFFFF
     static let lightGlassRegular: UInt32 = 0xFFFFFF
@@ -151,13 +154,15 @@ private enum Hex {
     static let lightErrorHC: UInt32 = 0xB91C1C
     static let lightInfoHC: UInt32 = 0x1D4ED8
 
-    // Dark — Apple Sports vibe: near-OLED black canvas, subtle elevation
-    // step. NOT navy/blue. Lets covers + scores pop with maximum contrast.
-    static let darkCanvas: UInt32 = 0x000000
-    static let darkElevated: UInt32 = 0x1C1C1E
-    static let darkRecessed: UInt32 = 0x0A0A0B
+    // Dark — warm near-black canvas. Matches the warm off-white in
+    // light mode so the app feel stays consistent across themes; the
+    // tiny warm tint also gives `.ultraThinMaterial` glass cards
+    // something to refract instead of vanishing into pure black.
+    static let darkCanvas: UInt32 = 0x0F0E0C
+    static let darkElevated: UInt32 = 0x1E1C1A
+    static let darkRecessed: UInt32 = 0x080706
     static let darkCanvasHC: UInt32 = 0x000000
-    static let darkElevatedHC: UInt32 = 0x121214
+    static let darkElevatedHC: UInt32 = 0x121110
     static let darkRecessedHC: UInt32 = 0x000000
 
     static let darkGlassThin: UInt32 = 0xFFFFFF
