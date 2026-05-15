@@ -153,7 +153,11 @@ public struct SlotDetailView: View {
 
     private func rangeLabel(key: String) -> String {
         guard let raw = slot.metadata[key]?.stringValue else { return "—" }
-        return ResourceRowDateFormatter.short(raw)
+        let isoFrac = ISO8601DateFormatter()
+        isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoPlain = ISO8601DateFormatter()
+        let date = isoFrac.date(from: raw) ?? isoPlain.date(from: raw)
+        return date?.ruulShortDate ?? raw
     }
 }
 

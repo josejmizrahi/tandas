@@ -180,20 +180,28 @@ public struct BuilderFieldRenderer: View {
             }
 
         case .memberPicker:
-            // Tier 0: member directory picker not wired yet. Free-text
-            // produced ambiguous "name or email" strings the backend
-            // couldn't resolve to a group_members.id. Render disabled
-            // until the picker integrates with MembersRepository.
-            unavailableField(
-                note: "Selector de miembros no disponible — Próximamente."
+            // Slice 8 (mig 00201 follow-up): wires the picker against
+            // `AppState.groupsRepo.membersWithProfiles`. Output is the
+            // selected member's `group_members.id` (NOT user_id) as a
+            // JSONConfig.string — matches what create_right /
+            // transfer_right and the other lifecycle RPCs gate on.
+            MemberPickerField(
+                label: field.label,
+                helpText: field.helpText,
+                binding: jsonValueBinding()
             )
 
         case .resourcePicker:
-            // Tier 0: cross-resource picker not wired. Asking the user
-            // to paste a UUID was hostile UX; render disabled until a
-            // real resource browser ships.
-            unavailableField(
-                note: "Selector de recurso no disponible — Próximamente."
+            // Slice 9: wires the picker against ResourceRepository.list
+            // for the active group. Type filtering deferred until
+            // BuilderField carries a `validResourceTypes` hint — current
+            // consumers (SlotResourceBuilder.assetId, RightResourceBuilder
+            // .targetResourceId) work fine with the flat list at typical
+            // group sizes.
+            ResourcePickerField(
+                label: field.label,
+                helpText: field.helpText,
+                binding: jsonValueBinding()
             )
         }
     }
@@ -293,6 +301,25 @@ public struct BuilderFieldRenderer: View {
         let full = ISO8601DateFormatter()
         if let d = full.date(from: raw) { return d }
         return nil
+    }
+
+    /// Binds the field's raw JSONConfig value (nil-able). Used by
+    /// sub-views (e.g. MemberPickerField) that prefer to own the
+    /// JSONConfig shape themselves — they read/write the whole value
+    /// instead of going through a typed accessor. Removing the key
+    /// when value is nil keeps `values` clean for the wizard's
+    /// validation path (`isFieldFilled` treats absent keys as empty).
+    private func jsonValueBinding() -> Binding<JSONConfig?> {
+        Binding(
+            get: { values[field.key] },
+            set: { newValue in
+                if let v = newValue {
+                    values[field.key] = v
+                } else {
+                    values.removeValue(forKey: field.key)
+                }
+            }
+        )
     }
 
     /// Binds the field's JSONConfig value as a `[String]` of user_ids

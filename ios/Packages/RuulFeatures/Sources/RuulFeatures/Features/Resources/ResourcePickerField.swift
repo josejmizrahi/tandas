@@ -1,0 +1,164 @@
+import SwiftUI
+import RuulUI
+import RuulCore
+
+/// Single-resource picker for `BuilderField.resourcePicker` (slice 9).
+/// Sibling of `MemberPickerField` — same async-load shape, picks one
+/// `ResourceRow` from the active group.
+///
+/// Why a dedicated view: prior to slice 9 the renderer fell back to
+/// "Selector de recurso no disponible — Próximamente" for any field
+/// declared as `.resourcePicker` (SlotResourceBuilder's `assetId`,
+/// RightResourceBuilder's optional `targetResourceId`, etc.). Asking
+/// the user to paste a UUID was hostile UX; this view loads the
+/// group's resources and lets them tap-to-select.
+///
+/// Output contract: writes the chosen resource's `id` (UUID) into the
+/// bound `JSONConfig` as a string. The wizard's server-side
+/// `build_resource_from_draft` reads `basic_fields->>'<key>'` and
+/// casts to UUID — matching that contract for every consumer.
+///
+/// Type filtering: deferred. `BuilderField` doesn't yet carry a
+/// `validResourceTypes` hint, so the picker lists all non-archived
+/// resources in the active group. A consumer that wants narrower
+/// scoping (e.g. SlotResourceBuilder needing only assets) should
+/// either filter the results post-hoc or wait for the field-hint
+/// extension. Most consumers today have small enough resource
+/// inventories that the flat list works.
+struct ResourcePickerField: View {
+    let label: String
+    let helpText: String?
+    @Binding var binding: JSONConfig?
+
+    @Environment(AppState.self) private var app
+    @State private var resources: [ResourceRow] = []
+    @State private var isLoading: Bool = true
+
+    init(
+        label: String,
+        helpText: String?,
+        binding: Binding<JSONConfig?>
+    ) {
+        self.label = label
+        self.helpText = helpText
+        self._binding = binding
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            Text(label)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextSecondary)
+            content
+        }
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if isLoading {
+            HStack(spacing: RuulSpacing.sm) {
+                ProgressView()
+                Text("Cargando recursos…")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Spacer(minLength: 0)
+            }
+            .padding(RuulSpacing.md)
+        } else if candidates.isEmpty {
+            HStack(spacing: RuulSpacing.sm) {
+                Image(systemName: "tray")
+                    .foregroundStyle(Color.ruulTextTertiary)
+                Text("Aún no hay recursos en este grupo.")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Spacer(minLength: 0)
+            }
+            .padding(RuulSpacing.md)
+        } else {
+            Picker("", selection: pickerBinding) {
+                Text("Selecciona…").tag(Optional<UUID>(nil))
+                ForEach(candidates) { row in
+                    Text(displayName(row)).tag(Optional(row.id))
+                }
+            }
+            .pickerStyle(.menu)
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 1)
+            )
+        }
+    }
+
+    // MARK: - Picker bridging
+
+    private var pickerBinding: Binding<UUID?> {
+        Binding(
+            get: {
+                guard case let .string(raw)? = binding else { return nil }
+                return UUID(uuidString: raw)
+            },
+            set: { newValue in
+                if let uuid = newValue {
+                    binding = .string(uuid.uuidString.lowercased())
+                } else {
+                    binding = nil
+                }
+            }
+        )
+    }
+
+    private var candidates: [ResourceRow] {
+        resources
+            .filter { $0.archivedAt == nil }
+            .sorted { lhs, rhs in
+                displayName(lhs).localizedCaseInsensitiveCompare(displayName(rhs)) == .orderedAscending
+            }
+    }
+
+    /// Fallback chain: metadata.name → metadata.title → resource type
+    /// human label. Matches the same convention used elsewhere
+    /// (LinkResourcePickerSheet, ResourceTitleBlock).
+    private func displayName(_ row: ResourceRow) -> String {
+        if case .string(let s)? = row.metadata["name"], !s.isEmpty { return s }
+        if case .string(let s)? = row.metadata["title"], !s.isEmpty { return s }
+        return row.resourceType.humanLabel
+    }
+
+    // MARK: - Load
+
+    private func load() async {
+        guard let groupId = app.activeGroupId else {
+            isLoading = false
+            return
+        }
+        do {
+            // ResourceRepository.list takes a non-nullable `types` array,
+            // so we pass the canonical six. A future BuilderField hint
+            // (`validResourceTypes`) would let the picker narrow this
+            // per consumer (e.g. SlotResourceBuilder needing only assets).
+            let rows = try await app.resourceRepo.list(
+                in: groupId,
+                types: ResourceType.allCases,
+                statuses: nil,
+                limit: 200
+            )
+            await MainActor.run {
+                self.resources = rows
+                self.isLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                self.resources = []
+                self.isLoading = false
+            }
+        }
+    }
+}
