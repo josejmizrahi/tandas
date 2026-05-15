@@ -72,7 +72,7 @@ public struct MyFinesView: View {
     private var pendingSection: some View {
         if !coordinator.pending.isEmpty {
             section(title: "POR RESOLVER", count: coordinator.pending.count) {
-                ForEach(coordinator.pending) { fine in
+                RuulSeparatedRows(items: coordinator.pending) { fine in
                     FineCard(
                         fine: fine,
                         ruleName: nil,
@@ -97,7 +97,7 @@ public struct MyFinesView: View {
     private var resolvedSection: some View {
         if !coordinator.resolved.isEmpty {
             section(title: "HISTORIAL", count: coordinator.resolved.count) {
-                ForEach(coordinator.resolved) { fine in
+                RuulSeparatedRows(items: coordinator.resolved) { fine in
                     FineCard(
                         fine: fine,
                         ruleName: nil,

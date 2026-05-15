@@ -116,7 +116,7 @@ public struct ReviewProposedFinesView: View {
                 .foregroundStyle(Color.ruulTextPrimary)
                 .disabled(coordinator.isMutating)
             }
-            ForEach(coordinator.proposed) { fine in
+            RuulSeparatedRows(items: coordinator.proposed) { fine in
                 proposedFineRow(fine)
             }
         }
@@ -187,7 +187,7 @@ public struct ReviewProposedFinesView: View {
                     .ruulTextStyle(RuulTypography.statSmall)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            ForEach(coordinator.resolved) { fine in
+            RuulSeparatedRows(items: coordinator.resolved) { fine in
                 FineCard(
                     fine: fine,
                     ruleName: nil,

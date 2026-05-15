@@ -116,10 +116,8 @@ public struct RulesView: View {
                         // "Votos abiertos" link removed — votes have their
                             // own sub-tab post-Plan1 cleanup. RulesView stays
                             // focused on rule list + governance.
-                        VStack(spacing: RuulSpacing.sm) {
-                            ForEach(coordinator.rules) { rule in
-                                ruleCard(rule)
-                            }
+                        RuulSeparatedRows(items: coordinator.rules) { rule in
+                            ruleCard(rule)
                         }
                         footnote
                     }

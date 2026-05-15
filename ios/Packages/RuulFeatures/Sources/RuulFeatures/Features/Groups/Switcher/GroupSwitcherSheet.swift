@@ -22,10 +22,8 @@ public struct GroupSwitcherSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     section(title: "Tus grupos") {
-                        VStack(spacing: RuulSpacing.xs) {
-                            ForEach(app.groups) { group in
-                                groupRow(group)
-                            }
+                        RuulSeparatedRows(items: app.groups) { group in
+                            groupRow(group)
                         }
                     }
                     section(title: "Más opciones") {

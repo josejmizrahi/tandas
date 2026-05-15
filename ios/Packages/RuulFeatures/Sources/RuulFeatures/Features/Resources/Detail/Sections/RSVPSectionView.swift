@@ -89,10 +89,6 @@ public struct RSVPSectionView: View {
             divider
             tallyRow(.pending,  label: "Pendientes", color: .ruulTextTertiary)
         }
-        .background(
-            .ultraThinMaterial,
-            in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-        )
     }
 
     private func tallyRow(_ status: RSVPStatus, label: String, color: Color) -> some View {
@@ -112,7 +108,10 @@ public struct RSVPSectionView: View {
     }
 
     private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
+        Rectangle()
+            .fill(Color.ruulTextPrimary.opacity(0.08))
+            .frame(height: 0.5)
+            .padding(.leading, RuulSpacing.md)
     }
 
     // MARK: - Rolls
