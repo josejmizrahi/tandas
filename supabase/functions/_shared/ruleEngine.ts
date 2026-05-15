@@ -527,6 +527,30 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
       },
     }];
   },
+
+  // (mig 00203) Cron-emitted when an active right enters its pre-expiry
+  // window (default 14 days, set in the cron schedule). The cron already
+  // pre-computes holder_member_id + days_until_expiry into the payload
+  // so the trigger evaluator + condition evaluator avoid a re-fetch of
+  // the resource row. Drives `right_expiration_warning` template +
+  // future "transfer-to-next-priority-on-expiry" style rules.
+  rightExpiringSoon: async (event, _rule, _context) => {
+    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderMemberId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        expires_at:        event.payload?.expires_at ?? null,
+        holder_member_id:  holderMemberId ?? null,
+        name:              event.payload?.name ?? null,
+        days_until_expiry: event.payload?.days_until_expiry ?? null,
+        window_days:       event.payload?.window_days ?? null,
+        source:            event.payload?.source ?? null,
+        source_atom_id:    event.id,
+      },
+    }];
+  },
 };
 
 // =============================================================================
@@ -608,6 +632,28 @@ const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
     if (Number.isNaN(expiresAtMs)) return false;
     const hoursUntilExpiry = (expiresAtMs - context.now.getTime()) / 3_600_000;
     return hoursUntilExpiry > 0 && hoursUntilExpiry <= hours;
+  },
+
+  // (mig 00203) target.context.days_until_expiry <= config.days_before.
+  // Used by the `right_expiration_warning` template to gate the warning
+  // to the final N days of the cron's broader window (cron fires at
+  // 14 days; default template threshold = 7). Falls back to the
+  // resource's metadata.expires_at if the trigger evaluator didn't
+  // project days_until_expiry (defensive — shouldn't happen with the
+  // mig 00203 cron, but keeps the evaluator usable for hand-emitted
+  // rightExpiringSoon events).
+  daysBeforeExpiry: async (cond, target, context) => {
+    const threshold = (cond.config.days_before as number | undefined) ?? 7;
+    const projected = target.context.days_until_expiry as number | null | undefined;
+    if (typeof projected === "number") {
+      return projected <= threshold;
+    }
+    const expiresAt = context.resource?.metadata.expires_at as string | undefined;
+    if (!expiresAt) return false;
+    const expiresAtMs = new Date(expiresAt).getTime();
+    if (Number.isNaN(expiresAtMs)) return false;
+    const daysUntilExpiry = (expiresAtMs - context.now.getTime()) / 86_400_000;
+    return daysUntilExpiry > 0 && daysUntilExpiry <= threshold;
   },
 };
 
