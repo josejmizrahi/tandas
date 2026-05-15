@@ -35,24 +35,8 @@ public struct InviteMembersView: View {
                 }
             }
         }
-        .ruulContactsPicker(isPresented: $contactsPresented) { picks in
-            var didAppend = false
-            for pick in picks {
-                if let e164 = PhoneFormatter.smartE164(pick.phoneRaw) {
-                    coord.pendingInvites.append(
-                        PendingInvite(phoneE164: e164, displayName: pick.name)
-                    )
-                    didAppend = true
-                }
-            }
-            // Beta 1 polish: persist after each contacts-picker batch so
-            // a force-quit between picks and "Continuar" doesn't lose the
-            // list. Skipping the call when nothing was appended avoids a
-            // wasted disk write.
-            if didAppend {
-                Task { await coord.persistPendingInvites() }
-            }
-        }
+        // TODO: re-enable once ruulContactsPicker modifier is restored in RuulUI
+        // .ruulContactsPicker(isPresented: $contactsPresented) { picks in ... }
         .ruulSheet(isPresented: $manualEntryPresented) {
             manualEntrySheet
         }

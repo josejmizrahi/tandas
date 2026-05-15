@@ -415,6 +415,8 @@ private extension RuulBadge.Style {
         case .negative: return .ruulNegative
         case .warning:  return .ruulWarning
         case .info:     return .ruulInfo
+        case .subtle:   return .ruulTextSecondary
+        case .accent:   return .ruulAccent
         }
     }
 }

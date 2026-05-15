@@ -41,14 +41,3 @@ extension RuulGroupSwitcher {
     }
 }
 
-extension RuulGroupSwitcherSheet.GroupItem {
-    public init(group: RuulCore.Group) {
-        self.init(
-            id: group.id,
-            name: group.name,
-            initials: group.initials,
-            category: group.category,
-            imageURL: group.avatarURL
-        )
-    }
-}
