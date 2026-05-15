@@ -15,7 +15,8 @@ public extension CapabilityResolver {
         case .event: return eventQuickFacts(resource: resource, enabledCapabilities: enabledCapabilities)
         case .fund:  return fundQuickFacts(resource: resource, enabledCapabilities: enabledCapabilities)
         case .asset: return assetQuickFacts(resource: resource, enabledCapabilities: enabledCapabilities)
-        case .space, .slot, .right, .unknown:
+        case .right: return rightQuickFacts(resource: resource)
+        case .space, .slot, .unknown:
             return []
         }
     }
@@ -116,6 +117,96 @@ public extension CapabilityResolver {
                 kind: .location,
                 symbol: "mappin.and.ellipse",
                 label: location
+            ))
+        }
+
+        return facts
+    }
+
+    private func rightQuickFacts(resource: ResourceRow) -> [QuickFact] {
+        // Surfaces the right's normative-claim attributes — what makes
+        // THIS claim different from a sibling claim on the same target.
+        // Holder is rendered separately via the cover subtitle ("Holder:
+        // X") so it doesn't crowd the pill strip.
+        var facts: [QuickFact] = []
+
+        // Status: `active` is implicit (no pill needed); `expired` /
+        // `revoked` are the noteworthy states the holder cares about.
+        let statusText: String? = {
+            switch resource.status {
+            case "active":  return nil
+            case "expired": return "Vencido"
+            case "revoked": return "Revocado"
+            default:        return resource.status
+            }
+        }()
+        if let label = statusText {
+            facts.append(QuickFact(
+                id: "status",
+                kind: .status,
+                symbol: "circle.fill",
+                label: label
+            ))
+        }
+
+        // Suspended? Suspension is an active-but-frozen state. Visible
+        // until `restore_right` lifts it. The cron doesn't auto-lift
+        // suspensions (intentional) so the pill is the user-facing
+        // signal that exercise is currently blocked.
+        if resource.metadata["suspended_until"]?.stringValue != nil
+            || resource.metadata["suspended_at"]?.stringValue != nil {
+            facts.append(QuickFact(
+                id: "suspended",
+                kind: .status,
+                symbol: "pause.circle",
+                label: "Suspendido"
+            ))
+        }
+
+        // Priority — only render when explicitly higher than the default
+        // (0). A right with priority 5 contests reservations with a right
+        // at priority 3; the number is the user-facing precedence signal.
+        if let priority = intVal(resource.metadata["priority"]), priority > 0 {
+            facts.append(QuickFact(
+                id: "priority",
+                kind: .status,
+                symbol: "arrow.up.right.circle",
+                label: "Prioridad \(priority)"
+            ))
+        }
+
+        // Transferable / exclusive: only render when true (the
+        // affirmative claim shape). False values are the default and
+        // would just add noise.
+        if resource.metadata["exclusive"]?.boolValue == true {
+            facts.append(QuickFact(
+                id: "exclusive",
+                kind: .status,
+                symbol: "lock.shield",
+                label: "Exclusivo"
+            ))
+        }
+        if resource.metadata["transferable"]?.boolValue == true {
+            facts.append(QuickFact(
+                id: "transferable",
+                kind: .status,
+                symbol: "arrow.left.arrow.right",
+                label: "Transferible"
+            ))
+        }
+
+        // Expires_at — render only when future + within a sensible
+        // window. Server-side cron `expire-due-rights-every-hour` flips
+        // status to expired once it lapses, so we only show forward-
+        // looking dates here.
+        if let raw = resource.metadata["expires_at"]?.stringValue,
+           let date = ISO8601DateFormatter().date(from: raw),
+           date > Date.now {
+            facts.append(QuickFact(
+                id: "expires",
+                kind: .date,
+                symbol: "hourglass",
+                label: "Vence \(date.ruulShortDate)"
             ))
         }
 

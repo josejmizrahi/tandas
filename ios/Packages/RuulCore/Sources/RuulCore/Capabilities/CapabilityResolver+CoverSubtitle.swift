@@ -28,7 +28,9 @@ public extension CapabilityResolver {
             return fundCoverSubtitle(resource: resource)
         case .asset:
             return assetCoverSubtitle(resource: resource, memberDirectory: memberDirectory)
-        case .space, .slot, .right, .unknown:
+        case .right:
+            return rightCoverSubtitle(resource: resource, memberDirectory: memberDirectory)
+        case .space, .slot, .unknown:
             return nil
         }
     }
@@ -71,5 +73,28 @@ public extension CapabilityResolver {
               let custodianId = UUID(uuidString: custodianIdStr),
               let custodian = memberDirectory[custodianId] else { return nil }
         return "Custodian: \(custodian.displayName)"
+    }
+
+    /// Subtitle for `right` resources. The holder is the headline — that
+    /// member is who has the claim. When a delegate is active, the
+    /// subtitle surfaces that ("Holder: X · Delegated to Y") so the
+    /// distinction between "who owns it" and "who can exercise it
+    /// today" is visible at a glance.
+    private func rightCoverSubtitle(
+        resource: ResourceRow,
+        memberDirectory: [UUID: MemberWithProfile]
+    ) -> String? {
+        guard let holderIdStr = stringVal(resource.metadata["holder_member_id"]),
+              let holderId = UUID(uuidString: holderIdStr),
+              let holder = memberDirectory[holderId] else { return nil }
+
+        var line = "Titular: \(holder.displayName)"
+
+        if let delegateIdStr = stringVal(resource.metadata["delegate_member_id"]),
+           let delegateId = UUID(uuidString: delegateIdStr),
+           let delegate = memberDirectory[delegateId] {
+            line += " · Delegado a \(delegate.displayName)"
+        }
+        return line
     }
 }
