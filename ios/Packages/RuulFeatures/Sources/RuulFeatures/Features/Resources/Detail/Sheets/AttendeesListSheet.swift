@@ -8,6 +8,7 @@ import RuulCore
 /// full per-status roll one tap away.
 public struct AttendeesListSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var app
 
     public let rsvps: [RSVP]
     public let memberDirectory: [UUID: MemberWithProfile]
@@ -35,7 +36,7 @@ public struct AttendeesListSheet: View {
                 .padding(.vertical, RuulSpacing.lg)
             }
             .scrollIndicators(.hidden)
-            .background(Color.ruulBackground.ignoresSafeArea())
+            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
             .navigationTitle("Asistentes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

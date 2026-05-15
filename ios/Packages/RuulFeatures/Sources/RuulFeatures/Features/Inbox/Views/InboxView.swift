@@ -146,6 +146,7 @@ public struct InboxView: View {
 /// Mirrors ActionInboxView's layout without the coordinator dependency.
 @MainActor
 private struct FilteredInboxList: View {
+    @Environment(AppState.self) private var app
     let actions: [UserAction]
     let isLoading: Bool
     let onOpenAction: (UserAction) -> Void
@@ -153,7 +154,7 @@ private struct FilteredInboxList: View {
 
     var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             if actions.isEmpty && isLoading {
                 RuulLoadingState()
                     .transition(.opacity)

@@ -6,12 +6,13 @@ import RuulCore
 /// pencil button in RulesView nav (visible iff governance.canPerform(
 /// .modifyRules) == .allowed for the current actor).
 public struct EditRulesView: View {
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: EditRulesCoordinator
     @State private var sheetRule: GroupRule?
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             content
         }
         .task { await coordinator.refresh() }

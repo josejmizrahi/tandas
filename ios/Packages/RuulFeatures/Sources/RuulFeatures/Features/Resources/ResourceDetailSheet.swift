@@ -101,7 +101,7 @@ public struct ResourceDetailSheet: View {
             UniversalResourceDetailView(context: context(for: group))
         } else {
             ZStack {
-                Color.ruulBackground.ignoresSafeArea()
+                RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
                 RuulLoadingState()
             }
         }

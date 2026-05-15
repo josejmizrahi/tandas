@@ -97,7 +97,7 @@ public struct EventDetailHost: View {
 
     private var bootView: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             RuulLoadingState()
         }
     }

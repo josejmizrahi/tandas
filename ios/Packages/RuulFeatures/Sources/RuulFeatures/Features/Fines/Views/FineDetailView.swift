@@ -6,6 +6,7 @@ import RuulCore
 /// reason + evidence in cards, action footer (Pagar / Apelar / Ver
 /// apelación). Apple Sports flat — monochrome chrome, color via dot only.
 public struct FineDetailView: View {
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: FineDetailCoordinator
     public var onAppeal: (() -> Void)?
     public var onViewAppeal: ((Appeal) -> Void)?
@@ -36,7 +37,7 @@ public struct FineDetailView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     hero

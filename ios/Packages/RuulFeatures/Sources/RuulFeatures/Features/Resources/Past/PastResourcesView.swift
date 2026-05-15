@@ -3,6 +3,7 @@ import RuulUI
 import RuulCore
 
 public struct PastResourcesView: View {
+    @Environment(AppState.self) private var app
     public let group: RuulCore.Group
     public let userId: UUID
     public let eventRepo: any EventRepository
@@ -21,7 +22,7 @@ public struct PastResourcesView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             content
         }
         .navigationTitle("Historial")

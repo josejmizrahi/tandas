@@ -7,6 +7,7 @@ import RuulCore
 /// pushes FineDetailView. Pull-to-refresh re-runs the query (RLS gives us
 /// only this user's fines automatically).
 public struct MyFinesView: View {
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: MyFinesCoordinator
     public let onOpenFine: (Fine) -> Void
 
@@ -17,7 +18,7 @@ public struct MyFinesView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.fines.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })

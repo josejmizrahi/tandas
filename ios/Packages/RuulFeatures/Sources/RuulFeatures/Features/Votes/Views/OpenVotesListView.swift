@@ -6,6 +6,7 @@ import RuulCore
 /// (closing-soon vs other). Botón "+" en toolbar abre CreateVoteSheet
 /// (V1: enabled solo general_proposal y rule_change).
 public struct OpenVotesListView: View {
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: OpenVotesCoordinator
     public var onSelectVote: (Vote) -> Void
     public var onCreateVote: () -> Void
@@ -18,7 +19,7 @@ public struct OpenVotesListView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.openVotes.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })

@@ -26,7 +26,7 @@ public struct ReviewProposedFinesView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                     header
