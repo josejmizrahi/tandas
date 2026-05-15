@@ -19,6 +19,16 @@ public struct ResourceCoverHero: View {
     public let statusPill: StatusPill?
     public let coverImageURL: URL?
     public let groupCategory: GroupCategory
+    /// Explicit palette for the mesh fallback when no cover image is
+    /// set. When non-nil, the cover gradient and the detail screen's
+    /// ambient layer derive from the same source so the two color
+    /// fields always match. When nil, falls back to `groupCategory.ramp`.
+    public let palette: [Color]?
+    /// Cover frame height. Lets the caller right-size the hero per
+    /// resource type — events get the full poster (400pt), funds /
+    /// slots / assets get a quieter 200pt stamp since they don't carry
+    /// rich on-cover metadata.
+    public let height: CGFloat
 
     public struct StatusPill: Sendable, Hashable {
         public let label: String
@@ -36,7 +46,9 @@ public struct ResourceCoverHero: View {
         timeLabel: String? = nil,
         statusPill: StatusPill? = nil,
         coverImageURL: URL? = nil,
-        groupCategory: GroupCategory
+        groupCategory: GroupCategory,
+        palette: [Color]? = nil,
+        height: CGFloat = RuulSize.coverHero
     ) {
         self.title = title
         self.subtitle = subtitle
@@ -45,6 +57,8 @@ public struct ResourceCoverHero: View {
         self.statusPill = statusPill
         self.coverImageURL = coverImageURL
         self.groupCategory = groupCategory
+        self.palette = palette
+        self.height = height
     }
 
     public var body: some View {
@@ -56,7 +70,7 @@ public struct ResourceCoverHero: View {
                 statusPillOverlay(pill)
             }
         }
-        .frame(height: RuulSize.coverHero)
+        .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
         .ruulElevation(.md)
         .padding(.horizontal, RuulSpacing.lg)
@@ -84,29 +98,44 @@ public struct ResourceCoverHero: View {
         }
     }
 
-    /// Procedural 2x2 MeshGradient derived from the group ramp.
-    ///
-    /// GroupColorRamp exposes: .background (subtle bg stop), .accent (vivid
-    /// mid stop), .foreground (high-contrast fg stop). We use background at
-    /// the top corners and accent/foreground at the bottom to produce a
-    /// saturated gradient that reads well behind white text.
+    /// Procedural MeshGradient — uses the explicitly-supplied palette
+    /// when provided (so the cover and the detail screen's ambient
+    /// derive from the same source and always match), otherwise falls
+    /// back to the group's category ramp.
     @ViewBuilder
     private var meshFallback: some View {
-        let ramp = groupCategory.ramp
-        MeshGradient(
-            width: 2,
-            height: 2,
-            points: [
-                .init(0, 0), .init(1, 0),
-                .init(0, 1), .init(1, 1)
-            ],
-            colors: [
-                ramp.background,
-                ramp.accent,
-                ramp.foreground,
-                ramp.accent.opacity(0.85)
-            ]
-        )
+        if let palette, palette.count >= 4 {
+            MeshGradient(
+                width: 2,
+                height: 2,
+                points: [
+                    .init(0, 0), .init(1, 0),
+                    .init(0, 1), .init(1, 1)
+                ],
+                colors: [
+                    palette[0],
+                    palette[1],
+                    palette[2],
+                    palette[3]
+                ]
+            )
+        } else {
+            let ramp = groupCategory.ramp
+            MeshGradient(
+                width: 2,
+                height: 2,
+                points: [
+                    .init(0, 0), .init(1, 0),
+                    .init(0, 1), .init(1, 1)
+                ],
+                colors: [
+                    ramp.background,
+                    ramp.accent,
+                    ramp.foreground,
+                    ramp.accent.opacity(0.85)
+                ]
+            )
+        }
     }
 
     // MARK: - Overlays

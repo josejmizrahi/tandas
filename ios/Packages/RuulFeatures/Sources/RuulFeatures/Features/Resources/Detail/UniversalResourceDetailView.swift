@@ -116,8 +116,22 @@ public struct UniversalResourceDetailView: View {
             timeLabel: timeLabel,
             statusPill: statusPill,
             coverImageURL: context.coverImageURL,
-            groupCategory: context.group.category
+            groupCategory: context.group.category,
+            palette: ResourceAmbientPalette.resolve(for: context),
+            height: coverHeightFor(context.resource.resourceType)
         )
+    }
+
+    /// Right-size the cover per resource type. Events carry rich
+    /// on-cover metadata (date / time / host / status pill) so they
+    /// earn the full Luma-poster 400pt. Non-event resources only
+    /// surface their title — anything taller is dead gradient space.
+    private func coverHeightFor(_ type: ResourceType) -> CGFloat {
+        switch type {
+        case .event:                          return RuulSize.coverHero
+        case .fund, .asset, .slot, .space,
+             .right, .unknown:                return RuulSize.heroLarge
+        }
     }
 
     private var dateLabel: String? {
