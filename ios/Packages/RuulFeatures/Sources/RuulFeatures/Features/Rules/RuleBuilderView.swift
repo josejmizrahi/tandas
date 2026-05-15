@@ -23,6 +23,8 @@ public struct RuleBuilderView: View {
                 switch coord.phase {
                 case .templatePick:
                     TemplateGalleryView(coord: coord)
+                case .scopePick:
+                    scopePickStep
                 case .paramFill:
                     ParamFormView(coord: coord)
                 case .publish:
@@ -47,6 +49,7 @@ public struct RuleBuilderView: View {
     private var navTitle: String {
         switch coord.phase {
         case .templatePick: return "Nueva regla"
+        case .scopePick:    return "Alcance de la regla"
         case .paramFill:    return coord.selectedTemplate?.displayNameES ?? "Personaliza"
         case .publish:      return "Revisa y publica"
         case .done:         return "Listo"
@@ -57,10 +60,65 @@ public struct RuleBuilderView: View {
         switch coord.phase {
         case .templatePick, .done:
             onDismiss()
-        case .paramFill:
+        case .scopePick:
             coord.backToTemplatePick()
+        case .paramFill:
+            coord.backToScopePick()
         case .publish:
             coord.backToParams()
+        }
+    }
+
+    // MARK: - Scope Picker Step
+
+    @ViewBuilder
+    private var scopePickStep: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                Text("¿Dónde aplica esta regla?")
+                    .font(.title3).fontWeight(.semibold)
+                Text("Por ahora, las reglas creadas desde Acuerdos aplican a todo el grupo. Para crear una regla específica de un recurso, ábrela desde el detalle de ese recurso.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                HStack(alignment: .top, spacing: RuulSpacing.md) {
+                    Image(systemName: "circle.inset.filled")
+                        .font(.body)
+                        .foregroundStyle(.tint)
+                        .frame(width: 24, height: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Todo el grupo")
+                            .font(.headline)
+                        Text("La regla se aplicará a todos los recursos del grupo.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(RuulSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassEffect(in: .rect(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(.tint.opacity(0.4), lineWidth: 1.5)
+                )
+            }
+            .padding(RuulSpacing.lg)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Button {
+                    coord.selectScope(.group)
+                } label: {
+                    Text("Siguiente")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.vertical, RuulSpacing.md)
+            }
+            .background(.ultraThinMaterial)
         }
     }
 }
