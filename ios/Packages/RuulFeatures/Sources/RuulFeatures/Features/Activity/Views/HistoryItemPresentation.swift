@@ -103,9 +103,24 @@ public struct HistoryItemPresentation {
             self.title = "\(actor) emitió su voto"
             self.tone = .neutral
         case .voteResolved:
-            self.icon = "hand.thumbsup.fill"
-            self.title = "Se cerró una votación"
-            self.tone = .positive
+            // Specialize for ledger_review failed → expense reversed.
+            // Activity feed shows the same row to everyone (group-scoped);
+            // the notification adds a private push to the affected member.
+            let voteType = event.payload["vote_type"]?.stringValue
+            let resolution = event.payload["resolution"]?.stringValue
+            if voteType == "ledger_review" && resolution == "failed" {
+                self.icon = "arrow.uturn.backward.circle.fill"
+                self.title = "El grupo reversó un gasto"
+                self.tone = .warning
+            } else if voteType == "ledger_review" && resolution == "passed" {
+                self.icon = "checkmark.seal.fill"
+                self.title = "El grupo ratificó un gasto"
+                self.tone = .positive
+            } else {
+                self.icon = "hand.thumbsup.fill"
+                self.title = "Se cerró una votación"
+                self.tone = .positive
+            }
         case .fundDeposit:
             self.icon = "banknote.fill"
             self.title = "Se depositó al fondo"
