@@ -4,11 +4,11 @@ import Supabase
 public protocol ProfileRepository: Actor {
     func loadMine() async throws -> Profile
     func updateDisplayName(_ name: String) async throws
-    /// Uploads `data` to the per-user avatar prefix (`{userId}/avatar-{ts}.{ext}`),
-    /// updates `profiles.avatar_url` with the public URL, and returns it.
-    /// `contentType` must match the bucket-allowed MIME types
-    /// (jpeg / png / webp / heic / heif). Size limit is 2 MB at bucket level.
     func updateAvatar(data: Data, contentType: String) async throws -> URL
+    /// IANA timezone (e.g., "America/Mexico_City"). RLS allows self-write.
+    func updateTimezone(_ tz: String) async throws
+    /// BCP-47 locale tag (e.g., "es-MX"). RLS allows self-write.
+    func updateLocale(_ locale: String) async throws
 }
 
 public actor MockProfileRepository: ProfileRepository {
@@ -25,10 +25,17 @@ public actor MockProfileRepository: ProfileRepository {
     }
 
     public func updateAvatar(data: Data, contentType: String) async throws -> URL {
-        // Deterministic mock URL for previews/tests.
         let url = URL(string: "https://example.test/avatars/\(_profile.id.uuidString.lowercased()).jpg")!
         _profile.avatarUrl = url.absoluteString
         return url
+    }
+
+    public func updateTimezone(_ tz: String) async throws {
+        _profile.timezone = tz
+    }
+
+    public func updateLocale(_ locale: String) async throws {
+        _profile.locale = locale
     }
 }
 
@@ -61,9 +68,6 @@ public actor LiveProfileRepository: ProfileRepository {
     public func updateAvatar(data: Data, contentType: String) async throws -> URL {
         let userId = try await client.auth.session.user.id
         let ext = Self.fileExtension(for: contentType)
-        // Timestamp suffix forces CDN cache miss on re-upload (avatars are
-        // overwritten in place via upsert, but plain `avatar.ext` would be
-        // served stale by intermediaries).
         let ts = Int(Date.now.timeIntervalSince1970)
         let path = "\(userId.uuidString.lowercased())/avatar-\(ts).\(ext)"
 
@@ -88,6 +92,24 @@ public actor LiveProfileRepository: ProfileRepository {
             .execute()
 
         return publicURL
+    }
+
+    public func updateTimezone(_ tz: String) async throws {
+        let userId = try await client.auth.session.user.id
+        try await client
+            .from("profiles")
+            .update(["timezone": tz])
+            .eq("id", value: userId.uuidString.lowercased())
+            .execute()
+    }
+
+    public func updateLocale(_ locale: String) async throws {
+        let userId = try await client.auth.session.user.id
+        try await client
+            .from("profiles")
+            .update(["locale": locale])
+            .eq("id", value: userId.uuidString.lowercased())
+            .execute()
     }
 
     private static func fileExtension(for contentType: String) -> String {
