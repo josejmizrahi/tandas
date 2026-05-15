@@ -417,7 +417,9 @@ EOF
 - Modify: `ios/Packages/RuulFeatures/Sources/RuulFeatures/Features/Shell/RootShellSheets.swift`
 - Modify: `ios/Packages/RuulFeatures/Sources/RuulFeatures/Features/Shell/RootRouter.swift`
 
-**Why:** Wire `GroupHomeView` into the shell as a sheet route so any view can present it via `router.openGroupHome()`.
+**Why:** Wire `GroupHomeView` into the shell as a full-screen cover route so any view can present it via `router.openGroupHome()`.
+
+**Modal pattern note:** As of commit `7307480` (2026-05-15), every modal in the app uses `.fullScreenCover(...)`, not `.sheet(...)` — explicit founder directive ("todo debe ser full screen no sheet me equivoqué"). All sheet code in this plan uses `.fullScreenCover`. `.ruulSheetChrome(detents:)` is a silent no-op inside fullScreenCover so it can stay where present.
 
 - [ ] **Step 1: Add route case**
 
@@ -433,7 +435,7 @@ Open `RootShellSheets.swift`. Find a similar handler block (e.g., the `.editProf
 
 ```swift
             // MARK: Group home sheet
-            .sheet(isPresented: boolBinding(for: .groupHome)) {
+            .fullScreenCover(isPresented: boolBinding(for: .groupHome)) {
                 if let activeGroup = app.activeGroup {
                     let coord = GroupHomeCoordinator(
                         groupId: activeGroup.id,
@@ -1461,7 +1463,7 @@ divider
 Open the `.groupHome` sheet block created in Task 3. Replace the inner `GroupHomeView(...)` call so it has its own `NavigationPath` and presents the new subscreens. The pattern mirrors `ProfileTab` from Nivel 0 Task 10:
 
 ```swift
-            .sheet(isPresented: boolBinding(for: .groupHome)) {
+            .fullScreenCover(isPresented: boolBinding(for: .groupHome)) {
                 if let activeGroup = app.activeGroup {
                     GroupHomeSheetContent(group: activeGroup, app: app, router: router)
                 }
@@ -1513,13 +1515,11 @@ private struct GroupHomeSheetContent: View {
                 case .rulePresets:  RulePresetsView() // same
                 }
             }
-            .sheet(isPresented: $showEditIdentity) {
+            .fullScreenCover(isPresented: $showEditIdentity) {
                 EditGroupIdentitySheet(groupId: group.id)
-                    .ruulSheetChrome(detents: [.medium, .large])
             }
-            .sheet(isPresented: $showRotateCode) {
+            .fullScreenCover(isPresented: $showRotateCode) {
                 RegenerateInviteCodeSheet(groupId: group.id)
-                    .ruulSheetChrome(detents: [.medium])
             }
         }
         .environment(app)
