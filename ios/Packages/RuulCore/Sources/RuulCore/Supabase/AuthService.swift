@@ -56,6 +56,15 @@ public protocol AuthService: Actor {
     /// Default impl is a no-op (Mock authservices have their own session
     /// management; only LiveAuthService needs a real RPC).
     func signInAnonymouslyIfNeeded() async throws
+
+    /// Initiates a phone number change. Supabase sends an OTP to `newPhone`.
+    func startPhoneChange(_ newPhone: String) async throws
+    /// Verifies the OTP sent to `newPhone` to complete the phone change.
+    func confirmPhoneChange(otp: String, newPhone: String) async throws
+    /// Initiates an email change. Supabase sends an OTP to `newEmail`.
+    func startEmailChange(_ newEmail: String) async throws
+    /// Verifies the OTP sent to `newEmail` to complete the email change.
+    func confirmEmailChange(otp: String, newEmail: String) async throws
 }
 
 public extension AuthService {
@@ -135,6 +144,11 @@ public actor MockAuthService: AuthService {
     public func signOut() async throws {
         applySession(nil)
     }
+
+    public func startPhoneChange(_ newPhone: String) async throws { /* no-op */ }
+    public func confirmPhoneChange(otp: String, newPhone: String) async throws { /* no-op */ }
+    public func startEmailChange(_ newEmail: String) async throws { /* no-op */ }
+    public func confirmEmailChange(otp: String, newEmail: String) async throws { /* no-op */ }
 }
 
 // MARK: - Live
@@ -258,6 +272,22 @@ public actor LiveAuthService: AuthService {
         // new session and propagates it via applySession(_:); no manual
         // session yield needed here.
         _ = try await client.auth.signInAnonymously()
+    }
+
+    public func startPhoneChange(_ newPhone: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(phone: newPhone))
+    }
+
+    public func confirmPhoneChange(otp: String, newPhone: String) async throws {
+        _ = try await client.auth.verifyOTP(phone: newPhone, token: otp, type: .phoneChange)
+    }
+
+    public func startEmailChange(_ newEmail: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(email: newEmail))
+    }
+
+    public func confirmEmailChange(otp: String, newEmail: String) async throws {
+        _ = try await client.auth.verifyOTP(email: newEmail, token: otp, type: .emailChange)
     }
 }
 
