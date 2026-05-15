@@ -14,7 +14,8 @@ public struct GroupHomeView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    public let onOpenMembers: () -> Void
+    public var onOpenMembersList: (() -> Void)?
+    public var onOpenMembersAdmin: (() -> Void)?
     public let onOpenGovernance: () -> Void
     public let onOpenRulePresets: () -> Void
     public let onLeaveGroup: () -> Void
@@ -25,10 +26,13 @@ public struct GroupHomeView: View {
     public var onPickCurrency: (() -> Void)?
     public var onPickTimezone: (() -> Void)?
     public var onRotateCode: (() -> Void)?
+    public var onInviteMembers: (() -> Void)?
+    public var onConfirmLeave: (() -> Void)?
 
     public init(
         coordinator: GroupHomeCoordinator,
-        onOpenMembers: @escaping () -> Void,
+        onOpenMembersList: (() -> Void)? = nil,
+        onOpenMembersAdmin: (() -> Void)? = nil,
         onOpenGovernance: @escaping () -> Void,
         onOpenRulePresets: @escaping () -> Void,
         onLeaveGroup: @escaping () -> Void,
@@ -37,10 +41,13 @@ public struct GroupHomeView: View {
         onPickModules: (() -> Void)? = nil,
         onPickCurrency: (() -> Void)? = nil,
         onPickTimezone: (() -> Void)? = nil,
-        onRotateCode: (() -> Void)? = nil
+        onRotateCode: (() -> Void)? = nil,
+        onInviteMembers: (() -> Void)? = nil,
+        onConfirmLeave: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
-        self.onOpenMembers = onOpenMembers
+        self.onOpenMembersList = onOpenMembersList
+        self.onOpenMembersAdmin = onOpenMembersAdmin
         self.onOpenGovernance = onOpenGovernance
         self.onOpenRulePresets = onOpenRulePresets
         self.onLeaveGroup = onLeaveGroup
@@ -50,6 +57,8 @@ public struct GroupHomeView: View {
         self.onPickCurrency = onPickCurrency
         self.onPickTimezone = onPickTimezone
         self.onRotateCode = onRotateCode
+        self.onInviteMembers = onInviteMembers
+        self.onConfirmLeave = onConfirmLeave
     }
 
     public var body: some View {
@@ -173,8 +182,20 @@ public struct GroupHomeView: View {
                 icon: "person.2",
                 label: "Miembros",
                 trailing: { trailingValue("\(coordinator.memberCount)") },
-                action: onOpenMembers
+                action: {
+                    coordinator.isCurrentUserAdmin
+                        ? onOpenMembersAdmin?()
+                        : onOpenMembersList?()
+                }
             )
+            if coordinator.isCurrentUserAdmin {
+                divider
+                navRow(
+                    icon: "person.crop.circle.badge.plus",
+                    label: "Invitar miembros",
+                    action: { onInviteMembers?() }
+                )
+            }
         }
     }
 
@@ -185,7 +206,7 @@ public struct GroupHomeView: View {
             navRow(
                 icon: "rectangle.portrait.and.arrow.right",
                 label: "Salir del grupo",
-                action: onLeaveGroup,
+                action: { onConfirmLeave?() ?? onLeaveGroup() },
                 destructive: true
             )
         }

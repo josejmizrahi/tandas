@@ -13,9 +13,12 @@ public final class GroupHomeCoordinator {
 
     public var group: Group?
     public var memberCount: Int = 0
+    public var myRole: String?          // "founder" | "member" | "admin"
     public var activeModules: [GroupModule] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
+
+    public var isCurrentUserAdmin: Bool { myRole == "founder" }
 
     public init(
         groupId: UUID,
@@ -35,6 +38,7 @@ public final class GroupHomeCoordinator {
             let detail = try await groupsRepo.get(groupId)
             self.group = detail.group
             self.memberCount = detail.memberCount
+            self.myRole = detail.myRole
             self.activeModules = resolveModules(slugs: detail.group.activeModules ?? [])
         } catch {
             log.warning("group home refresh failed: \(error.localizedDescription, privacy: .public)")

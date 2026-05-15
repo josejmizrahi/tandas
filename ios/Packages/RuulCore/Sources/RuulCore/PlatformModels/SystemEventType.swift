@@ -51,6 +51,14 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     case fundCreated
     case fundDeposit
     case fundThresholdReached
+    /// Emitted by `fund_lock` (mig 00198) when an admin places a fund
+    /// in locked state. Payload: `{locked_by, locked_reason}`. Rule
+    /// engine consumes this to short-circuit policy-gated writers; the
+    /// canonical RPCs themselves do not consult lock state (Constitution §9).
+    case fundLocked
+    /// Emitted by `fund_unlock` (mig 00198) when an admin releases a
+    /// fund lock. Payload: `{unlocked_by, previous_locked_at}`.
+    case fundUnlocked
 
     // MARK: - Rotation / membership
     case positionChanged
@@ -118,7 +126,53 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// Payload: `{rule_id, target_member_id, reason, source_atom_id}`.
     case warningEmitted
 
-    // MARK: - Resource links (mig 00198 — event uses space/asset/fund/right)
+    // MARK: - Right (Layer 4 resource_type='right') lifecycle — mig 00198
+    /// Emitted by `create_right` when a new normative claim is
+    /// materialised. Payload carries holder + target_resource + target
+    /// capability + scope/priority/transferable/delegable/divisible knobs.
+    case rightCreated
+    /// Emitted by `transfer_right` — a transferable right was reassigned
+    /// to a new holder. Payload: `{from_member_id, to_member_id,
+    /// transferred_by, reason}`.
+    case rightTransferred
+    /// Emitted by `delegate_right` — holder unchanged, delegate stored
+    /// in metadata. Payload: `{delegate_member_id, until, delegated_by,
+    /// reason}`.
+    case rightDelegated
+    /// Emitted by `revoke_right` — status flipped to `revoked`. Payload:
+    /// `{previous_status, revoked_by, reason}`.
+    case rightRevoked
+    /// Emitted by the right-expiration cron / consequence when `expires_at`
+    /// is reached (reserved; cron lands in a follow-up slice).
+    case rightExpired
+    /// Emitted by `exercise_right` — holder or delegate used the right.
+    /// Payload: `{exercised_by_user_id, exercised_by_member_id, context}`.
+    case rightExercised
+    /// Emitted by `suspend_right` — temporary lift planned via
+    /// `metadata.suspended_until`. Payload: `{until, suspended_by, reason}`.
+    case rightSuspended
+    /// Emitted by `restore_right` — suspension cleared (or status lifted
+    /// back to `active` from `revoked`).
+    case rightRestored
+
+    // MARK: - Asset universal atoms (mig 00198_asset_universal_atoms,
+    // applied to prod but source SQL not yet committed). Surfaced here
+    // so the codegen sync test stays green and event-driven consumers can
+    // pattern-match on the canonical names.
+    case assetTransferred
+    case assetAssigned
+    case assetReturned
+    case custodyAssigned
+    case custodyReleased
+    case maintenanceLogged
+    case maintenanceCompleted
+    case damageReported
+    case assetUsed
+    case assetCheckedOut
+    case assetCheckedIn
+    case valuationRecorded
+
+    // MARK: - Resource links (mig 00202 — event uses space/asset/fund/right)
     /// Emitted by `link_resource_to_event`. Payload:
     /// `{link_id, link_kind, to_resource_id, to_resource_type, linked_by}`.
     /// Plans/Active/EventResource.md §12.
@@ -127,7 +181,7 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// `resourceLinked` with `unlinked_by` instead of `linked_by`.
     case resourceUnlinked
 
-    // MARK: - Event lifecycle (mig 00199 — Plans/Active/EventResource.md §8)
+    // MARK: - Event lifecycle (mig 00203 — Plans/Active/EventResource.md §8)
     /// Emitted by trigger on `resources.status` → 'cancelled' (resource_type=
     /// event). Distinct from `eventClosed`, which today still fires for
     /// cancellations too via the legacy `cancel_event` RPC — drop in a

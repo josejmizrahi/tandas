@@ -1,4 +1,12 @@
--- Mig 00198: `resource_links` — event uses space/asset/fund (§12 spec)
+-- Mig 00202: `resource_links` — event uses space/asset/fund (§12 spec)
+--
+-- (Originally drafted as 00198 on the event-resource-specification branch
+-- and applied to prod under the snake_case name `event_resource_links`.
+-- Renumbered to 00202 at merge time because main concurrently shipped
+-- two 00198 files — fund_writers_balance_lifecycle and right_resource_
+-- canonical — plus the asset_universal_* batch already on prod but not
+-- yet committed to this branch. Prod state is unaffected: supabase tracks
+-- migrations by name, not file prefix, so the rename is metadata-only.)
 --
 -- Plans/Active/EventResource.md §12: "Event puede usar spaces/assets/funds.
 -- El event NO posee esos resources. Los coordina temporalmente."
@@ -54,7 +62,7 @@ as $$
     'resourceArchived', 'resourceUnarchived', 'resourceRenamed',
     'capabilityToggled', 'capabilityConfigUpdated', 'memberCapabilityOverridden',
     'ledgerEntryCreated', 'warningEmitted',
-    -- mig 00198: resource_links (event uses space/asset/fund)
+    -- mig 00202: resource_links (event uses space/asset/fund)
     'resourceLinked', 'resourceUnlinked'
   ]);
 $$;

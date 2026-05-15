@@ -1,4 +1,9 @@
--- Mig 00199: `eventCancelled` lifecycle atom (Plans/Active/EventResource.md §8)
+-- Mig 00203: `eventCancelled` lifecycle atom (Plans/Active/EventResource.md §8)
+--
+-- (Originally drafted as 00199 on the event-resource-specification branch
+-- and applied to prod under the snake_case name `event_cancelled_atom`.
+-- Renumbered to 00203 at merge time — see 00202 for context. Prod
+-- state is unaffected: migration tracking is by name.)
 --
 -- Today `cancel_event` (mig 00158) emits a generic `eventClosed` atom
 -- with `status: cancelled` in the payload, the same atom that `close_event`

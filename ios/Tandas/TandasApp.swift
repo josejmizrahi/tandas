@@ -46,9 +46,11 @@ struct TandasApp: App {
             let resourceCapabilities = MockResourceCapabilityRepository()
             let ledger = MockLedgerRepository()
             let balances = MockBalanceRepository()
+            let funds = MockFundRepository()
             let rsvpActions = MockRsvpActionRepository()
             let policies = MockGroupPolicyRepository()
             let draftRepo = MockResourceDraftRepository()
+            let rights = MockRightRepository()
             let analytics = LogAnalyticsService()
             _appState = State(initialValue: AppState(
                 auth: auth,
@@ -76,8 +78,10 @@ struct TandasApp: App {
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
                 balanceRepo: balances,
+                fundRepo: funds,
                 rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
+                rightRepo: rights,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 eventNotificationDispatcher: MockEventNotificationDispatcher(),
                 walletService: StubWalletPassService(),
@@ -109,9 +113,11 @@ struct TandasApp: App {
             let resourceCapabilities = LiveResourceCapabilityRepository(client: client)
             let ledger = LiveLedgerRepository(client: client)
             let balances = LiveBalanceRepository(client: client)
+            let funds = LiveFundRepository(client: client)
             let rsvpActions = LiveRsvpActionRepository(client: client)
             let policies = LiveGroupPolicyRepository(client: client)
             let draftRepo = LiveResourceDraftRepository(client: client)
+            let rights = LiveRightRepository(client: client)
             let analytics = LogAnalyticsService()
             let state = AppState(
                 auth: auth,
@@ -139,8 +145,10 @@ struct TandasApp: App {
                 resourceCapabilityRepo: resourceCapabilities,
                 ledgerRepo: ledger,
                 balanceRepo: balances,
+                fundRepo: funds,
                 rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
+                rightRepo: rights,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 eventNotificationDispatcher: LiveEventNotificationDispatcher(client: client),
                 walletService: StubWalletPassService(),

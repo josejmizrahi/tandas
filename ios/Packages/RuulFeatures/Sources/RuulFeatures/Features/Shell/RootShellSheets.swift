@@ -157,12 +157,24 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
-            // MARK: Members sheet
-            .fullScreenCover(isPresented: boolBinding(for: .members)) {
-                if let activeGroup = app.activeGroup {
-                    EditMembersSheet(group: activeGroup)
+            // MARK: Members list cover (read-only, everyone)
+            .fullScreenCover(isPresented: boolBinding(for: .membersList)) {
+                if let activeGroup = app.activeGroup, let uid = app.session?.user.id {
+                    NavigationStack {
+                        MembersListView(coordinator: MembersCoordinator(
+                            group: activeGroup,
+                            actorUserId: uid,
+                            groupsRepo: app.groupsRepo
+                        ))
                         .environment(app)
+                    }
+                }
+            }
 
+            // MARK: Members admin cover (admin actions)
+            .fullScreenCover(isPresented: boolBinding(for: .membersAdmin)) {
+                if let activeGroup = app.activeGroup, let uid = app.session?.user.id {
+                    MembersAdminViewWrapper(group: activeGroup, uid: uid, app: app)
                 }
             }
 
@@ -558,15 +570,22 @@ private struct GroupHomeSheetContent: View {
     @State private var path = NavigationPath()
     @State private var showEditIdentity = false
     @State private var showRotateCode = false
+    @State private var showInvite = false
+    @State private var showLeave = false
+    @State private var showMembersAdminInvite = false
 
-    private enum GroupNav: Hashable { case modules, currency, timezone, governance, rulePresets }
+    private enum GroupNav: Hashable {
+        case modules, currency, timezone, governance, rulePresets,
+             membersList, membersAdmin
+    }
 
     var body: some View {
         let coord = GroupHomeCoordinator(groupId: group.id, groupsRepo: app.groupsRepo)
         NavigationStack(path: $path) {
             GroupHomeView(
                 coordinator: coord,
-                onOpenMembers: { router.openMembers() },
+                onOpenMembersList: { path.append(GroupNav.membersList) },
+                onOpenMembersAdmin: { path.append(GroupNav.membersAdmin) },
                 onOpenGovernance: { path.append(GroupNav.governance) },
                 onOpenRulePresets: { path.append(GroupNav.rulePresets) },
                 onLeaveGroup: {
@@ -582,7 +601,9 @@ private struct GroupHomeSheetContent: View {
                 onPickModules: { path.append(GroupNav.modules) },
                 onPickCurrency: { path.append(GroupNav.currency) },
                 onPickTimezone: { path.append(GroupNav.timezone) },
-                onRotateCode: { showRotateCode = true }
+                onRotateCode: { showRotateCode = true },
+                onInviteMembers: { showInvite = true },
+                onConfirmLeave: { showLeave = true }
             )
             .navigationDestination(for: GroupNav.self) { dest in
                 switch dest {
@@ -605,7 +626,28 @@ private struct GroupHomeSheetContent: View {
                         policyRepo: app.policyRepo
                     ))
                     .environment(app)
+                case .membersList:
+                    MembersListView(coordinator: MembersCoordinator(
+                        group: group,
+                        actorUserId: app.session?.user.id ?? UUID(),
+                        groupsRepo: app.groupsRepo
+                    ))
+                    .environment(app)
+                case .membersAdmin:
+                    MembersAdminView(
+                        coordinator: MembersCoordinator(
+                            group: group,
+                            actorUserId: app.session?.user.id ?? UUID(),
+                            groupsRepo: app.groupsRepo
+                        ),
+                        onInviteTap: { showMembersAdminInvite = true }
+                    )
+                    .environment(app)
                 }
+            }
+            .fullScreenCover(isPresented: $showMembersAdminInvite) {
+                InviteMembersFromGroupView(group: group)
+                    .environment(app)
             }
             .fullScreenCover(isPresented: $showEditIdentity) {
                 EditGroupIdentitySheet(groupId: group.id)
@@ -613,6 +655,14 @@ private struct GroupHomeSheetContent: View {
             }
             .fullScreenCover(isPresented: $showRotateCode) {
                 RegenerateInviteCodeSheet(groupId: group.id)
+                    .environment(app)
+            }
+            .fullScreenCover(isPresented: $showInvite) {
+                InviteMembersFromGroupView(group: group)
+                    .environment(app)
+            }
+            .fullScreenCover(isPresented: $showLeave) {
+                LeaveGroupConfirmationSheet(group: group)
                     .environment(app)
             }
         }
@@ -648,6 +698,30 @@ private struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
         lhs.rule?.id == rhs.rule?.id
     }
     func hash(into hasher: inout Hasher) { hasher.combine(rule?.id) }
+}
+
+// MARK: - MembersAdminViewWrapper
+
+@MainActor
+private struct MembersAdminViewWrapper: View {
+    let group: RuulCore.Group
+    let uid: UUID
+    let app: AppState
+    @State private var showInvite = false
+
+    var body: some View {
+        NavigationStack {
+            MembersAdminView(
+                coordinator: MembersCoordinator(group: group, actorUserId: uid, groupsRepo: app.groupsRepo),
+                onInviteTap: { showInvite = true }
+            )
+            .environment(app)
+        }
+        .fullScreenCover(isPresented: $showInvite) {
+            InviteMembersFromGroupView(group: group)
+                .environment(app)
+        }
+    }
 }
 
 // MARK: - View extension

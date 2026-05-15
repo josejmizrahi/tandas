@@ -80,7 +80,9 @@ const CONSEQUENCE_PHASE: Partial<Record<ConsequenceType, string>> = {
   loseTurn: "phase_2",
   losePriority: "phase_2",
   assignSlot: "phase_2",
-  transferRight: "phase_2",
+  // transferRight implemented in mig 00200 — see CONSEQUENCES.transferRight
+  // below. Removed from this stub map so the engine no longer logs
+  // "reserved for phase_2" when the executor actually runs.
   // Phase 4: Custom rule editor + advanced behaviors
   serviceCompensation: "phase_4",
   blockTemporary: "phase_4",
@@ -199,6 +201,24 @@ export interface ConsequenceSink {
     duration_hours: number | null;
     quorum_percent: number | null;
     threshold_percent: number | null;
+  }): Promise<UUID>;
+
+  /**
+   * Reassigns a transferable right resource to a new holder. Invokes
+   * the canonical `transfer_right` RPC (mig 00198 + 00200) which
+   * (a) enforces the right's `transferable=true` invariant, (b) verifies
+   * the new holder is an active group member, and (c) emits the
+   * `rightTransferred` atom. The sink runs as service_role; the
+   * RPC's auth gate is relaxed for that path (mig 00200). Returns the
+   * right id (idempotent identifier — same as the input, useful as
+   * a `created_resource_ids` entry).
+   */
+  transferRight(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    right_id: UUID;
+    to_member_id: UUID;
+    reason: string | null;
   }): Promise<UUID>;
 }
 
@@ -355,6 +375,155 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
         assigned_member_id: assignedMemberId,
         ends_at: event.payload?.ends_at ?? null,
         asset_id: event.payload?.asset_id ?? null,
+      },
+    }];
+  },
+
+  // (mig 00198 + 00199) Right resource_type lifecycle atoms. The atom
+  // payloads carry the right-specific context the engine needs
+  // (holder, delegate, target_capability, …) so condition evaluators
+  // don't need to round-trip to the resource. Every evaluator below
+  // projects the *current holder* as the rule target — that's the
+  // member whose claim is being tracked, and it's what consequence
+  // executors will fine/notify/transfer when relevant.
+  //
+  // event.resource_id is the right's id itself (not its target). The
+  // right's target_resource_id (the asset the right governs) lives in
+  // event.payload.target_resource_id when relevant.
+  rightCreated: async (event, _rule, _context) => {
+    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
+    if (!holderMemberId || !event.resource_id) return [];
+    return [{
+      member_id: holderMemberId,
+      resource_id: event.resource_id,
+      context: {
+        holder_member_id:   holderMemberId,
+        target_resource_id: event.payload?.target_resource_id ?? null,
+        target_capability:  event.payload?.target_capability ?? null,
+        scope:              event.payload?.scope ?? null,
+        priority:           event.payload?.priority ?? null,
+        exclusive:          event.payload?.exclusive ?? null,
+        transferable:       event.payload?.transferable ?? null,
+        delegable:          event.payload?.delegable ?? null,
+        divisible:          event.payload?.divisible ?? null,
+        expires_at:         event.payload?.expires_at ?? null,
+        source:             event.payload?.source ?? null,
+        source_atom_id:     event.id,
+      },
+    }];
+  },
+
+  rightTransferred: async (event, _rule, _context) => {
+    const toMemberId = (event.payload?.to_member_id as string | undefined) ?? event.member_id;
+    if (!toMemberId || !event.resource_id) return [];
+    return [{
+      member_id: toMemberId,
+      resource_id: event.resource_id,
+      context: {
+        from_member_id:  event.payload?.from_member_id ?? null,
+        to_member_id:    toMemberId,
+        transferred_by:  event.payload?.transferred_by ?? null,
+        reason:          event.payload?.reason ?? null,
+        source_atom_id:  event.id,
+      },
+    }];
+  },
+
+  rightDelegated: async (event, _rule, _context) => {
+    const delegateMemberId = (event.payload?.delegate_member_id as string | undefined) ?? event.member_id;
+    if (!delegateMemberId || !event.resource_id) return [];
+    return [{
+      member_id: delegateMemberId,
+      resource_id: event.resource_id,
+      context: {
+        delegate_member_id: delegateMemberId,
+        until:              event.payload?.until ?? null,
+        delegated_by:       event.payload?.delegated_by ?? null,
+        reason:             event.payload?.reason ?? null,
+        source_atom_id:     event.id,
+      },
+    }];
+  },
+
+  // Revoke + Suspend + Restore: event.payload doesn't carry the holder
+  // (the action targets the right, not a specific member). We resolve
+  // the current holder from the resource so consequences (notification,
+  // audit) can address the affected party.
+  rightRevoked: async (event, _rule, context) => {
+    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        previous_status: event.payload?.previous_status ?? null,
+        revoked_by:      event.payload?.revoked_by ?? null,
+        reason:          event.payload?.reason ?? null,
+        source_atom_id:  event.id,
+      },
+    }];
+  },
+
+  rightSuspended: async (event, _rule, context) => {
+    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        until:          event.payload?.until ?? null,
+        suspended_by:   event.payload?.suspended_by ?? null,
+        reason:         event.payload?.reason ?? null,
+        source_atom_id: event.id,
+      },
+    }];
+  },
+
+  rightRestored: async (event, _rule, context) => {
+    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        restored_by:    event.payload?.restored_by ?? null,
+        reason:         event.payload?.reason ?? null,
+        source_atom_id: event.id,
+      },
+    }];
+  },
+
+  // (mig 00199) Cron-emitted when metadata.expires_at <= now(). Holder
+  // is in the payload (resolved by expire_due_rights). Useful for "warn
+  // the holder X days before expiration"-style rules anchored on the
+  // atom rather than a polling read.
+  rightExpired: async (event, _rule, _context) => {
+    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: holderMemberId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        expired_at:       event.payload?.expired_at ?? null,
+        holder_member_id: holderMemberId ?? null,
+        name:             event.payload?.name ?? null,
+        source:           event.payload?.source ?? null,
+        source_atom_id:   event.id,
+      },
+    }];
+  },
+
+  rightExercised: async (event, _rule, _context) => {
+    const exerciserMemberId = (event.payload?.exercised_by_member_id as string | undefined) ?? event.member_id;
+    if (!event.resource_id) return [];
+    return [{
+      member_id: exerciserMemberId ?? null,
+      resource_id: event.resource_id,
+      context: {
+        exercised_by_user_id:   event.payload?.exercised_by_user_id ?? null,
+        exercised_by_member_id: exerciserMemberId ?? null,
+        right_context:          event.payload?.context ?? {},
+        source_atom_id:         event.id,
       },
     }];
   },
@@ -569,6 +738,78 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       emitted_event_types: ["warningEmitted"],
       error: null,
     };
+  },
+
+  // (mig 00200) Transfers a right resource to a new holder via the
+  // canonical `transfer_right` RPC. Two config modes for picking the
+  // recipient:
+  //
+  //   1. `config.to_member_id: "<uuid>"` — explicit recipient
+  //   2. `config.to_target_member: true` — recipient is target.member_id
+  //      (the member the rule's trigger fired on, e.g. "transfer to
+  //      whoever exercised it last")
+  //
+  // The right id itself comes from `target.resource_id` — the rule's
+  // trigger MUST have fired on a `right` resource (e.g. rightCreated,
+  // rightTransferred, rightExercised). Misconfigured rules that fire
+  // on a non-right resource fail safe with "resource is not a right".
+  //
+  // Server-side invariants (mig 00198): transferable=true is still
+  // required; new holder must be an active group member; emits
+  // `rightTransferred` with attribution=NULL (service_role) but a
+  // rule-id reason so the audit row carries enough context.
+  transferRight: async (cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "transferRight requires target.resource_id");
+    }
+    if (context.resource && context.resource.resource_type !== "right") {
+      return failure(
+        rule.id,
+        target.member_id,
+        `transferRight target is a ${context.resource.resource_type}, not a right`,
+      );
+    }
+
+    let toMemberId: UUID | null = null;
+    const explicit = cons.config.to_member_id as string | undefined;
+    const useTarget = cons.config.to_target_member as boolean | undefined;
+    if (explicit) {
+      toMemberId = explicit;
+    } else if (useTarget) {
+      toMemberId = target.member_id;
+    }
+    if (!toMemberId) {
+      return failure(
+        rule.id,
+        target.member_id,
+        "transferRight requires config.to_member_id or config.to_target_member=true",
+      );
+    }
+
+    const reason = (cons.config.reason as string | undefined) ?? rule.name;
+    try {
+      const rightId = await context.sink.transferRight({
+        rule_id:      rule.id,
+        group_id:     rule.group_id,
+        right_id:     target.resource_id,
+        to_member_id: toMemberId,
+        reason,
+      });
+      return {
+        success: true,
+        rule_id: rule.id,
+        member_id: target.member_id,
+        // The transferred right is the "created/affected resource" for
+        // this consequence. Downstream callers use the list to roll up
+        // audit trails per ExecutionResult.
+        created_resource_ids: [rightId],
+        emitted_event_types: ["rightTransferred"],
+        error: null,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return failure(rule.id, target.member_id, `transferRight failed: ${msg}`);
+    }
   },
 };
 

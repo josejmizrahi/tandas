@@ -35,6 +35,8 @@ extension SystemEventType {
         .fundCreated,
         .fundDeposit,
         .fundThresholdReached,
+        .fundLocked,
+        .fundUnlocked,
         .positionChanged,
         .memberJoined,
         .memberLeft,
@@ -55,6 +57,26 @@ extension SystemEventType {
         .memberCapabilityOverridden,
         .ledgerEntryCreated,
         .warningEmitted,
+        .rightCreated,
+        .rightTransferred,
+        .rightDelegated,
+        .rightRevoked,
+        .rightExpired,
+        .rightExercised,
+        .rightSuspended,
+        .rightRestored,
+        .assetTransferred,
+        .assetAssigned,
+        .assetReturned,
+        .custodyAssigned,
+        .custodyReleased,
+        .maintenanceLogged,
+        .maintenanceCompleted,
+        .damageReported,
+        .assetUsed,
+        .assetCheckedOut,
+        .assetCheckedIn,
+        .valuationRecorded,
         .resourceLinked,
         .resourceUnlinked,
         .eventCancelled,
@@ -91,6 +113,8 @@ extension SystemEventType {
         "fundCreated",
         "fundDeposit",
         "fundThresholdReached",
+        "fundLocked",
+        "fundUnlocked",
         "positionChanged",
         "memberJoined",
         "memberLeft",
@@ -111,6 +135,26 @@ extension SystemEventType {
         "memberCapabilityOverridden",
         "ledgerEntryCreated",
         "warningEmitted",
+        "rightCreated",
+        "rightTransferred",
+        "rightDelegated",
+        "rightRevoked",
+        "rightExpired",
+        "rightExercised",
+        "rightSuspended",
+        "rightRestored",
+        "assetTransferred",
+        "assetAssigned",
+        "assetReturned",
+        "custodyAssigned",
+        "custodyReleased",
+        "maintenanceLogged",
+        "maintenanceCompleted",
+        "damageReported",
+        "assetUsed",
+        "assetCheckedOut",
+        "assetCheckedIn",
+        "valuationRecorded",
         "resourceLinked",
         "resourceUnlinked",
         "eventCancelled",
@@ -158,6 +202,8 @@ extension SystemEventType {
         case .fundCreated: return "fundCreated"
         case .fundDeposit: return "fundDeposit"
         case .fundThresholdReached: return "fundThresholdReached"
+        case .fundLocked: return "fundLocked"
+        case .fundUnlocked: return "fundUnlocked"
         case .positionChanged: return "positionChanged"
         case .memberJoined: return "memberJoined"
         case .memberLeft: return "memberLeft"
@@ -178,6 +224,26 @@ extension SystemEventType {
         case .memberCapabilityOverridden: return "memberCapabilityOverridden"
         case .ledgerEntryCreated: return "ledgerEntryCreated"
         case .warningEmitted: return "warningEmitted"
+        case .rightCreated: return "rightCreated"
+        case .rightTransferred: return "rightTransferred"
+        case .rightDelegated: return "rightDelegated"
+        case .rightRevoked: return "rightRevoked"
+        case .rightExpired: return "rightExpired"
+        case .rightExercised: return "rightExercised"
+        case .rightSuspended: return "rightSuspended"
+        case .rightRestored: return "rightRestored"
+        case .assetTransferred: return "assetTransferred"
+        case .assetAssigned: return "assetAssigned"
+        case .assetReturned: return "assetReturned"
+        case .custodyAssigned: return "custodyAssigned"
+        case .custodyReleased: return "custodyReleased"
+        case .maintenanceLogged: return "maintenanceLogged"
+        case .maintenanceCompleted: return "maintenanceCompleted"
+        case .damageReported: return "damageReported"
+        case .assetUsed: return "assetUsed"
+        case .assetCheckedOut: return "assetCheckedOut"
+        case .assetCheckedIn: return "assetCheckedIn"
+        case .valuationRecorded: return "valuationRecorded"
         case .resourceLinked: return "resourceLinked"
         case .resourceUnlinked: return "resourceUnlinked"
         case .eventCancelled: return "eventCancelled"
@@ -217,6 +283,8 @@ extension SystemEventType {
         case "fundCreated": return .fundCreated
         case "fundDeposit": return .fundDeposit
         case "fundThresholdReached": return .fundThresholdReached
+        case "fundLocked": return .fundLocked
+        case "fundUnlocked": return .fundUnlocked
         case "positionChanged": return .positionChanged
         case "memberJoined": return .memberJoined
         case "memberLeft": return .memberLeft
@@ -237,6 +305,26 @@ extension SystemEventType {
         case "memberCapabilityOverridden": return .memberCapabilityOverridden
         case "ledgerEntryCreated": return .ledgerEntryCreated
         case "warningEmitted": return .warningEmitted
+        case "rightCreated": return .rightCreated
+        case "rightTransferred": return .rightTransferred
+        case "rightDelegated": return .rightDelegated
+        case "rightRevoked": return .rightRevoked
+        case "rightExpired": return .rightExpired
+        case "rightExercised": return .rightExercised
+        case "rightSuspended": return .rightSuspended
+        case "rightRestored": return .rightRestored
+        case "assetTransferred": return .assetTransferred
+        case "assetAssigned": return .assetAssigned
+        case "assetReturned": return .assetReturned
+        case "custodyAssigned": return .custodyAssigned
+        case "custodyReleased": return .custodyReleased
+        case "maintenanceLogged": return .maintenanceLogged
+        case "maintenanceCompleted": return .maintenanceCompleted
+        case "damageReported": return .damageReported
+        case "assetUsed": return .assetUsed
+        case "assetCheckedOut": return .assetCheckedOut
+        case "assetCheckedIn": return .assetCheckedIn
+        case "valuationRecorded": return .valuationRecorded
         case "resourceLinked": return .resourceLinked
         case "resourceUnlinked": return .resourceUnlinked
         case "eventCancelled": return .eventCancelled

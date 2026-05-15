@@ -137,12 +137,19 @@ public final class AppState {
     /// `ledger_entries`. Read-time aggregation, no cache. MoneySectionView
     /// renders top balances inline; group-wide views use balancesForGroup.
     public let balanceRepo: any BalanceRepository
+    /// Mig 00198: per-fund balance + lifecycle (contribute/expense/lock).
+    /// Reads from `fund_balance_view`; writers wrap `record_ledger_entry`
+    /// with fund-specific invariants. Fund detail views read here.
+    public let fundRepo: any FundRepository
     public let rsvpActionRepo: any RsvpActionRepository
     /// Atomic ResourceWizard submit — calls `build_resource_from_draft`
     /// RPC (mig 00101). Builders that route through this avoid the
     /// N-call orchestration that risked orphan rows on partial failure.
     /// Founder framing 2026-05-11 #5.
     public let resourceDraftRepo: any ResourceDraftRepository
+    /// Right resource_type lifecycle: transfer/delegate/revoke/suspend/
+    /// restore/exercise/updateMetadata. Mig 00198 + 00199.
+    public let rightRepo: any RightRepository
     /// Pilot ResourceBuilder for events. Phase 2+ adds builders for slot,
     /// fund, asset following the same shape.
     public let eventBuilder: EventResourceBuilder
@@ -189,8 +196,10 @@ public final class AppState {
         resourceCapabilityRepo: any ResourceCapabilityRepository,
         ledgerRepo: any LedgerRepository,
         balanceRepo: any BalanceRepository,
+        fundRepo: any FundRepository,
         rsvpActionRepo: any RsvpActionRepository,
         resourceDraftRepo: any ResourceDraftRepository,
+        rightRepo: any RightRepository,
         notifications: NotificationService? = nil,
         eventNotificationDispatcher: any EventNotificationDispatcher = MockEventNotificationDispatcher(),
         walletService: any WalletPassService = StubWalletPassService(),
@@ -224,8 +233,10 @@ public final class AppState {
         self.resourceCapabilityRepo = resourceCapabilityRepo
         self.ledgerRepo = ledgerRepo
         self.balanceRepo = balanceRepo
+        self.fundRepo = fundRepo
         self.rsvpActionRepo = rsvpActionRepo
         self.resourceDraftRepo = resourceDraftRepo
+        self.rightRepo = rightRepo
         let eventBuilder = EventResourceBuilder(
             eventRepo: eventRepo,
             ruleRepo: ruleRepo,
@@ -243,12 +254,17 @@ public final class AppState {
         // via build_resource_from_draft. Picker card flips from
         // "Próximamente" to creatable.
         let fundBuilder = FundResourceBuilder(draftRepo: resourceDraftRepo)
+        // mig 00198: canonical `right` resource_type creation path. The
+        // sixth Resource type — normative claims (derechos, equity,
+        // membresías externas, custodia). Routes through
+        // build_resource_from_draft → create_right RPC.
+        let rightBuilder = RightResourceBuilder(draftRepo: resourceDraftRepo)
         // SlotResourceBuilder requires picking a parent Asset via a
         // resource picker that isn't wired yet. Re-register once R.1
         // (BuilderFieldRenderer.resourcePicker) loads real resources.
         self.eventBuilder = eventBuilder
         self.resourceBuilders = ResourceBuilderRegistry(builders: [
-            eventBuilder, assetBuilder, fundBuilder
+            eventBuilder, assetBuilder, fundBuilder, rightBuilder
         ])
         self.systemEventEmitter = SystemEventEmitter(repository: systemEventRepo)
         self.notifications = notifications

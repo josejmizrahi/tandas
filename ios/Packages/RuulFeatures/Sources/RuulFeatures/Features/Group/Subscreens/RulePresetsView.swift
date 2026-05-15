@@ -20,81 +20,79 @@ public struct RulePresetsView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                    intro
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                intro
 
-                    section(title: "Decisiones", subtitle: "Cómo se toman cambios importantes.") {
-                        presetPicker
-                    }
-
-                    // Show ONLY questions backed by a real target_action.
-                    // Doctrine: don't advertise what we don't deliver. As
-                    // new actions land (member.invite, fund.withdraw,
-                    // visibility.*, defaults.*) the corresponding rows
-                    // re-appear here.
-
-                    section(title: "Permisos", subtitle: "Quién puede hacer qué.") {
-                        liveList([
-                            ("¿Quién puede cambiar los acuerdos del grupo?",
-                                coordinator.humanAnswer(for: .ruleUpdateAmount),
-                                /*isLive*/ true),
-                            ("¿Quién puede agregar acuerdos nuevos?",
-                                coordinator.humanAnswer(for: .ruleCreate),
-                                true),
-                            ("¿Quién puede borrar acuerdos?",
-                                coordinator.humanAnswer(for: .ruleDelete),
-                                true),
-                            ("¿Quién puede activar/desactivar acuerdos?",
-                                coordinator.humanAnswer(for: .ruleToggle),
-                                true),
-                            // Beta 1 W2-C1: "capabilities" → "funciones nuevas".
-                            ("¿Quién puede activar funciones nuevas?",
-                                coordinator.humanAnswer(for: .capabilityEnable),
-                                true),
-                        ])
-                    }
-
-                    section(title: "Miembros", subtitle: "Cómo se quita / agrega gente.") {
-                        liveList([
-                            ("¿Quién puede invitar miembros?",
-                                coordinator.humanAnswer(for: .memberInvite),
-                                true),
-                            ("¿Cómo se quita a alguien del grupo?",
-                                coordinator.humanAnswer(for: .memberRemove),
-                                true),
-                        ])
-                    }
-
-                    section(title: "Dinero", subtitle: "Reglas financieras globales del grupo.") {
-                        liveList([
-                            ("¿Quién puede registrar gastos?",
-                                coordinator.humanAnswer(for: .expenseCreate),
-                                true),
-                        ])
-                    }
+                section(title: "Decisiones", subtitle: "Cómo se toman cambios importantes.") {
+                    presetPicker
                 }
-                .padding(.horizontal, RuulSpacing.lg)
-                .padding(.top, RuulSpacing.lg)
-                .padding(.bottom, RuulSpacing.xxl)
-            }
-            .ruulAmbientScreen(palette: nil)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                        .foregroundStyle(Color.ruulTextSecondary)
+
+                // Show ONLY questions backed by a real target_action.
+                // Doctrine: don't advertise what we don't deliver. As
+                // new actions land (member.invite, fund.withdraw,
+                // visibility.*, defaults.*) the corresponding rows
+                // re-appear here.
+
+                section(title: "Permisos", subtitle: "Quién puede hacer qué.") {
+                    liveList([
+                        ("¿Quién puede cambiar los acuerdos del grupo?",
+                            coordinator.humanAnswer(for: .ruleUpdateAmount),
+                            /*isLive*/ true),
+                        ("¿Quién puede agregar acuerdos nuevos?",
+                            coordinator.humanAnswer(for: .ruleCreate),
+                            true),
+                        ("¿Quién puede borrar acuerdos?",
+                            coordinator.humanAnswer(for: .ruleDelete),
+                            true),
+                        ("¿Quién puede activar/desactivar acuerdos?",
+                            coordinator.humanAnswer(for: .ruleToggle),
+                            true),
+                        // Beta 1 W2-C1: "capabilities" → "funciones nuevas".
+                        ("¿Quién puede activar funciones nuevas?",
+                            coordinator.humanAnswer(for: .capabilityEnable),
+                            true),
+                    ])
                 }
-                ToolbarItem(placement: .principal) {
-                    Text("Gobierno del grupo")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+
+                section(title: "Miembros", subtitle: "Cómo se quita / agrega gente.") {
+                    liveList([
+                        ("¿Quién puede invitar miembros?",
+                            coordinator.humanAnswer(for: .memberInvite),
+                            true),
+                        ("¿Cómo se quita a alguien del grupo?",
+                            coordinator.humanAnswer(for: .memberRemove),
+                            true),
+                    ])
+                }
+
+                section(title: "Dinero", subtitle: "Reglas financieras globales del grupo.") {
+                    liveList([
+                        ("¿Quién puede registrar gastos?",
+                            coordinator.humanAnswer(for: .expenseCreate),
+                            true),
+                    ])
                 }
             }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
-            .task { await coordinator.refresh() }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.lg)
+            .padding(.bottom, RuulSpacing.xxl)
         }
+        .ruulAmbientScreen(palette: nil)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cerrar") { dismiss() }
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Gobierno del grupo")
+                    .ruulTextStyle(RuulTypography.headline)
+                    .foregroundStyle(Color.ruulTextPrimary)
+            }
+        }
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+        .task { await coordinator.refresh() }
     }
 
     // MARK: - Intro
