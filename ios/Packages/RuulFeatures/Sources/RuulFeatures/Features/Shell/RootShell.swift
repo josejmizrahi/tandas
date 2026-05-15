@@ -54,7 +54,7 @@ public struct RootShell: View {
                 .tabItem { Label("Actividad", systemImage: "clock.arrow.circlepath") }
                 .tag(RootTab.activity)
 
-            ProfileTab(profile: profileCoordinator)
+            ProfileTab(profile: profileCoordinator, myFines: myFinesCoordinator)
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle.fill") }
                 .tag(RootTab.profile)
         }
