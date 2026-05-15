@@ -183,9 +183,10 @@ export interface ConsequenceSink {
   }): Promise<UUID>;
 
   /**
-   * Opens a `ledger_review` vote for the `startVote` consequence. Phase 1:
-   * vote is informational — `finalize_vote` doesn't auto-void the ledger
-   * entry. Returns the new votes.id. Per mig 00194.
+   * Opens a vote for the `startVote` consequence. The optional knobs
+   * (duration/quorum/threshold) override `start_vote` RPC defaults when
+   * the template params surface them. nil falls through to the RPC's
+   * group-policy defaults. Per mig 00194 + Sprint 8 config controls.
    */
   startVote(args: {
     rule_id: UUID;
@@ -195,6 +196,9 @@ export interface ConsequenceSink {
     title: string;
     description: string | null;
     payload: Record<string, unknown>;
+    duration_hours: number | null;
+    quorum_percent: number | null;
+    threshold_percent: number | null;
   }): Promise<UUID>;
 }
 
@@ -526,6 +530,9 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
         ledger_type:    target.context.type ?? null,
         recorder_member_id: target.member_id,
       },
+      duration_hours:    (cons.config.duration_hours as number | undefined) ?? null,
+      quorum_percent:    (cons.config.quorum_percent as number | undefined) ?? null,
+      threshold_percent: (cons.config.threshold_percent as number | undefined) ?? null,
     });
     return {
       success: true,

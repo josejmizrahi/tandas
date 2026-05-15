@@ -177,7 +177,12 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
             category: "money",
             templateKind: "governance",
             requiredCapabilities: ["ledger", "voting"],
-            defaultParams: .object(["threshold_cents": .int(500_000)]),
+            defaultParams: .object([
+                "threshold_cents":   .int(500_000),
+                "duration_hours":    .int(48),
+                "quorum_percent":    .int(50),
+                "threshold_percent": .int(50),
+            ]),
             composition: .init(
                 triggerShapeId: "ledgerEntryCreated",
                 conditionShapeIds: ["amountAbove"],

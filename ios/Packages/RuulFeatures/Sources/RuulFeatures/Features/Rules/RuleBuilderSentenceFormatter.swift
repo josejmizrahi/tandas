@@ -48,7 +48,10 @@ public enum RuleBuilderSentenceFormatter {
 
         case "expense_threshold_vote":
             let cents = paramInt(params, "threshold_cents") ?? 500_000
-            return "Si alguien registra un gasto mayor a \(currency(cents / 100)), se abre una votación. Si el grupo la rechaza, el gasto se reversa automáticamente."
+            let hours = paramInt(params, "duration_hours") ?? 48
+            let quorum = paramInt(params, "quorum_percent") ?? 50
+            let threshold = paramInt(params, "threshold_percent") ?? 50
+            return "Si alguien registra un gasto mayor a \(currency(cents / 100)), se abre un voto de \(hours)h (quórum \(quorum)%, umbral \(threshold)%). Si pierde, el gasto se reversa automáticamente."
 
         default:
             return template.descriptionES

@@ -194,7 +194,11 @@ private struct ParamFormView: View {
         if case .object(let dict) = template.defaultParams {
             return dict.keys.sorted { lhs, rhs in
                 // amount first, then minutes/hours, then others alpha.
-                let ranks = ["amount": 0, "threshold_cents": 0, "minutes": 1, "hours": 2]
+                let ranks = [
+                    "amount": 0, "threshold_cents": 0,
+                    "minutes": 1, "hours": 2,
+                    "duration_hours": 10, "quorum_percent": 11, "threshold_percent": 12,
+                ]
                 return (ranks[lhs] ?? 99, lhs) < (ranks[rhs] ?? 99, rhs)
             }
         }
@@ -240,51 +244,66 @@ private struct ParamField: View {
 
     private var label: String {
         switch key {
-        case "amount":          return "Monto de la multa"
-        case "minutes":         return "Tolerancia"
-        case "hours":           return "Anticipación"
-        case "threshold_cents": return "Umbral del gasto"
-        default:                return key.capitalized
+        case "amount":            return "Monto de la multa"
+        case "minutes":           return "Tolerancia"
+        case "hours":             return "Anticipación"
+        case "threshold_cents":   return "Umbral del gasto"
+        case "duration_hours":    return "Duración del voto"
+        case "quorum_percent":    return "Quórum mínimo"
+        case "threshold_percent": return "Umbral para pasar"
+        default:                  return key.capitalized
         }
     }
 
     private var unit: String {
         switch key {
-        case "amount":          return "MXN — pesos mexicanos"
-        case "minutes":         return "minutos después de la hora"
-        case "hours":           return "horas antes del evento"
-        case "threshold_cents": return "MXN — el aviso se dispara arriba de este monto"
-        default:                return ""
+        case "amount":            return "MXN — pesos mexicanos"
+        case "minutes":           return "minutos después de la hora"
+        case "hours":             return "horas antes del evento"
+        case "threshold_cents":   return "MXN — el voto se dispara arriba de este monto"
+        case "duration_hours":    return "horas que el voto sigue abierto"
+        case "quorum_percent":    return "% de miembros que deben votar para que cuente"
+        case "threshold_percent": return "% de votos a favor (vs total) para que pase"
+        default:                  return ""
         }
     }
 
     private var range: ClosedRange<Int> {
         switch key {
-        case "amount":          return 50...10_000
-        case "minutes":         return 0...120
-        case "hours":           return 1...168
-        case "threshold_cents": return 50_000...100_000_000   // $500 - $1,000,000 in cents
-        default:                return 0...1_000_000
+        case "amount":            return 50...10_000
+        case "minutes":           return 0...120
+        case "hours":             return 1...168
+        case "threshold_cents":   return 50_000...100_000_000
+        case "duration_hours":    return 1...168
+        case "quorum_percent":    return 0...100
+        case "threshold_percent": return 0...100
+        default:                  return 0...1_000_000
         }
     }
 
     private var step: Int {
         switch key {
-        case "amount":          return 50
-        case "minutes":         return 5
-        case "hours":           return 1
-        case "threshold_cents": return 50_000   // $500 jumps
-        default:                return 1
+        case "amount":            return 50
+        case "minutes":           return 5
+        case "hours":             return 1
+        case "threshold_cents":   return 50_000
+        case "duration_hours":    return 6
+        case "quorum_percent":    return 5
+        case "threshold_percent": return 5
+        default:                  return 1
         }
     }
 
     private func format(_ v: Int) -> String {
         switch key {
-        case "amount":          return "$\(v)"
-        case "minutes":         return "\(v) min"
-        case "hours":           return "\(v) h"
-        case "threshold_cents": return "$\(v / 100)"
-        default:                return String(v)
+        case "amount":            return "$\(v)"
+        case "minutes":           return "\(v) min"
+        case "hours":             return "\(v) h"
+        case "threshold_cents":   return "$\(v / 100)"
+        case "duration_hours":    return "\(v) h"
+        case "quorum_percent":    return "\(v)%"
+        case "threshold_percent": return "\(v)%"
+        default:                  return String(v)
         }
     }
 }

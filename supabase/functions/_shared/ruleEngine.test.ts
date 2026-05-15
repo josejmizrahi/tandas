@@ -1283,3 +1283,66 @@ Deno.test("startVote: short-circuits when ledger_entry_id missing from context",
   assertEquals(results[0].success, false);
   assertEquals(votes.length, 0);
 });
+
+Deno.test("startVote: forwards duration_hours/quorum_percent/threshold_percent from config", async () => {
+  const { sink, votes } = captureSink();
+  const rule = makeRule(
+    "Voto por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{
+      type: "startVote",
+      config: {
+        vote_type: "ledger_review",
+        duration_hours: 72,
+        quorum_percent: 60,
+        threshold_percent: 67,
+      },
+    }],
+  );
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("ledgerEntryCreated", {
+    member_id: memberAlice.id,
+    payload: { ledger_entry_id: "le-config-1", amount_cents: 700000 },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, true);
+  assertEquals(votes.length, 1);
+  const v = votes[0] as {
+    duration_hours: number | null;
+    quorum_percent: number | null;
+    threshold_percent: number | null;
+  };
+  assertEquals(v.duration_hours, 72);
+  assertEquals(v.quorum_percent, 60);
+  assertEquals(v.threshold_percent, 67);
+});
+
+Deno.test("startVote: defaults to null when config omits knobs (RPC fallback)", async () => {
+  const { sink, votes } = captureSink();
+  const rule = makeRule(
+    "Voto por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "alwaysTrue", config: {} }],
+    [{ type: "startVote", config: { vote_type: "ledger_review" } }],
+  );
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("ledgerEntryCreated", {
+    member_id: memberAlice.id,
+    payload: { ledger_entry_id: "le-noconfig", amount_cents: 700000 },
+  });
+  await runRulesForEvent(event, [rule], ctx);
+
+  const v = votes[0] as {
+    duration_hours: number | null;
+    quorum_percent: number | null;
+    threshold_percent: number | null;
+  };
+  assertEquals(v.duration_hours, null);
+  assertEquals(v.quorum_percent, null);
+  assertEquals(v.threshold_percent, null);
+});

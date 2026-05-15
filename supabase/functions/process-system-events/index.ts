@@ -263,20 +263,24 @@ async function buildContext(
       return data as string;
     },
 
-    // (mig 00194) Opens a vote via canonical start_vote RPC. Returns
-    // votes.id. Caller's vote_type must pass is_known_vote_type whitelist
-    // (mig 00194 added 'ledger_review').
+    // (mig 00194 + Sprint 8) Opens a vote via canonical start_vote RPC.
+    // Returns votes.id. Caller's vote_type must pass is_known_vote_type
+    // whitelist. Optional duration/quorum/threshold pass through to the
+    // RPC; null falls through to group-policy defaults.
     startVote: async (args) => {
       const { data, error } = await supabase.rpc("start_vote", {
-        p_group_id:     args.group_id,
-        p_vote_type:    args.vote_type,
-        p_reference_id: args.reference_id,
-        p_title:        args.title,
-        p_description:  args.description,
-        p_payload:      {
+        p_group_id:          args.group_id,
+        p_vote_type:         args.vote_type,
+        p_reference_id:      args.reference_id,
+        p_title:             args.title,
+        p_description:       args.description,
+        p_payload:           {
           rule_id: args.rule_id,
           ...args.payload,
         },
+        p_duration_hours:    args.duration_hours,
+        p_quorum_percent:    args.quorum_percent,
+        p_threshold_percent: args.threshold_percent,
       });
       if (error) throw new Error(`startVote start_vote failed: ${error.message}`);
       return data as string;
