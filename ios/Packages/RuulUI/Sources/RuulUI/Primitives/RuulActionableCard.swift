@@ -52,11 +52,7 @@ public struct RuulActionableCard: View {
                 accessoryView
             }
             .padding(RuulSpacing.lg)
-            .background(
-                Color.ruulSurface,
-                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-            )
-            .ruulElevation(.sm)
+            .ruulCardSurface(.glass, radius: RuulRadius.large)
         }
         .buttonStyle(.ruulPress)
     }

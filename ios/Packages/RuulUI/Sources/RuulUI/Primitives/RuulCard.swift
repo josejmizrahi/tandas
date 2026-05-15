@@ -59,11 +59,18 @@ private struct RuulCardStyleModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
         switch style {
         case .tile:
-            // Modern tile: solid surface + very subtle shadow, no
-            // border. Definition comes from elevation, not chrome.
-            content
-                .background(tint ?? Color.ruulSurface, in: shape)
-                .ruulElevation(.sm)
+            // Luma-style glass tile: translucent material that picks up
+            // the ambient palette of the parent screen. When a tint is
+            // supplied (e.g. categorical card variant), it layers on top
+            // of the material for a subtly colored glass.
+            if let tint {
+                content
+                    .background(.ultraThinMaterial, in: shape)
+                    .background(tint.opacity(0.20), in: shape)
+            } else {
+                content
+                    .background(.ultraThinMaterial, in: shape)
+            }
         case .glass:
             content
                 .ruulGlass(shape, material: .regular, tint: tint, interactive: interactive)

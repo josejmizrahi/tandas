@@ -71,8 +71,7 @@ public struct ActionCard: View {
             }
             .padding(RuulSpacing.lg)
             .frame(maxWidth: .infinity)
-            .background(Color.ruulSurface, in: shape)
-            .ruulElevation(.sm)
+            .ruulCardSurface(.glass, radius: RuulRadius.large)
         }
         .buttonStyle(.ruulPress)
         .accessibilityElement(children: .combine)

@@ -78,8 +78,7 @@ public struct RuulMetricCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RuulSpacing.lg)
-        .background(Color.ruulSurface, in: shape)
-        .ruulElevation(.sm)
+        .background(.ultraThinMaterial, in: shape)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }

@@ -256,35 +256,69 @@ public struct HomeView: View {
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.nextEvent?.id)
     }
 
+    /// Compact list-row replacement for the previous full-poster hero —
+    /// cover thumbnail + date / title / location stacked vertically +
+    /// chevron, all wrapped in a glass card. Tap opens the event detail.
+    /// Designed to stay ~100pt tall so the home doesn't get dominated by
+    /// the next-event preview the way Apple Sports / Luma never do.
     private func heroTile(_ event: Event) -> some View {
         Button { onOpenEvent(event) } label: {
-            ZStack(alignment: .bottomLeading) {
+            HStack(alignment: .center, spacing: RuulSpacing.md) {
                 cover(for: event)
-                    .aspectRatio(4/5, contentMode: .fill)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear,                    location: 0.00),
-                        .init(color: .clear,                    location: 0.35),
-                        .init(color: Color.ruulImageVignetteMid.opacity(1.0), location: 0.65),
-                        .init(color: Color.ruulImageVignetteDeep.opacity(1.0), location: 1.00)
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-
-                heroTopBadges(event)
-                heroBottomBlock(event)
+                    .frame(width: 84, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(heroDateLine(event))
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                    Text(event.title)
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    heroSubMeta(event)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .ruulTextStyle(RuulTypography.calloutBold)
+                    .foregroundStyle(Color.ruulTextTertiary)
             }
-            .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            .padding(RuulSpacing.md)
+            .ruulCardSurface(.glass, radius: RuulRadius.large)
         }
         .buttonStyle(.ruulPress)
+    }
+
+    /// One-line meta under the title. Priority: hosting-you badge,
+    /// then recurrence badge, then location. EmptyView when none apply
+    /// so the row collapses to date + title without dead space.
+    @ViewBuilder
+    private func heroSubMeta(_ event: Event) -> some View {
+        if event.hostId == userId {
+            inlineMetaBadge(icon: "star.fill", text: "Hosteas tú")
+        } else if event.isRecurringGenerated {
+            inlineMetaBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente")
+        } else if let location = event.locationName, !location.isEmpty {
+            Label(location, systemImage: "mappin.and.ellipse")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .lineLimit(1)
+        } else {
+            EmptyView()
+        }
+    }
+
+    private func inlineMetaBadge(icon: String, text: String) -> some View {
+        HStack(spacing: RuulSpacing.xxs) {
+            Image(systemName: icon)
+                .ruulTextStyle(RuulTypography.caption)
+            Text(text)
+                .ruulTextStyle(RuulTypography.caption)
+        }
+        .foregroundStyle(Color.ruulTextSecondary)
+        .padding(.horizontal, RuulSpacing.xs)
+        .padding(.vertical, 2)
+        .background(Color.ruulFillGlass, in: Capsule())
     }
 
     private func heroTopBadges(_ event: Event) -> some View {
