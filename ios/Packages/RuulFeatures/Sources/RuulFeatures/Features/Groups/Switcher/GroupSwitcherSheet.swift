@@ -2,9 +2,15 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Sheet shown when the user taps the group name in HomeView header.
-/// Lists every group the user belongs to (tap to switch active), plus
-/// two entry points: create a new group, or join one with an invite code.
+/// Sheet shown when the user taps the group pill in the Home header.
+/// Lists every group the user belongs to (tap a row to switch active),
+/// plus two entry points: create a new group, or join one with a code.
+///
+/// Visual rhythm matches the rest of the app: section headers via
+/// `RuulListSectionHeader`, rows in `RuulSeparatedRows` (hairline
+/// dividers, no card chrome). The active row is marked with a
+/// "Activo" pill on the trailing edge so tapping any non-active row
+/// is obviously a switch action.
 public struct GroupSwitcherSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -20,44 +26,21 @@ public struct GroupSwitcherSheet: View {
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                    section(title: "Tus grupos") {
-                        RuulSeparatedRows(items: app.groups) { group in
-                            groupRow(group)
-                        }
-                    }
-                    section(title: "Más opciones") {
-                        VStack(spacing: RuulSpacing.xs) {
-                            actionRow(
-                                icon: "plus.circle.fill",
-                                title: "Crear nuevo grupo",
-                                subtitle: "Empieza un grupo nuevo desde cero"
-                            ) {
-                                dismiss()
-                                onCreateGroup()
-                            }
-                            actionRow(
-                                icon: "person.badge.plus",
-                                title: "Unirme con código",
-                                subtitle: "Tengo un código de invitación"
-                            ) {
-                                dismiss()
-                                onJoinGroup()
-                            }
-                        }
-                    }
+                VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                    groupsSection
+                    actionsSection
                 }
-                .padding(.horizontal, RuulSpacing.md)
+                .padding(.horizontal, RuulSpacing.screenPadding)
+                .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.xxl)
             }
             .ruulAmbientScreen(palette: nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                        .foregroundStyle(Color.ruulTextSecondary)
+                    RuulCloseToolbarButton { dismiss() }
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("Grupos")
+                    Text("Cambiar grupo")
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
@@ -67,14 +50,21 @@ public struct GroupSwitcherSheet: View {
         }
     }
 
-    @ViewBuilder
-    private func section<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(title)
-                .ruulTextStyle(RuulTypography.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.leading, RuulSpacing.xxs)
-            content()
+    private var groupsSection: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            RuulListSectionHeader("TUS GRUPOS", count: app.groups.count)
+            RuulSeparatedRows(items: app.groups) { group in
+                groupRow(group)
+            }
+        }
+    }
+
+    private var actionsSection: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            RuulListSectionHeader("MÁS OPCIONES")
+            RuulSeparatedRows(items: SwitcherAction.allCases) { action in
+                actionRow(action)
+            }
         }
     }
 
@@ -90,15 +80,8 @@ public struct GroupSwitcherSheet: View {
             }
             dismiss()
         } label: {
-            HStack(spacing: RuulSpacing.sm) {
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulAccentMuted)
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(initials(for: group.name))
-                            .ruulTextStyle(RuulTypography.headline)
-                            .foregroundStyle(Color.ruulAccent)
-                    )
+            HStack(spacing: RuulSpacing.md) {
+                RuulGroupAvatar(group: group, size: .lg)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(group.name)
                         .ruulTextStyle(RuulTypography.body)
@@ -108,67 +91,86 @@ public struct GroupSwitcherSheet: View {
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 if isActive {
-                    Image(systemName: "checkmark.circle.fill")
-                        .ruulTextStyle(RuulTypography.headlineMedium)
-                        .foregroundStyle(Color.ruulAccent)
+                    Text("ACTIVO")
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .padding(.horizontal, RuulSpacing.sm)
+                        .padding(.vertical, 4)
+                        .overlay(
+                            Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5)
+                        )
                         .accessibilityHidden(true)
                 }
             }
-            .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(isActive ? Color.ruulBorderStrong : Color.ruulSeparator, lineWidth: 1)
-            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isActive ? "\(group.name), grupo activo" : "Cambiar a \(group.name)")
     }
 
-    private func actionRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: icon)
-                    .ruulTextStyle(RuulTypography.titleMedium)
-                    .foregroundStyle(Color.ruulAccent)
-                    .frame(width: 44, height: 44)
-                    .background(Color.ruulAccentMuted, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+    private func actionRow(_ action: SwitcherAction) -> some View {
+        Button {
+            dismiss()
+            switch action {
+            case .create: onCreateGroup()
+            case .join:   onJoinGroup()
+            }
+        } label: {
+            HStack(spacing: RuulSpacing.md) {
+                Image(systemName: action.icon)
+                    .ruulTextStyle(RuulTypography.subheadSemibold)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .frame(width: RuulSize.avatarMedium, height: RuulSize.avatarMedium)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(action.title)
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextPrimary)
-                    Text(subtitle)
+                    Text(action.subtitle)
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .ruulTextStyle(RuulTypography.labelSemibold)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 1)
-            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private func initials(for name: String) -> String {
-        let words = name.split(separator: " ").prefix(2)
-        return words.compactMap { $0.first }.map(String.init).joined().uppercased()
+    /// Identifiable enum so `RuulSeparatedRows` can drive the two
+    /// trailing options ("Crear nuevo grupo", "Unirme con código")
+    /// with the same hairline rhythm as the groups list above.
+    private enum SwitcherAction: String, CaseIterable, Identifiable {
+        case create, join
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .create: return "plus"
+            case .join:   return "person.badge.plus"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .create: return "Crear nuevo grupo"
+            case .join:   return "Unirme con código"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .create: return "Empieza un grupo nuevo desde cero"
+            case .join:   return "Tengo un código de invitación"
+            }
+        }
     }
 }

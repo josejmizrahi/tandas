@@ -81,8 +81,7 @@ public struct RulePresetsView: View {
         .ruulAmbientScreen(palette: nil)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Cerrar") { dismiss() }
-                    .foregroundStyle(Color.ruulTextSecondary)
+                RuulCloseToolbarButton { dismiss() }
             }
             ToolbarItem(placement: .principal) {
                 Text("Gobierno del grupo")

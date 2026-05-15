@@ -28,7 +28,7 @@ public struct MembersAdminView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Cerrar") { dismiss() }
+                RuulCloseToolbarButton { dismiss() }
             }
             if let onInviteTap {
                 ToolbarItem(placement: .topBarTrailing) {
