@@ -23,12 +23,25 @@ public struct RuleDetailView: View {
     @Environment(AppState.self) private var app
     public let rule: GroupRule
     public let canEditRules: Bool
+    /// If non-nil, a repeal or change vote is open for this rule. Used to
+    /// block "Editar parámetros" while a vote is in flight (editing params
+    /// while a vote is pending would create a superseding version that races
+    /// with the vote outcome). Defaults to nil for callers that don't track
+    /// pending votes (e.g. previews, non-admin paths).
+    public let pendingVote: PendingVote?
     public let onEdit: () -> Void
     public let onProposeChange: () -> Void
 
-    public init(rule: GroupRule, canEditRules: Bool, onEdit: @escaping () -> Void, onProposeChange: @escaping () -> Void) {
+    public init(
+        rule: GroupRule,
+        canEditRules: Bool,
+        pendingVote: PendingVote? = nil,
+        onEdit: @escaping () -> Void,
+        onProposeChange: @escaping () -> Void
+    ) {
         self.rule = rule
         self.canEditRules = canEditRules
+        self.pendingVote = pendingVote
         self.onEdit = onEdit
         self.onProposeChange = onProposeChange
     }
@@ -135,19 +148,38 @@ public struct RuleDetailView: View {
                 )
                 if let template = templateForRule,
                    let repo = app.ruleTemplateRepo {
-                    RuulButton(
-                        "Editar parámetros",
-                        systemImage: "slider.horizontal.3",
-                        style: .secondary,
-                        fillsWidth: true,
-                        action: {
-                            paramsCoordinator = EditRuleParamsCoordinator(
-                                rule: rule,
-                                template: template,
-                                ruleTemplateRepo: repo
+                    if pendingVote != nil {
+                        // Block param edits while a repeal/change vote is open.
+                        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                            RuulButton(
+                                "Editar parámetros",
+                                systemImage: "slider.horizontal.3",
+                                style: .secondary,
+                                fillsWidth: true,
+                                action: {}
                             )
+                            .disabled(true)
+                            .opacity(0.5)
+                            Text("Hay un cambio en votación — espera al resultado")
+                                .ruulTextStyle(RuulTypography.caption)
+                                .foregroundStyle(Color.ruulTextTertiary)
+                                .padding(.horizontal, RuulSpacing.xs)
                         }
-                    )
+                    } else {
+                        RuulButton(
+                            "Editar parámetros",
+                            systemImage: "slider.horizontal.3",
+                            style: .secondary,
+                            fillsWidth: true,
+                            action: {
+                                paramsCoordinator = EditRuleParamsCoordinator(
+                                    rule: rule,
+                                    template: template,
+                                    ruleTemplateRepo: repo
+                                )
+                            }
+                        )
+                    }
                 }
                 RuulButton(
                     "Proponer cambio al grupo",
