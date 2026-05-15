@@ -287,7 +287,7 @@ public final class ResourceLedgerCoordinator {
         // Default policy is `direct` (anyone can record), so this is a
         // no-op for groups that haven't customized their money policy.
         // Strict / admin-curated groups can lift it to `admin_only` via
-        // GroupRulesSettingsView once V2 ships per-question editing.
+        // RulePresetsView once V2 ships per-question editing.
         // amount_cents is included in the payload so V2's threshold-aware
         // policies (condition_config.min_amount_cents) can evaluate the
         // expense's size — the resolver ignores it today.

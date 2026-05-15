@@ -10,7 +10,7 @@ import RuulCore
 /// Money → Visibility → Defaults. V1 only edits Decisions (via preset);
 /// the other five render the human Q&A but their answers are read-only
 /// previews until per-question editing ships in V2.
-public struct GroupRulesSettingsView: View {
+public struct RulePresetsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppState.self) private var app
     @Bindable var coordinator: GroupRulesCoordinator

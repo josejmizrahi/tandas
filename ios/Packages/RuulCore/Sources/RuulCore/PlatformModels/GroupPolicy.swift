@@ -146,7 +146,7 @@ extension PolicyDecision: Codable {
 }
 
 /// Row in `public.group_policies` (mig 00087). V1 reads policies grouped by
-/// `(group, action)`; the editor in `GroupRulesSettingsView` upserts these.
+/// `(group, action)`; the editor in `RulePresetsView` upserts these.
 public struct GroupPolicy: Identifiable, Sendable, Hashable {
     public let id: UUID
     public let groupId: UUID

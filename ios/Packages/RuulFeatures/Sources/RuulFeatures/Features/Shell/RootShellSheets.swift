@@ -54,7 +54,7 @@ public struct RootShellSheets: ViewModifier {
             }
             .fullScreenCover(isPresented: boolBinding(for: .groupRulesSettings)) {
                 if let group = app.activeGroup {
-                    GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
+                    RulePresetsView(coordinator: GroupRulesCoordinator(
                         group: group,
                         actorUserId: app.session?.user.id ?? UUID(),
                         policyRepo: app.policyRepo

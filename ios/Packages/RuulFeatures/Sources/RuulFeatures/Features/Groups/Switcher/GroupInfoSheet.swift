@@ -106,14 +106,14 @@ public struct GroupInfoSheet: View {
 
         }
         .fullScreenCover(isPresented: $governancePresented) {
-            GovernanceSettingsView(group: currentGroup) { updated in
+            GovernanceView(group: currentGroup) { updated in
                 liveGroup = updated
             }
             .environment(app)
 
         }
         .fullScreenCover(isPresented: $groupRulesPresented) {
-            GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
+            RulePresetsView(coordinator: GroupRulesCoordinator(
                 group: currentGroup,
                 actorUserId: app.session?.user.id ?? UUID(),
                 policyRepo: app.policyRepo

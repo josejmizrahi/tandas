@@ -3,7 +3,7 @@ import Observation
 import OSLog
 import RuulCore
 
-/// Drives `GroupRulesSettingsView`. Lists current `group_policies` and
+/// Drives `RulePresetsView`. Lists current `group_policies` and
 /// applies presets via `GroupPolicyRepository.applyPreset`. V1 only edits
 /// the rule.* family via preset; per-row custom overrides land in V2.
 @Observable @MainActor

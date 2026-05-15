@@ -12,7 +12,7 @@ import RuulCore
 /// level is `majorityVote`, the contract is "this opens a vote", not
 /// "writes directly" — V1 we still write directly; the vote-gated path
 /// ships when generic vote creation UI lands (P0 #5 in audit).
-public struct GovernanceSettingsView: View {
+public struct GovernanceView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
