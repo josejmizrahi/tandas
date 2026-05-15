@@ -51,15 +51,12 @@ public struct RuulActionableCard: View {
                 Spacer(minLength: 0)
                 accessoryView
             }
-            .padding(RuulSpacing.md)
+            .padding(RuulSpacing.lg)
             .background(
                 Color.ruulSurface,
                 in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            .ruulElevation(.sm)
         }
         .buttonStyle(.ruulPress)
     }

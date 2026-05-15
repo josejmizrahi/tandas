@@ -1,9 +1,13 @@
 import SwiftUI
 
 public enum RuulCardStyle: Sendable, Hashable {
-    /// Apple Sports tile — solid elevated bg, 0.5pt subtle border, no shadow.
-    /// **Default** for content cards. Quiet chrome that lets covers/scores
-    /// take the visual lead.
+    /// Modern content tile — solid surface, no border, very subtle
+    /// shadow. **Default** for content cards. Reads cleanly on the
+    /// canvas background and over light ambient gradients.
+    ///
+    /// 2026-05-15 refresh: dropped the 0.5pt Apple-Sports border in
+    /// favor of a Luma-style soft elevation so cards feel grounded
+    /// without the picture-frame look.
     case tile
     /// Liquid Glass — reserved for transient surfaces (nav bars, sheets,
     /// floating overlays). Avoid on per-row content cards.
@@ -55,10 +59,11 @@ private struct RuulCardStyleModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
         switch style {
         case .tile:
-            // Apple Sports tile: solid + 0.5pt border, NO shadow.
+            // Modern tile: solid surface + very subtle shadow, no
+            // border. Definition comes from elevation, not chrome.
             content
                 .background(tint ?? Color.ruulSurface, in: shape)
-                .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
+                .ruulElevation(.sm)
         case .glass:
             content
                 .ruulGlass(shape, material: .regular, tint: tint, interactive: interactive)

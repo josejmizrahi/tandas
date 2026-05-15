@@ -77,9 +77,9 @@ public struct RuulMetricCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RuulSpacing.md)
+        .padding(RuulSpacing.lg)
         .background(Color.ruulSurface, in: shape)
-        .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
+        .ruulElevation(.sm)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
