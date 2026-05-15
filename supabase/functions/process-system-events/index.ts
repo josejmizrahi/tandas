@@ -285,6 +285,23 @@ async function buildContext(
       if (error) throw new Error(`startVote start_vote failed: ${error.message}`);
       return data as string;
     },
+
+    // (mig 00200) Invokes the canonical transfer_right RPC as
+    // service_role. The RPC's auth gate was relaxed in mig 00200 so
+    // that auth.uid()=NULL (cron) bypasses the membership check; the
+    // transferable=true invariant + new-holder-is-member check still
+    // run. The reason is prefixed with the rule id so the audit
+    // row stays traceable to the consequence even though
+    // transferred_by ends up NULL on the atom.
+    transferRight: async (args) => {
+      const { error } = await supabase.rpc("transfer_right", {
+        p_right_id:     args.right_id,
+        p_to_member_id: args.to_member_id,
+        p_reason:       `rule:${args.rule_id}${args.reason ? ` — ${args.reason}` : ""}`,
+      });
+      if (error) throw new Error(`transferRight transfer_right failed: ${error.message}`);
+      return args.right_id;
+    },
   };
 
   return {

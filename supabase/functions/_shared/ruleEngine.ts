@@ -80,7 +80,9 @@ const CONSEQUENCE_PHASE: Partial<Record<ConsequenceType, string>> = {
   loseTurn: "phase_2",
   losePriority: "phase_2",
   assignSlot: "phase_2",
-  transferRight: "phase_2",
+  // transferRight implemented in mig 00200 — see CONSEQUENCES.transferRight
+  // below. Removed from this stub map so the engine no longer logs
+  // "reserved for phase_2" when the executor actually runs.
   // Phase 4: Custom rule editor + advanced behaviors
   serviceCompensation: "phase_4",
   blockTemporary: "phase_4",
@@ -199,6 +201,24 @@ export interface ConsequenceSink {
     duration_hours: number | null;
     quorum_percent: number | null;
     threshold_percent: number | null;
+  }): Promise<UUID>;
+
+  /**
+   * Reassigns a transferable right resource to a new holder. Invokes
+   * the canonical `transfer_right` RPC (mig 00198 + 00200) which
+   * (a) enforces the right's `transferable=true` invariant, (b) verifies
+   * the new holder is an active group member, and (c) emits the
+   * `rightTransferred` atom. The sink runs as service_role; the
+   * RPC's auth gate is relaxed for that path (mig 00200). Returns the
+   * right id (idempotent identifier — same as the input, useful as
+   * a `created_resource_ids` entry).
+   */
+  transferRight(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    right_id: UUID;
+    to_member_id: UUID;
+    reason: string | null;
   }): Promise<UUID>;
 }
 
@@ -718,6 +738,78 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       emitted_event_types: ["warningEmitted"],
       error: null,
     };
+  },
+
+  // (mig 00200) Transfers a right resource to a new holder via the
+  // canonical `transfer_right` RPC. Two config modes for picking the
+  // recipient:
+  //
+  //   1. `config.to_member_id: "<uuid>"` — explicit recipient
+  //   2. `config.to_target_member: true` — recipient is target.member_id
+  //      (the member the rule's trigger fired on, e.g. "transfer to
+  //      whoever exercised it last")
+  //
+  // The right id itself comes from `target.resource_id` — the rule's
+  // trigger MUST have fired on a `right` resource (e.g. rightCreated,
+  // rightTransferred, rightExercised). Misconfigured rules that fire
+  // on a non-right resource fail safe with "resource is not a right".
+  //
+  // Server-side invariants (mig 00198): transferable=true is still
+  // required; new holder must be an active group member; emits
+  // `rightTransferred` with attribution=NULL (service_role) but a
+  // rule-id reason so the audit row carries enough context.
+  transferRight: async (cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "transferRight requires target.resource_id");
+    }
+    if (context.resource && context.resource.resource_type !== "right") {
+      return failure(
+        rule.id,
+        target.member_id,
+        `transferRight target is a ${context.resource.resource_type}, not a right`,
+      );
+    }
+
+    let toMemberId: UUID | null = null;
+    const explicit = cons.config.to_member_id as string | undefined;
+    const useTarget = cons.config.to_target_member as boolean | undefined;
+    if (explicit) {
+      toMemberId = explicit;
+    } else if (useTarget) {
+      toMemberId = target.member_id;
+    }
+    if (!toMemberId) {
+      return failure(
+        rule.id,
+        target.member_id,
+        "transferRight requires config.to_member_id or config.to_target_member=true",
+      );
+    }
+
+    const reason = (cons.config.reason as string | undefined) ?? rule.name;
+    try {
+      const rightId = await context.sink.transferRight({
+        rule_id:      rule.id,
+        group_id:     rule.group_id,
+        right_id:     target.resource_id,
+        to_member_id: toMemberId,
+        reason,
+      });
+      return {
+        success: true,
+        rule_id: rule.id,
+        member_id: target.member_id,
+        // The transferred right is the "created/affected resource" for
+        // this consequence. Downstream callers use the list to roll up
+        // audit trails per ExecutionResult.
+        created_resource_ids: [rightId],
+        emitted_event_types: ["rightTransferred"],
+        error: null,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return failure(rule.id, target.member_id, `transferRight failed: ${msg}`);
+    }
   },
 };
 
