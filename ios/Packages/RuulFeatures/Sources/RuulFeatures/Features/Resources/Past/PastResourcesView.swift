@@ -51,17 +51,15 @@ public struct PastResourcesView: View {
             .padding(RuulSpacing.lg)
         } else {
             ScrollView {
-                VStack(spacing: RuulSpacing.sm) {
-                    ForEach(events) { event in
-                        EventCard(
-                            event: event,
-                            myStatus: nil,
-                            isHostedByMe: event.hostId == userId
-                        ) { onOpenEvent(event) }
-                        .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
-                            content
-                                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
-                        }
+                RuulSeparatedRows(items: events) { event in
+                    EventCard(
+                        event: event,
+                        myStatus: nil,
+                        isHostedByMe: event.hostId == userId
+                    ) { onOpenEvent(event) }
+                    .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+                        content
+                            .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
                     }
                 }
                 .padding(RuulSpacing.lg)

@@ -88,10 +88,8 @@ struct ResourceLedgerSheet: View {
             Text("BALANCE NETO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-            VStack(spacing: RuulSpacing.xs) {
-                ForEach(coordinator.memberBalances) { balance in
-                    balanceRow(balance)
-                }
+            RuulSeparatedRows(items: coordinator.memberBalances) { balance in
+                balanceRow(balance)
             }
             Text("Positivo: el grupo le debe. Negativo: le debe al grupo.")
                 .ruulTextStyle(RuulTypography.footnote)
@@ -138,10 +136,8 @@ struct ResourceLedgerSheet: View {
                 Text("HISTORIAL")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                VStack(spacing: RuulSpacing.xs) {
-                    ForEach(coordinator.entries) { entry in
-                        entryRow(entry)
-                    }
+                RuulSeparatedRows(items: coordinator.entries) { entry in
+                    entryRow(entry)
                 }
             }
         }

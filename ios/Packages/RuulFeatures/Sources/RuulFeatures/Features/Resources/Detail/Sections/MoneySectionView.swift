@@ -148,15 +148,9 @@ public struct MoneySectionView: View {
     /// noise, the user doesn't need to know they're square.
     @ViewBuilder
     private var balancesCard: some View {
-        VStack(spacing: 1) {
-            ForEach(topBalances) { balance in
-                balanceRow(balance)
-            }
+        RuulSeparatedRows(items: topBalances) { balance in
+            balanceRow(balance)
         }
-        .background(
-            .ultraThinMaterial,
-            in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-        )
     }
 
     @ViewBuilder

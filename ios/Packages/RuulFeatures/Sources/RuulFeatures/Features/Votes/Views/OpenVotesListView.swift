@@ -50,7 +50,7 @@ public struct OpenVotesListView: View {
                                     Text(section.title.uppercased())
                                         .ruulTextStyle(RuulTypography.sectionLabel)
                                         .foregroundStyle(Color.ruulTextTertiary)
-                                    ForEach(votes) { vote in
+                                    RuulSeparatedRows(items: votes) { vote in
                                         Button { onSelectVote(vote) } label: {
                                             voteRow(vote)
                                         }

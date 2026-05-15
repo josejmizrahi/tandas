@@ -56,14 +56,12 @@ struct AddResourceRuleSheet: View {
             if coordinator.availableTriggers.isEmpty {
                 emptyShapeMessage("No hay disparadores disponibles todavía.")
             } else {
-                VStack(spacing: RuulSpacing.xs) {
-                    ForEach(coordinator.availableTriggers) { shape in
-                        shapeRow(
-                            shape,
-                            isSelected: coordinator.formTriggerId == shape.id,
-                            onTap: { coordinator.selectTrigger(shape.id) }
-                        )
-                    }
+                RuulSeparatedRows(items: coordinator.availableTriggers) { shape in
+                    shapeRow(
+                        shape,
+                        isSelected: coordinator.formTriggerId == shape.id,
+                        onTap: { coordinator.selectTrigger(shape.id) }
+                    )
                 }
                 .disabled(coordinator.isSubmitting)
                 if let trigger = coordinator.selectedTrigger {
@@ -93,14 +91,12 @@ struct AddResourceRuleSheet: View {
                 Text("ENTONCES")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
-                VStack(spacing: RuulSpacing.xs) {
-                    ForEach(coordinator.availableConsequences) { shape in
-                        shapeRow(
-                            shape,
-                            isSelected: coordinator.formConsequenceId == shape.id,
-                            onTap: { coordinator.selectConsequence(shape.id) }
-                        )
-                    }
+                RuulSeparatedRows(items: coordinator.availableConsequences) { shape in
+                    shapeRow(
+                        shape,
+                        isSelected: coordinator.formConsequenceId == shape.id,
+                        onTap: { coordinator.selectConsequence(shape.id) }
+                    )
                 }
                 .disabled(coordinator.isSubmitting)
                 if let consequence = coordinator.selectedConsequence {

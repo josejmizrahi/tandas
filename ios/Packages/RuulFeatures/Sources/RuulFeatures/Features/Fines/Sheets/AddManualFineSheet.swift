@@ -53,10 +53,8 @@ public struct AddManualFineSheet: View {
             Text("¿A QUIÉN?")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
-            VStack(spacing: RuulSpacing.xs) {
-                ForEach(coordinator.members) { mwp in
-                    memberRow(mwp)
-                }
+            RuulSeparatedRows(items: coordinator.members) { mwp in
+                memberRow(mwp)
             }
             .disabled(coordinator.isSubmitting)
         }
