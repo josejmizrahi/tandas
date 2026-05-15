@@ -74,6 +74,7 @@ public struct RootShell: View {
             guard let link else { return }
             Task { await handleRuleChangeDeepLink(link) }
         }
+        .environment(\.locale, Locale(identifier: app.profile?.locale ?? "es-MX"))
     }
 
     // MARK: - Tab selection
