@@ -40,6 +40,12 @@ public enum RuleBuilderSentenceFormatter {
             let amount = paramInt(params, "amount") ?? 100
             return "Si el anfitrión no propone plan \(hours)h antes del evento, se cobra una multa de \(currency(amount))."
 
+        case "expense_threshold_warning":
+            // threshold_cents is MXN cents — divide by 100 for the display
+            // value users entered (Form will render in whole MXN).
+            let cents = paramInt(params, "threshold_cents") ?? 200_000
+            return "Si alguien registra un gasto mayor a \(currency(cents / 100)), el grupo recibe un aviso en la actividad."
+
         default:
             return template.descriptionES
         }
@@ -64,6 +70,8 @@ public enum RuleBuilderSentenceFormatter {
             footnote = "Aplica a quienes no hayan registrado RSVP cuando llega la fecha límite del evento."
         case "host_no_menu_fine":
             footnote = "Aplica al anfitrión asignado al evento si no comunicó el plan antes del corte."
+        case "expense_threshold_warning":
+            footnote = "El aviso queda en el feed de actividad del grupo. Los administradores lo ven al momento; no se cobra ni se abre votación. Útil para detectar gastos grandes sin pre-aprobación."
         default:
             footnote = ""
         }

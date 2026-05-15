@@ -82,6 +82,10 @@ public extension SystemEventType {
         case .capabilityConfigUpdated:     return "Configuración de capacidad editada"
         case .memberCapabilityOverridden:  return "Excepción de miembro aplicada"
 
+        // Money / Governance flow (mig 00193)
+        case .ledgerEntryCreated:     return "Movimiento de dinero registrado"
+        case .warningEmitted:         return "Aviso emitido por regla"
+
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
         }
@@ -138,7 +142,8 @@ public extension SystemEventType {
              .groupCreated, .groupArchived, .groupUnarchived,
              .groupRenamed, .governanceUpdated,
              .resourceArchived, .resourceUnarchived, .resourceRenamed,
-             .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden:
+             .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden,
+             .ledgerEntryCreated, .warningEmitted:
             return false
         case .unknown:
             return false

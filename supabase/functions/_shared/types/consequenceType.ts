@@ -17,6 +17,7 @@ export const consequenceTypeValues = [
   "assignSlot",
   "transferRight",
   "callWebhook",
+  "emitWarning",
 ] as const;
 
 export type ConsequenceType = (typeof consequenceTypeValues)[number];

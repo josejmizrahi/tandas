@@ -61,5 +61,13 @@ public enum ConditionType: Codable, Sendable, Hashable {
     /// Config: `{ "hours": 24 }`
     case slotExpiresInHours
 
+    // MARK: - Money (mig 00193, expense_threshold_warning pilot)
+
+    /// True when the target's ledger amount (cents) exceeds the configured
+    /// threshold. Config: `{ "threshold_cents": 200000 }` (= $2000 MXN).
+    /// Reads `target.context.amount_cents` populated by the
+    /// `ledgerEntryCreated` trigger evaluator.
+    case amountAbove
+
     case unknown(String)
 }

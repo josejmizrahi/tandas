@@ -50,6 +50,8 @@ export const systemEventTypeValues = [
   "capabilityToggled",
   "capabilityConfigUpdated",
   "memberCapabilityOverridden",
+  "ledgerEntryCreated",
+  "warningEmitted",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

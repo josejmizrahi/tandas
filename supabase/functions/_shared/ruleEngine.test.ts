@@ -24,15 +24,20 @@ const memberAlice = { id: "ma00000000-0000-0000-0000-000000000001", user_id: "ua
 const memberBob   = { id: "mb00000000-0000-0000-0000-000000000001", user_id: "ub00000000-0000-0000-0000-000000000001", active: true };
 const memberCarla = { id: "mc00000000-0000-0000-0000-000000000001", user_id: "uc00000000-0000-0000-0000-000000000001", active: true };
 
-function captureSink(): { sink: ConsequenceSink; captured: unknown[] } {
+function captureSink(): { sink: ConsequenceSink; captured: unknown[]; warnings: unknown[] } {
   const captured: unknown[] = [];
+  const warnings: unknown[] = [];
   const sink: ConsequenceSink = {
     proposeFine: async (args) => {
       captured.push(args);
       return `fine-${captured.length}`;
     },
+    emitWarning: async (args) => {
+      warnings.push(args);
+      return `warning-${warnings.length}`;
+    },
   };
-  return { sink, captured };
+  return { sink, captured, warnings };
 }
 
 function baseContext(extras: Partial<RuleContext>): RuleContext {
@@ -1122,4 +1127,100 @@ Deno.test("unmapped reserved type → phase_target='unknown' (signals roadmap ga
   } finally {
     restore();
   }
+});
+
+
+// =============================================================================
+// expense_threshold_warning pilot (mig 00193)
+//   trigger:    ledgerEntryCreated
+//   condition:  amountAbove
+//   consequence: emitWarning
+// =============================================================================
+
+Deno.test("ledgerEntryCreated + amountAbove(thr=200000) → fires above threshold", async () => {
+  const { sink, captured, warnings } = captureSink();
+  const rule = makeRule(
+    "Aviso por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "amountAbove", config: { threshold_cents: 200000 } }],
+    [{ type: "emitWarning", config: {} }],
+  );
+
+  const ctx = baseContext({ sink });
+  const event = makeEvent("ledgerEntryCreated", {
+    id: "se-ledger-1",
+    member_id: memberAlice.id,
+    payload: {
+      ledger_entry_id: "le-1",
+      type: "expense",
+      amount_cents: 350000,  // $3500 — above threshold
+      currency: "MXN",
+      from_member_id: null,
+      to_member_id: null,
+    },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 1);
+  assertEquals(results[0].success, true);
+  assertEquals(captured.length, 0);                              // no fine
+  assertEquals(warnings.length, 1);                              // one warning
+  assertEquals((warnings[0] as { rule_id: string }).rule_id, rule.id);
+  assertEquals((warnings[0] as { member_id: string }).member_id, memberAlice.id);
+  assertEquals((warnings[0] as { source_atom_id: string }).source_atom_id, "se-ledger-1");
+});
+
+Deno.test("ledgerEntryCreated + amountAbove(thr=200000) → does NOT fire at/below threshold", async () => {
+  const { sink, captured, warnings } = captureSink();
+  const rule = makeRule(
+    "Aviso por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "amountAbove", config: { threshold_cents: 200000 } }],
+    [{ type: "emitWarning", config: {} }],
+  );
+
+  const ctx = baseContext({ sink });
+
+  // Exactly at threshold — strict > comparison, no fire.
+  const eventAt = makeEvent("ledgerEntryCreated", {
+    id: "se-ledger-eq",
+    member_id: memberAlice.id,
+    payload: { amount_cents: 200000, type: "expense" },
+  });
+  let results = await runRulesForEvent(eventAt, [rule], ctx);
+  assertEquals(results.length, 0);
+
+  // Below threshold.
+  const eventBelow = makeEvent("ledgerEntryCreated", {
+    id: "se-ledger-below",
+    member_id: memberAlice.id,
+    payload: { amount_cents: 50000, type: "expense" },
+  });
+  results = await runRulesForEvent(eventBelow, [rule], ctx);
+  assertEquals(results.length, 0);
+
+  assertEquals(captured.length, 0);
+  assertEquals(warnings.length, 0);
+});
+
+Deno.test("ledgerEntryCreated → no targets if event.member_id is null", async () => {
+  const { sink, captured, warnings } = captureSink();
+  const rule = makeRule(
+    "Aviso por gasto grande",
+    { eventType: "ledgerEntryCreated", config: {} },
+    [{ type: "amountAbove", config: { threshold_cents: 200000 } }],
+    [{ type: "emitWarning", config: {} }],
+  );
+
+  const ctx = baseContext({ sink });
+  // member_id null — trigger evaluator short-circuits, no warning.
+  const event = makeEvent("ledgerEntryCreated", {
+    member_id: null,
+    payload: { amount_cents: 999999, type: "expense" },
+  });
+  const results = await runRulesForEvent(event, [rule], ctx);
+
+  assertEquals(results.length, 0);
+  assertEquals(captured.length, 0);
+  assertEquals(warnings.length, 0);
 });

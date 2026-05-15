@@ -53,6 +53,8 @@ extension SystemEventType {
         .capabilityToggled,
         .capabilityConfigUpdated,
         .memberCapabilityOverridden,
+        .ledgerEntryCreated,
+        .warningEmitted,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -104,6 +106,8 @@ extension SystemEventType {
         "capabilityToggled",
         "capabilityConfigUpdated",
         "memberCapabilityOverridden",
+        "ledgerEntryCreated",
+        "warningEmitted",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -166,6 +170,8 @@ extension SystemEventType {
         case .capabilityToggled: return "capabilityToggled"
         case .capabilityConfigUpdated: return "capabilityConfigUpdated"
         case .memberCapabilityOverridden: return "memberCapabilityOverridden"
+        case .ledgerEntryCreated: return "ledgerEntryCreated"
+        case .warningEmitted: return "warningEmitted"
         case .unknown(let s): return s
         }
     }
@@ -220,6 +226,8 @@ extension SystemEventType {
         case "capabilityToggled": return .capabilityToggled
         case "capabilityConfigUpdated": return .capabilityConfigUpdated
         case "memberCapabilityOverridden": return .memberCapabilityOverridden
+        case "ledgerEntryCreated": return .ledgerEntryCreated
+        case "warningEmitted": return .warningEmitted
         default: return .unknown(raw)
         }
     }

@@ -22,6 +22,7 @@ extension ConditionType {
         .rotationPositionEquals,
         .slotIsUnassigned,
         .slotExpiresInHours,
+        .amountAbove,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -42,6 +43,7 @@ extension ConditionType {
         "rotationPositionEquals",
         "slotIsUnassigned",
         "slotExpiresInHours",
+        "amountAbove",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -73,6 +75,7 @@ extension ConditionType {
         case .rotationPositionEquals: return "rotationPositionEquals"
         case .slotIsUnassigned: return "slotIsUnassigned"
         case .slotExpiresInHours: return "slotExpiresInHours"
+        case .amountAbove: return "amountAbove"
         case .unknown(let s): return s
         }
     }
@@ -96,6 +99,7 @@ extension ConditionType {
         case "rotationPositionEquals": return .rotationPositionEquals
         case "slotIsUnassigned": return .slotIsUnassigned
         case "slotExpiresInHours": return .slotExpiresInHours
+        case "amountAbove": return .amountAbove
         default: return .unknown(raw)
         }
     }

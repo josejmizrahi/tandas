@@ -242,6 +242,26 @@ async function buildContext(
       if (error) throw new Error(`proposeFine insert failed: ${error.message}`);
       return data.id as string;
     },
+
+    // (mig 00193) Emits a `warningEmitted` system_event via the canonical
+    // record_system_event SECURITY DEFINER. The new row's id is what the
+    // `emitWarning` consequence returns as `created_resource_ids`.
+    emitWarning: async (args) => {
+      const { data, error } = await supabase.rpc("record_system_event", {
+        p_group_id:    args.group_id,
+        p_event_type:  "warningEmitted",
+        p_resource_id: args.resource_id,
+        p_member_id:   args.member_id,
+        p_payload:     {
+          rule_id:        args.rule_id,
+          reason:         args.reason,
+          source_atom_id: args.source_atom_id,
+          ...args.payload,
+        },
+      });
+      if (error) throw new Error(`emitWarning record_system_event failed: ${error.message}`);
+      return data as string;
+    },
   };
 
   return {

@@ -153,6 +153,22 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 scopeHint: "series"
             ),
             sortOrder: 50
+        ),
+        RuleBuilderTemplate(
+            id: "expense_threshold_warning",
+            displayNameES: "Aviso por gasto grande",
+            descriptionES: "Cuando alguien registre un movimiento de dinero mayor a X pesos, el grupo recibe un aviso en la actividad. Útil para que los administradores vean gastos grandes sin tener que pedir aprobación previa.",
+            category: "money",
+            templateKind: "governance",
+            requiredCapabilities: ["ledger"],
+            defaultParams: .object(["threshold_cents": .int(200_000)]),
+            composition: .init(
+                triggerShapeId: "ledgerEntryCreated",
+                conditionShapeIds: ["amountAbove"],
+                consequenceShapeIds: ["emitWarning"],
+                scopeHint: "group"
+            ),
+            sortOrder: 60
         )
     ]
 }

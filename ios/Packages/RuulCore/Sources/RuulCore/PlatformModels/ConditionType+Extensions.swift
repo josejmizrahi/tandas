@@ -4,7 +4,8 @@ public extension ConditionType {
     public var isImplementedInV1: Bool {
         switch self {
         case .alwaysTrue, .responseStatusIs, .checkInExists,
-             .checkInMinutesLate, .eventDescriptionMissing:
+             .checkInMinutesLate, .eventDescriptionMissing,
+             .amountAbove:
             return true
         case .minutesAfterScheduled, .hoursBeforeEvent,
              .memberHasMultipleFines, .memberFinesAbove,

@@ -166,6 +166,21 @@ export interface ConsequenceSink {
     reason: string;
     evidence: Record<string, unknown>;
   }): Promise<UUID>;
+
+  /**
+   * Emits a `warningEmitted` system_event for the `emitWarning` consequence.
+   * Returns the new system_events.id so the executor can record it as a
+   * `created_resource_ids` entry in ExecutionResult. Per mig 00193.
+   */
+  emitWarning(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    resource_id: UUID | null;
+    member_id: UUID | null;
+    reason: string;
+    source_atom_id: UUID;
+    payload: Record<string, unknown>;
+  }): Promise<UUID>;
 }
 
 // =============================================================================
@@ -279,6 +294,29 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
     }];
   },
 
+  // (mig 00193) Single target = the recorder of the ledger entry.
+  // The DB trigger `ledger_entries_emit_atom` resolves the recorder's
+  // group_members.id and sets it as event.member_id, plus pushes the full
+  // ledger row into event.payload — so the condition evaluators
+  // (`amountAbove`) can read amount_cents from target.context without a
+  // round-trip to ledger_entries.
+  ledgerEntryCreated: async (event, _rule, _context) => {
+    if (!event.member_id) return [];
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        ledger_entry_id: event.payload.ledger_entry_id,
+        type:            event.payload.type,
+        amount_cents:    event.payload.amount_cents,
+        currency:        event.payload.currency,
+        from_member_id:  event.payload.from_member_id,
+        to_member_id:    event.payload.to_member_id,
+        source_atom_id:  event.id,
+      },
+    }];
+  },
+
   // (Phase 2) Single target = the assigned holder of the expired slot.
   // The cron `emit-slot-system-events` projects assigned_member_id +
   // booking_id onto event.payload so the condition evaluators
@@ -336,6 +374,16 @@ const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
     const threshold = (cond.config.thresholdMinutes as number | undefined) ?? 0;
     const lateMinutes = (target.context.minutes_late as number | null | undefined) ?? -1;
     return lateMinutes >= threshold;
+  },
+
+  // (mig 00193) target.context.amount_cents > config.threshold_cents.
+  // Strict inequality so a rule with threshold 200000 fires on 200001 cents
+  // but not on exactly 200000. Used by the `expense_threshold_warning`
+  // template.
+  amountAbove: async (cond, target) => {
+    const threshold = (cond.config.threshold_cents as number | undefined) ?? 0;
+    const amount = (target.context.amount_cents as number | null | undefined) ?? 0;
+    return amount > threshold;
   },
 
   // (V1) Used by "anfitrión sin menú" rule.
@@ -434,6 +482,33 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       member_id: target.member_id,
       created_resource_ids: [fineId],
       emitted_event_types: [],
+      error: null,
+    };
+  },
+
+  // (mig 00193) Emits a `warningEmitted` system_event so the activity feed
+  // surfaces the rule-driven warning. Pure visibility — no money, no vote.
+  // Used by the `expense_threshold_warning` template.
+  emitWarning: async (_cons, target, rule, context) => {
+    const sourceAtomId = target.context.source_atom_id as UUID | undefined;
+    if (!sourceAtomId) {
+      return failure(rule.id, target.member_id, "emitWarning requires source_atom_id in target context");
+    }
+    const warningId = await context.sink.emitWarning({
+      rule_id: rule.id,
+      group_id: rule.group_id,
+      resource_id: target.resource_id ?? null,
+      member_id: target.member_id ?? null,
+      reason: rule.name,
+      source_atom_id: sourceAtomId,
+      payload: target.context as Record<string, unknown>,
+    });
+    return {
+      success: true,
+      rule_id: rule.id,
+      member_id: target.member_id,
+      created_resource_ids: [warningId],
+      emitted_event_types: ["warningEmitted"],
       error: null,
     };
   },

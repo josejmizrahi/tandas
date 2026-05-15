@@ -36,5 +36,12 @@ public enum ConsequenceType: Codable, Sendable, Hashable {
     case transferRight
     case callWebhook
 
+    // MARK: - Money / Governance (mig 00193, expense_threshold_warning pilot)
+
+    /// Emits a `warningEmitted` system_event scoped to the rule's target.
+    /// Surfaces in the activity feed; visible to admins via rule_evaluations.
+    /// No money, no vote — pure visibility signal. Per Governance.md §5.1.
+    case emitWarning
+
     case unknown(String)
 }

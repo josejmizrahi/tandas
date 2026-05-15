@@ -214,6 +214,14 @@ public struct HistoryItemPresentation {
             self.icon = "person.fill.questionmark"
             self.title = "\(actor) aplicó una excepción de miembro"
             self.tone = .neutral
+        case .ledgerEntryCreated:
+            self.icon = "dollarsign.circle"
+            self.title = "\(actor) registró un movimiento de dinero"
+            self.tone = .neutral
+        case .warningEmitted:
+            self.icon = "exclamationmark.triangle"
+            self.title = "Aviso emitido por regla"
+            self.tone = .warning
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"

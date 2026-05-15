@@ -20,6 +20,7 @@ extension ConsequenceType {
         .assignSlot,
         .transferRight,
         .callWebhook,
+        .emitWarning,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -38,6 +39,7 @@ extension ConsequenceType {
         "assignSlot",
         "transferRight",
         "callWebhook",
+        "emitWarning",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -67,6 +69,7 @@ extension ConsequenceType {
         case .assignSlot: return "assignSlot"
         case .transferRight: return "transferRight"
         case .callWebhook: return "callWebhook"
+        case .emitWarning: return "emitWarning"
         case .unknown(let s): return s
         }
     }
@@ -88,6 +91,7 @@ extension ConsequenceType {
         case "assignSlot": return .assignSlot
         case "transferRight": return .transferRight
         case "callWebhook": return .callWebhook
+        case "emitWarning": return .emitWarning
         default: return .unknown(raw)
         }
     }

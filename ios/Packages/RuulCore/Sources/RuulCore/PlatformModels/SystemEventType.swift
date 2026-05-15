@@ -107,5 +107,16 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// excluded from rotation, guest can book, etc.).
     case memberCapabilityOverridden
 
+    // MARK: - Money / Governance flow (mig 00193, expense_threshold_warning pilot)
+    /// Atom emitted by `ledger_entries_emit_atom` trigger on every insert.
+    /// Payload: `{type, amount_cents, currency, from_member_id, to_member_id,
+    /// resource_id, ledger_entry_id}`. Drives `expense_threshold_warning`
+    /// rule template (Builder Beta 1 expansion).
+    case ledgerEntryCreated
+    /// Emitted by the `emitWarning` rule consequence. Surfaces in the
+    /// activity feed; visible to admins via rule_evaluations audit.
+    /// Payload: `{rule_id, target_member_id, reason, source_atom_id}`.
+    case warningEmitted
+
     case unknown(String)
 }
