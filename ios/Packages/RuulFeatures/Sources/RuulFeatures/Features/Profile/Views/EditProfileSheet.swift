@@ -206,8 +206,7 @@ private extension UIImage {
             displayName: "José Mizrahi",
             avatarUrl: nil,
             phone: nil
-        )),
-        fineRepo: MockFineRepository()
+        ))
     )
     return Color.ruulBackground.ignoresSafeArea()
         .sheet(isPresented: .constant(true)) {
