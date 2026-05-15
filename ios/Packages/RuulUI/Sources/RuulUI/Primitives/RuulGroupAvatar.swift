@@ -76,7 +76,7 @@ public struct RuulGroupAvatar: View {
         ZStack {
             Circle().fill(ramp.background)
             Text(initials)
-                .font(.system(size: size.fontSize, weight: .semibold))
+                .font(.custom("InterVariable", size: size.fontSize).weight(.semibold))
                 .foregroundStyle(ramp.foreground)
         }
     }
