@@ -329,6 +329,10 @@ public struct HistoryItemPresentation {
             self.icon = "arrow.clockwise.circle"
             self.title = "\(actor) restauró un derecho"
             self.tone = .positive
+        case .rightExpiringSoon:
+            self.icon = "clock.badge.exclamationmark"
+            self.title = "Un derecho está por expirar"
+            self.tone = .warning
 
         // Resource links (mig 00202_event_resource_links)
         case .resourceLinked:

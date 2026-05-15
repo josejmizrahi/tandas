@@ -97,6 +97,7 @@ public extension SystemEventType {
         case .rightExercised:         return "Derecho ejercido"
         case .rightSuspended:         return "Derecho suspendido"
         case .rightRestored:          return "Derecho restaurado"
+        case .rightExpiringSoon:      return "Derecho próximo a expirar"
 
         // Asset universal atoms (mig 00203 — canonical asset spec §13)
         case .assetTransferred:       return "Activo transferido"
@@ -180,6 +181,7 @@ public extension SystemEventType {
              .ledgerEntryCreated, .warningEmitted,
              .rightCreated, .rightTransferred, .rightDelegated, .rightRevoked,
              .rightExpired, .rightExercised, .rightSuspended, .rightRestored,
+             .rightExpiringSoon,
              .assetTransferred, .assetAssigned, .assetReturned,
              .custodyAssigned, .custodyReleased,
              .maintenanceLogged, .maintenanceCompleted, .damageReported,
