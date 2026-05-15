@@ -125,8 +125,7 @@ public struct RootShell: View {
 
         profileCoordinator = ProfileCoordinator(
             userId: userId,
-            profileRepo: app.profileRepo,
-            fineRepo: app.fineRepo
+            profileRepo: app.profileRepo
         )
         shellState.profileCoordinator = profileCoordinator
 
