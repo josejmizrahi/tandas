@@ -89,7 +89,7 @@ La iOS app consume:
 
 | Recurso | Cómo |
 |---|---|
-| Auth (phone/email OTP) | `supabase.auth.signInWithOtp` + `verifyOtp`; anon→phone upgrade vía `link_anon_user` |
+| Auth (phone/email OTP) | `supabase.auth.signInWithOtp` + `verifyOtp`; anon→phone upgrade es automático en Supabase (verifyOtp promueve un `is_anonymous` user al teléfono verificado y dispara el trigger `on_auth_user_phone_sync` para mirror a `profiles.phone`) |
 | Groups CRUD | `from('groups')` + `rpc('create_group_with_admin')` (lee `templates.config`) |
 | Members | `from('group_members')` + `rpc('join_group_by_code')` + `rpc('set_turn_order')` + `rpc('remove_member')` |
 | Events | `rpc('create_event')` + `rpc('set_rsvp')` + `rpc('check_in_attendee')` + `rpc('close_event')` (trigger 00039 dual-write a `resources`) |

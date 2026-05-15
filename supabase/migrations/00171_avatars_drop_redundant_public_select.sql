@@ -1,0 +1,12 @@
+-- Mig 00171: Drop redundant SELECT policy on avatars
+--
+-- Advisor (security linter, 2026-05-14) flagged `avatars_public_select` as
+-- broad: public buckets serve objects via direct URL through the Storage
+-- gateway without consulting storage.objects RLS. The explicit SELECT
+-- policy added in 00170 only enabled list-the-bucket via the API, which
+-- leaks the set of filenames without granting any extra ability to read
+-- the bytes themselves.
+--
+-- Removing the policy keeps URL fetches working (they don't go through
+-- storage.objects RLS) while removing the file-enumeration capability.
+drop policy if exists "avatars_public_select" on storage.objects;

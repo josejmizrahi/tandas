@@ -68,6 +68,24 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// resolves and the queued change has been applied. Lets subsequent
     /// invocations short-circuit and gives the audit trail a marker.
     case pendingChangeApplied
+    /// Emitted by `regenerate_invite_code` (mig 00176) when an admin
+    /// rotates `groups.invite_code`. Audit only — not a rule-engine
+    /// trigger. Payload carries `rotated_by` (user_id) so the timeline
+    /// can render "X rotó el código del grupo".
+    case inviteCodeRotated
+
+    // MARK: - Group (Layer 1 Subject/Domain) lifecycle — mig 00178
+    /// Group row inserted. Emitted by trigger; payload carries created_by.
+    case groupCreated
+    /// `groups.archived_at` flipped null → set (via `archive_group` RPC).
+    case groupArchived
+    /// `groups.archived_at` flipped set → null (via `unarchive_group`).
+    case groupUnarchived
+    /// `groups.name` changed. Payload carries old/new name.
+    case groupRenamed
+    /// `groups.governance` jsonb changed. Distinct from per-rule mutations
+    /// (ruleEnabledChanged/ruleAmountChanged) which audit `public.rules`.
+    case governanceUpdated
 
     case unknown(String)
 }

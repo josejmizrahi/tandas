@@ -38,6 +38,12 @@ export const systemEventTypeValues = [
   "ruleEnabledChanged",
   "ruleAmountChanged",
   "pendingChangeApplied",
+  "inviteCodeRotated",
+  "groupCreated",
+  "groupArchived",
+  "groupUnarchived",
+  "groupRenamed",
+  "governanceUpdated",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

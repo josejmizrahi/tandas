@@ -19,6 +19,9 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     public let createdBy: UUID
     public let createdAt: Date
     public let updatedAt: Date?
+    /// Soft-delete timestamp (mig 00177). Non-nil = archived. Hidden from
+    /// default lists; only the original founder can see / restore.
+    public let archivedAt: Date?
 
     /// Template id this group was created from. Optional — bare groups
     /// (no preset) are valid.
@@ -52,6 +55,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         case createdAt       = "created_at"
         case updatedAt       = "updated_at"
         case avatarUrl       = "avatar_url"
+        case archivedAt      = "archived_at"
     }
 
     public init(
@@ -72,7 +76,8 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         avatarUrl: String? = nil,
         createdBy: UUID,
         createdAt: Date,
-        updatedAt: Date? = nil
+        updatedAt: Date? = nil,
+        archivedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -92,6 +97,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         self.createdBy = createdBy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.archivedAt = archivedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -131,6 +137,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         self.createdBy       = try c.decode(UUID.self, forKey: .createdBy)
         self.createdAt       = try c.decode(Date.self, forKey: .createdAt)
         self.updatedAt       = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        self.archivedAt      = try c.decodeIfPresent(Date.self, forKey: .archivedAt)
     }
 
     // MARK: - Derived
@@ -141,6 +148,36 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     public var eventVocabulary: String {
         settings?.eventVocabulary ?? "evento"
     }
+
+    /// Returns a copy with `inviteCode` replaced. Used by `GroupInfoSheet`
+    /// after `regenerate_invite_code` (mig 00176) so the UI reflects the
+    /// rotation without waiting for an `AppState.listMine()` refetch.
+    public func withInviteCode(_ newCode: String) -> Group {
+        Group(
+            id: id,
+            name: name,
+            description: description,
+            currency: currency,
+            timezone: timezone,
+            inviteCode: newCode,
+            coverImageName: coverImageName,
+            baseTemplate: baseTemplate,
+            activeModules: activeModules,
+            governance: governance,
+            settings: settings,
+            roles: roles,
+            category: category,
+            initials: initials,
+            avatarUrl: avatarUrl,
+            createdBy: createdBy,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            archivedAt: archivedAt
+        )
+    }
+
+    /// True when `archived_at` is set. UI hides such groups from active lists.
+    public var isArchived: Bool { archivedAt != nil }
 
     /// Returns the effective governance for this group: stored rules or
     /// recurring-dinner defaults.

@@ -63,6 +63,14 @@ public extension SystemEventType {
 
         // Governance
         case .pendingChangeApplied:   return "Cambio aplicado"
+        case .inviteCodeRotated:      return "Código de invitación cambiado"
+
+        // Group lifecycle (mig 00178)
+        case .groupCreated:           return "Grupo creado"
+        case .groupArchived:          return "Grupo archivado"
+        case .groupUnarchived:        return "Grupo desarchivado"
+        case .groupRenamed:           return "Grupo renombrado"
+        case .governanceUpdated:      return "Gobernanza actualizada"
 
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
@@ -115,7 +123,10 @@ public extension SystemEventType {
              .fundCreated, .fundDeposit, .fundThresholdReached,
              .positionChanged,
              .ruleEnabledChanged, .ruleAmountChanged,
-             .pendingChangeApplied:
+             .pendingChangeApplied,
+             .inviteCodeRotated,
+             .groupCreated, .groupArchived, .groupUnarchived,
+             .groupRenamed, .governanceUpdated:
             return false
         case .unknown:
             return false

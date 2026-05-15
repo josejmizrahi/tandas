@@ -23,11 +23,17 @@ public struct AppUser: Sendable, Equatable {
     public let id: UUID
     public let email: String?
     public let phone: String?
+    /// True when this user was created via `signInAnonymously` and has not
+    /// yet been promoted by a successful OTP verify. Drives onboarding UX
+    /// ("Termina el signup para no perder tu grupo"). Mirrored from
+    /// Supabase `auth.users.is_anonymous`.
+    public let isAnonymous: Bool
 
-    public init(id: UUID, email: String?, phone: String?) {
+    public init(id: UUID, email: String?, phone: String?, isAnonymous: Bool = false) {
         self.id = id
         self.email = email
         self.phone = phone
+        self.isAnonymous = isAnonymous
     }
 }
 
@@ -261,7 +267,8 @@ private extension Supabase.Session {
             user: AppUser(
                 id: user.id,
                 email: user.email,
-                phone: user.phone
+                phone: user.phone,
+                isAnonymous: user.isAnonymous
             ),
             accessToken: accessToken
         )

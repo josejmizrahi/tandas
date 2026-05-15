@@ -20,6 +20,7 @@ public final class ProfileCoordinator {
     public var profile: Profile?
     public var fines: [Fine] = []
     public var isLoading: Bool = false
+    public var isUploadingAvatar: Bool = false
     public var error: CoordinatorError?
 
     public init(
@@ -70,6 +71,21 @@ public final class ProfileCoordinator {
         } catch {
             log.warning("updateDisplayName failed: \(error.localizedDescription, privacy: .public)")
             self.error = CoordinatorError.from(error, fallback: "No pudimos guardar tu nombre")
+        }
+    }
+
+    /// Uploads a new avatar image. `contentType` must be one of the bucket's
+    /// allowed MIME types (image/jpeg|png|webp|heic|heif). Refreshes profile
+    /// on success so dependent surfaces (hero, member rows) update.
+    public func updateAvatar(data: Data, contentType: String) async {
+        isUploadingAvatar = true
+        defer { isUploadingAvatar = false }
+        do {
+            _ = try await profileRepo.updateAvatar(data: data, contentType: contentType)
+            await refresh()
+        } catch {
+            log.warning("updateAvatar failed: \(error.localizedDescription, privacy: .public)")
+            self.error = CoordinatorError.from(error, fallback: "No pudimos subir tu foto")
         }
     }
 

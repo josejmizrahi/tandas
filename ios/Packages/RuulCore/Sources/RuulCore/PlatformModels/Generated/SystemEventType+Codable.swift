@@ -41,6 +41,12 @@ extension SystemEventType {
         .ruleEnabledChanged,
         .ruleAmountChanged,
         .pendingChangeApplied,
+        .inviteCodeRotated,
+        .groupCreated,
+        .groupArchived,
+        .groupUnarchived,
+        .groupRenamed,
+        .governanceUpdated,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -80,6 +86,12 @@ extension SystemEventType {
         "ruleEnabledChanged",
         "ruleAmountChanged",
         "pendingChangeApplied",
+        "inviteCodeRotated",
+        "groupCreated",
+        "groupArchived",
+        "groupUnarchived",
+        "groupRenamed",
+        "governanceUpdated",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -130,6 +142,12 @@ extension SystemEventType {
         case .ruleEnabledChanged: return "ruleEnabledChanged"
         case .ruleAmountChanged: return "ruleAmountChanged"
         case .pendingChangeApplied: return "pendingChangeApplied"
+        case .inviteCodeRotated: return "inviteCodeRotated"
+        case .groupCreated: return "groupCreated"
+        case .groupArchived: return "groupArchived"
+        case .groupUnarchived: return "groupUnarchived"
+        case .groupRenamed: return "groupRenamed"
+        case .governanceUpdated: return "governanceUpdated"
         case .unknown(let s): return s
         }
     }
@@ -172,6 +190,12 @@ extension SystemEventType {
         case "ruleEnabledChanged": return .ruleEnabledChanged
         case "ruleAmountChanged": return .ruleAmountChanged
         case "pendingChangeApplied": return .pendingChangeApplied
+        case "inviteCodeRotated": return .inviteCodeRotated
+        case "groupCreated": return .groupCreated
+        case "groupArchived": return .groupArchived
+        case "groupUnarchived": return .groupUnarchived
+        case "groupRenamed": return .groupRenamed
+        case "governanceUpdated": return .governanceUpdated
         default: return .unknown(raw)
         }
     }

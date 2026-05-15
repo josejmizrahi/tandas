@@ -38,6 +38,27 @@ public protocol GroupsRepository: Actor {
 
     // Module lifecycle
     func setModule(groupId: UUID, slug: String, enabled: Bool) async throws -> Group
+
+    /// Rotates `groups.invite_code` via the `regenerate_invite_code` RPC
+    /// (mig 00176). Server gates by Permission.modifyGovernance — UI
+    /// should hide the affordance for unauthorised actors, but the RPC
+    /// is fail-closed regardless. Returns the new code (lowercase, 8
+    /// chars) so the caller can show it without re-fetching the group.
+    func regenerateInviteCode(groupId: UUID) async throws -> String
+
+    /// Uploads a new group avatar and updates `groups.avatar_url`.
+    /// Storage path: `group_avatars/{groupId}/avatar-{ts}.{ext}`.
+    /// Caller must be a group admin — server enforces via RLS on
+    /// storage.objects (mig 00176) and on `groups` (groups_update_admin).
+    func updateAvatar(groupId: UUID, data: Data, contentType: String) async throws -> URL
+
+    /// Archives the group via `archive_group` RPC (mig 00177). Admin-only.
+    /// Hidden from default lists; restorable by the founder via `unarchive`.
+    func archive(groupId: UUID) async throws
+
+    /// Restores an archived group via `unarchive_group` RPC. Only the
+    /// founder who archived can restore.
+    func unarchive(groupId: UUID) async throws
 }
 
 /// Partial update payload for the new bare-group config.
@@ -304,6 +325,88 @@ public actor MockGroupsRepository: GroupsRepository {
         )
         _groups[idx] = updated
         return updated
+    }
+
+    public func updateAvatar(groupId: UUID, data: Data, contentType: String) async throws -> URL {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let url = URL(string: "https://example.test/group_avatars/\(groupId.uuidString.lowercased()).jpg")!
+        let g = _groups[idx]
+        _groups[idx] = Group(
+            id: g.id, name: g.name, description: g.description,
+            currency: g.currency, timezone: g.timezone, inviteCode: g.inviteCode,
+            coverImageName: g.coverImageName, baseTemplate: g.baseTemplate,
+            activeModules: g.activeModules, governance: g.governance,
+            settings: g.settings, roles: g.roles, category: g.category,
+            initials: g.initials, avatarUrl: url.absoluteString,
+            createdBy: g.createdBy, createdAt: g.createdAt, updatedAt: g.updatedAt,
+            archivedAt: g.archivedAt
+        )
+        return url
+    }
+
+    public func archive(groupId: UUID) async throws {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let g = _groups[idx]
+        _groups[idx] = Group(
+            id: g.id, name: g.name, description: g.description,
+            currency: g.currency, timezone: g.timezone, inviteCode: g.inviteCode,
+            coverImageName: g.coverImageName, baseTemplate: g.baseTemplate,
+            activeModules: g.activeModules, governance: g.governance,
+            settings: g.settings, roles: g.roles, category: g.category,
+            initials: g.initials, avatarUrl: g.avatarUrl,
+            createdBy: g.createdBy, createdAt: g.createdAt, updatedAt: g.updatedAt,
+            archivedAt: .now
+        )
+    }
+
+    public func unarchive(groupId: UUID) async throws {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let g = _groups[idx]
+        _groups[idx] = Group(
+            id: g.id, name: g.name, description: g.description,
+            currency: g.currency, timezone: g.timezone, inviteCode: g.inviteCode,
+            coverImageName: g.coverImageName, baseTemplate: g.baseTemplate,
+            activeModules: g.activeModules, governance: g.governance,
+            settings: g.settings, roles: g.roles, category: g.category,
+            initials: g.initials, avatarUrl: g.avatarUrl,
+            createdBy: g.createdBy, createdAt: g.createdAt, updatedAt: g.updatedAt,
+            archivedAt: nil
+        )
+    }
+
+    public func regenerateInviteCode(groupId: UUID) async throws -> String {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let new = String(UUID().uuidString.prefix(8)).lowercased()
+        let g = _groups[idx]
+        _groups[idx] = Group(
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            currency: g.currency,
+            timezone: g.timezone,
+            inviteCode: new,
+            coverImageName: g.coverImageName,
+            baseTemplate: g.baseTemplate,
+            activeModules: g.effectiveActiveModules,
+            governance: g.governance,
+            settings: g.settings,
+            roles: g.roles,
+            category: g.category,
+            initials: g.initials,
+            avatarUrl: g.avatarUrl,
+            createdBy: g.createdBy,
+            createdAt: g.createdAt,
+            updatedAt: g.updatedAt
+        )
+        return new
     }
 }
 
@@ -611,6 +714,95 @@ public actor LiveGroupsRepository: GroupsRepository {
             return g
         } catch {
             throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func regenerateInviteCode(groupId: UUID) async throws -> String {
+        struct Params: Encodable { let p_group_id: String }
+        do {
+            let new: String = try await client
+                .rpc(
+                    "regenerate_invite_code",
+                    params: Params(p_group_id: groupId.uuidString.lowercased())
+                )
+                .execute()
+                .value
+            return new
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func updateAvatar(groupId: UUID, data: Data, contentType: String) async throws -> URL {
+        let ext = Self.fileExtension(for: contentType)
+        let ts = Int(Date.now.timeIntervalSince1970)
+        let path = "\(groupId.uuidString.lowercased())/avatar-\(ts).\(ext)"
+
+        do {
+            _ = try await client.storage
+                .from("group_avatars")
+                .upload(
+                    path,
+                    data: data,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: contentType,
+                        upsert: true
+                    )
+                )
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+
+        let publicURL: URL
+        do {
+            publicURL = try client.storage.from("group_avatars").getPublicURL(path: path)
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+
+        do {
+            try await client
+                .from("groups")
+                .update(["avatar_url": publicURL.absoluteString])
+                .eq("id", value: groupId.uuidString.lowercased())
+                .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+        return publicURL
+    }
+
+    public func archive(groupId: UUID) async throws {
+        struct Params: Encodable { let p_group_id: String }
+        do {
+            try await client
+                .rpc("archive_group", params: Params(p_group_id: groupId.uuidString.lowercased()))
+                .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func unarchive(groupId: UUID) async throws {
+        struct Params: Encodable { let p_group_id: String }
+        do {
+            try await client
+                .rpc("unarchive_group", params: Params(p_group_id: groupId.uuidString.lowercased()))
+                .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    private static func fileExtension(for contentType: String) -> String {
+        switch contentType.lowercased() {
+        case "image/jpeg", "image/jpg":  return "jpg"
+        case "image/png":                return "png"
+        case "image/webp":               return "webp"
+        case "image/heic":               return "heic"
+        case "image/heif":               return "heif"
+        default:                         return "jpg"
         }
     }
 }

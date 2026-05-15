@@ -166,6 +166,30 @@ public struct HistoryItemPresentation {
             self.icon = "checkmark.seal"
             self.title = "Se aplicó un cambio aprobado"
             self.tone = .positive
+        case .inviteCodeRotated:
+            self.icon = "link.badge.plus"
+            self.title = "\(actor) rotó el código de invitación"
+            self.tone = .neutral
+        case .groupCreated:
+            self.icon = "person.3.fill"
+            self.title = "Se creó el grupo"
+            self.tone = .info
+        case .groupArchived:
+            self.icon = "archivebox"
+            self.title = "\(actor) archivó el grupo"
+            self.tone = .neutral
+        case .groupUnarchived:
+            self.icon = "tray.and.arrow.up"
+            self.title = "\(actor) restauró el grupo"
+            self.tone = .info
+        case .groupRenamed:
+            self.icon = "pencil"
+            self.title = "\(actor) renombró el grupo"
+            self.tone = .neutral
+        case .governanceUpdated:
+            self.icon = "scalemass"
+            self.title = "\(actor) actualizó la gobernanza"
+            self.tone = .neutral
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"

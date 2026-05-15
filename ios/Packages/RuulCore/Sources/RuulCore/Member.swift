@@ -21,6 +21,15 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public let roles: [MemberRole]
     public let active: Bool
     public let joinedAt: Date
+    /// Timestamp the member transitioned to active=false. Null when active.
+    /// Stamped by trigger (mig 00180).
+    public let leftAt: Date?
+    /// Provenance string. One of `founder_seed`, `invite_code`,
+    /// `admin_add`, `unknown`. Stamped by trigger (mig 00180).
+    public let joinedVia: String?
+    /// Invite code snapshot when `joinedVia == "invite_code"`. The
+    /// group's current invite_code may have rotated since.
+    public let joinedViaInviteCode: String?
 
     public enum CodingKeys: String, CodingKey {
         case id
@@ -31,6 +40,9 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         case roles
         case active
         case joinedAt            = "joined_at"
+        case leftAt              = "left_at"
+        case joinedVia           = "joined_via"
+        case joinedViaInviteCode = "joined_via_invite_code"
     }
 
     public init(
@@ -41,7 +53,10 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         role: String = "member",
         roles: [MemberRole] = [.member],
         active: Bool = true,
-        joinedAt: Date
+        joinedAt: Date,
+        leftAt: Date? = nil,
+        joinedVia: String? = nil,
+        joinedViaInviteCode: String? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -51,6 +66,9 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         self.roles = roles
         self.active = active
         self.joinedAt = joinedAt
+        self.leftAt = leftAt
+        self.joinedVia = joinedVia
+        self.joinedViaInviteCode = joinedViaInviteCode
     }
 
     /// Tolerant decoder: rows from a not-yet-migrated DB (no `roles` column)
@@ -70,6 +88,9 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         }
         self.active   = (try? c.decode(Bool.self, forKey: .active)) ?? true
         self.joinedAt = try c.decode(Date.self, forKey: .joinedAt)
+        self.leftAt              = try c.decodeIfPresent(Date.self,   forKey: .leftAt)
+        self.joinedVia           = try c.decodeIfPresent(String.self, forKey: .joinedVia)
+        self.joinedViaInviteCode = try c.decodeIfPresent(String.self, forKey: .joinedViaInviteCode)
     }
 
     // MARK: - Convenience
