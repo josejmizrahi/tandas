@@ -904,12 +904,12 @@ private struct WizardTypePicker: View {
             Button {
                 onSelect(type)
             } label: {
-                tileContent(chrome: chrome, isImplemented: true)
+                tileContent(type: type, chrome: chrome, isImplemented: true)
             }
             .buttonStyle(.ruulPress)
         } else {
-            tileContent(chrome: chrome, isImplemented: false)
-                .accessibilityLabel("\(chrome.labelKey), próximamente")
+            tileContent(type: type, chrome: chrome, isImplemented: false)
+                .accessibilityLabel("\(type.humanLabel), próximamente")
                 .accessibilityHint("Este tipo de recurso aún no se puede crear.")
                 .accessibilityAddTraits(.isStaticText)
                 .allowsHitTesting(false)
@@ -917,7 +917,7 @@ private struct WizardTypePicker: View {
         }
     }
 
-    private func tileContent(chrome: ResourceTypeChrome, isImplemented: Bool) -> some View {
+    private func tileContent(type: ResourceType, chrome: ResourceTypeChrome, isImplemented: Bool) -> some View {
         VStack(spacing: RuulSpacing.xs) {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: chrome.symbol)
@@ -930,11 +930,10 @@ private struct WizardTypePicker: View {
                         .foregroundStyle(Color.ruulTextTertiary)
                         .padding(.horizontal, RuulSpacing.xxs)
                         .padding(.vertical, 2)
-                        .background(Color.ruulSurface, in: Capsule())
-                        .overlay(Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                        .background(Color.ruulFillGlass, in: Capsule())
                 }
             }
-            Text(chrome.labelKey)
+            Text(type.humanLabel)
                 .ruulTextStyle(RuulTypography.callout)
                 .foregroundStyle(isImplemented ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -1,61 +1,51 @@
 import SwiftUI
 
-/// Full-screen ambient color field derived from a resource's palette.
-/// Renders a heavily-blurred mesh gradient layered over the canvas so
-/// the underlying view inherits a *hint* of the resource's "mood" —
-/// not a saturated stamp.
+/// Full-screen ambient color field — a Luma-style solid color tint
+/// over the canvas, NOT a multi-stop mesh gradient. The caller passes
+/// a palette (typically derived from a resource's cover or a group's
+/// deterministic catalog cover) and the receiver picks a single
+/// representative color to lay over the canvas.
 ///
 /// Use as the bottom-most layer of a ZStack with `.ignoresSafeArea()`.
 /// Pair with translucent surfaces (`.ultraThinMaterial` panels, glass
 /// cards) so the ambient bleeds through wherever content doesn't need
 /// opaque chrome.
 ///
-/// **2026-05-15 tone-down:** `.soft` (the default, used as global app
-/// background) now layers a low-opacity mesh OVER the canvas instead
-/// of fading at the bottom. Net effect is mostly-canvas with a quiet
-/// palette breath — same idea as Luma where the cover color tints the
-/// view but doesn't dominate it.
+/// **2026-05-15 (option A):** dropped the multi-color MeshGradient in
+/// favor of a single-color overlay. Luma's identity pages (Ledger
+/// Leaders green, etc.) are uniform tints — not vibrant aurora meshes.
+/// The mesh-driven look was closer to Apple Invites / Tripsy than to
+/// Luma, which is where the user steered us.
 @MainActor
 public struct RuulAmbientBackground: View {
     public let palette: [Color]
     public let style: Style
 
     public enum Style: Sendable, Hashable {
-        /// Quiet palette tint over the canvas. ~25% mesh opacity —
-        /// you sense the color, you don't read it as the primary
-        /// background. Use as the global app background under every
-        /// content surface.
+        /// Quiet tint over the canvas — ~18% opacity. Use as the
+        /// global app background under content surfaces (sheets,
+        /// group-scoped tabs, identity surfaces).
         case soft
-        /// Vivid tint — closer to the source palette. ~85% mesh
-        /// opacity, with a bottom fade to canvas for text legibility.
-        /// Use for hero / cover-adjacent surfaces.
+        /// Stronger tint — ~45% opacity, with a bottom fade to canvas
+        /// for text legibility under on-image content. Use for hero /
+        /// cover-adjacent surfaces (resource detail, invite poster).
         case vivid
 
-        /// Per-style mesh opacity (over the canvas base layer).
-        var meshOpacity: Double {
+        /// Tint opacity over the canvas base. Solid color, no gradient.
+        var tintOpacity: Double {
             switch self {
-            case .soft:  return 0.25
-            case .vivid: return 0.85
+            case .soft:  return 0.18
+            case .vivid: return 0.45
             }
         }
 
-        /// Saturation applied to the blurred mesh before opacity.
-        /// Soft drops saturation further so even the visible tint is
-        /// muted — Luma feel, not a Trapper Keeper.
-        var meshSaturation: Double {
-            switch self {
-            case .soft:  return 0.65
-            case .vivid: return 1.0
-            }
-        }
-
-        /// `.vivid` also bottom-fades to canvas so on-image text
-        /// (cover hero, invite poster) stays legible. `.soft` has no
-        /// bottom fade because the mesh is already quiet enough.
+        /// Bottom-fade opacity that converges back to canvas at the
+        /// bottom edge so foreground / sticky CTA text stays legible.
+        /// `.soft` doesn't need it because the tint is already quiet.
         var bottomFadeOpacity: Double {
             switch self {
             case .soft:  return 0.0
-            case .vivid: return 0.25
+            case .vivid: return 0.30
             }
         }
     }
@@ -67,24 +57,14 @@ public struct RuulAmbientBackground: View {
 
     public var body: some View {
         ZStack {
-            // Canvas base layer — every variant starts from system
-            // background; the mesh layers on top at the configured
-            // opacity. Keeps light/dark mode consistent (the canvas
-            // token adapts).
+            // Canvas always sits at the bottom — every variant
+            // starts from system background.
             Color.ruulBackgroundCanvas
-            MeshGradient(
-                width: 3,
-                height: 3,
-                points: [
-                    .init(0, 0), .init(0.5, 0), .init(1, 0),
-                    .init(0, 0.5), .init(0.5, 0.5), .init(1, 0.5),
-                    .init(0, 1), .init(0.5, 1), .init(1, 1)
-                ],
-                colors: paddedPalette
-            )
-            .blur(radius: RuulSize.blurAmbient)
-            .saturation(style.meshSaturation)
-            .opacity(style.meshOpacity)
+            // Single representative color over the canvas at the
+            // style's opacity. No mesh, no gradient — Luma uniform
+            // tint pattern.
+            representativeColor
+                .opacity(style.tintOpacity)
             if style.bottomFadeOpacity > 0 {
                 LinearGradient(
                     colors: [
@@ -99,20 +79,15 @@ public struct RuulAmbientBackground: View {
         .ignoresSafeArea()
     }
 
-    /// MeshGradient with 3×3=9 stops needs 9 colors. Tile the supplied
-    /// palette if shorter; truncate if longer. Tiling repeats colors
-    /// across the mesh which the heavy blur smooths into a continuous
-    /// field — no visible banding.
-    private var paddedPalette: [Color] {
-        guard !palette.isEmpty else {
-            return Array(repeating: Color.ruulBackgroundCanvas, count: 9)
-        }
-        if palette.count >= 9 { return Array(palette.prefix(9)) }
-        var out = palette
-        while out.count < 9 {
-            out.append(palette[out.count % palette.count])
-        }
-        return out
+    /// Pick a representative tint from the supplied palette. Index 1
+    /// is usually the first vivid stop in `RuulCoverCatalog` palettes
+    /// (index 0 is the "background" stop which is muted by design).
+    /// Falls back through the palette and finally to canvas when the
+    /// caller passes an empty array.
+    private var representativeColor: Color {
+        guard !palette.isEmpty else { return Color.ruulBackgroundCanvas }
+        if palette.count >= 2 { return palette[1] }
+        return palette[0]
     }
 }
 
@@ -126,10 +101,10 @@ public struct RuulAmbientBackground: View {
     return ZStack {
         RuulAmbientBackground(palette: sunset)
         VStack(spacing: RuulSpacing.lg) {
-            Text("Quiet ambient")
+            Text("Quiet ambient tint")
                 .ruulTextStyle(RuulTypography.displayLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Glass cards still pick up the tint")
+            Text("Single color, no mesh — Luma uniform fill")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
@@ -140,8 +115,7 @@ public struct RuulAmbientBackground: View {
 #Preview("RuulAmbientBackground — vivid ocean") {
     let ocean: [Color] = [
         Color(red: 0.18, green: 0.83, blue: 0.75),
-        Color(red: 0.02, green: 0.71, blue: 0.83),
-        Color(red: 0.23, green: 0.51, blue: 0.96)
+        Color(red: 0.02, green: 0.71, blue: 0.83)
     ]
     return RuulAmbientBackground(palette: ocean, style: .vivid)
 }
