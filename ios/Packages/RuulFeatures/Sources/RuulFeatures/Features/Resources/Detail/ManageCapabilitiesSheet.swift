@@ -25,6 +25,14 @@ public struct ManageCapabilitiesSheet: View {
     @State private var pendingId: String?
     @State private var errorText: String?
     @State private var editingBlock: (block: any CapabilityBlock, config: JSONConfig)?
+    @State private var cascadeDisable: CascadeContext?
+    @State private var cascadeEnable: CascadeContext?
+
+    private struct CascadeContext: Identifiable {
+        let id = UUID()
+        let targetId: String
+        let related: [String]   // dependents (for disable) or missing deps (for enable)
+    }
 
     public init(
         resourceId: UUID,
@@ -112,6 +120,30 @@ public struct ManageCapabilitiesSheet: View {
                 )
                 .environment(app)
             }
+            .alert(
+                "Esto desactivará también:",
+                isPresented: disableAlertBinding,
+                presenting: cascadeDisable
+            ) { ctx in
+                Button("Desactivar todas", role: .destructive) {
+                    Task { await disableCascade(ctx.targetId, dependents: ctx.related) }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: { ctx in
+                Text(ctx.related.compactMap { CapabilityCatalog.v1.byId[$0]?.displayName }.joined(separator: ", "))
+            }
+            .alert(
+                "Activar también:",
+                isPresented: enableAlertBinding,
+                presenting: cascadeEnable
+            ) { ctx in
+                Button("Activar todas") {
+                    Task { await enableCascade(ctx.targetId, missing: ctx.related) }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: { ctx in
+                Text(ctx.related.compactMap { CapabilityCatalog.v1.byId[$0]?.displayName }.joined(separator: ", "))
+            }
         }
     }
 
@@ -140,7 +172,13 @@ public struct ManageCapabilitiesSheet: View {
                     }
                 }
                 Button("Desactivar", systemImage: "minus.circle", role: .destructive) {
-                    Task { await disable(block.id) }
+                    let resolver = CapabilityDependencyResolver()
+                    let blockers = resolver.dependents(of: block.id, in: enabledIds)
+                    if blockers.isEmpty {
+                        Task { await disable(block.id) }
+                    } else {
+                        cascadeDisable = CascadeContext(targetId: block.id, related: blockers)
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -170,7 +208,13 @@ public struct ManageCapabilitiesSheet: View {
             }
             Spacer()
             Button {
-                Task { await enable(block.id) }
+                let resolver = CapabilityDependencyResolver()
+                let missing = resolver.missingDependencies(of: block.id, in: enabledIds)
+                if missing.isEmpty {
+                    Task { await enable(block.id) }
+                } else {
+                    cascadeEnable = CascadeContext(targetId: block.id, related: missing)
+                }
             } label: {
                 Text("Activar")
                     .ruulTextStyle(RuulTypography.captionBold)
@@ -184,6 +228,44 @@ public struct ManageCapabilitiesSheet: View {
     }
 
     // MARK: - Helpers
+
+    private var disableAlertBinding: Binding<Bool> {
+        Binding(get: { cascadeDisable != nil }, set: { if !$0 { cascadeDisable = nil } })
+    }
+
+    private var enableAlertBinding: Binding<Bool> {
+        Binding(get: { cascadeEnable != nil }, set: { if !$0 { cascadeEnable = nil } })
+    }
+
+    private func disableCascade(_ targetId: String, dependents: [String]) async {
+        pendingId = targetId
+        errorText = nil
+        defer { pendingId = nil }
+        do {
+            for id in dependents {
+                try await app.resourceCapabilityRepo.disable(id, on: resourceId)
+            }
+            try await app.resourceCapabilityRepo.disable(targetId, on: resourceId)
+            onChanged()
+        } catch {
+            errorText = "No pudimos desactivar todas las capabilities."
+        }
+    }
+
+    private func enableCascade(_ targetId: String, missing: [String]) async {
+        pendingId = targetId
+        errorText = nil
+        defer { pendingId = nil }
+        do {
+            for id in missing {
+                _ = try await app.resourceCapabilityRepo.enable(id, on: resourceId, config: .empty)
+            }
+            _ = try await app.resourceCapabilityRepo.enable(targetId, on: resourceId, config: .empty)
+            onChanged()
+        } catch {
+            errorText = "No pudimos activar todas las capabilities."
+        }
+    }
 
     @ViewBuilder
     private func section<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
