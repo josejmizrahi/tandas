@@ -26,6 +26,8 @@ public struct GroupHomeView: View {
     public var onPickCurrency: (() -> Void)?
     public var onPickTimezone: (() -> Void)?
     public var onRotateCode: (() -> Void)?
+    public var onInviteMembers: (() -> Void)?
+    public var onConfirmLeave: (() -> Void)?
 
     public init(
         coordinator: GroupHomeCoordinator,
@@ -39,7 +41,9 @@ public struct GroupHomeView: View {
         onPickModules: (() -> Void)? = nil,
         onPickCurrency: (() -> Void)? = nil,
         onPickTimezone: (() -> Void)? = nil,
-        onRotateCode: (() -> Void)? = nil
+        onRotateCode: (() -> Void)? = nil,
+        onInviteMembers: (() -> Void)? = nil,
+        onConfirmLeave: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMembersList = onOpenMembersList
@@ -53,6 +57,8 @@ public struct GroupHomeView: View {
         self.onPickCurrency = onPickCurrency
         self.onPickTimezone = onPickTimezone
         self.onRotateCode = onRotateCode
+        self.onInviteMembers = onInviteMembers
+        self.onConfirmLeave = onConfirmLeave
     }
 
     public var body: some View {
@@ -182,6 +188,14 @@ public struct GroupHomeView: View {
                         : onOpenMembersList?()
                 }
             )
+            if coordinator.isCurrentUserAdmin {
+                divider
+                navRow(
+                    icon: "person.crop.circle.badge.plus",
+                    label: "Invitar miembros",
+                    action: { onInviteMembers?() }
+                )
+            }
         }
     }
 
@@ -192,7 +206,7 @@ public struct GroupHomeView: View {
             navRow(
                 icon: "rectangle.portrait.and.arrow.right",
                 label: "Salir del grupo",
-                action: onLeaveGroup,
+                action: { onConfirmLeave?() ?? onLeaveGroup() },
                 destructive: true
             )
         }
