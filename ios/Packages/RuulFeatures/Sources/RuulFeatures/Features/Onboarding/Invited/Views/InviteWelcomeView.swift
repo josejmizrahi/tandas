@@ -12,10 +12,23 @@ public struct InviteWelcomeView: View {
 
     public var body: some View {
         ZStack {
-            RuulMeshBackground(.aqua)
+            ambientBackground
             content
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    /// Tints the invite screen with the inviting group's cover palette
+    /// (Luma signature). Falls back to the aqua mesh when the preview
+    /// hasn't loaded yet so we never flash a black canvas.
+    @ViewBuilder
+    private var ambientBackground: some View {
+        if let preview = coord.preview {
+            let cover = RuulCoverCatalog.cover(named: preview.coverImageName)
+            RuulAmbientBackground(palette: cover.palette, style: .vivid)
+        } else {
+            RuulMeshBackground(.aqua)
+        }
     }
 
     @ViewBuilder
@@ -73,12 +86,13 @@ public struct InviteWelcomeView: View {
         VStack(spacing: RuulSpacing.xs) {
             Text("Te invitan a unirte a")
                 .ruulTextStyle(RuulTypography.bodyLarge)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(.white.opacity(0.85))
             Text(preview.groupName)
                 .ruulTextStyle(RuulTypography.displayLarge)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
+                .shadow(color: .black.opacity(0.25), radius: 16, x: 0, y: 4)
         }
     }
 
