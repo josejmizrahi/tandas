@@ -68,14 +68,15 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
                 Text(tab.label)
                     .font(.ruulLabelSmall)
             }
-            .foregroundStyle(isSelected ? Color.ruulTextPrimary : Color.ruulTextSecondary)
+            .foregroundStyle(isSelected ? Color.ruulAccent : Color.ruulTextSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .background {
                 if isSelected {
-                    Capsule().fill(.quaternary)
+                    Capsule().fill(Color.ruulAccent.opacity(0.14))
                 }
             }
+            .animation(.ruulSnappy, value: isSelected)
         }
         .buttonStyle(.plain)
         .ruulHaptic(.light, trigger: isSelected)
