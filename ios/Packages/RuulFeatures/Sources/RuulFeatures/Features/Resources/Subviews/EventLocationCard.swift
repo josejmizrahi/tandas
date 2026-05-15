@@ -28,12 +28,8 @@ public struct EventLocationCard: View {
                 addressRow
                     .padding(RuulSpacing.md)
             }
-            .background(Color.ruulBackgroundRecessed)
+            .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
         }
         .buttonStyle(.ruulPress)
         .accessibilityElement(children: .combine)

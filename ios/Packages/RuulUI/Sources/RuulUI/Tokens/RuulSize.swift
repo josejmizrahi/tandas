@@ -17,9 +17,9 @@ public enum RuulSize {
     public static let heroLarge:      CGFloat = 240
     /// Resource detail cover card (Luma-scale poster). Used by
     /// `ResourceCoverHero` as a rounded-all-sides card inside the
-    /// detail screen — tall enough to read as a "poster", not a
-    /// thin banner.
-    public static let coverHero:      CGFloat = 480
+    /// detail screen — large enough to read as a "poster", small
+    /// enough that the panel content peeks above the fold.
+    public static let coverHero:      CGFloat = 400
 
     // MARK: - Blur radii
     /// Heavy ambient blur used by `RuulAmbientBackground` to smear a

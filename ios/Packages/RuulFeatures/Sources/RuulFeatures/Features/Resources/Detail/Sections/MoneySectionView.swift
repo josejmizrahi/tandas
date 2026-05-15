@@ -154,12 +154,8 @@ public struct MoneySectionView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulSurface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
+            .ultraThinMaterial,
+            in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
         )
     }
 

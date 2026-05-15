@@ -40,7 +40,7 @@ public struct RSVPSectionView: View {
         if isLoading && effectiveRsvps.isEmpty {
             HStack { Spacer(); ProgressView().padding(RuulSpacing.lg); Spacer() }
                 .background(
-                    Color.ruulSurface,
+                    .ultraThinMaterial,
                     in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 )
         } else if effectiveRsvps.isEmpty {
@@ -90,7 +90,7 @@ public struct RSVPSectionView: View {
             tallyRow(.pending,  label: "Pendientes", color: .ruulTextTertiary)
         }
         .background(
-            Color.ruulSurface,
+            .ultraThinMaterial,
             in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
         )
     }

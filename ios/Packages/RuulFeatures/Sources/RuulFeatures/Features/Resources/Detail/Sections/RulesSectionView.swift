@@ -51,7 +51,7 @@ public struct RulesSectionView: View {
             }
             .buttonStyle(.plain)
             .background(
-                Color.ruulSurface,
+                .ultraThinMaterial,
                 in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             )
             .accessibilityLabel("Ver reglas del recurso")

@@ -56,8 +56,8 @@ public struct SettingsSectionView: View {
             }
             .padding(RuulSpacing.s6)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .fill(Color.ruulSurface)
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
             )
             .padding(.horizontal, RuulSpacing.s6)
         }

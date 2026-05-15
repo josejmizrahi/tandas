@@ -123,14 +123,16 @@ extension View {
     /// every section renderer + the zone views (Summary / Attention).
     /// Centralized so the section catalog can keep visual consistency
     /// without each renderer reinventing the wheel.
+    ///
+    /// **2026-05-15 Luma refresh:** swapped the opaque `ruulSurface`
+    /// fill for `.ultraThinMaterial` so cards pick up the detail
+    /// screen's ambient palette tint instead of popping as flat white
+    /// chrome. The previous 0.5pt hairline border is gone — definition
+    /// comes from the material's own subtle edge contrast.
     @ViewBuilder
     func cardBackground() -> some View {
-        self
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        self.background(.ultraThinMaterial, in: shape)
     }
 }
 
