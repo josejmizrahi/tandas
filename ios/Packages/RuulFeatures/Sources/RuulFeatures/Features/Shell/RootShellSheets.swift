@@ -64,6 +64,36 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
+            // MARK: Group home cover (Nivel 1 group dashboard)
+            .fullScreenCover(isPresented: boolBinding(for: .groupHome)) {
+                if let activeGroup = app.activeGroup {
+                    let coord = GroupHomeCoordinator(
+                        groupId: activeGroup.id,
+                        groupsRepo: app.groupsRepo
+                    )
+                    NavigationStack {
+                        GroupHomeView(
+                            coordinator: coord,
+                            onOpenMembers: { router.openMembers() },
+                            onOpenGovernance: { router.present(.groupRulesSettings) },
+                            onOpenRulePresets: { router.present(.groupRulesSettings) },
+                            onLeaveGroup: {
+                                Task {
+                                    try? await app.groupsRepo.leave(activeGroup.id)
+                                    await app.refreshProfileAndGroups()
+                                    router.dismissTop()
+                                }
+                            },
+                            onShareInvite: {
+                                router.present(.inviteShare)
+                            }
+                        )
+                        .environment(app)
+                    }
+                    .ruulSheetChrome(detents: [.large])
+                }
+            }
+
             // MARK: Acuerdos / Rule list sheet (Beta 1 Rule Builder entry).
             // RootRoute.acuerdos was originally designed as a nav push in the
             // Pass-1 plan but no destination was wired in any tab. We render

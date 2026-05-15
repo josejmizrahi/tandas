@@ -162,6 +162,10 @@ public final class RootRouter {
         state.push(.groupSwitcher)
     }
 
+    public func openGroupHome() {
+        present(.groupHome)
+    }
+
     public func openInviteShare() {
         state.push(.inviteShare)
     }

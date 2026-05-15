@@ -89,6 +89,7 @@ public enum RootRoute: Sendable, Hashable {
     case createGroup
     case joinGroup
     case groupSwitcher
+    case groupHome              // GroupHomeView (Nivel 1 group dashboard)
     case inviteShare
     case groupRulesSettings
     case createCover            // ResourceWizard cover
