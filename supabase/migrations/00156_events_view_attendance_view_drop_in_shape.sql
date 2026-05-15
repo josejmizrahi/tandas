@@ -128,9 +128,13 @@ latest_check_in as (
   from public.check_in_actions
   order by resource_id, member_id, recorded_at desc
 )
+-- Column order matches 00154's attendance_view exactly through `no_show`.
+-- CREATE OR REPLACE VIEW in PG can only APPEND columns; inserting event_id
+-- mid-list reads as a rename of the column currently in that slot (SQLSTATE
+-- 42P16). event_id is appended at the tail as a backward-compat alias for
+-- resource_id.
 select
   roster.resource_id                         as resource_id,
-  roster.resource_id                         as event_id,           -- alias
   r.group_id                                 as group_id,
   roster.member_id                           as member_id,
   gm.user_id                                 as user_id,
@@ -145,7 +149,8 @@ select
   coalesce(lc.check_in_location_verified, false) as check_in_location_verified,
   lc.marked_by                               as marked_by,
   (r.status in ('completed','cancelled') and lc.arrived_at is null)
-                                             as no_show
+                                             as no_show,
+  roster.resource_id                         as event_id           -- alias, appended for CREATE OR REPLACE VIEW compatibility
 from roster
 join public.resources r       on r.id  = roster.resource_id
                              and r.resource_type = 'event'
