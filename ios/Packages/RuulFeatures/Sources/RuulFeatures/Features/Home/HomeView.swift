@@ -5,6 +5,7 @@ import RuulCore
 public struct HomeView: View {
     @Bindable var coordinator: HomeCoordinator
     @Environment(AppState.self) private var app
+    @Environment(RootRouter.self) private var router
     /// Fase 4b: Inbox content vive embebido en Home como sección "Pendientes".
     /// `nil` durante bootstrap (igual que homeCoordinator). El callback
     /// dispatch al `handleInboxAction` del padre — mismo handler que antes.
@@ -34,8 +35,6 @@ public struct HomeView: View {
         self.onSwitchGroup = onSwitchGroup
         self.resourceRefreshToken = resourceRefreshToken
     }
-
-    @State private var showSettings: Bool = false
 
     @State private var nonEventResources: [ResourceRow] = []
     @State private var openedResource: ResourceRow?
@@ -102,10 +101,6 @@ public struct HomeView: View {
         .task(id: app.activeGroup?.id) {
             await loadNonEventResources()
             await loadGroupMemory()
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsSheet()
-                .ruulSheetChrome(detents: [.medium, .large])
         }
         .sheet(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
@@ -186,7 +181,7 @@ public struct HomeView: View {
                         systemName: "gearshape",
                         accessibilityLabel: "Ajustes"
                     ) {
-                        showSettings = true
+                        router.selectTab(.profile)
                     }
                 }
             }

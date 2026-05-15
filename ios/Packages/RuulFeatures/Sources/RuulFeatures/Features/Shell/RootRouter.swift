@@ -166,10 +166,6 @@ public final class RootRouter {
         state.push(.inviteShare)
     }
 
-    public func openSettings() {
-        state.push(.settings)
-    }
-
     public func openEditProfile() {
         state.push(.editProfile)
     }
