@@ -25,6 +25,12 @@ public struct UniversalResourceDetailView: View {
 
     public let context: ResourceDetailContext
 
+    /// Active right-lifecycle sheet (transfer/delegate/revoke/...).
+    /// `nil` means no sheet is presented. The dispatch in
+    /// `dispatchSecondary(_:)` writes this; the body's `.sheet(item:)`
+    /// modifier renders the corresponding `RightActionSheet`.
+    @State private var activeRightAction: RightActionSheet.Action?
+
     public init(context: ResourceDetailContext) {
         self.context = context
     }
@@ -97,7 +103,37 @@ public struct UniversalResourceDetailView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $activeRightAction) { action in
+                RightActionSheet(
+                    action: action,
+                    rightId: context.resource.id,
+                    members: Array(context.memberDirectory.values),
+                    holderMemberId: currentHolderMemberId,
+                    onCompleted: {
+                        // The right's resource row mutated server-side
+                        // (status/metadata). The outer detail screen owns
+                        // its own refresh — the simplest signal is to
+                        // dismiss so the caller re-fetches on present.
+                        if let onDismiss = context.onDismiss {
+                            onDismiss()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                )
+                .environment(app)
+            }
         }
+    }
+
+    /// Reads `metadata.holder_member_id` off the polymorphic resource row.
+    /// Used by `RightActionSheet` to filter the transfer recipient picker
+    /// so the current holder isn't offered as a self-transfer target.
+    private var currentHolderMemberId: UUID? {
+        guard context.resource.resourceType == .right,
+              let raw = context.resource.metadata["holder_member_id"]?.stringValue,
+              let id = UUID(uuidString: raw) else { return nil }
+        return id
     }
 
     // MARK: - Cover hero
@@ -287,7 +323,8 @@ public struct UniversalResourceDetailView: View {
             for: context.resource,
             viewerRole: viewerRole(),
             viewerCanIssueManualFine: presenter?.canIssueManualFine ?? false,
-            enabledCapabilities: context.enabledCapabilities
+            enabledCapabilities: context.enabledCapabilities,
+            viewerUserId: context.currentUserId
         )
     }
 
@@ -345,6 +382,15 @@ public struct UniversalResourceDetailView: View {
             context.onPresentEnableCapability()
         case .archive:
             break  // no archive endpoint yet
+        // Right lifecycle (slice 6). Setting activeRightAction triggers
+        // the `.sheet(item:)` above which renders the matching
+        // RightActionSheet variant.
+        case .exerciseRight:  activeRightAction = .exercise
+        case .transferRight:  activeRightAction = .transfer
+        case .delegateRight:  activeRightAction = .delegate
+        case .revokeRight:    activeRightAction = .revoke
+        case .suspendRight:   activeRightAction = .suspend
+        case .restoreRight:   activeRightAction = .restore
         }
     }
 }

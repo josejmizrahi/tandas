@@ -26,6 +26,16 @@ public struct SecondaryAction: Sendable, Hashable, Identifiable {
         case openRules
         case enableCapability
         case archive
+        // Right resource_type lifecycle. UI surface added in slice 6.
+        // The detail view dispatches each to a dedicated sheet that
+        // collects the operation's inputs (recipient / date / reason)
+        // and calls the matching `RightRepository` method.
+        case exerciseRight
+        case transferRight
+        case delegateRight
+        case revokeRight
+        case suspendRight
+        case restoreRight
     }
 
     public var id: Kind { kind }
