@@ -98,11 +98,17 @@ public struct RulesView: View {
                     RuulLoadingState()
                         .transition(.opacity)
                 } else if coordinator.rules.isEmpty {
-                    EmptyStateView(
-                        systemImage: "list.bullet.clipboard",
-                        title: "Sin acuerdos",
-                        message: "Este grupo aún no tiene acuerdos configurados."
-                    )
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                            header
+                            emptyStateBody
+                        }
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
+                        .padding(.bottom, RuulSpacing.s12)
+                    }
+                    .scrollIndicators(.hidden)
+                    .refreshable { await coordinator.refresh() }
                     .transition(.opacity)
                 } else {
                     ScrollView {
@@ -202,6 +208,43 @@ public struct RulesView: View {
 
     private var activeCount: Int {
         coordinator.rules.filter(\.isLive).count
+    }
+
+    /// Empty-state body rendered below the header when the group has zero
+    /// rules. Admins see the Rule Builder CTA ("Crear primera regla") —
+    /// header's "+" button is also visible above for symmetry with the
+    /// non-empty list state. Non-admins see only the explanatory copy.
+    @ViewBuilder
+    private var emptyStateBody: some View {
+        VStack(spacing: RuulSpacing.md) {
+            Image(systemName: "list.bullet.clipboard")
+                .font(.system(size: 44, weight: .regular))
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.top, RuulSpacing.xl)
+            Text("Sin acuerdos")
+                .ruulTextStyle(RuulTypography.title)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Text("Este grupo aún no tiene reglas configuradas. Empieza eligiendo una plantilla del catálogo.")
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, RuulSpacing.lg)
+            if canShowBuilder {
+                Button(action: openBuilder) {
+                    Label("Crear primera regla", systemImage: "plus.circle.fill")
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulAccent)
+                        .padding(.vertical, RuulSpacing.sm)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .background(
+                            Capsule().fill(Color.ruulAccent.opacity(0.12))
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, RuulSpacing.sm)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     /// Surface proactivo: muestra count de votes abiertos del grupo y linkea
