@@ -29,7 +29,7 @@ public struct SettingsSectionView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.s2) {
                     if let onPresentEnableCapability {
                         actionRow(
-                            label: "Activar / desactivar capabilities",
+                            label: "Manejar capabilities",
                             symbol: "switch.2",
                             action: onPresentEnableCapability,
                             isDestructive: false
