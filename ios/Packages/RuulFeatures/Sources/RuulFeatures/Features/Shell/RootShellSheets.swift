@@ -90,7 +90,6 @@ public struct RootShellSheets: ViewModifier {
                         )
                         .environment(app)
                     }
-                    .ruulSheetChrome(detents: [.large])
                 }
             }
 
