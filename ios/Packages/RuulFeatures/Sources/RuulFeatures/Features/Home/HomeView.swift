@@ -107,13 +107,11 @@ public struct HomeView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.medium, .large])
         }
         .sheet(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.medium, .large])
         }
     }
 

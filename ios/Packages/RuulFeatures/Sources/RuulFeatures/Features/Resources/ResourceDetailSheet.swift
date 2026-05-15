@@ -83,8 +83,7 @@ public struct ResourceDetailSheet: View {
                     Task { await reloadCapabilities() }
                 }
             )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            .ruulSheetChrome(detents: [.medium, .large])
         }
     }
 

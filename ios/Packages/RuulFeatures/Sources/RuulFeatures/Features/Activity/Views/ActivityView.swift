@@ -72,15 +72,13 @@ public struct ActivityView: View {
                     }
                 }
             )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            .ruulSheetChrome(detents: [.medium, .large])
         }
         .sheet(isPresented: $showFilters) {
             HistoryFilterSheet(coordinator: coordinator) {
                 showFilters = false
             }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            .ruulSheetChrome(detents: [.medium, .large])
         }
     }
 

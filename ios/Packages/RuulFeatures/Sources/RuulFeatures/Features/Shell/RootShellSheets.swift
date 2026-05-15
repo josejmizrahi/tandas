@@ -28,8 +28,7 @@ public struct RootShellSheets: ViewModifier {
                     onJoinGroup: { router.present(.joinGroup) }
                 )
                 .environment(app)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.medium, .large])
             }
             .sheet(isPresented: boolBinding(for: .createGroup)) {
                 CreateGroupSheet { _ in
@@ -37,23 +36,20 @@ public struct RootShellSheets: ViewModifier {
                     // RootShell.rebuildCoordinators fires reactively.
                 }
                 .environment(app)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.large])
             }
             .sheet(isPresented: boolBinding(for: .joinGroup)) {
                 JoinGroupSheet { _ in
                     // Same: group switch is reactive via activeGroupId.
                 }
                 .environment(app)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.large])
             }
             .sheet(isPresented: boolBinding(for: .inviteShare)) {
                 if let group = app.activeGroup {
                     GroupInfoSheet(group: group)
                         .environment(app)
-                        .presentationDetents([.large])
-                        .presentationDragIndicator(.visible)
+                        .ruulSheetChrome(detents: [.large])
                 }
             }
             .sheet(isPresented: boolBinding(for: .groupRulesSettings)) {
@@ -64,8 +60,7 @@ public struct RootShellSheets: ViewModifier {
                         policyRepo: app.policyRepo
                     ))
                     .environment(app)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .ruulSheetChrome(detents: [.large])
                 }
             }
 
@@ -89,8 +84,7 @@ public struct RootShellSheets: ViewModifier {
                         )
                     }
                     .environment(app)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .ruulSheetChrome(detents: [.large])
                 }
             }
 
@@ -99,8 +93,7 @@ public struct RootShellSheets: ViewModifier {
                 Task { await router.state.inboxCoordinator?.refresh() }
             }) { ctx in
                 ruleEditSheet(ctx)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .ruulSheetChrome(detents: [.large])
             }
 
             // MARK: Resource creation cover (value-less; "+" tab intercept)
@@ -147,8 +140,7 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Settings sheet
             .sheet(isPresented: boolBinding(for: .settings)) {
                 SettingsSheet()
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                    .ruulSheetChrome(detents: [.medium, .large])
             }
 
             // MARK: Edit profile sheet
@@ -157,8 +149,7 @@ public struct RootShellSheets: ViewModifier {
             }) {
                 if let pCoord = router.state.profileCoordinator {
                     EditProfileSheet(coordinator: pCoord)
-                        .presentationDetents([.medium, .large])
-                        .presentationDragIndicator(.visible)
+                        .ruulSheetChrome(detents: [.medium, .large])
                 }
             }
 
@@ -167,8 +158,7 @@ public struct RootShellSheets: ViewModifier {
                 if let activeGroup = app.activeGroup {
                     EditMembersSheet(group: activeGroup)
                         .environment(app)
-                        .presentationDetents([.large])
-                        .presentationDragIndicator(.visible)
+                        .ruulSheetChrome(detents: [.large])
                 }
             }
 
@@ -178,8 +168,7 @@ public struct RootShellSheets: ViewModifier {
                     onPickGeneralProposal: { router.present(.createGeneralProposal) },
                     onPickRuleChange: { router.present(.createRuleChange(nil)) }
                 )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.medium, .large])
             }
 
             // MARK: Create general proposal sheet
@@ -207,8 +196,7 @@ public struct RootShellSheets: ViewModifier {
                             }
                         }
                     )
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .ruulSheetChrome(detents: [.large])
                 }
             }
 
@@ -238,8 +226,7 @@ public struct RootShellSheets: ViewModifier {
                             }
                         }
                     )
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .ruulSheetChrome(detents: [.large])
                 }
                 let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
             }

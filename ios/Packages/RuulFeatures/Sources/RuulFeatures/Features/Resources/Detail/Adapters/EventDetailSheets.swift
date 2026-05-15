@@ -146,8 +146,7 @@ public struct EventDetailSheets: ViewModifier {
                         isCurrentUser: mwp.member.userId == b.currentUserId
                     )
                 }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.large])
             }
     }
 

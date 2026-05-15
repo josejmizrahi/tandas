@@ -103,16 +103,14 @@ public struct GroupInfoSheet: View {
         .sheet(isPresented: $settingsPresented) {
             GroupSettingsSheet(group: currentGroup)
                 .environment(app)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.large])
         }
         .sheet(isPresented: $governancePresented) {
             GovernanceSettingsView(group: currentGroup) { updated in
                 liveGroup = updated
             }
             .environment(app)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .ruulSheetChrome(detents: [.large])
         }
         .sheet(isPresented: $groupRulesPresented) {
             GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
@@ -121,8 +119,7 @@ public struct GroupInfoSheet: View {
                 policyRepo: app.policyRepo
             ))
             .environment(app)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .ruulSheetChrome(detents: [.large])
         }
         .sheet(isPresented: $editMembersPresented, onDismiss: {
             // Refresh the read-only list under the entry button so removed
@@ -131,8 +128,7 @@ public struct GroupInfoSheet: View {
         }) {
             EditMembersSheet(group: currentGroup)
                 .environment(app)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .ruulSheetChrome(detents: [.large])
         }
         .confirmationDialog(
             "¿Salir de \(currentGroup.name)?",

@@ -1,25 +1,45 @@
 import SwiftUI
 
-/// Convenience wrapper around `.sheet(...)` that pre-applies ruul defaults:
-/// configurable detents, top corner radius, drag indicator visible.
 public extension View {
+    /// Apply the canonical Ruul sheet chrome to the **content** of a
+    /// `.sheet(...)` presentation. Bundles the four modifiers we always
+    /// want — drag indicator, big hero corner radius, glass background,
+    /// configurable detents — into one line so raw `.sheet { … }` call
+    /// sites can match `ruulSheet(...)` without restructuring.
+    ///
+    /// Example:
+    /// ```
+    /// .sheet(isPresented: $shown) {
+    ///     MyContentView()
+    ///         .ruulSheetChrome(detents: [.large])
+    /// }
+    /// ```
+    ///
+    /// DS v3 §13.1: sheets are chrome and use Liquid Glass. iOS 26
+    /// doesn't expose a glass shape style to `presentationBackground`
+    /// yet, so `.ultraThinMaterial` is the most translucent option that
+    /// produces the desired blur-and-tint pickup from the parent view.
+    func ruulSheetChrome(
+        detents: Set<PresentationDetent> = [.medium, .large]
+    ) -> some View {
+        self
+            .presentationDetents(detents)
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(RuulRadius.extraLarge)
+            .presentationBackground(.ultraThinMaterial)
+    }
+
+    /// Convenience wrapper around `.sheet(item:...)` that pre-applies
+    /// ruul defaults via `ruulSheetChrome`. Use this for new sheet
+    /// callsites; existing call sites can append `.ruulSheetChrome()`
+    /// to their content for the same result without restructuring.
     func ruulSheet<Item: Identifiable, Sheet: View>(
         item: Binding<Item?>,
         detents: Set<PresentationDetent> = [.medium, .large],
         @ViewBuilder content: @escaping (Item) -> Sheet
     ) -> some View {
         self.sheet(item: item) { wrapped in
-            content(wrapped)
-                .presentationDetents(detents)
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(RuulRadius.extraLarge)
-                // DS v3 §13.1: sheets son chrome, deben usar Liquid Glass.
-                // iOS 26 no expone una variante glass de `presentationBackground`
-                // (solo acepta ShapeStyle: `.regularMaterial`/`.ultraThinMaterial`).
-                // `.ultraThinMaterial` es el material más translúcido disponible
-                // y produce el efecto deseado para sheets sobre el contenido.
-                // TODO DS §13: swap a glass nativo cuando SwiftUI lo exponga.
-                .presentationBackground(.ultraThinMaterial)
+            content(wrapped).ruulSheetChrome(detents: detents)
         }
     }
 
@@ -29,17 +49,7 @@ public extension View {
         @ViewBuilder content: @escaping () -> Sheet
     ) -> some View {
         self.sheet(isPresented: isPresented) {
-            content()
-                .presentationDetents(detents)
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(RuulRadius.extraLarge)
-                // DS v3 §13.1: sheets son chrome, deben usar Liquid Glass.
-                // iOS 26 no expone una variante glass de `presentationBackground`
-                // (solo acepta ShapeStyle: `.regularMaterial`/`.ultraThinMaterial`).
-                // `.ultraThinMaterial` es el material más translúcido disponible
-                // y produce el efecto deseado para sheets sobre el contenido.
-                // TODO DS §13: swap a glass nativo cuando SwiftUI lo exponga.
-                .presentationBackground(.ultraThinMaterial)
+            content().ruulSheetChrome(detents: detents)
         }
     }
 }
