@@ -45,16 +45,24 @@ public struct RSVPSectionView: View {
                 )
         } else if effectiveRsvps.isEmpty {
             HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: "person.crop.circle.badge.questionmark")
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .accessibilityHidden(true)
-                Text("Sin confirmaciones aún")
-                    .ruulTextStyle(RuulTypography.body)
+                Image(systemName: "person.2")
+                    .ruulTextStyle(RuulTypography.subheadSemibold)
                     .foregroundStyle(Color.ruulTextSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.ruulAccent.opacity(0.10), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sin confirmaciones aún")
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Sé el primero en confirmar tu asistencia.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, RuulSpacing.xxs)
-            .padding(.vertical, RuulSpacing.sm)
+            .padding(RuulSpacing.md)
+            .cardBackground()
         } else {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 tallyCard

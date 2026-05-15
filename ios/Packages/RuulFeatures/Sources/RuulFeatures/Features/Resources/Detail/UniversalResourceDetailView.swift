@@ -8,9 +8,12 @@ import RuulUI
 ///   1. ResourceCoverHero            — full-bleed, parallax, white overlay
 ///   2. ResourceDetailPanel          — rounded panel slides up over cover
 ///        a. NeedsAttention card     — DetailAttentionView (compact)
-///        b. ResourceQuickFactsView  — horizontal pills (capability-driven)
-///        c. Capability sections     — fixed order: Description, RSVP, CheckIn, Money, Rules, Activity
-///        d. SettingsSection         — collapsed accordion (capability toggle, archive)
+///        b. ResourceTitleBlock      — date + host (Luma-style identity zone)
+///        c. ResourceQuickFactsView  — horizontal pills (non-events only;
+///                                     events surface their facts via b/Location)
+///        d. Capability sections     — fixed order: Description, Location, RSVP,
+///                                     CheckIn, Money, Rules, Activity
+///        e. SettingsSection         — collapsed accordion (capability toggle, archive)
 ///   3. ResourcePrimaryCTA           — sticky footer, single button (.glassEffect)
 ///   4. NavigationStack toolbar      — close, share, ⋯ menu (secondaryActions)
 @MainActor
@@ -34,7 +37,14 @@ public struct UniversalResourceDetailView: View {
                     ResourceDetailPanel {
                         VStack(alignment: .leading, spacing: RuulSpacing.s7) {
                             DetailAttentionView(context: context)
-                            ResourceQuickFactsView(facts: quickFacts)
+                            ResourceTitleBlock(
+                                context: context,
+                                startsAt: parseStartsAt(),
+                                endsAt: parseEndsAt()
+                            )
+                            if !shouldHideQuickFacts {
+                                ResourceQuickFactsView(facts: quickFacts)
+                            }
                             sections
                             SettingsSectionView(
                                 onPresentEnableCapability: shouldShowEnableCapability
@@ -115,9 +125,52 @@ public struct UniversalResourceDetailView: View {
 
     private func parseStartsAt() -> Date? {
         if case .string(let iso)? = context.resource.metadata["starts_at"] {
-            return ISO8601DateFormatter().date(from: iso)
+            return Self.parseISO(iso)
         }
         return nil
+    }
+
+    /// Prefer explicit `ends_at` from metadata; fall back to
+    /// `starts_at + duration_minutes` so guests still see a time range
+    /// when the server only stored a duration.
+    private func parseEndsAt() -> Date? {
+        if case .string(let iso)? = context.resource.metadata["ends_at"],
+           let date = Self.parseISO(iso) {
+            return date
+        }
+        guard let start = parseStartsAt(),
+              case .int(let minutes)? = context.resource.metadata["duration_minutes"],
+              minutes > 0 else { return nil }
+        return start.addingTimeInterval(TimeInterval(minutes * 60))
+    }
+
+    /// Tries both ISO-8601 shapes the backend may emit: with and without
+    /// fractional seconds. The dual-write trigger writes the fractional
+    /// form (`to_jsonb(timestamptz)`), but some older rows / RPC payloads
+    /// land without them — so accept both rather than silently dropping
+    /// the date on parse failure.
+    private nonisolated static func parseISO(_ iso: String) -> Date? {
+        if let date = isoFrac.date(from: iso) { return date }
+        return isoPlain.date(from: iso)
+    }
+
+    private nonisolated(unsafe) static let isoFrac: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private nonisolated(unsafe) static let isoPlain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    /// QuickFacts pills duplicate the title-block info for events
+    /// (date / time / location). Hide for events; keep for funds / assets
+    /// where the pills carry distinct facts (balance, progress, status).
+    private var shouldHideQuickFacts: Bool {
+        context.resource.resourceType == .event
     }
 
     private var statusPill: ResourceCoverHero.StatusPill? {
@@ -136,21 +189,31 @@ public struct UniversalResourceDetailView: View {
     private var sections: some View {
         if hasDescription {
             DescriptionSectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
+        }
+        if context.enabledCapabilities.contains("location") {
+            LocationSectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
         }
         if context.enabledCapabilities.contains("rsvp") {
             RSVPSectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
         }
         if context.enabledCapabilities.contains("check_in"), eventInteractor != nil {
             CheckInSectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
         }
         if context.enabledCapabilities.contains("ledger") {
             MoneySectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
         }
         if context.enabledCapabilities.contains("rules") {
             RulesSectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
         }
         if context.enabledCapabilities.contains("activity") {
             ActivitySectionView(context: context)
+                .padding(.horizontal, RuulSpacing.s6)
         }
     }
 
