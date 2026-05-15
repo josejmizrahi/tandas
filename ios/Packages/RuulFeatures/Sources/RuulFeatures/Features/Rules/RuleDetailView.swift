@@ -48,7 +48,7 @@ public struct RuleDetailView: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
     }

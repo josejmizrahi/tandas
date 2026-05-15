@@ -52,7 +52,7 @@ public struct CreateGroupSheet: View {
                 .padding(.bottom, RuulSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .ruulAmbientScreen(palette: nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") { dismiss() }

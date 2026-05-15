@@ -22,7 +22,7 @@ public struct PastResourcesView: View {
 
     public var body: some View {
         ZStack {
-            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             content
         }
         .navigationTitle("Historial")

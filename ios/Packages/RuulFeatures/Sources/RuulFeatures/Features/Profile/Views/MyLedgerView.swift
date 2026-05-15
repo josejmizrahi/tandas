@@ -66,7 +66,7 @@ public struct MyLedgerView: View {
             }
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.hasAnyActivity)
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .navigationTitle("Mis movimientos")
         .navigationBarTitleDisplayMode(.large)

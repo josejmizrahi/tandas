@@ -12,7 +12,7 @@ public struct EditRulesView: View {
 
     public var body: some View {
         ZStack {
-            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             content
         }
         .task { await coordinator.refresh() }

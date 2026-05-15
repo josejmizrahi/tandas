@@ -71,7 +71,7 @@ public struct EditMembersSheet: View {
     public var body: some View {
         NavigationStack {
             content
-                .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+                .ruulAmbientScreen(palette: nil)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cerrar") { dismiss() }

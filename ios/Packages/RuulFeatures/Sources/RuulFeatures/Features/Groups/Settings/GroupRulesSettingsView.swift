@@ -79,7 +79,7 @@ public struct GroupRulesSettingsView: View {
                 .padding(.top, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .ruulAmbientScreen(palette: nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }

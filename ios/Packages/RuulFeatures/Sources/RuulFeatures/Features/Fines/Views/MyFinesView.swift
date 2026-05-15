@@ -18,7 +18,7 @@ public struct MyFinesView: View {
 
     public var body: some View {
         ZStack {
-            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             SwiftUI.Group {
                 if let error = coordinator.error, coordinator.fines.isEmpty {
                     ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })

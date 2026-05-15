@@ -135,7 +135,7 @@ public struct RulesView: View {
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .sheet(item: $builderCoord) { coord in
             RuleBuilderView(coord: coord) {

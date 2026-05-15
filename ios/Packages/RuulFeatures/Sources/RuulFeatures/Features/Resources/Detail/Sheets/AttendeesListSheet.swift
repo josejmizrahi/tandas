@@ -36,7 +36,7 @@ public struct AttendeesListSheet: View {
                 .padding(.vertical, RuulSpacing.lg)
             }
             .scrollIndicators(.hidden)
-            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .ruulAmbientScreen(palette: nil)
             .navigationTitle("Asistentes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

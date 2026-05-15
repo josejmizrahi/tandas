@@ -34,7 +34,7 @@ public struct SettingsSheet: View {
                 .padding(.horizontal, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .ruulAmbientScreen(palette: nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }

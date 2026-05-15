@@ -38,7 +38,7 @@ public struct VoteDetailView: View {
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
-        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
     }

@@ -65,7 +65,7 @@ public struct EnableCapabilitySheet: View {
                 .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .ruulAmbientScreen(palette: nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cerrar") { dismiss() }

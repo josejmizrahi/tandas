@@ -25,7 +25,7 @@ public struct MyFeedView: View {
 
     public var body: some View {
         ZStack {
-            RuulAmbientBackground(palette: app.activeGroup?.ambientPalette ?? []).ignoresSafeArea()
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                     if let err = coordinator.loadError {
