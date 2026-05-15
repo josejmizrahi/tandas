@@ -65,12 +65,17 @@ public struct RuulTextField: View {
                 }
             }
             .padding(.horizontal, RuulSpacing.md)
-            .padding(.vertical, RuulSpacing.sm)
-            .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(borderColor, lineWidth: borderWidth)
+            .padding(.vertical, RuulSpacing.md)
+            // Soft glass-style fill: barely visible at rest, no border.
+            // Picks up whatever ambient/material the parent surface is
+            // showing through (Luma / Cerebras-meetup pattern). Focus
+            // and error states surface a 1.5pt accent / negative ring
+            // so the field still telegraphs interactive affordance.
+            .background(
+                Color.ruulTextPrimary.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
             )
+            .overlay(focusRing)
             .animation(.ruulSnappy, value: isFocused)
             .animation(.ruulSnappy, value: error)
 
@@ -128,14 +133,17 @@ public struct RuulTextField: View {
         }
     }
 
-    private var borderColor: Color {
-        if error != nil { return .ruulNegative }
-        if isFocused    { return .ruulAccent }
-        return .ruulSeparator
-    }
-
-    private var borderWidth: CGFloat {
-        (error != nil || isFocused) ? 1.5 : 1.0
+    /// Only renders a ring on focus or error so the field stays
+    /// glass-quiet at rest. Resting state has no border — definition
+    /// comes from the soft fill + corner radius alone.
+    @ViewBuilder
+    private var focusRing: some View {
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+        if error != nil {
+            shape.stroke(Color.ruulNegative, lineWidth: 1.5)
+        } else if isFocused {
+            shape.stroke(Color.ruulAccent, lineWidth: 1.5)
+        }
     }
 }
 

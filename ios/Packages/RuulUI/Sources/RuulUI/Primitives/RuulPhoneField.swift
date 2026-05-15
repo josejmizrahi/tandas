@@ -45,12 +45,12 @@ public struct RuulPhoneField: View {
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .padding(.horizontal, RuulSpacing.md)
-            .padding(.vertical, RuulSpacing.sm)
-            .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(borderColor, lineWidth: borderWidth)
+            .padding(.vertical, RuulSpacing.md)
+            .background(
+                Color.ruulTextPrimary.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
             )
+            .overlay(focusRing)
             .animation(.ruulSnappy, value: isFocused)
             .animation(.ruulSnappy, value: error)
 
@@ -84,14 +84,17 @@ public struct RuulPhoneField: View {
         }
     }
 
-    private var borderColor: Color {
-        if error != nil { return .ruulNegative }
-        if isFocused    { return .ruulAccent }
-        return .ruulSeparator
-    }
-
-    private var borderWidth: CGFloat {
-        (error != nil || isFocused) ? 1.5 : 1.0
+    /// Same focus-or-error-only ring treatment as RuulTextField — the
+    /// resting state is glass-quiet so inputs inside a sheet pick up
+    /// whatever ambient/material the parent is showing through.
+    @ViewBuilder
+    private var focusRing: some View {
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+        if error != nil {
+            shape.stroke(Color.ruulNegative, lineWidth: 1.5)
+        } else if isFocused {
+            shape.stroke(Color.ruulAccent, lineWidth: 1.5)
+        }
     }
 }
 
