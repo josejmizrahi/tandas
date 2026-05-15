@@ -34,6 +34,10 @@ public protocol VoteRepository: Actor {
     /// cron `finalize-votes` when closes_at passes). Returns the
     /// resolution: passed | failed | quorum_failed.
     func finalizeVote(voteId: UUID) async throws -> VoteResolution
+
+    /// Cancels an open vote via `cancel_vote` RPC. Only the vote creator
+    /// may cancel, and only while no real (non-pending) casts exist.
+    func cancelVote(_ voteId: UUID) async throws
 }
 
 // MARK: - Mock
@@ -131,6 +135,14 @@ public actor MockVoteRepository: VoteRepository {
         store[idx] = v
         return .passed
     }
+
+    public func cancelVote(_ voteId: UUID) async throws {
+        guard let idx = store.firstIndex(where: { $0.id == voteId }) else { return }
+        var v = store[idx]
+        v.status = .cancelled
+        v.resolvedAt = .now
+        store[idx] = v
+    }
 }
 
 // MARK: - Live
@@ -222,5 +234,13 @@ public actor LiveVoteRepository: VoteRepository {
             .execute()
             .value
         return VoteResolution(rawValue: resolutionRaw) ?? .quorumFailed
+    }
+
+    public func cancelVote(_ voteId: UUID) async throws {
+        struct Params: Encodable { let p_vote_id: String }
+        let params = Params(p_vote_id: voteId.uuidString.lowercased())
+        try await client
+            .rpc("cancel_vote", params: params)
+            .execute()
     }
 }
