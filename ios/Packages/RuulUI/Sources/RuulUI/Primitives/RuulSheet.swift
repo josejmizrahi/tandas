@@ -1,56 +1,30 @@
 import SwiftUI
 
 public extension View {
-    /// Apply the canonical Ruul sheet chrome to the **content** of a
-    /// `.sheet(...)` presentation. Bundles the four modifiers we always
-    /// want — drag indicator, big hero corner radius, glass background,
-    /// configurable detents — into one line so raw `.sheet { … }` call
-    /// sites can match `ruulSheet(...)` without restructuring.
+    /// Canonical Ruul modal wrappers — `.fullScreenCover` under the hood.
+    /// App-wide policy 2026-05-15: every modal route is a full takeover
+    /// with an explicit close affordance, not a partial-overlap sheet.
+    /// These wrappers exist so call sites read "I'm presenting a modal"
+    /// without mentioning the implementation detail; if the policy ever
+    /// flips back to sheets, only this file changes.
     ///
-    /// Example:
-    /// ```
-    /// .sheet(isPresented: $shown) {
-    ///     MyContentView()
-    ///         .ruulSheetChrome(detents: [.large])
-    /// }
-    /// ```
-    ///
-    /// DS v3 §13.1: sheets are chrome and use Liquid Glass. iOS 26
-    /// doesn't expose a glass shape style to `presentationBackground`
-    /// yet, so `.ultraThinMaterial` is the most translucent option that
-    /// produces the desired blur-and-tint pickup from the parent view.
-    func ruulSheetChrome(
-        detents: Set<PresentationDetent> = [.medium, .large]
-    ) -> some View {
-        self
-            .presentationDetents(detents)
-            .presentationDragIndicator(.visible)
-            .presentationCornerRadius(RuulRadius.extraLarge)
-            .presentationBackground(.ultraThinMaterial)
-    }
-
-    /// Convenience wrapper around `.sheet(item:...)` that pre-applies
-    /// ruul defaults via `ruulSheetChrome`. Use this for new sheet
-    /// callsites; existing call sites can append `.ruulSheetChrome()`
-    /// to their content for the same result without restructuring.
+    /// The legacy `ruulSheetChrome(detents:)` modifier was removed —
+    /// presentation modifiers (`presentationDetents` / `presentation
+    /// CornerRadius` / `presentationBackground`) only apply to `.sheet`,
+    /// not to `.fullScreenCover`, so the modifier was a no-op everywhere
+    /// after the policy change.
     func ruulSheet<Item: Identifiable, Sheet: View>(
         item: Binding<Item?>,
-        detents: Set<PresentationDetent> = [.medium, .large],
         @ViewBuilder content: @escaping (Item) -> Sheet
     ) -> some View {
-        self.fullScreenCover(item: item) { wrapped in
-            content(wrapped).ruulSheetChrome(detents: detents)
-        }
+        self.fullScreenCover(item: item, content: content)
     }
 
     func ruulSheet<Sheet: View>(
         isPresented: Binding<Bool>,
-        detents: Set<PresentationDetent> = [.medium, .large],
         @ViewBuilder content: @escaping () -> Sheet
     ) -> some View {
-        self.fullScreenCover(isPresented: isPresented) {
-            content().ruulSheetChrome(detents: detents)
-        }
+        self.fullScreenCover(isPresented: isPresented, content: content)
     }
 }
 
@@ -62,20 +36,17 @@ private struct RuulSheetPreview: View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
             VStack(spacing: RuulSpacing.md) {
-                RuulButton("Show sheet") { showSheet = true }
+                RuulButton("Show modal") { showSheet = true }
             }
         }
         .ruulSheet(isPresented: $showSheet) {
             VStack(spacing: RuulSpacing.md) {
-                Capsule()
-                    .fill(Color.ruulSeparatorOpaque)
-                    .frame(width: 36, height: 4)
-                Text("Sheet content")
+                Text("Modal content")
                     .ruulTextStyle(RuulTypography.title)
-                Text("Drag down to dismiss.")
+                Text("Full-screen takeover. Close with an explicit affordance.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
-                RuulButton("Close", style: .secondary) {}
+                RuulButton("Close", style: .secondary) { showSheet = false }
                 Spacer()
             }
             .padding(RuulSpacing.lg)

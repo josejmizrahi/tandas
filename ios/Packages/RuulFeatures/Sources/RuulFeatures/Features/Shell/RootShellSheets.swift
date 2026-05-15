@@ -28,7 +28,7 @@ public struct RootShellSheets: ViewModifier {
                     onJoinGroup: { router.present(.joinGroup) }
                 )
                 .environment(app)
-                .ruulSheetChrome(detents: [.medium, .large])
+
             }
             .fullScreenCover(isPresented: boolBinding(for: .createGroup)) {
                 CreateGroupSheet { _ in
@@ -36,20 +36,20 @@ public struct RootShellSheets: ViewModifier {
                     // RootShell.rebuildCoordinators fires reactively.
                 }
                 .environment(app)
-                .ruulSheetChrome(detents: [.large])
+
             }
             .fullScreenCover(isPresented: boolBinding(for: .joinGroup)) {
                 JoinGroupSheet { _ in
                     // Same: group switch is reactive via activeGroupId.
                 }
                 .environment(app)
-                .ruulSheetChrome(detents: [.large])
+
             }
             .fullScreenCover(isPresented: boolBinding(for: .inviteShare)) {
                 if let group = app.activeGroup {
                     GroupInfoSheet(group: group)
                         .environment(app)
-                        .ruulSheetChrome(detents: [.large])
+
                 }
             }
             .fullScreenCover(isPresented: boolBinding(for: .groupRulesSettings)) {
@@ -60,7 +60,7 @@ public struct RootShellSheets: ViewModifier {
                         policyRepo: app.policyRepo
                     ))
                     .environment(app)
-                    .ruulSheetChrome(detents: [.large])
+
                 }
             }
 
@@ -84,7 +84,7 @@ public struct RootShellSheets: ViewModifier {
                         )
                     }
                     .environment(app)
-                    .ruulSheetChrome(detents: [.large])
+
                 }
             }
 
@@ -93,7 +93,7 @@ public struct RootShellSheets: ViewModifier {
                 Task { await router.state.inboxCoordinator?.refresh() }
             }) { ctx in
                 ruleEditSheet(ctx)
-                    .ruulSheetChrome(detents: [.large])
+
             }
 
             // MARK: Resource creation cover (value-less; "+" tab intercept)
@@ -108,18 +108,14 @@ public struct RootShellSheets: ViewModifier {
                             }
                         }
                     )
-                    .ruulSheetChrome(detents: [.large])
+
                 }
             }
 
             // MARK: Event detail (item: state.activeEvent)
             // App-wide policy 2026-05-15: every modal route is a
-            // `.fullScreenCover`. Sheet detents / drag indicators are
-            // intentionally absent — modals are full takeovers with an
-            // explicit close action. `.ruulSheetChrome(...)` is left in
-            // place because its presentation modifiers are silent no-ops
-            // inside a fullScreenCover (the material / corner radius /
-            // detents only apply to `.sheet`).
+            // `.fullScreenCover` — full takeovers with an explicit
+            // close action, not partial-overlap sheets.
             .fullScreenCover(item: activeEventItem, onDismiss: {
                 Task {
                     async let h: Void = router.state.homeCoordinator?.refresh(force: true) ?? ()
@@ -128,7 +124,7 @@ public struct RootShellSheets: ViewModifier {
                 }
             }) { wrappedEvent in
                 eventDetailScreen(wrappedEvent.event)
-                    .ruulSheetChrome(detents: [.large])
+
             }
 
             // MARK: Event edit cover (item: state.activeEditEvent)
@@ -152,7 +148,7 @@ public struct RootShellSheets: ViewModifier {
             }) {
                 if let pCoord = router.state.profileCoordinator {
                     EditProfileSheet(coordinator: pCoord)
-                        .ruulSheetChrome(detents: [.medium, .large])
+
                 }
             }
 
@@ -161,7 +157,7 @@ public struct RootShellSheets: ViewModifier {
                 if let activeGroup = app.activeGroup {
                     EditMembersSheet(group: activeGroup)
                         .environment(app)
-                        .ruulSheetChrome(detents: [.large])
+
                 }
             }
 
@@ -171,7 +167,7 @@ public struct RootShellSheets: ViewModifier {
                     onPickGeneralProposal: { router.present(.createGeneralProposal) },
                     onPickRuleChange: { router.present(.createRuleChange(nil)) }
                 )
-                .ruulSheetChrome(detents: [.medium, .large])
+
             }
 
             // MARK: Create general proposal sheet
@@ -199,7 +195,7 @@ public struct RootShellSheets: ViewModifier {
                             }
                         }
                     )
-                    .ruulSheetChrome(detents: [.large])
+
                 }
             }
 
@@ -229,7 +225,7 @@ public struct RootShellSheets: ViewModifier {
                             }
                         }
                     )
-                    .ruulSheetChrome(detents: [.large])
+
                 }
                 let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
             }

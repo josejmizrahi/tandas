@@ -83,7 +83,7 @@ public struct ResourceDetailSheet: View {
                     Task { await reloadCapabilities() }
                 }
             )
-            .ruulSheetChrome(detents: [.medium, .large])
+
         }
     }
 

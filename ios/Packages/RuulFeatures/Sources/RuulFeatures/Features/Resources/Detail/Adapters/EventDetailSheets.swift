@@ -146,7 +146,7 @@ public struct EventDetailSheets: ViewModifier {
                         isCurrentUser: mwp.member.userId == b.currentUserId
                     )
                 }
-                .ruulSheetChrome(detents: [.large])
+
             }
     }
 

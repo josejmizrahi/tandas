@@ -103,14 +103,14 @@ public struct GroupInfoSheet: View {
         .fullScreenCover(isPresented: $settingsPresented) {
             GroupSettingsSheet(group: currentGroup)
                 .environment(app)
-                .ruulSheetChrome(detents: [.large])
+
         }
         .fullScreenCover(isPresented: $governancePresented) {
             GovernanceSettingsView(group: currentGroup) { updated in
                 liveGroup = updated
             }
             .environment(app)
-            .ruulSheetChrome(detents: [.large])
+
         }
         .fullScreenCover(isPresented: $groupRulesPresented) {
             GroupRulesSettingsView(coordinator: GroupRulesCoordinator(
@@ -119,7 +119,7 @@ public struct GroupInfoSheet: View {
                 policyRepo: app.policyRepo
             ))
             .environment(app)
-            .ruulSheetChrome(detents: [.large])
+
         }
         .fullScreenCover(isPresented: $editMembersPresented, onDismiss: {
             // Refresh the read-only list under the entry button so removed
@@ -128,7 +128,7 @@ public struct GroupInfoSheet: View {
         }) {
             EditMembersSheet(group: currentGroup)
                 .environment(app)
-                .ruulSheetChrome(detents: [.large])
+
         }
         .confirmationDialog(
             "¿Salir de \(currentGroup.name)?",

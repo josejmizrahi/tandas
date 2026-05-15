@@ -104,7 +104,7 @@ public struct HomeView: View {
         }
         .fullScreenCover(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
-                .ruulSheetChrome(detents: [.medium, .large])
+
         }
     }
 

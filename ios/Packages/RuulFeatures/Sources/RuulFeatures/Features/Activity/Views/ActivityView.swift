@@ -74,13 +74,13 @@ public struct ActivityView: View {
                     }
                 }
             )
-            .ruulSheetChrome(detents: [.medium, .large])
+
         }
         .fullScreenCover(isPresented: $showFilters) {
             HistoryFilterSheet(coordinator: coordinator) {
                 showFilters = false
             }
-            .ruulSheetChrome(detents: [.medium, .large])
+
         }
     }
 

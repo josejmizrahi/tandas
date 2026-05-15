@@ -10,7 +10,7 @@ should update the row below.
 |------------------------------|----------------------------------------|
 | Screen with active group     | `.ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)` |
 | List/dashboard screen        | `.ruulAmbientScreen(palette: nil)` (canvas only) |
-| Modal (any flow)             | `.fullScreenCover(...) + .ruulSheetChrome(detents:)` |
+| Modal (any flow)             | `.fullScreenCover(...)` or `.ruulSheet(...)` wrapper (full-screen takeover, explicit close) |
 | Card body (default)          | `.ruulCardSurface(.glass)` — no chrome, paired with `RuulSeparatedRows` for separator |
 | Card body (elevated)         | `.ruulCardSurface(.solid)` — opaque + soft elevation |
 | Card body (inset row)        | `.ruulCardSurface(.recessed)` |
@@ -48,8 +48,8 @@ should update the row below.
 ## Don't
 
 - Don't put `.ruulAmbientScreen(palette: …)` inside a modal — the
-  modal's `.ruulSheetChrome` / `.fullScreenCover` chrome already
-  paints the canvas. Adding another canvas layer just stacks.
+  modal's `.fullScreenCover` chrome already paints the canvas.
+  Adding another canvas layer just stacks.
 - Don't hand-roll section headers — use `RuulListSectionHeader`.
 - Don't hand-roll lists with `VStack { ForEach }` — use
   `RuulSeparatedRows` so spacing + hairline match every other list.
@@ -57,9 +57,10 @@ should update the row below.
   the matching token (`RuulColors`, `RuulRadius`, `RuulSpacing`,
   `RuulOpacity`, `RuulSize`).
 - Don't reach for `.sheet(...)` — app-wide policy is
-  `.fullScreenCover(...) + .ruulSheetChrome(detents:)` (the chrome
-  modifier's presentation modifiers are silent no-ops inside
-  fullScreenCover, but the call site reads consistently).
+  `.fullScreenCover(...)` (full takeover, explicit close). The
+  `ruulSheet(item:)` / `ruulSheet(isPresented:)` wrappers route to
+  `fullScreenCover` under the hood; call sites read "I'm presenting
+  a modal" without naming the implementation.
 
 ## Tokens
 
