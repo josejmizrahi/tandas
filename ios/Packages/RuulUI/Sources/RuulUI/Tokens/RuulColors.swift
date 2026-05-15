@@ -107,17 +107,18 @@ public extension RuulColors {
 // MARK: - Hex constants (single source of truth, easy to tune)
 
 private enum Hex {
-    // Light — warm off-white canvas that pairs with `.ultraThinMaterial`
-    // glass cards for a translucent feel across the whole app. Pure
-    // white was too clinical; cards on white-on-white reads as
-    // "stamps", not "lifted glass". The subtle warmth gives glass
-    // surfaces something to refract.
-    static let lightCanvas: UInt32 = 0xF6F4EF
-    static let lightElevated: UInt32 = 0xFBFAF7
-    static let lightRecessed: UInt32 = 0xEDEAE3
+    // Light — neutral off-white canvas. Subtle enough that pure-white
+    // cards / chrome still read distinct, but not pure-white itself
+    // (cards on canvas screens now use the canvas tone as their fill,
+    // so the bg needs to be a touch off-pure so the cards stay
+    // perceivable via the soft shadow alone). The previous warm-cream
+    // (#F6F4EF) read as too peachy; this is a near-neutral off-white.
+    static let lightCanvas: UInt32 = 0xFAFAF9
+    static let lightElevated: UInt32 = 0xFFFFFF
+    static let lightRecessed: UInt32 = 0xEFEFEE
     static let lightCanvasHC: UInt32 = 0xFFFFFF
     static let lightElevatedHC: UInt32 = 0xFFFFFF
-    static let lightRecessedHC: UInt32 = 0xE0DCD5
+    static let lightRecessedHC: UInt32 = 0xE0E0E0
 
     static let lightGlassThin: UInt32 = 0xFFFFFF
     static let lightGlassRegular: UInt32 = 0xFFFFFF
@@ -154,15 +155,14 @@ private enum Hex {
     static let lightErrorHC: UInt32 = 0xB91C1C
     static let lightInfoHC: UInt32 = 0x1D4ED8
 
-    // Dark — warm near-black canvas. Matches the warm off-white in
-    // light mode so the app feel stays consistent across themes; the
-    // tiny warm tint also gives `.ultraThinMaterial` glass cards
-    // something to refract instead of vanishing into pure black.
-    static let darkCanvas: UInt32 = 0x0F0E0C
-    static let darkElevated: UInt32 = 0x1E1C1A
-    static let darkRecessed: UInt32 = 0x080706
+    // Dark — neutral near-black canvas, mirrors the light side's
+    // near-neutral off-white. Subtle enough that elevated chrome
+    // (#1C1C1C) and recessed (#080808) still read distinct.
+    static let darkCanvas: UInt32 = 0x0F0F0F
+    static let darkElevated: UInt32 = 0x1C1C1C
+    static let darkRecessed: UInt32 = 0x080808
     static let darkCanvasHC: UInt32 = 0x000000
-    static let darkElevatedHC: UInt32 = 0x121110
+    static let darkElevatedHC: UInt32 = 0x121212
     static let darkRecessedHC: UInt32 = 0x000000
 
     static let darkGlassThin: UInt32 = 0xFFFFFF

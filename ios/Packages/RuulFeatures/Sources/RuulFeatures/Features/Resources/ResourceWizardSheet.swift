@@ -35,7 +35,6 @@ public struct ResourceWizardSheet: View {
     public var body: some View {
         NavigationStack {
             content
-                .ruulAmbientScreen(palette: nil)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         leadingButton
@@ -52,8 +51,6 @@ public struct ResourceWizardSheet: View {
                         EmptyView()
                     }
                 }
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarBackground(Color.ruulBackground, for: .navigationBar)
                 .animation(.ruulSnappy, value: coordinator.step)
         }
         .task {

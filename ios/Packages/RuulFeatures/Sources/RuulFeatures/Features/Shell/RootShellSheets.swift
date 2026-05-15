@@ -97,7 +97,7 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Resource creation cover (value-less; "+" tab intercept)
-            .fullScreenCover(isPresented: boolBinding(for: .createCover)) {
+            .sheet(isPresented: boolBinding(for: .createCover)) {
                 if let group = app.activeGroup {
                     ResourceWizardSheet(
                         group: group,
@@ -108,6 +108,7 @@ public struct RootShellSheets: ViewModifier {
                             }
                         }
                     )
+                    .ruulSheetChrome(detents: [.large])
                 }
             }
 
