@@ -18,6 +18,8 @@ export const consequenceTypeValues = [
   "transferRight",
   "callWebhook",
   "emitWarning",
+  "revokeRight",
+  "suspendRight",
 ] as const;
 
 export type ConsequenceType = (typeof consequenceTypeValues)[number];
