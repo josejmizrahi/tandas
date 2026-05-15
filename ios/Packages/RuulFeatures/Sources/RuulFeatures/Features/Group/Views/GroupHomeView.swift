@@ -20,13 +20,24 @@ public struct GroupHomeView: View {
     public let onLeaveGroup: () -> Void
     public let onShareInvite: () -> Void
 
+    public var onEditIdentity: (() -> Void)?
+    public var onPickModules: (() -> Void)?
+    public var onPickCurrency: (() -> Void)?
+    public var onPickTimezone: (() -> Void)?
+    public var onRotateCode: (() -> Void)?
+
     public init(
         coordinator: GroupHomeCoordinator,
         onOpenMembers: @escaping () -> Void,
         onOpenGovernance: @escaping () -> Void,
         onOpenRulePresets: @escaping () -> Void,
         onLeaveGroup: @escaping () -> Void,
-        onShareInvite: @escaping () -> Void
+        onShareInvite: @escaping () -> Void,
+        onEditIdentity: (() -> Void)? = nil,
+        onPickModules: (() -> Void)? = nil,
+        onPickCurrency: (() -> Void)? = nil,
+        onPickTimezone: (() -> Void)? = nil,
+        onRotateCode: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMembers = onOpenMembers
@@ -34,6 +45,11 @@ public struct GroupHomeView: View {
         self.onOpenRulePresets = onOpenRulePresets
         self.onLeaveGroup = onLeaveGroup
         self.onShareInvite = onShareInvite
+        self.onEditIdentity = onEditIdentity
+        self.onPickModules = onPickModules
+        self.onPickCurrency = onPickCurrency
+        self.onPickTimezone = onPickTimezone
+        self.onRotateCode = onRotateCode
     }
 
     public var body: some View {
@@ -122,6 +138,29 @@ public struct GroupHomeView: View {
 
     private var configurationSection: some View {
         sectionContainer(title: "CONFIGURACIÓN") {
+            navRow(icon: "pencil", label: "Nombre y foto", action: { onEditIdentity?() })
+            divider
+            navRow(
+                icon: "dollarsign.circle",
+                label: "Moneda",
+                trailing: { trailingValue(coordinator.group?.currency ?? "—") },
+                action: { onPickCurrency?() }
+            )
+            divider
+            navRow(
+                icon: "clock",
+                label: "Zona horaria",
+                trailing: { trailingValue(coordinator.group?.timezone ?? "—") },
+                action: { onPickTimezone?() }
+            )
+            divider
+            navRow(
+                icon: "puzzlepiece",
+                label: "Módulos",
+                trailing: { trailingValue("\(coordinator.activeModules.count) activos") },
+                action: { onPickModules?() }
+            )
+            divider
             navRow(icon: "scale.3d", label: "Reglas del grupo", action: onOpenGovernance)
             divider
             navRow(icon: "list.bullet.clipboard", label: "Presets de reglas", action: onOpenRulePresets)
@@ -141,6 +180,8 @@ public struct GroupHomeView: View {
 
     private var advancedSection: some View {
         sectionContainer(title: "AVANZADO") {
+            navRow(icon: "arrow.triangle.2.circlepath", label: "Rotar código de invitación", action: { onRotateCode?() })
+            divider
             navRow(
                 icon: "rectangle.portrait.and.arrow.right",
                 label: "Salir del grupo",

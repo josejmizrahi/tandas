@@ -47,29 +47,7 @@ public struct RootShellSheets: ViewModifier {
             }
             .fullScreenCover(isPresented: boolBinding(for: .inviteShare)) {
                 if let activeGroup = app.activeGroup {
-                    let coord = GroupHomeCoordinator(
-                        groupId: activeGroup.id,
-                        groupsRepo: app.groupsRepo
-                    )
-                    NavigationStack {
-                        GroupHomeView(
-                            coordinator: coord,
-                            onOpenMembers: { router.openMembers() },
-                            onOpenGovernance: { router.present(.groupRulesSettings) },
-                            onOpenRulePresets: { router.present(.groupRulesSettings) },
-                            onLeaveGroup: {
-                                Task {
-                                    try? await app.groupsRepo.leave(activeGroup.id)
-                                    await app.refreshProfileAndGroups()
-                                    router.dismissTop()
-                                }
-                            },
-                            onShareInvite: {
-                                router.present(.groupHome)
-                            }
-                        )
-                        .environment(app)
-                    }
+                    GroupHomeSheetContent(group: activeGroup, app: app, router: router)
                 }
             }
             .fullScreenCover(isPresented: boolBinding(for: .groupRulesSettings)) {
@@ -87,29 +65,7 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Group home cover (Nivel 1 group dashboard)
             .fullScreenCover(isPresented: boolBinding(for: .groupHome)) {
                 if let activeGroup = app.activeGroup {
-                    let coord = GroupHomeCoordinator(
-                        groupId: activeGroup.id,
-                        groupsRepo: app.groupsRepo
-                    )
-                    NavigationStack {
-                        GroupHomeView(
-                            coordinator: coord,
-                            onOpenMembers: { router.openMembers() },
-                            onOpenGovernance: { router.present(.groupRulesSettings) },
-                            onOpenRulePresets: { router.present(.groupRulesSettings) },
-                            onLeaveGroup: {
-                                Task {
-                                    try? await app.groupsRepo.leave(activeGroup.id)
-                                    await app.refreshProfileAndGroups()
-                                    router.dismissTop()
-                                }
-                            },
-                            onShareInvite: {
-                                router.present(.inviteShare)
-                            }
-                        )
-                        .environment(app)
-                    }
+                    GroupHomeSheetContent(group: activeGroup, app: app, router: router)
                 }
             }
 
@@ -588,6 +544,79 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
         )
+    }
+}
+
+// MARK: - GroupHomeSheetContent
+
+@MainActor
+private struct GroupHomeSheetContent: View {
+    let group: RuulCore.Group
+    let app: AppState
+    let router: RootRouter
+
+    @State private var path = NavigationPath()
+    @State private var showEditIdentity = false
+    @State private var showRotateCode = false
+
+    private enum GroupNav: Hashable { case modules, currency, timezone, governance, rulePresets }
+
+    var body: some View {
+        let coord = GroupHomeCoordinator(groupId: group.id, groupsRepo: app.groupsRepo)
+        NavigationStack(path: $path) {
+            GroupHomeView(
+                coordinator: coord,
+                onOpenMembers: { router.openMembers() },
+                onOpenGovernance: { path.append(GroupNav.governance) },
+                onOpenRulePresets: { path.append(GroupNav.rulePresets) },
+                onLeaveGroup: {
+                    Task {
+                        try? await app.groupsRepo.leave(group.id)
+                        await app.refreshProfileAndGroups()
+                        while router.state.contains(.groupHome) { router.state.dismissTop() }
+                        while router.state.contains(.inviteShare) { router.state.dismissTop() }
+                    }
+                },
+                onShareInvite: { router.present(.inviteShare) },
+                onEditIdentity: { showEditIdentity = true },
+                onPickModules: { path.append(GroupNav.modules) },
+                onPickCurrency: { path.append(GroupNav.currency) },
+                onPickTimezone: { path.append(GroupNav.timezone) },
+                onRotateCode: { showRotateCode = true }
+            )
+            .navigationDestination(for: GroupNav.self) { dest in
+                switch dest {
+                case .modules:
+                    ModulesPickerView(groupId: group.id)
+                        .environment(app)
+                case .currency:
+                    GroupCurrencyPickerView(groupId: group.id)
+                        .environment(app)
+                case .timezone:
+                    GroupTimezonePickerView(groupId: group.id)
+                        .environment(app)
+                case .governance:
+                    GovernanceView(group: group, onSaved: nil)
+                        .environment(app)
+                case .rulePresets:
+                    RulePresetsView(coordinator: GroupRulesCoordinator(
+                        group: group,
+                        actorUserId: app.session?.user.id ?? UUID(),
+                        policyRepo: app.policyRepo
+                    ))
+                    .environment(app)
+                }
+            }
+            .fullScreenCover(isPresented: $showEditIdentity) {
+                EditGroupIdentitySheet(groupId: group.id)
+                    .environment(app)
+            }
+            .fullScreenCover(isPresented: $showRotateCode) {
+                RegenerateInviteCodeSheet(groupId: group.id)
+                    .environment(app)
+            }
+        }
+        .environment(app)
     }
 }
 
