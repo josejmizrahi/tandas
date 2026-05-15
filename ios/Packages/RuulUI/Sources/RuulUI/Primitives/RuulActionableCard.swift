@@ -1,8 +1,12 @@
 import SwiftUI
 
-/// Large glass card with icon + title + description + tap action.
-/// Used for "pick one of N options" patterns in onboarding (invite methods,
-/// destination after onboarding, etc.).
+/// Glass card with icon-badge + title + subtitle + tap action.
+/// Used for "pick one of N options" patterns in onboarding (invite
+/// methods, destination after onboarding, etc.).
+///
+/// **vs `ActionCard`**: this is the cleaner picker-tile shape. Use
+/// `ActionCard` for inbox / pendientes (priority + meta + time-
+/// remaining columns); use this for picker / option-grid surfaces.
 public struct RuulActionableCard: View {
     private let icon: String
     private let title: String

@@ -12,6 +12,12 @@ import SwiftUI
 /// Intentionally generic: the inbox view maps any `UserAction` (futuro
 /// modelo de plataforma) onto these props. Keeps the DS unaware of the
 /// platform/template layer.
+///
+/// **vs `RuulActionableCard`**: `ActionCard` is metadata-heavy (meta +
+/// priority + time-remaining columns) for inbox / pendientes
+/// surfaces. `RuulActionableCard` is the cleaner onboarding-picker
+/// shape (icon badge + title + optional badge accessory). They share
+/// visual DNA but serve genuinely different idioms; don't merge.
 public struct ActionCard: View {
     public enum Priority: Sendable, Hashable {
         case low, medium, high, urgent

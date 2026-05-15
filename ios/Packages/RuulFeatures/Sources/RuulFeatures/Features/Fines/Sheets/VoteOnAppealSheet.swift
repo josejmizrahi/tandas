@@ -57,9 +57,7 @@ public struct VoteOnAppealSheet: View {
 
     private var fineCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("MULTA APELADA")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
+            RuulListSectionHeader("MULTA APELADA")
             HStack {
                 Text(fine.reason)
                     .ruulTextStyle(RuulTypography.headline)
@@ -84,9 +82,7 @@ public struct VoteOnAppealSheet: View {
 
     private var appealReasonCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("ARGUMENTO DE \(appellantName.uppercased())")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
+            RuulListSectionHeader("ARGUMENTO DE \(appellantName.uppercased())")
             Text(appeal.reason)
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextPrimary)

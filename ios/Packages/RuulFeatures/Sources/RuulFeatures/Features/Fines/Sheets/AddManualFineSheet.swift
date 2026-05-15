@@ -50,9 +50,7 @@ public struct AddManualFineSheet: View {
 
     private var memberPickerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("¿A QUIÉN?")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
+            RuulListSectionHeader("¿A QUIÉN?")
             RuulSeparatedRows(items: coordinator.members) { mwp in
                 memberRow(mwp)
             }
