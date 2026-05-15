@@ -304,16 +304,7 @@ public struct HomeView: View {
     }
 
     private func inlineMetaBadge(icon: String, text: String) -> some View {
-        HStack(spacing: RuulSpacing.xxs) {
-            Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.caption)
-            Text(text)
-                .ruulTextStyle(RuulTypography.caption)
-        }
-        .foregroundStyle(Color.ruulTextSecondary)
-        .padding(.horizontal, RuulSpacing.xs)
-        .padding(.vertical, 2)
-        .background(Color.ruulFillGlass, in: Capsule())
+        RuulBadge(text, style: .subtle, icon: icon)
     }
 
     private func heroTopBadges(_ event: Event) -> some View {

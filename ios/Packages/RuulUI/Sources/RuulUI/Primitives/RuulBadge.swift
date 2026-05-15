@@ -1,10 +1,25 @@
 import SwiftUI
 
-/// Badge cápsula tinted para estados. Per DS doc §3.10.
-/// Coexiste con RuulChip por ahora — Fase D consolida si aplica.
+/// Capsule pill — Luma-style small chrome that surfaces status, meta,
+/// or accent metadata. Two axes:
+///
+/// - **Semantic styles** (`.positive` / `.negative` / `.warning` /
+///   `.info` / `.neutral`) — use a tinted background + matching
+///   foreground so the pill reads as a status indicator.
+/// - **Decorative styles** (`.subtle` / `.accent`) — use a glass /
+///   accent fill for meta tags ("Hosteas tú", "Recurrente",
+///   "Próximamente"). Replaces the inline `Capsule().fill(Color.ruul
+///   FillGlass)` and `Capsule().fill(Color.ruulAccent.opacity(.12))`
+///   patterns duplicated across 10+ feature files.
 public struct RuulBadge: View {
     public enum Style: Sendable, Hashable {
         case neutral, positive, negative, warning, info
+        /// Glass-quiet decorative pill — soft fill, secondary text.
+        /// Use for non-status meta tags ("Hosteas tú", "Recurrente").
+        case subtle
+        /// Accent-tinted decorative pill — ~14% accent fill, accent
+        /// text. Use for action / category hints.
+        case accent
 
         var background: Color {
             switch self {
@@ -13,6 +28,8 @@ public struct RuulBadge: View {
             case .negative: return .ruulNegativeBackground
             case .warning:  return .ruulWarningBackground
             case .info:     return .ruulInfoBackground
+            case .subtle:   return .ruulFillGlass
+            case .accent:   return Color.ruulAccent.opacity(RuulOpacity.medium)
             }
         }
 
@@ -23,6 +40,8 @@ public struct RuulBadge: View {
             case .negative: return .ruulNegative
             case .warning:  return .ruulWarning
             case .info:     return .ruulInfo
+            case .subtle:   return .ruulTextSecondary
+            case .accent:   return .ruulAccent
             }
         }
     }

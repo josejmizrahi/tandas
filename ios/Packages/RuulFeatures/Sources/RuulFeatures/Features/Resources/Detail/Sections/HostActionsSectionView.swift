@@ -141,12 +141,7 @@ public struct HostActionsSectionView: View {
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(tint)
                 if let badge {
-                    Text(badge)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulAccent)
-                        .padding(.horizontal, RuulSpacing.xs)
-                        .padding(.vertical, 2)
-                        .background(Color.ruulAccent.opacity(0.12), in: Capsule())
+                    RuulBadge(badge, style: .accent)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
