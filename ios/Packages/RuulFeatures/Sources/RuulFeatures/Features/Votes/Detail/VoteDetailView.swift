@@ -13,6 +13,9 @@ public struct VoteDetailView: View {
     @Bindable var coordinator: VoteDetailCoordinator
     @Environment(AppState.self) private var app
 
+    @State private var showFinalizeConfirm = false
+    @State private var showCancelConfirm = false
+
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
@@ -28,6 +31,7 @@ public struct VoteDetailView: View {
                     } else {
                         bodyForType
                         VoteCastSection(coordinator: coordinator)
+                        adminActionsSection
                     }
                 }
                 .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
@@ -41,6 +45,59 @@ public struct VoteDetailView: View {
         .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
+        .alert("Finalizar votación", isPresented: $showFinalizeConfirm) {
+            Button("Finalizar", role: .destructive) {
+                Task { await coordinator.finalizeManually() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("¿Finalizar este voto ahora? Se calculará el resultado con los votos actuales.")
+        }
+        .alert("Cancelar votación", isPresented: $showCancelConfirm) {
+            Button("Cancelar votación", role: .destructive) {
+                Task { await coordinator.cancelVote() }
+            }
+            Button("No cancelar", role: .cancel) {}
+        } message: {
+            Text("¿Cancelar este voto? Solo puedes cancelar si nadie ha votado aún.")
+        }
+    }
+
+    @ViewBuilder
+    private var adminActionsSection: some View {
+        if coordinator.shouldShowFinalize || coordinator.shouldShowCancel {
+            VStack(spacing: RuulSpacing.sm) {
+                if coordinator.shouldShowFinalize {
+                    Button {
+                        showFinalizeConfirm = true
+                    } label: {
+                        HStack {
+                            if coordinator.isFinalizingManually {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                            }
+                            Text("Finalizar votación")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.ruulAccent)
+                    .disabled(coordinator.isFinalizingManually)
+                }
+                if coordinator.shouldShowCancel {
+                    Button(role: .destructive) {
+                        showCancelConfirm = true
+                    } label: {
+                        Text("Cancelar votación")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(coordinator.isCancellingVote)
+                }
+            }
+            .padding(.top, RuulSpacing.xs)
+        }
     }
 
     @ViewBuilder
