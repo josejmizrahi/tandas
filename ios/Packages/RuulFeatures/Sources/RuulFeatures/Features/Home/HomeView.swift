@@ -57,33 +57,31 @@ public struct HomeView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.ruulBackground.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.s8) {
-                    header
-                    nextEventSection
-                    pendingsSection
-                    resourcesSection
-                    upcomingListSection
-                    groupMemorySection
-                    pastEventsLink
-                }
-                .padding(.horizontal, RuulSpacing.lg)
-                .padding(.top, RuulSpacing.xs)
-                .padding(.bottom, RuulSpacing.s12)
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.s8) {
+                header
+                nextEventSection
+                pendingsSection
+                resourcesSection
+                upcomingListSection
+                groupMemorySection
+                pastEventsLink
             }
-            .scrollIndicators(.hidden)
-            .contentMargins(RuulSpacing.md, for: .scrollIndicators)
-            .scrollEdgeEffectStyle(.soft, for: .vertical)
-            .refreshable {
-                async let h: Void = coordinator.refresh(force: true)
-                async let i: Void? = inboxCoordinator?.refresh()
-                async let r: Void = loadNonEventResources()
-                async let m: Void = loadGroupMemory()
-                _ = await (h, i, r, m)
-            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
         }
+        .scrollIndicators(.hidden)
+        .contentMargins(RuulSpacing.md, for: .scrollIndicators)
+        .scrollEdgeEffectStyle(.soft, for: .vertical)
+        .refreshable {
+            async let h: Void = coordinator.refresh(force: true)
+            async let i: Void? = inboxCoordinator?.refresh()
+            async let r: Void = loadNonEventResources()
+            async let m: Void = loadGroupMemory()
+            _ = await (h, i, r, m)
+        }
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         .task {
             async let h: Void = coordinator.refresh()
             async let i: Void? = inboxCoordinator?.refresh()
@@ -464,14 +462,7 @@ public struct HomeView: View {
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             .padding(RuulSpacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(Color.ruulSurface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            .ruulCardSurface(.glass, radius: RuulRadius.medium)
         }
         .buttonStyle(.plain)
     }
@@ -567,11 +558,7 @@ public struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(RuulSpacing.xxl)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
-        )
+        .ruulCardSurface(.glass, radius: RuulRadius.extraLarge)
         .transition(.asymmetric(
             insertion: .scale(scale: 0.95).combined(with: .opacity),
             removal: .opacity
@@ -748,14 +735,7 @@ public struct HomeView: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulSurface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
-        )
+        .ruulCardSurface(.glass, radius: RuulRadius.medium)
     }
 
     // MARK: - Past events link — Apple Sports style: subtle row, no chrome.

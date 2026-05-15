@@ -8,6 +8,7 @@ import RuulCore
 /// caller so this view stays template-agnostic.
 public struct ActionInboxView: View {
     @Bindable var coordinator: InboxCoordinator
+    @Environment(AppState.self) private var app
     public let onOpenAction: (UserAction) -> Void
 
     public init(coordinator: InboxCoordinator, onOpenAction: @escaping (UserAction) -> Void) {
@@ -16,55 +17,58 @@ public struct ActionInboxView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.actions.isEmpty {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.lg)
-                        .transition(.opacity)
-                } else if coordinator.actions.isEmpty && coordinator.isLoading {
-                    RuulLoadingState()
-                        .transition(.opacity)
-                } else if coordinator.actions.isEmpty {
-                    emptyState
-                        .transition(.opacity)
-                } else {
-                    ScrollView {
-                        VStack(spacing: RuulSpacing.sm) {
-                            ForEach(coordinator.actions) { action in
-                                ActionCard(
-                                    icon: icon(for: action.actionType),
-                                    meta: meta(for: action),
-                                    title: action.title,
-                                    subtitle: action.body,
-                                    priority: priority(for: action.priority),
-                                    timeRemaining: nil,
-                                    onTap: { onOpenAction(action) }
-                                )
-                                .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
-                                    content
-                                        .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
-                                }
+        contentLayer
+            .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
+            .task { await coordinator.refresh() }
+    }
+
+    @ViewBuilder
+    private var contentLayer: some View {
+        SwiftUI.Group {
+            if let error = coordinator.error, coordinator.actions.isEmpty {
+                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.lg)
+                    .transition(.opacity)
+            } else if coordinator.actions.isEmpty && coordinator.isLoading {
+                RuulLoadingState()
+                    .transition(.opacity)
+            } else if coordinator.actions.isEmpty {
+                emptyState
+                    .transition(.opacity)
+            } else {
+                ScrollView {
+                    VStack(spacing: RuulSpacing.sm) {
+                        ForEach(coordinator.actions) { action in
+                            ActionCard(
+                                icon: icon(for: action.actionType),
+                                meta: meta(for: action),
+                                title: action.title,
+                                subtitle: action.body,
+                                priority: priority(for: action.priority),
+                                timeRemaining: nil,
+                                onTap: { onOpenAction(action) }
+                            )
+                            .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+                                content
+                                    .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
                             }
                         }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.md)
-                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    .scrollIndicators(.hidden)
-                    .contentMargins(RuulSpacing.md, for: .scrollIndicators)
-                    .scrollEdgeEffectStyle(.soft, for: .vertical)
-                    .refreshable { await coordinator.refresh() }
-                    .transition(.opacity)
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.md)
+                    .padding(.bottom, RuulSpacing.s12)
                 }
+                .scrollIndicators(.hidden)
+                .contentMargins(RuulSpacing.md, for: .scrollIndicators)
+                .scrollEdgeEffectStyle(.soft, for: .vertical)
+                .refreshable { await coordinator.refresh() }
+                .transition(.opacity)
             }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.actions.isEmpty)
         }
-        .task { await coordinator.refresh() }
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+        .animation(.linear(duration: RuulDuration.fast), value: coordinator.actions.isEmpty)
     }
 
     private var emptyState: some View {

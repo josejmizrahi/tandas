@@ -8,6 +8,7 @@ import RuulCore
 /// decision B.)
 public struct ActivityView: View {
     @State var coordinator: ActivityCoordinator
+    @Environment(AppState.self) private var app
     @State private var detailEvent: SystemEvent?
     @State private var showFilters: Bool = false
     @State private var selectedChip: ActivityChip = .all
@@ -39,6 +40,7 @@ public struct ActivityView: View {
             .contentMargins(RuulSpacing.md, for: .scrollIndicators)
             .scrollEdgeEffectStyle(.soft, for: .vertical)
         }
+        .ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)
         // W2-C5: canon = "Actividad" for the group's system_events feed;
         // "Historial" reserved for past-events listing (PastResourcesView).
         // "Historia" dropped entirely.
@@ -101,7 +103,6 @@ public struct ActivityView: View {
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.vertical, RuulSpacing.sm)
         }
-        .background(Color.ruulBackground)
     }
 
     private var header: some View {
