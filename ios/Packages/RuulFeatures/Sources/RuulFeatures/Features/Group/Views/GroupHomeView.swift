@@ -14,7 +14,8 @@ public struct GroupHomeView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    public let onOpenMembers: () -> Void
+    public var onOpenMembersList: (() -> Void)?
+    public var onOpenMembersAdmin: (() -> Void)?
     public let onOpenGovernance: () -> Void
     public let onOpenRulePresets: () -> Void
     public let onLeaveGroup: () -> Void
@@ -28,7 +29,8 @@ public struct GroupHomeView: View {
 
     public init(
         coordinator: GroupHomeCoordinator,
-        onOpenMembers: @escaping () -> Void,
+        onOpenMembersList: (() -> Void)? = nil,
+        onOpenMembersAdmin: (() -> Void)? = nil,
         onOpenGovernance: @escaping () -> Void,
         onOpenRulePresets: @escaping () -> Void,
         onLeaveGroup: @escaping () -> Void,
@@ -40,7 +42,8 @@ public struct GroupHomeView: View {
         onRotateCode: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
-        self.onOpenMembers = onOpenMembers
+        self.onOpenMembersList = onOpenMembersList
+        self.onOpenMembersAdmin = onOpenMembersAdmin
         self.onOpenGovernance = onOpenGovernance
         self.onOpenRulePresets = onOpenRulePresets
         self.onLeaveGroup = onLeaveGroup
@@ -173,7 +176,11 @@ public struct GroupHomeView: View {
                 icon: "person.2",
                 label: "Miembros",
                 trailing: { trailingValue("\(coordinator.memberCount)") },
-                action: onOpenMembers
+                action: {
+                    coordinator.isCurrentUserAdmin
+                        ? onOpenMembersAdmin?()
+                        : onOpenMembersList?()
+                }
             )
         }
     }

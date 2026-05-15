@@ -585,7 +585,8 @@ private struct GroupHomeSheetContent: View {
         NavigationStack(path: $path) {
             GroupHomeView(
                 coordinator: coord,
-                onOpenMembers: { router.openMembersAdmin() },
+                onOpenMembersList: { router.openMembersList() },
+                onOpenMembersAdmin: { router.openMembersAdmin() },
                 onOpenGovernance: { path.append(GroupNav.governance) },
                 onOpenRulePresets: { path.append(GroupNav.rulePresets) },
                 onLeaveGroup: {
