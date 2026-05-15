@@ -77,6 +77,11 @@ public extension SystemEventType {
         case .resourceUnarchived:     return "Recurso restaurado"
         case .resourceRenamed:        return "Recurso renombrado"
 
+        // Capability lifecycle (mig 00192)
+        case .capabilityToggled:           return "Capacidad activada o apagada"
+        case .capabilityConfigUpdated:     return "Configuración de capacidad editada"
+        case .memberCapabilityOverridden:  return "Excepción de miembro aplicada"
+
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
         }
@@ -132,7 +137,8 @@ public extension SystemEventType {
              .inviteCodeRotated,
              .groupCreated, .groupArchived, .groupUnarchived,
              .groupRenamed, .governanceUpdated,
-             .resourceArchived, .resourceUnarchived, .resourceRenamed:
+             .resourceArchived, .resourceUnarchived, .resourceRenamed,
+             .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden:
             return false
         case .unknown:
             return false

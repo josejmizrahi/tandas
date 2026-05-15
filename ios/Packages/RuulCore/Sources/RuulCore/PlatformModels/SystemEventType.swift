@@ -96,5 +96,16 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// `resources.metadata.title` or `metadata.name` changed.
     case resourceRenamed
 
+    // MARK: - Capability (Layer 5) lifecycle — mig 00192
+    /// `resource_capabilities.enabled` toggled by a user (not auto-seed).
+    /// Payload: capability_block_id + new_enabled + resource_type.
+    case capabilityToggled
+    /// `resource_capabilities.config` jsonb mutated (founder edited
+    /// thresholds, deadlines, etc.).
+    case capabilityConfigUpdated
+    /// New row inserted into `member_capability_overrides` (Isaac
+    /// excluded from rotation, guest can book, etc.).
+    case memberCapabilityOverridden
+
     case unknown(String)
 }

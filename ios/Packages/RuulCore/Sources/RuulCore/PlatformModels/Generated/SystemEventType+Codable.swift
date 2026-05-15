@@ -50,6 +50,9 @@ extension SystemEventType {
         .resourceArchived,
         .resourceUnarchived,
         .resourceRenamed,
+        .capabilityToggled,
+        .capabilityConfigUpdated,
+        .memberCapabilityOverridden,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -98,6 +101,9 @@ extension SystemEventType {
         "resourceArchived",
         "resourceUnarchived",
         "resourceRenamed",
+        "capabilityToggled",
+        "capabilityConfigUpdated",
+        "memberCapabilityOverridden",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -157,6 +163,9 @@ extension SystemEventType {
         case .resourceArchived: return "resourceArchived"
         case .resourceUnarchived: return "resourceUnarchived"
         case .resourceRenamed: return "resourceRenamed"
+        case .capabilityToggled: return "capabilityToggled"
+        case .capabilityConfigUpdated: return "capabilityConfigUpdated"
+        case .memberCapabilityOverridden: return "memberCapabilityOverridden"
         case .unknown(let s): return s
         }
     }
@@ -208,6 +217,9 @@ extension SystemEventType {
         case "resourceArchived": return .resourceArchived
         case "resourceUnarchived": return .resourceUnarchived
         case "resourceRenamed": return .resourceRenamed
+        case "capabilityToggled": return .capabilityToggled
+        case "capabilityConfigUpdated": return .capabilityConfigUpdated
+        case "memberCapabilityOverridden": return .memberCapabilityOverridden
         default: return .unknown(raw)
         }
     }

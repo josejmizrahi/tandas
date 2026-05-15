@@ -47,6 +47,9 @@ export const systemEventTypeValues = [
   "resourceArchived",
   "resourceUnarchived",
   "resourceRenamed",
+  "capabilityToggled",
+  "capabilityConfigUpdated",
+  "memberCapabilityOverridden",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

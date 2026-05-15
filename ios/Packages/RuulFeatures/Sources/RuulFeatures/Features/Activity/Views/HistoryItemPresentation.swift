@@ -202,6 +202,18 @@ public struct HistoryItemPresentation {
             self.icon = "pencil"
             self.title = "\(actor) renombró un recurso"
             self.tone = .neutral
+        case .capabilityToggled:
+            self.icon = "switch.2"
+            self.title = "\(actor) cambió una capacidad"
+            self.tone = .neutral
+        case .capabilityConfigUpdated:
+            self.icon = "slider.horizontal.3"
+            self.title = "\(actor) editó la configuración de una capacidad"
+            self.tone = .neutral
+        case .memberCapabilityOverridden:
+            self.icon = "person.fill.questionmark"
+            self.title = "\(actor) aplicó una excepción de miembro"
+            self.tone = .neutral
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"
