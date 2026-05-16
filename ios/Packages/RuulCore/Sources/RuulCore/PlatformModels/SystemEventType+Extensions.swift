@@ -117,9 +117,10 @@ public extension SystemEventType {
         case .resourceLinked:         return "Recurso vinculado"
         case .resourceUnlinked:       return "Recurso desvinculado"
 
-        // Event lifecycle (mig 00203 — eventCancelled, mig 00208 — eventStarted)
+        // Event lifecycle (mig 00203 — eventCancelled, mig 00208 — eventStarted, mig 00210 — eventUpdated)
         case .eventCancelled:         return "Evento cancelado"
         case .eventStarted:           return "Evento iniciado"
+        case .eventUpdated:           return "Evento actualizado"
 
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
@@ -189,7 +190,8 @@ public extension SystemEventType {
              .assetUsed, .assetCheckedOut, .assetCheckedIn, .valuationRecorded,
              .resourceLinked, .resourceUnlinked,
              .eventCancelled,
-             .eventStarted:
+             .eventStarted,
+             .eventUpdated:
             return false
         case .unknown:
             return false

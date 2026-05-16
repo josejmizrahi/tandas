@@ -54,6 +54,16 @@ const TRIGGER_PHASE: Partial<Record<SystemEventType, string>> = {
   // Phase 3: Tanda
   fundDeposit: "phase_3",
   fundThresholdReached: "phase_3",
+  // Phase 5: Event spec atoms — implemented at the data layer (atoms
+  // emitted + projections updated) but no rule consumes them yet.
+  // Listed here so authoring slips on FUTURE rules surface as
+  // "future_phase" rather than the "unknown" signal that flags
+  // accidental enum cases.
+  eventStarted: "phase_5",
+  eventCancelled: "phase_5",
+  eventUpdated: "phase_5",
+  resourceLinked: "phase_5",
+  resourceUnlinked: "phase_5",
   // V1 emitters that no rule consumes today fall through to "unknown" —
   // intentional, so an authoring slip surfaces as a real signal.
 };

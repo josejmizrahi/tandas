@@ -116,10 +116,12 @@ public struct ActivitySectionView: View {
     }
 
     /// True when the SystemEvent's payload marks it as a cancellation
-    /// (00098 emits eventClosed with status:cancelled for cancel_event).
-    /// We keep the SystemEventType enum closed (no `eventCancelled`
-    /// case) so the differentiation lives entirely in payload + the
-    /// renderer.
+    /// (legacy: 00098 emitted eventClosed with status:cancelled for
+    /// cancel_event). Mig 00209 stops emitting that — new cancellations
+    /// produce a dedicated `eventCancelled` atom instead. This helper
+    /// stays for backward-compat with historical rows already in
+    /// system_events; new rows render via the `eventCancelled` arm of
+    /// the switch below.
     private func isCancelled(_ event: SystemEvent) -> Bool {
         guard event.eventType == .eventClosed else { return false }
         if case .string(let s) = event.payload["status"] {
@@ -132,6 +134,9 @@ public struct ActivitySectionView: View {
         switch event.eventType {
         case .eventCreated:        return "calendar.badge.plus"
         case .eventClosed:         return isCancelled(event) ? "xmark.circle" : "calendar.badge.checkmark"
+        case .eventCancelled:      return "xmark.circle"
+        case .eventStarted:        return "play.circle"
+        case .eventUpdated:        return "pencil.and.list.clipboard"
         case .checkInRecorded:     return "qrcode"
         case .rsvpSubmitted:       return "checkmark.bubble"
         case .rsvpChangedSameDay:  return "arrow.uturn.backward"
@@ -148,6 +153,8 @@ public struct ActivitySectionView: View {
         case .memberLeft:          return "person.fill.badge.minus"
         case .ruleEnabledChanged:  return "list.bullet.clipboard"
         case .ruleAmountChanged:   return "list.bullet.clipboard"
+        case .resourceLinked:      return "link"
+        case .resourceUnlinked:    return "link.badge.plus"
         default:                   return "circle.dotted"
         }
     }
@@ -156,6 +163,9 @@ public struct ActivitySectionView: View {
         switch event.eventType {
         case .eventCreated:        return labelForEventCreated(event)
         case .eventClosed:         return isCancelled(event) ? "El evento se canceló" : "El evento cerró"
+        case .eventCancelled:      return "El evento se canceló"
+        case .eventStarted:        return "El evento empezó"
+        case .eventUpdated:        return "Se actualizó el evento"
         case .checkInRecorded:     return "Alguien hizo check-in"
         case .rsvpSubmitted:       return "Alguien respondió"
         case .rsvpChangedSameDay:  return "Cambio de RSVP el mismo día"
@@ -172,6 +182,8 @@ public struct ActivitySectionView: View {
         case .memberLeft:          return "Alguien dejó el grupo"
         case .ruleEnabledChanged:  return "Una regla cambió de estado"
         case .ruleAmountChanged:   return "Cambió el monto de una regla"
+        case .resourceLinked:      return "Se vinculó un recurso al evento"
+        case .resourceUnlinked:    return "Se desvinculó un recurso del evento"
         default:                   return "Actividad"
         }
     }

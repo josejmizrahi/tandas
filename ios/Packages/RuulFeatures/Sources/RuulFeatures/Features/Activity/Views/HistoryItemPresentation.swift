@@ -354,6 +354,11 @@ public struct HistoryItemPresentation {
             self.icon = "play.circle"
             self.title = "El evento empezó"
             self.tone = .info
+        // Event lifecycle — eventUpdated (mig 00210, non-title metadata change)
+        case .eventUpdated:
+            self.icon = "pencil.and.list.clipboard"
+            self.title = "\(actor) actualizó el evento"
+            self.tone = .neutral
 
         case .unknown:
             self.icon = "questionmark.circle"

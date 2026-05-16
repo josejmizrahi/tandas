@@ -232,6 +232,12 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// Lets the rule engine and `event_lifecycle_view` derive `is_live`
     /// from atoms instead of the clock. Payload: `{starts_at, title, host_id}`.
     case eventStarted
+    /// Emitted by trigger on `resources.metadata` UPDATE for events
+    /// (mig 00210) when any non-title key changes (location, starts_at,
+    /// description, host_id, cover, …). Title-only renames keep flowing
+    /// through `resourceRenamed`. Payload: `{changed_keys, changed_by,
+    /// title, title_changed}`.
+    case eventUpdated
 
     case unknown(String)
 }
