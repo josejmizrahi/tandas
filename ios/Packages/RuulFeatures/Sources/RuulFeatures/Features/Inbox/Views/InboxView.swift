@@ -123,6 +123,19 @@ public struct InboxView: View {
             }
             Button("Cancelar", role: .cancel) {}
         }
+        .overlay(alignment: .bottom) {
+            if let message = toastMessage {
+                Text(message)
+                    .ruulTextStyle(RuulTypography.body)
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.vertical, RuulSpacing.sm)
+                    .background(Color.ruulSurface, in: Capsule())
+                    .shadow(radius: 4)
+                    .padding(.bottom, RuulSpacing.xl)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut, value: toastMessage)
     }
 
     // MARK: - Chips strip
