@@ -17,6 +17,9 @@ public protocol UserActionRepository: Actor {
     /// quick-switcher to badge each group chip with the user's pending
     /// load. RLS scopes to the caller's groups automatically.
     func pendingCountsByGroup(userId: UUID) async throws -> [UUID: Int]
+
+    /// Recent resolved actions for the user (cross-group, latest resolved first).
+    func resolved(userId: UUID, limit: Int) async throws -> [UserAction]
 }
 
 // MARK: - Mock
@@ -61,6 +64,15 @@ public actor MockUserActionRepository: UserActionRepository {
             counts[action.groupId, default: 0] += 1
         }
         return counts
+    }
+
+    public func resolved(userId: UUID, limit: Int) async throws -> [UserAction] {
+        Array(
+            actions
+                .filter { $0.userId == userId && $0.resolvedAt != nil }
+                .sorted { ($0.resolvedAt ?? .distantPast) > ($1.resolvedAt ?? .distantPast) }
+                .prefix(limit)
+        )
     }
 
     private func priorityRank(_ p: ActionPriority) -> Int {
@@ -119,5 +131,18 @@ public actor LiveUserActionRepository: UserActionRepository {
             counts[row.group_id, default: 0] += 1
         }
         return counts
+    }
+
+    public func resolved(userId: UUID, limit: Int) async throws -> [UserAction] {
+        let rows: [UserAction] = try await client
+            .from("user_actions")
+            .select("*")
+            .eq("user_id", value: userId.uuidString.lowercased())
+            .not("resolved_at", operator: .is, value: AnyJSON.null)
+            .order("resolved_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+        return rows
     }
 }
