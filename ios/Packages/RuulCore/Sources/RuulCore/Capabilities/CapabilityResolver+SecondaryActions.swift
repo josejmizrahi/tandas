@@ -184,6 +184,21 @@ public extension CapabilityResolver {
             kind: .share
         ))
 
+        // Edit details: admin only. Surfaces the EditRightSheet which
+        // wraps `update_right_metadata` (mig 00199). Tuneable knobs:
+        // name, priority, exclusive/transferable/delegable/divisible,
+        // expires_at, source, scope, target_resource_id, target_capability.
+        // Holder + delegate + status stay on dedicated lifecycle RPCs
+        // (transfer/delegate/revoke/etc.) so atom emission is correct.
+        if isAdmin {
+            items.append(SecondaryAction(
+                label: "Editar detalles",
+                symbol: "pencil",
+                section: .primary,
+                kind: .editDetails
+            ))
+        }
+
         // Exercise: holder or active delegate, right is active + not
         // suspended. Server-side `exercise_right` rejects everyone else,
         // so the UI hides the button to avoid presenting an action that

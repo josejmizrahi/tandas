@@ -37,6 +37,12 @@ public struct UniversalResourceDetailView: View {
     /// `dispatchSecondary(_:)` writes this; the body's `.sheet(item:)`
     /// modifier renders the corresponding `RightActionSheet`.
     @State private var activeRightAction: RightActionSheet.Action?
+    /// Toggles `EditRightSheet` (slice 13). Separate from
+    /// `activeRightAction` because the edit form has its own field
+    /// set (~10 knobs) too divergent to share the lifecycle sheet's
+    /// shape. Dispatched from the ⋯ menu's `.editDetails` when the
+    /// resource is a right.
+    @State private var showEditRight: Bool = false
 
     public init(context: ResourceDetailContext) {
         self.context = context
@@ -161,6 +167,25 @@ public struct UniversalResourceDetailView: View {
                     // (status/metadata). The outer detail screen owns
                     // its own refresh — the simplest signal is to
                     // dismiss so the caller re-fetches on present.
+                    if let onDismiss = context.onDismiss {
+                        onDismiss()
+                    } else {
+                        dismiss()
+                    }
+                }
+            )
+            .environment(app)
+        }
+        .sheet(isPresented: $showEditRight) {
+            EditRightSheet(
+                rightId: context.resource.id,
+                metadata: context.resource.metadata,
+                onCompleted: {
+                    // Mirror RightActionSheet's dismiss pattern: the
+                    // metadata mutated, so dismiss the detail so the
+                    // caller re-fetches on next present. A future
+                    // slice could refresh in place via a coordinator
+                    // callback if the dismiss feels heavy-handed.
                     if let onDismiss = context.onDismiss {
                         onDismiss()
                     } else {
@@ -581,7 +606,16 @@ public struct UniversalResourceDetailView: View {
     private func dispatchSecondary(_ action: SecondaryAction) {
         switch action.kind {
         case .editDetails:
-            context.onPresentEditResource()
+            // Slice 13: rights have a dedicated EditRightSheet wrapping
+            // update_right_metadata (mig 00199). Other resource types
+            // still route through the generic onPresentEditResource
+            // callback (no-op for many today; per-type sheets land as
+            // each type's edit surface is built).
+            if context.resource.resourceType == .right {
+                showEditRight = true
+            } else {
+                context.onPresentEditResource()
+            }
         case .addToCalendar:
             break  // wire in Pass 1.1; presenter doesn't expose this directly
         case .share:
