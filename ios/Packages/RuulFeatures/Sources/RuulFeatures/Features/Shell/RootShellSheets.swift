@@ -807,7 +807,7 @@ private struct GroupHomeSheetContent: View {
 
     private enum GroupNav: Hashable {
         case modules, currency, timezone, governance, rulePresets,
-             membersList, membersAdmin
+             membersList, membersAdmin, roles
     }
 
     var body: some View {
@@ -834,7 +834,8 @@ private struct GroupHomeSheetContent: View {
                 onPickTimezone: { path.append(GroupNav.timezone) },
                 onRotateCode: { showRotateCode = true },
                 onInviteMembers: { showInvite = true },
-                onConfirmLeave: { showLeave = true }
+                onConfirmLeave: { showLeave = true },
+                onOpenRoles: { path.append(GroupNav.roles) }
             )
             .navigationDestination(for: GroupNav.self) { dest in
                 switch dest {
@@ -874,6 +875,9 @@ private struct GroupHomeSheetContent: View {
                         onInviteTap: { showMembersAdminInvite = true }
                     )
                     .environment(app)
+                case .roles:
+                    GroupRolesSheet(groupId: group.id)
+                        .environment(app)
                 }
             }
             .fullScreenCover(isPresented: $showMembersAdminInvite) {

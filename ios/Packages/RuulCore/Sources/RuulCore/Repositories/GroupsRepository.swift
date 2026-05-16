@@ -59,6 +59,37 @@ public protocol GroupsRepository: Actor {
     /// Restores an archived group via `unarchive_group` RPC. Only the
     /// founder who archived can restore.
     func unarchive(groupId: UUID) async throws
+
+    // MARK: - RolesV2 (Phase 5) — mig 00229 / 00230
+
+    /// Assigns `role` to the target member via `assign_role` RPC
+    /// (mig 00229). Server gates by `has_permission(assignRoles)` or
+    /// legacy `is_group_admin`. Idempotent — re-assigning an existing
+    /// role is a no-op. Returns the updated `Member` row.
+    func assignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member
+
+    /// Removes `role` from the target member via `unassign_role` RPC
+    /// (mig 00229). Server protects the `member` baseline and the last
+    /// `founder` of the group. Idempotent.
+    func unassignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member
+
+    /// Creates or updates an entry in `groups.roles` via
+    /// `upsert_group_role` RPC (mig 00230). System roles
+    /// (`founder`/`member`) keep their `system: true` flag; founder
+    /// retains the `assignRoles` permission as a lockout safeguard.
+    func upsertGroupRole(
+        groupId: UUID,
+        roleId: String,
+        label: String?,
+        permissions: [Permission],
+        maxHolders: Int?
+    ) async throws -> Group
+
+    /// Removes a custom role from `groups.roles` and cascades to strip
+    /// the role from every membership in the group via
+    /// `delete_group_role` RPC (mig 00230). System roles cannot be
+    /// deleted.
+    func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group
 }
 
 /// Partial update payload for the new bare-group config.
@@ -414,6 +445,144 @@ public actor MockGroupsRepository: GroupsRepository {
         )
         return new
     }
+
+    // MARK: - RolesV2 (Phase 5) mock
+
+    public func assignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member {
+        try mutateMemberRoles(groupId: groupId, userId: userId) { current in
+            current.contains(role) ? current : current + [role]
+        }
+    }
+
+    public func unassignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member {
+        if role == "member" {
+            throw GroupsError.rpcFailed("cannot remove system role \"member\"")
+        }
+        return try mutateMemberRoles(groupId: groupId, userId: userId) { current in
+            current.filter { $0 != role }
+        }
+    }
+
+    public func upsertGroupRole(
+        groupId: UUID,
+        roleId: String,
+        label: String?,
+        permissions: [Permission],
+        maxHolders: Int?
+    ) async throws -> Group {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let normalized = roleId.lowercased()
+        let isSystem = ["founder", "member"].contains(normalized)
+        if normalized == "founder", !permissions.contains(.assignRoles) {
+            throw GroupsError.rpcFailed("founder must retain assignRoles")
+        }
+        var catalog = _groups[idx].roles ?? RoleDefinition.v1SystemRoles
+        catalog[normalized] = RoleDefinition(
+            id: normalized,
+            label: label?.isEmpty == true ? nil : label,
+            permissions: Array(Set(permissions)).sorted { $0.rawString < $1.rawString },
+            maxHolders: maxHolders,
+            system: isSystem
+        )
+        _groups[idx] = withCatalog(_groups[idx], roles: catalog)
+        return _groups[idx]
+    }
+
+    public func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group {
+        guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
+            throw GroupsError.notFound
+        }
+        let normalized = roleId.lowercased()
+        if ["founder", "member"].contains(normalized) {
+            throw GroupsError.rpcFailed("cannot delete system role \(normalized)")
+        }
+        var catalog = _groups[idx].roles ?? [:]
+        catalog.removeValue(forKey: normalized)
+        _groups[idx] = withCatalog(_groups[idx], roles: catalog)
+
+        if var list = _members[groupId] {
+            list = list.map { stripRoleFromMember($0, role: normalized) }
+            _members[groupId] = list
+        }
+        _membersWithProfiles = _membersWithProfiles.map { mw in
+            guard mw.member.groupId == groupId else { return mw }
+            return MemberWithProfile(member: stripRoleFromMember(mw.member, role: normalized), profile: mw.profile)
+        }
+        return _groups[idx]
+    }
+
+    // MARK: helpers
+
+    private func mutateMemberRoles(
+        groupId: UUID,
+        userId: UUID,
+        transform: ([String]) -> [String]
+    ) throws -> Member {
+        var found: Member?
+        if var list = _members[groupId] {
+            if let mIdx = list.firstIndex(where: { $0.userId == userId }) {
+                let updated = withRoles(list[mIdx], roles: transform(list[mIdx].rawRoles))
+                list[mIdx] = updated
+                _members[groupId] = list
+                found = updated
+            }
+        }
+        if let idx = _membersWithProfiles.firstIndex(where: { $0.member.groupId == groupId && $0.member.userId == userId }) {
+            let updated = withRoles(_membersWithProfiles[idx].member, roles: transform(_membersWithProfiles[idx].member.rawRoles))
+            _membersWithProfiles[idx] = MemberWithProfile(member: updated, profile: _membersWithProfiles[idx].profile)
+            found = updated
+        }
+        guard let result = found else { throw GroupsError.notFound }
+        return result
+    }
+
+    private func withRoles(_ m: Member, roles: [String]) -> Member {
+        Member(
+            id: m.id,
+            groupId: m.groupId,
+            userId: m.userId,
+            displayNameOverride: m.displayNameOverride,
+            role: m.role,
+            roles: roles.compactMap(MemberRole.init(rawValue:)),
+            rawRoles: roles,
+            active: m.active,
+            joinedAt: m.joinedAt,
+            leftAt: m.leftAt,
+            joinedVia: m.joinedVia,
+            joinedViaInviteCode: m.joinedViaInviteCode
+        )
+    }
+
+    private func stripRoleFromMember(_ m: Member, role: String) -> Member {
+        guard m.rawRoles.contains(role) else { return m }
+        return withRoles(m, roles: m.rawRoles.filter { $0 != role })
+    }
+
+    private func withCatalog(_ g: Group, roles: [String: RoleDefinition]) -> Group {
+        Group(
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            currency: g.currency,
+            timezone: g.timezone,
+            inviteCode: g.inviteCode,
+            coverImageName: g.coverImageName,
+            baseTemplate: g.baseTemplate,
+            activeModules: g.activeModules,
+            governance: g.governance,
+            settings: g.settings,
+            roles: roles,
+            category: g.category,
+            initials: g.initials,
+            avatarUrl: g.avatarUrl,
+            createdBy: g.createdBy,
+            createdAt: g.createdAt,
+            updatedAt: .now,
+            archivedAt: g.archivedAt
+        )
+    }
 }
 
 // MARK: - Live
@@ -536,7 +705,7 @@ public actor LiveGroupsRepository: GroupsRepository {
     public func members(of groupId: UUID) async throws -> [Member] {
         try await client
             .from("group_members")
-            .select("id, group_id, user_id, display_name_override, role, active, joined_at")
+            .select("id, group_id, user_id, display_name_override, role, roles, active, joined_at, left_at, joined_via, joined_via_invite_code")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .eq("active", value: true)
             .execute()
@@ -800,6 +969,108 @@ public actor LiveGroupsRepository: GroupsRepository {
             try await client
                 .rpc("unarchive_group", params: Params(p_group_id: groupId.uuidString.lowercased()))
                 .execute()
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - RolesV2 (Phase 5) live
+
+    public func assignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_user_id:  String
+            let p_role:     String
+        }
+        do {
+            return try await client
+                .rpc(
+                    "assign_role",
+                    params: Params(
+                        p_group_id: groupId.uuidString.lowercased(),
+                        p_user_id:  userId.uuidString.lowercased(),
+                        p_role:     role
+                    )
+                )
+                .execute()
+                .value
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func unassignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_user_id:  String
+            let p_role:     String
+        }
+        do {
+            return try await client
+                .rpc(
+                    "unassign_role",
+                    params: Params(
+                        p_group_id: groupId.uuidString.lowercased(),
+                        p_user_id:  userId.uuidString.lowercased(),
+                        p_role:     role
+                    )
+                )
+                .execute()
+                .value
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func upsertGroupRole(
+        groupId: UUID,
+        roleId: String,
+        label: String?,
+        permissions: [Permission],
+        maxHolders: Int?
+    ) async throws -> Group {
+        struct Params: Encodable {
+            let p_group_id:    String
+            let p_role_id:     String
+            let p_label:       String?
+            let p_permissions: [String]
+            let p_max_holders: Int?
+        }
+        do {
+            return try await client
+                .rpc(
+                    "upsert_group_role",
+                    params: Params(
+                        p_group_id:    groupId.uuidString.lowercased(),
+                        p_role_id:     roleId,
+                        p_label:       label,
+                        p_permissions: permissions.map(\.rawString),
+                        p_max_holders: maxHolders
+                    )
+                )
+                .execute()
+                .value
+        } catch {
+            throw GroupsError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_role_id:  String
+        }
+        do {
+            return try await client
+                .rpc(
+                    "delete_group_role",
+                    params: Params(
+                        p_group_id: groupId.uuidString.lowercased(),
+                        p_role_id:  roleId
+                    )
+                )
+                .execute()
+                .value
         } catch {
             throw GroupsError.rpcFailed(error.localizedDescription)
         }

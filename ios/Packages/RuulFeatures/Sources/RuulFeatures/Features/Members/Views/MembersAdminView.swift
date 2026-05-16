@@ -76,17 +76,21 @@ public struct MembersAdminView: View {
                         MemberDetailView(
                             memberWithProfile: row,
                             group: coordinator.group,
-                            isCurrentUser: row.member.userId == coordinator.actorUserId
+                            isCurrentUser: row.member.userId == coordinator.actorUserId,
+                            canManageRoles: coordinator.canManageRoles,
+                            founderCount: coordinator.founderCount
                         )
                     } label: {
                         adminRow(row)
                     }
                     .swipeActions(edge: .trailing) {
                         if row.member.userId != coordinator.actorUserId {
-                            Button(role: .destructive) {
-                                memberToKick = row
-                            } label: {
-                                Label("Echar", systemImage: "trash")
+                            if coordinator.canRemoveMembers {
+                                Button(role: .destructive) {
+                                    memberToKick = row
+                                } label: {
+                                    Label("Echar", systemImage: "trash")
+                                }
                             }
                             Button {
                                 proposeRemovalFor = row
