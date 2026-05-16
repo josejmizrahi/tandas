@@ -13,6 +13,7 @@ enum InboxChip: String, CaseIterable, Identifiable {
     case solicitudes  = "Solicitudes"
     case confirmar    = "Confirmar"
     case recordatorios = "Recordatorios"
+    case resueltas     = "Resueltas"
 
     var id: String { rawValue }
 
@@ -28,6 +29,7 @@ enum InboxChip: String, CaseIterable, Identifiable {
         case .solicitudes:   return "arrow.2.squarepath"
         case .confirmar:     return "checkmark.circle.fill"
         case .recordatorios: return "bell.fill"
+        case .resueltas:     return "checkmark.circle"
         }
     }
 
@@ -57,6 +59,10 @@ enum InboxChip: String, CaseIterable, Identifiable {
             return action.actionType == .rsvpPending
         case .recordatorios:
             return action.actionType == .hostAssigned
+        case .resueltas:
+            // Resolved actions come from a separate fetch (coordinator.resolvedActions),
+            // not from the pending pool. This chip never matches a pending action.
+            return false
         }
     }
 
@@ -206,6 +212,7 @@ private struct FilteredInboxList: View {
         case .slotPending:            return "calendar.badge.plus"
         case .contributionDue:        return "dollarsign.circle"
         case .compensationDue:        return "dollarsign.arrow.circlepath"
+        case .assetActionApproval:    return "checkmark.shield"
         }
     }
 

@@ -259,6 +259,8 @@ extension SystemEventType {
         case .eventCancelled: return "eventCancelled"
         case .eventStarted: return "eventStarted"
         case .eventUpdated: return "eventUpdated"
+        case .assetCheckoutOverdue: return "assetCheckoutOverdue"
+        case .assetMaintenanceOverdue: return "assetMaintenanceOverdue"
         case .unknown(let s): return s
         }
     }
@@ -344,6 +346,8 @@ extension SystemEventType {
         case "eventCancelled": return .eventCancelled
         case "eventStarted": return .eventStarted
         case "eventUpdated": return .eventUpdated
+        case "assetCheckoutOverdue": return .assetCheckoutOverdue
+        case "assetMaintenanceOverdue": return .assetMaintenanceOverdue
         default: return .unknown(raw)
         }
     }

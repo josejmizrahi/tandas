@@ -366,6 +366,16 @@ public struct HistoryItemPresentation {
             self.title = "\(actor) creó un espacio"
             self.tone = .info
 
+        case .assetCheckoutOverdue:
+            self.icon = "clock.badge.exclamationmark"
+            self.title = "Un activo no fue devuelto a tiempo"
+            self.tone = .warning
+
+        case .assetMaintenanceOverdue:
+            self.icon = "wrench.and.screwdriver.fill"
+            self.title = "Un mantenimiento lleva demasiado tiempo abierto"
+            self.tone = .warning
+
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"
