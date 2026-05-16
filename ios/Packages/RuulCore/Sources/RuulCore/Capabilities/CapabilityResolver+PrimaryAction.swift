@@ -12,8 +12,12 @@ public extension CapabilityResolver {
     /// - event + open + has rsvp + not RSVP'd      → rsvpConfirm
     /// - event + open + has rsvp + RSVP'd .going   → rsvpCancel
     /// - event without rsvp capability             → none
-    /// - fund                                      → openContribute (Phase 2 wires)
-    /// - asset                                     → openBooking (Phase 2 wires)
+    /// - fund with ledger capability               → openContribute
+    /// - fund without ledger capability            → none
+    /// - asset                                     → none (bookings section's
+    ///   inline "+ Nuevo" button is the canonical add path; the CTA at the
+    ///   bottom would just route to the same flow at the cost of
+    ///   "Reservar"-shaped misleading copy when booking is disabled)
     /// - right + viewer is holder/delegate + active + !suspended → exerciseRight
     /// - space, slot, unknown                      → none
     func primaryAction(
@@ -33,25 +37,27 @@ public extension CapabilityResolver {
                 enabledCapabilities: enabledCapabilities
             )
         case .fund:
+            // Locked fund: contributions still record (fund_contribute
+            // doesn't reject on lock per Constitution §9 — locks are
+            // soft policy, rules enforce them). The button stays visible
+            // but a future enhancement can disable it when a "no-write"
+            // rule resolves true.
+            guard enabledCapabilities.contains("ledger")
+                  || enabledCapabilities.contains("money") else {
+                return .none
+            }
             return PrimaryAction(
                 label: "Aportar",
                 symbol: "plus.circle.fill",
                 style: .prominent,
                 kind: .openContribute
             )
-        case .asset:
-            return PrimaryAction(
-                label: "Reservar",
-                symbol: "calendar.badge.plus",
-                style: .prominent,
-                kind: .openBooking
-            )
         case .right:
             return rightPrimaryAction(
                 resource: resource,
                 viewerUserId: viewerUserId
             )
-        case .space, .slot, .unknown:
+        case .asset, .space, .slot, .unknown:
             return .none
         }
     }

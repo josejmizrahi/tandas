@@ -329,6 +329,17 @@ public struct UniversalResourceDetailView: View {
             if let goal = goalAmount {
                 out.append(("Meta", formatCurrency(goal)))
             }
+            // Surface lock state — fund_lock writes locked_at/locked_by/
+            // locked_reason into metadata + emits fundLocked. Pre-fix
+            // this was invisible to the UI even though the SQL state
+            // existed, so admins couldn't tell whether a fund was locked
+            // without querying the DB.
+            if let lockedAt = context.resource.metadata["locked_at"]?.stringValue,
+               !lockedAt.isEmpty {
+                let reason = context.resource.metadata["locked_reason"]?.stringValue
+                let suffix = (reason?.isEmpty == false) ? " (\(reason!))" : ""
+                out.append(("Estado", "Bloqueado\(suffix)"))
+            }
             return out
         case .asset:
             var out: [(String, String)] = []
@@ -607,7 +618,13 @@ public struct UniversalResourceDetailView: View {
             // pipeline used by the ⋯ menu so success behavior (atom
             // emit + dismiss) is uniform across both surfaces.
             activeRightAction = .exercise
-        case .openContribute, .openBooking, .viewClosed, .none:
+        case .openContribute:
+            // Fund "Aportar" CTA — open the polymorphic ledger sheet so
+            // the user picks contribution / expense / settlement. Same
+            // surface MoneySectionView uses; the resolver only emits this
+            // kind for funds with ledger capability so the sheet is wired.
+            context.onPresentLedger()
+        case .openBooking, .viewClosed, .none:
             break
         }
     }
