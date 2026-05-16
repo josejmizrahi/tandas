@@ -561,7 +561,11 @@ public struct UniversalResourceDetailView: View {
             viewerRole: role,
             rsvpStatus: rsvpStatus,
             eventStatus: eventStatus,
-            enabledCapabilities: context.enabledCapabilities
+            enabledCapabilities: context.enabledCapabilities,
+            // Slice 14: needed for right's "Ejercer" primary CTA —
+            // resolver checks holder_user_id / delegate_user_id against
+            // the viewer to decide whether to render the sticky button.
+            viewerUserId: context.currentUserId
         )
     }
 
@@ -598,6 +602,11 @@ public struct UniversalResourceDetailView: View {
         case .viewHostActions:
             // Pass 1 of v2: route to closeEvent as stand-in for full host actions sheet.
             presenter?.onPresentCloseEventSheet()
+        case .exerciseRight:
+            // Slice 14: route through the same activeRightAction sheet
+            // pipeline used by the ⋯ menu so success behavior (atom
+            // emit + dismiss) is uniform across both surfaces.
+            activeRightAction = .exercise
         case .openContribute, .openBooking, .viewClosed, .none:
             break
         }

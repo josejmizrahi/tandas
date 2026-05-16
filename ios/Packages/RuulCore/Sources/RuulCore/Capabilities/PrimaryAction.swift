@@ -20,6 +20,10 @@ public struct PrimaryAction: Sendable, Hashable {
         case openContribute     // fund (placeholder — Phase 2 wires)
         case openBooking        // asset (placeholder — Phase 2 wires)
         case viewClosed         // event closed (or readonly)
+        /// Right resource: viewer is holder OR active delegate AND
+        /// status='active' AND not suspended. Tapping opens the
+        /// `RightActionSheet.exercise` variant. Slice 14.
+        case exerciseRight
         case none               // no CTA — caller hides the footer
     }
 
