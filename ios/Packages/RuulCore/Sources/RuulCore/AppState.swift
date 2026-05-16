@@ -356,6 +356,12 @@ public final class AppState {
     /// `resources.status` when nil. Wired by `TandasApp` in live mode.
     public var eventLifecycleRepo: (any EventLifecycleRepository)?
 
+    /// Cross-group user activity feed (mig 00224, `my_activity_v1`).
+    /// Optional so existing constructors don't break; `MyTimelineView`
+    /// degrades to an empty state when nil. Wired by `TandasApp` in
+    /// live mode; mock/preview environments can assign `MockMyActivityRepository`.
+    public var myActivityRepo: (any MyActivityRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1

@@ -179,6 +179,7 @@ struct TandasApp: App {
             state.ruleTemplateRepo = LiveRuleTemplateRepository(client: client)
             state.resourceLinkRepo = LiveResourceLinkRepository(client: client)
             state.eventLifecycleRepo = LiveEventLifecycleRepository(client: client)
+            state.myActivityRepo = LiveMyActivityRepository(client: client)
             _appState = State(initialValue: state)
         }
     }
