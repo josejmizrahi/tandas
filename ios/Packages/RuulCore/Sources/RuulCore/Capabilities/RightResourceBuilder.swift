@@ -26,27 +26,58 @@ public actor RightResourceBuilder: ResourceBuilder {
         "Acceso, prioridad, equity o custodia que alguien tiene sobre algo."
 
     public nonisolated var requiredFields: [BuilderField] {
-        // V1 MVP: minimal create surface — just `name`. The right's
-        // holder defaults to the caller server-side (mig 00201), and
-        // the remaining knobs (scope/priority/exclusive/transferable/
-        // delegable/divisible/expires_at/target_resource/target_capability)
-        // accept server-side defaults too. All of them can be reset via
-        // the dedicated lifecycle RPCs (transfer_right, delegate_right,
-        // update_right_metadata, …).
+        // `name` is the only truly required field — everything else is
+        // declared with `isOptional: true` so the wizard renders the
+        // input but doesn't block "Continuar" when empty. Server-side
+        // defaults (mig 00201: caller is holder; transferable/delegable/
+        // divisible/exclusive=false; priority=0; no expiration) take
+        // over.
         //
-        // Why `holderMemberId` isn't here yet: BuilderFieldRenderer's
-        // `.memberPicker` kind renders disabled today
-        // ("Selector de miembros no disponible — Próximamente"); making
-        // holderMemberId a required field would block the entire wizard
-        // submit until the picker ships. Defaulting to the creator gets
-        // the create-flow working today; a future slice adds an explicit
-        // holder picker for "grant right to David" UX.
+        // Slice 15 expanded the surface from name-only after
+        // BuilderFieldRenderer.memberPicker (slice 8) +
+        // .resourcePicker (slice 9) +
+        // BuilderField.isOptional (this slice) shipped.
         [
             BuilderField(
                 key: "name",
                 label: "Nombre",
                 kind: .text,
                 placeholder: "ej: Prioridad de reserva en el palco"
+            ),
+            BuilderField(
+                key: "holderMemberId",
+                label: "Titular (opcional)",
+                kind: .memberPicker,
+                helpText: "Quién posee este derecho. Si no eliges, tú serás el titular.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "transferable",
+                label: "Transferible",
+                kind: .boolean,
+                helpText: "Permite que el titular reasigne el derecho a otro miembro.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "delegable",
+                label: "Delegable",
+                kind: .boolean,
+                helpText: "Permite delegar temporalmente sin perder titularidad.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "exclusive",
+                label: "Exclusivo",
+                kind: .boolean,
+                helpText: "Ningún otro titular puede tener el mismo claim al mismo tiempo.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "targetResourceId",
+                label: "Sobre qué recurso (opcional)",
+                kind: .resourcePicker,
+                helpText: "Recurso que el derecho gobierna. Vacío = derecho a nivel grupo.",
+                isOptional: true
             )
         ]
     }

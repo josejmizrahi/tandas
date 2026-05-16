@@ -379,14 +379,20 @@ public final class ResourceWizardCoordinator {
         guard let builder = selectedBuilder else { return false }
         // (a) Builder's own fields (title, startsAt, …). Builder fields
         //     don't use dependsOn today, but the helper handles it.
-        for field in builder.requiredFields where isFieldActive(field, in: basicFields) {
+        //     Slice 15: skip fields flagged isOptional — they render
+        //     but don't block the CTA (e.g. RightResourceBuilder's
+        //     holderMemberId / transferable / delegable). Server-side
+        //     defaults take over when the user leaves them empty.
+        for field in builder.requiredFields
+            where !field.isOptional && isFieldActive(field, in: basicFields) {
             if !isFieldFilled(field, in: basicFields) { return false }
         }
         // (b) Required fields of every active capability.
         for blockId in enabledCapabilities {
             guard let block = catalog[blockId] else { continue }
             let configForBlock = capabilityConfigs[blockId] ?? [:]
-            for field in block.requiredFields where isFieldActive(field, in: configForBlock) {
+            for field in block.requiredFields
+                where !field.isOptional && isFieldActive(field, in: configForBlock) {
                 if !isFieldFilled(field, in: configForBlock) { return false }
             }
         }
