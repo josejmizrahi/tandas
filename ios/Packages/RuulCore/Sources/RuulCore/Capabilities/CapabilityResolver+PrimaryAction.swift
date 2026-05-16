@@ -14,13 +14,15 @@ public extension CapabilityResolver {
     /// - event without rsvp capability             → none
     /// - fund                                      → openContribute (Phase 2 wires)
     /// - asset                                     → openBooking (Phase 2 wires)
-    /// - space, slot, right, unknown               → none
+    /// - right + viewer is holder/delegate + active + !suspended → exerciseRight
+    /// - space, slot, unknown                      → none
     func primaryAction(
         for resource: ResourceRow,
         viewerRole: MemberRole,
         rsvpStatus: RSVPStatus?,
         eventStatus: EventStatus?,
-        enabledCapabilities: Set<String>
+        enabledCapabilities: Set<String>,
+        viewerUserId: UUID? = nil
     ) -> PrimaryAction {
         switch resource.resourceType {
         case .event:
@@ -44,9 +46,46 @@ public extension CapabilityResolver {
                 style: .prominent,
                 kind: .openBooking
             )
-        case .space, .slot, .right, .unknown:
+        case .right:
+            return rightPrimaryAction(
+                resource: resource,
+                viewerUserId: viewerUserId
+            )
+        case .space, .slot, .unknown:
             return .none
         }
+    }
+
+    /// Right's primary CTA is "Ejercer" when the viewer is the holder
+    /// OR the active delegate AND the right is active + not suspended.
+    /// Otherwise the sticky footer is hidden (no `.none` CTA renders).
+    /// Mirrors the visibility rules used by `rightSecondaryActions`
+    /// for the Exercise menu entry — same intent: don't show an
+    /// action that would fail server-side.
+    private func rightPrimaryAction(
+        resource: ResourceRow,
+        viewerUserId: UUID?
+    ) -> PrimaryAction {
+        guard let viewerUserId else { return .none }
+        guard resource.status == "active" else { return .none }
+        let metadata = resource.metadata
+        let isSuspended = metadata["suspended_until"]?.stringValue != nil
+            || metadata["suspended_at"]?.stringValue != nil
+        if isSuspended { return .none }
+
+        let holderUid = metadata["holder_user_id"]?.stringValue.flatMap(UUID.init(uuidString:))
+        let delegateUid = metadata["delegate_user_id"]?.stringValue.flatMap(UUID.init(uuidString:))
+        let isHolder = viewerUserId == holderUid
+        let isDelegate = viewerUserId == delegateUid
+
+        guard isHolder || isDelegate else { return .none }
+
+        return PrimaryAction(
+            label: "Ejercer",
+            symbol: "hand.tap",
+            style: .prominent,
+            kind: .exerciseRight
+        )
     }
 
     // MARK: - Private helpers

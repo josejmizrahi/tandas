@@ -37,6 +37,12 @@ public struct UniversalResourceDetailView: View {
     /// `dispatchSecondary(_:)` writes this; the body's `.sheet(item:)`
     /// modifier renders the corresponding `RightActionSheet`.
     @State private var activeRightAction: RightActionSheet.Action?
+    /// Toggles `EditRightSheet` (slice 13). Separate from
+    /// `activeRightAction` because the edit form has its own field
+    /// set (~10 knobs) too divergent to share the lifecycle sheet's
+    /// shape. Dispatched from the ⋯ menu's `.editDetails` when the
+    /// resource is a right.
+    @State private var showEditRight: Bool = false
 
     public init(context: ResourceDetailContext) {
         self.context = context
@@ -161,6 +167,25 @@ public struct UniversalResourceDetailView: View {
                     // (status/metadata). The outer detail screen owns
                     // its own refresh — the simplest signal is to
                     // dismiss so the caller re-fetches on present.
+                    if let onDismiss = context.onDismiss {
+                        onDismiss()
+                    } else {
+                        dismiss()
+                    }
+                }
+            )
+            .environment(app)
+        }
+        .sheet(isPresented: $showEditRight) {
+            EditRightSheet(
+                rightId: context.resource.id,
+                metadata: context.resource.metadata,
+                onCompleted: {
+                    // Mirror RightActionSheet's dismiss pattern: the
+                    // metadata mutated, so dismiss the detail so the
+                    // caller re-fetches on next present. A future
+                    // slice could refresh in place via a coordinator
+                    // callback if the dismiss feels heavy-handed.
                     if let onDismiss = context.onDismiss {
                         onDismiss()
                     } else {
@@ -536,7 +561,11 @@ public struct UniversalResourceDetailView: View {
             viewerRole: role,
             rsvpStatus: rsvpStatus,
             eventStatus: eventStatus,
-            enabledCapabilities: context.enabledCapabilities
+            enabledCapabilities: context.enabledCapabilities,
+            // Slice 14: needed for right's "Ejercer" primary CTA —
+            // resolver checks holder_user_id / delegate_user_id against
+            // the viewer to decide whether to render the sticky button.
+            viewerUserId: context.currentUserId
         )
     }
 
@@ -573,6 +602,11 @@ public struct UniversalResourceDetailView: View {
         case .viewHostActions:
             // Pass 1 of v2: route to closeEvent as stand-in for full host actions sheet.
             presenter?.onPresentCloseEventSheet()
+        case .exerciseRight:
+            // Slice 14: route through the same activeRightAction sheet
+            // pipeline used by the ⋯ menu so success behavior (atom
+            // emit + dismiss) is uniform across both surfaces.
+            activeRightAction = .exercise
         case .openContribute, .openBooking, .viewClosed, .none:
             break
         }
@@ -581,7 +615,16 @@ public struct UniversalResourceDetailView: View {
     private func dispatchSecondary(_ action: SecondaryAction) {
         switch action.kind {
         case .editDetails:
-            context.onPresentEditResource()
+            // Slice 13: rights have a dedicated EditRightSheet wrapping
+            // update_right_metadata (mig 00199). Other resource types
+            // still route through the generic onPresentEditResource
+            // callback (no-op for many today; per-type sheets land as
+            // each type's edit surface is built).
+            if context.resource.resourceType == .right {
+                showEditRight = true
+            } else {
+                context.onPresentEditResource()
+            }
         case .addToCalendar:
             break  // wire in Pass 1.1; presenter doesn't expose this directly
         case .share:
