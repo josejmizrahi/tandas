@@ -81,20 +81,21 @@ public struct ActivitySectionView: View {
             }
             .background(
                 .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
             )
         }
     }
 
     private func activityRow(_ event: SystemEvent) -> some View {
-        HStack(spacing: RuulSpacing.md) {
-            Image(systemName: iconFor(event))
+        let presentation = HistoryItemPresentation(event: event, memberName: memberName(for: event))
+        return HStack(spacing: RuulSpacing.md) {
+            Image(systemName: presentation.icon)
                 .ruulTextStyle(RuulTypography.labelSemibold)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(toneColor(presentation.tone))
                 .frame(width: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(labelFor(event))
+                Text(presentation.title)
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
@@ -109,98 +110,33 @@ public struct ActivitySectionView: View {
         .padding(.vertical, RuulSpacing.sm)
     }
 
+    /// Resolves the actor's display name for the event by matching
+    /// `event.memberId` (group_member UUID) against `context.memberDirectory`
+    /// (keyed by user UUID). Falls back to nil so HistoryItemPresentation
+    /// renders its "Alguien" default.
+    private func memberName(for event: SystemEvent) -> String? {
+        guard let memberId = event.memberId else { return nil }
+        return context.memberDirectory.values
+            .first(where: { $0.member.id == memberId })
+            .map { $0.displayName }
+    }
+
+    /// Maps HistoryItemPresentation tone to the design-token color used
+    /// for the icon in the compact section row.
+    private func toneColor(_ tone: RuulTimelineItem.Tone) -> Color {
+        switch tone {
+        case .positive: return Color.ruulPositive
+        case .negative: return Color.ruulNegative
+        case .warning:  return Color.ruulWarning
+        case .info:     return Color.ruulAccent
+        case .neutral:  return Color.ruulTextSecondary
+        }
+    }
+
     private var divider: some View {
         Divider()
             .background(Color.ruulSeparator)
             .padding(.leading, RuulSpacing.md + 28 + RuulSpacing.md)
-    }
-
-    /// True when the SystemEvent's payload marks it as a cancellation
-    /// (legacy: 00098 emitted eventClosed with status:cancelled for
-    /// cancel_event). Mig 00209 stops emitting that — new cancellations
-    /// produce a dedicated `eventCancelled` atom instead. This helper
-    /// stays for backward-compat with historical rows already in
-    /// system_events; new rows render via the `eventCancelled` arm of
-    /// the switch below.
-    private func isCancelled(_ event: SystemEvent) -> Bool {
-        guard event.eventType == .eventClosed else { return false }
-        if case .string(let s) = event.payload["status"] {
-            return s == "cancelled"
-        }
-        return false
-    }
-
-    private func iconFor(_ event: SystemEvent) -> String {
-        switch event.eventType {
-        case .eventCreated:        return "calendar.badge.plus"
-        case .eventClosed:         return isCancelled(event) ? "xmark.circle" : "calendar.badge.checkmark"
-        case .eventCancelled:      return "xmark.circle"
-        case .eventStarted:        return "play.circle"
-        case .eventUpdated:        return "pencil.and.list.clipboard"
-        case .checkInRecorded:     return "qrcode"
-        case .rsvpSubmitted:       return "checkmark.bubble"
-        case .rsvpChangedSameDay:  return "arrow.uturn.backward"
-        case .fineOfficialized:    return "exclamationmark.triangle.fill"
-        case .fineVoided:          return "xmark.circle"
-        case .finePaid:            return "checkmark.seal.fill"
-        case .fineReminderSent:    return "bell.fill"
-        case .voteOpened:          return "hand.raised.fill"
-        case .voteCast:            return "checkmark.square.fill"
-        case .voteResolved:        return "flag.checkered"
-        case .appealCreated:       return "doc.text"
-        case .appealResolved:      return "doc.text.fill"
-        case .memberJoined:        return "person.fill.badge.plus"
-        case .memberLeft:          return "person.fill.badge.minus"
-        case .ruleEnabledChanged:  return "list.bullet.clipboard"
-        case .ruleAmountChanged:   return "list.bullet.clipboard"
-        case .resourceLinked:      return "link"
-        case .resourceUnlinked:    return "link.badge.plus"
-        default:                   return "circle.dotted"
-        }
-    }
-
-    private func labelFor(_ event: SystemEvent) -> String {
-        switch event.eventType {
-        case .eventCreated:        return labelForEventCreated(event)
-        case .eventClosed:         return isCancelled(event) ? "El evento se canceló" : "El evento cerró"
-        case .eventCancelled:      return "El evento se canceló"
-        case .eventStarted:        return "El evento empezó"
-        case .eventUpdated:        return "Se actualizó el evento"
-        case .checkInRecorded:     return "Alguien hizo check-in"
-        case .rsvpSubmitted:       return "Alguien respondió"
-        case .rsvpChangedSameDay:  return "Cambio de RSVP el mismo día"
-        case .fineOfficialized:    return "Multa oficializada"
-        case .fineVoided:          return "Multa anulada"
-        case .finePaid:            return "Multa pagada"
-        case .fineReminderSent:    return "Recordatorio de multa"
-        case .voteOpened:          return "Se abrió una votación"
-        case .voteCast:            return "Alguien votó"
-        case .voteResolved:        return "Votación resuelta"
-        case .appealCreated:       return "Se abrió apelación"
-        case .appealResolved:      return "Apelación resuelta"
-        case .memberJoined:        return "Alguien se unió al grupo"
-        case .memberLeft:          return "Alguien dejó el grupo"
-        case .ruleEnabledChanged:  return "Una regla cambió de estado"
-        case .ruleAmountChanged:   return "Cambió el monto de una regla"
-        case .resourceLinked:      return "Se vinculó un recurso al evento"
-        case .resourceUnlinked:    return "Se desvinculó un recurso del evento"
-        default:                   return "Actividad"
-        }
-    }
-
-    /// Tier 5 Beta: when the eventCreated payload carries `host_id`,
-    /// surface the host's display name in the activity row so the feed
-    /// reflects rotation assignments without a separate "hostAssigned"
-    /// SystemEventType. The host_id payload was added in mig 00097 and
-    /// preserved through 00126's recurrence wiring.
-    private func labelForEventCreated(_ event: SystemEvent) -> String {
-        let baseLabel = "Se creó el evento"
-        guard case .string(let raw) = event.payload["host_id"],
-              let hostUserId = UUID(uuidString: raw),
-              let host = context.memberDirectory[hostUserId] else {
-            return baseLabel
-        }
-        return "\(baseLabel) · anfitrión: \(host.displayName)"
     }
 
     @MainActor
