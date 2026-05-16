@@ -54,6 +54,14 @@ public struct ResourceDetailContext {
     /// to `\.dismiss` from the environment.
     public let onDismiss: (() -> Void)?
 
+    /// Bubble for "the underlying `resources` row mutated" — sections
+    /// that fire RPCs which write to `resources.metadata` (asset custody,
+    /// asset ownership transfer, asset checkout, etc.) invoke this so
+    /// the outer `ResourceDetailSheet` can re-fetch the row and rebuild
+    /// the context. Without it the section's `asset.metadata` reads
+    /// stay frozen to the value that was passed in at present-time.
+    public let onResourceMutated: () async -> Void
+
     public init(
         resource: ResourceRow,
         group: RuulCore.Group,
@@ -68,7 +76,8 @@ public struct ResourceDetailContext {
         onPresentEnableCapability: @escaping () -> Void = {},
         onOpenInboxAction: @escaping (UserAction) async -> Void = { _ in },
         onSelectMember: @escaping (UUID) -> Void = { _ in },
-        onDismiss: (() -> Void)? = nil
+        onDismiss: (() -> Void)? = nil,
+        onResourceMutated: @escaping () async -> Void = {}
     ) {
         self.resource = resource
         self.group = group
@@ -84,6 +93,7 @@ public struct ResourceDetailContext {
         self.onOpenInboxAction = onOpenInboxAction
         self.onSelectMember = onSelectMember
         self.onDismiss = onDismiss
+        self.onResourceMutated = onResourceMutated
     }
 }
 

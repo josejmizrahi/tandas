@@ -17,6 +17,10 @@ import RuulCore
 public struct AssetCustodySection: View {
     @Environment(AppState.self) private var app
     public let asset: ResourceRow
+    /// Bubble called after a custody/checkout RPC mutates
+    /// `resources.metadata`. The parent re-fetches the row so the
+    /// custodian/holder display updates without a sheet dismiss.
+    public let onMetadataChanged: () async -> Void
 
     @State private var members: [MemberWithProfile] = []
     @State private var showAssign: Bool = false
@@ -24,7 +28,13 @@ public struct AssetCustodySection: View {
     @State private var isReleasing: Bool = false
     @State private var error: String?
 
-    public init(asset: ResourceRow) { self.asset = asset }
+    public init(
+        asset: ResourceRow,
+        onMetadataChanged: @escaping () async -> Void = {}
+    ) {
+        self.asset = asset
+        self.onMetadataChanged = onMetadataChanged
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
@@ -103,6 +113,7 @@ public struct AssetCustodySection: View {
         .fullScreenCover(isPresented: $showCheckout) {
             CheckOutAssetSheet(asset: asset, members: members) {
                 error = nil
+                Task { await onMetadataChanged() }
             }
         }
     }
@@ -137,6 +148,7 @@ public struct AssetCustodySection: View {
         do {
             try await app.assetLifecycleRepo.assignCustody(asset: asset.id, to: memberId, notes: nil)
             error = nil
+            await onMetadataChanged()
         } catch {
             self.error = error.localizedDescription
         }
@@ -149,6 +161,7 @@ public struct AssetCustodySection: View {
         do {
             try await app.assetLifecycleRepo.releaseCustody(asset: asset.id, notes: nil)
             error = nil
+            await onMetadataChanged()
         } catch {
             self.error = error.localizedDescription
         }
@@ -159,6 +172,7 @@ public struct AssetCustodySection: View {
         do {
             try await app.assetLifecycleRepo.checkInAsset(asset: asset.id, conditionNotes: nil)
             error = nil
+            await onMetadataChanged()
         } catch {
             self.error = error.localizedDescription
         }
@@ -211,6 +225,11 @@ public struct AssetCustodySection: View {
 public struct AssetOwnershipSection: View {
     @Environment(AppState.self) private var app
     public let asset: ResourceRow
+    /// Bubble called after a transfer RPC mutates `resources.metadata`.
+    /// Valuation also fires it (the section's own `load()` reloads the
+    /// valuation row, but the parent still re-fetches the polymorphic
+    /// row so INFORMACIÓN stays in sync).
+    public let onMetadataChanged: () async -> Void
 
     @State private var members: [MemberWithProfile] = []
     @State private var latestValuation: AssetValuationRow?
@@ -219,7 +238,13 @@ public struct AssetOwnershipSection: View {
     @State private var isReleasing: Bool = false
     @State private var error: String?
 
-    public init(asset: ResourceRow) { self.asset = asset }
+    public init(
+        asset: ResourceRow,
+        onMetadataChanged: @escaping () async -> Void = {}
+    ) {
+        self.asset = asset
+        self.onMetadataChanged = onMetadataChanged
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
@@ -322,6 +347,7 @@ public struct AssetOwnershipSection: View {
         do {
             try await app.assetLifecycleRepo.transferAsset(asset: asset.id, to: memberId, notes: nil)
             error = nil
+            await onMetadataChanged()
         } catch {
             self.error = error.localizedDescription
         }
@@ -334,6 +360,7 @@ public struct AssetOwnershipSection: View {
         do {
             try await app.assetLifecycleRepo.transferAsset(asset: asset.id, to: nil, notes: nil)
             error = nil
+            await onMetadataChanged()
         } catch {
             self.error = error.localizedDescription
         }

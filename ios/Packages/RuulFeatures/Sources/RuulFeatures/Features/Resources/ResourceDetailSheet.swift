@@ -23,6 +23,13 @@ public struct ResourceDetailSheet: View {
 
     public let resource: ResourceRow
 
+    /// Live snapshot of the polymorphic row. Initially nil and falls back
+    /// to the prop, gets populated after the first re-fetch (e.g. after
+    /// an asset RPC that mutated `resources.metadata`). The context built
+    /// for child views reads `liveResource ?? resource`, so the initial
+    /// render uses the value the caller already had — no extra latency on
+    /// open — and subsequent mutations bubble back via `onResourceMutated`.
+    @State private var liveResource: ResourceRow?
     @State private var capabilities: [ResourceCapability] = []
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
     @State private var resourceActions: [UserAction] = []
@@ -86,6 +93,17 @@ public struct ResourceDetailSheet: View {
     @MainActor
     private func reloadCapabilities() async {
         capabilities = (try? await app.resourceCapabilityRepo.list(resourceId: resource.id)) ?? []
+    }
+
+    /// Re-fetches the polymorphic row when a child section mutated
+    /// `resources.metadata` (asset custody, transfer, checkout, etc.).
+    /// Failures fall through silently — the user still sees the prior
+    /// snapshot, and the next dismiss/reopen cycle picks up the change.
+    @MainActor
+    private func refreshResource() async {
+        if let fresh = try? await app.resourceRepo.resource(resource.id) {
+            liveResource = fresh
+        }
     }
 
     /// Dispatches the `Necesita atención` tap. Mirrors the action-type
@@ -175,7 +193,7 @@ public struct ResourceDetailSheet: View {
 
     private func context(for group: RuulCore.Group) -> ResourceDetailContext {
         ResourceDetailContext(
-            resource: resource,
+            resource: liveResource ?? resource,
             group: group,
             currentUserId: app.session?.user.id,
             enabledCapabilities: enabledCapabilitySet,
@@ -195,7 +213,8 @@ public struct ResourceDetailSheet: View {
             onPresentEnableCapability: { enableCapabilityPresented = true },
             onOpenInboxAction: { action in
                 await handleInboxAction(action)
-            }
+            },
+            onResourceMutated: { await refreshResource() }
         )
     }
 
