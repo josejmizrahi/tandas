@@ -365,8 +365,14 @@ public struct UniversalResourceDetailView: View {
             return out
         case .space:
             var out: [(String, String)] = []
-            if let address = context.resource.metadata["address"]?.stringValue,
-               !address.isEmpty {
+            // `create_space` writes `metadata.location_name` (mig 00207).
+            // Pre-fix this row read the wrong key (`address`), so wizard-
+            // created spaces never surfaced their dirección. Fallback to
+            // `locationName` for any future codepath that uses camelCase
+            // (LocationSectionView already accepts both shapes).
+            let address = context.resource.metadata["location_name"]?.stringValue
+                ?? context.resource.metadata["locationName"]?.stringValue
+            if let address, !address.isEmpty {
                 out.append(("Dirección", address))
             }
             if let cap = context.resource.metadata["capacity"]?.intValue {

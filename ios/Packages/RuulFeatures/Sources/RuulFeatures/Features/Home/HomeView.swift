@@ -287,14 +287,31 @@ public struct HomeView: View {
     /// the user who has it right now without opening the detail sheet.
     private func subtitleFor(_ row: ResourceRow) -> String {
         let type = row.resourceType.humanLabel
-        guard row.resourceType == .asset else { return type }
-        if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
-            return "\(type) · Prestado"
+        switch row.resourceType {
+        case .asset:
+            if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
+                return "\(type) · Prestado"
+            }
+            if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
+                return "\(type) · En custodia"
+            }
+            return "\(type) · Del grupo"
+        case .fund:
+            if let raw = row.metadata["locked_at"]?.stringValue, !raw.isEmpty {
+                return "\(type) · Bloqueado"
+            }
+            return type
+        case .space:
+            // Capacity is the most useful one-liner shortcut — location_name
+            // is long-form and crowds the row. Falls back to the bare type
+            // label when no capacity is set.
+            if let cap = row.metadata["capacity"]?.intValue {
+                return "\(type) · \(cap) cupos"
+            }
+            return type
+        default:
+            return type
         }
-        if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
-            return "\(type) · En custodia"
-        }
-        return "\(type) · Del grupo"
     }
 
     private func unifiedRow(
