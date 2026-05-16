@@ -97,6 +97,19 @@ public final class InboxCoordinator {
         groupsById[action.groupId]?.name
     }
 
+    /// Quick-resolve an action from a swipe or context menu without opening it.
+    /// Removes the row immediately for instant feedback, then fires the repo call.
+    public func resolveQuick(_ actionId: UUID) async {
+        actions.removeAll { $0.id == actionId }
+        do {
+            try await userActionRepo.resolve(actionId: actionId)
+        } catch {
+            log.warning("resolveQuick failed: \(error.localizedDescription)")
+            // On failure: a subsequent refresh() will restore the row if still pending.
+            await refresh()
+        }
+    }
+
     /// Mark an action resolved when the user opens it. Server triggers also
     /// auto-resolve in some cases (e.g. casting an appeal vote resolves the
     /// `appealVotePending` row), so this is mostly for "tapped" semantics.

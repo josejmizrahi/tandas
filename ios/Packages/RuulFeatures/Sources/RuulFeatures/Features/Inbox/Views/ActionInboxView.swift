@@ -52,6 +52,13 @@ public struct ActionInboxView: View {
                             content
                                 .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
                         }
+                        .contextMenu {
+                            Button {
+                                Task { await coordinator.resolveQuick(action.id) }
+                            } label: {
+                                Label("Marcar como hecho", systemImage: "checkmark.circle.fill")
+                            }
+                        }
                     }
                     .padding(.horizontal, RuulSpacing.lg)
                     .padding(.top, RuulSpacing.md)
