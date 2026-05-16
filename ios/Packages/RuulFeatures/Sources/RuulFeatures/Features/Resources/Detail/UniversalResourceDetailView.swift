@@ -127,6 +127,7 @@ public struct UniversalResourceDetailView: View {
                 if context.enabledCapabilities.contains("activity") {
                     ActivitySectionView(context: context)
                 }
+                stubCapabilitySections
                 SettingsSectionView(
                     onPresentEnableCapability: shouldShowEnableCapability
                         ? context.onPresentEnableCapability
@@ -642,6 +643,39 @@ public struct UniversalResourceDetailView: View {
         // "Activar capability" dead-route for events (capability set
         // hard-seeded by the platform). Surface only for non-event types.
         context.resource.resourceType != .event
+    }
+
+    /// Renders every capability that owns a stub section (Sections/Stubs/).
+    /// Each `if context.enabledCapabilities.contains(...)` only fires when
+    /// the capability is actually enabled on this resource, so a vanilla
+    /// event with no extras still renders zero extra cards. Sections that
+    /// have a bespoke renderer above (rsvp, check_in, money, rules,
+    /// rotation, schedule, location, description, activity) are NOT
+    /// duplicated here.
+    @ViewBuilder
+    private var stubCapabilitySections: some View {
+        let caps = context.enabledCapabilities
+        if caps.contains("status") { StatusSectionView(context: context) }
+        if caps.contains("recurrence") { RecurrenceSectionView(context: context) }
+        if caps.contains("deadline") { DeadlineSectionView(context: context) }
+        if caps.contains("expiration") { ExpirationSectionView(context: context) }
+        if caps.contains("participants") { ParticipantsSectionView(context: context) }
+        if caps.contains("attendance") { AttendanceSectionView(context: context) }
+        if caps.contains("guest_access") { GuestAccessSectionView(context: context) }
+        if caps.contains("assignment") { AssignmentSectionView(context: context) }
+        if caps.contains("booking") { BookingSectionView(context: context) }
+        if caps.contains("valuation") { ValuationSectionView(context: context) }
+        if caps.contains("inventory") { InventorySectionView(context: context) }
+        if caps.contains("access") { AccessSectionView(context: context) }
+        if caps.contains("delegation") { DelegationSectionView(context: context) }
+        if caps.contains("voting") { VotingSectionView(context: context) }
+        if caps.contains("approval") { ApprovalSectionView(context: context) }
+        if caps.contains("appeal") { AppealSectionView(context: context) }
+        if caps.contains("consequence") { ConsequenceSectionView(context: context) }
+        if caps.contains("swap") { SwapSectionView(context: context) }
+        if caps.contains("cancellation") { CancellationSectionView(context: context) }
+        if caps.contains("reminder") { ReminderSectionView(context: context) }
+        if caps.contains("history") { HistorySectionView(context: context) }
     }
 
     /// Reads `metadata.holder_member_id` off the polymorphic resource row.

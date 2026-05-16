@@ -101,5 +101,31 @@ public final class CapabilitySectionCatalog {
         register(RotationSectionView.definition)
         register(RulesSectionView.definition)
         register(ActivitySectionView.definition)
+
+        // Stub sections (Sections/Stubs/). Backend wiring lands per
+        // capability; until then they render minimal cards (real data
+        // when present in metadata, "Próximamente" otherwise) so an
+        // enabled capability never silently disappears from the page.
+        register(StatusSectionView.definition)
+        register(RecurrenceSectionView.definition)
+        register(DeadlineSectionView.definition)
+        register(ExpirationSectionView.definition)
+        register(ParticipantsSectionView.definition)
+        register(AttendanceSectionView.definition)
+        register(GuestAccessSectionView.definition)
+        register(AssignmentSectionView.definition)
+        register(BookingSectionView.definition)
+        register(ValuationSectionView.definition)
+        register(InventorySectionView.definition)
+        register(AccessSectionView.definition)
+        register(DelegationSectionView.definition)
+        register(VotingSectionView.definition)
+        register(ApprovalSectionView.definition)
+        register(AppealSectionView.definition)
+        register(ConsequenceSectionView.definition)
+        register(SwapSectionView.definition)
+        register(CancellationSectionView.definition)
+        register(ReminderSectionView.definition)
+        register(HistorySectionView.definition)
     }
 }
