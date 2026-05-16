@@ -57,10 +57,19 @@ public struct UniversalResourceDetailView: View {
                     LocationSectionView(context: context)
                 }
                 if context.resource.resourceType == .asset {
-                    AssetCustodySection(asset: context.resource)
-                    AssetOwnershipSection(asset: context.resource)
-                    AssetMaintenanceSection(asset: context.resource)
-                    AssetBookingsSection(asset: context.resource)
+                    if context.enabledCapabilities.contains("custody") {
+                        AssetCustodySection(asset: context.resource)
+                    }
+                    if context.enabledCapabilities.contains("transfer")
+                        || context.enabledCapabilities.contains("valuation") {
+                        AssetOwnershipSection(asset: context.resource)
+                    }
+                    if context.enabledCapabilities.contains("maintenance") {
+                        AssetMaintenanceSection(asset: context.resource)
+                    }
+                    if context.enabledCapabilities.contains("booking") {
+                        AssetBookingsSection(asset: context.resource)
+                    }
                 }
                 if context.enabledCapabilities.contains("rsvp") {
                     RSVPSectionView(context: context)
@@ -289,6 +298,18 @@ public struct UniversalResourceDetailView: View {
             return out
         case .asset:
             var out: [(String, String)] = []
+            if let custodianId = uuidFromMeta("custodian_id"),
+               let m = memberByMemberId(custodianId) {
+                out.append(("Custodio", m.displayName))
+            }
+            if let ownerId = uuidFromMeta("owner_id"),
+               let m = memberByMemberId(ownerId) {
+                out.append(("Dueño", m.displayName))
+            }
+            if let holderId = uuidFromMeta("checked_out_to"),
+               let m = memberByMemberId(holderId) {
+                out.append(("Prestado a", m.displayName))
+            }
             if let cap = context.resource.metadata["capacity"]?.intValue {
                 out.append(("Capacidad", "\(cap)"))
             }
@@ -320,9 +341,29 @@ public struct UniversalResourceDetailView: View {
     }
 
     private var hostRow: MemberWithProfile? {
-        guard let raw = context.resource.metadata["host_id"]?.stringValue,
-              let id = UUID(uuidString: raw) else { return nil }
+        guard let id = uuidFromMeta("host_id") else { return nil }
         return context.memberDirectory[id]
+    }
+
+    /// Reads a `metadata.<key>` string and parses it as UUID. Used by
+    /// every "look up this member from the metadata shortcut" row in the
+    /// INFORMACIÓN card. `memberDirectory` is keyed by `userId` for events
+    /// (host) but by `group_members.id` for assets (custodian/owner/holder)
+    /// — caller decides which dictionary to query after this helper hands
+    /// back the parsed UUID.
+    private func uuidFromMeta(_ key: String) -> UUID? {
+        guard let raw = context.resource.metadata[key]?.stringValue,
+              !raw.isEmpty else { return nil }
+        return UUID(uuidString: raw)
+    }
+
+    /// Looks up a member by their `group_members.id` — asset metadata
+    /// (custodian_id / owner_id / checked_out_to) stores the member-row
+    /// id, NOT the user id. `context.memberDirectory` is keyed by
+    /// `member.userId` (host lookup), so a direct subscript misses on
+    /// asset rows. Iterates values — fine for typical group sizes.
+    private func memberByMemberId(_ id: UUID) -> MemberWithProfile? {
+        context.memberDirectory.values.first { $0.member.id == id }
     }
 
     private var goalAmount: Double? {

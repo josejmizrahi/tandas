@@ -8,10 +8,11 @@ import RuulCore
 /// in the universal frame so asset detail reads the same as fund / space /
 /// event detail (one scroll, hairline-separated rows).
 ///
-/// Three sections, in importance order:
-///   1. `AssetCustodySection`     — who has the asset right now (operational)
-///   2. `AssetOwnershipSection`   — who owns it (claim)
-///   3. `AssetMaintenanceSection` — open service items + log/report actions
+/// Four sections, each gated by a capability flag on the parent view:
+///   1. `AssetCustodySection`     — who has the asset right now + checkouts (custody capability)
+///   2. `AssetOwnershipSection`   — who owns it + valuation history (transfer | valuation)
+///   3. `AssetMaintenanceSection` — open service items + log/report actions (maintenance)
+///   4. `AssetBookingsSection`    — slot list under this asset (booking)
 @MainActor
 public struct AssetCustodySection: View {
     @Environment(AppState.self) private var app
@@ -19,6 +20,7 @@ public struct AssetCustodySection: View {
 
     @State private var members: [MemberWithProfile] = []
     @State private var showAssign: Bool = false
+    @State private var showCheckout: Bool = false
     @State private var isReleasing: Bool = false
     @State private var error: String?
 
@@ -40,20 +42,40 @@ public struct AssetCustodySection: View {
                 } else {
                     row(label: "Custodio", value: "Bajo custodia del grupo")
                 }
+                if let holder = currentHolder {
+                    divider
+                    row(label: "Prestado a", value: holder.displayName)
+                    if let until = asset.metadata["expected_return_at"]?.stringValue {
+                        divider
+                        row(label: "Devolución esperada", value: AssetDateFormatter.short(until))
+                    }
+                }
                 divider
-                actionButton(
-                    label: currentCustodian == nil ? "Asignar custodio" : "Cambiar custodio",
-                    symbol: "person.badge.plus"
-                ) { showAssign = true }
-                if currentCustodian != nil {
+                if currentHolder == nil {
+                    actionButton(
+                        label: currentCustodian == nil ? "Asignar custodio" : "Cambiar custodio",
+                        symbol: "person.badge.plus"
+                    ) { showAssign = true }
                     divider
                     actionButton(
-                        label: "Liberar custodia",
-                        symbol: "person.crop.rectangle.badge.xmark",
-                        isDestructive: true
-                    ) {
-                        Task { await releaseCustody() }
+                        label: "Prestar (checkout)",
+                        symbol: "arrow.up.right.square"
+                    ) { showCheckout = true }
+                    if currentCustodian != nil {
+                        divider
+                        actionButton(
+                            label: "Liberar custodia",
+                            symbol: "person.crop.rectangle.badge.xmark",
+                            isDestructive: true
+                        ) {
+                            Task { await releaseCustody() }
+                        }
                     }
+                } else {
+                    actionButton(
+                        label: "Marcar devuelto",
+                        symbol: "arrow.down.left.square"
+                    ) { Task { await checkIn() } }
                 }
                 if let error {
                     divider
@@ -71,8 +93,16 @@ public struct AssetCustodySection: View {
         }
         .task { await loadMembers() }
         .fullScreenCover(isPresented: $showAssign) {
-            MemberPickerSheet(members: members, title: "Asignar custodia") { memberId in
+            MemberPickerSheet(
+                members: assignableCustodians,
+                title: "Asignar custodia"
+            ) { memberId in
                 Task { await assignCustody(to: memberId) }
+            }
+        }
+        .fullScreenCover(isPresented: $showCheckout) {
+            CheckOutAssetSheet(asset: asset, members: members) {
+                error = nil
             }
         }
     }
@@ -81,6 +111,20 @@ public struct AssetCustodySection: View {
         guard let raw = asset.metadata["custodian_id"]?.stringValue,
               let id = UUID(uuidString: raw) else { return nil }
         return members.first { $0.id == id }
+    }
+
+    private var currentHolder: MemberWithProfile? {
+        guard let raw = asset.metadata["checked_out_to"]?.stringValue,
+              let id = UUID(uuidString: raw) else { return nil }
+        return members.first { $0.id == id }
+    }
+
+    /// Excludes the current custodian from the picker — selecting the
+    /// same person is a no-op server-side but creates a confusing audit
+    /// trail (custodyAssigned event with no actual change).
+    private var assignableCustodians: [MemberWithProfile] {
+        guard let current = currentCustodian else { return members }
+        return members.filter { $0.id != current.id }
     }
 
     @MainActor
@@ -104,6 +148,16 @@ public struct AssetCustodySection: View {
         defer { isReleasing = false }
         do {
             try await app.assetLifecycleRepo.releaseCustody(asset: asset.id, notes: nil)
+            error = nil
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func checkIn() async {
+        do {
+            try await app.assetLifecycleRepo.checkInAsset(asset: asset.id, conditionNotes: nil)
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -159,7 +213,9 @@ public struct AssetOwnershipSection: View {
     public let asset: ResourceRow
 
     @State private var members: [MemberWithProfile] = []
+    @State private var latestValuation: AssetValuationRow?
     @State private var showTransfer: Bool = false
+    @State private var showValuation: Bool = false
     @State private var isReleasing: Bool = false
     @State private var error: String?
 
@@ -180,6 +236,18 @@ public struct AssetOwnershipSection: View {
                     }
                 } else {
                     row(label: "Dueño", value: "Del grupo")
+                }
+                if let v = latestValuation {
+                    divider
+                    row(label: "Valor actual", value: AssetMoneyFormatter.format(
+                        cents: v.valueCents, currency: v.currency
+                    ))
+                    divider
+                    row(label: "Valuado", value: v.recordedAt.ruulShortDate)
+                }
+                divider
+                actionButton(label: "Registrar valuación", symbol: "chart.line.uptrend.xyaxis") {
+                    showValuation = true
                 }
                 divider
                 actionButton(label: "Transferir propiedad", symbol: "arrow.left.arrow.right") {
@@ -209,12 +277,28 @@ public struct AssetOwnershipSection: View {
                     .stroke(Color.ruulSeparator, lineWidth: 0.5)
             )
         }
-        .task { await loadMembers() }
+        .task { await load() }
         .fullScreenCover(isPresented: $showTransfer) {
-            MemberPickerSheet(members: members, title: "Transferir a") { memberId in
+            MemberPickerSheet(
+                members: transferableMembers,
+                title: "Transferir a"
+            ) { memberId in
                 Task { await transfer(to: memberId) }
             }
         }
+        .fullScreenCover(isPresented: $showValuation) {
+            RecordValuationSheet(asset: asset) {
+                Task { await load() }
+            }
+        }
+    }
+
+    /// Excludes the current owner from the picker — transferring to
+    /// the same owner is a no-op server-side but creates a confusing
+    /// assetTransferred event with from == to.
+    private var transferableMembers: [MemberWithProfile] {
+        guard let current = currentOwner else { return members }
+        return members.filter { $0.id != current.id }
     }
 
     private var currentOwner: MemberWithProfile? {
@@ -224,8 +308,13 @@ public struct AssetOwnershipSection: View {
     }
 
     @MainActor
-    private func loadMembers() async {
-        members = (try? await app.groupsRepo.membersWithProfiles(of: asset.groupId)) ?? []
+    private func load() async {
+        async let membersTask = app.groupsRepo.membersWithProfiles(of: asset.groupId)
+        async let valuationTask = AssetProjectionsRepository.latestValuation(
+            client: app.systemEventRepo, assetId: asset.id, groupId: asset.groupId
+        )
+        members = (try? await membersTask) ?? []
+        latestValuation = await valuationTask
     }
 
     @MainActor

@@ -270,6 +270,159 @@ struct ReportDamageSheet: View {
     }
 }
 
+struct CheckOutAssetSheet: View {
+    let asset: ResourceRow
+    let members: [MemberWithProfile]
+    let onSubmitted: () -> Void
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedMemberId: UUID?
+    @State private var hasReturnDate: Bool = true
+    @State private var expectedReturnAt: Date = .now.addingTimeInterval(7 * 86400)
+    @State private var notes: String = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Prestar a") {
+                    Picker("Miembro", selection: $selectedMemberId) {
+                        Text("Yo mismo").tag(UUID?.none)
+                        ForEach(members) { m in
+                            Text(m.displayName).tag(UUID?.some(m.id))
+                        }
+                    }
+                }
+                Section("Devolución esperada") {
+                    Toggle("Fijar fecha", isOn: $hasReturnDate)
+                    if hasReturnDate {
+                        DatePicker("Devolver antes de", selection: $expectedReturnAt)
+                    }
+                }
+                Section("Notas (opcional)") {
+                    TextField("Detalles", text: $notes, axis: .vertical)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .navigationTitle("Prestar activo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    RuulCloseToolbarButton { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Prestar") { Task { await submit() } }
+                        .disabled(isSubmitting)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func submit() async {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            _ = try await app.assetLifecycleRepo.checkOutAsset(
+                asset: asset.id,
+                to: selectedMemberId,
+                expectedReturnAt: hasReturnDate ? expectedReturnAt : nil,
+                notes: notes.isEmpty ? nil : notes
+            )
+            onSubmitted()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+struct RecordValuationSheet: View {
+    let asset: ResourceRow
+    let onSubmitted: () -> Void
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var amountString: String = ""
+    @State private var currency: String = "MXN"
+    @State private var source: String = ""
+    @State private var notes: String = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Valor estimado") {
+                    TextField("0", text: $amountString)
+                        .keyboardType(.decimalPad)
+                }
+                Section("Moneda") {
+                    Picker("Moneda", selection: $currency) {
+                        Text("MXN").tag("MXN")
+                        Text("USD").tag("USD")
+                        Text("EUR").tag("EUR")
+                    }
+                }
+                Section("Fuente (opcional)") {
+                    TextField("ej: appraisal, market, gut feel", text: $source)
+                }
+                Section("Notas (opcional)") {
+                    TextField("Detalles", text: $notes, axis: .vertical)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .navigationTitle("Registrar valuación")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    RuulCloseToolbarButton { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Guardar") { Task { await submit() } }
+                        .disabled(isSubmitting || parsedCents == nil)
+                }
+            }
+        }
+    }
+
+    private var parsedCents: Int64? {
+        let trimmed = amountString.trimmingCharacters(in: .whitespaces)
+        guard let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")) else { return nil }
+        guard value >= 0 else { return nil }
+        return Int64(value * 100)
+    }
+
+    @MainActor
+    private func submit() async {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        guard let cents = parsedCents else {
+            error = "Monto inválido"
+            return
+        }
+        do {
+            _ = try await app.assetLifecycleRepo.recordValuation(
+                asset: asset.id,
+                valueCents: cents,
+                currency: currency,
+                source: source.isEmpty ? nil : source,
+                notes: notes.isEmpty ? nil : notes
+            )
+            onSubmitted()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
 struct CreateSlotSheet: View {
     let asset: ResourceRow
     let onCreated: () -> Void

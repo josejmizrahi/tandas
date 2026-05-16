@@ -201,7 +201,7 @@ revaluation mensual automática (cron + valuation.recorded)
 
 `metadata.inventory_count = 24`, `metadata.unit_label = "locker"`.
 
-`inventory` es una **capability sobre asset** (spec §17 — `inventory` no es resource_type propio). La projection `asset_inventory_view` lee `metadata.inventory_count` y deriva disponibilidad cruzando con bookings activos.
+`inventory` es una **capability sobre asset** (spec §17 — `inventory` no es resource_type propio). El shortcut de projection vive en `resources.metadata.inventory_count` (no hay vista dedicada al 2026-05-15 — la idea original `asset_inventory_view` quedó como follow-up cuando haya demanda de cruzar contra bookings activos).
 
 ---
 
