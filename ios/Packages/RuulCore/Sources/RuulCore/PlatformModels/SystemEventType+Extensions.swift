@@ -116,37 +116,10 @@ public extension SystemEventType {
         case .ledgerEntryCreated:     return "Movimiento de dinero registrado"
         case .warningEmitted:         return "Aviso emitido por regla"
 
-        // Right lifecycle (mig 00198 — right_resource_canonical)
-        case .rightCreated:           return "Derecho creado"
-        case .rightTransferred:       return "Derecho transferido"
-        case .rightDelegated:         return "Derecho delegado"
-        case .rightRevoked:           return "Derecho revocado"
-        case .rightExpired:           return "Derecho expirado"
-        case .rightExercised:         return "Derecho ejercido"
-        case .rightSuspended:         return "Derecho suspendido"
-        case .rightRestored:          return "Derecho restaurado"
+        // Right lifecycle (mig 00198 + mig 00203_right_expiration_warning)
         case .rightExpiringSoon:      return "Derecho próximo a expirar"
 
-        // Asset universal atoms (mig 00203 — canonical asset spec §13)
-        case .assetTransferred:       return "Activo transferido"
-        case .assetAssigned:          return "Activo asignado"
-        case .assetReturned:          return "Activo devuelto"
-        case .custodyAssigned:        return "Custodia asignada"
-        case .custodyReleased:        return "Custodia liberada"
-        case .maintenanceLogged:      return "Mantenimiento registrado"
-        case .maintenanceCompleted:   return "Mantenimiento completado"
-        case .damageReported:         return "Daño reportado"
-        case .assetUsed:              return "Activo usado"
-        case .assetCheckedOut:        return "Activo prestado"
-        case .assetCheckedIn:         return "Activo devuelto a custodia"
-        case .valuationRecorded:      return "Valuación registrada"
-
-        // Resource links (mig 00202 — event uses space/asset/fund/right)
-        case .resourceLinked:         return "Recurso vinculado"
-        case .resourceUnlinked:       return "Recurso desvinculado"
-
-        // Event lifecycle (mig 00203 — eventCancelled, mig 00208 — eventStarted, mig 00210 — eventUpdated)
-        case .eventCancelled:         return "Evento cancelado"
+        // Event lifecycle additions (mig 00208 — eventStarted, mig 00210 — eventUpdated)
         case .eventStarted:           return "Evento iniciado"
         case .eventUpdated:           return "Evento actualizado"
 
@@ -202,10 +175,10 @@ public extension SystemEventType {
              .assetCheckedIn, .custodyAssigned, .custodyReleased,
              .maintenanceLogged, .maintenanceCompleted, .damageReported,
              .valuationRecorded, .resourceLinked, .resourceUnlinked,
-             .eventCancelled,
+             .eventCancelled, .eventStarted, .eventUpdated,
              .rightCreated, .rightTransferred, .rightDelegated,
              .rightRevoked, .rightExpired, .rightExercised,
-             .rightSuspended, .rightRestored,
+             .rightSuspended, .rightRestored, .rightExpiringSoon,
              .fundCreated, .fundDeposit, .fundThresholdReached,
              .fundLocked, .fundUnlocked,
              .spaceCreated,
@@ -217,18 +190,7 @@ public extension SystemEventType {
              .groupRenamed, .governanceUpdated,
              .resourceArchived, .resourceUnarchived, .resourceRenamed,
              .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden,
-             .ledgerEntryCreated, .warningEmitted,
-             .rightCreated, .rightTransferred, .rightDelegated, .rightRevoked,
-             .rightExpired, .rightExercised, .rightSuspended, .rightRestored,
-             .rightExpiringSoon,
-             .assetTransferred, .assetAssigned, .assetReturned,
-             .custodyAssigned, .custodyReleased,
-             .maintenanceLogged, .maintenanceCompleted, .damageReported,
-             .assetUsed, .assetCheckedOut, .assetCheckedIn, .valuationRecorded,
-             .resourceLinked, .resourceUnlinked,
-             .eventCancelled,
-             .eventStarted,
-             .eventUpdated:
+             .ledgerEntryCreated, .warningEmitted:
             return false
         case .unknown:
             return false
