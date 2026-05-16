@@ -149,7 +149,10 @@ public struct RootShell: View {
         // mismo rebuild para que el cambio de grupo refresque el filtro.
         activityCoordinator = ActivityCoordinator(
             groupId: group.id,
-            repo: app.systemEventRepo
+            repo: app.systemEventRepo,
+            // Slice 11: pass groupsRepo so the feed can render actor
+            // names ("Jose creó un derecho") instead of "Alguien".
+            groupsRepo: app.groupsRepo
         )
         shellState.activityCoordinator = activityCoordinator
 

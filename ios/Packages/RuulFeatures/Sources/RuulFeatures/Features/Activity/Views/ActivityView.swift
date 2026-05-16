@@ -181,7 +181,10 @@ public struct ActivityView: View {
     private var timelineList: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(Array(visibleEvents.enumerated()), id: \.element.id) { index, ev in
-                let presentation = HistoryItemPresentation(event: ev)
+                let presentation = HistoryItemPresentation(
+                    event: ev,
+                    memberName: coordinator.actorName(for: ev)
+                )
                 Button { detailEvent = ev } label: {
                     RuulTimelineItem(
                         icon: presentation.icon,
