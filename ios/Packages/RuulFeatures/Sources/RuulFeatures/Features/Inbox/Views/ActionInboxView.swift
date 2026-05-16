@@ -92,6 +92,7 @@ public struct ActionInboxView: View {
         case .votePending:             return "hand.raised.fill"
         case .contributionDue:         return "banknote.fill"
         case .compensationDue:         return "arrow.up.right"
+        case .assetActionApproval:     return "checkmark.shield.fill"
         }
     }
 

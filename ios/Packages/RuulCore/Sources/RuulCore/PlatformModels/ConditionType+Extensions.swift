@@ -5,7 +5,8 @@ public extension ConditionType {
         switch self {
         case .alwaysTrue, .responseStatusIs, .checkInExists,
              .checkInMinutesLate, .eventDescriptionMissing,
-             .amountAbove:
+             .amountAbove,
+             .damageAmountAbove, .transferAmountAbove:
             return true
         case .minutesAfterScheduled, .hoursBeforeEvent,
              .memberHasMultipleFines, .memberFinesAbove,

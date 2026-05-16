@@ -190,6 +190,97 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 scopeHint: "group"
             ),
             sortOrder: 70
+        ),
+
+        // MARK: - Asset rule templates (mig 00227 — Plans/Active/AssetRules.md §1)
+
+        RuleBuilderTemplate(
+            id: "damage_approval_required",
+            displayNameES: "Daño grande requiere aprobación",
+            descriptionES: "Si alguien reporta un daño con costo estimado mayor a $X, se crea una acción pendiente para que un admin apruebe el siguiente paso.",
+            category: "assets",
+            templateKind: "governance",
+            requiredCapabilities: ["maintenance"],
+            defaultParams: .object(["threshold_cents": .int(500_000)]),
+            composition: .init(
+                triggerShapeId: "damageReported",
+                conditionShapeIds: ["damageAmountAbove"],
+                consequenceShapeIds: ["requireApproval"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 80
+        ),
+        RuleBuilderTemplate(
+            id: "not_returned_fine",
+            displayNameES: "Multa por no devolver el activo",
+            descriptionES: "Si quien hizo checkout no devuelve el activo después de la fecha esperada (con X días de tolerancia), cobra una multa.",
+            category: "assets",
+            templateKind: "penalty",
+            requiredCapabilities: ["custody"],
+            defaultParams: .object([
+                "grace_days": .int(1),
+                "amount":     .int(200),
+            ]),
+            composition: .init(
+                triggerShapeId: "checkoutOverdue",
+                conditionShapeIds: ["alwaysTrue"],
+                consequenceShapeIds: ["fine"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 90
+        ),
+        RuleBuilderTemplate(
+            id: "maintenance_overdue_lock",
+            displayNameES: "Bloquea bookings si el mantenimiento está atrasado",
+            descriptionES: "Si un mantenimiento queda abierto más de X días, bloquea nuevos bookings del activo hasta que el mantenimiento se cierre o se desbloquee manualmente.",
+            category: "assets",
+            templateKind: "governance",
+            requiredCapabilities: ["maintenance", "booking"],
+            defaultParams: .object(["days": .int(7)]),
+            composition: .init(
+                triggerShapeId: "maintenanceOverdue",
+                conditionShapeIds: ["alwaysTrue"],
+                consequenceShapeIds: ["lockBookings"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 100
+        ),
+        RuleBuilderTemplate(
+            id: "transfer_large_vote",
+            displayNameES: "Voto para transferencias grandes",
+            descriptionES: "Si la última valuación del activo supera $X y se intenta transferir, abre automáticamente una votación al grupo.",
+            category: "assets",
+            templateKind: "governance",
+            requiredCapabilities: ["transfer", "voting"],
+            defaultParams: .object([
+                "threshold_cents":   .int(5_000_000),
+                "duration_hours":    .int(48),
+                "quorum_percent":    .int(50),
+                "threshold_percent": .int(66),
+            ]),
+            composition: .init(
+                triggerShapeId: "assetTransferred",
+                conditionShapeIds: ["transferAmountAbove"],
+                consequenceShapeIds: ["startVote"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 110
+        ),
+        RuleBuilderTemplate(
+            id: "damage_logged_warning",
+            displayNameES: "Aviso al grupo cuando se reporta un daño",
+            descriptionES: "Cualquier daño reportado emite un aviso visible en la actividad del grupo. Útil para que los admins vean reportes sin esperar a que se acumulen.",
+            category: "assets",
+            templateKind: "governance",
+            requiredCapabilities: ["maintenance"],
+            defaultParams: .object([:]),
+            composition: .init(
+                triggerShapeId: "damageReported",
+                conditionShapeIds: ["alwaysTrue"],
+                consequenceShapeIds: ["emitWarning"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 120
         )
     ]
 }

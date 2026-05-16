@@ -327,6 +327,142 @@ async function buildContext(
       if (error) throw new Error(`suspendRight suspend_right failed: ${error.message}`);
       return args.right_id;
     },
+
+    // (mig 00227, AssetRules.md §4.3) Insert a user_actions row of
+    // type assetActionApproval for the asset's admins. Idempotent via
+    // a SELECT on (rule_id, reference_id, action_type, source_atom_id)
+    // — re-running the rule on the same atom doesn't pile up dupes.
+    // Inserts one row per active group founder; for V1 we treat the
+    // founder roles list as the approver pool. assignSlot / treasurer
+    // role expansion lands in a follow-up.
+    createUserAction: async (args) => {
+      const sourceAtomTag = args.source_atom_id ?? "no-source";
+
+      // Idempotency: if any user_actions row already exists for this
+      // (rule_id + reference_id + action_type + source_atom_id) tuple,
+      // return its id without inserting more. We tag the body with the
+      // source atom id so it's queryable in a single eq().
+      const { data: existing } = await supabase
+        .from("user_actions")
+        .select("id")
+        .eq("reference_id", args.resource_id)
+        .eq("action_type", args.action_type)
+        .ilike("body", `%[rule:${args.rule_id}][src:${sourceAtomTag}]%`)
+        .limit(1)
+        .maybeSingle();
+      if (existing) return existing.id as string;
+
+      // Resolve founder user_ids for this group — they're the V1
+      // approver pool. group_members.roles is a jsonb array; ?| is the
+      // PostgREST operator for "contains any of".
+      const { data: founders, error: foundersErr } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", args.group_id)
+        .eq("active", true)
+        .contains("roles", ["founder"]);
+      if (foundersErr) {
+        throw new Error(`createUserAction founders lookup failed: ${foundersErr.message}`);
+      }
+      const targets = (founders ?? []).map((f) => f.user_id as string);
+      if (targets.length === 0) {
+        // No admins to notify — log and short-circuit. Returning a
+        // synthetic id keeps ExecutionResult well-formed; the rule
+        // engine doesn't observe the row, only its existence.
+        console.warn(`createUserAction: group ${args.group_id} has no active founder; skipping`);
+        return crypto.randomUUID();
+      }
+
+      const tag = `[rule:${args.rule_id}][src:${sourceAtomTag}]`;
+      const bodyText = [args.body, tag].filter(Boolean).join(" — ");
+
+      const rows = targets.map((uid) => ({
+        user_id:      uid,
+        group_id:     args.group_id,
+        action_type:  args.action_type,
+        reference_id: args.resource_id,
+        title:        args.title,
+        body:         bodyText,
+        priority:     "high",
+      }));
+
+      const { data, error } = await supabase
+        .from("user_actions")
+        .insert(rows)
+        .select("id")
+        .limit(1)
+        .single();
+      if (error) throw new Error(`createUserAction insert failed: ${error.message}`);
+      return data.id as string;
+    },
+
+    // (mig 00227, AssetRules.md §4.3) Flip resources.metadata.bookings_locked
+    // = true and emit a warningEmitted audit atom. Idempotent — re-firing
+    // on an already-locked asset returns the asset id without re-emitting
+    // the audit atom (avoids spamming the activity feed).
+    setBookingsLocked: async (args) => {
+      const { data: current, error: readErr } = await supabase
+        .from("resources")
+        .select("metadata")
+        .eq("id", args.resource_id)
+        .single();
+      if (readErr) throw new Error(`setBookingsLocked read failed: ${readErr.message}`);
+
+      const meta = (current?.metadata ?? {}) as Record<string, unknown>;
+      if (meta.bookings_locked === true) {
+        // Already locked — no-op. Return the asset id so the rule
+        // engine still completes successfully (idempotent run).
+        return args.resource_id;
+      }
+
+      const nextMeta = {
+        ...meta,
+        bookings_locked: true,
+        bookings_locked_at: new Date().toISOString(),
+        bookings_locked_by_rule_id: args.rule_id,
+      };
+      const { error: updErr } = await supabase
+        .from("resources")
+        .update({ metadata: nextMeta })
+        .eq("id", args.resource_id);
+      if (updErr) throw new Error(`setBookingsLocked update failed: ${updErr.message}`);
+
+      // Audit atom — visibility for admins / activity feed.
+      const { error: emitErr } = await supabase.rpc("record_system_event", {
+        p_group_id:    args.group_id,
+        p_event_type:  "warningEmitted",
+        p_resource_id: args.resource_id,
+        p_member_id:   null,
+        p_payload:     {
+          rule_id: args.rule_id,
+          reason:  args.reason ?? "bookings locked by rule",
+          kind:    "lockBookings",
+        },
+      });
+      if (emitErr) {
+        console.warn(`setBookingsLocked: audit atom emit failed (lock still applied): ${emitErr.message}`);
+      }
+      return args.resource_id;
+    },
+
+    // (mig 00227, AssetRules.md §4.1) Latest value_cents from
+    // asset_valuation_view. Returns null when the asset has no
+    // recorded valuation — the transferAmountAbove condition then
+    // short-circuits to false.
+    latestAssetValuationCents: async (assetId) => {
+      const { data, error } = await supabase
+        .from("asset_valuation_view")
+        .select("value_cents")
+        .eq("asset_id", assetId)
+        .maybeSingle();
+      if (error) {
+        console.warn(`latestAssetValuationCents read failed: ${error.message}`);
+        return null;
+      }
+      if (!data) return null;
+      const raw = data.value_cents;
+      return typeof raw === "number" ? raw : Number(raw);
+    },
   };
 
   return {

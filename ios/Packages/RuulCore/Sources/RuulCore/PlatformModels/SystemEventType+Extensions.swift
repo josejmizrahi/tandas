@@ -123,6 +123,10 @@ public extension SystemEventType {
         case .eventStarted:           return "Evento iniciado"
         case .eventUpdated:           return "Evento actualizado"
 
+        // Asset rule overdue atoms (mig 00225 — Plans/Active/AssetRules.md §5)
+        case .assetCheckoutOverdue:    return "Devolución vencida"
+        case .assetMaintenanceOverdue: return "Mantenimiento atrasado"
+
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
         }
@@ -190,7 +194,8 @@ public extension SystemEventType {
              .groupRenamed, .governanceUpdated,
              .resourceArchived, .resourceUnarchived, .resourceRenamed,
              .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden,
-             .ledgerEntryCreated, .warningEmitted:
+             .ledgerEntryCreated, .warningEmitted,
+             .assetCheckoutOverdue, .assetMaintenanceOverdue:
             return false
         case .unknown:
             return false

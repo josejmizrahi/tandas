@@ -20,6 +20,8 @@ export const consequenceTypeValues = [
   "emitWarning",
   "revokeRight",
   "suspendRight",
+  "requireApproval",
+  "lockBookings",
 ] as const;
 
 export type ConsequenceType = (typeof consequenceTypeValues)[number];

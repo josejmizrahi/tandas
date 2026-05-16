@@ -79,5 +79,17 @@ public enum ConditionType: Codable, Sendable, Hashable {
     /// `ledgerEntryCreated` trigger evaluator.
     case amountAbove
 
+    /// True when `target.context.estimated_cost_cents` exceeds the
+    /// configured threshold. Drives the `damage_approval_required` +
+    /// `damage_logged_warning` templates (Plans/Active/AssetRules.md §3).
+    /// Config: `{ "threshold_cents": 500000 }`.
+    case damageAmountAbove
+
+    /// True when `target.context.valuation_cents` exceeds the configured
+    /// threshold. Reads the asset's latest `asset_valuation_view` value
+    /// projected by the `assetTransferred` evaluator. Drives the
+    /// `transfer_large_vote` template. Config: `{ "threshold_cents": 5000000 }`.
+    case transferAmountAbove
+
     case unknown(String)
 }

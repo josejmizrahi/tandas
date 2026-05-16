@@ -81,6 +81,8 @@ export const systemEventTypeValues = [
   "eventCancelled",
   "eventStarted",
   "eventUpdated",
+  "assetCheckoutOverdue",
+  "assetMaintenanceOverdue",
 ] as const;
 
 export type SystemEventType = (typeof systemEventTypeValues)[number];

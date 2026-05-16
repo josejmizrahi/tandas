@@ -256,6 +256,52 @@ export interface ConsequenceSink {
     until: string | null;
     reason: string | null;
   }): Promise<UUID>;
+
+  /**
+   * Inserts a `user_actions` row of type `assetActionApproval` for the
+   * `requireApproval` consequence (Plans/Active/AssetRules.md §4.3).
+   * `reference_id` is the asset's resource_id so the inbox surface
+   * routes to its detail. Idempotent on (rule_id, resource_id,
+   * source_atom_id) — the implementation should dedupe so re-running
+   * the rule on the same atom doesn't pile up duplicate inbox rows.
+   * Returns the new user_actions.id.
+   */
+  createUserAction(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    resource_id: UUID;
+    action_type: string;
+    title: string;
+    body: string | null;
+    source_atom_id: UUID | null;
+    payload: Record<string, unknown>;
+  }): Promise<UUID>;
+
+  /**
+   * Flips `resources.metadata.bookings_locked = true` for the
+   * `lockBookings` consequence (Plans/Active/AssetRules.md §4.3).
+   * Soft policy per Constitution §9 — doesn't block booking RPCs;
+   * UI + rules read the flag and react. Idempotent: re-firing on an
+   * already-locked asset is a no-op. Also emits a `warningEmitted`
+   * atom referencing the rule so the audit trail captures the lock.
+   * Returns the asset's resource_id for ExecutionResult bookkeeping.
+   */
+  setBookingsLocked(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    resource_id: UUID;
+    reason: string | null;
+  }): Promise<UUID>;
+
+  /**
+   * Reads the latest `valuationRecorded` atom for an asset and returns
+   * its `value_cents`. Used by the `assetTransferred` trigger
+   * evaluator to project `valuation_cents` onto the target context so
+   * the `transferAmountAbove` condition can compare. Returns null when
+   * the asset has no recorded valuation yet (the condition then short-
+   * circuits to false). Plans/Active/AssetRules.md §4.1.
+   */
+  latestAssetValuationCents(assetId: UUID): Promise<number | null>;
 }
 
 // =============================================================================
@@ -661,6 +707,82 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
       },
     }];
   },
+
+  // (mig 00225-00227, AssetRules.md §4.1) Reporter is the single target.
+  // Drives `damage_approval_required` + `damage_logged_warning` templates.
+  // Payload trip-wire: severity + estimated_cost_cents flow into
+  // target.context so `damageAmountAbove` + `requireApproval` /
+  // `emitWarning` consequences read them without re-querying.
+  damageReported: async (event, _rule, _context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        severity:              event.payload?.severity ?? null,
+        estimated_cost_cents:  event.payload?.estimated_cost_cents ?? null,
+        currency:              event.payload?.currency ?? null,
+        notes:                 event.payload?.notes ?? null,
+        source_atom_id:        event.id,
+      },
+    }];
+  },
+
+  // (mig 00225-00227, AssetRules.md §4.1) Member transferring is the target.
+  // Drives `transfer_large_vote`. Projects `valuation_cents` from the
+  // asset_valuation_view (via sink hook) so `transferAmountAbove` can
+  // compare without a second round-trip from inside the condition.
+  assetTransferred: async (event, _rule, context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    const valuationCents = await context.sink.latestAssetValuationCents(event.resource_id);
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        to_member_id:    event.payload?.to_member_id ?? null,
+        from_member_id:  event.payload?.from_member_id ?? null,
+        transferred_by:  event.payload?.transferred_by ?? null,
+        notes:           event.payload?.notes ?? null,
+        valuation_cents: valuationCents,
+        source_atom_id:  event.id,
+      },
+    }];
+  },
+
+  // (mig 00225-00227, AssetRules.md §4.1) Synthetic atom emitted by
+  // emit-asset-overdue-events. member_id = the holder so `fine`
+  // consequence routes to the right person. Drives `not_returned_fine`.
+  assetCheckoutOverdue: async (event, _rule, _context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        expected_return_at: event.payload?.expected_return_at ?? null,
+        checked_out_at:     event.payload?.checked_out_at ?? null,
+        days_overdue:       event.payload?.days_overdue ?? null,
+        source_atom_id:     event.id,
+      },
+    }];
+  },
+
+  // (mig 00225-00227, AssetRules.md §4.1) Synthetic atom emitted by
+  // emit-asset-overdue-events. member_id = null (resource-scoped).
+  // Drives `maintenance_overdue_lock`. The `lockBookings` consequence
+  // reads target.resource_id, not target.member_id.
+  assetMaintenanceOverdue: async (event, _rule, _context) => {
+    if (!event.resource_id) return [];
+    return [{
+      member_id: null,
+      resource_id: event.resource_id,
+      context: {
+        maintenance_event_id: event.payload?.maintenance_event_id ?? null,
+        days_open:            event.payload?.days_open ?? null,
+        logged_at:            event.payload?.logged_at ?? null,
+        source_atom_id:       event.id,
+      },
+    }];
+  },
 };
 
 // =============================================================================
@@ -764,6 +886,28 @@ const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
     if (Number.isNaN(expiresAtMs)) return false;
     const daysUntilExpiry = (expiresAtMs - context.now.getTime()) / 86_400_000;
     return daysUntilExpiry > 0 && daysUntilExpiry <= threshold;
+  },
+
+  // (mig 00226, AssetRules.md §4.2) Mirrors amountAbove but reads the
+  // damageReported payload key (estimated_cost_cents) instead of
+  // ledger_entry amount_cents. Strict > so a threshold of 500000 fires
+  // on 500001 cents but not on exactly 500000.
+  damageAmountAbove: async (cond, target) => {
+    const threshold = (cond.config.threshold_cents as number | undefined) ?? 0;
+    const cost = (target.context.estimated_cost_cents as number | null | undefined) ?? 0;
+    return cost > threshold;
+  },
+
+  // (mig 00226, AssetRules.md §4.2) Reads the projected valuation_cents
+  // from target.context (the assetTransferred trigger evaluator
+  // populated it via sink.latestAssetValuationCents). Returns false
+  // when no valuation is recorded — the rule short-circuits so an
+  // un-valued asset doesn't fire transfer-large rules.
+  transferAmountAbove: async (cond, target) => {
+    const threshold = (cond.config.threshold_cents as number | undefined) ?? 0;
+    const valuation = target.context.valuation_cents as number | null | undefined;
+    if (typeof valuation !== "number") return false;
+    return valuation > threshold;
   },
 };
 
@@ -1047,6 +1191,67 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
       const msg = e instanceof Error ? e.message : String(e);
       return failure(rule.id, target.member_id, `suspendRight failed: ${msg}`);
     }
+  },
+
+  // (mig 00226, AssetRules.md §4.3) Creates a user_actions inbox row
+  // of type `assetActionApproval`. Sink dedupes on (rule_id +
+  // resource_id + source_atom_id) so re-running the rule doesn't
+  // pile up duplicate inbox entries.
+  requireApproval: async (_cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "requireApproval requires resource_id");
+    }
+    const sourceAtomId = (target.context.source_atom_id as UUID | null | undefined) ?? null;
+    const severity = target.context.severity as string | null | undefined;
+    const costCents = target.context.estimated_cost_cents as number | null | undefined;
+    const title = rule.name;
+    const body = (severity && typeof costCents === "number")
+      ? `Daño ${severity}: ${(costCents / 100).toFixed(2)} ${target.context.currency ?? "MXN"}`
+      : null;
+
+    const actionId = await context.sink.createUserAction({
+      rule_id: rule.id,
+      group_id: rule.group_id,
+      resource_id: target.resource_id,
+      action_type: "assetActionApproval",
+      title,
+      body,
+      source_atom_id: sourceAtomId,
+      payload: target.context as Record<string, unknown>,
+    });
+
+    return {
+      success: true,
+      rule_id: rule.id,
+      member_id: target.member_id,
+      created_resource_ids: [actionId],
+      emitted_event_types: [],
+      error: null,
+    };
+  },
+
+  // (mig 00226, AssetRules.md §4.3) Sets resources.metadata.bookings_locked
+  // = true on the asset and emits an audit warningEmitted atom. Sink
+  // is idempotent — re-firing on an already-locked asset is a no-op
+  // but still resolves successfully so the rule engine doesn't loop.
+  lockBookings: async (_cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "lockBookings requires resource_id");
+    }
+    const assetId = await context.sink.setBookingsLocked({
+      rule_id: rule.id,
+      group_id: rule.group_id,
+      resource_id: target.resource_id,
+      reason: rule.name,
+    });
+    return {
+      success: true,
+      rule_id: rule.id,
+      member_id: target.member_id,
+      created_resource_ids: [assetId],
+      emitted_event_types: ["warningEmitted"],
+      error: null,
+    };
   },
 };
 

@@ -80,7 +80,7 @@ public struct InboxTab: View {
                 router.selectTab(.home)
                 router.openEvent(event)
             }
-        case .slotPending, .contributionDue, .compensationDue:
+        case .slotPending, .contributionDue, .compensationDue, .assetActionApproval:
             break
         }
     }

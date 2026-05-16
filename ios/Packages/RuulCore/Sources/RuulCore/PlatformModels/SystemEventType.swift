@@ -246,5 +246,20 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// title, title_changed}`.
     case eventUpdated
 
+    // MARK: - Asset rule overdue atoms (mig 00225 — Plans/Active/AssetRules.md §5)
+    /// Emitted by the `emit-asset-overdue-events` cron when an asset's
+    /// latest `assetCheckedOut` row has `expected_return_at` in the past
+    /// and no later `assetCheckedIn` closed it. `member_id` = the
+    /// previous holder so rules can fine the right person without
+    /// re-resolving. Payload: `{expected_return_at, checked_out_at,
+    /// days_overdue}`. Drives the `not_returned_fine` template.
+    case assetCheckoutOverdue
+    /// Emitted by the same cron when a `maintenanceLogged` atom hasn't
+    /// been closed by a matching `maintenanceCompleted` within the
+    /// grace window. `member_id` = null (resource-scoped). Payload:
+    /// `{maintenance_event_id, days_open, logged_at}`. Drives the
+    /// `maintenance_overdue_lock` template.
+    case assetMaintenanceOverdue
+
     case unknown(String)
 }

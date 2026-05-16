@@ -151,7 +151,7 @@ public struct ResourceDetailSheet: View {
                 proposedAmount: proposedAmount,
                 pendingActionId: action.id
             )
-        case .slotPending, .contributionDue, .compensationDue:
+        case .slotPending, .contributionDue, .compensationDue, .assetActionApproval:
             // Resource-scoped pendings — the user is already on the right
             // detail. Resolve so the badge disappears and refresh.
             try? await app.userActionRepo.resolve(actionId: action.id)
