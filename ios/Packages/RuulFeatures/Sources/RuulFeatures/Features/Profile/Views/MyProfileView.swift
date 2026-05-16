@@ -22,6 +22,7 @@ public struct MyProfileView: View {
     public let onEditProfile: () -> Void
     public let onSignOut: () -> Void
     public var onOpenMyLedger: (() -> Void)? = nil
+    public var onOpenTimeline: (() -> Void)? = nil
 
     /// Cross-group outstanding fines pill (read from MyFinesCoordinator).
     /// nil while loading or when zero.
@@ -39,6 +40,7 @@ public struct MyProfileView: View {
         onEditProfile: @escaping () -> Void,
         onSignOut: @escaping () -> Void,
         onOpenMyLedger: (() -> Void)? = nil,
+        onOpenTimeline: (() -> Void)? = nil,
         outstandingPillAmount: Decimal? = nil,
         onChangePhone: (() -> Void)? = nil,
         onChangeEmail: (() -> Void)? = nil,
@@ -51,6 +53,7 @@ public struct MyProfileView: View {
         self.onEditProfile = onEditProfile
         self.onSignOut = onSignOut
         self.onOpenMyLedger = onOpenMyLedger
+        self.onOpenTimeline = onOpenTimeline
         self.outstandingPillAmount = outstandingPillAmount
         self.onChangePhone = onChangePhone
         self.onChangeEmail = onChangeEmail
@@ -191,6 +194,8 @@ public struct MyProfileView: View {
                 divider
                 navRow(icon: "arrow.left.arrow.right", label: "Mis movimientos", trailing: { EmptyView() }, action: onOpenMyLedger)
             }
+            divider
+            navRow(icon: "clock.badge.checkmark", label: "Mi línea de tiempo", trailing: { EmptyView() }, action: { onOpenTimeline?() })
             divider
             navRow(icon: "clock.arrow.circlepath", label: "Actividad del grupo", trailing: { EmptyView() }, action: onOpenHistory)
         }

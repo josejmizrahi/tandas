@@ -14,6 +14,7 @@ public struct ProfileTab: View {
     @State private var path = NavigationPath()
     @State private var showChangePhone = false
     @State private var showChangeEmail = false
+    @State private var showTimeline = false
 
     private enum ProfileNav: Hashable { case language, timezone }
 
@@ -31,6 +32,7 @@ public struct ProfileTab: View {
                     onOpenHistory: { router.selectTab(.home) },
                     onEditProfile: { router.openEditProfile() },
                     onSignOut: { Task { try? await app.signOut() } },
+                    onOpenTimeline: { showTimeline = true },
                     outstandingPillAmount: myFinesCoordinator?.totalOutstanding,
                     onChangePhone: { showChangePhone = true },
                     onChangeEmail: { showChangeEmail = true },
@@ -45,6 +47,7 @@ public struct ProfileTab: View {
                 }
                 .fullScreenCover(isPresented: $showChangePhone) { ChangePhoneFlow() }
                 .fullScreenCover(isPresented: $showChangeEmail) { ChangeEmailFlow() }
+                .fullScreenCover(isPresented: $showTimeline) { MyTimelineView().environment(app) }
                 .environment(app)
                 .task { await myFinesCoordinator?.refresh() }
             } else {
