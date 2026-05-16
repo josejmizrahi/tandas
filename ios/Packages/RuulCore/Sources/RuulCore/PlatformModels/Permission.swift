@@ -59,5 +59,24 @@ public enum Permission: Codable, Sendable, Hashable {
     /// Approve a group expense.
     case expenseApprove
 
+    // MARK: - Right resource_type (mig 00198 + 00200, slice 19)
+
+    /// Transfer a right to another member. Server-side, mig 00206 gates
+    /// this on (holder OR admin/founder); custom roles that need the
+    /// authority (e.g. "treasurer" handling equity transfers) declare
+    /// this permission instead of relying on the hard-coded admin check.
+    case transferRight
+    /// Delegate a right temporarily. Same gating as transfer.
+    case delegateRight
+    /// Revoke a right (terminal-ish admin action). Founder + custom
+    /// roles with `manageRights`-shaped templates.
+    case revokeRight
+    /// Suspend a right (pause exercise without terminal revocation).
+    case suspendRight
+    /// Exercise a right. Default gate is "holder OR active delegate" —
+    /// this permission lets custom templates extend the surface (e.g.
+    /// committee role that can exercise any group right for audit).
+    case exerciseRight
+
     case unknown(String)
 }

@@ -22,6 +22,11 @@ extension Permission {
         .fundAudit,
         .expenseSubmit,
         .expenseApprove,
+        .transferRight,
+        .delegateRight,
+        .revokeRight,
+        .suspendRight,
+        .exerciseRight,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -42,6 +47,11 @@ extension Permission {
         "fundAudit",
         "expenseSubmit",
         "expenseApprove",
+        "transferRight",
+        "delegateRight",
+        "revokeRight",
+        "suspendRight",
+        "exerciseRight",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -73,6 +83,11 @@ extension Permission {
         case .fundAudit: return "fundAudit"
         case .expenseSubmit: return "expenseSubmit"
         case .expenseApprove: return "expenseApprove"
+        case .transferRight: return "transferRight"
+        case .delegateRight: return "delegateRight"
+        case .revokeRight: return "revokeRight"
+        case .suspendRight: return "suspendRight"
+        case .exerciseRight: return "exerciseRight"
         case .unknown(let s): return s
         }
     }
@@ -96,6 +111,11 @@ extension Permission {
         case "fundAudit": return .fundAudit
         case "expenseSubmit": return .expenseSubmit
         case "expenseApprove": return .expenseApprove
+        case "transferRight": return .transferRight
+        case "delegateRight": return .delegateRight
+        case "revokeRight": return .revokeRight
+        case "suspendRight": return .suspendRight
+        case "exerciseRight": return .exerciseRight
         default: return .unknown(raw)
         }
     }

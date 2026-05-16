@@ -19,6 +19,11 @@ export const permissionValues = [
   "fundAudit",
   "expenseSubmit",
   "expenseApprove",
+  "transferRight",
+  "delegateRight",
+  "revokeRight",
+  "suspendRight",
+  "exerciseRight",
 ] as const;
 
 export type Permission = (typeof permissionValues)[number];
