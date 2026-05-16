@@ -338,10 +338,63 @@ public struct UniversalResourceDetailView: View {
             }
             return out
         case .right:
+            // Slice 11 restored: cover hero was deleted in the universal
+            // frame refactor (commit b01f8fb) so the holder/status/
+            // priority/expires info from the old quickFacts pills has
+            // no home now. Surface them as INFORMACIÓN rows instead.
+            // Affirmative-only — default values (priority 0, exclusive
+            // false, etc.) are hidden so the card stays scannable.
             var out: [(String, String)] = []
-            if let kind = context.resource.metadata["right_kind"]?.stringValue,
-               !kind.isEmpty {
-                out.append(("Tipo", kind))
+
+            // Titular: read holder_user_id (auth.users.id, populated by
+            // create_right alongside holder_member_id). The directory is
+            // keyed by userId for events; works the same here.
+            if let holderUid = uuidFromMeta("holder_user_id"),
+               let holder = context.memberDirectory[holderUid] {
+                out.append(("Titular", holder.displayName))
+            }
+            // Delegado: when set, signal who can exercise today.
+            if let delegateUid = uuidFromMeta("delegate_user_id"),
+               let delegate = context.memberDirectory[delegateUid] {
+                out.append(("Delegado", delegate.displayName))
+            }
+            // Estado: only render non-default states. `active` is
+            // implicit (no row needed); `expired` / `revoked` are
+            // material to the holder.
+            switch context.resource.status {
+            case "expired": out.append(("Estado", "Vencido"))
+            case "revoked": out.append(("Estado", "Revocado"))
+            default: break
+            }
+            // Suspended: separate from status (suspension keeps status
+            // active but blocks exercise). Pull `suspended_until` when
+            // set; else just signal the suspended state.
+            if let until = parseISOMeta("suspended_until") {
+                out.append(("Suspendido hasta", until.ruulShortDate))
+            } else if context.resource.metadata["suspended_at"]?.stringValue != nil {
+                out.append(("Estado", "Suspendido"))
+            }
+            // Priority: only when explicitly > 0 (default rendered as
+            // no row to avoid noise).
+            if let priority = context.resource.metadata["priority"]?.intValue,
+               priority > 0 {
+                out.append(("Prioridad", "\(priority)"))
+            }
+            // Affirmative flags: only render when true.
+            if context.resource.metadata["exclusive"]?.boolValue == true {
+                out.append(("Alcance", "Exclusivo"))
+            }
+            if context.resource.metadata["transferable"]?.boolValue == true {
+                out.append(("Transferible", "Sí"))
+            }
+            if context.resource.metadata["delegable"]?.boolValue == true {
+                out.append(("Delegable", "Sí"))
+            }
+            // Expiration: forward-looking only. The expire_due_rights
+            // cron flips status to `expired` once the date lapses, so
+            // a future date is the meaningful signal here.
+            if let expires = parseISOMeta("expires_at"), expires > Date.now {
+                out.append(("Vence", expires.ruulShortDate))
             }
             return out
         case .event, .slot, .unknown:
@@ -420,6 +473,17 @@ public struct UniversalResourceDetailView: View {
     private nonisolated static func parseISO(_ iso: String) -> Date? {
         if let date = isoFrac.date(from: iso) { return date }
         return isoPlain.date(from: iso)
+    }
+
+    /// Reads `metadata.<key>` as an ISO-8601 string and parses it.
+    /// Right's metadata uses ISO timestamps for `expires_at` /
+    /// `suspended_until` / `delegate_until` (slice 11 INFORMACIÓN rows
+    /// consume this). Returns nil when the key is absent, empty, or
+    /// doesn't parse — caller decides whether to render the row.
+    private func parseISOMeta(_ key: String) -> Date? {
+        guard let raw = context.resource.metadata[key]?.stringValue,
+              !raw.isEmpty else { return nil }
+        return Self.parseISO(raw)
     }
 
     private nonisolated(unsafe) static let isoFrac: ISO8601DateFormatter = {
