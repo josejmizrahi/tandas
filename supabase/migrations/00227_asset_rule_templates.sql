@@ -5,11 +5,15 @@
 -- existing reusable pieces (`alwaysTrue`, `fine`, `startVote`,
 -- `emitWarning`).
 --
--- Templates land as `status='active'` so the iOS Rule Builder's
--- gallery picks them up immediately. Category `assets` is new — the
--- gallery already chunks by category so no client change is needed
--- to surface the new section, just an iOS catalog mirror in
--- `MockRuleTemplateRepository.defaultBetaCatalog` (same commit).
+-- Constraint extension
+-- ====================
+-- `rule_templates_category_check` (from rule_versions_evaluations_templates
+-- mig) originally allowed: attendance|money|allocation|governance|custody
+-- |other. AssetRules.md spec'd `assets` as a distinct gallery category
+-- so asset-shaped templates cluster together in the UI without bleeding
+-- into the broader `custody` bucket (which may host right/space-shaped
+-- custody concepts later). The mig drops + re-adds the constraint with
+-- `assets` appended before inserting the new rows.
 --
 -- Templates:
 --
@@ -23,6 +27,21 @@
 -- the gallery to assets that have those capabilities enabled (the iOS
 -- Rule Builder filters client-side so a fund or event never sees an
 -- asset template offered).
+
+alter table public.rule_templates
+  drop constraint rule_templates_category_check;
+
+alter table public.rule_templates
+  add constraint rule_templates_category_check
+    check (category = any (array[
+      'attendance'::text,
+      'money'::text,
+      'allocation'::text,
+      'governance'::text,
+      'custody'::text,
+      'assets'::text,
+      'other'::text
+    ]));
 
 insert into public.rule_templates (
   id, display_name_es, description_es, category, template_kind,
@@ -130,4 +149,4 @@ on conflict (id) do update set
   sort_order            = excluded.sort_order;
 
 comment on table public.rule_templates is
-  'Curated rule template catalog. Mig 00227 added the 5 canonical asset templates (Plans/Active/AssetRules.md §1). Read via list_rule_templates() RPC. iOS mirror lives in MockRuleTemplateRepository.defaultBetaCatalog for previews + offline.';
+  'Curated rule template catalog. Mig 00227 added the 5 canonical asset templates under category=assets (Plans/Active/AssetRules.md §1) + extended rule_templates_category_check to include assets. Read via list_rule_templates() RPC. iOS mirror lives in MockRuleTemplateRepository.defaultBetaCatalog for previews + offline.';
