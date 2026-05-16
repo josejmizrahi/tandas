@@ -54,14 +54,13 @@ const TRIGGER_PHASE: Partial<Record<SystemEventType, string>> = {
   // Phase 3: Tanda
   fundDeposit: "phase_3",
   fundThresholdReached: "phase_3",
-  // Phase 5: Event spec atoms — implemented at the data layer (atoms
-  // emitted + projections updated) but no rule consumes them yet.
-  // Listed here so authoring slips on FUTURE rules surface as
-  // "future_phase" rather than the "unknown" signal that flags
-  // accidental enum cases.
-  eventStarted: "phase_5",
-  eventCancelled: "phase_5",
-  eventUpdated: "phase_5",
+  // Phase 5: Event spec atoms WITHOUT trigger evaluators today. Listed
+  // here so authoring slips on rules using them surface as "future_phase"
+  // rather than "unknown".
+  //
+  // eventStarted / eventCancelled / eventUpdated were promoted out of
+  // this map once their evaluators landed below — leaving them here would
+  // make the engine log "reserved for phase_5" while actually firing.
   resourceLinked: "phase_5",
   resourceUnlinked: "phase_5",
   // V1 emitters that no rule consumes today fall through to "unknown" —
@@ -284,6 +283,80 @@ const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
           rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
           check_in: context.checkIns.find((c) => c.member_user_id === m.user_id) ?? null,
           event_starts_at: context.resource?.metadata?.starts_at ?? null,
+        },
+      }));
+  },
+
+  // (mig 00203+00209, spec §8+§19) Cancellation is a distinct trigger from
+  // close: the rule engine evaluator MUST NOT enumerate "no-show fines" on
+  // cancellation (you can't no-show a cancelled event). What CAN fire:
+  //   - notification consequences ("avísale a todos los que dijeron 'going'")
+  //   - cancellation-fee rules ("if cancelled <24h before, charge host")
+  // We enumerate going-RSVP members + the host; conditions decide who really fires.
+  eventCancelled: async (event, _rule, context) => {
+    if (!event.resource_id) return [];
+    const hostUserId = context.resource?.metadata?.host_id as UUID | undefined;
+    const startsAt = (context.resource?.metadata?.starts_at as string | undefined)
+      ?? (event.payload?.starts_at as string | undefined)
+      ?? null;
+    return context.members
+      .filter((m) => m.active)
+      .map((m) => ({
+        member_id: m.id,
+        resource_id: event.resource_id,
+        context: {
+          user_id: m.user_id,
+          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
+          is_host: hostUserId === m.user_id,
+          event_starts_at: startsAt,
+          cancellation_reason: event.payload?.reason ?? null,
+          cancelled_by_user: event.payload?.cancelled_by ?? null,
+          cancelled_at: event.occurred_at,
+        },
+      }));
+  },
+
+  // (mig 00208, spec §8) Event just started (cron-emitted when starts_at
+  // elapses). Same target shape as eventClosed but pre-end: conditions can
+  // ask "who hasn't checked in" or "who said going but didn't arrive yet"
+  // for nudge / late-fee rule shapes.
+  eventStarted: async (event, _rule, context) => {
+    if (!event.resource_id) return [];
+    return context.members
+      .filter((m) => m.active)
+      .map((m) => ({
+        member_id: m.id,
+        resource_id: event.resource_id,
+        context: {
+          user_id: m.user_id,
+          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
+          check_in: context.checkIns.find((c) => c.member_user_id === m.user_id) ?? null,
+          event_starts_at: context.resource?.metadata?.starts_at
+            ?? event.payload?.starts_at
+            ?? null,
+          started_at: event.occurred_at,
+        },
+      }));
+  },
+
+  // (mig 00210, spec §8) Event metadata mutated (location, time, host,
+  // description). Target = each member that confirmed 'going' so notification
+  // rules can react ("X cambió la hora — avísale a los que ya dijeron sí").
+  // The `changed_keys` payload lets conditions narrow which kinds of edits
+  // trigger which rules.
+  eventUpdated: async (event, _rule, context) => {
+    if (!event.resource_id) return [];
+    return context.members
+      .filter((m) => m.active)
+      .map((m) => ({
+        member_id: m.id,
+        resource_id: event.resource_id,
+        context: {
+          user_id: m.user_id,
+          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
+          changed_keys: event.payload?.changed_keys ?? [],
+          changed_by_user: event.payload?.changed_by ?? null,
+          title_changed: event.payload?.title_changed ?? false,
         },
       }));
   },
