@@ -58,13 +58,22 @@ public struct UniversalResourceDetailView: View {
                 }
                 if context.resource.resourceType == .asset {
                     if context.enabledCapabilities.contains("custody") {
-                        AssetCustodySection(asset: context.resource)
+                        AssetCustodySection(
+                            asset: context.resource,
+                            onMetadataChanged: { await context.onResourceMutated() }
+                        )
                     }
                     if context.enabledCapabilities.contains("transfer")
                         || context.enabledCapabilities.contains("valuation") {
-                        AssetOwnershipSection(asset: context.resource)
+                        AssetOwnershipSection(
+                            asset: context.resource,
+                            onMetadataChanged: { await context.onResourceMutated() }
+                        )
                     }
                     if context.enabledCapabilities.contains("maintenance") {
+                        // Maintenance writes system_events (not resources.metadata),
+                        // so the section's internal reload handles freshness — no
+                        // need to bubble `onResourceMutated`.
                         AssetMaintenanceSection(asset: context.resource)
                     }
                     if context.enabledCapabilities.contains("booking") {
