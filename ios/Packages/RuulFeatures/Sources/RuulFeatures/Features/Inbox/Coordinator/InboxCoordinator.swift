@@ -97,6 +97,23 @@ public final class InboxCoordinator {
         groupsById[action.groupId]?.name
     }
 
+    /// Resolves every currently visible pending action in sequence.
+    /// Returns the count of successfully resolved items.
+    public func resolveAll() async -> Int {
+        let snapshot = actions
+        var count = 0
+        for action in snapshot {
+            do {
+                try await userActionRepo.resolve(actionId: action.id)
+                count += 1
+            } catch {
+                log.warning("resolveAll: failed for \(action.id): \(error.localizedDescription)")
+            }
+        }
+        await refresh()
+        return count
+    }
+
     /// Quick-resolve an action from a swipe or context menu without opening it.
     /// Removes the row immediately for instant feedback, then fires the repo call.
     public func resolveQuick(_ actionId: UUID) async {

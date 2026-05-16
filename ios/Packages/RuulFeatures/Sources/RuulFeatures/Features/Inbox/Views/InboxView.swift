@@ -83,6 +83,8 @@ public struct InboxView: View {
     public let onOpenAction: (UserAction) -> Void
 
     @State private var selectedChip: InboxChip = .all
+    @State private var showBulkAlert = false
+    @State private var toastMessage: String?
 
     public init(coordinator: InboxCoordinator, onOpenAction: @escaping (UserAction) -> Void) {
         self.coordinator = coordinator
@@ -101,6 +103,25 @@ public struct InboxView: View {
             if selectedChip == .resueltas {
                 await coordinator.loadResolved()
             }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if selectedChip != .resueltas && coordinator.actions.count > 1 {
+                    Button("Marcar todas") { showBulkAlert = true }
+                }
+            }
+        }
+        .alert(
+            "¿Marcar las \(coordinator.actions.count) acciones como hechas?",
+            isPresented: $showBulkAlert
+        ) {
+            Button("Marcar", role: .destructive) {
+                Task {
+                    let count = await coordinator.resolveAll()
+                    showToast(count: count)
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
         }
     }
 
@@ -135,6 +156,19 @@ public struct InboxView: View {
     /// we pass the coordinator as-is and overlay an empty-state when the
     /// filter yields zero results. For the non-.all chips we use a dedicated
     /// filtered list instead of ActionInboxView so we can inject a subset.
+    // MARK: - Toast
+
+    /// Displays a bottom toast for `count` resolved actions, auto-dismissing after 5 s.
+    func showToast(count: Int) {
+        toastMessage = count == 1 ? "1 acción resuelta" : "\(count) acciones resueltas"
+        Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            await MainActor.run { toastMessage = nil }
+        }
+    }
+
+    // MARK: - Filtered content
+
     @ViewBuilder
     private var filteredInbox: some View {
         if selectedChip == .all {
