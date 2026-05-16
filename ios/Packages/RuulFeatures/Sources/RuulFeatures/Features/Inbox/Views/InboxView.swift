@@ -97,6 +97,11 @@ public struct InboxView: View {
         }
         .navigationTitle("Inbox")
         .navigationBarTitleDisplayMode(.large)
+        .task(id: selectedChip) {
+            if selectedChip == .resueltas {
+                await coordinator.loadResolved()
+            }
+        }
     }
 
     // MARK: - Chips strip
@@ -134,6 +139,11 @@ public struct InboxView: View {
     private var filteredInbox: some View {
         if selectedChip == .all {
             ActionInboxView(coordinator: coordinator, onOpenAction: onOpenAction)
+        } else if selectedChip == .resueltas {
+            ResolvedInboxList(
+                actions: coordinator.resolvedActions,
+                isLoading: coordinator.isLoading
+            )
         } else {
             let filtered = coordinator.actions.filter { selectedChip.matches($0) }
             FilteredInboxList(
@@ -223,5 +233,81 @@ private struct FilteredInboxList: View {
         case .high:   return .high
         case .urgent: return .urgent
         }
+    }
+}
+
+// MARK: - ResolvedInboxList
+
+/// Read-only history of resolved actions. Each row is greyed out and shows
+/// a relative "Resuelta hace X" trailing label in lieu of a navigation
+/// chevron. Tapping does nothing — resolved rows are informational only.
+@MainActor
+private struct ResolvedInboxList: View {
+    let actions: [UserAction]
+    let isLoading: Bool
+
+    private let formatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        f.locale = Locale(identifier: "es_MX")
+        return f
+    }()
+
+    var body: some View {
+        ZStack {
+            Color.ruulBackgroundCanvas.ignoresSafeArea()
+            if actions.isEmpty && isLoading {
+                RuulLoadingState()
+                    .transition(.opacity)
+            } else if actions.isEmpty {
+                EmptyStateView(
+                    systemImage: "checkmark.circle",
+                    title: "Sin resueltas",
+                    message: "Cuando completes acciones aparecerán aquí."
+                )
+                .transition(.opacity)
+            } else {
+                ScrollView {
+                    VStack(spacing: RuulSpacing.sm) {
+                        ForEach(actions) { action in
+                            resolvedRow(action)
+                        }
+                    }
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.md)
+                    .padding(.bottom, RuulSpacing.s12)
+                }
+                .scrollIndicators(.hidden)
+                .transition(.opacity)
+            }
+        }
+        .animation(.linear(duration: RuulDuration.fast), value: actions.isEmpty)
+        .animation(.linear(duration: RuulDuration.fast), value: isLoading)
+    }
+
+    @ViewBuilder
+    private func resolvedRow(_ action: UserAction) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+                Text(action.title)
+                    .ruulTextStyle(RuulTypography.callout)
+                    .foregroundStyle(.primary)
+                if let body = action.body {
+                    Text(body)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if let resolvedAt = action.resolvedAt {
+                Text("Resuelta \(formatter.localizedString(for: resolvedAt, relativeTo: .now))")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+        .opacity(0.6)
     }
 }
