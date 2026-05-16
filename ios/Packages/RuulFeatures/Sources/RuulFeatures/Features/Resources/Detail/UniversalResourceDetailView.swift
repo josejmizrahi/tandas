@@ -44,6 +44,16 @@ public struct UniversalResourceDetailView: View {
     /// resource is a right.
     @State private var showEditRight: Bool = false
 
+    /// Active fund action sheet. `nil` means no sheet is presented.
+    /// `dispatchPrimary` (Aportar) and `dispatchSecondary` (Registrar
+    /// gasto / Bloquear / Desbloquear) write this; the body renders
+    /// the matching SwiftUI sheet bound to it.
+    @State private var activeFundSheet: FundSheetSelection?
+
+    /// Bumped after every successful fund action so `FundBalanceSection`'s
+    /// `.task(id:)` re-runs and the projection re-reads.
+    @State private var fundRefreshToken: Int = 0
+
     public init(context: ResourceDetailContext) {
         self.context = context
     }
@@ -85,6 +95,17 @@ public struct UniversalResourceDetailView: View {
                     if context.enabledCapabilities.contains("booking") {
                         AssetBookingsSection(asset: context.resource)
                     }
+                }
+                if context.resource.resourceType == .fund {
+                    // Fund-specific projection card: current balance,
+                    // target progress, contribution/expense counts, lock
+                    // indicator. Reads from `fund_balance_view` (mig 00202)
+                    // via `fundRepo.get`. Refreshes whenever
+                    // `fundRefreshToken` bumps after a successful action.
+                    FundBalanceSection(
+                        fundId: context.resource.id,
+                        refreshToken: fundRefreshToken
+                    )
                 }
                 if context.enabledCapabilities.contains("rsvp") {
                     RSVPSectionView(context: context)
@@ -195,6 +216,54 @@ public struct UniversalResourceDetailView: View {
             )
             .environment(app)
         }
+        // Fund action sheets. `.contribute` is the primary CTA
+        // ("Aportar"); `.recordExpense` lives in the ⋯ menu for admins.
+        // Lock/unlock are surfaced directly in MoneySectionView's
+        // fundLockRow, NOT here — keeping the lock controls grouped
+        // with the dinero card per upstream's choice.
+        .sheet(item: $activeFundSheet) { selection in
+            fundSheet(for: selection)
+                .environment(app)
+        }
+    }
+
+    @ViewBuilder
+    private func fundSheet(for selection: FundSheetSelection) -> some View {
+        switch selection {
+        case .contribute:
+            ContributeToFundSheet(
+                fundId: context.resource.id,
+                fundName: context.displayName,
+                currency: fundCurrency,
+                onDidContribute: { onFundActionSucceeded() }
+            )
+        case .recordExpense:
+            RecordExpenseFromFundSheet(
+                fundId: context.resource.id,
+                fundName: context.displayName,
+                currency: fundCurrency,
+                members: Array(context.memberDirectory.values),
+                onDidRecord: { onFundActionSucceeded() }
+            )
+        }
+    }
+
+    /// Fan-out after a successful fund action. Bumps the FundBalanceSection
+    /// refresh token so its `.task(id:)` re-reads `fund_balance_view`, AND
+    /// calls `context.onResourceMutated` so the parent coordinator refetches
+    /// the resource row (the "Estado: Bloqueado" indicator in the
+    /// INFORMACIÓN card reads from row metadata, so a lock/unlock changes
+    /// it). The two signals are complementary — the projection and the
+    /// row each have their own freshness contract.
+    private func onFundActionSucceeded() {
+        fundRefreshToken &+= 1
+        Task { await context.onResourceMutated() }
+    }
+
+    /// Currency for fund operations. Reads `resources.metadata.currency`,
+    /// falling back to MXN (matches `create_fund`'s default in mig 00139).
+    private var fundCurrency: String {
+        context.resource.metadata["currency"]?.stringValue ?? "MXN"
     }
 
     // MARK: - Hero (Fund-style icon badge + title + subtitle)
@@ -326,8 +395,8 @@ public struct UniversalResourceDetailView: View {
             if let currency = context.resource.metadata["currency"]?.stringValue {
                 out.append(("Moneda", currency))
             }
-            if let goal = goalAmount {
-                out.append(("Meta", formatCurrency(goal)))
+            if let goalCents = fundTargetAmountCents {
+                out.append(("Meta", formatCurrencyCents(goalCents)))
             }
             // Surface lock state — fund_lock writes locked_at/locked_by/
             // locked_reason into metadata + emits fundLocked. Pre-fix
@@ -470,18 +539,37 @@ public struct UniversalResourceDetailView: View {
         context.memberDirectory.values.first { $0.member.id == id }
     }
 
-    private var goalAmount: Double? {
-        if case .double(let d)? = context.resource.metadata["goal_amount"] { return d }
-        if case .int(let i)? = context.resource.metadata["goal_amount"] { return Double(i) }
+    /// `create_fund` (mig 00139) stores the target as `target_amount_cents`
+    /// (bigint cents). Previously this read `goal_amount` (which mig
+    /// 00139 never writes) — the "Meta" row was silently empty even when
+    /// the founder set a target. Reads both keys for backwards compat
+    /// with any rows written under the old metadata shape, then converts
+    /// from cents.
+    private var fundTargetAmountCents: Int64? {
+        if case .int(let i)? = context.resource.metadata["target_amount_cents"] {
+            return Int64(i)
+        }
+        // Backwards-compat: pre-mig 00139 hand-written rows could have
+        // stored `goal_amount` in pesos. Treat as pesos → cents conversion.
+        if case .double(let d)? = context.resource.metadata["goal_amount"] {
+            return Int64(d * 100)
+        }
+        if case .int(let i)? = context.resource.metadata["goal_amount"] {
+            return Int64(i) * 100
+        }
         return nil
     }
 
-    private func formatCurrency(_ amount: Double) -> String {
+    /// Renders a cents value as a localized currency string. Centavos →
+    /// pesos divide by 100. Reads the resource's `currency` from
+    /// metadata, falling back to MXN.
+    private func formatCurrencyCents(_ cents: Int64) -> String {
+        let pesos = Double(cents) / 100.0
         let nf = NumberFormatter()
         nf.numberStyle = .currency
         nf.currencyCode = context.resource.metadata["currency"]?.stringValue ?? "MXN"
-        nf.maximumFractionDigits = 0
-        return nf.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        nf.maximumFractionDigits = pesos.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
+        return nf.string(from: NSNumber(value: pesos)) ?? "\(pesos)"
     }
 
     // MARK: - Date parsing helpers
@@ -625,11 +713,15 @@ public struct UniversalResourceDetailView: View {
             // emit + dismiss) is uniform across both surfaces.
             activeRightAction = .exercise
         case .openContribute:
-            // Fund "Aportar" CTA — open the polymorphic ledger sheet so
-            // the user picks contribution / expense / settlement. Same
-            // surface MoneySectionView uses; the resolver only emits this
-            // kind for funds with ledger capability so the sheet is wired.
-            context.onPresentLedger()
+            // Fund → ContributeToFundSheet (mig 00202 fund_contribute).
+            // Earlier upstream wired this to `context.onPresentLedger()`
+            // which opened the generic ledger composer — usable but not
+            // fund-specific. The dedicated sheet only asks for the two
+            // fields fund_contribute needs (amount + optional note),
+            // matching the wizard ergonomics every other type uses.
+            // Refresh signal travels via `context.onResourceMutated`
+            // which the sheet calls on success.
+            activeFundSheet = .contribute
         case .openBooking, .viewClosed, .none:
             break
         }
@@ -679,8 +771,22 @@ public struct UniversalResourceDetailView: View {
         case .revokeRight:    activeRightAction = .revoke
         case .suspendRight:   activeRightAction = .suspend
         case .restoreRight:   activeRightAction = .restore
+        // Fund lifecycle. Setting activeFundSheet triggers the
+        // `.sheet(item:)` above which renders the matching fund sheet.
+        // Lock/unlock are NOT here — they live on MoneySectionView's
+        // fundLockRow (gated by viewerIsAdmin + resource.type=fund),
+        // keeping every fund admin control grouped with the dinero card.
+        case .recordExpenseFromFund: activeFundSheet = .recordExpense
         }
     }
+}
+
+/// Active fund sheet selector. Identifiable so it can drive
+/// `.sheet(item:)` directly.
+enum FundSheetSelection: Identifiable {
+    case contribute
+    case recordExpense
+    var id: Self { self }
 }
 
 #if DEBUG

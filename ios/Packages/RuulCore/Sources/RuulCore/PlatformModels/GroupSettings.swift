@@ -9,7 +9,7 @@ import Foundation
 ///       frequency  → ResourceSeries.pattern
 ///       rotation   → rotation capability config on Resource
 ///       fines      → basic_fines module config + capability block on Resource
-///       fund       → Fund resource type (Phase 3)
+///       fund       → Fund resource type (live since mig 00139 / 00202)
 ///       voting     → groups.governance jsonb
 ///
 /// All fields are optional so a row without a settings backfill — or a

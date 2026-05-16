@@ -196,9 +196,11 @@ public struct CapabilityResolver: Sendable {
 
     /// Whether the Dinero sub-tab should be visible for `group`. True when
     /// at least one active module provides the `ledger` capability block —
-    /// V1's `basic_fines` does, future `common_fund` / `contributions`
-    /// modules will too. Means a vanilla "blank" group with no money module
-    /// no longer surfaces an empty Dinero tab.
+    /// `basic_fines` does, and any group that holds at least one `fund`
+    /// resource (live since mig 00139) effectively does too via the
+    /// `money` + `ledger` capabilities the FundResourceBuilder auto-enables.
+    /// A vanilla "blank" group with no money module / no fund still hides
+    /// the empty Dinero tab.
     public func moneySubTabEnabled(in group: Group) -> Bool {
         for moduleId in group.effectiveActiveModules {
             if let module = modules.module(id: moduleId),

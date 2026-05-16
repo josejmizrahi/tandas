@@ -36,6 +36,14 @@ public struct SecondaryAction: Sendable, Hashable, Identifiable {
         case revokeRight
         case suspendRight
         case restoreRight
+        // Fund secondary lifecycle. The primary CTA ("Aportar") is in
+        // `PrimaryAction.openContribute`; this case fills out the `⋯`
+        // menu for fund detail views. Dispatches to a dedicated sheet
+        // that calls `FundRepository.recordExpense`. Lock / unlock are
+        // NOT here — `MoneySectionView` renders them inline in the
+        // dinero card via `fundLockRow`, keeping every fund admin
+        // control grouped with the money primitives.
+        case recordExpenseFromFund
     }
 
     public var id: Kind { kind }

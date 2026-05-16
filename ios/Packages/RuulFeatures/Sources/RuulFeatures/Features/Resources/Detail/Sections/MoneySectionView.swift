@@ -27,11 +27,11 @@ public struct MoneySectionView: View {
         priority: 400,
         isEnabledFor: { caps in
             // `ledger` is the canonical block name basic_fines (V1) and
-            // future common_fund modules provide. The narrower
-            // expenses/contributions/payouts cases hook in once their
-            // Phase 2 modules ship dedicated providedCapabilityBlocks.
-            // Keep `money` as a forward-compat synonym so a future
-            // catalog rename doesn't need a migration.
+            // the FundResourceBuilder (mig 00139) auto-enable. The
+            // narrower expenses/contributions/payouts capability cases
+            // are forward-compat synonyms; should later modules ship
+            // dedicated capability blocks under those names, this section
+            // lights up without a rename migration.
             caps.contains("ledger") ||
             caps.contains("money") ||
             caps.contains("expenses") ||

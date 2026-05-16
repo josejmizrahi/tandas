@@ -136,6 +136,38 @@ struct CapabilityResolverSecondaryActionsTests {
         #expect(!kinds.contains(.enableCapability))
     }
 
+    // MARK: - Fund admin: registrar gasto + archive (lock lives in MoneySectionView)
+
+    @Test("fund + admin viewer → recordExpenseFromFund + archive (lock lives in MoneySectionView)")
+    func fundAdminViewer() {
+        let actions = resolver.secondaryActions(
+            for: makeResource(type: .fund),
+            viewerRole: .founder,
+            viewerCanIssueManualFine: false,
+            enabledCapabilities: []
+        )
+        let kinds = Set(actions.map(\.kind))
+
+        #expect(kinds.contains(.share))
+        #expect(kinds.contains(.recordExpenseFromFund))
+        #expect(kinds.contains(.archive))
+    }
+
+    @Test("fund + non-admin viewer → only share (no admin items)")
+    func fundMemberViewerNoAdminItems() {
+        let actions = resolver.secondaryActions(
+            for: makeResource(type: .fund),
+            viewerRole: .member,
+            viewerCanIssueManualFine: false,
+            enabledCapabilities: []
+        )
+        let kinds = Set(actions.map(\.kind))
+
+        #expect(kinds.contains(.share))
+        #expect(!kinds.contains(.recordExpenseFromFund))
+        #expect(!kinds.contains(.archive))
+    }
+
     // MARK: - Section ordering sanity
 
     @Test("primary section items appear before host and money sections")

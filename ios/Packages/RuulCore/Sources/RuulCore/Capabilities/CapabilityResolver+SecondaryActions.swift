@@ -30,9 +30,53 @@ public extension CapabilityResolver {
                 viewerRole: viewerRole,
                 viewerUserId: viewerUserId
             )
+        case .fund:
+            return fundSecondaryActions(
+                resource: resource,
+                viewerRole: viewerRole
+            )
         default:
             return commonSecondaryActions(viewerRole: viewerRole)
         }
+    }
+
+    /// Menu for `fund` resources. Admin-only Registrar gasto + Archivar
+    /// plus the universal Compartir floor. Lock / unlock are surfaced
+    /// inline in MoneySectionView's fundLockRow (gated on
+    /// viewerIsAdmin + resource.type=fund) — keeping every fund admin
+    /// control grouped with the dinero card avoids two menus pointing
+    /// at the same lifecycle.
+    private func fundSecondaryActions(
+        resource: ResourceRow,
+        viewerRole: MemberRole
+    ) -> [SecondaryAction] {
+        var items: [SecondaryAction] = []
+        let isAdmin = viewerRole == .founder
+
+        items.append(SecondaryAction(
+            label: "Compartir",
+            symbol: "square.and.arrow.up",
+            section: .primary,
+            kind: .share
+        ))
+
+        if isAdmin {
+            items.append(SecondaryAction(
+                label: "Registrar gasto",
+                symbol: "arrow.up.circle",
+                section: .money,
+                kind: .recordExpenseFromFund
+            ))
+            items.append(SecondaryAction(
+                label: "Archivar",
+                symbol: "archivebox",
+                section: .danger,
+                kind: .archive,
+                isDestructive: true
+            ))
+        }
+
+        return items
     }
 
     // MARK: - Per-type builders
