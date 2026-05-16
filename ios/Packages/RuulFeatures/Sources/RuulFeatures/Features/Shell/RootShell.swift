@@ -58,7 +58,7 @@ public struct RootShell: View {
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle.fill") }
                 .tag(RootTab.profile)
         }
-        .tint(app.activeGroup?.category.ramp.accent ?? Color.ruulTextPrimary)
+        .tint(Color.ruulAccent)
         .tabBarMinimizeBehavior(.onScrollDown)
         .animation(.ruulGroupSwitch, value: app.activeGroupId)
         .environment(router)

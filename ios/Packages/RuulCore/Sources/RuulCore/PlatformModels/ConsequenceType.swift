@@ -43,5 +43,18 @@ public enum ConsequenceType: Codable, Sendable, Hashable {
     /// No money, no vote — pure visibility signal. Per Governance.md §5.1.
     case emitWarning
 
+    // MARK: - Right resource_type write-side (mig 00200)
+
+    /// Sets a right's status to `revoked` via the canonical `revoke_right`
+    /// RPC. The right resource must be of resource_type='right'; the rule's
+    /// trigger SHOULD have fired on a right atom (rightExpired, repeated
+    /// rightSuspended, etc.). Config: `{ "reason": "…" }` — optional;
+    /// the rule's name is used when omitted. Service_role-safe (mig 00200).
+    case revokeRight
+    /// Sets `metadata.suspended_until` on a right via `suspend_right` RPC.
+    /// Same target shape as `revokeRight`. Config: `{ "until": "<iso>",
+    /// "reason": "…" }` — both optional.
+    case suspendRight
+
     case unknown(String)
 }

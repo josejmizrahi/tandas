@@ -24,10 +24,21 @@ const memberAlice = { id: "ma00000000-0000-0000-0000-000000000001", user_id: "ua
 const memberBob   = { id: "mb00000000-0000-0000-0000-000000000001", user_id: "ub00000000-0000-0000-0000-000000000001", active: true };
 const memberCarla = { id: "mc00000000-0000-0000-0000-000000000001", user_id: "uc00000000-0000-0000-0000-000000000001", active: true };
 
-function captureSink(): { sink: ConsequenceSink; captured: unknown[]; warnings: unknown[]; votes: unknown[] } {
+function captureSink(): {
+  sink: ConsequenceSink;
+  captured: unknown[];
+  warnings: unknown[];
+  votes: unknown[];
+  transfers: unknown[];
+  revokes: unknown[];
+  suspends: unknown[];
+} {
   const captured: unknown[] = [];
   const warnings: unknown[] = [];
   const votes: unknown[] = [];
+  const transfers: unknown[] = [];
+  const revokes: unknown[] = [];
+  const suspends: unknown[] = [];
   const sink: ConsequenceSink = {
     proposeFine: async (args) => {
       captured.push(args);
@@ -41,8 +52,20 @@ function captureSink(): { sink: ConsequenceSink; captured: unknown[]; warnings: 
       votes.push(args);
       return `vote-${votes.length}`;
     },
+    transferRight: async (args) => {
+      transfers.push(args);
+      return args.right_id;
+    },
+    revokeRight: async (args) => {
+      revokes.push(args);
+      return args.right_id;
+    },
+    suspendRight: async (args) => {
+      suspends.push(args);
+      return args.right_id;
+    },
   };
-  return { sink, captured, warnings, votes };
+  return { sink, captured, warnings, votes, transfers, revokes, suspends };
 }
 
 function baseContext(extras: Partial<RuleContext>): RuleContext {

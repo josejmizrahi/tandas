@@ -52,8 +52,7 @@ public struct JoinGroupSheet: View {
             .ruulAmbientScreen(palette: nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                        .foregroundStyle(Color.ruulTextSecondary)
+                    RuulCloseToolbarButton { dismiss() }
                 }
                 ToolbarItem(placement: .principal) {
                     Text("Unirme con código")

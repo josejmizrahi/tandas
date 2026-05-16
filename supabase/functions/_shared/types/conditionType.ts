@@ -19,6 +19,7 @@ export const conditionTypeValues = [
   "rotationPositionEquals",
   "slotIsUnassigned",
   "slotExpiresInHours",
+  "daysBeforeExpiry",
   "amountAbove",
 ] as const;
 

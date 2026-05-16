@@ -494,7 +494,7 @@ public struct HomeView: View {
                     Text(displayNameFor(row))
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextPrimary)
-                    Text(row.resourceType.humanLabel)
+                    Text(subtitleFor(row))
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
@@ -507,6 +507,23 @@ public struct HomeView: View {
             .ruulCardSurface(.glass, radius: RuulRadius.medium)
         }
         .buttonStyle(.plain)
+    }
+
+    /// Per-type one-liner under the resource name. Falls back to the
+    /// generic type label so a row is never bare. For assets specifically
+    /// it surfaces whatever state the metadata shortcut carries (loaned
+    /// out > current custodian > "Del grupo") so a glance at Home tells
+    /// the user who has it right now without opening the detail sheet.
+    private func subtitleFor(_ row: ResourceRow) -> String {
+        let type = row.resourceType.humanLabel
+        guard row.resourceType == .asset else { return type }
+        if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
+            return "\(type) · Prestado"
+        }
+        if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
+            return "\(type) · En custodia"
+        }
+        return "\(type) · Del grupo"
     }
 
     private func displayNameFor(_ row: ResourceRow) -> String {

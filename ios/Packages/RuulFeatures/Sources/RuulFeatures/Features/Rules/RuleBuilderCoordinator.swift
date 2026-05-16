@@ -21,6 +21,7 @@ public final class RuleBuilderCoordinator: Identifiable {
     /// review, change_reason field) renders within the matching fase view.
     public enum Phase: Equatable, Sendable {
         case templatePick
+        case scopePick
         case paramFill
         case publish
         case done(RuleVersionPublishResult)
@@ -39,14 +40,24 @@ public final class RuleBuilderCoordinator: Identifiable {
     private let repo: any RuleTemplateRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "rule-builder")
 
+    /// Non-nil when the caller pre-sets a scope (e.g. `.resource(id)` from
+    /// `ResourceRulesSheet`). When set, `selectTemplate` skips `scopePick`
+    /// and jumps straight to `paramFill` — the scope is already known.
+    private let initialScope: RuleTemplateScope?
+
     public init(
         group: Group,
         templates: [RuleBuilderTemplate],
-        repo: any RuleTemplateRepository
+        repo: any RuleTemplateRepository,
+        initialScope: RuleTemplateScope? = nil
     ) {
         self.group = group
         self.templates = templates.sorted { $0.sortOrder < $1.sortOrder }
         self.repo = repo
+        self.initialScope = initialScope
+        if let initialScope {
+            self.scope = initialScope
+        }
     }
 
     // MARK: Fase transitions
@@ -60,7 +71,16 @@ public final class RuleBuilderCoordinator: Identifiable {
             params = [:]
         }
         error = nil
-        phase = .paramFill
+        // Skip scope picker when caller pre-set a scope (e.g. resource-scoped
+        // creation from ResourceRulesSheet). Otherwise ask the user to pick.
+        phase = initialScope != nil ? .paramFill : .scopePick
+    }
+
+    /// Confirms the scope the user selected in `scopePick` and advances to
+    /// `paramFill`. Called from `ScopePickView` via the coordinator binding.
+    public func selectScope(_ newScope: RuleTemplateScope) {
+        self.scope = newScope
+        self.phase = .paramFill
     }
 
     public func goToReview() {
@@ -73,7 +93,14 @@ public final class RuleBuilderCoordinator: Identifiable {
         params = [:]
         changeReason = ""
         error = nil
+        // Also reset scope to its initial value so the picker starts clean.
+        scope = initialScope ?? .group
         phase = .templatePick
+    }
+
+    public func backToScopePick() {
+        error = nil
+        phase = initialScope != nil ? .templatePick : .scopePick
     }
 
     public func backToParams() {

@@ -73,7 +73,7 @@ public struct RuulAvatar: View {
                 endPoint: .bottomTrailing
             )
             Text(initials)
-                .font(.system(size: size.fontSize, weight: .semibold))
+                .font(.custom("InterVariable", size: size.fontSize).weight(.semibold))
                 .foregroundStyle(Color.ruulTextInverse)
         }
     }

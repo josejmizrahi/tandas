@@ -12,6 +12,9 @@ public final class VoteDetailCoordinator {
     public let vote: Vote
     public let group: Group
     private let userMemberId: UUID
+    /// Caller's role in the group ("founder" | "admin" | "member").
+    /// Used to gate manual-finalize. Defaults to "member" when not supplied.
+    private let myRole: String
     private let voteRepo: any VoteRepository
     private let castRepo: any VoteCastRepository
     private let analytics: (any AnalyticsService)?
@@ -26,6 +29,35 @@ public final class VoteDetailCoordinator {
     public var alreadyVoted: Bool { (myCast?.choice ?? .pending) != .pending }
     public var voteIsClosed: Bool { vote.status != .open }
 
+    // MARK: - Admin / creator action visibility
+
+    /// True when the caller is a founder/admin — may manually finalize.
+    public var isCurrentUserAdmin: Bool {
+        myRole == "founder" || myRole == "admin"
+    }
+
+    /// True when the caller created this vote.
+    public var isCurrentUserCreator: Bool {
+        vote.createdByMemberId == userMemberId
+    }
+
+    /// Show "Finalizar" button: vote is open, past closes_at, caller is admin.
+    public var shouldShowFinalize: Bool {
+        vote.status == .open && Date.now > vote.closesAt && isCurrentUserAdmin
+    }
+
+    /// Show "Cancelar" button: vote is open, caller is creator, zero real casts.
+    public var shouldShowCancel: Bool {
+        guard vote.status == .open && isCurrentUserCreator else { return false }
+        let c = counts
+        return (c?.inFavor ?? 0) + (c?.against ?? 0) + (c?.abstained ?? 0) == 0
+    }
+
+    // MARK: - Admin / creator action state
+
+    public private(set) var isFinalizingManually: Bool = false
+    public private(set) var isCancellingVote: Bool = false
+
     /// Beta 1 W3 E-3.1: multi-device sync. Listens for `votes` or
     /// `vote_casts` changes; refreshes when one matches this vote.
     // Swift 6: deinit is nonisolated. Task is Sendable; the
@@ -37,6 +69,7 @@ public final class VoteDetailCoordinator {
         vote: Vote,
         group: Group,
         userMemberId: UUID,
+        myRole: String = "member",
         voteRepo: any VoteRepository,
         castRepo: any VoteCastRepository,
         analytics: (any AnalyticsService)? = nil,
@@ -45,6 +78,7 @@ public final class VoteDetailCoordinator {
         self.vote = vote
         self.group = group
         self.userMemberId = userMemberId
+        self.myRole = myRole
         self.voteRepo = voteRepo
         self.castRepo = castRepo
         self.analytics = analytics
@@ -123,6 +157,42 @@ public final class VoteDetailCoordinator {
                     isRetryable: true
                 )
             }
+        }
+    }
+
+    public func finalizeManually() async {
+        guard !isFinalizingManually else { return }
+        isFinalizingManually = true
+        defer { isFinalizingManually = false }
+        do {
+            _ = try await voteRepo.finalizeVote(voteId: vote.id)
+            await refresh()
+        } catch {
+            let msg = error.localizedDescription
+            log.warning("manual finalize failed: \(msg)")
+            self.error = CoordinatorError(
+                title: "No se pudo finalizar",
+                message: msg,
+                isRetryable: true
+            )
+        }
+    }
+
+    public func cancelVote() async {
+        guard !isCancellingVote else { return }
+        isCancellingVote = true
+        defer { isCancellingVote = false }
+        do {
+            try await voteRepo.cancelVote(vote.id)
+            await refresh()
+        } catch {
+            let msg = error.localizedDescription
+            log.warning("cancel vote failed: \(msg)")
+            self.error = CoordinatorError(
+                title: "No se pudo cancelar",
+                message: msg,
+                isRetryable: false
+            )
         }
     }
 

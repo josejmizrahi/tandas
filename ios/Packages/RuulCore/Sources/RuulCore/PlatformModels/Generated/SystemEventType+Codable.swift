@@ -37,6 +37,7 @@ extension SystemEventType {
         .fundThresholdReached,
         .fundLocked,
         .fundUnlocked,
+        .spaceCreated,
         .positionChanged,
         .memberJoined,
         .memberLeft,
@@ -118,6 +119,7 @@ extension SystemEventType {
         "fundThresholdReached",
         "fundLocked",
         "fundUnlocked",
+        "spaceCreated",
         "positionChanged",
         "memberJoined",
         "memberLeft",
@@ -210,6 +212,7 @@ extension SystemEventType {
         case .fundThresholdReached: return "fundThresholdReached"
         case .fundLocked: return "fundLocked"
         case .fundUnlocked: return "fundUnlocked"
+        case .spaceCreated: return "spaceCreated"
         case .positionChanged: return "positionChanged"
         case .memberJoined: return "memberJoined"
         case .memberLeft: return "memberLeft"
@@ -294,6 +297,7 @@ extension SystemEventType {
         case "fundThresholdReached": return .fundThresholdReached
         case "fundLocked": return .fundLocked
         case "fundUnlocked": return .fundUnlocked
+        case "spaceCreated": return .spaceCreated
         case "positionChanged": return .positionChanged
         case "memberJoined": return .memberJoined
         case "memberLeft": return .memberLeft

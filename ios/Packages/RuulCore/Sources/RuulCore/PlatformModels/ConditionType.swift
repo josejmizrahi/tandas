@@ -61,6 +61,16 @@ public enum ConditionType: Codable, Sendable, Hashable {
     /// Config: `{ "hours": 24 }`
     case slotExpiresInHours
 
+    // MARK: - Right (mig 00203, right_expiration_warning template)
+
+    /// (Phase 2) Right expires within N days. Reads
+    /// `target.context.days_until_expiry` projected by the
+    /// `rightExpiringSoon` trigger evaluator (mig 00203 cron),
+    /// or falls back to `context.resource.metadata.expires_at`.
+    /// Config: `{ "days_before": 7 }` — true when
+    /// `0 < daysUntilExpiry <= days_before`.
+    case daysBeforeExpiry
+
     // MARK: - Money (mig 00193, expense_threshold_warning pilot)
 
     /// True when the target's ledger amount (cents) exceeds the configured

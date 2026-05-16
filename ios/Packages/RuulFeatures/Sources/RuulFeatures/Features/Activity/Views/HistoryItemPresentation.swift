@@ -360,6 +360,12 @@ public struct HistoryItemPresentation {
             self.title = "\(actor) actualizó el evento"
             self.tone = .neutral
 
+        // Space lifecycle (mig 00203_space_writers)
+        case .spaceCreated:
+            self.icon = "building.2"
+            self.title = "\(actor) creó un espacio"
+            self.tone = .info
+
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"

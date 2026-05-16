@@ -41,6 +41,11 @@ public final class RootShellState {
     /// Event being edited in the edit cover. Set before pushing `.editEvent`.
     public var activeEditEvent: Event?
 
+    /// Fine shown in the `.fineDetail` cover. Set before pushing the route
+    /// so the cover can build `FineDetailCoordinator` synchronously
+    /// (parallels `activeEvent`).
+    public var activeFine: Fine?
+
     /// QR scanner coordinator. Set before pushing `.scanner`.
     public var activeScannerCoordinator: CheckInScannerCoordinator?
 
@@ -109,6 +114,7 @@ public enum RootRoute: Sendable, Hashable {
     case createVotePicker
     case createGeneralProposal
     case createRuleChange(GroupRule?)
+    case createMemberRemoval    // CreateMemberRemovalSheet
     case editProfile            // EditProfileSheet (profile editor)
     case membersList            // MembersListView (read-only, everyone)
     case membersAdmin           // MembersAdminView (admin actions)

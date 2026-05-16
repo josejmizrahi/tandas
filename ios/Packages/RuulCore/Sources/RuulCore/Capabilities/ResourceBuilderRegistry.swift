@@ -31,7 +31,7 @@ public final class ResourceBuilderRegistry {
     /// The wizard renders builders' cards enabled and the rest as
     /// "próximamente" placeholders.
     public static let surfaceTypes: [ResourceType] = [
-        .event, .asset, .slot, .fund, .right
+        .event, .asset, .slot, .fund, .right, .space
     ]
 
     public func isImplemented(_ type: ResourceType) -> Bool {

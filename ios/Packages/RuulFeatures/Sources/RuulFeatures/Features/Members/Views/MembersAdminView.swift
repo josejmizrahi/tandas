@@ -9,6 +9,7 @@ public struct MembersAdminView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var memberToKick: MemberWithProfile?
+    @State private var proposeRemovalFor: MemberWithProfile?
     @State private var saving = false
     @State private var error: String?
 
@@ -28,7 +29,7 @@ public struct MembersAdminView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Cerrar") { dismiss() }
+                RuulCloseToolbarButton { dismiss() }
             }
             if let onInviteTap {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -44,6 +45,19 @@ public struct MembersAdminView: View {
             Button("Cancelar", role: .cancel) { memberToKick = nil }
         } message: { row in
             Text("\(row.displayName) perderá acceso al grupo.")
+        }
+        .fullScreenCover(item: $proposeRemovalFor) { target in
+            if let creatorMemberId = coordinator.member(for: coordinator.actorUserId)?.member.id {
+                CreateMemberRemovalSheet(
+                    coordinator: CreateMemberRemovalCoordinator(
+                        group: coordinator.group,
+                        creatorMemberId: creatorMemberId,
+                        prefilledTarget: target,
+                        voteRepo: app.voteRepo,
+                        groupsRepo: app.groupsRepo
+                    )
+                )
+            }
         }
         .task { await coordinator.refresh() }
     }
@@ -74,6 +88,12 @@ public struct MembersAdminView: View {
                             } label: {
                                 Label("Echar", systemImage: "trash")
                             }
+                            Button {
+                                proposeRemovalFor = row
+                            } label: {
+                                Label("Proponer voto", systemImage: "checkmark.bubble")
+                            }
+                            .tint(Color.ruulWarning)
                         }
                     }
                 }

@@ -28,7 +28,7 @@ public struct CapacityProgressSectionView: View {
         // confirmados" textually. Repeating the same count as a bar here
         // would just thicken the rhythm without adding info. Other resource
         // types still get the visual bar.
-        if context.usesEventHero {
+        if context.resource.resourceType == .event {
             EmptyView()
         } else if let capacityMax {
             VStack(alignment: .leading, spacing: 6) {

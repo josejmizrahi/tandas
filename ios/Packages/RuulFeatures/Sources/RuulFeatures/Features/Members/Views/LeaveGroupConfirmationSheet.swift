@@ -43,7 +43,7 @@ public struct LeaveGroupConfirmationSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
+                    RuulCloseToolbarButton { dismiss() }
                 }
             }
             .task { await loadMembers() }

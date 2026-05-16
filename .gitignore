@@ -80,7 +80,19 @@ ios/fastlane/screenshots/
 ios/fastlane/test_output/
 
 # iOS / Xcode
-ios/Tandas.xcodeproj/
+# Tandas.xcodeproj is xcodegen-generated and not tracked, EXCEPT for
+# Package.resolved — Xcode Cloud builds with -disableAutomaticPackageResolution
+# and needs the resolved file at this exact path; pre-resolving in
+# ci_post_clone.sh is unreliable (exit 74 / network failures), so we commit
+# the lockfile directly.
+ios/Tandas.xcodeproj/*
+!ios/Tandas.xcodeproj/project.xcworkspace
+ios/Tandas.xcodeproj/project.xcworkspace/*
+!ios/Tandas.xcodeproj/project.xcworkspace/xcshareddata
+ios/Tandas.xcodeproj/project.xcworkspace/xcshareddata/*
+!ios/Tandas.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+ios/Tandas.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!ios/Tandas.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 ios/.build/
 ios/DerivedData/
 ios/build/

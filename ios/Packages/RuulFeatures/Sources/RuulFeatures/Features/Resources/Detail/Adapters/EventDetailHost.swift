@@ -71,7 +71,7 @@ public struct EventDetailHost: View {
     // MARK: - Body
 
     public var body: some View {
-        Group {
+        NavigationStack {
             if let coordinator {
                 hosted(coordinator: coordinator)
             } else {

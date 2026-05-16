@@ -1,25 +1,38 @@
 import Foundation
 import OSLog
 
-/// ResourceBuilder for Slot resources (a usage window of an Asset).
-/// Wraps `SlotLifecycleRepository.createSlot` from Phase 2 Slice 2.3.
+/// ResourceBuilder for Slot resources — a usage window of a parent Asset
+/// (turno, asiento, horario, mesa, fin de semana). Routes through
+/// `build_resource_from_draft` (mig 00204) → `create_slot` RPC (mig 00070).
 ///
-/// Note: Slot creation requires an Asset to attach to. The wizard's
-/// type picker should only enable this builder when the group already
-/// has at least one Asset (resolver-gated). Until then, the picker can
-/// hint "Crea un activo primero".
+/// Slot creation requires a parent asset. The wizard's type picker should
+/// only enable this builder when the group already has at least one
+/// asset; otherwise the resourcePicker has nothing to bind. UI gating is
+/// the picker's concern — the builder itself just delegates.
 public actor SlotResourceBuilder: ResourceBuilder {
     public nonisolated let resourceType: ResourceType = .slot
-    public nonisolated let displayName: String = "Slot"
+    public nonisolated let displayName: String = "Turno"
     public nonisolated let icon: String = "ticket"
-    public nonisolated let summary: String = "Una ventana de uso de un activo (fin de semana, turno, asiento)."
+    public nonisolated let summary: String = "Ventana de uso de un activo (turno, asiento, horario)."
 
     public nonisolated var requiredFields: [BuilderField] {
         [
-            BuilderField(key: "assetId",  label: "Activo",  kind: .resourcePicker,
-                         helpText: "Elige a qué activo pertenece este slot."),
-            BuilderField(key: "startsAt", label: "Empieza", kind: .dateTime),
-            BuilderField(key: "endsAt",   label: "Termina", kind: .dateTime)
+            BuilderField(
+                key: "assetId",
+                label: "Activo",
+                kind: .resourcePicker,
+                helpText: "Elige a qué activo pertenece este turno."
+            ),
+            BuilderField(
+                key: "startsAt",
+                label: "Empieza",
+                kind: .dateTime
+            ),
+            BuilderField(
+                key: "endsAt",
+                label: "Termina",
+                kind: .dateTime
+            )
         ]
     }
 
@@ -27,58 +40,45 @@ public actor SlotResourceBuilder: ResourceBuilder {
         ["capacity", "booking", "swap", "guest_access", "rules"]
     }
 
-    private let slotRepo: any SlotLifecycleRepository
-    private let capabilityRepo: (any ResourceCapabilityRepository)?
+    private let draftRepo: any ResourceDraftRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.builder.slot")
 
-    public init(
-        slotRepo: any SlotLifecycleRepository,
-        capabilityRepo: (any ResourceCapabilityRepository)? = nil
-    ) {
-        self.slotRepo = slotRepo
-        self.capabilityRepo = capabilityRepo
+    public init(draftRepo: any ResourceDraftRepository) {
+        self.draftRepo = draftRepo
     }
 
     public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
         guard draft.resourceType == .slot else {
             throw ResourceBuilderError.underlying("SlotResourceBuilder cannot build this type")
         }
-        guard let assetId = draft.basicFields["assetId"]?.uuidValue else {
+        guard draft.basicFields["assetId"]?.uuidValue != nil else {
             throw ResourceBuilderError.missingRequiredField("assetId")
         }
-        guard let startsAt = draft.basicFields["startsAt"]?.dateValue else {
+        guard draft.basicFields["startsAt"]?.dateValue != nil else {
             throw ResourceBuilderError.missingRequiredField("startsAt")
         }
-        guard let endsAt = draft.basicFields["endsAt"]?.dateValue else {
+        guard draft.basicFields["endsAt"]?.dateValue != nil else {
             throw ResourceBuilderError.missingRequiredField("endsAt")
         }
 
-        let slotId: UUID
+        // Atomic submit via build_resource_from_draft. The RPC's
+        // `when 'slot'` branch (mig 00204) parses the three fields and
+        // calls create_slot, then installs series + capabilities + rules
+        // in the same transaction.
         do {
-            slotId = try await slotRepo.createSlot(asset: assetId, startsAt: startsAt, endsAt: endsAt)
+            let resourceId = try await draftRepo.build(draft)
+            return ResourceCreationResult(
+                resourceId: resourceId,
+                enabledCapabilityIds: draft.enabledCapabilities
+            )
+        } catch let e as ResourceDraftError {
+            if case let .rpcFailed(msg) = e {
+                throw ResourceBuilderError.rpcFailed(msg)
+            }
+            throw ResourceBuilderError.rpcFailed("\(e)")
         } catch {
             throw ResourceBuilderError.rpcFailed(error.localizedDescription)
         }
-
-        var persistedCapabilityIds: [String] = []
-        if let capabilityRepo {
-            for blockId in draft.enabledCapabilities {
-                let config = draft.capabilityConfigs[blockId] ?? .object([:])
-                do {
-                    _ = try await capabilityRepo.enable(blockId, on: slotId, config: config)
-                    persistedCapabilityIds.append(blockId)
-                } catch {
-                    log.warning("enable capability \(blockId) failed: \(error.localizedDescription)")
-                }
-            }
-        }
-
-        return ResourceCreationResult(
-            resourceId: slotId,
-            enabledCapabilityIds: persistedCapabilityIds.isEmpty
-                ? draft.enabledCapabilities
-                : persistedCapabilityIds
-        )
     }
 }
 

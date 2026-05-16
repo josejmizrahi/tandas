@@ -32,7 +32,7 @@ public struct MemberDetailView: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .ruulAmbientScreen(palette: group.ambientPalette)
+        .ruulAmbientScreen(palette: nil)
         .navigationTitle("Miembro")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -64,31 +64,10 @@ public struct MemberDetailView: View {
 
     private var rolesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("ROLES EN ESTE GRUPO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextSecondary)
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                ForEach(rolesList, id: \.self) { role in
-                    HStack(spacing: RuulSpacing.sm) {
-                        Image(systemName: roleIcon(role))
-                            .ruulTextStyle(RuulTypography.callout)
-                            .foregroundStyle(Color.ruulAccent)
-                            .frame(width: 24)
-                            .accessibilityHidden(true)
-                        Text(roleLabel(role))
-                            .ruulTextStyle(RuulTypography.body)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                        Spacer()
-                    }
-                }
+            RuulListSectionHeader("ROLES EN ESTE GRUPO")
+            RuulSeparatedRows(items: rolesList.map(RoleRow.init)) { entry in
+                infoRow(icon: roleIcon(entry.role), label: roleLabel(entry.role))
             }
-            .padding(RuulSpacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .strokeBorder(Color.ruulSeparator, lineWidth: 0.5)
-            )
         }
     }
 
@@ -96,27 +75,8 @@ public struct MemberDetailView: View {
 
     private var joinedSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("UNIÓN")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextSecondary)
-            HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: "calendar")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulInfo)
-                    .frame(width: 24)
-                    .accessibilityHidden(true)
-                Text(joinedFormatted)
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                Spacer()
-            }
-            .padding(RuulSpacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .strokeBorder(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            RuulListSectionHeader("UNIÓN")
+            infoRow(icon: "calendar", label: joinedFormatted)
         }
     }
 
@@ -126,6 +86,22 @@ public struct MemberDetailView: View {
             .foregroundStyle(Color.ruulTextTertiary)
             .frame(maxWidth: .infinity)
             .padding(.top, RuulSpacing.md)
+    }
+
+    @ViewBuilder
+    private func infoRow(icon: String, label: String) -> some View {
+        HStack(spacing: RuulSpacing.md) {
+            Image(systemName: icon)
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .frame(width: RuulSpacing.xxl, alignment: .center)
+                .accessibilityHidden(true)
+            Text(label)
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, RuulSpacing.sm)
     }
 
     // MARK: - Derived
@@ -170,6 +146,13 @@ public struct MemberDetailView: View {
 
     private var joinedFormatted: String {
         "Se unió el \(memberWithProfile.member.joinedAt.ruulLongDate)"
+    }
+
+    /// Identifiable wrapper so `MemberRole` (enum, not Identifiable) can
+    /// feed `RuulSeparatedRows` without polluting the public type.
+    private struct RoleRow: Identifiable {
+        let role: MemberRole
+        var id: MemberRole { role }
     }
 }
 

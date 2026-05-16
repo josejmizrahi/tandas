@@ -28,7 +28,7 @@ public struct ScheduleSectionView: View {
         // line + countdown + recurring pill). Repeating the same info
         // here as a "CUÁNDO" card just doubles the visual noise — hide
         // for events. Non-event resources still get the section.
-        if !context.usesEventHero {
+        if context.resource.resourceType != .event {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Cuándo")
                     .ruulTextStyle(RuulTypography.headline)

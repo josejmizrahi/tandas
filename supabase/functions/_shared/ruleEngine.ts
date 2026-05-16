@@ -230,6 +230,33 @@ export interface ConsequenceSink {
     to_member_id: UUID;
     reason: string | null;
   }): Promise<UUID>;
+
+  /**
+   * Sets a right's status to `revoked` via the canonical `revoke_right`
+   * RPC (mig 00198 + mig 00200's service_role gate). Idempotent —
+   * the RPC short-circuits if status is already 'revoked'. Returns the
+   * right id (same as input; useful as a `created_resource_ids` entry
+   * even though no new row is created).
+   */
+  revokeRight(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    right_id: UUID;
+    reason: string | null;
+  }): Promise<UUID>;
+
+  /**
+   * Sets `metadata.suspended_until` on a right via the canonical
+   * `suspend_right` RPC (mig 00198 + 00200). Status stays 'active' —
+   * the suspension is a metadata-level signal. Returns the right id.
+   */
+  suspendRight(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    right_id: UUID;
+    until: string | null;
+    reason: string | null;
+  }): Promise<UUID>;
 }
 
 // =============================================================================
@@ -865,6 +892,87 @@ const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return failure(rule.id, target.member_id, `transferRight failed: ${msg}`);
+    }
+  },
+
+  // (slice 10) Revokes a right. Same guard rails as transferRight:
+  //   - target.resource_id must be set
+  //   - context.resource (if loaded) must be a right
+  // Idempotent server-side: revoke_right RPC short-circuits when status
+  // is already 'revoked'. Use case: "When a holder accumulates N fines
+  // → revoke their priority access" — pair with a fine-counting
+  // condition to gate the revocation.
+  revokeRight: async (cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "revokeRight requires target.resource_id");
+    }
+    if (context.resource && context.resource.resource_type !== "right") {
+      return failure(
+        rule.id,
+        target.member_id,
+        `revokeRight target is a ${context.resource.resource_type}, not a right`,
+      );
+    }
+    const reason = (cons.config.reason as string | undefined) ?? rule.name;
+    try {
+      const rightId = await context.sink.revokeRight({
+        rule_id:  rule.id,
+        group_id: rule.group_id,
+        right_id: target.resource_id,
+        reason,
+      });
+      return {
+        success: true,
+        rule_id: rule.id,
+        member_id: target.member_id,
+        created_resource_ids: [rightId],
+        emitted_event_types: ["rightRevoked"],
+        error: null,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return failure(rule.id, target.member_id, `revokeRight failed: ${msg}`);
+    }
+  },
+
+  // (slice 10) Suspends a right via metadata.suspended_until.
+  // Config: `{ "until": "<iso>", "reason": "…" }` — both optional.
+  // Status stays 'active'; restore_right (manual admin) is the
+  // canonical lift. Use case: "When holder misses N exercises in a
+  // row → suspend until they confirm engagement" — paired with a
+  // counting condition + an external follow-up.
+  suspendRight: async (cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "suspendRight requires target.resource_id");
+    }
+    if (context.resource && context.resource.resource_type !== "right") {
+      return failure(
+        rule.id,
+        target.member_id,
+        `suspendRight target is a ${context.resource.resource_type}, not a right`,
+      );
+    }
+    const until = (cons.config.until as string | undefined) ?? null;
+    const reason = (cons.config.reason as string | undefined) ?? rule.name;
+    try {
+      const rightId = await context.sink.suspendRight({
+        rule_id:  rule.id,
+        group_id: rule.group_id,
+        right_id: target.resource_id,
+        until,
+        reason,
+      });
+      return {
+        success: true,
+        rule_id: rule.id,
+        member_id: target.member_id,
+        created_resource_ids: [rightId],
+        emitted_event_types: ["rightSuspended"],
+        error: null,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return failure(rule.id, target.member_id, `suspendRight failed: ${msg}`);
     }
   },
 };

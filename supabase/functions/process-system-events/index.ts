@@ -302,6 +302,31 @@ async function buildContext(
       if (error) throw new Error(`transferRight transfer_right failed: ${error.message}`);
       return args.right_id;
     },
+
+    // (slice 10) Invokes the canonical revoke_right RPC. Mig 00200's
+    // auth gate relaxation allows the cron path. Idempotent server-side
+    // (short-circuits when status='revoked').
+    revokeRight: async (args) => {
+      const { error } = await supabase.rpc("revoke_right", {
+        p_right_id: args.right_id,
+        p_reason:   `rule:${args.rule_id}${args.reason ? ` — ${args.reason}` : ""}`,
+      });
+      if (error) throw new Error(`revokeRight revoke_right failed: ${error.message}`);
+      return args.right_id;
+    },
+
+    // (slice 10) Invokes the canonical suspend_right RPC. Sets
+    // metadata.suspended_until; status stays 'active' so a follow-up
+    // restore_right (manual admin) lifts the suspension cleanly.
+    suspendRight: async (args) => {
+      const { error } = await supabase.rpc("suspend_right", {
+        p_right_id: args.right_id,
+        p_until:    args.until,
+        p_reason:   `rule:${args.rule_id}${args.reason ? ` — ${args.reason}` : ""}`,
+      });
+      if (error) throw new Error(`suspendRight suspend_right failed: ${error.message}`);
+      return args.right_id;
+    },
   };
 
   return {

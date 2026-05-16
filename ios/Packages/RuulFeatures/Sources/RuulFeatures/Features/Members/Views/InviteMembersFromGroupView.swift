@@ -35,7 +35,7 @@ public struct InviteMembersFromGroupView: View {
             .navigationTitle("Invitar miembros")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Cerrar") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) { RuulCloseToolbarButton { dismiss() } }
             }
             .task { await loadPending() }
         }

@@ -51,7 +51,7 @@ public struct MembersListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Cerrar") { dismiss() }
+                RuulCloseToolbarButton { dismiss() }
             }
         }
         .task { await coordinator.refresh() }

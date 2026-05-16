@@ -21,6 +21,8 @@ extension ConsequenceType {
         .transferRight,
         .callWebhook,
         .emitWarning,
+        .revokeRight,
+        .suspendRight,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -40,6 +42,8 @@ extension ConsequenceType {
         "transferRight",
         "callWebhook",
         "emitWarning",
+        "revokeRight",
+        "suspendRight",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -70,6 +74,8 @@ extension ConsequenceType {
         case .transferRight: return "transferRight"
         case .callWebhook: return "callWebhook"
         case .emitWarning: return "emitWarning"
+        case .revokeRight: return "revokeRight"
+        case .suspendRight: return "suspendRight"
         case .unknown(let s): return s
         }
     }
@@ -92,6 +98,8 @@ extension ConsequenceType {
         case "transferRight": return .transferRight
         case "callWebhook": return .callWebhook
         case "emitWarning": return .emitWarning
+        case "revokeRight": return .revokeRight
+        case "suspendRight": return .suspendRight
         default: return .unknown(raw)
         }
     }

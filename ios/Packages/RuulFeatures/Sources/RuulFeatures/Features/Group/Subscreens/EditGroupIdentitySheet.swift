@@ -63,7 +63,7 @@ public struct EditGroupIdentitySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
+                    RuulCloseToolbarButton { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Guardar") { Task { await save() } }

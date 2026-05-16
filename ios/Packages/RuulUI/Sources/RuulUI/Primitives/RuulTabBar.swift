@@ -57,7 +57,7 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
                         .font(.system(size: 20, weight: .regular))
                     if let count = tab.badgeCount, count > 0 {
                         Text("\(min(count, 99))")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.custom("InterVariable", size: 10).weight(.bold))
                             .foregroundStyle(Color.ruulOnImage)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)

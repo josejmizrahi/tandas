@@ -32,7 +32,7 @@ public struct RegenerateInviteCodeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
+                    RuulCloseToolbarButton { dismiss() }
                 }
             }
         }

@@ -12,7 +12,8 @@ public extension ConditionType {
              .memberMissedConsecutive, .eventDayOfWeek,
              .eventTimeWindow, .fundBalanceAbove,
              .fundBalanceBelow, .rotationPositionEquals,
-             .slotIsUnassigned, .slotExpiresInHours:
+             .slotIsUnassigned, .slotExpiresInHours,
+             .daysBeforeExpiry:
             return false
         case .unknown:
             return false
