@@ -58,7 +58,6 @@ public struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.s8) {
                 header
-                nextEventSection
                 pendingsSection
                 upcomingFeedSection
                 groupMemorySection
@@ -195,217 +194,6 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Next event hero — Apple Sports tile: full-bleed cover +
-    // overlay content. Same DNA as EventCard but bigger aspect.
-
-    @ViewBuilder
-    private var nextEventSection: some View {
-        SwiftUI.Group {
-            if let error = coordinator.error, coordinator.nextEvent == nil {
-                ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
-                    .frame(minHeight: 360, alignment: .top)
-                    .transition(.opacity)
-            } else if coordinator.isLoading && coordinator.nextEvent == nil {
-                RuulLoadingState()
-                    .frame(minHeight: 360, alignment: .top)
-                    .transition(.opacity)
-            } else if let next = coordinator.nextEvent {
-                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                    Text("PRÓXIMO")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                    heroTile(next)
-                }
-                .transition(.opacity)
-            } else {
-                emptyHero
-                    .transition(.opacity)
-            }
-        }
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.nextEvent?.id)
-    }
-
-    /// Compact list-row replacement for the previous full-poster hero —
-    /// cover thumbnail + date / title / location stacked vertically +
-    /// chevron, all wrapped in a glass card. Tap opens the event detail.
-    /// Designed to stay ~100pt tall so the home doesn't get dominated by
-    /// the next-event preview the way Apple Sports / Luma never do.
-    private func heroTile(_ event: Event) -> some View {
-        Button { onOpenEvent(event) } label: {
-            HStack(alignment: .center, spacing: RuulSpacing.md) {
-                cover(for: event)
-                    .frame(width: 84, height: 84)
-                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(heroDateLine(event))
-                        .ruulTextStyle(RuulTypography.sectionLabel)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                    Text(event.title)
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    heroSubMeta(event)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.calloutBold)
-                    .foregroundStyle(Color.ruulTextTertiary)
-            }
-            .padding(RuulSpacing.md)
-            .ruulCardSurface(.glass, radius: RuulRadius.large)
-        }
-        .buttonStyle(.ruulPress)
-    }
-
-    /// One-line meta under the title. Priority: hosting-you badge,
-    /// then recurrence badge, then location. EmptyView when none apply
-    /// so the row collapses to date + title without dead space.
-    @ViewBuilder
-    private func heroSubMeta(_ event: Event) -> some View {
-        if event.hostId == userId {
-            inlineMetaBadge(icon: "star.fill", text: "Hosteas tú")
-        } else if event.isRecurringGenerated {
-            inlineMetaBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente")
-        } else if let location = event.locationName, !location.isEmpty {
-            Label(location, systemImage: "mappin.and.ellipse")
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .lineLimit(1)
-        } else {
-            EmptyView()
-        }
-    }
-
-    private func inlineMetaBadge(icon: String, text: String) -> some View {
-        RuulBadge(text, style: .subtle, icon: icon)
-    }
-
-    private func heroTopBadges(_ event: Event) -> some View {
-        VStack {
-            HStack(spacing: RuulSpacing.xs) {
-                if event.hostId == userId {
-                    overlayBadge(icon: "star.fill", text: "Hosteas tú", tint: Color.ruulImageBadge)
-                }
-                Spacer()
-                if event.isRecurringGenerated {
-                    overlayBadge(icon: "arrow.triangle.2.circlepath", text: "Recurrente", tint: Color.ruulImageBadge)
-                }
-            }
-            .padding(RuulSpacing.md)
-            Spacer()
-        }
-    }
-
-    private func heroBottomBlock(_ event: Event) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                if coordinator.isCrossGroupsMode,
-                   let origin = coordinator.group(for: event) {
-                    RuulOriginTag(group: origin)
-                }
-                Text(heroDateLine(event))
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
-                    .foregroundStyle(Color.ruulOnImageSecondary)
-
-                Text(event.title)
-                    .ruulTextStyle(RuulTypography.displayMedium)
-                    .foregroundStyle(Color.ruulOnImage)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .shadow(color: Color.ruulImageTextShadow, radius: 4, x: 0, y: 2)
-            }
-
-            if let location = event.locationName, !location.isEmpty {
-                Label(location, systemImage: "mappin.and.ellipse")
-                    .ruulTextStyle(RuulTypography.callout)
-                    .foregroundStyle(Color.ruulOnImageSecondary)
-            }
-
-            // RSVP CTA — Apple Sports doesn't have inline CTAs, but for ruul
-            // it makes the next-action obvious. Keep it white outline-style
-            // so the cover stays the visual anchor.
-            if let myRSVP = coordinator.myRSVPs[event.id] {
-                if myRSVP.status == .pending {
-                    inlineCTAButton(for: event)
-                } else {
-                    rsvpStatusOverlay(for: myRSVP.status)
-                }
-            } else {
-                inlineCTAButton(for: event)
-            }
-        }
-        .padding(RuulSpacing.lg)
-    }
-
-    private func heroDateLine(_ event: Event) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(event.startsAt) {
-            return "HOY · \(event.startsAt.ruulShortTime)"
-        }
-        if calendar.isDateInTomorrow(event.startsAt) {
-            return "MAÑANA · \(event.startsAt.ruulShortTime)"
-        }
-        let interval = event.startsAt.timeIntervalSince(.now)
-        let days = Int(interval / 86_400)
-        if days < 7 {
-            return "EN \(days) DÍAS · \(event.startsAt.ruulShortTime)"
-        }
-        return "\(event.startsAt.ruulShortDate.uppercased()) · \(event.startsAt.ruulShortTime)"
-    }
-
-    private func inlineCTAButton(for event: Event) -> some View {
-        Button { onOpenEvent(event) } label: {
-            HStack {
-                Text("Ver evento")
-                    .ruulTextStyle(RuulTypography.headline)
-                Spacer()
-                Image(systemName: "arrow.right")
-                    .ruulTextStyle(RuulTypography.calloutBold)
-                    .accessibilityHidden(true)
-            }
-            .foregroundStyle(Color.ruulOnImageInverse)
-            .padding(RuulSpacing.md)
-            .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-        }
-        .buttonStyle(.ruulPress)
-        .padding(.top, RuulSpacing.xs)
-    }
-
-    private func rsvpStatusOverlay(for status: RSVPStatus) -> some View {
-        let (dotColor, text): (Color, String) = {
-            switch status {
-            case .going:      return (.ruulPositive, "Vas")
-            case .maybe:      return (.ruulWarning, "Estás considerando")
-            case .declined:   return (.ruulNegative,   "No vas")
-            case .waitlisted: return (.ruulWarning, "En lista de espera")
-            case .pending:    return (.ruulTextTertiary,    "Pendiente")
-            }
-        }()
-        return HStack(spacing: RuulSpacing.xs) {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
-            Text(text)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulOnImage)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .ruulTextStyle(RuulTypography.captionBold)
-                .foregroundStyle(Color.ruulOnImageSecondary)
-                .accessibilityHidden(true)
-        }
-        .padding(.vertical, RuulSpacing.sm)
-        .padding(.horizontal, RuulSpacing.md)
-        .background(Color.ruulImagePill, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulImagePillBorder, lineWidth: 0.5)
-        )
-        .padding(.top, RuulSpacing.xs)
-    }
 
     // MARK: - Polymorphic upcoming feed
 
@@ -419,8 +207,14 @@ public struct HomeView: View {
         }
     }
 
+    /// Cross-type feed: every upcoming event AND every other resource
+    /// (fund, asset, space, slot, right) collapsed into one chronological
+    /// stream. No special "next event" hero — events render with the same
+    /// row chrome as every other resource so the home reads as a single
+    /// activity list per the canonical "una página universal sin importar
+    /// el resource type" doctrine.
     private var upcomingFeed: [UpcomingFeedItem] {
-        let restEvents = Array(coordinator.upcomingEvents.dropFirst()).map { event in
+        let events = coordinator.upcomingEvents.map { event in
             UpcomingFeedItem(
                 id: event.id,
                 kind: .event(event),
@@ -434,79 +228,56 @@ public struct HomeView: View {
                 sortDate: row.createdAt
             )
         }
-        return (restEvents + resources).sorted { $0.sortDate < $1.sortDate }
+        return (events + resources).sorted { $0.sortDate < $1.sortDate }
     }
 
     @ViewBuilder
     private var upcomingFeedSection: some View {
-        if !upcomingFeed.isEmpty {
+        if let error = coordinator.error, upcomingFeed.isEmpty {
+            ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
+                .frame(minHeight: 240, alignment: .top)
+        } else if coordinator.isLoading && upcomingFeed.isEmpty {
+            RuulLoadingState()
+                .frame(minHeight: 240, alignment: .top)
+        } else if upcomingFeed.isEmpty {
+            emptyHero
+        } else {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("PRÓXIMAS ACTIVIDADES")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                    Spacer()
-                    Text("\(upcomingFeed.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
-                VStack(spacing: RuulSpacing.xs) {
-                    ForEach(upcomingFeed) { item in
-                        feedRow(item)
-                    }
+                RuulListSectionHeader("PRÓXIMO", count: upcomingFeed.count)
+                RuulSeparatedRows(items: upcomingFeed) { item in
+                    activityRow(item)
                 }
             }
         }
     }
 
+    /// Single row used for every feed entry — events and other resources
+    /// share the same chrome (40×40 circle SF symbol + title + meta line
+    /// + optional trailing pill + chevron). Per "no me gusta que event
+    /// tenga un diseño diferente que todo lo demás en home": events stop
+    /// drawing a cover thumbnail here; the icon comes from
+    /// `ResourceTypeChrome` like every other type.
     @ViewBuilder
-    private func feedRow(_ item: UpcomingFeedItem) -> some View {
+    private func activityRow(_ item: UpcomingFeedItem) -> some View {
         switch item.kind {
         case .event(let event):
-            EventRow(
-                event: event,
-                originGroup: coordinator.isCrossGroupsMode
-                    ? coordinator.group(for: event)
-                    : nil,
-                myStatus: coordinator.myRSVPs[event.id]?.status
-            ) {
-                onOpenEvent(event)
-            }
+            let status = coordinator.myRSVPs[event.id]?.status
+            unifiedRow(
+                icon: ResourceTypeChrome.resolve(.event).symbol,
+                title: event.title,
+                meta: eventMetaLine(event),
+                trailing: rsvpTrailing(for: event, status: status),
+                onTap: { onOpenEvent(event) }
+            )
         case .resource(let row):
-            resourceCard(row)
+            unifiedRow(
+                icon: ResourceTypeChrome.resolve(row.resourceType).symbol,
+                title: displayNameFor(row),
+                meta: subtitleFor(row),
+                trailing: nil,
+                onTap: { openedResource = row }
+            )
         }
-    }
-
-    private func resourceCard(_ row: ResourceRow) -> some View {
-        Button {
-            openedResource = row
-        } label: {
-            HStack(spacing: RuulSpacing.sm) {
-                ZStack {
-                    Circle()
-                        .fill(Color.ruulSurface)
-                        .frame(width: 40, height: 40)
-                    Image(systemName: ResourceTypeChrome.resolve(row.resourceType).symbol)
-                        .ruulTextStyle(RuulTypography.bodyLarge)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(displayNameFor(row))
-                        .ruulTextStyle(RuulTypography.body)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text(subtitleFor(row))
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.labelSemibold)
-                    .foregroundStyle(Color.ruulTextTertiary)
-            }
-            .padding(RuulSpacing.md)
-            .ruulCardSurface(.glass, radius: RuulRadius.medium)
-        }
-        .buttonStyle(.plain)
     }
 
     /// Per-type one-liner under the resource name. Falls back to the
@@ -524,6 +295,98 @@ public struct HomeView: View {
             return "\(type) · En custodia"
         }
         return "\(type) · Del grupo"
+    }
+
+    private func unifiedRow(
+        icon: String,
+        title: String,
+        meta: String?,
+        trailing: AnyView?,
+        onTap: @escaping () -> Void
+    ) -> some View {
+        Button(action: onTap) {
+            HStack(spacing: RuulSpacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(Color.ruulSurface)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .ruulTextStyle(RuulTypography.bodyLarge)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if let meta {
+                        Text(meta)
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+                if let trailing {
+                    trailing
+                }
+                Image(systemName: "chevron.right")
+                    .ruulTextStyle(RuulTypography.labelSemibold)
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .padding(.vertical, RuulSpacing.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Human meta for an event row. Same shape as a non-event row's type
+    /// label ("Fondo", "Activo") — kept to one terse line so the feed
+    /// rhythm stays even regardless of payload.
+    private func eventMetaLine(_ event: Event) -> String {
+        if event.status == .cancelled { return "Cancelado" }
+        if event.status == .inProgress { return "En vivo" }
+        let calendar = Calendar.current
+        if calendar.isDateInToday(event.startsAt) {
+            return "Hoy · \(event.startsAt.ruulShortTime)"
+        }
+        if calendar.isDateInTomorrow(event.startsAt) {
+            return "Mañana · \(event.startsAt.ruulShortTime)"
+        }
+        return "\(event.startsAt.ruulShortDate) · \(event.startsAt.ruulShortTime)"
+    }
+
+    /// Trailing RSVP indicator — a small dot + label that mirrors the
+    /// status colors used on the detail page. Returns nil for `.pending`
+    /// (the chevron alone carries the affordance) and for events that
+    /// don't have a viewer RSVP yet.
+    private func rsvpTrailing(for event: Event, status: RSVPStatus?) -> AnyView? {
+        if event.status == .inProgress {
+            return AnyView(
+                HStack(spacing: 4) {
+                    Circle().fill(Color.ruulNegative).frame(width: 6, height: 6)
+                    Text("EN VIVO")
+                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .foregroundStyle(Color.ruulNegative)
+                }
+            )
+        }
+        guard let status, status != .pending else { return nil }
+        let color: Color
+        let label: String
+        switch status {
+        case .going:      color = .ruulPositive;     label = "Vas"
+        case .maybe:      color = .ruulWarning;      label = "Tal vez"
+        case .declined:   color = .ruulTextTertiary; label = "No vas"
+        case .waitlisted: color = .ruulWarning;      label = "Lista"
+        case .pending:    return nil
+        }
+        return AnyView(
+            Text(label)
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(color)
+        )
     }
 
     private func displayNameFor(_ row: ResourceRow) -> String {
@@ -775,38 +638,4 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Cover + badge helpers
-
-    @ViewBuilder
-    private func cover(for event: Event) -> some View {
-        if let url = event.coverImageURL {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let img): img.resizable().scaledToFill()
-                default:                fallbackCover(for: event)
-                }
-            }
-        } else {
-            fallbackCover(for: event)
-        }
-    }
-
-    private func fallbackCover(for event: Event) -> some View {
-        let cover = RuulCoverCatalog.cover(named: event.coverImageName)
-        return RuulCoverView(cover)
-    }
-
-    private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: RuulSpacing.xxs) {
-            Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.microBold)
-                .accessibilityHidden(true)
-            Text(text)
-                .ruulTextStyle(RuulTypography.sectionLabel)
-        }
-        .foregroundStyle(Color.ruulOnImage)
-        .padding(.horizontal, RuulSpacing.xs)
-        .padding(.vertical, RuulSpacing.xxs + 1)
-        .background(tint, in: Capsule())
-    }
 }
