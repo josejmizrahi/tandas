@@ -81,7 +81,7 @@ public struct ActivitySectionView: View {
             }
             .background(
                 .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
             )
         }
     }
