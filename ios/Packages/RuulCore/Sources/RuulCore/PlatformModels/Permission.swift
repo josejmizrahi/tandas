@@ -25,8 +25,18 @@ public enum Permission: Codable, Sendable, Hashable {
     case assignRoles
     /// Remove a member from the group.
     case removeMember
+    /// Issue a manual fine against another member. Gates
+    /// `issue_manual_fine` RPC (mig 00232). Custom roles that need
+    /// fine-issuing authority (e.g. `treasurer`) declare this
+    /// permission instead of inheriting the legacy admin gate.
+    case issueFine
     /// Cancel a fine after issue.
     case voidFine
+    /// Mark a fine as paid on behalf of the fined member (external
+    /// payment recording, off-app reconciliation). Gates the admin
+    /// branch of `pay_fine`; the fined member can always pay their
+    /// own fine without this permission.
+    case markFinePaid
     /// Resolve a fine appeal (close vote early, override).
     case closeAppeal
     /// Open a vote of any type.

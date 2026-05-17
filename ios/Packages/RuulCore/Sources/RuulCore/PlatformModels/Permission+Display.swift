@@ -11,7 +11,9 @@ public extension Permission {
         case .modifyMembers:    return "Editar miembros"
         case .assignRoles:      return "Asignar roles"
         case .removeMember:     return "Echar miembros"
+        case .issueFine:        return "Emitir multas"
         case .voidFine:         return "Anular multas"
+        case .markFinePaid:     return "Marcar multas como pagadas"
         case .closeAppeal:      return "Cerrar apelaciones"
         case .createVotes:      return "Iniciar votaciones"
         case .castVote:         return "Votar"
@@ -46,7 +48,9 @@ public extension Permission {
         case .modifyMembers:    return "Cambiar nombre o foto de miembros."
         case .assignRoles:      return "Otorgar o quitar roles dentro del grupo."
         case .removeMember:     return "Sacar a alguien del grupo."
+        case .issueFine:        return "Cobrar una multa manual a otro miembro."
         case .voidFine:         return "Cancelar una multa después de emitida."
+        case .markFinePaid:     return "Registrar el pago de una multa por otro miembro (ej. cobro externo)."
         case .closeAppeal:      return "Resolver una apelación de multa."
         case .createVotes:      return "Abrir una votación de cualquier tipo."
         case .castVote:         return "Emitir un voto en votaciones abiertas."
@@ -78,7 +82,7 @@ public extension Permission {
         case .modifyGovernance, .modifyRules, .modifyMembers,
              .assignRoles, .removeMember, .createVotes, .castVote:
             return .governance
-        case .voidFine, .closeAppeal:
+        case .issueFine, .voidFine, .markFinePaid, .closeAppeal:
             return .fines
         case .assignSlot, .bookSlot, .approveSlotSwap:
             return .slots

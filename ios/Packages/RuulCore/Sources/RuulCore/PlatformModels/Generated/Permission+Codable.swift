@@ -10,7 +10,9 @@ extension Permission {
         .modifyMembers,
         .assignRoles,
         .removeMember,
+        .issueFine,
         .voidFine,
+        .markFinePaid,
         .closeAppeal,
         .createVotes,
         .castVote,
@@ -35,7 +37,9 @@ extension Permission {
         "modifyMembers",
         "assignRoles",
         "removeMember",
+        "issueFine",
         "voidFine",
+        "markFinePaid",
         "closeAppeal",
         "createVotes",
         "castVote",
@@ -71,7 +75,9 @@ extension Permission {
         case .modifyMembers: return "modifyMembers"
         case .assignRoles: return "assignRoles"
         case .removeMember: return "removeMember"
+        case .issueFine: return "issueFine"
         case .voidFine: return "voidFine"
+        case .markFinePaid: return "markFinePaid"
         case .closeAppeal: return "closeAppeal"
         case .createVotes: return "createVotes"
         case .castVote: return "castVote"
@@ -99,7 +105,9 @@ extension Permission {
         case "modifyMembers": return .modifyMembers
         case "assignRoles": return .assignRoles
         case "removeMember": return .removeMember
+        case "issueFine": return .issueFine
         case "voidFine": return .voidFine
+        case "markFinePaid": return .markFinePaid
         case "closeAppeal": return .closeAppeal
         case "createVotes": return .createVotes
         case "castVote": return .castVote
