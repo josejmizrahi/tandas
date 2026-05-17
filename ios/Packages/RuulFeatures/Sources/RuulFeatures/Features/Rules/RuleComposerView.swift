@@ -31,6 +31,7 @@ public struct RuleComposerView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                    guidedProgressStrip
                     nameSection
                     triggerSection
                     conditionsSection
@@ -97,6 +98,48 @@ public struct RuleComposerView: View {
 
     // MARK: Sections
 
+    /// Mini-progress chips arriba del form. Visualiza las 3 piezas
+    /// requeridas para publicar una regla (disparador + consecuencia
+    /// son obligatorias; condiciones son opcionales pero recomendadas).
+    /// Cada chip:
+    ///   - dot verde + texto normal cuando la pieza ya está
+    ///   - dot gris + texto sub cuando falta
+    /// El usuario escanea al instante qué le falta antes de publicar.
+    private var guidedProgressStrip: some View {
+        let triggerDone = coord.draft.trigger != nil
+        let conditionDone = !coord.draft.conditions.isEmpty
+        let consequenceDone = !coord.draft.consequences.isEmpty
+        return HStack(spacing: RuulSpacing.sm) {
+            progressChip(label: "Disparador", done: triggerDone, required: true)
+            progressChip(label: "Condiciones", done: conditionDone, required: false)
+            progressChip(label: "Consecuencia", done: consequenceDone, required: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.bottom, RuulSpacing.xs)
+    }
+
+    private func progressChip(label: String, done: Bool, required: Bool) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(done ? Color.ruulPositive : (required ? Color.ruulTextTertiary : Color.ruulSeparator))
+                .frame(width: 6, height: 6)
+            Text(label)
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(done ? Color.ruulTextSecondary : Color.ruulTextTertiary)
+        }
+    }
+
+    /// Helper text below a sectionLabel. Explica por qué la pieza
+    /// existe sin meterle un help icon — el usuario ve la guía sin
+    /// tap extra. Solo se renderiza cuando hay copy útil.
+    @ViewBuilder
+    private func sectionHint(_ text: String) -> some View {
+        Text(text)
+            .ruulTextStyle(RuulTypography.caption)
+            .foregroundStyle(Color.ruulTextTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Nombre")
@@ -132,6 +175,7 @@ public struct RuleComposerView: View {
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Cuándo se dispara")
+            sectionHint("El evento que hace que la regla corra. Sin disparador, la regla nunca se activa.")
             if let trigger = coord.draft.trigger, let shape = coord.shape(id: trigger.shapeId) {
                 ShapeInstanceRow(
                     shape: shape,
@@ -164,6 +208,7 @@ public struct RuleComposerView: View {
     private var conditionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Condiciones (todas se cumplen)")
+            sectionHint("Filtros adicionales. Sin condiciones, la regla aplica siempre que se dispare.")
             ForEach(coord.draft.conditions) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     ShapeInstanceRow(
@@ -191,6 +236,7 @@ public struct RuleComposerView: View {
     private var exceptionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Excepto si (cualquiera bloquea la consecuencia)")
+            sectionHint("Casos donde la regla NO debe aplicar aunque se cumplan condiciones.")
             ForEach(coord.draft.exceptions) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     ShapeInstanceRow(
@@ -218,6 +264,7 @@ public struct RuleComposerView: View {
     private var consequencesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Consecuencias")
+            sectionHint("Qué pasa cuando la regla aplica: cobrar multa, emitir warning, etc.")
             ForEach(coord.draft.consequences) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     VStack(alignment: .leading, spacing: 0) {
