@@ -23,10 +23,21 @@ public struct MemberDetailView: View {
     /// toggle cuando es el último admin (server lo rechazaría también).
     /// Defaults a 1 (conservative) when parent doesn't supply.
     public let adminCount: Int
+    /// Async callback fired when the role picker mutates rawRoles. The
+    /// parent (typically `MembersCoordinator`) should refresh its
+    /// `members` list so MembersAdmin/List views see the new roles.
+    /// `nil` skips the upward refresh; the local section still updates
+    /// via `liveRawRoles`.
+    public var onMemberChanged: (() async -> Void)?
 
     @State private var showRolesPicker: Bool = false
     @State private var summary: MemberSummary?
     @State private var summaryLoading: Bool = false
+    /// Live mirror of the member's rawRoles. Seeded from the value-passed
+    /// `memberWithProfile` at init; updated optimistically when the role
+    /// picker completes so the "ROLES EN ESTE GRUPO" section reflects
+    /// the new state without waiting for a parent refetch.
+    @State private var liveRawRoles: [String]
 
     public init(
         memberWithProfile: MemberWithProfile,
@@ -34,7 +45,8 @@ public struct MemberDetailView: View {
         isCurrentUser: Bool,
         canManageRoles: Bool = false,
         founderCount: Int = 1,
-        adminCount: Int = 1
+        adminCount: Int = 1,
+        onMemberChanged: (() async -> Void)? = nil
     ) {
         self.memberWithProfile = memberWithProfile
         self.group = group
@@ -42,6 +54,8 @@ public struct MemberDetailView: View {
         self.canManageRoles = canManageRoles
         self.founderCount = founderCount
         self.adminCount = adminCount
+        self.onMemberChanged = onMemberChanged
+        _liveRawRoles = State(initialValue: memberWithProfile.member.rawRoles)
     }
 
     public var body: some View {
@@ -68,7 +82,14 @@ public struct MemberDetailView: View {
                 group: group,
                 target: memberWithProfile,
                 founderCount: founderCount,
-                adminCount: adminCount
+                adminCount: adminCount,
+                onChange: { updated in
+                    // Reflect locally so the rolesSection updates
+                    // immediately, then bubble up so MembersAdmin/List
+                    // get fresh data when the picker closes.
+                    liveRawRoles = updated.rawRoles
+                    if let onMemberChanged { await onMemberChanged() }
+                }
             )
             .environment(app)
         }
@@ -257,8 +278,7 @@ public struct MemberDetailView: View {
     /// ids fall back to a humanised version of the id so we never
     /// leak raw jsonb keys to users.
     private var rolesList: [RoleDefinition] {
-        let raw = memberWithProfile.member.rawRoles
-        let safe = raw.isEmpty ? ["member"] : raw
+        let safe = liveRawRoles.isEmpty ? ["member"] : liveRawRoles
         let catalog = group.effectiveRoles
         return safe.map { id in
             catalog[id] ?? RoleDefinition(id: id, label: nil, permissions: [], system: false)
