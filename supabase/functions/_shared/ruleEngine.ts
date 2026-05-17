@@ -545,7 +545,7 @@ export async function runRulesForEvent(
       // behavior preserved.
       const exceptions = rule.exceptions ?? [];
       let blockedByException = false;
-      let missingExceptionShape: string | null = null;
+      let missingExceptionShape: ConditionType | null = null;
       for (const exc of exceptions) {
         const excFn = CONDITIONS[exc.type];
         if (!excFn) {
