@@ -38,25 +38,13 @@ public struct ActionInboxView: View {
                     .transition(.opacity)
             } else {
                 ScrollView {
-                    RuulSeparatedRows(items: coordinator.actions) { action in
-                        ActionCard(
-                            icon: icon(for: action.actionType),
-                            meta: meta(for: action),
-                            title: action.title,
-                            subtitle: action.body,
-                            priority: priority(for: action.priority),
-                            timeRemaining: UserActionExpiry.remainingDescription(for: action),
-                            onTap: { onOpenAction(action) }
-                        )
-                        .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
-                            content
-                                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
-                        }
-                        .contextMenu {
-                            Button {
-                                Task { await coordinator.resolveQuick(action.id) }
-                            } label: {
-                                Label("Marcar como hecho", systemImage: "checkmark.circle.fill")
+                    VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                        ForEach(prioritizedBuckets(coordinator.actions), id: \.label) { bucket in
+                            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                                RuulListSectionHeader(bucket.label.uppercased(), count: bucket.actions.count)
+                                RuulSeparatedRows(items: bucket.actions) { action in
+                                    actionRow(action)
+                                }
                             }
                         }
                     }
@@ -82,6 +70,49 @@ public struct ActionInboxView: View {
             title: "Sin pendientes",
             message: "No hay multas, apelaciones ni RSVPs por atender. Todo al corriente."
         )
+    }
+
+    /// Agrupa actions en 3 buckets de urgencia (Apple Mail / Linear
+    /// pattern). El usuario escanea por prioridad sin leer cada row.
+    /// Solo se renderizan buckets no vacíos para evitar headers huecos.
+    private struct ActionBucket {
+        let label: String
+        let actions: [UserAction]
+    }
+
+    private func prioritizedBuckets(_ actions: [UserAction]) -> [ActionBucket] {
+        let urgent  = actions.filter { $0.priority == .urgent || $0.priority == .high }
+        let pending = actions.filter { $0.priority == .medium }
+        let later   = actions.filter { $0.priority == .low }
+        var out: [ActionBucket] = []
+        if !urgent.isEmpty  { out.append(ActionBucket(label: "Urgentes",  actions: urgent)) }
+        if !pending.isEmpty { out.append(ActionBucket(label: "Pendientes", actions: pending)) }
+        if !later.isEmpty   { out.append(ActionBucket(label: "Después",   actions: later)) }
+        return out
+    }
+
+    @ViewBuilder
+    private func actionRow(_ action: UserAction) -> some View {
+        ActionCard(
+            icon: icon(for: action.actionType),
+            meta: meta(for: action),
+            title: action.title,
+            subtitle: action.body,
+            priority: priority(for: action.priority),
+            timeRemaining: UserActionExpiry.remainingDescription(for: action),
+            onTap: { onOpenAction(action) }
+        )
+        .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+            content
+                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+        }
+        .contextMenu {
+            Button {
+                Task { await coordinator.resolveQuick(action.id) }
+            } label: {
+                Label("Marcar como hecho", systemImage: "checkmark.circle.fill")
+            }
+        }
     }
 
     // MARK: - Mapping (template-aware in V1; future templates will plug their own)

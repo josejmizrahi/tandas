@@ -24,6 +24,10 @@ public struct EventDetailPresenter {
     public var onPresentMemberQR: () -> Void
     /// Wallet pass generation + add-to-wallet flow.
     public var onAddToWallet: () -> Void
+    /// Add the event to the system Calendar via EventKit. iOS solicita
+    /// authorization la primera vez. P1 wire — antes el dispatcher
+    /// case `.addToCalendar` era no-op silencioso.
+    public var onAddToCalendar: () -> Void
     /// Open the host-side check-in scanner.
     public var onPresentScanner: () -> Void
     /// Open the manual fine creation sheet.
@@ -50,6 +54,7 @@ public struct EventDetailPresenter {
         onPresentShareSheet: @escaping () -> Void = {},
         onPresentMemberQR: @escaping () -> Void = {},
         onAddToWallet: @escaping () -> Void = {},
+        onAddToCalendar: @escaping () -> Void = {},
         onPresentScanner: @escaping () -> Void = {},
         onPresentManualFineSheet: @escaping () -> Void = {},
         onPresentRemindAttendeesSheet: @escaping () -> Void = {},
@@ -63,6 +68,7 @@ public struct EventDetailPresenter {
         self.onPresentShareSheet = onPresentShareSheet
         self.onPresentMemberQR = onPresentMemberQR
         self.onAddToWallet = onAddToWallet
+        self.onAddToCalendar = onAddToCalendar
         self.onPresentScanner = onPresentScanner
         self.onPresentManualFineSheet = onPresentManualFineSheet
         self.onPresentRemindAttendeesSheet = onPresentRemindAttendeesSheet

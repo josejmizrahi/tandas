@@ -161,6 +161,7 @@ public struct EventDetailHost: View {
             onPresentShareSheet: { sheet = .share },
             onPresentMemberQR: { sheet = .qr },
             onAddToWallet: { Task { _ = await coordinator?.generateWalletPass() } },
+            onAddToCalendar: addToCalendarViaPresenter,
             onPresentScanner: {
                 if let coordinator { onScannerOpen(coordinator) }
             },
@@ -173,6 +174,18 @@ public struct EventDetailHost: View {
             onPresentAttendeesList: { sheet = .attendees },
             canIssueManualFine: canIssueManualFine
         )
+    }
+
+    /// Wraps CalendarExportService.addToCalendar para que el dispatcher
+    /// del top-nav menu pueda invocarlo directo (sin pasar por
+    /// ShareEventSheet). EventKit solicita authorization la primera vez
+    /// dentro de addToCalendar — best-effort fail-soft.
+    private func addToCalendarViaPresenter() {
+        guard let service = calendarService, let event = coordinator?.event ?? Optional(event) else { return }
+        let vocabulary = group.eventVocabulary
+        Task {
+            _ = try? await service.addToCalendar(event, vocabulary: vocabulary)
+        }
     }
 
     // MARK: - Async work

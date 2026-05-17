@@ -737,7 +737,10 @@ public struct UniversalResourceDetailView: View {
                 context.onPresentEditResource()
             }
         case .addToCalendar:
-            break  // wire in Pass 1.1; presenter doesn't expose this directly
+            // P1 wire: el presenter ahora invoca CalendarExportService
+            // directamente (sin pasar por ShareEventSheet). EventKit
+            // pide authorization en primer uso.
+            presenter?.onAddToCalendar()
         case .share:
             presenter?.onPresentShareSheet()
         case .generateWalletPass:
