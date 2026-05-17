@@ -3,11 +3,22 @@ import RuulUI
 import RuulCore
 
 /// Nivel 1 home — the group as a persistent social domain.
-/// Layout:
-///   Hero (avatar + name + invite code + member count)
-///   CONFIGURACIÓN (vocabulary + governance link in Pass 1; Pass 2 adds the rest)
-///   COMUNIDAD (members + group activity in Pass 3)
-///   AVANZADO (leave; Pass 2 adds rotate code; Pass 4 adds archive)
+///
+/// Layout (Apple Settings pattern, post-refactor 2026-05-17):
+///   Hero (avatar + name + member count, slim)
+///   RESUMEN (4 stat tiles)
+///   IDENTIDAD (nombre/foto + invite code share)
+///   PERSONAS (miembros + invitar + roles personalizados)
+///   REGLAS Y MÓDULOS (módulos activos + reglas del grupo + presets)
+///   DINERO Y ZONA (moneda + timezone)
+///   PENDIENTES (votos abiertos + acciones, solo si hay 1+)
+///   AVANZADO (rotar código + archivar + salir, destructives)
+///
+/// Antes había una sección CONFIGURACIÓN monolítica con 7 items
+/// mezclados (identidad, moneda, timezone, módulos, reglas, presets,
+/// roles) + COMUNIDAD con miembros+invitar+votos+actions dispares.
+/// El usuario perdía cosas porque el orden no reflejaba ningún
+/// modelo mental coherente.
 @MainActor
 public struct GroupHomeView: View {
     @State var coordinator: GroupHomeCoordinator
@@ -95,8 +106,11 @@ public struct GroupHomeView: View {
                         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             hero
                             summarySection
-                            configurationSection
-                            communitySection
+                            identitySection
+                            peopleSection
+                            rulesAndModulesSection
+                            moneyAndZoneSection
+                            pendingsSection
                             advancedSection
                         }
                         .padding(.horizontal, RuulSpacing.lg)
@@ -111,49 +125,27 @@ public struct GroupHomeView: View {
         .task { await coordinator.refresh() }
     }
 
+    /// Slim hero: avatar + nombre + member count. El código de
+    /// invitación se movió a la section IDENTIDAD (Apple Settings
+    /// pattern) — antes hero hacía dos trabajos (identity display +
+    /// invite share affordance) que cada uno merecía su lugar lógico.
     private var hero: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            HStack(spacing: RuulSpacing.md) {
-                RuulAvatar(
-                    name: coordinator.group?.name ?? "?",
-                    imageURL: coordinator.group?.avatarUrl.flatMap(URL.init(string:)),
-                    size: .large
-                )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(coordinator.group?.name ?? "—")
-                        .ruulTextStyle(RuulTypography.title)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .lineLimit(2)
-                    Text(memberLabel)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                Spacer(minLength: 0)
+        HStack(spacing: RuulSpacing.md) {
+            RuulAvatar(
+                name: coordinator.group?.name ?? "?",
+                imageURL: coordinator.group?.avatarUrl.flatMap(URL.init(string:)),
+                size: .large
+            )
+            VStack(alignment: .leading, spacing: 2) {
+                Text(coordinator.group?.name ?? "—")
+                    .ruulTextStyle(RuulTypography.title)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(2)
+                Text(memberLabel)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
             }
-
-            if let code = coordinator.group?.inviteCode {
-                Button(action: onShareInvite) {
-                    HStack(spacing: RuulSpacing.xs) {
-                        Image(systemName: "link")
-                            .ruulTextStyle(RuulTypography.subheadMedium)
-                            .accessibilityHidden(true)
-                        Text(code)
-                            .ruulTextStyle(RuulTypography.mono)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                        Spacer()
-                        Text("Compartir")
-                            .ruulTextStyle(RuulTypography.callout)
-                            .foregroundStyle(Color.ruulAccent)
-                    }
-                    .padding(RuulSpacing.md)
-                    .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: RuulRadius.md)
-                            .stroke(Color.ruulSeparator, lineWidth: 0.5)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
+            Spacer(minLength: 0)
         }
         .padding(.top, RuulSpacing.md)
     }
@@ -166,56 +158,43 @@ public struct GroupHomeView: View {
         }
     }
 
-    private var configurationSection: some View {
-        sectionContainer(title: "CONFIGURACIÓN") {
-            navRow(icon: "pencil", label: "Nombre y foto", action: { onEditIdentity?() })
-            divider
+    // MARK: - Refactored sections (Apple Settings pattern)
+    //
+    // Antes había una sección monolítica "CONFIGURACIÓN" con 7 items
+    // mezclados (identidad, moneda, timezone, módulos, reglas, presets,
+    // roles) + otra "COMUNIDAD" con cosas dispares (miembros, invitar,
+    // votos, acciones). UX se sentía como volcadero. Ahora split en 5
+    // buckets temáticos + AVANZADO destructive separado.
+
+    /// 1. IDENTIDAD — quién es el grupo. Nombre + foto + código de
+    ///    invitación (movido del hero para unificar settings).
+    private var identitySection: some View {
+        sectionContainer(title: "IDENTIDAD") {
             navRow(
-                icon: "dollarsign.circle",
-                label: "Moneda",
-                trailing: { trailingValue(coordinator.group?.currency ?? "—") },
-                action: { onPickCurrency?() }
+                icon: "pencil",
+                label: "Nombre y foto",
+                action: { onEditIdentity?() }
             )
-            divider
-            navRow(
-                icon: "clock",
-                label: "Zona horaria",
-                trailing: { trailingValue(coordinator.group?.timezone ?? "—") },
-                action: { onPickTimezone?() }
-            )
-            divider
-            navRow(
-                icon: "puzzlepiece",
-                label: "Módulos",
-                trailing: { trailingValue("\(coordinator.activeModules.count) activos") },
-                action: { onPickModules?() }
-            )
-            divider
-            navRow(icon: "scale.3d", label: "Reglas del grupo", action: onOpenGovernance)
-            divider
-            navRow(icon: "list.bullet.clipboard", label: "Presets de reglas", action: onOpenRulePresets)
-            if coordinator.hasPermission(.assignRoles), let onOpenRoles {
+            if let code = coordinator.group?.inviteCode {
                 divider
                 navRow(
-                    icon: "person.text.rectangle",
-                    label: "Roles y permisos",
-                    trailing: { trailingValue(rolesSummary) },
-                    action: onOpenRoles
+                    icon: "link",
+                    label: code,
+                    trailing: {
+                        Text("Compartir")
+                            .ruulTextStyle(RuulTypography.callout)
+                            .foregroundStyle(Color.ruulAccent)
+                    },
+                    action: onShareInvite
                 )
             }
         }
     }
 
-    private var rolesSummary: String {
-        let total = coordinator.group?.effectiveRoles.count ?? 2
-        switch total {
-        case 0, 1: return "\(total)"
-        default:   return "\(total)"
-        }
-    }
-
-    private var communitySection: some View {
-        sectionContainer(title: "COMUNIDAD") {
+    /// 2. PERSONAS — miembros, invitar nuevos, roles personalizados.
+    ///    Todo lo relacionado con humanos en este grupo.
+    private var peopleSection: some View {
+        sectionContainer(title: "PERSONAS") {
             navRow(
                 icon: "person.2",
                 label: "Miembros",
@@ -234,25 +213,84 @@ public struct GroupHomeView: View {
                     action: { onInviteMembers?() }
                 )
             }
-            if let summary = coordinator.summary, summary.openVotesCount > 0 {
+            if coordinator.hasPermission(.assignRoles), let onOpenRoles {
                 divider
                 navRow(
-                    icon: "hand.raised",
-                    label: summary.openVotesCount == 1
-                        ? "1 voto abierto"
-                        : "\(summary.openVotesCount) votos abiertos",
-                    action: { onOpenVotes?() }
+                    icon: "person.text.rectangle",
+                    label: "Roles y permisos",
+                    trailing: { trailingValue("\(coordinator.group?.effectiveRoles.count ?? 2)") },
+                    action: onOpenRoles
                 )
             }
-            if let summary = coordinator.summary, summary.pendingActionsCount > 0 {
-                divider
-                navRow(
-                    icon: "tray.fill",
-                    label: summary.pendingActionsCount == 1
-                        ? "1 acción pendiente"
-                        : "\(summary.pendingActionsCount) acciones pendientes",
-                    action: { onOpenInbox?() }
-                )
+        }
+    }
+
+    /// 3. REGLAS Y MÓDULOS — qué capacidades tiene el grupo (módulos)
+    ///    y qué normas aplican (rules + presets).
+    private var rulesAndModulesSection: some View {
+        sectionContainer(title: "REGLAS Y MÓDULOS") {
+            navRow(
+                icon: "puzzlepiece",
+                label: "Módulos activos",
+                trailing: { trailingValue("\(coordinator.activeModules.count)") },
+                action: { onPickModules?() }
+            )
+            divider
+            navRow(icon: "scale.3d", label: "Reglas del grupo", action: onOpenGovernance)
+            divider
+            navRow(icon: "list.bullet.clipboard", label: "Presets de reglas", action: onOpenRulePresets)
+        }
+    }
+
+    /// 4. DINERO Y ZONA — settings de configuración ambiente. Moneda
+    ///    para todo el ledger del grupo; timezone para cron de
+    ///    notificaciones + display de fechas.
+    private var moneyAndZoneSection: some View {
+        sectionContainer(title: "DINERO Y ZONA") {
+            navRow(
+                icon: "dollarsign.circle",
+                label: "Moneda",
+                trailing: { trailingValue(coordinator.group?.currency ?? "—") },
+                action: { onPickCurrency?() }
+            )
+            divider
+            navRow(
+                icon: "clock",
+                label: "Zona horaria",
+                trailing: { trailingValue(coordinator.group?.timezone ?? "—") },
+                action: { onPickTimezone?() }
+            )
+        }
+    }
+
+    /// 5. PENDIENTES — accesos rápidos a cosas que requieren acción.
+    ///    Solo se renderiza si hay 1+ pendiente; sin esto se ocultaba
+    ///    detrás de COMUNIDAD y el usuario no se daba cuenta.
+    @ViewBuilder
+    private var pendingsSection: some View {
+        let openVotes = coordinator.summary?.openVotesCount ?? 0
+        let pendingActions = coordinator.summary?.pendingActionsCount ?? 0
+        if openVotes > 0 || pendingActions > 0 {
+            sectionContainer(title: "PENDIENTES") {
+                if openVotes > 0 {
+                    navRow(
+                        icon: "hand.raised",
+                        label: openVotes == 1
+                            ? "1 voto abierto"
+                            : "\(openVotes) votos abiertos",
+                        action: { onOpenVotes?() }
+                    )
+                }
+                if openVotes > 0 && pendingActions > 0 { divider }
+                if pendingActions > 0 {
+                    navRow(
+                        icon: "tray.fill",
+                        label: pendingActions == 1
+                            ? "1 acción pendiente"
+                            : "\(pendingActions) acciones pendientes",
+                        action: { onOpenInbox?() }
+                    )
+                }
             }
         }
     }
