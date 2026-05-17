@@ -16,10 +16,18 @@ public enum RuleTemplateError: Error, Equatable, Sendable {
 ///
 /// Per Plans/Active/Governance.md §0.5 + §10 (Builder UX).
 public protocol RuleTemplateRepository: Actor {
-    /// Loads the active template catalog. Sorted by `sort_order` then name.
-    /// iOS calls this at boot (AppState wiring) — output drives the
-    /// Template Gallery UI.
-    func loadTemplates() async throws -> [RuleBuilderTemplate]
+    /// Loads the active template catalog, optionally filtered by the
+    /// resource type the caller is building a rule for. When
+    /// `resourceType` is nil the server returns every active template
+    /// (group-scope gallery). When non-nil, the server filters out
+    /// templates whose trigger shape doesn't list that type in
+    /// `valid_resource_types` (mig 00244) — keeping event-only
+    /// templates out of an asset's gallery, etc.
+    ///
+    /// iOS calls the nil overload at boot (AppState wiring); per-resource
+    /// builders call with the concrete type. Output sorted by
+    /// `sort_order` then name.
+    func loadTemplates(forResourceType resourceType: String?) async throws -> [RuleBuilderTemplate]
 
     /// Publishes a new rule from a template + user params. Returns the
     /// new rule_id + rule_version_id + any warning conflicts the server
@@ -35,6 +43,16 @@ public protocol RuleTemplateRepository: Actor {
     ) async throws -> RuleVersionPublishResult
 }
 
+public extension RuleTemplateRepository {
+    /// Convenience: load the full catalog (no resource_type filter).
+    /// Backward-compatible wrapper for the original `loadTemplates()`
+    /// signature — keeps existing call sites (notably AppState's boot
+    /// load) working unchanged.
+    func loadTemplates() async throws -> [RuleBuilderTemplate] {
+        try await loadTemplates(forResourceType: nil)
+    }
+}
+
 // MARK: - Mock
 
 public actor MockRuleTemplateRepository: RuleTemplateRepository {
@@ -46,9 +64,44 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
         self.stubTemplates = templates
     }
 
-    public func loadTemplates() async throws -> [RuleBuilderTemplate] {
-        stubTemplates.sorted { $0.sortOrder < $1.sortOrder }
+    public func loadTemplates(forResourceType resourceType: String?) async throws -> [RuleBuilderTemplate] {
+        let sorted = stubTemplates.sorted { $0.sortOrder < $1.sortOrder }
+        // Mock honors the same filter contract as the server (mig 00244):
+        // null → all; non-null → only templates whose trigger shape
+        // declares the requested resource_type as valid. The mock can't
+        // peek into the shape registry, so it approximates by checking
+        // a static type map keyed on triggerShapeId. Sufficient for
+        // previews + unit tests; live behavior is enforced server-side.
+        guard let resourceType else { return sorted }
+        return sorted.filter { template in
+            let valid = MockRuleTemplateRepository.triggerResourceTypes[template.composition.triggerShapeId]
+            // Unknown trigger or universal trigger → let it through.
+            guard let valid, !valid.isEmpty else { return true }
+            return valid.contains(resourceType)
+        }
     }
+
+    /// Static mirror of `rule_shapes.valid_resource_types` used by the
+    /// Mock to filter `loadTemplates(forResourceType:)` the same way the
+    /// server does. Kept in sync by hand — diverges only when a new
+    /// trigger lands in rule_shapes; add the entry here so previews
+    /// match prod.
+    private static let triggerResourceTypes: [String: [String]] = [
+        "checkInRecorded":      ["event"],
+        "eventClosed":          ["event"],
+        "eventStarted":         ["event"],
+        "eventCancelled":       ["event"],
+        "eventUpdated":         ["event"],
+        "hoursBeforeEvent":     ["event"],
+        "rsvpDeadlinePassed":   ["event"],
+        "rsvpChangedSameDay":   ["event"],
+        "ledgerEntryCreated":   ["event", "fund"],
+        "assetTransferred":     ["asset"],
+        "checkoutOverdue":      ["asset"],
+        "damageReported":       ["asset"],
+        "maintenanceOverdue":   ["asset"],
+        "rightExpiringSoon":    ["right"],
+    ]
 
     public func publishRuleVersion(
         groupId: UUID,
@@ -291,10 +344,13 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
     private let client: SupabaseClient
     public init(client: SupabaseClient) { self.client = client }
 
-    public func loadTemplates() async throws -> [RuleBuilderTemplate] {
+    public func loadTemplates(forResourceType resourceType: String?) async throws -> [RuleBuilderTemplate] {
+        struct Params: Encodable {
+            let p_resource_type: String?
+        }
         do {
             return try await client
-                .rpc("list_rule_templates")
+                .rpc("list_rule_templates", params: Params(p_resource_type: resourceType))
                 .execute()
                 .value
         } catch {
