@@ -35,6 +35,8 @@ public struct MyProfileView: View {
     public var onOpenNotificationPreferences: (() -> Void)?
     public var onOpenDevices: (() -> Void)?
     public var onOpenGroupSwitcher: (() -> Void)?
+    public var onExportData: (() -> Void)?
+    public var onDeleteAccount: (() -> Void)?
 
     @State private var showSignOutConfirm = false
 
@@ -53,7 +55,9 @@ public struct MyProfileView: View {
         onPickTimezone: (() -> Void)? = nil,
         onOpenNotificationPreferences: (() -> Void)? = nil,
         onOpenDevices: (() -> Void)? = nil,
-        onOpenGroupSwitcher: (() -> Void)? = nil
+        onOpenGroupSwitcher: (() -> Void)? = nil,
+        onExportData: (() -> Void)? = nil,
+        onDeleteAccount: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMyFines = onOpenMyFines
@@ -70,6 +74,8 @@ public struct MyProfileView: View {
         self.onOpenNotificationPreferences = onOpenNotificationPreferences
         self.onOpenDevices = onOpenDevices
         self.onOpenGroupSwitcher = onOpenGroupSwitcher
+        self.onExportData = onExportData
+        self.onDeleteAccount = onDeleteAccount
     }
 
     private var appearance: Binding<AppearanceOption> {
@@ -101,6 +107,7 @@ public struct MyProfileView: View {
                             activitySection
                             settingsSection
                             appearanceSection
+                            dataAndAccountSection
                             signOutButton
                         }
                         .padding(.horizontal, RuulSpacing.lg)
@@ -299,6 +306,31 @@ public struct MyProfileView: View {
     private var settingsSection: some View {
         sectionContainer(title: "AJUSTES") {
             navRow(icon: "pencil", label: "Editar perfil", trailing: { EmptyView() }, action: onEditProfile)
+        }
+    }
+
+    /// LFPDPPP/CCPA right-to-portability + right-to-erasure surface. Solo
+    /// se renderiza si el caller provee ambos callbacks (no tiene sentido
+    /// mostrar solo uno — son derechos ARCO pareados).
+    @ViewBuilder
+    private var dataAndAccountSection: some View {
+        if let onExportData, let onDeleteAccount {
+            sectionContainer(title: "DATOS Y CUENTA") {
+                navRow(
+                    icon: "square.and.arrow.up",
+                    label: "Exportar mis datos",
+                    trailing: { EmptyView() },
+                    action: onExportData
+                )
+                divider
+                navRow(
+                    icon: "trash",
+                    label: "Eliminar mi cuenta",
+                    trailing: { EmptyView() },
+                    action: onDeleteAccount,
+                    destructive: true
+                )
+            }
         }
     }
 
