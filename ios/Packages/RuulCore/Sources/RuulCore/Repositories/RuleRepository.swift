@@ -536,7 +536,7 @@ public actor InterceptingRuleRepository: RuleRepository {
                     groupId: groupId,
                     voteType: .ruleChange,
                     referenceId: ruleId,
-                    title: isActive ? "Activar regla" : "Desactivar regla",
+                    title: isActive ? "Activar acuerdo" : "Desactivar acuerdo",
                     description: nil,
                     payload: payload,
                     isAnonymous: false

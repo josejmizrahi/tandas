@@ -9,7 +9,7 @@ import RuulCore
 ///   RESUMEN (4 stat tiles)
 ///   IDENTIDAD (nombre/foto + invite code share)
 ///   PERSONAS (miembros + invitar + roles personalizados)
-///   REGLAS Y MÓDULOS (módulos activos + reglas del grupo + presets)
+///   ACUERDOS Y GOBERNANZA (módulos + acuerdos vigentes + gobernanza + estilo)
 ///   DINERO Y ZONA (moneda + timezone)
 ///   PENDIENTES (votos abiertos + acciones, solo si hay 1+)
 ///   AVANZADO (rotar código + archivar + salir, destructives)
@@ -29,6 +29,10 @@ public struct GroupHomeView: View {
     public var onOpenMembersAdmin: (() -> Void)?
     public let onOpenGovernance: () -> Void
     public let onOpenRulePresets: () -> Void
+    /// Lista de Acuerdos vigentes (RulesView). Distinct de
+    /// onOpenGovernance (que abre quién-decide-qué) y de
+    /// onOpenRulePresets (que abre presets de policy).
+    public var onOpenAcuerdos: (() -> Void)?
     public let onLeaveGroup: () -> Void
     public let onShareInvite: () -> Void
 
@@ -68,7 +72,8 @@ public struct GroupHomeView: View {
         onOpenMyLedger: (() -> Void)? = nil,
         onOpenMyFines: (() -> Void)? = nil,
         onOpenVotes: (() -> Void)? = nil,
-        onOpenInbox: (() -> Void)? = nil
+        onOpenInbox: (() -> Void)? = nil,
+        onOpenAcuerdos: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMembersList = onOpenMembersList
@@ -90,6 +95,7 @@ public struct GroupHomeView: View {
         self.onOpenMyFines = onOpenMyFines
         self.onOpenVotes = onOpenVotes
         self.onOpenInbox = onOpenInbox
+        self.onOpenAcuerdos = onOpenAcuerdos
     }
 
     public var body: some View {
@@ -225,20 +231,32 @@ public struct GroupHomeView: View {
         }
     }
 
-    /// 3. REGLAS Y MÓDULOS — qué capacidades tiene el grupo (módulos)
-    ///    y qué normas aplican (rules + presets).
+    /// 3. ACUERDOS Y GOBERNANZA — distingue dos cosas que antes se
+    ///    confundían bajo "Reglas":
+    ///    - Módulos activos = qué capacidades tiene el grupo
+    ///    - Acuerdos vigentes = WHEN/IF/THEN concretos (RulesView)
+    ///    - Gobernanza = quién puede decidir qué (GovernanceView)
+    ///    - Estilo de gobernanza = preset de policy (RulePresetsView)
     private var rulesAndModulesSection: some View {
-        sectionContainer(title: "REGLAS Y MÓDULOS") {
+        sectionContainer(title: "ACUERDOS Y GOBERNANZA") {
             navRow(
                 icon: "puzzlepiece",
                 label: "Módulos activos",
                 trailing: { trailingValue("\(coordinator.activeModules.count)") },
                 action: { onPickModules?() }
             )
+            if let onOpenAcuerdos {
+                divider
+                navRow(
+                    icon: "scroll",
+                    label: "Acuerdos vigentes",
+                    action: onOpenAcuerdos
+                )
+            }
             divider
-            navRow(icon: "scale.3d", label: "Reglas del grupo", action: onOpenGovernance)
+            navRow(icon: "scale.3d", label: "Gobernanza", action: onOpenGovernance)
             divider
-            navRow(icon: "list.bullet.clipboard", label: "Presets de reglas", action: onOpenRulePresets)
+            navRow(icon: "list.bullet.clipboard", label: "Estilo de gobernanza", action: onOpenRulePresets)
         }
     }
 

@@ -310,7 +310,7 @@ public struct MoneySectionView: View {
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(isLocked
                          ? "Quita la marca de pausa"
-                         : "Marca el fondo como pausado para que las reglas reaccionen")
+                         : "Marca el fondo como pausado para que los acuerdos reaccionen")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
@@ -370,7 +370,7 @@ private struct LockFundSheet: View {
                     TextField("ej: pausa antes del cierre de mes", text: $reason, axis: .vertical)
                 }
                 Section {
-                    Text("Bloquear el fondo es una marca de política suave: no impide aportar o gastar por sí solo, pero las reglas activas pueden reaccionar (bloquear, requerir aprobación, etc.).")
+                    Text("Bloquear el fondo es una marca de política suave: no impide aportar o gastar por sí solo, pero los acuerdos activos pueden reaccionar (bloquear, requerir aprobación, etc.).")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }

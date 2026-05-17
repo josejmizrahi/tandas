@@ -35,7 +35,7 @@ public final class GroupRulesCoordinator {
             policies = try await policyRepo.list(groupId: group.id)
         } catch {
             log.warning("policies load failed: \(error.localizedDescription)")
-            self.error = "No pudimos cargar las reglas del grupo."
+            self.error = "No pudimos cargar la gobernanza del grupo."
         }
     }
 

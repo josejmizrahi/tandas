@@ -50,7 +50,7 @@ public struct RuleComposerView: View {
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
-            .navigationTitle(coord.editingRuleId == nil ? "Componer regla" : "Editar regla")
+            .navigationTitle(coord.editingRuleId == nil ? "Componer acuerdo" : "Editar acuerdo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -175,7 +175,7 @@ public struct RuleComposerView: View {
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Cuándo se dispara")
-            sectionHint("El evento que hace que la regla corra. Sin disparador, la regla nunca se activa.")
+            sectionHint("El evento que hace que el acuerdo corra. Sin disparador, nunca se activa.")
             if let trigger = coord.draft.trigger, let shape = coord.shape(id: trigger.shapeId) {
                 ShapeInstanceRow(
                     shape: shape,
@@ -208,7 +208,7 @@ public struct RuleComposerView: View {
     private var conditionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Condiciones (todas se cumplen)")
-            sectionHint("Filtros adicionales. Sin condiciones, la regla aplica siempre que se dispare.")
+            sectionHint("Filtros adicionales. Sin condiciones, el acuerdo aplica siempre que se dispare.")
             ForEach(coord.draft.conditions) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     ShapeInstanceRow(
@@ -236,7 +236,7 @@ public struct RuleComposerView: View {
     private var exceptionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Excepto si (cualquiera bloquea la consecuencia)")
-            sectionHint("Casos donde la regla NO debe aplicar aunque se cumplan condiciones.")
+            sectionHint("Casos donde el acuerdo NO debe aplicar aunque se cumplan condiciones.")
             ForEach(coord.draft.exceptions) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     ShapeInstanceRow(
@@ -264,7 +264,7 @@ public struct RuleComposerView: View {
     private var consequencesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Consecuencias")
-            sectionHint("Qué pasa cuando la regla aplica: cobrar multa, emitir warning, etc.")
+            sectionHint("Qué pasa cuando el acuerdo aplica: cobrar multa, emitir warning, etc.")
             ForEach(coord.draft.consequences) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     VStack(alignment: .leading, spacing: 0) {

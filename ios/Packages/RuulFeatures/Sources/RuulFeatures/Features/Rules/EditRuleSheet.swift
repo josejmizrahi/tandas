@@ -87,7 +87,7 @@ public struct EditRuleSheet: View {
                     Button(role: .destructive) {
                         showArchiveConfirm = true
                     } label: {
-                        HStack { Text("Archivar regla"); Spacer() }
+                        HStack { Text("Archivar acuerdo"); Spacer() }
                     }
                     Text("Abre votación del grupo")
                         .font(.caption)

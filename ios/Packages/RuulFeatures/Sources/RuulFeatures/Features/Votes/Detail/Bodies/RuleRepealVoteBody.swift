@@ -75,7 +75,7 @@ public struct RuleRepealVoteBody: View {
 
     private var ruleCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text("REGLA")
+            Text("ACUERDO")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             Text(ruleTitle)

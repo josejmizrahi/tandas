@@ -208,7 +208,7 @@ public struct RulesView: View {
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Editar reglas")
+                .accessibilityLabel("Editar acuerdos")
             }
         }
         .padding(.top, RuulSpacing.xs)
@@ -232,14 +232,14 @@ public struct RulesView: View {
             Text("Sin acuerdos")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Este grupo aún no tiene reglas configuradas. Empieza componiendo una desde cero o cargando un ejemplo.")
+            Text("Este grupo aún no tiene acuerdos configurados. Empieza componiendo uno desde cero o cargando un ejemplo.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
             if canShowBuilder {
                 Button(action: openBuilder) {
-                    Label("Crear primera regla", systemImage: "plus.circle.fill")
+                    Label("Crear primer acuerdo", systemImage: "plus.circle.fill")
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulAccent)
                         .padding(.vertical, RuulSpacing.sm)
@@ -380,7 +380,7 @@ public struct RulesView: View {
     }
 
     private var footnote: some View {
-        Text("Las reglas se aplican automáticamente cuando ocurre el evento que las dispara. Pronto vas a poder editarlas y agregar más.")
+        Text("Los acuerdos se aplican automáticamente cuando ocurre el evento que los dispara. Pronto vas a poder editarlos y agregar más.")
             .ruulTextStyle(RuulTypography.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .padding(.top, RuulSpacing.sm)

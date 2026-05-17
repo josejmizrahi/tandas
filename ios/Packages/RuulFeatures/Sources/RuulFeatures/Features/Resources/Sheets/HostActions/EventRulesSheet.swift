@@ -40,7 +40,7 @@ struct ResourceRulesSheet: View {
 
     var body: some View {
         ModalSheetTemplate(
-            title: "Reglas del evento",
+            title: "Acuerdos del evento",
             dismissAction: { isPresented = false }
         ) {
             if coordinator.isLoading && coordinator.rules.isEmpty {
@@ -49,11 +49,11 @@ struct ResourceRulesSheet: View {
             } else if coordinator.rules.isEmpty {
                 EmptyStateView(
                     systemImage: "list.bullet.clipboard",
-                    title: "Sin reglas aplicables",
+                    title: "Sin acuerdos aplicables",
                     message: coordinator.canCreate
-                        ? "Agrega reglas que sólo apliquen a este evento. Las del grupo seguirán aplicando."
+                        ? "Agrega acuerdos que sólo apliquen a este evento. Los del grupo seguirán aplicando."
                         // W2-C4: "host" → "anfitrión".
-                        : "Sólo el anfitrión o un admin pueden crear reglas específicas para este evento."
+                        : "Sólo el anfitrión o un admin pueden crear acuerdos específicos para este evento."
                 )
                 .padding(.vertical, RuulSpacing.md)
             } else {

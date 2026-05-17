@@ -410,7 +410,7 @@ public final class RuleComposerCoordinator: Identifiable {
     private func humanize(error: Error) -> String {
         let raw = (error as NSError).localizedDescription.lowercased()
         if raw.contains("modifyrules") {
-            return "No tienes permisos para crear reglas en este grupo."
+            return "No tienes permisos para crear acuerdos en este grupo."
         }
         if raw.contains("at least 2 characters") {
             return "El nombre debe tener al menos 2 caracteres."

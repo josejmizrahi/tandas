@@ -280,7 +280,7 @@ public struct ResourceSummaryView: View {
             ("ledger",        "Ledger"),
             ("schedule",      "Agenda"),
             ("recurrence",    "Recurrente"),
-            ("rules",         "Reglas"),
+            ("rules",         "Acuerdos"),
             ("voting",        "Votos"),
             ("checkin",       "Check-in")
         ]

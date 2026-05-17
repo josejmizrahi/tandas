@@ -450,7 +450,7 @@ public struct ResourceWizardSheet: View {
                     Text("Estos acuerdos van con lo que activaste arriba.")
                         .ruulTextStyle(RuulTypography.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
-                    Text("Vienen del template del grupo (\(coordinator.group.eventVocabulary)). Puedes apagar los que no apliquen — los activos crean reglas que el grupo podrá modificar después.")
+                    Text("Vienen del template del grupo (\(coordinator.group.eventVocabulary)). Puedes apagar los que no apliquen — los activos crean acuerdos que el grupo podrá modificar después.")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .fixedSize(horizontal: false, vertical: true)

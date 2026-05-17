@@ -40,7 +40,7 @@ public struct CreateVoteSheet: View {
                     )
 
                     voteTypeCard(
-                        title: "Cambio de regla",
+                        title: "Cambio de acuerdo",
                         subtitle: "Proponer cambiar el monto de una multa existente.",
                         icon: "list.bullet.clipboard",
                         enabled: true,
@@ -60,7 +60,7 @@ public struct CreateVoteSheet: View {
                         .foregroundStyle(Color.ruulTextTertiary)
                         .padding(.top, RuulSpacing.lg)
 
-                    voteTypeCard(title: "Archivar regla",       subtitle: "Quitar una regla del grupo.",            icon: "trash",                              enabled: false, onTap: {})
+                    voteTypeCard(title: "Archivar acuerdo",     subtitle: "Quitar un acuerdo del grupo.",           icon: "trash",                              enabled: false, onTap: {})
                     voteTypeCard(title: "Retirar fondos",       subtitle: "Aprobar un retiro del fondo común.",     icon: "banknote",                           enabled: false, onTap: {})
                     voteTypeCard(title: "Asignar rol",          subtitle: "Promover a alguien a treasurer/etc.",    icon: "person.badge.shield.checkmark",      enabled: false, onTap: {})
                     voteTypeCard(title: "Disputa de slot",      subtitle: "Resolver disputa sobre un boleto/cupo.", icon: "ticket",                              enabled: false, onTap: {})

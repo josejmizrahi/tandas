@@ -157,7 +157,7 @@ public struct FineDetailView: View {
     @ViewBuilder
     private var evidenceBody: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            evidenceRow(label: "Generada por", value: "Regla automática")
+            evidenceRow(label: "Generada por", value: "Acuerdo automático")
             if let createdAt = coordinator.fine.createdAt as Date? {
                 evidenceRow(label: "Fecha", value: createdAt.ruulShortDate)
             }

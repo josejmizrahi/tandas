@@ -145,7 +145,7 @@ public struct EditEventView: View {
 
     private var rulesToggleSection: some View {
         RuulToggle(
-            "Aplicar reglas del grupo",
+            "Aplicar acuerdos del grupo",
             isOn: $coordinator.draft.applyRules,
             description: "Si está apagado, este evento no genera multas al cerrarse."
         )
