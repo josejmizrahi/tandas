@@ -97,21 +97,22 @@ public struct RootShell: View {
         guard let group = app.activeGroup, let session = app.session else { return }
         let userId = session.user.id
 
-        homeCoordinator = HomeCoordinator(
-            group: group,
-            // Single-group scope: Home only shows resources / events of the
-            // active group. The user picks a group via the switcher and
-            // expects Home to reflect that. Cross-group mode was making
-            // every group's upcoming feed pour into one list, with no
-            // origin tag rendered on the rows (HomeView never wired it),
-            // so the mix was indistinguishable. `task(id: activeGroupId)`
-            // above re-runs this builder on every switch.
-            allGroups: [group],
-            userId: userId,
-            eventRepo: app.eventRepo,
-            rsvpRepo: app.rsvpRepo,
-            resourceRepo: app.resourceRepo
-        )
+        // HomeCoordinator outlives group switches so its per-group cache
+        // survives — on second+ visits to a group, the swap is instant
+        // (rehydrated from snapshot) with a background refresh. Only the
+        // first build per session shows the loading skeleton.
+        if let existing = homeCoordinator, existing.userId == userId {
+            existing.setActiveGroup(group, allGroups: [group])
+        } else {
+            homeCoordinator = HomeCoordinator(
+                group: group,
+                allGroups: [group],
+                userId: userId,
+                eventRepo: app.eventRepo,
+                rsvpRepo: app.rsvpRepo,
+                resourceRepo: app.resourceRepo
+            )
+        }
         shellState.homeCoordinator = homeCoordinator
 
         inboxCoordinator = InboxCoordinator(
