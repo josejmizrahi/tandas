@@ -139,7 +139,7 @@ public final class EditRulesCoordinator {
             pendingVotes = pending
         } catch {
             log.warning("rules load failed: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            self.error = error.ruulUserMessage
         }
     }
 
@@ -177,7 +177,7 @@ public final class EditRulesCoordinator {
                 if let i = originalIndex {
                     rules[i] = rules[i].withIsActive(currentIsActive)
                 }
-                self.error = "Solo los admins pueden cambiar esta regla."
+                self.error = "Solo los fundadores pueden cambiar esta regla."
             }
         } catch let mutation as RuleMutationError {
             if let i = originalIndex {
@@ -214,7 +214,7 @@ public final class EditRulesCoordinator {
                 banner = .voteOpened(voteId: voteId)
                 await refresh()
             case .adminOnly:
-                self.error = "Solo los admins pueden cambiar el monto."
+                self.error = "Solo los fundadores pueden cambiar el monto."
             }
         } catch RulesRepositoryError.notFlatFine {
             self.error = "Esta regla tiene multa escalonada; se editará en una próxima versión."
@@ -237,7 +237,8 @@ public final class EditRulesCoordinator {
                 referenceId: rule.id,
                 title: "Archivar: \(rule.name)",
                 description: nil,
-                payload: JSONConfig.empty
+                payload: JSONConfig.empty,
+                isAnonymous: false
             )
             await refresh()
         } catch {

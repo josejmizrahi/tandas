@@ -24,12 +24,11 @@ public struct InboxTab: View {
                     Task { await dispatch(action) }
                 }
                 .environment(app)
-                .groupSwitcherToolbar()
             } else {
                 ProgressView()
                     .controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .groupSwitcherToolbar()
+                    .ruulAppToolbar()
             }
         }
     }

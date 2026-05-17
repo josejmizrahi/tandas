@@ -235,10 +235,15 @@ public struct ResourceLinksSectionView: View {
         !LinkKind.candidates(from: context.resource.resourceType).isEmpty
     }
 
+    // Per mig 00262: admin separated from founder. The unlink server
+    // gate uses `is_group_admin`, and the canonical iOS read is
+    // `member.isAdmin` (founders are admin via backfill, plus the
+    // legacy admin role still maps in). Reading `roles.contains(.founder)`
+    // would silently exclude ad-hoc co-admins that the founder added.
     private var viewerIsAdmin: Bool {
         guard let uid = context.currentUserId,
               let mwp = context.memberDirectory[uid] else { return false }
-        return mwp.member.roles.contains(.founder)
+        return mwp.member.isAdmin
     }
 
     private var alreadyLinkedTuples: Set<LinkTuple> {

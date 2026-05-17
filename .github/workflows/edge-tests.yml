@@ -69,15 +69,24 @@ jobs:
 
       - name: Export connection envs
         # supabase status -o json devuelve { API_URL, SERVICE_ROLE_KEY,
-        # ANON_KEY, ... }. Los inyectamos al $GITHUB_ENV para que los
-        # próximos pasos los lean sin volver a parsear.
+        # ANON_KEY, DB_URL, ... }. Los inyectamos al $GITHUB_ENV para que
+        # los próximos pasos los lean sin volver a parsear.
         run: |
           status=$(supabase status -o json)
           echo "SUPABASE_URL=$(echo "$status" | jq -r .API_URL)" >> "$GITHUB_ENV"
           echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$status" | jq -r .SERVICE_ROLE_KEY)" >> "$GITHUB_ENV"
           echo "SUPABASE_ANON_KEY=$(echo "$status" | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=$(echo "$status" | jq -r .DB_URL)" >> "$GITHUB_ENV"
           # Required para que X-Test-Clock funcione (ver _shared/time.ts).
           echo "ALLOW_CLOCK_OVERRIDE=true" >> "$GITHUB_ENV"
+
+      - name: Check Swift ↔ SQL whitelist drift
+        # Closes governance-review item #5. Catches Swift enum → SQL
+        # whitelist drift before it reaches prod. Pulls deployed
+        # is_known_* function bodies from the local Supabase and diffs
+        # them against the matching Swift enums. See the script header
+        # for the full rationale.
+        run: deno run -A scripts/codegen/check-sql-whitelist-drift.ts
 
       - name: Serve edge functions in background
         # `supabase functions serve` levanta el runtime que escuchan los

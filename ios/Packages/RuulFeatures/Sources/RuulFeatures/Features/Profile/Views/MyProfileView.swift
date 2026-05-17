@@ -32,6 +32,13 @@ public struct MyProfileView: View {
     public var onChangeEmail: (() -> Void)?
     public var onPickLanguage: (() -> Void)?
     public var onPickTimezone: (() -> Void)?
+    public var onOpenNotificationPreferences: (() -> Void)?
+    public var onOpenDevices: (() -> Void)?
+    public var onOpenGroupSwitcher: (() -> Void)?
+    public var onExportData: (() -> Void)?
+    public var onDeleteAccount: (() -> Void)?
+
+    @State private var showSignOutConfirm = false
 
     public init(
         coordinator: ProfileCoordinator,
@@ -45,7 +52,12 @@ public struct MyProfileView: View {
         onChangePhone: (() -> Void)? = nil,
         onChangeEmail: (() -> Void)? = nil,
         onPickLanguage: (() -> Void)? = nil,
-        onPickTimezone: (() -> Void)? = nil
+        onPickTimezone: (() -> Void)? = nil,
+        onOpenNotificationPreferences: (() -> Void)? = nil,
+        onOpenDevices: (() -> Void)? = nil,
+        onOpenGroupSwitcher: (() -> Void)? = nil,
+        onExportData: (() -> Void)? = nil,
+        onDeleteAccount: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMyFines = onOpenMyFines
@@ -59,6 +71,11 @@ public struct MyProfileView: View {
         self.onChangeEmail = onChangeEmail
         self.onPickLanguage = onPickLanguage
         self.onPickTimezone = onPickTimezone
+        self.onOpenNotificationPreferences = onOpenNotificationPreferences
+        self.onOpenDevices = onOpenDevices
+        self.onOpenGroupSwitcher = onOpenGroupSwitcher
+        self.onExportData = onExportData
+        self.onDeleteAccount = onDeleteAccount
     }
 
     private var appearance: Binding<AppearanceOption> {
@@ -83,11 +100,14 @@ public struct MyProfileView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             hero
+                            myGroupsSection
                             identitySection
                             preferencesSection
+                            notificationsSection
                             activitySection
                             settingsSection
                             appearanceSection
+                            dataAndAccountSection
                             signOutButton
                         }
                         .padding(.horizontal, RuulSpacing.lg)
@@ -103,7 +123,18 @@ public struct MyProfileView: View {
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
         }
+        .ruulAppToolbar(showsGroupAvatar: false)
         .task { await coordinator.refresh() }
+        .confirmationDialog(
+            "¿Salir de tu cuenta?",
+            isPresented: $showSignOutConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Cerrar sesión", role: .destructive, action: onSignOut)
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Tus grupos, multas e historia siguen guardados. Vuelves a entrar con el mismo teléfono o Apple ID.")
+        }
     }
 
     // MARK: Hero (avatar + name + cross-group meta)
@@ -174,6 +205,24 @@ public struct MyProfileView: View {
         }
     }
 
+    private var notificationsSection: some View {
+        sectionContainer(title: "NOTIFICACIONES") {
+            navRow(
+                icon: "bell.badge",
+                label: "Preferencias",
+                trailing: { EmptyView() },
+                action: { onOpenNotificationPreferences?() }
+            )
+            divider
+            navRow(
+                icon: "iphone.and.arrow.forward",
+                label: "Dispositivos",
+                trailing: { EmptyView() },
+                action: { onOpenDevices?() }
+            )
+        }
+    }
+
     private func trailingValue(_ s: String) -> some View {
         Text(s)
             .ruulTextStyle(RuulTypography.caption)
@@ -185,6 +234,59 @@ public struct MyProfileView: View {
     private func localeLabel(_ code: String?) -> String {
         guard let code, let entry = LanguagePickerView.supported.first(where: { $0.code == code }) else { return "—" }
         return entry.label
+    }
+
+    /// Lista los primeros 3 grupos del usuario con tap-to-switch + un
+    /// "Ver todos" cuando hay más. Antes el switcher estaba solo en el
+    /// header del Home, lo que para usuarios con 5+ grupos lo volvía
+    /// invisible. El active group queda marcado con dot accent.
+    @ViewBuilder
+    private var myGroupsSection: some View {
+        if !app.groups.isEmpty {
+            sectionContainer(title: "MIS GRUPOS") {
+                let visible = Array(app.groups.prefix(3))
+                ForEach(Array(visible.enumerated()), id: \.element.id) { idx, group in
+                    if idx > 0 { divider }
+                    groupRow(group)
+                }
+                if app.groups.count > 3, let onOpenGroupSwitcher {
+                    divider
+                    navRow(
+                        icon: "ellipsis",
+                        label: "Ver todos (\(app.groups.count))",
+                        trailing: { EmptyView() },
+                        action: onOpenGroupSwitcher
+                    )
+                }
+            }
+        }
+    }
+
+    private func groupRow(_ group: RuulCore.Group) -> some View {
+        let isActive = app.activeGroup?.id == group.id
+        return Button {
+            if !isActive {
+                app.activeGroupId = group.id
+                RuulHaptic.groupSwitch.trigger()
+            }
+        } label: {
+            HStack(spacing: RuulSpacing.sm) {
+                RuulGroupAvatar(group: group, size: .md)
+                Text(group.name)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(1)
+                Spacer()
+                if isActive {
+                    Circle().fill(Color.ruulAccent).frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(RuulSpacing.md)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isActive ? "\(group.name), grupo activo" : "Cambiar a \(group.name)")
     }
 
     private var activitySection: some View {
@@ -204,6 +306,31 @@ public struct MyProfileView: View {
     private var settingsSection: some View {
         sectionContainer(title: "AJUSTES") {
             navRow(icon: "pencil", label: "Editar perfil", trailing: { EmptyView() }, action: onEditProfile)
+        }
+    }
+
+    /// LFPDPPP/CCPA right-to-portability + right-to-erasure surface. Solo
+    /// se renderiza si el caller provee ambos callbacks (no tiene sentido
+    /// mostrar solo uno — son derechos ARCO pareados).
+    @ViewBuilder
+    private var dataAndAccountSection: some View {
+        if let onExportData, let onDeleteAccount {
+            sectionContainer(title: "DATOS Y CUENTA") {
+                navRow(
+                    icon: "square.and.arrow.up",
+                    label: "Exportar mis datos",
+                    trailing: { EmptyView() },
+                    action: onExportData
+                )
+                divider
+                navRow(
+                    icon: "trash",
+                    label: "Eliminar mi cuenta",
+                    trailing: { EmptyView() },
+                    action: onDeleteAccount,
+                    destructive: true
+                )
+            }
         }
     }
 
@@ -267,7 +394,7 @@ public struct MyProfileView: View {
     }
 
     private var signOutButton: some View {
-        Button(action: onSignOut) {
+        Button { showSignOutConfirm = true } label: {
             Text("Cerrar sesión")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulNegative)

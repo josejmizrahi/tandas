@@ -18,7 +18,7 @@ public struct RulesSectionView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("Reglas")
+            Text("Acuerdos")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .padding(.horizontal, RuulSpacing.xxs)
@@ -31,7 +31,7 @@ public struct RulesSectionView: View {
                         .frame(width: 28)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Reglas de este recurso")
+                        Text("Acuerdos de este recurso")
                             .ruulTextStyle(RuulTypography.body)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Text("Lo que se cumple sin pensar.")
@@ -54,7 +54,7 @@ public struct RulesSectionView: View {
                 .ultraThinMaterial,
                 in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
             )
-            .accessibilityLabel("Ver reglas del recurso")
+            .accessibilityLabel("Ver acuerdos del recurso")
         }
     }
 }

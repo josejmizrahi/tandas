@@ -42,9 +42,7 @@ public struct ChangePhoneFlow: View {
                 .disabled(sending || newPhone.isEmpty)
         }
         .padding(RuulSpacing.lg)
-        .navigationTitle("Cambiar teléfono")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarLeading) { Button("Cerrar") { dismiss() } } }
+        .ruulSheetToolbar("Cambiar teléfono")
     }
 
     private var enterOTPStep: some View {

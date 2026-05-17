@@ -14,37 +14,86 @@ public struct FineCard: View {
     /// groups; rendered as a small uppercase tracked chip above the
     /// status row so the user knows which group this fine belongs to.
     public var groupName: String? = nil
+    /// Compact mode para listas históricas (resolved section). Esconde
+    /// el divider + status row + reduce padding — la fila queda como
+    /// "nombre · monto · fecha" en una línea, similar a EventRow vs
+    /// EventCard hero (DS v3 "two card densities only" §2).
+    public var compact: Bool = false
     public let onTap: () -> Void
 
-    public init(fine: Fine, ruleName: String?, eventTitle: String?, groupName: String? = nil, onTap: @escaping () -> Void) {
+    public init(fine: Fine, ruleName: String?, eventTitle: String?, groupName: String? = nil, compact: Bool = false, onTap: @escaping () -> Void) {
         self.fine = fine
         self.ruleName = ruleName
         self.eventTitle = eventTitle
         self.groupName = groupName
+        self.compact = compact
         self.onTap = onTap
     }
 
     public var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                if let groupName {
-                    Text(groupName)
-                        .ruulTextStyle(RuulTypography.sectionLabel)
-                        .foregroundStyle(Color.ruulTextAccent)
-                        .textCase(.uppercase)
-                }
-                statusRow
-                Divider().background(Color.ruulSeparator)
-                contentRow
+            if compact {
+                compactBody
+            } else {
+                fullBody
             }
-            .padding(RuulSpacing.md)
-            .frame(maxWidth: .infinity)
-            .background(Color.ruulSurface, in: shape)
-            .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
         }
         .buttonStyle(.ruulPress)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(ruleName ?? fine.reason), \(fine.amountFormatted), \(fine.status.displayLabel)")
+    }
+
+    private var fullBody: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            if let groupName {
+                Text(groupName)
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextAccent)
+                    .textCase(.uppercase)
+            }
+            statusRow
+            Divider().background(Color.ruulSeparator)
+            contentRow
+        }
+        .padding(RuulSpacing.md)
+        .frame(maxWidth: .infinity)
+        .background(Color.ruulSurface, in: shape)
+        .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
+    }
+
+    /// Wallet-style compact row para historial. Status dot leading,
+    /// nombre + grupo opcional middle, monto monospaced right.
+    /// Sin divider ni hero padding — el contexto es "vista archivo".
+    private var compactBody: some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ruleName ?? fine.reason)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .lineLimit(1)
+                if let groupName {
+                    Text(groupName)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .textCase(.uppercase)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            RuulMoneyView(
+                amount: fine.amount,
+                currency: "MXN",
+                size: .small,
+                color: .neutral
+            )
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
     }
 
     private var shape: RoundedRectangle {

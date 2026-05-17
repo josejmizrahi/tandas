@@ -22,7 +22,7 @@ public enum OnboardingError: LocalizedError, Equatable {
         case .updateGroupFailed:
             return "No se pudo guardar la configuración."
         case .createRulesFailed:
-            return "No pudimos crear las reglas."
+            return "No pudimos crear los acuerdos."
         case .createInviteFailed:
             return "No se pudo enviar la invitación."
         case .otpSendFailed:

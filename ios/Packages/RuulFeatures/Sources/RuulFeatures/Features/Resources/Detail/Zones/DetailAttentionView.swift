@@ -70,6 +70,7 @@ public struct DetailAttentionView: View {
         case .slotPending:            return "Tienes un turno pendiente"
         case .contributionDue:        return "Una aportación está pendiente"
         case .compensationDue:        return "Tienes una compensación pendiente"
+        case .assetActionApproval:    return "Aprueba una acción de activo"
         }
     }
 }

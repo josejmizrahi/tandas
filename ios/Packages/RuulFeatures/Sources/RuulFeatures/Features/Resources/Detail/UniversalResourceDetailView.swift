@@ -61,6 +61,7 @@ public struct UniversalResourceDetailView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                liveBanner
                 if !context.attentionActions.isEmpty {
                     DetailAttentionView(context: context)
                 }
@@ -131,6 +132,7 @@ public struct UniversalResourceDetailView: View {
                 if context.enabledCapabilities.contains("activity") {
                     ActivitySectionView(context: context)
                 }
+                stubCapabilitySections
                 SettingsSectionView(
                     onPresentEnableCapability: shouldShowEnableCapability
                         ? context.onPresentEnableCapability
@@ -146,22 +148,8 @@ public struct UniversalResourceDetailView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
         }
+        .ruulSheetToolbar(context.displayName, onClose: context.onDismiss)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton {
-                    if let onDismiss = context.onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
-                    }
-                }
-            }
-            ToolbarItem(placement: .principal) {
-                Text(context.displayName)
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .lineLimit(1)
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 if !secondaryActions.isEmpty {
                     Menu {
@@ -180,7 +168,6 @@ public struct UniversalResourceDetailView: View {
                 }
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $activeRightAction) { action in
             RightActionSheet(
                 action: action,
@@ -270,6 +257,33 @@ public struct UniversalResourceDetailView: View {
         context.resource.metadata["currency"]?.stringValue ?? "MXN"
     }
 
+    // MARK: - Live banner (UXJourney P1)
+    //
+    // Para eventos sucediendo justo ahora (event.startsAt <= now <
+    // event.resolvedEndsAt, status != closed/cancelled). Sin esto, el
+    // detail no comunicaba el estado live — el usuario tenía que
+    // adivinar por la fecha. Ahora aparece arriba con un pulse animation
+    // hasta que el evento termina.
+
+    @ViewBuilder
+    private var liveBanner: some View {
+        if let interactor = eventInteractor, interactor.event.isLive {
+            // Show one-tap "Llegué" inline cuando el viewer puede self-
+            // check-in: RSVP'd going + no checked-in todavía + capability
+            // habilitada. Cierra el loop más rápido que abrir el card
+            // de la CheckInSection.
+            let canSelfCheckIn = context.enabledCapabilities.contains("check_in")
+                && (interactor.myRSVP?.status == .going)
+                && (interactor.myRSVP?.isCheckedIn == false)
+            LiveEventBanner(
+                eventTitle: interactor.event.title,
+                onSelfCheckIn: canSelfCheckIn ? {
+                    Task { await interactor.selfCheckIn(locationVerified: false) }
+                } : nil
+            )
+        }
+    }
+
     // MARK: - Hero (Fund-style icon badge + title + subtitle)
 
     private var hero: some View {
@@ -328,42 +342,15 @@ public struct UniversalResourceDetailView: View {
     private var informationSection: some View {
         let facts = infoRows
         if !facts.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("INFORMACIÓN")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .padding(.leading, RuulSpacing.xxs)
-                VStack(spacing: 0) {
-                    ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
-                        infoRow(fact)
-                        if idx < facts.count - 1 {
-                            Divider()
-                                .background(Color.ruulSeparator)
-                                .padding(.leading, RuulSpacing.md)
-                        }
+            RuulInfoCard("INFORMACIÓN") {
+                ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
+                    RuulInfoRow(label: fact.label, value: fact.value)
+                    if idx < facts.count - 1 {
+                        RuulInfoDivider()
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
-                )
             }
         }
-    }
-
-    private func infoRow(_ fact: (label: String, value: String)) -> some View {
-        HStack {
-            Text(fact.label)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Spacer()
-            Text(fact.value)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding(RuulSpacing.md)
     }
 
     /// Type-aware key facts shown in the INFORMACIÓN card. The set is
@@ -648,6 +635,43 @@ public struct UniversalResourceDetailView: View {
         context.resource.resourceType != .event
     }
 
+    /// Renders every capability that owns a stub section (Sections/Stubs/).
+    /// Each `if context.enabledCapabilities.contains(...)` only fires when
+    /// the capability is actually enabled on this resource, so a vanilla
+    /// event with no extras still renders zero extra cards. Sections that
+    /// have a bespoke renderer above (rsvp, check_in, money, rules,
+    /// rotation, schedule, location, description, activity) are NOT
+    /// duplicated here.
+    @ViewBuilder
+    private var stubCapabilitySections: some View {
+        let caps = context.enabledCapabilities
+        let isAsset = context.resource.resourceType == .asset
+        if caps.contains("status") { StatusSectionView(context: context) }
+        if caps.contains("recurrence") { RecurrenceSectionView(context: context) }
+        if caps.contains("deadline") { DeadlineSectionView(context: context) }
+        if caps.contains("expiration") { ExpirationSectionView(context: context) }
+        if caps.contains("participants") { ParticipantsSectionView(context: context) }
+        if caps.contains("attendance") { AttendanceSectionView(context: context) }
+        if caps.contains("guest_access") { GuestAccessSectionView(context: context) }
+        if caps.contains("assignment") { AssignmentSectionView(context: context) }
+        // Asset already gets a bespoke AssetBookingsSection / AssetOwnershipSection
+        // upstream when these caps are enabled, so we skip the stub to avoid a
+        // duplicate card on asset detail pages.
+        if caps.contains("booking") && !isAsset { BookingSectionView(context: context) }
+        if caps.contains("valuation") && !isAsset { ValuationSectionView(context: context) }
+        if caps.contains("inventory") { InventorySectionView(context: context) }
+        if caps.contains("access") { AccessSectionView(context: context) }
+        if caps.contains("delegation") { DelegationSectionView(context: context) }
+        if caps.contains("voting") { VotingSectionView(context: context) }
+        if caps.contains("approval") { ApprovalSectionView(context: context) }
+        if caps.contains("appeal") { AppealSectionView(context: context) }
+        if caps.contains("consequence") { ConsequenceSectionView(context: context) }
+        if caps.contains("swap") { SwapSectionView(context: context) }
+        if caps.contains("cancellation") { CancellationSectionView(context: context) }
+        if caps.contains("reminder") { ReminderSectionView(context: context) }
+        if caps.contains("history") { HistorySectionView(context: context) }
+    }
+
     /// Reads `metadata.holder_member_id` off the polymorphic resource row.
     /// Used by `RightActionSheet` to filter the transfer recipient picker
     /// so the current holder isn't offered as a self-transfer target.
@@ -745,7 +769,10 @@ public struct UniversalResourceDetailView: View {
                 context.onPresentEditResource()
             }
         case .addToCalendar:
-            break  // wire in Pass 1.1; presenter doesn't expose this directly
+            // P1 wire: el presenter ahora invoca CalendarExportService
+            // directamente (sin pasar por ShareEventSheet). EventKit
+            // pide authorization en primer uso.
+            presenter?.onAddToCalendar()
         case .share:
             presenter?.onPresentShareSheet()
         case .generateWalletPass:
@@ -791,6 +818,71 @@ enum FundSheetSelection: Identifiable {
     case contribute
     case recordExpense
     var id: Self { self }
+}
+
+/// "EN VIVO" banner que aparece arriba del EventDetail mientras el
+/// evento sucede (startsAt <= now < endsAt). Pulse animation suave
+/// honra accessibilityReduceMotion. Cuando `onSelfCheckIn` está set,
+/// muestra un botón inline "Llegué" como atajo al check-in sin
+/// scroll a la CheckInSection.
+private struct LiveEventBanner: View {
+    let eventTitle: String
+    let onSelfCheckIn: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+    @State private var checkInTriggered = 0
+
+    var body: some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Circle()
+                .fill(Color.ruulNegative)
+                .frame(width: 10, height: 10)
+                .scaleEffect(pulse ? 1.3 : 1.0)
+                .opacity(pulse ? 0.6 : 1.0)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EN VIVO")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulNegative)
+                Text("Sucediendo ahora")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            Spacer(minLength: 0)
+            if let onSelfCheckIn {
+                Button {
+                    checkInTriggered &+= 1
+                    onSelfCheckIn()
+                } label: {
+                    Label("Llegué", systemImage: "checkmark.circle.fill")
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.ruulPositive)
+                .controlSize(.small)
+                .accessibilityLabel("Marcar que llegué al evento")
+            }
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+        .background(
+            Color.ruulNegative.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color.ruulNegative.opacity(0.25), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(eventTitle), evento en vivo")
+        .sensoryFeedback(.success, trigger: checkInTriggered)
+        .onAppear {
+            guard !reduceMotion else { pulse = true; return }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
 }
 
 #if DEBUG

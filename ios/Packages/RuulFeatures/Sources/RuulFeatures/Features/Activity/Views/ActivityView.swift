@@ -41,11 +41,7 @@ public struct ActivityView: View {
             .scrollEdgeEffectStyle(.soft, for: .vertical)
         }
         .ruulAmbientScreen(palette: nil)
-        // W2-C5: canon = "Actividad" for the group's system_events feed;
-        // "Historial" reserved for past-events listing (PastResourcesView).
-        // "Historia" dropped entirely.
-        .navigationTitle("Actividad")
-        .navigationBarTitleDisplayMode(.large)
+        .ruulAppToolbar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showFilters = true } label: {
@@ -193,7 +189,9 @@ public struct ActivityView: View {
                         timestamp: presentation.timestamp,
                         tone: presentation.tone,
                         isFirst: index == 0,
-                        isLast: index == visibleEvents.count - 1
+                        isLast: index == visibleEvents.count - 1,
+                        actorName: coordinator.actorName(for: ev),
+                        actorAvatarURL: coordinator.actorAvatarURL(for: ev)
                     )
                 }
                 .buttonStyle(.plain)

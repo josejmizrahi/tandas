@@ -44,6 +44,12 @@ public final class AppState {
     /// Pending rule_change deep link (Phase G3).
     public var pendingRuleChangeDeepLink: RuleChangeDeepLink?
 
+    /// Pending vote deep link (Level 15 — notification tap → vote detail).
+    public var pendingVoteId: UUID?
+
+    /// Pending fine deep link (Level 15 — notification tap → fine detail).
+    public var pendingFineId: UUID?
+
     public let auth: any AuthService
     public let profileRepo: any ProfileRepository
     public let groupsRepo: any GroupsRepository
@@ -362,6 +368,18 @@ public final class AppState {
     /// live mode; mock/preview environments can assign `MockMyActivityRepository`.
     public var myActivityRepo: (any MyActivityRepository)?
 
+    /// Aggregated per-group stats (memberCount, balance, fines, votes, actions).
+    /// Optional so existing constructors don't break; GroupHomeView degrades
+    /// to hiding the summarySection when nil. Wired by `TandasApp` in
+    /// live mode; mock/preview environments can assign `MockGroupSummaryRepository`.
+    public var groupSummaryRepo: (any GroupSummaryRepository)?
+
+    /// Per-user per-type notification opt-out (mig 00232).
+    /// Optional so existing constructors don't break; `NotificationPreferencesView`
+    /// degrades to showing default ON states when nil. Wired by `TandasApp`
+    /// in live mode; mock/preview can assign `MockNotificationPreferenceRepository`.
+    public var notificationPreferenceRepo: (any NotificationPreferenceRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
@@ -403,6 +421,20 @@ public final class AppState {
         for await s in auth.sessionStream {
             self.session = s
             if s != nil {
+                // Verify the cached JWT still maps to a live auth.users row.
+                // If the user was deleted server-side (DB wipe, manual delete),
+                // the Keychain token is stale: PostgREST 401s silently and
+                // AuthGate strands the user in a zombie-authenticated state.
+                // Force sign-out and let AuthGate route to SignInView.
+                let valid = await auth.verifySession()
+                if !valid {
+                    try? await auth.signOut()
+                    self.session = nil
+                    self.profile = nil
+                    self.groups = []
+                    self.isBootstrapping = false
+                    continue
+                }
                 // list_modules() RPC is grant-restricted to authenticated;
                 // refresh the catalog only once we have a session. v1Fallback
                 // covers the pre-auth surface.
@@ -463,12 +495,28 @@ public final class AppState {
     }
 
     public func handleIncomingURL(_ url: URL) {
+        // Invite codes take precedence (ruul://invite/...)
         if let code = InviteLinkGenerator.parseInviteCode(from: url) {
             pendingInviteCode = code
-        } else if let ruleLink = RuleChangeDeepLink(url: url) {
+            return
+        }
+        // Unified deeplink catalog (Level 15)
+        if let link = NotificationDeepLink(url: url) {
+            applyDeepLink(link)
+            return
+        }
+        // Legacy fallbacks for back-compat
+        if let ruleLink = RuleChangeDeepLink(url: url) {
             pendingRuleChangeDeepLink = ruleLink
         } else if let link = EventDeepLink(url: url) {
             pendingEventDeepLink = link
+        } else if let link = ResourceDeepLink(url: url) {
+            // Polymorphic resource link (fund/asset/slot/space/right) —
+            // los 5 tipos non-event que antes no tenían handler. El
+            // detail polimórfico (ResourceDetailSheet) hidrata el
+            // chrome correcto. Reusamos pendingEventDeepLink ya que
+            // ambos terminan en el mismo router.openResource(id:).
+            pendingEventDeepLink = EventDeepLink(eventId: link.resourceId)
         }
     }
 
@@ -479,8 +527,34 @@ public final class AppState {
         let beta = BetaAnalytics(analytics: analytics)
         Task { await beta.notificationTapped(kind: kind) }
 
+        // Unified deeplink catalog (Level 15)
+        if let link = NotificationDeepLink(userInfo: userInfo) {
+            applyDeepLink(link)
+            return
+        }
+        // Legacy fallback
         if let link = EventDeepLink(userInfo: userInfo) {
             pendingEventDeepLink = link
+        } else if let link = ResourceDeepLink(userInfo: userInfo) {
+            pendingEventDeepLink = EventDeepLink(eventId: link.resourceId)
+        }
+    }
+
+    private func applyDeepLink(_ link: NotificationDeepLink) {
+        switch link {
+        case .event(let id):
+            pendingEventDeepLink = EventDeepLink(eventId: id)
+        case .vote(let id):
+            pendingVoteId = id
+        case .fine(let id):
+            pendingFineId = id
+        case .ruleChange(let ruleId, let amount):
+            // Reconstruct the canonical URL so RuleChangeDeepLink.init?(url:) can parse it.
+            let proposedAmount = amount ?? 0
+            if let url = URL(string: "ruul://rule/\(ruleId.uuidString)/edit?proposedAmount=\(proposedAmount)"),
+               let ruleLink = RuleChangeDeepLink(url: url) {
+                pendingRuleChangeDeepLink = ruleLink
+            }
         }
     }
 
@@ -494,5 +568,13 @@ public final class AppState {
 
     public func consumeRuleChangeDeepLink() {
         pendingRuleChangeDeepLink = nil
+    }
+
+    public func consumeVoteDeepLink() {
+        pendingVoteId = nil
+    }
+
+    public func consumeFineDeepLink() {
+        pendingFineId = nil
     }
 }

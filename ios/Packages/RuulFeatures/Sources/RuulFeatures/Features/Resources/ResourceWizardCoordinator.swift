@@ -223,7 +223,7 @@ public final class ResourceWizardCoordinator {
 
     /// Suggested rules from every enabled capability. Used by step 4 to
     /// render the toggle list and by submit to materialize the user's
-    /// picks into `RuleDraft` rows.
+    /// picks into `OnboardingRuleDraft` rows.
     public var availableSuggestedRules: [(block: any CapabilityBlock, template: RuleTemplate)] {
         availableCapabilityBlocks
             .filter { enabledCapabilities.contains($0.id) }
@@ -304,15 +304,15 @@ public final class ResourceWizardCoordinator {
             return .object(pattern)
         }()
 
-        // Materialize selected suggested rules into RuleDraft rows so the
-        // builder can hand them to the rule repo at create time. The
+        // Materialize selected suggested rules into OnboardingRuleDraft rows
+        // so the builder can hand them to the rule repo at create time. The
         // template's `defaultConfig` flows into the trigger's config jsonb
         // so server-side evaluators see the right thresholds.
-        let initialRules: [RuleDraft] = availableSuggestedRules.compactMap { pair in
+        let initialRules: [OnboardingRuleDraft] = availableSuggestedRules.compactMap { pair in
             guard isSuggestedRuleSelected(blockId: pair.block.id, slug: pair.template.slug) else {
                 return nil
             }
-            return RuleDraft(
+            return OnboardingRuleDraft(
                 slug: pair.template.slug,
                 name: pair.template.displayName,
                 description: pair.template.summary,

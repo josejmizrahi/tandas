@@ -331,11 +331,17 @@ public final class ResourceLedgerCoordinator {
                 decision = .allowed
             }
 
+            // Combined resolution:
+            //   - keep my Fase 0 `if formKind == .expense {` wrapper
+            //     (commit 863f0d2 — scope the gate to expense kind so
+            //     settlement/contribution/payout pass through)
+            //   - take main's canonical copy "fundadores" (commit 2c86af6
+            //     fix(copy): unify role label to fundador everywhere)
             switch decision {
             case .allowed:
                 break
             case .adminOnly:
-                self.error = "Solo los admins pueden registrar gastos en este grupo."
+                self.error = "Solo los fundadores pueden registrar gastos en este grupo."
                 return nil
             case .voteRequired:
                 // V2: open a vote with the expense envelope + apply on pass.

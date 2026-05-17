@@ -64,6 +64,20 @@ function captureSink(): {
       suspends.push(args);
       return args.right_id;
     },
+    // mig 00249 / §22.3 — target selector stubs. Tests that exercise
+    // multi-target paths override these via `extras.sink`. Defaults
+    // return empty / null so default `$trigger.actor` behavior is
+    // unaffected.
+    listMembersWithRole: async () => [],
+    resolveResourceHostMember: async () => null,
+    // AssetRules.md §4.3 stubs — not exercised by the rule fixtures in
+    // this file, but required by the ConsequenceSink contract. Default
+    // implementations are no-ops that return a synthetic id so any
+    // accidental invocation surfaces as observable state rather than a
+    // runtime crash.
+    createUserAction: async (args) => `user-action-${args.rule_id}`,
+    setBookingsLocked: async (args) => args.resource_id,
+    latestAssetValuationCents: async () => null,
   };
   return { sink, captured, warnings, votes, transfers, revokes, suspends };
 }
@@ -1368,4 +1382,232 @@ Deno.test("startVote: defaults to null when config omits knobs (RPC fallback)", 
   assertEquals(v.duration_hours, null);
   assertEquals(v.quorum_percent, null);
   assertEquals(v.threshold_percent, null);
+});
+
+// =============================================================================
+// §22.4 — AND/OR/NOT condition trees (mig 00251)
+//
+// The engine accepts both the legacy flat array (implicit AND) and the new
+// `{op,children}` tree shape. Short-circuit semantics: AND stops on first
+// false, OR on first true, NOT inverts its child. Unimplemented leaves
+// surface as the orchestrator failure row, but only when the outcome
+// actually depends on them (an OR that matched on a different branch
+// hides the gap by design).
+// =============================================================================
+
+Deno.test("§22.4 AND-of-ORs: A AND (B OR C) — fires when A and at least one of B/C holds", async () => {
+  const { sink, captured } = captureSink();
+  // A = responseStatusIs(going); B = checkInExists(false); C = alwaysTrue
+  // alwaysTrue saves the OR for anyone going → Alice and Bob get fined.
+  // Carla (pending) fails A → no fine.
+  const rule = makeRule(
+    "and-of-ors",
+    { eventType: "eventClosed", config: {} },
+    {
+      op: "and",
+      children: [
+        { type: "responseStatusIs", config: { status: "going" } },
+        {
+          op: "or",
+          children: [
+            { type: "checkInExists", config: { exists: false } },
+            { type: "alwaysTrue",   config: {} },
+          ],
+        },
+      ],
+    } as unknown as Rule["conditions"],
+    [{ type: "fine", config: { amount: 75 } }],
+  );
+
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "going",   rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "going",   rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberCarla.user_id, status: "pending", rsvp_at: null, cancelled_same_day: false },
+    ],
+    checkIns: [
+      { member_user_id: memberAlice.user_id, arrived_at: "2026-05-04T20:30:00Z", minutes_late: 0 },
+      { member_user_id: memberBob.user_id,   arrived_at: "2026-05-04T20:30:00Z", minutes_late: 0 },
+    ],
+  });
+
+  const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+
+  assertEquals(results.length, 2, "Alice + Bob match; Carla fails outer AND");
+  assertEquals(captured.length, 2);
+  const fined = (captured as { member_id: string }[]).map(f => f.member_id).sort();
+  assertEquals(fined, [memberAlice.id, memberBob.id].sort());
+});
+
+Deno.test("§22.4 OR short-circuits — true branch wins even if a sibling lacks an evaluator", async () => {
+  // alwaysTrue fires first; the unimplemented `memberFinesAbove` on a
+  // sibling branch must NOT mask the OR success.
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "or-short-circuit",
+    { eventType: "eventClosed", config: {} },
+    {
+      op: "or",
+      children: [
+        { type: "alwaysTrue", config: {} },
+        { type: "memberFinesAbove", config: { count: 3 } },  // unimplemented
+      ],
+    } as unknown as Rule["conditions"],
+    [{ type: "fine", config: { amount: 10 } }],
+  );
+
+  const ctx = baseContext({ sink });
+  const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+
+  // 3 active members match via alwaysTrue → 3 fines, zero failures.
+  assertEquals(results.length, 3);
+  assertEquals(captured.length, 3);
+  for (const r of results) {
+    assertEquals(r.success, true);
+  }
+});
+
+Deno.test("§22.4 NOT inverts a leaf — fires when the inner does NOT hold", async () => {
+  const { sink, captured } = captureSink();
+  // NOT(responseStatusIs(going)) — fires for everyone who isn't going.
+  const rule = makeRule(
+    "not-leaf",
+    { eventType: "eventClosed", config: {} },
+    {
+      op: "not",
+      children: [
+        { type: "responseStatusIs", config: { status: "going" } },
+      ],
+    } as unknown as Rule["conditions"],
+    [{ type: "fine", config: { amount: 25 } }],
+  );
+
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "going",   rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "pending", rsvp_at: null, cancelled_same_day: false },
+      { member_user_id: memberCarla.user_id, status: "pending", rsvp_at: null, cancelled_same_day: false },
+    ],
+  });
+
+  const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+
+  assertEquals(results.length, 2);
+  const fined = (captured as { member_id: string }[]).map(f => f.member_id).sort();
+  assertEquals(fined, [memberBob.id, memberCarla.id].sort());
+});
+
+Deno.test("§22.4 NOT of an AND — fires when at least one inner condition fails", async () => {
+  const { sink, captured } = captureSink();
+  // NOT(going AND checked-in) — fires for anyone who isn't BOTH going
+  // AND checked-in. Alice = going + checked-in (no fire); Bob = going
+  // + no check-in (fire); Carla = pending (fire).
+  const rule = makeRule(
+    "not-of-and",
+    { eventType: "eventClosed", config: {} },
+    {
+      op: "not",
+      children: [
+        {
+          op: "and",
+          children: [
+            { type: "responseStatusIs", config: { status: "going" } },
+            { type: "checkInExists",    config: { exists: true } },
+          ],
+        },
+      ],
+    } as unknown as Rule["conditions"],
+    [{ type: "fine", config: { amount: 50 } }],
+  );
+
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "going",   rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "going",   rsvp_at: "x", cancelled_same_day: false },
+      { member_user_id: memberCarla.user_id, status: "pending", rsvp_at: null, cancelled_same_day: false },
+    ],
+    checkIns: [
+      { member_user_id: memberAlice.user_id, arrived_at: "z", minutes_late: 0 },
+    ],
+  });
+
+  const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+
+  assertEquals(results.length, 2, "Bob + Carla fire; Alice short-circuited by NOT(true)");
+  const fined = (captured as { member_id: string }[]).map(f => f.member_id).sort();
+  assertEquals(fined, [memberBob.id, memberCarla.id].sort());
+});
+
+Deno.test("§22.4 backward compat: flat array conditions still evaluate as implicit AND", async () => {
+  // No tree object — same wire shape as pre-§22.4 rules. The engine
+  // normalises arrays to AND before walking.
+  const { sink, captured } = captureSink();
+  const rule = makeRule(
+    "legacy-flat",
+    { eventType: "eventClosed", config: {} },
+    [
+      { type: "responseStatusIs", config: { status: "going" } },
+      { type: "checkInExists",    config: { exists: false } },
+    ],
+    [{ type: "fine", config: { amount: 300 } }],
+  );
+
+  const ctx = baseContext({
+    sink,
+    rsvps: [
+      { member_user_id: memberAlice.user_id, status: "going", rsvp_at: "z", cancelled_same_day: false },
+      { member_user_id: memberBob.user_id,   status: "going", rsvp_at: "z", cancelled_same_day: false },
+    ],
+    checkIns: [
+      { member_user_id: memberAlice.user_id, arrived_at: "2026-05-04T20:30:00Z", minutes_late: 0 },
+      // Bob never arrived.
+    ],
+  });
+
+  const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+  // Only Bob: went + no check-in. Same outcome as the pre-§22.4 path.
+  assertEquals(results.length, 1);
+  assertEquals(captured.length, 1);
+  assertEquals((captured[0] as { member_id: string }).member_id, memberBob.id);
+});
+
+Deno.test("§22.4 unimplemented condition inside an AND surfaces as a failure row", async () => {
+  // The AND short-circuits on the first missing evaluator; the
+  // orchestrator must record a failure row so the gap is observable.
+  const { sink, captured } = captureSink();
+  const { entries, restore } = captureLogs();
+  try {
+    const rule = makeRule(
+      "and-missing",
+      { eventType: "eventClosed", config: {} },
+      {
+        op: "and",
+        children: [
+          { type: "alwaysTrue", config: {} },
+          { type: "memberFinesAbove", config: { count: 3 } }, // unimplemented
+        ],
+      } as unknown as Rule["conditions"],
+      [{ type: "fine", config: { amount: 1 } }],
+    );
+
+    const ctx = baseContext({ sink });
+    const results = await runRulesForEvent(makeEvent("eventClosed"), [rule], ctx);
+
+    // 3 active members × 1 unimplemented condition = 3 failure rows.
+    assertEquals(results.length, 3);
+    for (const r of results) {
+      assertEquals(r.success, false);
+      assertEquals(r.error?.includes("unimplemented condition"), true);
+    }
+    assertEquals(captured.length, 0);
+    assertEquals(entries.length, 3);
+    for (const e of entries) {
+      assertEquals(e.type_id, "memberFinesAbove");
+    }
+  } finally {
+    restore();
+  }
 });

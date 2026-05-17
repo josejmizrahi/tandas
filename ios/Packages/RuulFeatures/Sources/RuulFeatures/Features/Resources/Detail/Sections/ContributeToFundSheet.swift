@@ -77,12 +77,8 @@ public struct ContributeToFundSheet: View {
                     }
                 }
             }
-            .navigationTitle("Aportar al fondo")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Aportar al fondo")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSubmitting ? "Aportando…" : "Aportar") {
                         Task { await submit() }

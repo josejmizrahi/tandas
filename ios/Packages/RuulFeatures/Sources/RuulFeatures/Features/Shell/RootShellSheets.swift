@@ -438,19 +438,15 @@ public struct RootShellSheets: ViewModifier {
                 },
                 currentUserId: userId
             )
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") {
-                        router.state.activeFine = nil
-                        while router.state.activeRoutes.contains(where: {
-                            if case .fineDetail = $0 { return true }
-                            return false
-                        }) {
-                            router.state.dismissTop()
-                        }
-                    }
+            .ruulSheetToolbar("Multa", onClose: {
+                router.state.activeFine = nil
+                while router.state.activeRoutes.contains(where: {
+                    if case .fineDetail = $0 { return true }
+                    return false
+                }) {
+                    router.state.dismissTop()
                 }
-            }
+            })
         }
         .environment(app)
     }
@@ -481,15 +477,11 @@ public struct RootShellSheets: ViewModifier {
                 ) { event in
                     router.openEvent(event)
                 }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cerrar") {
-                            while router.state.contains(.past) {
-                                router.state.dismissTop()
-                            }
-                        }
+                .ruulSheetToolbar("Eventos pasados", onClose: {
+                    while router.state.contains(.past) {
+                        router.state.dismissTop()
                     }
-                }
+                })
             }
             .environment(app)
         }
@@ -512,18 +504,14 @@ public struct RootShellSheets: ViewModifier {
                     analytics: app.analytics,
                     changeFeed: app.multiDeviceChangeFeed
                 ))
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cerrar") {
-                            while router.state.activeRoutes.contains(where: {
-                                if case .voteDetail = $0 { return true }
-                                return false
-                            }) {
-                                router.state.dismissTop()
-                            }
-                        }
+                .ruulSheetToolbar("Votación", onClose: {
+                    while router.state.activeRoutes.contains(where: {
+                        if case .voteDetail = $0 { return true }
+                        return false
+                    }) {
+                        router.state.dismissTop()
                     }
-                }
+                })
             } else {
                 Text("Grupo no encontrado")
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -798,20 +786,29 @@ private struct GroupHomeSheetContent: View {
     let app: AppState
     let router: RootRouter
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var path = NavigationPath()
     @State private var showEditIdentity = false
     @State private var showRotateCode = false
     @State private var showInvite = false
     @State private var showLeave = false
     @State private var showMembersAdminInvite = false
+    @State private var showArchiveConfirm = false
+    @State private var archiveError: String?
 
     private enum GroupNav: Hashable {
         case modules, currency, timezone, governance, rulePresets,
-             membersList, membersAdmin
+             membersList, membersAdmin, roles
     }
 
     var body: some View {
-        let coord = GroupHomeCoordinator(groupId: group.id, groupsRepo: app.groupsRepo)
+        let coord = GroupHomeCoordinator(
+            groupId: group.id,
+            groupsRepo: app.groupsRepo,
+            groupSummaryRepo: app.groupSummaryRepo,
+            actorUserId: app.session?.user.id
+        )
         NavigationStack(path: $path) {
             GroupHomeView(
                 coordinator: coord,
@@ -834,7 +831,16 @@ private struct GroupHomeSheetContent: View {
                 onPickTimezone: { path.append(GroupNav.timezone) },
                 onRotateCode: { showRotateCode = true },
                 onInviteMembers: { showInvite = true },
-                onConfirmLeave: { showLeave = true }
+                onConfirmLeave: { showLeave = true },
+                onOpenRoles: { path.append(GroupNav.roles) },
+                onArchiveGroup: { showArchiveConfirm = true },
+                onOpenMyLedger: nil,
+                onOpenMyFines: { router.openSanciones() },
+                onOpenVotes: {
+                    router.openOpenVotes(OpenVotesRouteContext(id: group.id))
+                },
+                onOpenInbox: { router.selectTab(.inbox) },
+                onOpenAcuerdos: { router.openAcuerdos() }
             )
             .navigationDestination(for: GroupNav.self) { dest in
                 switch dest {
@@ -874,6 +880,9 @@ private struct GroupHomeSheetContent: View {
                         onInviteTap: { showMembersAdminInvite = true }
                     )
                     .environment(app)
+                case .roles:
+                    GroupRolesSheet(groupId: group.id)
+                        .environment(app)
                 }
             }
             .fullScreenCover(isPresented: $showMembersAdminInvite) {
@@ -896,8 +905,60 @@ private struct GroupHomeSheetContent: View {
                 LeaveGroupConfirmationSheet(group: group)
                     .environment(app)
             }
+            .confirmationDialog(
+                "¿Archivar \(group.name)?",
+                isPresented: $showArchiveConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Archivar grupo", role: .destructive) {
+                    Task { await archiveGroup() }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Se ocultará de tu lista de grupos. Su historia, multas e historia se mantienen y puedes restaurarlo después.")
+            }
+            .alert("No pudimos archivar", isPresented: Binding(
+                get: { archiveError != nil },
+                set: { if !$0 { archiveError = nil } }
+            )) {
+                Button("OK", role: .cancel) { archiveError = nil }
+            } message: {
+                Text(archiveError ?? "")
+            }
+            .toolbar {
+                // GroupHomeView itself has no close affordance — the
+                // fullScreenCover that hosts it needs to provide one or
+                // the screen becomes a dead-end. Matches the chrome
+                // pattern of every other modal in the app (Switcher,
+                // CreateGroup, Members*, etc.).
+                ToolbarItem(placement: .topBarLeading) {
+                    RuulCloseToolbarButton { dismiss() }
+                }
+            }
         }
         .environment(app)
+    }
+
+    /// Soft-delete vía `archive_group` RPC (mig 00094+). El grupo queda
+    /// invisible para `listMine()` pero su historia + ledger + atoms
+    /// permanecen. Tras éxito: refresh la lista de grupos del usuario,
+    /// salta a otro grupo si el archivado era el activo, y dismissea el
+    /// detail. Fallo: muestra alert sin cerrar el sheet.
+    private func archiveGroup() async {
+        do {
+            try await app.groupsRepo.archive(groupId: group.id)
+            await app.refreshProfileAndGroups()
+            await MainActor.run {
+                if app.activeGroup?.id == group.id {
+                    app.activeGroupId = app.groups.first(where: { $0.id != group.id })?.id
+                }
+                while router.state.contains(.groupHome) { router.state.dismissTop() }
+            }
+        } catch {
+            await MainActor.run {
+                archiveError = error.localizedDescription
+            }
+        }
     }
 }
 
@@ -964,11 +1025,7 @@ private struct MyFinesScreenHost: View {
             MyFinesView(coordinator: coordinator) { fine in
                 path.append(fine)
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar", action: onClose)
-                }
-            }
+            .ruulSheetToolbar("Mis multas", onClose: onClose)
             .navigationDestination(for: Fine.self) { fine in
                 fineDetailDestination(for: fine)
             }

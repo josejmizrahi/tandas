@@ -157,7 +157,7 @@ public struct FineDetailView: View {
     @ViewBuilder
     private var evidenceBody: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            evidenceRow(label: "Generada por", value: "Regla automática")
+            evidenceRow(label: "Generada por", value: "Acuerdo automático")
             if let createdAt = coordinator.fine.createdAt as Date? {
                 evidenceRow(label: "Fecha", value: createdAt.ruulShortDate)
             }
@@ -332,40 +332,89 @@ public struct FineDetailView: View {
         } else {
             switch coordinator.fine.status {
             case .officialized:
-                HStack(spacing: RuulSpacing.sm) {
-                    RuulButton("Apelar", style: .glass, size: .large, fillsWidth: true) {
-                        // Prefer parent-provided handler (e.g., navigation
-                        // to a dedicated screen). Fall back to local sheet
-                        // when callsite doesn't override.
-                        if let onAppeal {
-                            onAppeal()
-                        } else {
-                            appealSheetPresented = true
+                VStack(spacing: RuulSpacing.xs) {
+                    HStack(spacing: RuulSpacing.sm) {
+                        RuulButton("Apelar", style: .glass, size: .large, fillsWidth: true) {
+                            // Prefer parent-provided handler (e.g., navigation
+                            // to a dedicated screen). Fall back to local sheet
+                            // when callsite doesn't override.
+                            if let onAppeal {
+                                onAppeal()
+                            } else {
+                                appealSheetPresented = true
+                            }
+                        }
+                        // V1: Ruul no procesa pagos (regulatorio). El botón
+                        // solo registra "ya quedó" en el ledger — el
+                        // intercambio real pasa fuera de la app. El copy
+                        // anterior "Pagar" sonaba a Stripe/MP, lo que es
+                        // engañoso. Ver Vision.md §"Frontera regulatoria".
+                        RuulButton("Marcar como pagada", style: .primary, size: .large, fillsWidth: true) {
+                            Task { await coordinator.payFine() }
                         }
                     }
-                    RuulButton("Pagar", style: .primary, size: .large, fillsWidth: true) {
-                        Task { await coordinator.payFine() }
-                    }
+                    Text("Coordina el pago por separado y márcalo aquí. Ruul no procesa cobros por ahora.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.vertical, RuulSpacing.sm)
                 // DS v3 §13: sticky CTA chrome — Liquid Glass real.
                 .ruulGlass(Rectangle(), material: .regular)
             case .proposed:
-                // W2-C4: "host" → "anfitrión".
-                Text("Esta multa se oficializa después de 24h. Si no aplica, espera a que el anfitrión la revise — o contacta directo.")
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.vertical, RuulSpacing.sm)
-                    .frame(maxWidth: .infinity)
-                    // DS v3 §13: sticky info chrome — Liquid Glass real.
-                    .ruulGlass(Rectangle(), material: .regular)
+                proposedGraceBanner
             case .paid, .voided, .inAppeal:
                 EmptyView()
             }
         }
+    }
+
+    /// Live countdown until the proposed fine auto-officializes. Backend
+    /// honors `createdAt + 24h` via `finalize-fine-reviews` cron (mig 00016).
+    /// El usuario que recibe la multa ya sabe cuánto le queda al anfitrión
+    /// para voidearla manualmente; pasado ese plazo la deuda se vuelve
+    /// oficial. TimelineView tickea cada minuto — no hace falta segundos.
+    private var proposedGraceBanner: some View {
+        let expiry = coordinator.fine.createdAt.addingTimeInterval(24 * 60 * 60)
+        return TimelineView(.periodic(from: .now, by: 60)) { context in
+            let remaining = expiry.timeIntervalSince(context.date)
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                if remaining > 0 {
+                    HStack(spacing: RuulSpacing.xs) {
+                        Image(systemName: "hourglass")
+                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .foregroundStyle(Color.ruulWarning)
+                            .accessibilityHidden(true)
+                        Text("Se oficializa en \(Self.formatGraceRemaining(remaining))")
+                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                    }
+                } else {
+                    Text("Pendiente de oficializar")
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                }
+                Text("Si no aplica, espera a que el anfitrión la revise — o contacta directo.")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.vertical, RuulSpacing.sm)
+            .ruulGlass(Rectangle(), material: .regular)
+        }
+    }
+
+    private static func formatGraceRemaining(_ seconds: TimeInterval) -> String {
+        let totalMinutes = Int(seconds / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours >= 1 {
+            return minutes == 0 ? "\(hours) h" : "\(hours) h \(minutes) min"
+        }
+        return "\(max(1, minutes)) min"
     }
 
     // MARK: - Helpers

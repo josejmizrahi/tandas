@@ -53,7 +53,7 @@ public struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
 
 public protocol RuleRepository: Actor {
     /// Creates only the active drafts. Returns the created rules.
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
+    func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule]
 
     /// Seeds the platform-shape default rules for `templateId`. Post mig
     /// 00075 this is an orchestrator that reads `groups.active_modules`
@@ -115,11 +115,11 @@ public protocol RuleRepository: Actor {
 // MARK: - Mock
 
 public actor MockRuleRepository: RuleRepository {
-    public private(set) var lastCreatedDrafts: [RuleDraft] = []
+    public private(set) var lastCreatedDrafts: [OnboardingRuleDraft] = []
     public init() {}
     public var nextCreateError: RuleError?
 
-    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule] {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let active = drafts.filter(\.isActive)
         lastCreatedDrafts = active
@@ -251,7 +251,7 @@ public actor LiveRuleRepository: RuleRepository {
     private let client: SupabaseClient
     public init(client: SupabaseClient) { self.client = client }
 
-    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule] {
         struct Params: Encodable {
             let p_group_id: String
             let p_slug: String
@@ -325,7 +325,7 @@ public actor LiveRuleRepository: RuleRepository {
     public func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id,membership_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,exceptions,module_key,resource_id,series_id,membership_id")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()
@@ -335,7 +335,7 @@ public actor LiveRuleRepository: RuleRepository {
     public func listForResource(_ resourceId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id,membership_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,exceptions,module_key,resource_id,series_id,membership_id")
             .eq("resource_id", value: resourceId.uuidString.lowercased())
             .order("created_at", ascending: false)
             .execute()
@@ -536,9 +536,10 @@ public actor InterceptingRuleRepository: RuleRepository {
                     groupId: groupId,
                     voteType: .ruleChange,
                     referenceId: ruleId,
-                    title: isActive ? "Activar regla" : "Desactivar regla",
+                    title: isActive ? "Activar acuerdo" : "Desactivar acuerdo",
                     description: nil,
-                    payload: payload
+                    payload: payload,
+                    isAnonymous: false
                 )
                 _ = (q, t)  // quorum/threshold are server-driven via the vote row
                 return .vote(voteId: voteId)
@@ -591,7 +592,8 @@ public actor InterceptingRuleRepository: RuleRepository {
                     referenceId: rule.id,
                     title: "Cambiar monto: \(rule.name)",
                     description: nil,
-                    payload: payload
+                    payload: payload,
+                    isAnonymous: false
                 )
                 return .vote(voteId: voteId)
             } catch {
@@ -608,7 +610,7 @@ public actor InterceptingRuleRepository: RuleRepository {
 
     // MARK: RuleRepository conformance (pass-through)
 
-    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule] {
         try await inner.createInitialRules(groupId: groupId, drafts: drafts)
     }
 

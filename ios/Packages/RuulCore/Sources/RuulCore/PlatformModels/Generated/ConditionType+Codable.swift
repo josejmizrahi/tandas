@@ -79,6 +79,8 @@ extension ConditionType {
         case .slotExpiresInHours: return "slotExpiresInHours"
         case .daysBeforeExpiry: return "daysBeforeExpiry"
         case .amountAbove: return "amountAbove"
+        case .damageAmountAbove: return "damageAmountAbove"
+        case .transferAmountAbove: return "transferAmountAbove"
         case .unknown(let s): return s
         }
     }
@@ -104,6 +106,8 @@ extension ConditionType {
         case "slotExpiresInHours": return .slotExpiresInHours
         case "daysBeforeExpiry": return .daysBeforeExpiry
         case "amountAbove": return .amountAbove
+        case "damageAmountAbove": return .damageAmountAbove
+        case "transferAmountAbove": return .transferAmountAbove
         default: return .unknown(raw)
         }
     }

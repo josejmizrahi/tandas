@@ -25,12 +25,8 @@ public struct MembersAdminView: View {
             Color.ruulBackground.ignoresSafeArea()
             content
         }
-        .navigationTitle("Administrar miembros")
-        .navigationBarTitleDisplayMode(.inline)
+        .ruulSheetToolbar("Gestionar miembros")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
             if let onInviteTap {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: onInviteTap) {
@@ -76,17 +72,22 @@ public struct MembersAdminView: View {
                         MemberDetailView(
                             memberWithProfile: row,
                             group: coordinator.group,
-                            isCurrentUser: row.member.userId == coordinator.actorUserId
+                            isCurrentUser: row.member.userId == coordinator.actorUserId,
+                            canManageRoles: coordinator.canManageRoles,
+                            founderCount: coordinator.founderCount,
+                            adminCount: coordinator.adminCount
                         )
                     } label: {
                         adminRow(row)
                     }
                     .swipeActions(edge: .trailing) {
                         if row.member.userId != coordinator.actorUserId {
-                            Button(role: .destructive) {
-                                memberToKick = row
-                            } label: {
-                                Label("Echar", systemImage: "trash")
+                            if coordinator.canRemoveMembers {
+                                Button(role: .destructive) {
+                                    memberToKick = row
+                                } label: {
+                                    Label("Echar", systemImage: "trash")
+                                }
                             }
                             Button {
                                 proposeRemovalFor = row
@@ -131,7 +132,7 @@ public struct MembersAdminView: View {
         switch m.joinedVia {
         case "founder_seed":  return "Fundador del grupo"
         case "invite_code":   return "Se unió por código"
-        case "admin_add":     return "Agregado por admin"
+        case "admin_add":     return "Agregado por un fundador"
         default:              return "Miembro"
         }
     }

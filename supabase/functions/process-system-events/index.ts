@@ -463,6 +463,44 @@ async function buildContext(
       const raw = data.value_cents;
       return typeof raw === "number" ? raw : Number(raw);
     },
+
+    // mig 00249 / §22.3 — target selector resolution for the
+    // `$role.<role_id>` and `$resource.host` consequence targets.
+    listMembersWithRole: async ({ group_id, role_id }) => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("id")
+        .eq("group_id", group_id)
+        .eq("active", true)
+        .contains("roles", [role_id]);
+      if (error) {
+        console.warn(`listMembersWithRole read failed: ${error.message}`);
+        return [];
+      }
+      return (data ?? []).map((row) => row.id as string);
+    },
+    resolveResourceHostMember: async (resourceId) => {
+      const { data, error } = await supabase
+        .from("resources")
+        .select("group_id, metadata")
+        .eq("id", resourceId)
+        .maybeSingle();
+      if (error || !data) {
+        if (error) console.warn(`resolveResourceHostMember read failed: ${error.message}`);
+        return null;
+      }
+      const hostUserId = (data.metadata as Record<string, unknown> | null)?.host_id;
+      if (typeof hostUserId !== "string") return null;
+      const { data: m, error: mErr } = await supabase
+        .from("group_members")
+        .select("id")
+        .eq("group_id", data.group_id)
+        .eq("user_id", hostUserId)
+        .eq("active", true)
+        .maybeSingle();
+      if (mErr || !m) return null;
+      return m.id as string;
+    },
   };
 
   return {

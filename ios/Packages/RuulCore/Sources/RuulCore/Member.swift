@@ -18,7 +18,18 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     /// Multi-role array. Backfilled by migration 00019: admins get
     /// `[founder, member]`, others `[member]`. V1 active values: founder,
     /// member, host. V2: treasurer, arbiter, observer.
+    ///
+    /// Only the V1 cases known to `MemberRole` materialise here.
+    /// `rawRoles` carries the FULL jsonb array (including custom roles
+    /// declared by templates or via `assign_role`) so Phase 5 UI can
+    /// roundtrip arbitrary strings like `seat_owner` / `treasurer_aux`
+    /// without losing them on encode.
     public let roles: [MemberRole]
+    /// Verbatim string list from `group_members.roles` jsonb. Source of
+    /// truth for Phase 5 role-stack rendering; survives custom role ids
+    /// the `MemberRole` enum doesn't know about. Always a superset of
+    /// the typed `roles` field.
+    public let rawRoles: [String]
     public let active: Bool
     public let joinedAt: Date
     /// Timestamp the member transitioned to active=false. Null when active.
@@ -52,6 +63,7 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         displayNameOverride: String? = nil,
         role: String = "member",
         roles: [MemberRole] = [.member],
+        rawRoles: [String]? = nil,
         active: Bool = true,
         joinedAt: Date,
         leftAt: Date? = nil,
@@ -64,6 +76,7 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         self.displayNameOverride = displayNameOverride
         self.role = role
         self.roles = roles
+        self.rawRoles = rawRoles ?? roles.map(\.rawValue)
         self.active = active
         self.joinedAt = joinedAt
         self.leftAt = leftAt
@@ -71,8 +84,11 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         self.joinedViaInviteCode = joinedViaInviteCode
     }
 
-    /// Tolerant decoder: rows from a not-yet-migrated DB (no `roles` column)
-    /// derive `roles` from `role` text so existing code keeps working.
+    /// Tolerant decoder. Decodes `roles` as `[String]` first so custom
+    /// role ids (`seat_owner`, `treasurer_aux`) roundtrip via `rawRoles`
+    /// even when they are not declared in the V1 `MemberRole` enum.
+    /// The typed `roles: [MemberRole]` field then projects only the
+    /// known cases for legacy call-sites that pattern-match on the enum.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id                  = try c.decode(UUID.self, forKey: .id)
@@ -80,12 +96,16 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         self.userId              = try c.decode(UUID.self, forKey: .userId)
         self.displayNameOverride = try c.decodeIfPresent(String.self, forKey: .displayNameOverride)
         self.role                = (try? c.decode(String.self, forKey: .role)) ?? "member"
-        if let rolesArray = try? c.decode([MemberRole].self, forKey: .roles), !rolesArray.isEmpty {
-            self.roles = rolesArray
+
+        let decodedRaw: [String]
+        if let rawArray = try? c.decode([String].self, forKey: .roles), !rawArray.isEmpty {
+            decodedRaw = rawArray
         } else {
-            // Fallback: derive from legacy role text.
-            self.roles = role == "admin" ? [.founder, .member] : [.member]
+            decodedRaw = role == "admin" ? ["founder", "member"] : ["member"]
         }
+        self.rawRoles = decodedRaw
+        self.roles = decodedRaw.compactMap(MemberRole.init(rawValue:))
+
         self.active   = (try? c.decode(Bool.self, forKey: .active)) ?? true
         self.joinedAt = try c.decode(Date.self, forKey: .joinedAt)
         self.leftAt              = try c.decodeIfPresent(Date.self,   forKey: .leftAt)
@@ -93,9 +113,45 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         self.joinedViaInviteCode = try c.decodeIfPresent(String.self, forKey: .joinedViaInviteCode)
     }
 
+    /// Encodes the FULL `rawRoles` array (custom roles included) so
+    /// round-tripping a decoded Member through `Encoder` doesn't drop
+    /// roles the V1 `MemberRole` enum doesn't know about.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(groupId, forKey: .groupId)
+        try c.encode(userId, forKey: .userId)
+        try c.encodeIfPresent(displayNameOverride, forKey: .displayNameOverride)
+        try c.encode(role, forKey: .role)
+        try c.encode(rawRoles, forKey: .roles)
+        try c.encode(active, forKey: .active)
+        try c.encode(joinedAt, forKey: .joinedAt)
+        try c.encodeIfPresent(leftAt, forKey: .leftAt)
+        try c.encodeIfPresent(joinedVia, forKey: .joinedVia)
+        try c.encodeIfPresent(joinedViaInviteCode, forKey: .joinedViaInviteCode)
+    }
+
     // MARK: - Convenience
 
-    public var isFounder: Bool { roles.contains(.founder) }
-    public var isMember:  Bool { roles.contains(.member)  }
-    public var isHost:    Bool { roles.contains(.host)    }
+    public var isFounder: Bool { holdsRole("founder") }
+    public var isMember:  Bool { holdsRole("member")  }
+    public var isHost:    Bool { holdsRole("host")    }
+
+    /// Mig 00262: admin se separó de founder. Admin es el rol con
+    /// permisos operativos (modifyGovernance/Rules/Members/...);
+    /// founder es solo identity badge. La mayoría de gating logic
+    /// debería usar `isAdmin` (o `has_permission(...)` server-side)
+    /// en vez de `isFounder`. Founders también son admin via backfill
+    /// — esta check incluye ambos casos hasta que el legacy role
+    /// "admin"-en-`role`-column (mig 00001) se complete deprecating.
+    public var isAdmin: Bool {
+        holdsRole("admin") || isFounder || role == "admin"
+    }
+
+    /// Stable membership check that works for both typed `MemberRole`
+    /// cases and custom role ids stored in `rawRoles`. Case-sensitive,
+    /// matching jsonb semantics.
+    public func holdsRole(_ id: String) -> Bool {
+        rawRoles.contains(id) || (id == "founder" && role == "admin")
+    }
 }

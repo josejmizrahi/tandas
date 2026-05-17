@@ -36,13 +36,7 @@ public struct EditEventView: View {
                 .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.s10)
             }
-            .navigationTitle("Editar evento")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Editar evento")
             .safeAreaInset(edge: .bottom) {
                 saveButton
             }
@@ -151,7 +145,7 @@ public struct EditEventView: View {
 
     private var rulesToggleSection: some View {
         RuulToggle(
-            "Aplicar reglas del grupo",
+            "Aplicar acuerdos del grupo",
             isOn: $coordinator.draft.applyRules,
             description: "Si está apagado, este evento no genera multas al cerrarse."
         )

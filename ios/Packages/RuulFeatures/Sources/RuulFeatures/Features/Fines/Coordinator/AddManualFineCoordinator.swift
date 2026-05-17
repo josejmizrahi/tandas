@@ -135,7 +135,7 @@ public final class AddManualFineCoordinator {
             return "Tu sesión expiró. Volvé a entrar."
         }
         if raw.contains("admin only") {
-            return "Solo admins pueden multar manualmente."
+            return "Solo fundadores pueden multar manualmente."
         }
         if raw.contains("target user not a member") {
             return "Esa persona ya no es miembro del grupo."

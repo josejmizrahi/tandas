@@ -10,6 +10,8 @@ public struct OnboardingRootView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var modelContext
     @State private var coordinatorBundle: CoordinatorBundle?
+    @State private var bootstrapped = false
+    @State private var showPathPicker = false
     public let pendingInviteCode: String?
     public var onCompleted: (CompletionDestination) -> Void
 
@@ -40,6 +42,11 @@ public struct OnboardingRootView: View {
                         onCompleted(.home)
                     }
                 }
+            } else if showPathPicker {
+                OnboardingPathPickerView(
+                    onCreate: { Task { await startFounder() } },
+                    onJoin: { code in Task { await startInvited(code: code) } }
+                )
             } else {
                 RuulLoadingState()
             }
@@ -49,35 +56,23 @@ public struct OnboardingRootView: View {
 
     @MainActor
     private func bootstrap() async {
+        guard !bootstrapped else { return }
+        bootstrapped = true
+
         let manager = OnboardingProgressManager(context: modelContext)
         let analytics = LogAnalyticsService()
 
-        // Check if there's an in-progress flow to restore.
+        // 1) Restore an in-progress flow (founder o invited) si existe.
         if let progress = try? manager.loadActive() {
             switch progress.flowType {
             case .founder:
-                let coord = FounderOnboardingCoordinator(
-                    groupRepo: app.groupsRepo,
-                    inviteRepo: app.inviteRepo,
-                    ruleRepo: app.ruleRepo,
-                    otp: app.otp,
-                    analytics: analytics,
-                    progress: manager,
-                    profileRepo: app.profileRepo
-                )
+                let coord = makeFounderCoordinator(manager: manager, analytics: analytics)
                 await coord.restore(from: progress)
                 coordinatorBundle = CoordinatorBundle(founder: coord)
                 return
             case .invited:
                 if let code = progress.inviteCode {
-                    let coord = InvitedOnboardingCoordinator(
-                        inviteCode: code,
-                        groupRepo: app.groupsRepo,
-                        inviteRepo: app.inviteRepo,
-                        otp: app.otp,
-                        analytics: analytics,
-                        progress: manager
-                    )
+                    let coord = makeInvitedCoordinator(code: code, manager: manager, analytics: analytics)
                     await coord.restore(from: progress)
                     coordinatorBundle = CoordinatorBundle(invited: coord)
                     return
@@ -85,30 +80,66 @@ public struct OnboardingRootView: View {
             }
         }
 
-        // No restoration. Decide founder vs invited from inbound link.
+        // 2) Deeplink llegó con invite — saltarse picker, ir directo a invited.
         if let code = pendingInviteCode {
-            let coord = InvitedOnboardingCoordinator(
-                inviteCode: code,
-                groupRepo: app.groupsRepo,
-                inviteRepo: app.inviteRepo,
-                otp: app.otp,
-                analytics: analytics,
-                progress: manager
-            )
-            await coord.start()
-            coordinatorBundle = CoordinatorBundle(invited: coord)
-        } else {
-            let coord = FounderOnboardingCoordinator(
-                groupRepo: app.groupsRepo,
-                inviteRepo: app.inviteRepo,
-                ruleRepo: app.ruleRepo,
-                otp: app.otp,
-                analytics: analytics,
-                progress: manager
-            )
-            await coord.start()
-            coordinatorBundle = CoordinatorBundle(founder: coord)
+            await startInvited(code: code)
+            return
         }
+
+        // 3) Sin restore y sin invite: mostrar path picker. El usuario
+        //    decide en Step 0 si crear o unirse — antes los caía sin
+        //    ofrecerle la rama "unirme con código".
+        showPathPicker = true
+    }
+
+    @MainActor
+    private func startFounder() async {
+        let manager = OnboardingProgressManager(context: modelContext)
+        let analytics = LogAnalyticsService()
+        let coord = makeFounderCoordinator(manager: manager, analytics: analytics)
+        await coord.start()
+        showPathPicker = false
+        coordinatorBundle = CoordinatorBundle(founder: coord)
+    }
+
+    @MainActor
+    private func startInvited(code: String) async {
+        let manager = OnboardingProgressManager(context: modelContext)
+        let analytics = LogAnalyticsService()
+        let coord = makeInvitedCoordinator(code: code, manager: manager, analytics: analytics)
+        await coord.start()
+        showPathPicker = false
+        coordinatorBundle = CoordinatorBundle(invited: coord)
+    }
+
+    private func makeFounderCoordinator(
+        manager: OnboardingProgressManager,
+        analytics: LogAnalyticsService
+    ) -> FounderOnboardingCoordinator {
+        FounderOnboardingCoordinator(
+            groupRepo: app.groupsRepo,
+            inviteRepo: app.inviteRepo,
+            ruleRepo: app.ruleRepo,
+            otp: app.otp,
+            analytics: analytics,
+            progress: manager,
+            profileRepo: app.profileRepo
+        )
+    }
+
+    private func makeInvitedCoordinator(
+        code: String,
+        manager: OnboardingProgressManager,
+        analytics: LogAnalyticsService
+    ) -> InvitedOnboardingCoordinator {
+        InvitedOnboardingCoordinator(
+            inviteCode: code,
+            groupRepo: app.groupsRepo,
+            inviteRepo: app.inviteRepo,
+            otp: app.otp,
+            analytics: analytics,
+            progress: manager
+        )
     }
 }
 

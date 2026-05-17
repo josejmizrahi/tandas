@@ -66,12 +66,8 @@ public struct EditCapabilityConfigSheet: View {
                 .padding(RuulSpacing.lg)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle(block.displayName)
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar(block.displayName)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(saving ? "Guardando…" : "Guardar") {
                         Task { await save() }

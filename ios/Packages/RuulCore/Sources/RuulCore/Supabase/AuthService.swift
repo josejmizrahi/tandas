@@ -48,6 +48,14 @@ public protocol AuthService: Actor {
     func verifyEmailOTP(_ email: String, code: String) async throws -> AppSession
     func signOut() async throws
 
+    /// Pings the auth server to verify the cached JWT still maps to a live
+    /// `auth.users` row. Returns true if valid, false if the user was
+    /// deleted server-side (Keychain has a stale token). Used by AppState
+    /// bootstrap to evict orphaned sessions and route the user back to
+    /// SignInView instead of stranding them in a zombie-authenticated
+    /// state where every PostgREST call 401s silently.
+    func verifySession() async -> Bool
+
     /// Sign in anonymously if there's no active session. Used at app launch
     /// so the founder onboarding can create a group at step 2 (before OTP)
     /// — `create_group_with_admin` requires `auth.uid()`. The anon user is
@@ -143,6 +151,12 @@ public actor MockAuthService: AuthService {
 
     public func signOut() async throws {
         applySession(nil)
+    }
+
+    public func verifySession() async -> Bool {
+        // Mock: a non-nil session is always considered valid. Tests that
+        // need to simulate an orphaned session can set the seed to nil.
+        await (self.session != nil)
     }
 
     public func startPhoneChange(_ newPhone: String) async throws { /* no-op */ }
@@ -257,6 +271,18 @@ public actor LiveAuthService: AuthService {
     public func signOut() async throws {
         try await client.auth.signOut()
         applySession(nil)
+    }
+
+    public func verifySession() async -> Bool {
+        // `client.auth.user()` hits the /user endpoint and validates the
+        // cached JWT against auth.users. Throws when the user was deleted
+        // server-side (orphaned session) or the token is otherwise invalid.
+        do {
+            _ = try await client.auth.user()
+            return true
+        } catch {
+            return false
+        }
     }
 
     public func signInAnonymouslyIfNeeded() async throws {

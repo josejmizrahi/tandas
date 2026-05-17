@@ -10,10 +10,14 @@ extension Permission {
         .modifyMembers,
         .assignRoles,
         .removeMember,
+        .issueFine,
         .voidFine,
+        .markFinePaid,
         .closeAppeal,
         .createVotes,
         .castVote,
+        .manageEvents,
+        .manageModules,
         .assignSlot,
         .bookSlot,
         .approveSlotSwap,
@@ -35,10 +39,14 @@ extension Permission {
         "modifyMembers",
         "assignRoles",
         "removeMember",
+        "issueFine",
         "voidFine",
+        "markFinePaid",
         "closeAppeal",
         "createVotes",
         "castVote",
+        "manageEvents",
+        "manageModules",
         "assignSlot",
         "bookSlot",
         "approveSlotSwap",
@@ -71,10 +79,14 @@ extension Permission {
         case .modifyMembers: return "modifyMembers"
         case .assignRoles: return "assignRoles"
         case .removeMember: return "removeMember"
+        case .issueFine: return "issueFine"
         case .voidFine: return "voidFine"
+        case .markFinePaid: return "markFinePaid"
         case .closeAppeal: return "closeAppeal"
         case .createVotes: return "createVotes"
         case .castVote: return "castVote"
+        case .manageEvents: return "manageEvents"
+        case .manageModules: return "manageModules"
         case .assignSlot: return "assignSlot"
         case .bookSlot: return "bookSlot"
         case .approveSlotSwap: return "approveSlotSwap"
@@ -99,10 +111,14 @@ extension Permission {
         case "modifyMembers": return .modifyMembers
         case "assignRoles": return .assignRoles
         case "removeMember": return .removeMember
+        case "issueFine": return .issueFine
         case "voidFine": return .voidFine
+        case "markFinePaid": return .markFinePaid
         case "closeAppeal": return .closeAppeal
         case "createVotes": return .createVotes
         case "castVote": return .castVote
+        case "manageEvents": return .manageEvents
+        case "manageModules": return .manageModules
         case "assignSlot": return .assignSlot
         case "bookSlot": return .bookSlot
         case "approveSlotSwap": return .approveSlotSwap

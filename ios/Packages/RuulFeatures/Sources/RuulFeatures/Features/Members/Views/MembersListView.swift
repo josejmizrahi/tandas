@@ -29,7 +29,10 @@ public struct MembersListView: View {
                                     MemberDetailView(
                                         memberWithProfile: row,
                                         group: coordinator.group,
-                                        isCurrentUser: row.member.userId == coordinator.actorUserId
+                                        isCurrentUser: row.member.userId == coordinator.actorUserId,
+                                        canManageRoles: coordinator.canManageRoles,
+                                        founderCount: coordinator.founderCount,
+                                        adminCount: coordinator.adminCount
                                     )
                                 } label: {
                                     memberRow(row)
@@ -47,13 +50,7 @@ public struct MembersListView: View {
                 }
             }
         }
-        .navigationTitle("Miembros (\(coordinator.activeMembers.count))")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
-        }
+        .ruulSheetToolbar("Miembros (\(coordinator.activeMembers.count))")
         .task { await coordinator.refresh() }
     }
 

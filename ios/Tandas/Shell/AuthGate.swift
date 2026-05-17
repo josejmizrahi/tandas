@@ -119,15 +119,45 @@ struct AuthGate: View {
     }
 }
 
+/// First frame the user sees while `AppState.start()` resuelve sesión,
+/// perfil y grupos. Antes era un `ProgressView` solitario sobre
+/// `ruulBackground` — lectura de loading, no de bienvenida. Ahora:
+///   - wordmark "ruul" centrado en `displayLarge` (typography brand).
+///   - breathing scale (0.96 → 1.04) que honra `Reduce Motion`.
+///   - progress sutil al pie para señalar que algo pasa, sin protagonismo.
+/// El splash se descarta tan pronto como `AuthGate` decide rama
+/// (sign-in / onboarding / shell); típicamente <1 s.
 struct BootstrappingView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var breathing = false
 
     var body: some View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
-            ProgressView()
-                .controlSize(.large)
-                .tint(Color.ruulAccent)
+            VStack(spacing: RuulSpacing.lg) {
+                Spacer()
+                Text("ruul")
+                    .ruulTextStyle(RuulTypography.displayLarge)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .scaleEffect(breathing ? 1.04 : 0.96)
+                    .opacity(breathing ? 1.0 : 0.85)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(Color.ruulTextTertiary)
+                    .padding(.bottom, RuulSpacing.xxl)
+            }
+        }
+        .onAppear {
+            guard !reduceMotion else {
+                breathing = true
+                return
+            }
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                breathing = true
+            }
         }
     }
 }

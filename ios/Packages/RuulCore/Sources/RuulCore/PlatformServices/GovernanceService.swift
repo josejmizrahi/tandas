@@ -38,10 +38,26 @@ public extension GovernanceServiceProtocol {
         member: Member,
         in group: Group
     ) async throws -> Bool {
-        guard let role = group.roleDefinition(for: member.role) else {
+        // Mirror of mig 00228 server semantics: aggregate the union of
+        // permissions across every role the member holds (jsonb array
+        // takes precedence; legacy `role` text is the fallback when
+        // the array is empty).
+        let catalog = group.effectiveRoles
+        let candidates: [String]
+        if !member.rawRoles.isEmpty {
+            candidates = member.rawRoles
+        } else if !member.role.isEmpty {
+            candidates = [member.role]
+        } else {
             return false
         }
-        return role.grants(permission)
+        for rawRoleId in candidates {
+            let normalized = rawRoleId == "admin" ? "founder" : rawRoleId
+            if let def = catalog[normalized], def.grants(permission) {
+                return true
+            }
+        }
+        return false
     }
 }
 

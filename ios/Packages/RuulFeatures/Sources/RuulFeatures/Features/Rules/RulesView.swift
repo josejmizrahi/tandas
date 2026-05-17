@@ -44,8 +44,11 @@ public struct RulesView: View {
     /// where the builder is hidden behind the same gating as the pencil.
     public let ruleTemplateRepo: (any RuleTemplateRepository)?
 
-    /// Beta 1 builder sheet presentation handle.
-    @State private var builderCoord: RuleBuilderCoordinator?
+    /// Free-composition composer presentation handle. Replaces the
+    /// previous template-wizard (RuleBuilderCoordinator) — templates
+    /// are now offered inside the composer as starter examples, not as
+    /// the only entry point.
+    @State private var composerCoord: RuleComposerCoordinator?
 
     public init(
         coordinator: RulesCoordinator,
@@ -72,17 +75,21 @@ public struct RulesView: View {
     /// Becomes true when the user is admin AND the builder dependencies
     /// are wired (live mode). Hidden in preview/mock where repo is nil.
     private var canShowBuilder: Bool {
-        coordinator.canEditRules
-        && ruleTemplateRepo != nil
-        && !ruleTemplates.isEmpty
+        coordinator.canEditRules && ruleTemplateRepo != nil
     }
 
     private func openBuilder() {
-        guard let repo = ruleTemplateRepo, !ruleTemplates.isEmpty else { return }
-        builderCoord = RuleBuilderCoordinator(
+        guard let repo = ruleTemplateRepo else { return }
+        // Group-level composer: no resource_type filter; all curated
+        // templates surface as starter examples (the user can ignore
+        // them and compose from scratch).
+        composerCoord = RuleComposerCoordinator(
             group: coordinator.group,
-            templates: ruleTemplates,
-            repo: repo
+            shapeRegistry: app.ruleShapeRegistry,
+            repo: repo,
+            scope: .group,
+            resourceType: nil,
+            starterTemplates: ruleTemplates
         )
     }
 
@@ -135,11 +142,15 @@ public struct RulesView: View {
         .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
         .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
-        .fullScreenCover(item: $builderCoord) { coord in
-            RuleBuilderView(coord: coord) {
-                builderCoord = nil
-                Task { await coordinator.refresh() }
-            }
+        .fullScreenCover(item: $composerCoord) { coord in
+            RuleComposerView(
+                coord: coord,
+                onPublished: { _ in
+                    composerCoord = nil
+                    Task { await coordinator.refresh() }
+                },
+                onCancel: { composerCoord = nil }
+            )
         }
     }
 
@@ -197,7 +208,7 @@ public struct RulesView: View {
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Editar reglas")
+                .accessibilityLabel("Editar acuerdos")
             }
         }
         .padding(.top, RuulSpacing.xs)
@@ -221,14 +232,14 @@ public struct RulesView: View {
             Text("Sin acuerdos")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Este grupo aún no tiene reglas configuradas. Empieza eligiendo una plantilla del catálogo.")
+            Text("Este grupo aún no tiene acuerdos configurados. Empieza componiendo uno desde cero o cargando un ejemplo.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
             if canShowBuilder {
                 Button(action: openBuilder) {
-                    Label("Crear primera regla", systemImage: "plus.circle.fill")
+                    Label("Crear primer acuerdo", systemImage: "plus.circle.fill")
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulAccent)
                         .padding(.vertical, RuulSpacing.sm)
@@ -369,7 +380,7 @@ public struct RulesView: View {
     }
 
     private var footnote: some View {
-        Text("Las reglas se aplican automáticamente cuando ocurre el evento que las dispara. Pronto vas a poder editarlas y agregar más.")
+        Text("Los acuerdos se aplican automáticamente cuando ocurre el evento que los dispara. Pronto vas a poder editarlos y agregar más.")
             .ruulTextStyle(RuulTypography.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .padding(.top, RuulSpacing.sm)

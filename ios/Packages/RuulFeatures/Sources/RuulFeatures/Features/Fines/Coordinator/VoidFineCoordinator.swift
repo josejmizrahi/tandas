@@ -98,7 +98,7 @@ public final class VoidFineCoordinator {
             return "Tu sesión expiró. Volvé a entrar."
         }
         if raw.contains("only admins") {
-            return "Solo admins pueden anular multas."
+            return "Solo fundadores pueden anular multas."
         }
         if raw.contains("cannot void fine with status") {
             return "Esta multa ya no se puede anular (estado: \(fine.status.displayLabel))"

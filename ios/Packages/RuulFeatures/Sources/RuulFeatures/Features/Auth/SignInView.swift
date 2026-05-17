@@ -75,14 +75,26 @@ public struct SignInView: View {
     }
 
     @State private var phoneE164: String = ""
+    @State private var emailInput: String = ""
     @State private var otpCode: String = ""
     @State private var step: Step = .start
+    @State private var inputMode: InputMode = .phone
     @State private var nonce: String = AppleNonceGen.generate()
     @State private var error: String?
     @State private var isLoading: Bool = false
     @State private var hasOTPError: Bool = false
+    /// Seconds remaining before "Reenviar código" becomes tappable. Reset
+    /// to 30 each time we send/resend; ticks down once per second via the
+    /// `TimelineView` in `otpEntry`.
+    @State private var resendCooldownExpiresAt: Date = .distantPast
 
     public enum Step: Hashable { case start, otp }
+
+    /// OTP input mode. Phone is the V1 default (Mexico-focused); email
+    /// es la tercera opción para usuarios sin Apple ID + sin teléfono
+    /// internacional confiable (UXJourney P1). El usuario flippea con
+    /// el link "o usa correo" / "o usa teléfono" debajo del input.
+    public enum InputMode: Hashable { case phone, email }
 
     public var body: some View {
         ZStack {
@@ -120,9 +132,16 @@ public struct SignInView: View {
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(step == .start
                 ? mode.startSubtitle
-                : "Llega a \(PhoneFormatter.displayFormat(phoneE164)). Pégalo aquí.")
+                : otpStepSubtitle)
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
+        }
+    }
+
+    private var otpStepSubtitle: String {
+        switch inputMode {
+        case .phone: return "Llega a \(PhoneFormatter.displayFormat(phoneE164)). Pégalo aquí."
+        case .email: return "Lo enviamos a \(emailInput). Pégalo aquí."
         }
     }
 
@@ -132,12 +151,77 @@ public struct SignInView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             appleButton
             divider
-            phoneSection
+            otpInputSection
             if let error {
                 Text(error)
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
+        }
+    }
+
+    /// Combines the phone or email field plus the "Enviar código" CTA
+    /// and the inputMode toggle. Antes era phoneSection hard-coded;
+    /// ahora switchea entre los dos modes inline.
+    @ViewBuilder
+    private var otpInputSection: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            switch inputMode {
+            case .phone: phoneField
+            case .email: emailField
+            }
+            RuulButton(
+                "Enviar código",
+                style: .primary,
+                size: .large,
+                isLoading: isLoading,
+                fillsWidth: true,
+                action: sendOTP
+            )
+            .disabled(!canSendOTP)
+            inputModeToggle
+        }
+    }
+
+    private var phoneField: some View {
+        RuulPhoneField(
+            text: $phoneInput,
+            label: "Tu número",
+            error: nil
+        )
+    }
+
+    private var emailField: some View {
+        RuulTextField(
+            "tu@correo.com",
+            text: $emailInput,
+            label: "Tu correo",
+            style: .email
+        )
+    }
+
+    private var inputModeToggle: some View {
+        Button {
+            withAnimation(.ruulSnappy) {
+                inputMode = (inputMode == .phone) ? .email : .phone
+                error = nil
+            }
+        } label: {
+            Text(inputMode == .phone ? "o usa correo" : "o usa teléfono")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulAccent)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.top, RuulSpacing.xs)
+    }
+
+    private var canSendOTP: Bool {
+        switch inputMode {
+        case .phone: return !phoneInput.trimmingCharacters(in: .whitespaces).isEmpty
+        case .email:
+            let trimmed = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.contains("@") && trimmed.contains(".")
         }
     }
 
@@ -163,24 +247,8 @@ public struct SignInView: View {
         }
     }
 
-    private var phoneSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulPhoneField(
-                text: $phoneInput,
-                label: "Tu número",
-                error: nil
-            )
-            RuulButton(
-                "Enviar código",
-                style: .primary,
-                size: .large,
-                isLoading: isLoading,
-                fillsWidth: true,
-                action: sendOTP
-            )
-            .disabled(phoneInput.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
-    }
+    // phoneSection legacy — reemplazado por otpInputSection que switchea
+    // entre phoneField y emailField según inputMode.
 
     // MARK: - OTP step
 
@@ -194,6 +262,7 @@ public struct SignInView: View {
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
+            resendRow
             HStack(spacing: RuulSpacing.sm) {
                 RuulButton("Atrás", style: .secondary, size: .medium) {
                     step = .start
@@ -215,17 +284,43 @@ public struct SignInView: View {
         }
     }
 
+    /// Tick once per second so the cooldown copy ("Reenviar en 12 s")
+    /// updates without a Timer publisher. When `remaining <= 0` the row
+    /// flips to an actionable button that re-runs `sendOTP()`.
+    private var resendRow: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = max(0, Int(resendCooldownExpiresAt.timeIntervalSince(context.date).rounded(.up)))
+            HStack(spacing: RuulSpacing.xs) {
+                Text("¿No te llegó?")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                if remaining > 0 {
+                    Text("Reenviar en \(remaining) s")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                } else {
+                    Button("Reenviar código") { resendOTP() }
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulAccent)
+                        .buttonStyle(.plain)
+                        .disabled(isLoading)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
     // MARK: - Create account link
 
     private var createAccountLink: some View {
         HStack(spacing: RuulSpacing.xs) {
-            Text("¿No tienes cuenta?")
+            Text("¿Empezar de cero?")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button {
                 createNewAccount()
             } label: {
-                Text("Crear nueva")
+                Text("Crear grupo nuevo")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulAccent)
             }
@@ -249,6 +344,13 @@ public struct SignInView: View {
     }
 
     private func sendOTP() {
+        switch inputMode {
+        case .phone: sendPhoneOTPFlow()
+        case .email: sendEmailOTPFlow()
+        }
+    }
+
+    private func sendPhoneOTPFlow() {
         guard let e164 = PhoneFormatter.smartE164(phoneInput) else {
             error = "Número inválido."
             return
@@ -264,6 +366,7 @@ public struct SignInView: View {
                     step = .otp
                     otpCode = ""
                     hasOTPError = false
+                    resendCooldownExpiresAt = Date().addingTimeInterval(30)
                 }
             } catch {
                 await MainActor.run {
@@ -279,6 +382,91 @@ public struct SignInView: View {
         }
     }
 
+    private func sendEmailOTPFlow() {
+        let email = emailInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard email.contains("@"), email.contains(".") else {
+            error = "Correo inválido."
+            return
+        }
+        emailInput = email
+        error = nil
+        isLoading = true
+        Task {
+            defer { Task { @MainActor in isLoading = false } }
+            do {
+                try await app.auth.sendEmailOTP(email)
+                await MainActor.run {
+                    step = .otp
+                    otpCode = ""
+                    hasOTPError = false
+                    resendCooldownExpiresAt = Date().addingTimeInterval(30)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "No pudimos enviar el código. \(error.ruulUserMessage)"
+                }
+                let beta = BetaAnalytics(analytics: app.analytics)
+                await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
+            }
+        }
+    }
+
+    /// Re-issues an OTP. Switchea entre phone/email según el mode
+    /// activo cuando el usuario presionó Enviar. Disabled by
+    /// `resendRow` hasta el cooldown 30s elapse.
+    private func resendOTP() {
+        guard !isLoading else { return }
+        switch inputMode {
+        case .phone where !phoneE164.isEmpty: resendPhoneOTP()
+        case .email where !emailInput.isEmpty: resendEmailOTP()
+        default: break
+        }
+    }
+
+    private func resendPhoneOTP() {
+        error = nil
+        hasOTPError = false
+        isLoading = true
+        Task {
+            defer { Task { @MainActor in isLoading = false } }
+            do {
+                try await app.auth.sendPhoneOTP(phoneE164)
+                await MainActor.run {
+                    otpCode = ""
+                    resendCooldownExpiresAt = Date().addingTimeInterval(30)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "No pudimos reenviar el código. \(error.ruulUserMessage)"
+                }
+                let beta = BetaAnalytics(analytics: app.analytics)
+                await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
+            }
+        }
+    }
+
+    private func resendEmailOTP() {
+        error = nil
+        hasOTPError = false
+        isLoading = true
+        Task {
+            defer { Task { @MainActor in isLoading = false } }
+            do {
+                try await app.auth.sendEmailOTP(emailInput)
+                await MainActor.run {
+                    otpCode = ""
+                    resendCooldownExpiresAt = Date().addingTimeInterval(30)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "No pudimos reenviar el código. \(error.ruulUserMessage)"
+                }
+                let beta = BetaAnalytics(analytics: app.analytics)
+                await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
+            }
+        }
+    }
+
     private func verifyOTP(_ code: String) {
         guard code.count == 6, !isLoading else { return }
         isLoading = true
@@ -286,7 +474,12 @@ public struct SignInView: View {
         Task {
             defer { Task { @MainActor in isLoading = false } }
             do {
-                _ = try await app.auth.verifyPhoneOTP(phoneE164, code: code)
+                switch inputMode {
+                case .phone:
+                    _ = try await app.auth.verifyPhoneOTP(phoneE164, code: code)
+                case .email:
+                    _ = try await app.auth.verifyEmailOTP(emailInput, code: code)
+                }
                 // Success: LiveAuthService propagates the session via
                 // sessionStream → AppState.session updates → AuthGate routes
                 // to MainTabView. No navigation needed here.
