@@ -39,6 +39,13 @@ public final class RuleComposerCoordinator: Identifiable {
     public let shapeRegistry: RuleShapeRegistry
     public let resourceType: String?
 
+    /// When non-nil, the composer is editing an existing rule in place:
+    /// publish() routes to `bumpRuleVersion` (preserving rule_id +
+    /// slug + scope) instead of `publishRuleComposition` (which creates
+    /// a fresh rule). Set by the `init(group:…, editing:)` initializer.
+    /// Closes §22.1 of Governance.md.
+    public let editingRuleId: UUID?
+
     /// Optional list of curated templates the caller surfaces as
     /// starter examples. When empty, the composer hides the "Cargar
     /// ejemplo" action. The caller is responsible for filtering by
@@ -67,6 +74,7 @@ public final class RuleComposerCoordinator: Identifiable {
         self.repo = repo
         self.resourceType = resourceType
         self.starterTemplates = starterTemplates
+        self.editingRuleId = nil
         self.draft = RuleDraft(scope: scope)
     }
 
@@ -87,7 +95,30 @@ public final class RuleComposerCoordinator: Identifiable {
         self.repo = repo
         self.resourceType = resourceType
         self.starterTemplates = starterTemplates
+        self.editingRuleId = nil
         self.draft = draft
+    }
+
+    /// Open the composer in edit-in-place mode: seeded from an
+    /// existing rule's composition, and publish() will bump the
+    /// rule's version instead of creating a new one. The scope is
+    /// preserved server-side from the rule's active rule_version
+    /// (§22.1 / mig 00247) — the draft's scope is just an editor
+    /// hint, not the persisted source of truth.
+    public init(
+        group: Group,
+        shapeRegistry: RuleShapeRegistry,
+        repo: any RuleTemplateRepository,
+        editing rule: GroupRule,
+        resourceType: String? = nil
+    ) {
+        self.group = group
+        self.shapeRegistry = shapeRegistry
+        self.repo = repo
+        self.resourceType = resourceType
+        self.starterTemplates = []
+        self.editingRuleId = rule.id
+        self.draft = RuleDraft.from(rule: rule)
     }
 
     /// Replace the current draft with one seeded from a curated
@@ -202,7 +233,15 @@ public final class RuleComposerCoordinator: Identifiable {
         error = nil
         defer { isPublishing = false }
         do {
-            let result = try await repo.publishRuleComposition(groupId: group.id, draft: draft)
+            let result: RuleVersionPublishResult
+            if let ruleId = editingRuleId {
+                // Edit-in-place: preserves rule_id, supersedes the
+                // current version, inserts version+1 (§22.1, mig 00247).
+                result = try await repo.bumpRuleVersion(ruleId: ruleId, draft: draft)
+            } else {
+                // Fresh composition: creates a new rule + version 1.
+                result = try await repo.publishRuleComposition(groupId: group.id, draft: draft)
+            }
             publishResult = result
             return result
         } catch {
@@ -257,6 +296,12 @@ public final class RuleComposerCoordinator: Identifiable {
         if raw.contains("not found") {
             return "Una pieza de la regla ya no está disponible en el catálogo."
         }
-        return "No pudimos crear la regla. Intenta de nuevo."
+        if raw.contains("no active version") {
+            return "Esta regla está desactivada y no puede editarse desde aquí."
+        }
+        if raw.contains("already exists in this group") {
+            return "Ya existe un acuerdo con ese identificador en el grupo. Usa otro."
+        }
+        return "No pudimos guardar la regla. Intenta de nuevo."
     }
 }

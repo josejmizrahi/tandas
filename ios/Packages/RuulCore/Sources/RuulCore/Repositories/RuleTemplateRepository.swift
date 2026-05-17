@@ -62,6 +62,21 @@ public protocol RuleTemplateRepository: Actor {
         groupId: UUID,
         draft: RuleDraft
     ) async throws -> RuleVersionPublishResult
+
+    /// Edits an existing rule in place: supersedes the active
+    /// rule_version and inserts a new one with version+1 + same
+    /// `rule_id`. Preserves slug + scope; only trigger / conditions /
+    /// consequences (and name) change. Powers the §22.1 edit flow.
+    ///
+    /// Server-side (mig 00247) validates `has_permission('modifyRules')`,
+    /// shape compatibility against the rule's preserved scope, and
+    /// re-runs conflict detection excluding the version being
+    /// superseded. Returns the same envelope as publish, with
+    /// `rule_id` unchanged.
+    func bumpRuleVersion(
+        ruleId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult
 }
 
 public extension RuleTemplateRepository {
@@ -146,6 +161,10 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
     }
 
     public private(set) var lastCompositionCall: (groupId: UUID, draft: RuleDraft)?
+    public private(set) var lastBumpCall: (ruleId: UUID, draft: RuleDraft)?
+    /// Per-ruleId version counter to make bumps look incremental in
+    /// previews/tests. Persists across calls.
+    private var bumpVersionCounter: [UUID: Int] = [:]
 
     public func publishRuleComposition(
         groupId: UUID,
@@ -160,6 +179,26 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
             ruleId: UUID(),
             ruleVersionId: UUID(),
             version: 1,
+            conflicts: []
+        )
+    }
+
+    public func bumpRuleVersion(
+        ruleId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        if let err = nextPublishError { nextPublishError = nil; throw err }
+        lastBumpCall = (ruleId, draft)
+        guard draft.isPublishable else {
+            throw RuleTemplateError.rpcFailed("draft is incomplete (name/trigger/consequence missing)")
+        }
+        let nextVersion = (bumpVersionCounter[ruleId] ?? 1) + 1
+        bumpVersionCounter[ruleId] = nextVersion
+        return RuleVersionPublishResult(
+            ruleId: ruleId,
+            ruleVersionId: UUID(),
+            version: nextVersion,
+            slug: draft.slug,
             conflicts: []
         )
     }
@@ -472,6 +511,49 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         do {
             return try await client
                 .rpc("publish_rule_composition", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RuleTemplateError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func bumpRuleVersion(
+        ruleId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        guard let triggerInstance = draft.trigger else {
+            throw RuleTemplateError.rpcFailed("draft has no trigger")
+        }
+        guard !draft.consequences.isEmpty else {
+            throw RuleTemplateError.rpcFailed("draft has no consequences")
+        }
+
+        struct ShapePayload: Encodable {
+            let shape_id: String
+            let config: JSONConfig
+        }
+        struct Params: Encodable {
+            let p_rule_id: String
+            let p_name: String
+            let p_trigger: ShapePayload
+            let p_conditions: [ShapePayload]
+            let p_consequences: [ShapePayload]
+            let p_change_reason: String?
+        }
+
+        let params = Params(
+            p_rule_id: ruleId.uuidString.lowercased(),
+            p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config),
+            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason
+        )
+
+        do {
+            return try await client
+                .rpc("bump_rule_version", params: params)
                 .execute()
                 .value
         } catch {

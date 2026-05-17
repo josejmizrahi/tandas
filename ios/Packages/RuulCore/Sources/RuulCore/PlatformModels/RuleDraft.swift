@@ -201,4 +201,66 @@ extension RuleDraft {
             consequences: consequences
         )
     }
+
+    /// Seed a draft from an existing published rule — the edit-in-place
+    /// path. Preserves the rule's slug + scope + name + composition so
+    /// `bumpRuleVersion` can publish the modified draft as version N+1
+    /// of the SAME rule_id (closing §22.1 of Governance.md).
+    ///
+    /// Lossiness: `GroupRule.ConsequenceEnvelope.Config` is a typed
+    /// view-model struct (amount / baseAmount / stepAmount / stepMinutes)
+    /// — only the fine-shape's config fields are preserved through that
+    /// type. For non-fine consequences whose extra config fields the
+    /// view-model dropped, the composer will show the shape with its
+    /// defaults; the user can re-set them before bumping. For Beta 1
+    /// where the vast majority of consequences are `fine`, this is
+    /// sufficient. A follow-up could fetch the canonical compiled jsonb
+    /// from `rule_versions` to eliminate the lossiness.
+    public static func from(rule: GroupRule) -> RuleDraft {
+        let triggerInstance = ShapeInstance(
+            shapeId: rule.trigger.eventType.rawString,
+            config: rule.trigger.config
+        )
+        let conditions = rule.conditions.map { c in
+            ShapeInstance(shapeId: c.type.rawString, config: c.config)
+        }
+        let consequences = rule.consequences.compactMap { env -> ShapeInstance? in
+            guard let typeName = env.type else { return nil }
+            return ShapeInstance(
+                shapeId: typeName,
+                config: reconstructConfig(from: env.config)
+            )
+        }
+        let scope = scopeFrom(rule: rule)
+        return RuleDraft(
+            name: rule.name,
+            scope: scope,
+            trigger: triggerInstance,
+            conditions: conditions,
+            consequences: consequences,
+            slug: rule.slug
+        )
+    }
+
+    private static func reconstructConfig(from cfg: GroupRule.ConsequenceEnvelope.Config?) -> JSONConfig {
+        guard let cfg else { return .object([:]) }
+        var dict: [String: JSONConfig] = [:]
+        if let amount = cfg.amount             { dict["amount"]      = .int(amount) }
+        if let baseAmount = cfg.baseAmount     { dict["baseAmount"]  = .int(baseAmount) }
+        if let stepAmount = cfg.stepAmount     { dict["stepAmount"]  = .int(stepAmount) }
+        if let stepMinutes = cfg.stepMinutes   { dict["stepMinutes"] = .int(stepMinutes) }
+        return .object(dict)
+    }
+
+    private static func scopeFrom(rule: GroupRule) -> RuleTemplateScope {
+        if let resourceId = rule.resourceId { return .resource(resourceId) }
+        if let seriesId   = rule.seriesId   { return .series(seriesId) }
+        return .group
+        // membership + module scopes are §22.5 follow-ups — the picker
+        // doesn't surface them yet, so when bumping a membership- or
+        // module-scoped rule we fall through to group. The bump RPC
+        // preserves the actual scope from the active rule_version's
+        // compiled jsonb, so this draft-side scope is just the editor
+        // hint; the persisted scope stays correct.
+    }
 }

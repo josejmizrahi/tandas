@@ -46,21 +46,24 @@ public struct RuleComposerView: View {
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
-            .navigationTitle("Componer regla")
+            .navigationTitle(coord.editingRuleId == nil ? "Componer regla" : "Editar regla")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar", action: onCancel)
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    if !coord.starterTemplates.isEmpty {
+                    // "Ejemplo" only makes sense when starting fresh.
+                    // In edit mode, the rule already exists — loading an
+                    // example would overwrite the user's work in progress.
+                    if coord.editingRuleId == nil && !coord.starterTemplates.isEmpty {
                         Button { showStarterPicker = true } label: {
                             Label("Ejemplo", systemImage: "lightbulb")
                         }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Publicar") {
+                    Button(coord.editingRuleId == nil ? "Publicar" : "Guardar") {
                         Task {
                             if let result = await coord.publish() {
                                 onPublished(result)
