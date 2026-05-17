@@ -39,6 +39,16 @@ public struct CreateGeneralProposalSheet: View {
                     Text("La votación cerrará automáticamente.")
                 }
 
+                Section {
+                    Toggle("Voto anónimo", isOn: $coordinator.isAnonymous)
+                } footer: {
+                    // Backend (start_vote RPC p_is_anonymous) ya soporta
+                    // el modo; el wire del toggle es solo UI.
+                    Text(coordinator.isAnonymous
+                        ? "Solo se publicarán los conteos. Nadie sabrá quién votó qué."
+                        : "El grupo verá quién votó qué — transparencia por defecto.")
+                }
+
                 if let error = coordinator.error {
                     Section {
                         Text(error)

@@ -94,7 +94,8 @@ public final class CreateMemberRemovalCoordinator {
                 referenceId: target.member.userId,
                 title: title,
                 description: trimmedReason,
-                payload: payload
+                payload: payload,
+                isAnonymous: false
             )
             createdVoteId = voteId
         } catch {

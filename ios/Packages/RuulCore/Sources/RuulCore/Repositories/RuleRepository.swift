@@ -538,7 +538,8 @@ public actor InterceptingRuleRepository: RuleRepository {
                     referenceId: ruleId,
                     title: isActive ? "Activar regla" : "Desactivar regla",
                     description: nil,
-                    payload: payload
+                    payload: payload,
+                    isAnonymous: false
                 )
                 _ = (q, t)  // quorum/threshold are server-driven via the vote row
                 return .vote(voteId: voteId)
@@ -591,7 +592,8 @@ public actor InterceptingRuleRepository: RuleRepository {
                     referenceId: rule.id,
                     title: "Cambiar monto: \(rule.name)",
                     description: nil,
-                    payload: payload
+                    payload: payload,
+                    isAnonymous: false
                 )
                 return .vote(voteId: voteId)
             } catch {

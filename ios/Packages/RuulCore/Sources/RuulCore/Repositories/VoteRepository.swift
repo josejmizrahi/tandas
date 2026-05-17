@@ -27,7 +27,8 @@ public protocol VoteRepository: Actor {
         referenceId: UUID,
         title: String,
         description: String?,
-        payload: JSONConfig
+        payload: JSONConfig,
+        isAnonymous: Bool
     ) async throws -> UUID
 
     /// Forces resolution via `finalize_vote` RPC (normally called by the
@@ -91,7 +92,8 @@ public actor MockVoteRepository: VoteRepository {
         referenceId: UUID,
         title: String,
         description: String?,
-        payload: JSONConfig
+        payload: JSONConfig,
+        isAnonymous: Bool
     ) async throws -> UUID {
         startVoteCalls.append(StartVoteCall(
             groupId: groupId,
@@ -115,7 +117,7 @@ public actor MockVoteRepository: VoteRepository {
             resolvedAt: nil,
             quorumPercent: 50,
             thresholdPercent: 50,
-            isAnonymous: true,
+            isAnonymous: isAnonymous,
             status: .open,
             counts: nil,
             payload: payload
@@ -201,7 +203,8 @@ public actor LiveVoteRepository: VoteRepository {
         referenceId: UUID,
         title: String,
         description: String?,
-        payload: JSONConfig
+        payload: JSONConfig,
+        isAnonymous: Bool
     ) async throws -> UUID {
         struct Params: Encodable {
             let p_group_id: String
@@ -210,6 +213,7 @@ public actor LiveVoteRepository: VoteRepository {
             let p_title: String
             let p_description: String?
             let p_payload: JSONConfig
+            let p_is_anonymous: Bool
         }
         let params = Params(
             p_group_id:     groupId.uuidString.lowercased(),
@@ -217,7 +221,8 @@ public actor LiveVoteRepository: VoteRepository {
             p_reference_id: referenceId.uuidString.lowercased(),
             p_title:        title,
             p_description:  description,
-            p_payload:      payload
+            p_payload:      payload,
+            p_is_anonymous: isAnonymous
         )
         let voteId: UUID = try await client
             .rpc("start_vote", params: params)

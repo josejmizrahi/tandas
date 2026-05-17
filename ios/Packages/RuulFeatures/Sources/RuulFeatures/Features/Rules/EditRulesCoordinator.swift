@@ -237,7 +237,8 @@ public final class EditRulesCoordinator {
                 referenceId: rule.id,
                 title: "Archivar: \(rule.name)",
                 description: nil,
-                payload: JSONConfig.empty
+                payload: JSONConfig.empty,
+                isAnonymous: false
             )
             await refresh()
         } catch {
