@@ -73,4 +73,10 @@ private actor ThrowingTokenRepo: NotificationTokenRepository {
     func revokeToken(_ token: String) async throws {
         throw Boom()
     }
+    func listMyDevices() async throws -> [NotificationDevice] {
+        fatalError("not used in SignOutRevokesTokenTests")
+    }
+    func revoke(deviceId: UUID) async throws {
+        fatalError("not used in SignOutRevokesTokenTests")
+    }
 }
