@@ -496,6 +496,13 @@ public final class AppState {
             pendingRuleChangeDeepLink = ruleLink
         } else if let link = EventDeepLink(url: url) {
             pendingEventDeepLink = link
+        } else if let link = ResourceDeepLink(url: url) {
+            // Polymorphic resource link (fund/asset/slot/space/right) —
+            // los 5 tipos non-event que antes no tenían handler. El
+            // detail polimórfico (ResourceDetailSheet) hidrata el
+            // chrome correcto. Reusamos pendingEventDeepLink ya que
+            // ambos terminan en el mismo router.openResource(id:).
+            pendingEventDeepLink = EventDeepLink(eventId: link.resourceId)
         }
     }
 
@@ -514,6 +521,8 @@ public final class AppState {
         // Legacy fallback
         if let link = EventDeepLink(userInfo: userInfo) {
             pendingEventDeepLink = link
+        } else if let link = ResourceDeepLink(userInfo: userInfo) {
+            pendingEventDeepLink = EventDeepLink(eventId: link.resourceId)
         }
     }
 
