@@ -73,7 +73,7 @@ public struct RoleDefinition: Sendable, Hashable, Codable, Identifiable {
             permissions: [
                 .modifyGovernance, .modifyRules, .modifyMembers,
                 .assignRoles, .removeMember, .voidFine,
-                .closeAppeal, .createVotes
+                .closeAppeal, .createVotes, .expenseSubmit
             ],
             system: true
         ),
