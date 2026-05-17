@@ -11,6 +11,27 @@ public struct MyFinesView: View {
     @Bindable var coordinator: MyFinesCoordinator
     public let onOpenFine: (Fine) -> Void
 
+    /// Time scope filter. Default `.all` para no esconder data; "Este mes"
+    /// resulta natural para tracking de gasto mensual recurrente.
+    @State private var scope: FineScope = .all
+
+    enum FineScope: String, CaseIterable, Identifiable {
+        case all      = "Todo"
+        case thisMonth = "Este mes"
+        var id: String { rawValue }
+        var label: String { rawValue }
+
+        func includes(_ fine: Fine, now: Date = .now) -> Bool {
+            switch self {
+            case .all: return true
+            case .thisMonth:
+                let cal = Calendar.current
+                let monthStart = cal.dateInterval(of: .month, for: now)?.start ?? now
+                return fine.createdAt >= monthStart
+            }
+        }
+    }
+
     public init(coordinator: MyFinesCoordinator, onOpenFine: @escaping (Fine) -> Void) {
         self.coordinator = coordinator
         self.onOpenFine = onOpenFine
@@ -32,6 +53,7 @@ public struct MyFinesView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             header
+                            scopeChips
                             pendingSection
                             resolvedSection
                         }
@@ -100,11 +122,55 @@ public struct MyFinesView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Time scope filter chips. Solo renderiza si hay fines visibles —
+    /// para empty state no agrega ruido. Layout: HStack horizontal de
+    /// pills compactos (Apple Sports pattern).
+    @ViewBuilder
+    private var scopeChips: some View {
+        if !coordinator.fines.isEmpty {
+            HStack(spacing: RuulSpacing.xs) {
+                ForEach(FineScope.allCases) { s in
+                    scopeChip(s)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func scopeChip(_ s: FineScope) -> some View {
+        Button {
+            withAnimation(.ruulSnappy) { scope = s }
+        } label: {
+            Text(s.label)
+                .ruulTextStyle(RuulTypography.callout)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.vertical, RuulSpacing.xs)
+                .background(
+                    Capsule()
+                        .fill(scope == s ? Color.ruulAccent : Color.ruulSurface)
+                )
+                .foregroundStyle(scope == s ? Color.ruulTextInverse : Color.ruulTextSecondary)
+                .overlay(
+                    Capsule()
+                        .stroke(scope == s ? Color.clear : Color.ruulSeparator, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var filteredPending: [Fine] {
+        coordinator.pending.filter { scope.includes($0) }
+    }
+
+    private var filteredResolved: [Fine] {
+        coordinator.resolved.filter { scope.includes($0) }
+    }
+
     @ViewBuilder
     private var pendingSection: some View {
-        if !coordinator.pending.isEmpty {
-            section(title: "POR RESOLVER", count: coordinator.pending.count) {
-                RuulSeparatedRows(items: coordinator.pending) { fine in
+        if !filteredPending.isEmpty {
+            section(title: "POR RESOLVER", count: filteredPending.count) {
+                RuulSeparatedRows(items: filteredPending) { fine in
                     FineCard(
                         fine: fine,
                         ruleName: nil,
@@ -122,19 +188,31 @@ public struct MyFinesView: View {
                 message: "No tienes multas en este momento. Sigue así."
             )
             .padding(.top, RuulSpacing.lg)
+        } else if !coordinator.isLoading && filteredPending.isEmpty && scope != .all {
+            // Filtered to empty subset: distinct from "sin multas
+            // totales". Mantiene scopeChips visible para volver.
+            Text("Sin multas en este periodo.")
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, RuulSpacing.lg)
         }
     }
 
     @ViewBuilder
     private var resolvedSection: some View {
-        if !coordinator.resolved.isEmpty {
-            section(title: "HISTORIAL", count: coordinator.resolved.count) {
-                RuulSeparatedRows(items: coordinator.resolved) { fine in
+        if !filteredResolved.isEmpty {
+            section(title: "HISTORIAL", count: filteredResolved.count) {
+                // Compact rows: el historial no necesita el chrome del
+                // pending card (status + divider + monto grande). Sólo
+                // nombre + grupo (si cross-group) + monto pequeño.
+                RuulSeparatedRows(items: filteredResolved) { fine in
                     FineCard(
                         fine: fine,
                         ruleName: nil,
                         eventTitle: nil,
-                        groupName: coordinator.groupsById.count > 1 ? coordinator.groupName(for: fine) : nil
+                        groupName: coordinator.groupsById.count > 1 ? coordinator.groupName(for: fine) : nil,
+                        compact: true
                     ) {
                         onOpenFine(fine)
                     }
