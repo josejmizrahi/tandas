@@ -26,6 +26,23 @@ import RuulCore
 /// `availableTriggers`, `availableConditions`, `availableConsequences`
 /// return only shapes the catalog (rule_shapes) declares compatible
 /// with the current `draft.scope` + resolved resource type.
+/// Pickable target option for a consequence (§22.3 / mig 00249).
+/// Mirrors the server vocabulary in `validate_consequence_target`:
+/// `selector` is the literal string the server expects (or nil for
+/// the default actor); `label` + `icon` drive the iOS picker.
+public struct ConsequenceTargetOption: Identifiable, Hashable, Sendable {
+    public var id: String { selector ?? "$trigger.actor" }
+    public let selector: String?
+    public let label: String
+    public let icon: String
+
+    public init(selector: String?, label: String, icon: String) {
+        self.selector = selector
+        self.label = label
+        self.icon = icon
+    }
+}
+
 @Observable @MainActor
 public final class RuleComposerCoordinator: Identifiable {
     public nonisolated let id = UUID()
@@ -233,6 +250,56 @@ public final class RuleComposerCoordinator: Identifiable {
 
     public func removeException(id: UUID) {
         draft.removeException(id: id)
+    }
+
+    /// Sets the target selector on a specific consequence. See
+    /// `ConsequenceTargetOption` for the Beta-1 vocabulary surfaced by
+    /// `consequenceTargetOptions`.
+    public func setConsequenceTarget(instanceId: UUID, selector: String?) {
+        draft.setConsequenceTarget(id: instanceId, target: selector)
+    }
+
+    /// Targets the user can pick for a consequence. Always includes
+    /// the default actor. Includes `$resource.host` when the draft's
+    /// scope is .resource AND the resource is an event (only event
+    /// metadata carries host_id today). Includes one entry per custom
+    /// role declared in the group (excluding system founder/member —
+    /// those are too broad as default targets).
+    public var consequenceTargetOptions: [ConsequenceTargetOption] {
+        var opts: [ConsequenceTargetOption] = [
+            .init(selector: nil, label: "Al actor (quien disparó)", icon: "person.fill")
+        ]
+        if case .resource = draft.scope, resourceType == "event" {
+            opts.append(.init(selector: "$resource.host", label: "Al anfitrión del evento", icon: "person.crop.square.badge.camera"))
+        }
+        for role in customRoles {
+            opts.append(.init(
+                selector: "$role.\(role.id)",
+                label: "Al rol: \(role.humanLabel)",
+                icon: "person.2.fill"
+            ))
+        }
+        return opts
+    }
+
+    /// Human-readable label for a consequence's currently-set target.
+    /// Falls back to the raw selector if the option is no longer in the
+    /// catalog (role renamed, etc.).
+    public func targetLabel(forSelector selector: String?) -> String {
+        consequenceTargetOptions.first(where: { $0.selector == selector })?.label
+            ?? selector
+            ?? "Al actor (quien disparó)"
+    }
+
+    private var customRoles: [RoleDefinition] {
+        // Read non-system roles from the group's roles jsonb. Founder +
+        // member are system roles (broad scope) — we exclude them from
+        // the picker to keep options curated. role.system flag comes
+        // from the jsonb's "system": true marker in groups.roles.
+        let all = group.roles?.values.map { $0 } ?? []
+        return all
+            .filter { !$0.system }
+            .sorted { $0.humanLabel < $1.humanLabel }
     }
 
     public func updateConfig(forShapeInstanceId instanceId: UUID, key: String, value: JSONConfig) {

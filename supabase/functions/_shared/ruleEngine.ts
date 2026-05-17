@@ -15,6 +15,7 @@ import {
   ConsequenceType,
   ExecutionResult,
   Rule,
+  RuleConsequence,
   RuleTarget,
   SystemEvent,
   SystemEventType,
@@ -299,6 +300,25 @@ export interface ConsequenceSink {
    * circuits to false). Plans/Active/AssetRules.md §4.1.
    */
   latestAssetValuationCents(assetId: UUID): Promise<number | null>;
+
+  /**
+   * Returns active `group_members.id` for every member of `group_id`
+   * whose `roles` jsonb array contains `role_id`. Used by the
+   * per-consequence target selector `$role.<role_id>` (mig 00249,
+   * §22.3) to multiplex a consequence — e.g. "notify the treasurer"
+   * fires once per holder. Empty array → no-op consequence (logged
+   * but not failed).
+   */
+  listMembersWithRole(args: { group_id: UUID; role_id: string }): Promise<UUID[]>;
+
+  /**
+   * Returns the `group_members.id` matching the `host_id` user in
+   * `resources.metadata.host_id`. Used by the `$resource.host`
+   * selector for event-scoped consequences. Returns null when:
+   *   - resource has no host_id metadata,
+   *   - the host's user_id doesn't map to an active member.
+   */
+  resolveResourceHostMember(resourceId: UUID): Promise<UUID | null>;
 }
 
 // =============================================================================
@@ -561,7 +581,9 @@ export async function runRulesForEvent(
       if (blockedByException) continue;
 
       // All conditions matched and no exception applied — fire every
-      // consequence.
+      // consequence. mig 00249 / §22.3: each consequence may carry a
+      // `target` selector that re-routes / multiplexes execution to
+      // members different from the trigger's original target.
       for (const cons of rule.consequences) {
         const consFn = CONSEQUENCES[cons.type];
         if (!consFn) {
@@ -575,16 +597,94 @@ export async function runRulesForEvent(
           results.push(failure(rule.id, target.member_id, `unimplemented consequence: ${cons.type}`));
           continue;
         }
-        try {
-          results.push(await consFn(cons, target, rule, context));
-        } catch (e) {
-          results.push(failure(rule.id, target.member_id, `consequence threw: ${(e as Error).message}`));
+        const resolvedTargets = await resolveConsequenceTargets(cons, target, context, rule);
+        if (resolvedTargets.length === 0) {
+          // Selector evaluated to empty set (role with no holders, host
+          // missing). Log and continue — not a failure, just a no-op.
+          logStructured("warn", "consequence target resolved to empty set", {
+            rule_id: rule.id,
+            consequence_type: cons.type,
+            target_selector: cons.target ?? "$trigger.actor",
+          });
+          continue;
+        }
+        for (const resolved of resolvedTargets) {
+          try {
+            results.push(await consFn(cons, resolved, rule, context));
+          } catch (e) {
+            results.push(failure(rule.id, resolved.member_id, `consequence threw: ${(e as Error).message}`));
+          }
         }
       }
     }
   }
 
   return results;
+}
+
+/**
+ * Resolves a consequence's optional target selector to one or more
+ * RuleTargets (mig 00249 / §22.3 Governance.md).
+ *
+ *   undefined / "$trigger.actor" → [originalTarget] (default, no DB)
+ *   "$resource.host"             → host_member_id from resource.metadata
+ *                                  (1 target, or 0 if missing)
+ *   "$role.<role_id>"            → 0..N targets, one per active member
+ *                                  with that role
+ *
+ * Returned targets preserve the original `resource_id` + `context` so
+ * the consequence executor can still reason about the original event;
+ * only `member_id` is rewritten. This is the talmudic distinction
+ * between actor and subject — the act happened to the original target,
+ * but the consequence binds a different party.
+ */
+async function resolveConsequenceTargets(
+  cons: RuleConsequence,
+  originalTarget: RuleTarget,
+  context: RuleContext,
+  rule: Rule,
+): Promise<RuleTarget[]> {
+  const selector = cons.target ?? "$trigger.actor";
+
+  if (selector === "$trigger.actor") {
+    return [originalTarget];
+  }
+
+  if (selector === "$resource.host") {
+    if (!originalTarget.resource_id) return [];
+    const hostMemberId = await context.sink.resolveResourceHostMember(originalTarget.resource_id);
+    if (!hostMemberId) return [];
+    return [{
+      member_id: hostMemberId,
+      resource_id: originalTarget.resource_id,
+      context: { ...originalTarget.context, redirected_from_member_id: originalTarget.member_id },
+    }];
+  }
+
+  const roleMatch = selector.match(/^\$role\.([a-z][a-z0-9_]{0,31})$/);
+  if (roleMatch) {
+    const role_id = roleMatch[1];
+    const memberIds = await context.sink.listMembersWithRole({
+      group_id: rule.group_id,
+      role_id,
+    });
+    return memberIds.map((member_id) => ({
+      member_id,
+      resource_id: originalTarget.resource_id,
+      context: { ...originalTarget.context, redirected_from_member_id: originalTarget.member_id },
+    }));
+  }
+
+  // Unknown selector — fail-safe: treat as default. The publish RPC
+  // validates the selector vocabulary so this branch shouldn't fire
+  // for any rule that landed via publish_rule_composition or
+  // bump_rule_version (both validate via validate_consequence_target).
+  logStructured("warn", "unknown consequence target selector, falling back to $trigger.actor", {
+    rule_id: rule.id,
+    consequence_type: cons.type,
+    selector,
+  });
+  return [originalTarget];
 }
 
 // =============================================================================

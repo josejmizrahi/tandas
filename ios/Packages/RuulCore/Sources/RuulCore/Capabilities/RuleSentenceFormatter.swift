@@ -67,13 +67,16 @@ public enum RuleSentenceFormatter {
             clauses.append("excepto si " + joinWithY(parts))
         }
 
-        // Consequences clause.
+        // Consequences clause. Each consequence may carry an optional
+        // target selector (§22.3 / mig 00249); render as "<verb> <target>"
+        // when present so the sentence reads naturally — e.g. "multa
+        // al anfitrión", "notifica al rol tesorero".
         if draft.consequences.isEmpty {
             clauses.append("entonces (agrega al menos una consecuencia)")
         } else if draft.consequences.count == 1 {
-            clauses.append("entonces " + phrase(for: draft.consequences[0], registry: registry))
+            clauses.append("entonces " + phraseWithTarget(for: draft.consequences[0], registry: registry))
         } else {
-            let parts = draft.consequences.map { phrase(for: $0, registry: registry) }
+            let parts = draft.consequences.map { phraseWithTarget(for: $0, registry: registry) }
             clauses.append("entonces " + joinWithY(parts))
         }
 
@@ -91,6 +94,36 @@ public enum RuleSentenceFormatter {
             let head = items.dropLast().joined(separator: ", ")
             return "\(head) y \(items.last ?? "")"
         }
+    }
+
+    /// Like `phrase(for:)` but appends a target clause for consequences
+    /// that re-route via `instance.target` selector (§22.3 / mig 00249).
+    /// Examples:
+    ///   nil / "$trigger.actor" → "multa de $200"
+    ///   "$resource.host"       → "multa al anfitrión de $200"
+    ///   "$role.treasurer"      → "multa al rol treasurer de $200"
+    private static func phraseWithTarget(
+        for instance: ShapeInstance,
+        registry: RuleShapeRegistry
+    ) -> String {
+        let base = phrase(for: instance, registry: registry)
+        guard let selector = instance.target, selector != "$trigger.actor" else { return base }
+        let targetClause = targetClause(for: selector)
+        // Insert the target between the shape label and the config
+        // parentheses if present, else just append.
+        if let parenStart = base.range(of: " (") {
+            return base.replacingCharacters(in: parenStart.lowerBound..<parenStart.lowerBound, with: " \(targetClause)")
+        }
+        return "\(base) \(targetClause)"
+    }
+
+    private static func targetClause(for selector: String) -> String {
+        if selector == "$resource.host" { return "al anfitrión" }
+        if selector.hasPrefix("$role.") {
+            let roleId = String(selector.dropFirst("$role.".count))
+            return "al rol \(roleId)"
+        }
+        return selector
     }
 
     /// Natural-language phrase for a single shape instance. Uses the

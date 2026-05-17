@@ -14,16 +14,25 @@ public struct ShapeInstance: Codable, Sendable, Hashable, Identifiable {
     public var id: UUID
     public let shapeId: String
     public var config: JSONConfig
+    /// Optional target selector for the consequence (§22.3 / mig 00249).
+    /// Only meaningful when this ShapeInstance is a CONSEQUENCE in the
+    /// draft; ignored on triggers / conditions / exceptions. Vocabulary:
+    ///   nil / "$trigger.actor" → default (original target)
+    ///   "$resource.host"       → resource's host_member_id
+    ///   "$role.<role_id>"      → multiplex per holder of that role
+    public var target: String?
 
-    public init(shapeId: String, config: JSONConfig = .object([:]), id: UUID = UUID()) {
+    public init(shapeId: String, config: JSONConfig = .object([:]), target: String? = nil, id: UUID = UUID()) {
         self.id = id
         self.shapeId = shapeId
         self.config = config
+        self.target = target
     }
 
     public enum CodingKeys: String, CodingKey {
         case shapeId = "shape_id"
         case config
+        case target
     }
 
     public init(from decoder: Decoder) throws {
@@ -31,12 +40,14 @@ public struct ShapeInstance: Codable, Sendable, Hashable, Identifiable {
         self.id = UUID()
         self.shapeId = try c.decode(String.self, forKey: .shapeId)
         self.config  = try c.decodeIfPresent(JSONConfig.self, forKey: .config) ?? .object([:])
+        self.target  = try c.decodeIfPresent(String.self, forKey: .target)
     }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(shapeId, forKey: .shapeId)
         try c.encode(config, forKey: .config)
+        if let target { try c.encode(target, forKey: .target) }
     }
 }
 
@@ -165,6 +176,20 @@ public struct RuleDraft: Sendable, Hashable {
         exceptions.removeAll { $0.id == id }
     }
 
+    /// Sets the target selector on the consequence with the given id.
+    /// Pass nil or "$trigger.actor" to fall back to default. No-op for
+    /// trigger / conditions / exceptions (they don't carry targets).
+    public mutating func setConsequenceTarget(id: UUID, target: String?) {
+        guard let i = consequences.firstIndex(where: { $0.id == id }) else { return }
+        let normalized: String?
+        if let t = target?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty, t != "$trigger.actor" {
+            normalized = t
+        } else {
+            normalized = nil
+        }
+        consequences[i].target = normalized
+    }
+
     public mutating func updateConfig(forShapeInstanceId instanceId: UUID, key: String, value: JSONConfig) {
         func patch(_ instance: inout ShapeInstance) {
             guard case .object(var dict) = instance.config else {
@@ -248,7 +273,8 @@ extension RuleDraft {
             guard let typeName = env.type else { return nil }
             return ShapeInstance(
                 shapeId: typeName,
-                config: reconstructConfig(from: env.config)
+                config: reconstructConfig(from: env.config),
+                target: env.target
             )
         }
         let exceptions = rule.exceptions.map { c in

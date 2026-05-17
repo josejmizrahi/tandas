@@ -212,14 +212,17 @@ public struct RuleComposerView: View {
             sectionLabel("Consecuencias")
             ForEach(coord.draft.consequences) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
-                    ShapeInstanceRow(
-                        shape: shape,
-                        instance: instance,
-                        onConfigChange: { key, value in
-                            coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
-                        },
-                        onRemove: { coord.removeConsequence(id: instance.id) }
-                    )
+                    VStack(alignment: .leading, spacing: 0) {
+                        ShapeInstanceRow(
+                            shape: shape,
+                            instance: instance,
+                            onConfigChange: { key, value in
+                                coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
+                            },
+                            onRemove: { coord.removeConsequence(id: instance.id) }
+                        )
+                        consequenceTargetPicker(for: instance)
+                    }
                 }
             }
             Menu {
@@ -230,6 +233,42 @@ public struct RuleComposerView: View {
                 }
             } label: {
                 pickerLabel(text: "Agregar consecuencia", systemImage: "plus.circle")
+            }
+        }
+    }
+
+    /// Sub-row that lets the user re-route this consequence to a
+    /// different target (anti-tirania, §22.3). Hidden when only one
+    /// option exists (no custom roles + not on event scope) — there's
+    /// nothing to pick beyond the default actor.
+    @ViewBuilder
+    private func consequenceTargetPicker(for instance: ShapeInstance) -> some View {
+        let options = coord.consequenceTargetOptions
+        if options.count > 1 {
+            Menu {
+                ForEach(options) { opt in
+                    Button(action: { coord.setConsequenceTarget(instanceId: instance.id, selector: opt.selector) }) {
+                        Label(opt.label, systemImage: opt.icon)
+                    }
+                }
+            } label: {
+                HStack(spacing: RuulSpacing.xxs) {
+                    Image(systemName: "arrow.right.circle")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
+                    Text("Aplica: \(coord.targetLabel(forSelector: instance.target))")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulAccent)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.down")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
+                }
+                .padding(.top, 4)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.xs)
             }
         }
     }

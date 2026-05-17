@@ -485,6 +485,10 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         struct ShapePayload: Encodable {
             let shape_id: String
             let config: JSONConfig
+            // Optional target — only meaningful for consequences (mig 00249,
+            // §22.3). Encoded only when non-nil so trigger/condition/
+            // exception payloads stay compact.
+            let target: String?
         }
         struct Params: Encodable {
             let p_group_id: String
@@ -502,9 +506,9 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_group_id: groupId.uuidString.lowercased(),
             p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
             p_scope: RuleBuilderTemplate.scopeJSON(draft.scope),
-            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config),
-            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
-            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config, target: nil),
+            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
             p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) }
@@ -534,6 +538,10 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         struct ShapePayload: Encodable {
             let shape_id: String
             let config: JSONConfig
+            // Optional target — only meaningful for consequences (mig 00249,
+            // §22.3). Encoded only when non-nil so trigger/condition/
+            // exception payloads stay compact.
+            let target: String?
         }
         struct Params: Encodable {
             let p_rule_id: String
@@ -552,9 +560,9 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         let params = Params(
             p_rule_id: ruleId.uuidString.lowercased(),
             p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config),
-            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
-            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config, target: nil),
+            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
             p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) }
         )

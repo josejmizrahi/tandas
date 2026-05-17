@@ -49,6 +49,20 @@ export interface RuleCondition {
 export interface RuleConsequence {
   type: ConsequenceType;
   config: Record<string, unknown>;
+  /**
+   * Optional target selector that re-routes this consequence to a
+   * member different from the one the trigger picked. Vocabulary
+   * (mig 00249, §22.3 Governance.md):
+   *
+   *   undefined / "$trigger.actor" → original target.member_id (default)
+   *   "$resource.host"             → resource.metadata.host_id (event)
+   *   "$role.<role_id>"            → multiplex: one fire per active
+   *                                   member assigned that role
+   *
+   * Resolution happens in resolveConsequenceTargets (engine). Missing
+   * resource/role → 0 targets → consequence is a no-op (logged).
+   */
+  target?: string;
 }
 
 export interface Rule {
@@ -67,6 +81,8 @@ export interface Rule {
   trigger: RuleTrigger;
   conditions: RuleCondition[];
   consequences: RuleConsequence[];
+  // (RuleConsequence carries its own optional `target` selector per
+  // mig 00249 — see ruleEngineConsequences.ts resolveTargets.)
   /**
    * Exceptions are condition-shaped predicates that BLOCK the
    * consequences when ANY of them evaluates true on the target.

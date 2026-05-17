@@ -64,6 +64,12 @@ function captureSink(): {
       suspends.push(args);
       return args.right_id;
     },
+    // mig 00249 / §22.3 — target selector stubs. Tests that exercise
+    // multi-target paths override these via `extras.sink`. Defaults
+    // return empty / null so default `$trigger.actor` behavior is
+    // unaffected.
+    listMembersWithRole: async () => [],
+    resolveResourceHostMember: async () => null,
   };
   return { sink, captured, warnings, votes, transfers, revokes, suspends };
 }

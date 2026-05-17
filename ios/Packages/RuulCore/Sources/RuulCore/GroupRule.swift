@@ -87,10 +87,26 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public struct ConsequenceEnvelope: Codable, Sendable, Hashable {
         public let type: String?
         public let config: Config?
+        /// Optional target selector (§22.3 / mig 00249). Re-routes
+        /// the consequence to a member different from the trigger's
+        /// actor. nil / "$trigger.actor" → default behavior.
+        public let target: String?
 
-        public init(type: String?, config: Config?) {
+        public init(type: String?, config: Config?, target: String? = nil) {
             self.type = type
             self.config = config
+            self.target = target
+        }
+
+        public enum CodingKeys: String, CodingKey {
+            case type, config, target
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.type   = try c.decodeIfPresent(String.self, forKey: .type)
+            self.config = try c.decodeIfPresent(Config.self, forKey: .config)
+            self.target = try c.decodeIfPresent(String.self, forKey: .target)
         }
 
         public struct Config: Codable, Sendable, Hashable {
