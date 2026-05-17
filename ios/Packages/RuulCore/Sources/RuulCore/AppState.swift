@@ -38,7 +38,7 @@ public final class AppState {
     public var pendingInviteCode: String?
 
     /// Pending event deep link from a Universal Link / custom URL scheme /
-    /// notification tap. MainTabView picks this up and routes to detail.
+    /// notification tap. `RootShell` picks this up and routes to detail.
     public var pendingEventDeepLink: EventDeepLink?
 
     /// Pending rule_change deep link (Phase G3).
@@ -84,22 +84,6 @@ public final class AppState {
     /// `loadRuleTemplates()` after `list_rule_templates` returns. Drives
     /// the Template Gallery + Param Form UI. Per Governance.md §0.5.
     public var ruleTemplates: [RuleBuilderTemplate] = MockRuleTemplateRepository.defaultBetaCatalog
-
-    /// Pass 1 frontend remodel: A/B flag between legacy `MainTabView`
-    /// (Features/Events) and new `RootShell` (Features/Shell). Flipped
-    /// to `true` at Task 17 cutover — `RootShell` is now the default.
-    /// Read by `AuthGate` to pick the post-auth root view; lives on
-    /// `AppState` so debug builds can toggle it from a hidden gesture
-    /// without rebuilding. Task 18+ will delete legacy MainTabView
-    /// path entirely (and this flag with it).
-    public var useNewShell: Bool = true
-
-    /// Detail-redesign A/B flag. Flipped to `true` at D-V2 Task 15
-    /// cutover — the new `UniversalResourceDetailView` (cover hero +
-    /// sticky CTA + nav-bar chrome) is now the default. Legacy view
-    /// (`UniversalResourceDetailViewLegacy`) still present but
-    /// unreached; D-V2 Task 16 deletes it.
-    public var useNewDetail: Bool = true
 
     /// Resolves runtime capabilities for the active group based on its
     /// template + activeModules. Computed so it always reflects the latest

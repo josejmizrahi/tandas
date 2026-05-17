@@ -56,7 +56,7 @@ public extension SignInMode {
 ///
 /// - **Apple Sign In** — calls `signInWithIdToken` directly on the Supabase
 ///   client. The LiveAuthService's authStateChanges subscription catches the
-///   new session and AuthGate routes to MainTabView automatically.
+///   new session and AuthGate routes to RootShell automatically.
 /// - **Phone OTP** — uses `AuthService.sendPhoneOTP` / `verifyPhoneOTP`,
 ///   which is the standard sign-in (not the anon-promote) flow used during
 ///   onboarding. Requires Twilio/Supabase Auth phone provider configured.
@@ -289,7 +289,7 @@ public struct SignInView: View {
                 _ = try await app.auth.verifyPhoneOTP(phoneE164, code: code)
                 // Success: LiveAuthService propagates the session via
                 // sessionStream → AppState.session updates → AuthGate routes
-                // to MainTabView. No navigation needed here.
+                // to RootShell. No navigation needed here.
             } catch {
                 await MainActor.run {
                     self.error = "Código incorrecto."

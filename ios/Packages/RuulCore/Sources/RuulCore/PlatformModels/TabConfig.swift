@@ -1,7 +1,7 @@
 import Foundation
 
 /// One tab in the main navigation. Loaded from `templates.config.suggestedTabs`.
-/// The app reads these at boot and renders `MainTabView` accordingly.
+/// The app reads these at boot and renders `RootShell` accordingly.
 ///
 /// `viewType` is the discriminator the app uses to pick which view to render:
 /// `dinner_home` for the template-specific home, `inbox` / `rules` /

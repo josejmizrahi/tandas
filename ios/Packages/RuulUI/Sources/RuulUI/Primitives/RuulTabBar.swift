@@ -14,7 +14,7 @@ public extension RuulTabItem {
 }
 
 /// Tab bar flotante con Liquid Glass. Reemplaza TabView default — Fase C
-/// hace el swap real en `MainTabView`.
+/// hace el swap real en `RootShell`.
 ///
 /// La selección se modela por `Tab.ID` (en lugar de `Tab` directo) para que
 /// callsites puedan usar wrappers con datos derivados (e.g. badge runtime)

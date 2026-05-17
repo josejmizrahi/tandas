@@ -14,8 +14,8 @@ public struct ActivityView: View {
     @State private var selectedChip: ActivityChip = .all
     /// Optional: cuando set, el `SystemEventDetailView` muestra un CTA
     /// "Ver detalle" que routea al destination real (multa / voto /
-    /// evento / regla). El forwarding pasa por `ActivityTabView` →
-    /// `MainTabView.routeFromHistoryEvent(_:)`.
+    /// evento / regla). El forwarding pasa por `ActivityTab` y termina
+    /// en `RootRouter` para abrir el detalle correspondiente.
     public var onOpenRelated: ((SystemEvent) -> Void)? = nil
 
     public init(coordinator: ActivityCoordinator, onOpenRelated: ((SystemEvent) -> Void)? = nil) {

@@ -23,7 +23,7 @@ public struct RootShell: View {
     @State private var myFinesCoordinator: MyFinesCoordinator?
     @State private var activityCoordinator: ActivityCoordinator?
 
-    /// Per-group member directory cache — mirrors MainTabView.memberDirectory.
+    /// Per-group member directory cache — rebuilt when the active group changes.
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
 
     public init() {
@@ -90,9 +90,9 @@ public struct RootShell: View {
 
     // MARK: - Coordinator construction
 
-    /// Mirrors MainTabView.rebuildCoordinators(for:) verbatim. Assigns each
-    /// coordinator to both the local @State and the matching shellState field
-    /// so RootShellSheets can read them (L68, L76-82, L103-110, L131-140).
+    /// Rebuilds every coordinator when the active group / session changes.
+    /// Each coordinator is mirrored to `shellState` so `RootShellSheets`
+    /// can read them without re-instantiating.
     private func rebuildCoordinators() async {
         guard let group = app.activeGroup, let session = app.session else { return }
         let userId = session.user.id
@@ -190,10 +190,9 @@ public struct RootShell: View {
 
     // MARK: - Deep link handling
 
-    /// Mirrors MainTabView.handleRuleChangeDeepLink verbatim. Fetches the rule
-    /// from the repo, switches active group if needed, then routes via
-    /// RootRouter.handleRuleChange so the sheet presenter in RootShellSheets
-    /// fires.
+    /// Fetches the rule from the repo, switches active group if needed,
+    /// then routes via `RootRouter.handleRuleChange` so the sheet
+    /// presenter in `RootShellSheets` fires.
     private func handleRuleChangeDeepLink(_ link: RuleChangeDeepLink) async {
         defer { app.consumeRuleChangeDeepLink() }
 

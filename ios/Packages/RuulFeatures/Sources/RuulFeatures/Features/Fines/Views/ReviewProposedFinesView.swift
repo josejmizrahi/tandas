@@ -17,7 +17,7 @@ public struct ReviewProposedFinesView: View {
         self.onSelectFine = onSelectFine
     }
     /// Tap en cualquier FineCard (proposed o resolved) dispatch este
-    /// callback. El padre (MainTabView reviewProposedScreen) lo wireá a
+    /// callback. El padre (RootShell reviewProposedScreen) lo wireá a
     /// `fineDetailRoute = fine` para push FineDetailView. Default no-op
     /// preservado por back-compat con tests/previews.
     public var onSelectFine: (Fine) -> Void = { _ in }

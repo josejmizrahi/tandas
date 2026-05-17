@@ -49,7 +49,7 @@ public struct ResourceDetailContext {
     /// member detail sheet.
     public let onSelectMember: (UUID) -> Void
     /// Optional dismiss handler. Lets the outer shell tear down its own
-    /// route binding (e.g. MainTabView's `detailRoute = nil`) before
+    /// route binding (e.g. RootShell's `detailRoute = nil`) before
     /// SwiftUI propagates `\.dismiss`. When nil, the top nav falls back
     /// to `\.dismiss` from the environment.
     public let onDismiss: (() -> Void)?

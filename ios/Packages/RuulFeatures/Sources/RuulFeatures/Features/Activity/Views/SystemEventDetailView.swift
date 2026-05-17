@@ -10,7 +10,7 @@ public struct SystemEventDetailView: View {
     public let dismiss: () -> Void
     /// Optional: cuando set, agrega un CTA "Ver detalle" que dispara este
     /// callback. La implementación del padre decide qué destination push
-    /// según el `event.eventType` (router en MainTabView/GroupHistory).
+    /// según el `event.eventType` (router en RootShell/GroupHistory).
     /// Cuando `nil`, el primary CTA queda como "Cerrar" (default).
     public var onOpenRelated: ((SystemEvent) -> Void)? = nil
     /// Label custom si el padre quiere override del default ("Ver multa"

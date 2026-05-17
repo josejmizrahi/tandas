@@ -13,7 +13,7 @@ import RuulCore
 ///   - Async loads: capability set from `public.resource_capabilities`,
 ///     governance check for manual-fine authorization.
 ///
-/// The wider app shell (MainTabView) only has to pass in the `Event`,
+/// The wider app shell (RootShell) only has to pass in the `Event`,
 /// the parent `Group`, a snapshot of the member directory, and a handful
 /// of route-tear-down callbacks. Everything else is handled here. Phase
 /// 11 deletes the legacy `EventDetailView` once this is the sole entry.

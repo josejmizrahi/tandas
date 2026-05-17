@@ -5,7 +5,7 @@ import RuulCore
 /// UI-side companion to `EventInteractor`. The interactor owns domain
 /// state + mutations; the presenter owns the closures that route taps
 /// to sheets / scanners / share / wallet flows whose ownership lives at
-/// the outer shell (MainTabView). Separating the two keeps capability
+/// the outer shell (RootShell). Separating the two keeps capability
 /// sections free of presentation plumbing while still giving them the
 /// hooks they need.
 ///

@@ -5,7 +5,7 @@ import OSLog
 /// once at app start (`refresh()`), thereafter serves lookups synchronously
 /// from cache. Re-fetch on demand if a template's `version` changes.
 ///
-/// Keeps the hot path (group creation, MainTabView render, onboarding
+/// Keeps the hot path (group creation, RootShell render, onboarding
 /// step lookup) free of network round trips.
 ///
 /// **Static IDs**: Swift code that needs to reference a specific template

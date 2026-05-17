@@ -84,7 +84,7 @@ struct AuthGate: View {
     ///
     /// Returning users who lost access to all their groups (left all of
     /// them, BigBang wipe, orphaned user_id) keep `hasOnboarded = true`
-    /// and route into `MainTabView`'s empty state, which lets them
+    /// and route into `RootShell`'s empty state, which lets them
     /// create or join a new group without re-doing the onboarding flow
     /// (name + vocabulary etc. they've already given).
     private var isFirstTimeAuth: Bool {
@@ -102,7 +102,7 @@ struct AuthGate: View {
         //     so any leftover onboarding row is from an abandoned flow.
         //   - `hasGroup`: at least one group loaded → the user is past
         //     the only step that creates persisted state. They belong
-        //     in MainTabView, so the entity is residue.
+        //     in RootShell, so the entity is residue.
         //
         // We deliberately do NOT clear an entity for an authenticated
         // user with `groups.isEmpty` and `!hasOnboarded`: that's the

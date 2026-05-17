@@ -28,7 +28,7 @@ public struct RulesView: View {
     /// for previews / call sites that don't need inbox integration.
     public let userActionRepo: (any UserActionRepository)?
     /// Tap callback for the "Votos abiertos" section. Wired by the parent
-    /// (MainTabView) in G3 to push `OpenVotesListView`. For G2 it can be
+    /// (RootShell) in G3 to push `OpenVotesListView`. For G2 it can be
     /// a no-op closure.
     public var onSeeOpenVotes: () -> Void = {}
     /// Tap callback for a rule card. Wired by the presenting surface

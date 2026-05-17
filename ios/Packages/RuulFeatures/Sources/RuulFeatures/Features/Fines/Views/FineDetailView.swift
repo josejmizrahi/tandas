@@ -17,7 +17,7 @@ public struct FineDetailView: View {
     public let computeCanVoidFine: () async -> Bool
     /// Factory: creates a fresh `VoidFineCoordinator` each time the sheet
     /// is opened. Captures `app.governance`, repos, and `coord.refresh`
-    /// (via onSubmitted) lexically in MainTabView.fineDetailScreen.
+    /// (via onSubmitted) lexically in `RootShellSheets.fineDetailScreen`.
     public let makeVoidFineCoordinator: () -> VoidFineCoordinator
     public let currentUserId: UUID
 

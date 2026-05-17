@@ -42,8 +42,8 @@ public struct HomeTab: View {
     }
 
     // MARK: - Inbox action dispatch
-    // Mirrors MainTabView.handleInboxAction verbatim. The router handles
-    // navigation outcomes; AppState repos provide async data fetches.
+    // The router handles navigation outcomes; AppState repos provide
+    // async data fetches.
 
     private func handleInboxAction(_ action: UserAction) async {
         // 14.2 — Inbox is cross-group; if the action's group isn't the

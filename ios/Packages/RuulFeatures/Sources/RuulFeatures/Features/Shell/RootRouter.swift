@@ -16,7 +16,7 @@ import RuulCore
 /// reason there is NO `handle(ruleChangeDeepLink:)` method. Instead,
 /// `AuthGate` / `RootShell` observes `AppState.pendingRuleChangeDeepLink`,
 /// fetches the rule, and calls `handleRuleChange(rule:group:proposedAmount:
-/// pendingActionId:)` directly (mirroring the MainTabView pattern).
+/// pendingActionId:)` directly (mirroring the RootShell pattern).
 @MainActor
 @Observable
 public final class RootRouter {
@@ -74,7 +74,7 @@ public final class RootRouter {
     /// Routes a rule-change deep link after the caller has fetched the
     /// required `GroupRule` and `Group` (async — the router is sync-only).
     ///
-    /// Call site pattern (mirrors legacy `MainTabView.handleRuleChangeDeepLink`):
+    /// Call site pattern (see `RootShell.handleRuleChangeDeepLink`):
     /// ```swift
     /// let link = app.pendingRuleChangeDeepLink
     /// defer { app.consumeRuleChangeDeepLink() }

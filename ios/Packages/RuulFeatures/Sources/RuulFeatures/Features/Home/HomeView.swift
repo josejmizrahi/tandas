@@ -19,7 +19,7 @@ public struct HomeView: View {
     /// Tap del GroupSwitcher pill — abre `GroupSwitcherSheet` desde Home.
     /// Per AppShell.md: el switcher es chrome persistente en Home/Inbox/Activity.
     public var onSwitchGroup: () -> Void = {}
-    /// Bumped by the parent (MainTabView) after the wizard creates a
+    /// Bumped by the parent (RootShell) after the wizard creates a
     /// resource — drives the non-event-resources re-fetch via .task(id:).
     public var resourceRefreshToken: UUID
 
@@ -507,7 +507,7 @@ public struct HomeView: View {
     // MARK: - Pendings — Fase 4b: Inbox content embedded como sección.
     //
     // Renders top 3 UserActions del `inboxCoordinator`. Tap dispatch al
-    // `onInboxActionTap` del padre (MainTabView.handleInboxAction). Cuando
+    // `onInboxActionTap` del padre (HomeTab.handleInboxAction). Cuando
     // hay >3 pendings podemos agregar un "Ver todas" link en una iteración
     // posterior — V1 corta a 3 para no canibalizar el hero del próximo evento.
 

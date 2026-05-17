@@ -94,14 +94,14 @@ public struct CapabilityResolver: Sendable {
 
     // MARK: - Tabs
 
-    /// Ordered list of `TabConfig` to render in `MainTabView` for this
+    /// Ordered list of `TabConfig` to render in `RootShell` for this
     /// group. V1 templates declare 4 universal tabs in
     /// `template.config.suggestedTabs`; Phase 2+ may filter by module
     /// activation (e.g. drop the "Reglas" tab if `basic_fines` is off).
     ///
     /// When a template hasn't loaded yet (cold start before
     /// `TemplateRegistry.refresh()` completes), the resolver falls back to
-    /// the canonical V1 4-tab set so MainTabView always has something to
+    /// the canonical V1 4-tab set so RootShell always has something to
     /// render.
     public func availableTabs(
         for group: Group?,
@@ -212,7 +212,7 @@ public struct CapabilityResolver: Sendable {
     }
 
     /// Canonical V1 4-tab fallback when no template is loaded. Mirrors
-    /// `MainTabView.Tab` enum exactly; updates here must keep parity until
+    /// `RootShell.Tab` enum exactly; updates here must keep parity until
     /// Phase 2 ships dynamic rendering.
     public static let fallbackV1Tabs: [TabConfig] = [
         TabConfig(

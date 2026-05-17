@@ -33,7 +33,7 @@ public enum TargetAction: String, Codable, Sendable, Hashable, CaseIterable {
     /// Invite a new member (share the invite code). admin_only
     /// dispatches to Permission.modifyMembers. Default policy is
     /// derived from groups.governance.whoCanInviteMembers (recurring_
-    /// dinner template ships 'founder' → admin_only). MainTabView
+    /// dinner template ships 'founder' → admin_only). RootShell
     /// hides the Inicio "Invitar gente" header icon when the
     /// resolver returns admin_only-without-permission, vote_required,
     /// or denied — surface stays invisible to non-authorised actors.
