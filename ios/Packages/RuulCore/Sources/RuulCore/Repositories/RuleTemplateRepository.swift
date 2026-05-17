@@ -514,7 +514,7 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
             p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
             p_membership_id: draft.membershipFilter?.uuidString.lowercased()
         )
 
@@ -575,7 +575,7 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
-            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
             p_membership_id: draft.membershipFilter?.uuidString.lowercased(),
             p_clear_membership: draft.membershipFilter == nil
         )
