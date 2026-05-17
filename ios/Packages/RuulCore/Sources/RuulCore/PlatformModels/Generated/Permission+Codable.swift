@@ -17,6 +17,7 @@ extension Permission {
         .createVotes,
         .castVote,
         .manageEvents,
+        .manageModules,
         .assignSlot,
         .bookSlot,
         .approveSlotSwap,
@@ -45,6 +46,7 @@ extension Permission {
         "createVotes",
         "castVote",
         "manageEvents",
+        "manageModules",
         "assignSlot",
         "bookSlot",
         "approveSlotSwap",
@@ -84,6 +86,7 @@ extension Permission {
         case .createVotes: return "createVotes"
         case .castVote: return "castVote"
         case .manageEvents: return "manageEvents"
+        case .manageModules: return "manageModules"
         case .assignSlot: return "assignSlot"
         case .bookSlot: return "bookSlot"
         case .approveSlotSwap: return "approveSlotSwap"
@@ -115,6 +118,7 @@ extension Permission {
         case "createVotes": return .createVotes
         case "castVote": return .castVote
         case "manageEvents": return .manageEvents
+        case "manageModules": return .manageModules
         case "assignSlot": return .assignSlot
         case "bookSlot": return .bookSlot
         case "approveSlotSwap": return .approveSlotSwap

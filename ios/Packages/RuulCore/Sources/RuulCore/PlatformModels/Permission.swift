@@ -49,6 +49,11 @@ public enum Permission: Codable, Sendable, Hashable {
     /// Custom roles like `event_coordinator` declare this permission
     /// to manage events they don't host themselves.
     case manageEvents
+    /// Toggle group modules on/off (set_group_module RPC, mig 00236).
+    /// Activates/deactivates capabilities like `basic_fines`,
+    /// `appeal_voting`, `slot_assignment`. Cascades to dependencies
+    /// and seeds/archives the module's rules.
+    case manageModules
 
     // MARK: - Phase 2 (`shared_resource`)
 

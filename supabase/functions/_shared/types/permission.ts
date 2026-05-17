@@ -14,6 +14,7 @@ export const permissionValues = [
   "createVotes",
   "castVote",
   "manageEvents",
+  "manageModules",
   "assignSlot",
   "bookSlot",
   "approveSlotSwap",
