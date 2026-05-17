@@ -53,7 +53,7 @@ public struct OnboardingRule: Identifiable, Codable, Sendable, Hashable {
 
 public protocol RuleRepository: Actor {
     /// Creates only the active drafts. Returns the created rules.
-    func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule]
+    func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule]
 
     /// Seeds the platform-shape default rules for `templateId`. Post mig
     /// 00075 this is an orchestrator that reads `groups.active_modules`
@@ -96,7 +96,7 @@ public protocol RuleRepository: Actor {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: ConditionNode,
+        conditions: [RuleCondition],
         consequences: [RuleConsequence]
     ) async throws -> GroupRule
 
@@ -115,11 +115,11 @@ public protocol RuleRepository: Actor {
 // MARK: - Mock
 
 public actor MockRuleRepository: RuleRepository {
-    public private(set) var lastCreatedDrafts: [RuleDraft] = []
+    public private(set) var lastCreatedDrafts: [OnboardingRuleDraft] = []
     public init() {}
     public var nextCreateError: RuleError?
 
-    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule] {
         if let err = nextCreateError { nextCreateError = nil; throw err }
         let active = drafts.filter(\.isActive)
         lastCreatedDrafts = active
@@ -190,7 +190,7 @@ public actor MockRuleRepository: RuleRepository {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: ConditionNode,
+        conditions: [RuleCondition],
         consequences: [RuleConsequence]
     ) async throws -> GroupRule {
         let envelopes = consequences.map { c -> GroupRule.ConsequenceEnvelope in
@@ -251,18 +251,14 @@ public actor LiveRuleRepository: RuleRepository {
     private let client: SupabaseClient
     public init(client: SupabaseClient) { self.client = client }
 
-    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule] {
         struct Params: Encodable {
             let p_group_id: String
             let p_slug: String
             let p_name: String
             let p_is_active: Bool
             let p_trigger: RuleTrigger
-            /// `ConditionNode` round-trips through Codable to the right
-            /// jsonb shape: AND-of-leaves emits as a compact array
-            /// (back-compat with the legacy `create_initial_rule` shape),
-            /// non-trivial trees emit as `{op, children}`.
-            let p_conditions: ConditionNode
+            let p_conditions: [RuleCondition]
             let p_consequences: [RuleConsequence]
         }
 
@@ -329,7 +325,7 @@ public actor LiveRuleRepository: RuleRepository {
     public func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id,membership_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,exceptions,module_key,resource_id,series_id,membership_id")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()
@@ -339,7 +335,7 @@ public actor LiveRuleRepository: RuleRepository {
     public func listForResource(_ resourceId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id,membership_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,exceptions,module_key,resource_id,series_id,membership_id")
             .eq("resource_id", value: resourceId.uuidString.lowercased())
             .order("created_at", ascending: false)
             .execute()
@@ -365,7 +361,7 @@ public actor LiveRuleRepository: RuleRepository {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: ConditionNode,
+        conditions: [RuleCondition],
         consequences: [RuleConsequence]
     ) async throws -> GroupRule {
         struct Params: Encodable {
@@ -373,7 +369,7 @@ public actor LiveRuleRepository: RuleRepository {
             let p_resource_id: String
             let p_name: String
             let p_trigger: RuleTrigger
-            let p_conditions: ConditionNode
+            let p_conditions: [RuleCondition]
             let p_consequences: [RuleConsequence]
         }
         do {
@@ -612,7 +608,7 @@ public actor InterceptingRuleRepository: RuleRepository {
 
     // MARK: RuleRepository conformance (pass-through)
 
-    public func createInitialRules(groupId: UUID, drafts: [RuleDraft]) async throws -> [OnboardingRule] {
+    public func createInitialRules(groupId: UUID, drafts: [OnboardingRuleDraft]) async throws -> [OnboardingRule] {
         try await inner.createInitialRules(groupId: groupId, drafts: drafts)
     }
 
@@ -641,7 +637,7 @@ public actor InterceptingRuleRepository: RuleRepository {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: ConditionNode,
+        conditions: [RuleCondition],
         consequences: [RuleConsequence]
     ) async throws -> GroupRule {
         try await inner.createResourceRule(

@@ -20,34 +20,9 @@ public struct TemplateRule: Sendable, Codable, Hashable {
     public let module: String
     public let isActive: Bool
     public let trigger: RuleTrigger
-    /// AND/OR/NOT tree of conditions. Legacy template seeds (flat
-    /// arrays in `templates.config.defaultRules`) decode as
-    /// `.and(leaves)`; tree-shaped templates decode as the
-    /// corresponding `ConditionNode`.
-    public let conditions: ConditionNode
+    public let conditions: [RuleCondition]
     public let consequences: [RuleConsequence]
 
-    public init(
-        slug: String? = nil,
-        name: String,
-        description: String,
-        module: String,
-        isActive: Bool,
-        trigger: RuleTrigger,
-        conditions: ConditionNode,
-        consequences: [RuleConsequence]
-    ) {
-        self.slug = slug
-        self.name = name
-        self.description = description
-        self.module = module
-        self.isActive = isActive
-        self.trigger = trigger
-        self.conditions = conditions
-        self.consequences = consequences
-    }
-
-    /// Flat-list shadow init (legacy template authors).
     public init(
         slug: String? = nil,
         name: String,
@@ -58,11 +33,13 @@ public struct TemplateRule: Sendable, Codable, Hashable {
         conditions: [RuleCondition],
         consequences: [RuleConsequence]
     ) {
-        self.init(
-            slug: slug, name: name, description: description, module: module,
-            isActive: isActive, trigger: trigger,
-            conditions: ConditionNode(leaves: conditions),
-            consequences: consequences
-        )
+        self.slug = slug
+        self.name = name
+        self.description = description
+        self.module = module
+        self.isActive = isActive
+        self.trigger = trigger
+        self.conditions = conditions
+        self.consequences = consequences
     }
 }

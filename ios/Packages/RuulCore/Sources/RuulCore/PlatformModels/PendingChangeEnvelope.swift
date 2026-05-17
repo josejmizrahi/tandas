@@ -81,26 +81,9 @@ public struct PendingChangeEnvelope: Codable, Sendable, Hashable {
         public let isActive: Bool
         public let resourceId: UUID?
         public let trigger: RuleTrigger
-        public let conditions: ConditionNode
+        public let conditions: [RuleCondition]
         public let consequences: [RuleConsequence]
 
-        public init(
-            name: String,
-            isActive: Bool = true,
-            resourceId: UUID? = nil,
-            trigger: RuleTrigger,
-            conditions: ConditionNode,
-            consequences: [RuleConsequence]
-        ) {
-            self.name = name
-            self.isActive = isActive
-            self.resourceId = resourceId
-            self.trigger = trigger
-            self.conditions = conditions
-            self.consequences = consequences
-        }
-
-        /// Flat-list shadow init (legacy callers + tests).
         public init(
             name: String,
             isActive: Bool = true,
@@ -109,12 +92,12 @@ public struct PendingChangeEnvelope: Codable, Sendable, Hashable {
             conditions: [RuleCondition],
             consequences: [RuleConsequence]
         ) {
-            self.init(
-                name: name, isActive: isActive, resourceId: resourceId,
-                trigger: trigger,
-                conditions: ConditionNode(leaves: conditions),
-                consequences: consequences
-            )
+            self.name = name
+            self.isActive = isActive
+            self.resourceId = resourceId
+            self.trigger = trigger
+            self.conditions = conditions
+            self.consequences = consequences
         }
 
         public enum CodingKeys: String, CodingKey {

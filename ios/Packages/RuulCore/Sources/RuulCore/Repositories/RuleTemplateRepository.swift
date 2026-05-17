@@ -1,6 +1,10 @@
 import Foundation
 import Supabase
 
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
 public enum RuleTemplateError: Error, Equatable, Sendable {
     case rpcFailed(String)
     case decodingFailed(String)
@@ -16,10 +20,18 @@ public enum RuleTemplateError: Error, Equatable, Sendable {
 ///
 /// Per Plans/Active/Governance.md §0.5 + §10 (Builder UX).
 public protocol RuleTemplateRepository: Actor {
-    /// Loads the active template catalog. Sorted by `sort_order` then name.
-    /// iOS calls this at boot (AppState wiring) — output drives the
-    /// Template Gallery UI.
-    func loadTemplates() async throws -> [RuleBuilderTemplate]
+    /// Loads the active template catalog, optionally filtered by the
+    /// resource type the caller is building a rule for. When
+    /// `resourceType` is nil the server returns every active template
+    /// (group-scope gallery). When non-nil, the server filters out
+    /// templates whose trigger shape doesn't list that type in
+    /// `valid_resource_types` (mig 00244) — keeping event-only
+    /// templates out of an asset's gallery, etc.
+    ///
+    /// iOS calls the nil overload at boot (AppState wiring); per-resource
+    /// builders call with the concrete type. Output sorted by
+    /// `sort_order` then name.
+    func loadTemplates(forResourceType resourceType: String?) async throws -> [RuleBuilderTemplate]
 
     /// Publishes a new rule from a template + user params. Returns the
     /// new rule_id + rule_version_id + any warning conflicts the server
@@ -33,6 +45,48 @@ public protocol RuleTemplateRepository: Actor {
         title: String?,
         changeReason: String?
     ) async throws -> RuleVersionPublishResult
+
+    /// Publishes a free-composition rule. Caller picks the trigger + N
+    /// conditions + N consequences directly from the shape catalog —
+    /// no template required. Powers the Rule Composer flow.
+    ///
+    /// Server-side validation (mig 00245):
+    /// - Has modifyRules permission
+    /// - Trigger compatible with scope.type + resource's resource_type
+    /// - Every shape id exists in rule_shapes with the right kind
+    /// - At least one consequence
+    ///
+    /// Returns the same envelope as `publishRuleVersion`: rule id +
+    /// version id + any same_scope_overlapping warnings.
+    func publishRuleComposition(
+        groupId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult
+
+    /// Edits an existing rule in place: supersedes the active
+    /// rule_version and inserts a new one with version+1 + same
+    /// `rule_id`. Preserves slug + scope; only trigger / conditions /
+    /// consequences (and name) change. Powers the §22.1 edit flow.
+    ///
+    /// Server-side (mig 00247) validates `has_permission('modifyRules')`,
+    /// shape compatibility against the rule's preserved scope, and
+    /// re-runs conflict detection excluding the version being
+    /// superseded. Returns the same envelope as publish, with
+    /// `rule_id` unchanged.
+    func bumpRuleVersion(
+        ruleId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult
+}
+
+public extension RuleTemplateRepository {
+    /// Convenience: load the full catalog (no resource_type filter).
+    /// Backward-compatible wrapper for the original `loadTemplates()`
+    /// signature — keeps existing call sites (notably AppState's boot
+    /// load) working unchanged.
+    func loadTemplates() async throws -> [RuleBuilderTemplate] {
+        try await loadTemplates(forResourceType: nil)
+    }
 }
 
 // MARK: - Mock
@@ -46,9 +100,44 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
         self.stubTemplates = templates
     }
 
-    public func loadTemplates() async throws -> [RuleBuilderTemplate] {
-        stubTemplates.sorted { $0.sortOrder < $1.sortOrder }
+    public func loadTemplates(forResourceType resourceType: String?) async throws -> [RuleBuilderTemplate] {
+        let sorted = stubTemplates.sorted { $0.sortOrder < $1.sortOrder }
+        // Mock honors the same filter contract as the server (mig 00244):
+        // null → all; non-null → only templates whose trigger shape
+        // declares the requested resource_type as valid. The mock can't
+        // peek into the shape registry, so it approximates by checking
+        // a static type map keyed on triggerShapeId. Sufficient for
+        // previews + unit tests; live behavior is enforced server-side.
+        guard let resourceType else { return sorted }
+        return sorted.filter { template in
+            let valid = MockRuleTemplateRepository.triggerResourceTypes[template.composition.triggerShapeId]
+            // Unknown trigger or universal trigger → let it through.
+            guard let valid, !valid.isEmpty else { return true }
+            return valid.contains(resourceType)
+        }
     }
+
+    /// Static mirror of `rule_shapes.valid_resource_types` used by the
+    /// Mock to filter `loadTemplates(forResourceType:)` the same way the
+    /// server does. Kept in sync by hand — diverges only when a new
+    /// trigger lands in rule_shapes; add the entry here so previews
+    /// match prod.
+    private static let triggerResourceTypes: [String: [String]] = [
+        "checkInRecorded":      ["event"],
+        "eventClosed":          ["event"],
+        "eventStarted":         ["event"],
+        "eventCancelled":       ["event"],
+        "eventUpdated":         ["event"],
+        "hoursBeforeEvent":     ["event"],
+        "rsvpDeadlinePassed":   ["event"],
+        "rsvpChangedSameDay":   ["event"],
+        "ledgerEntryCreated":   ["event", "fund"],
+        "assetTransferred":     ["asset"],
+        "checkoutOverdue":      ["asset"],
+        "damageReported":       ["asset"],
+        "maintenanceOverdue":   ["asset"],
+        "rightExpiringSoon":    ["right"],
+    ]
 
     public func publishRuleVersion(
         groupId: UUID,
@@ -67,6 +156,49 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
             ruleId: UUID(),
             ruleVersionId: UUID(),
             version: 1,
+            conflicts: []
+        )
+    }
+
+    public private(set) var lastCompositionCall: (groupId: UUID, draft: RuleDraft)?
+    public private(set) var lastBumpCall: (ruleId: UUID, draft: RuleDraft)?
+    /// Per-ruleId version counter to make bumps look incremental in
+    /// previews/tests. Persists across calls.
+    private var bumpVersionCounter: [UUID: Int] = [:]
+
+    public func publishRuleComposition(
+        groupId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        if let err = nextPublishError { nextPublishError = nil; throw err }
+        lastCompositionCall = (groupId, draft)
+        guard draft.isPublishable else {
+            throw RuleTemplateError.rpcFailed("draft is incomplete (name/trigger/consequence missing)")
+        }
+        return RuleVersionPublishResult(
+            ruleId: UUID(),
+            ruleVersionId: UUID(),
+            version: 1,
+            conflicts: []
+        )
+    }
+
+    public func bumpRuleVersion(
+        ruleId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        if let err = nextPublishError { nextPublishError = nil; throw err }
+        lastBumpCall = (ruleId, draft)
+        guard draft.isPublishable else {
+            throw RuleTemplateError.rpcFailed("draft is incomplete (name/trigger/consequence missing)")
+        }
+        let nextVersion = (bumpVersionCounter[ruleId] ?? 1) + 1
+        bumpVersionCounter[ruleId] = nextVersion
+        return RuleVersionPublishResult(
+            ruleId: ruleId,
+            ruleVersionId: UUID(),
+            version: nextVersion,
+            slug: draft.slug,
             conflicts: []
         )
     }
@@ -291,10 +423,13 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
     private let client: SupabaseClient
     public init(client: SupabaseClient) { self.client = client }
 
-    public func loadTemplates() async throws -> [RuleBuilderTemplate] {
+    public func loadTemplates(forResourceType resourceType: String?) async throws -> [RuleBuilderTemplate] {
+        struct Params: Encodable {
+            let p_resource_type: String?
+        }
         do {
             return try await client
-                .rpc("list_rule_templates")
+                .rpc("list_rule_templates", params: Params(p_resource_type: resourceType))
                 .execute()
                 .value
         } catch {
@@ -329,6 +464,125 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         do {
             return try await client
                 .rpc("publish_rule_version", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RuleTemplateError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func publishRuleComposition(
+        groupId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        guard let triggerInstance = draft.trigger else {
+            throw RuleTemplateError.rpcFailed("draft has no trigger")
+        }
+        guard !draft.consequences.isEmpty else {
+            throw RuleTemplateError.rpcFailed("draft has no consequences")
+        }
+
+        struct ShapePayload: Encodable {
+            let shape_id: String
+            let config: JSONConfig
+            // Optional target — only meaningful for consequences (mig 00249,
+            // §22.3). Encoded only when non-nil so trigger/condition/
+            // exception payloads stay compact.
+            let target: String?
+        }
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_name: String
+            let p_scope: JSONConfig
+            let p_trigger: ShapePayload
+            let p_conditions: [ShapePayload]
+            let p_consequences: [ShapePayload]
+            let p_change_reason: String?
+            let p_slug: String?
+            let p_exceptions: [ShapePayload]
+            // Mig 00250 / §22.5: orthogonal membership filter. When non-nil,
+            // engine restricts targets to this single `group_members.id`.
+            let p_membership_id: String?
+        }
+
+        let params = Params(
+            p_group_id: groupId.uuidString.lowercased(),
+            p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            p_scope: RuleBuilderTemplate.scopeJSON(draft.scope),
+            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config, target: nil),
+            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
+            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
+            p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_membership_id: draft.membershipFilter?.uuidString.lowercased()
+        )
+
+        do {
+            return try await client
+                .rpc("publish_rule_composition", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RuleTemplateError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func bumpRuleVersion(
+        ruleId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        guard let triggerInstance = draft.trigger else {
+            throw RuleTemplateError.rpcFailed("draft has no trigger")
+        }
+        guard !draft.consequences.isEmpty else {
+            throw RuleTemplateError.rpcFailed("draft has no consequences")
+        }
+
+        struct ShapePayload: Encodable {
+            let shape_id: String
+            let config: JSONConfig
+            // Optional target — only meaningful for consequences (mig 00249,
+            // §22.3). Encoded only when non-nil so trigger/condition/
+            // exception payloads stay compact.
+            let target: String?
+        }
+        struct Params: Encodable {
+            let p_rule_id: String
+            let p_name: String
+            let p_trigger: ShapePayload
+            let p_conditions: [ShapePayload]
+            let p_consequences: [ShapePayload]
+            let p_change_reason: String?
+            let p_exceptions: [ShapePayload]
+            // Mig 00250 / §22.5: composer is authoritative — always assert
+            // the membership state explicitly. nil filter → clear=true;
+            // non-nil → send id + clear=false. Server's "preserve" mode
+            // (clear=false + null id) is for callers that don't hold the
+            // full draft; we always hold it.
+            let p_membership_id: String?
+            let p_clear_membership: Bool
+        }
+
+        // Bump always sends p_exceptions (even if empty) so the server
+        // sees the draft's authoritative current view. Server-side null
+        // would mean "preserve previous"; since the composer holds the
+        // full state, we explicitly assert it.
+        let params = Params(
+            p_rule_id: ruleId.uuidString.lowercased(),
+            p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config, target: nil),
+            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
+            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_membership_id: draft.membershipFilter?.uuidString.lowercased(),
+            p_clear_membership: draft.membershipFilter == nil
+        )
+
+        do {
+            return try await client
+                .rpc("bump_rule_version", params: params)
                 .execute()
                 .value
         } catch {

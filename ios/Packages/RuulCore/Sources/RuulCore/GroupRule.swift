@@ -12,11 +12,13 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let name: String
     public let isActive: Bool
     public let trigger: RuleTrigger
-    /// AND/OR/NOT tree of conditions. Decodes legacy flat arrays as
-    /// `.and(leaves)` for backward compat; tree-shaped jsonb decodes
-    /// into the corresponding `ConditionNode` cases.
-    public let conditions: ConditionNode
+    public let conditions: [RuleCondition]
     public let consequences: [ConsequenceEnvelope]
+    /// Condition-shaped predicates that BLOCK consequences when ANY
+    /// evaluates true (mig 00248, §22.2 Governance.md). Decoded from
+    /// `rules.exceptions` jsonb column. Defaults to empty for rules
+    /// published before exceptions landed.
+    public let exceptions: [RuleCondition]
     /// Module that owns this rule. Set when seeded via module activation
     /// (mig 00073 `seed_module_rules`). Null = group-level rule with no
     /// module affinity.
@@ -40,8 +42,9 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         name: String,
         isActive: Bool,
         trigger: RuleTrigger,
-        conditions: ConditionNode,
+        conditions: [RuleCondition],
         consequences: [ConsequenceEnvelope],
+        exceptions: [RuleCondition] = [],
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
         seriesId: UUID? = nil,
@@ -55,35 +58,11 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.trigger = trigger
         self.conditions = conditions
         self.consequences = consequences
+        self.exceptions = exceptions
         self.moduleKey = moduleKey
         self.resourceId = resourceId
         self.seriesId = seriesId
         self.membershipId = membershipId
-    }
-
-    /// Flat-list shadow init (legacy callers + tests). Wraps as `.and(leaves)`.
-    public init(
-        id: UUID,
-        groupId: UUID,
-        slug: String? = nil,
-        name: String,
-        isActive: Bool,
-        trigger: RuleTrigger,
-        conditions: [RuleCondition],
-        consequences: [ConsequenceEnvelope],
-        moduleKey: String? = nil,
-        resourceId: UUID? = nil,
-        seriesId: UUID? = nil,
-        membershipId: UUID? = nil
-    ) {
-        self.init(
-            id: id, groupId: groupId, slug: slug, name: name,
-            isActive: isActive, trigger: trigger,
-            conditions: ConditionNode(leaves: conditions),
-            consequences: consequences,
-            moduleKey: moduleKey, resourceId: resourceId,
-            seriesId: seriesId, membershipId: membershipId
-        )
     }
 
     /// Computes the scope label this rule lives at, picking the most
@@ -108,10 +87,26 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public struct ConsequenceEnvelope: Codable, Sendable, Hashable {
         public let type: String?
         public let config: Config?
+        /// Optional target selector (§22.3 / mig 00249). Re-routes
+        /// the consequence to a member different from the trigger's
+        /// actor. nil / "$trigger.actor" → default behavior.
+        public let target: String?
 
-        public init(type: String?, config: Config?) {
+        public init(type: String?, config: Config?, target: String? = nil) {
             self.type = type
             self.config = config
+            self.target = target
+        }
+
+        public enum CodingKeys: String, CodingKey {
+            case type, config, target
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.type   = try c.decodeIfPresent(String.self, forKey: .type)
+            self.config = try c.decodeIfPresent(Config.self, forKey: .config)
+            self.target = try c.decodeIfPresent(String.self, forKey: .target)
         }
 
         public struct Config: Codable, Sendable, Hashable {
@@ -152,9 +147,29 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         case trigger
         case conditions
         case consequences
+        case exceptions
         case moduleKey    = "module_key"
         case resourceId   = "resource_id"
         case seriesId     = "series_id"
         case membershipId = "membership_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id            = try c.decode(UUID.self, forKey: .id)
+        self.groupId       = try c.decode(UUID.self, forKey: .groupId)
+        self.slug          = try c.decodeIfPresent(String.self, forKey: .slug)
+        self.name          = try c.decode(String.self, forKey: .name)
+        self.isActive      = try c.decode(Bool.self, forKey: .isActive)
+        self.trigger       = try c.decode(RuleTrigger.self, forKey: .trigger)
+        self.conditions    = try c.decode([RuleCondition].self, forKey: .conditions)
+        self.consequences  = try c.decode([ConsequenceEnvelope].self, forKey: .consequences)
+        // Pre-00248 rows don't have an `exceptions` column; defensively
+        // decode as missing-or-non-array → empty.
+        self.exceptions    = (try? c.decodeIfPresent([RuleCondition].self, forKey: .exceptions)) ?? []
+        self.moduleKey     = try c.decodeIfPresent(String.self, forKey: .moduleKey)
+        self.resourceId    = try c.decodeIfPresent(UUID.self, forKey: .resourceId)
+        self.seriesId      = try c.decodeIfPresent(UUID.self, forKey: .seriesId)
+        self.membershipId  = try c.decodeIfPresent(UUID.self, forKey: .membershipId)
     }
 }

@@ -2,8 +2,7 @@ import Foundation
 
 /// A platform rule with WHEN / IF / THEN shape:
 ///   trigger     → which SystemEventType makes the engine consider this rule
-///   conditions  → tree of leaves combined with AND/OR/NOT (§22.4).
-///                 A flat list is `.and(leaves)`, the legacy semantics.
+///   conditions  → all must match (logical AND)
 ///   consequences → all execute when conditions match
 ///
 /// Persisted in `public.rules`. The legacy columns (`code`, `title`,
@@ -38,7 +37,7 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
     public var name: String
     public var isActive: Bool
     public var trigger: RuleTrigger
-    public var conditions: ConditionNode
+    public var conditions: [RuleCondition]
     public var consequences: [RuleConsequence]
     public var moduleKey: String?
     public var resourceId: UUID?
@@ -54,7 +53,7 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         name: String,
         isActive: Bool,
         trigger: RuleTrigger,
-        conditions: ConditionNode,
+        conditions: [RuleCondition],
         consequences: [RuleConsequence],
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
@@ -77,35 +76,6 @@ public struct Rule: Identifiable, Sendable, Hashable, Codable {
         self.membershipId = membershipId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-    }
-
-    /// Convenience init that accepts a flat leaf list (legacy callers).
-    /// Wraps the list as `.and(leaves)` — same semantics as before §22.4.
-    public init(
-        id: UUID = UUID(),
-        groupId: UUID,
-        slug: String? = nil,
-        name: String,
-        isActive: Bool,
-        trigger: RuleTrigger,
-        conditions: [RuleCondition],
-        consequences: [RuleConsequence],
-        moduleKey: String? = nil,
-        resourceId: UUID? = nil,
-        seriesId: UUID? = nil,
-        membershipId: UUID? = nil,
-        createdAt: Date = .now,
-        updatedAt: Date = .now
-    ) {
-        self.init(
-            id: id, groupId: groupId, slug: slug, name: name,
-            isActive: isActive, trigger: trigger,
-            conditions: ConditionNode(leaves: conditions),
-            consequences: consequences,
-            moduleKey: moduleKey, resourceId: resourceId,
-            seriesId: seriesId, membershipId: membershipId,
-            createdAt: createdAt, updatedAt: updatedAt
-        )
     }
 
     public enum CodingKeys: String, CodingKey {

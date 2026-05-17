@@ -202,9 +202,7 @@ public final class ResourceRulesCoordinator {
 
         let trimmedName = formName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trigger = buildTrigger(shape: triggerShape)
-        // Pre-§22.4 path: a single leaf wrapped in the canonical AND
-        // tree. The repository accepts `ConditionNode` directly now.
-        let conditions = ConditionNode(leaves: [defaultCondition])
+        let conditions = [defaultCondition]
         let consequences = [buildConsequence(shape: consequenceShape)]
 
         isSubmitting = true

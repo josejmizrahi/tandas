@@ -1,17 +1,57 @@
--- Rollback for 00251 — restore pre-§22.4 publish_rule_composition (v5)
--- and bump_rule_version (v4); drop the validator + compile helpers.
--- Per migrations/_rollbacks/README.md this is dev/staging only —
--- production should fix-forward.
+-- 00250 — Membership filter (orthogonal): rules.membership_id seteable
+-- desde el composer.
 --
--- IMPORTANT: rule_versions.compiled rows persisted as `{op,children}`
--- trees by the v6/v5 path SURVIVE this rollback. The engine TS still
--- normalises arrays to AND so legacy rows keep evaluating, but a v6-
--- shaped tree on `compiled.conditions` will not be re-readable by the
--- restored v5 RPCs (they expect arrays under `p_conditions`). Hand-fix
--- the affected `rule_versions` rows by re-publishing as flat-array
--- before rolling back.
+-- §22.5 Governance.md, parte 1 (membership). Schema ya tenía
+-- `rules.membership_id uuid` (mig 00078) y el engine ya aplica
+-- `applyMembershipScope` filtrando targets por member_id. Faltaba el
+-- input path: publish_rule_composition y bump_rule_version no lo
+-- aceptaban del cliente.
+--
+-- Concepto
+-- ========
+-- Membership es UN EJE ORTOGONAL al scope (group/resource/series),
+-- no un scope alternativo. Una regla puede ser:
+--
+--   scope=group + membership=Isaac
+--     → "para cualquier evento del grupo, pero solo Isaac dispara"
+--   scope=resource(<event>) + membership=Isaac
+--     → "solo en este evento, solo para Isaac"
+--
+-- Caso típico: "Isaac está fuera de rotativa" → regla membership=Isaac
+-- con consecuencias específicas para él que otros no tienen.
+--
+-- Decisión: módulo (rules.module_key) NO se surface — es system-
+-- managed por set_group_module, no concepto de usuario. Composer
+-- puede MOSTRAR un badge read-only cuando rule.moduleKey != null,
+-- pero no permite settearlo. Esa parte vive solo en iOS.
+--
+-- Cambios
+-- =======
+--   1. publish_rule_composition v5: nuevo p_membership_id uuid default
+--      null. Cuando set, valida que la fila exista en
+--      group_members con active=true y group_id matching.
+--   2. bump_rule_version v4: mismo nuevo p_membership_id. Cuando null,
+--      preserva el actual de la regla; cuando se manda explícito,
+--      reemplaza. Permite "ya no es exclusiva de Isaac" mandando un
+--      sentinel (ver semántica abajo).
+--   3. rules.membership_id se persiste en la fila + en
+--      compiled.membership_id para audit del rule_version.
+--
+-- Semántica para clearing
+-- =======================
+-- Lo natural en SQL sería: p_membership_id NULL = preserve. Para
+-- CLEAR explícitamente, agregamos un parámetro p_clear_membership
+-- bool default false que cuando es true vacía el campo. Esto evita
+-- la ambigüedad de "null = preserve vs clear".
+--
+-- Idempotent: drop + create or replace.
+-- Rollback: _rollbacks/00250_rollback.sql restaura firmas previas.
 
--- 1. Restore publish_rule_composition v5 (mig 00244, slug-aware).
+-- =========================================================
+-- 1. publish_rule_composition v5
+-- =========================================================
+drop function if exists public.publish_rule_composition(uuid, text, jsonb, jsonb, jsonb, jsonb, text, text, jsonb);
+
 create or replace function public.publish_rule_composition(
   p_group_id      uuid,
   p_name          text,
@@ -53,6 +93,7 @@ begin
   if jsonb_typeof(coalesce(p_conditions, '[]'::jsonb)) <> 'array' then raise exception 'conditions must be a jsonb array' using errcode = '22023'; end if;
   if jsonb_typeof(coalesce(p_exceptions, '[]'::jsonb)) <> 'array' then raise exception 'exceptions must be a jsonb array' using errcode = '22023'; end if;
 
+  -- Validate p_membership_id: must be an active member of the same group.
   if p_membership_id is not null then
     select user_id into v_membership_user_id from public.group_members
      where id = p_membership_id and group_id = p_group_id and active = true;
@@ -148,7 +189,7 @@ begin
     'trigger', jsonb_build_object('eventType', v_trigger_id, 'config', v_trigger_config),
     'conditions', v_clean_conds, 'consequences', v_clean_cons, 'exceptions', v_clean_excs,
     'scope', p_scope,
-    'membership_id', p_membership_id,
+    'membership_id', p_membership_id,  -- mig 00250: orthogonal filter persisted in audit version
     'target', jsonb_build_object('type','ref','value','$trigger.actor'),
     'shape_ids', jsonb_build_object(
       'trigger', v_trigger_id,
@@ -181,26 +222,26 @@ begin
   end if;
 
   return jsonb_build_object('rule_id', v_rule_id, 'rule_version_id', v_rule_version_id, 'version', 1, 'slug', v_slug, 'conflicts', v_conflicts);
-end;
-$$;
+end; $$;
 
--- 2. Restore bump_rule_version v4 (mig 00250, membership-aware).
+revoke execute on function public.publish_rule_composition(uuid, text, jsonb, jsonb, jsonb, jsonb, text, text, jsonb, uuid) from public, anon;
+grant  execute on function public.publish_rule_composition(uuid, text, jsonb, jsonb, jsonb, jsonb, text, text, jsonb, uuid) to authenticated, service_role;
+comment on function public.publish_rule_composition(uuid, text, jsonb, jsonb, jsonb, jsonb, text, text, jsonb, uuid) is 'v5 (mig 00250): adds optional p_membership_id (orthogonal filter — restricts the rule to a single member''s targets).';
+
+-- =========================================================
+-- 2. bump_rule_version v4
+-- =========================================================
+drop function if exists public.bump_rule_version(uuid, text, jsonb, jsonb, jsonb, text, jsonb);
+
 create or replace function public.bump_rule_version(
-  p_rule_id           uuid,
-  p_name              text,
-  p_trigger           jsonb,
-  p_conditions        jsonb default '[]'::jsonb,
-  p_consequences      jsonb default '[]'::jsonb,
-  p_change_reason     text default null,
-  p_exceptions        jsonb default null,
-  p_membership_id     uuid default null,
-  p_clear_membership  boolean default false
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
+  p_rule_id uuid, p_name text, p_trigger jsonb,
+  p_conditions jsonb default '[]'::jsonb,
+  p_consequences jsonb default '[]'::jsonb,
+  p_change_reason text default null,
+  p_exceptions jsonb default null,
+  p_membership_id uuid default null,
+  p_clear_membership boolean default false  -- explicit clear (see header)
+) returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_uid uuid := auth.uid();
   v_rule public.rules%rowtype; v_active public.rule_versions%rowtype;
@@ -226,6 +267,8 @@ begin
   if jsonb_typeof(coalesce(p_conditions, '[]'::jsonb)) <> 'array' then raise exception 'conditions must be a jsonb array' using errcode = '22023'; end if;
   if p_exceptions is not null and jsonb_typeof(p_exceptions) <> 'array' then raise exception 'exceptions must be a jsonb array' using errcode = '22023'; end if;
 
+  -- Resolve membership: clear if asked, else replace with p_value (when
+  -- non-null), else preserve current.
   if p_clear_membership then
     v_resolved_membership_id := null;
   elsif p_membership_id is not null then
@@ -349,10 +392,8 @@ begin
   end if;
 
   return jsonb_build_object('rule_id', p_rule_id, 'rule_version_id', v_new_version_id, 'version', v_new_version_no, 'slug', v_rule.slug, 'conflicts', v_conflicts);
-end;
-$$;
+end; $$;
 
--- 3. Drop the new helper functions.
-drop function if exists public.extract_condition_shape_ids(jsonb);
-drop function if exists public.compile_condition_tree(jsonb);
-drop function if exists public.validate_condition_node(jsonb);
+revoke execute on function public.bump_rule_version(uuid, text, jsonb, jsonb, jsonb, text, jsonb, uuid, boolean) from public, anon;
+grant  execute on function public.bump_rule_version(uuid, text, jsonb, jsonb, jsonb, text, jsonb, uuid, boolean) to authenticated, service_role;
+comment on function public.bump_rule_version(uuid, text, jsonb, jsonb, jsonb, text, jsonb, uuid, boolean) is 'v4 (mig 00250): membership preservation logic. p_membership_id non-null replaces; null preserves; p_clear_membership=true explicitly clears.';

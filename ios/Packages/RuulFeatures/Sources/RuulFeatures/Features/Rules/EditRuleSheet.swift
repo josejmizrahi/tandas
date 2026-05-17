@@ -29,10 +29,15 @@ public struct EditRuleSheet: View {
     public let pendingActionId: UUID?
     @Bindable var coordinator: EditRulesCoordinator
     public let onDismiss: () -> Void
+    @Environment(AppState.self) private var app
 
     @State private var draftAmount: String = ""
     @FocusState private var amountFocused: Bool
     @State private var showArchiveConfirm: Bool = false
+    /// Composer presentation handle when user opens the full
+    /// edit-in-place flow (§22.1 / mig 00247). Bumps version+1 under
+    /// the same rule_id + slug so atom history stays continuous.
+    @State private var composerCoord: RuleComposerCoordinator?
 
     public init(
         rule: GroupRule,
@@ -62,6 +67,22 @@ public struct EditRuleSheet: View {
                         .foregroundStyle(.orange)
                 }
             } else {
+                if canOpenComposer {
+                    Section {
+                        Button { openComposer() } label: {
+                            HStack {
+                                Image(systemName: "slider.horizontal.3")
+                                Text("Editar composición completa")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        Text("Disparador, condiciones y consecuencias. Crea una nueva versión preservando el historial.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section {
                     Button(role: .destructive) {
                         showArchiveConfirm = true
@@ -75,6 +96,18 @@ public struct EditRuleSheet: View {
             }
         }
         .ruulSheetToolbar("Editar regla", onClose: onDismiss)
+        .fullScreenCover(item: $composerCoord) { coord in
+            RuleComposerView(
+                coord: coord,
+                onPublished: { _ in
+                    composerCoord = nil
+                    Task { await coordinator.refresh() }
+                    onDismiss()
+                },
+                onCancel: { composerCoord = nil }
+            )
+            .environment(app)
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await commitAmount() } }
@@ -162,5 +195,30 @@ public struct EditRuleSheet: View {
         nf.currencyCode = "MXN"
         nf.maximumFractionDigits = 0
         return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+
+    // MARK: - Composer entry (full edit-in-place)
+
+    /// True when the AppState wiring + governance allow opening the full
+    /// composer. Hidden in preview/mock when ruleTemplateRepo is nil, and
+    /// when the group's policy doesn't grant modifyRules to this actor
+    /// (the coordinator already filters at that level, but we re-check
+    /// to avoid surfacing an inert button).
+    private var canOpenComposer: Bool {
+        app.ruleTemplateRepo != nil
+        && app.groups.contains(where: { $0.id == rule.groupId })
+    }
+
+    private func openComposer() {
+        guard let repo = app.ruleTemplateRepo,
+              let group = app.groups.first(where: { $0.id == rule.groupId }) else {
+            return
+        }
+        composerCoord = RuleComposerCoordinator(
+            group: group,
+            shapeRegistry: app.ruleShapeRegistry,
+            repo: repo,
+            editing: rule
+        )
     }
 }
