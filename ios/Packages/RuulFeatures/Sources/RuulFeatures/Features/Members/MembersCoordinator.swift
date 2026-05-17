@@ -51,4 +51,45 @@ public final class MembersCoordinator {
     public var activeMembers: [MemberWithProfile] {
         members.filter { $0.member.active }
     }
+
+    /// True when the calling user may grant or revoke roles. Resolved
+    /// locally via the role catalog on `group` — server is still the
+    /// authoritative gate via `has_permission(assignRoles)`.
+    public var canManageRoles: Bool {
+        guard let me = members.first(where: { $0.member.userId == actorUserId })?.member else {
+            return false
+        }
+        if me.isFounder { return true }
+        let catalog = group.effectiveRoles
+        for roleId in me.rawRoles {
+            if let def = catalog[roleId], def.grants(.assignRoles) { return true }
+        }
+        return false
+    }
+
+    /// Count of distinct active founders. Used by `MemberRolesPicker`
+    /// to disable the founder toggle on the last holder so the UI
+    /// doesn't offer an action the server would reject anyway.
+    public var founderCount: Int {
+        activeMembers.filter { $0.member.isFounder }.count
+    }
+
+    /// True when the calling user may remove other members from the
+    /// group. Hides the kick swipe-action; server-side `remove_member`
+    /// RPC is still the authoritative gate.
+    public var canRemoveMembers: Bool {
+        permission(.removeMember)
+    }
+
+    private func permission(_ p: Permission) -> Bool {
+        guard let me = members.first(where: { $0.member.userId == actorUserId })?.member else {
+            return false
+        }
+        if me.isFounder { return true }
+        let catalog = group.effectiveRoles
+        for roleId in me.rawRoles {
+            if let def = catalog[roleId], def.grants(p) { return true }
+        }
+        return false
+    }
 }

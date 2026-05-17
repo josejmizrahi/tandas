@@ -28,6 +28,7 @@ public struct GroupHomeView: View {
     public var onRotateCode: (() -> Void)?
     public var onInviteMembers: (() -> Void)?
     public var onConfirmLeave: (() -> Void)?
+    public var onOpenRoles: (() -> Void)?
 
     public init(
         coordinator: GroupHomeCoordinator,
@@ -43,7 +44,8 @@ public struct GroupHomeView: View {
         onPickTimezone: (() -> Void)? = nil,
         onRotateCode: (() -> Void)? = nil,
         onInviteMembers: (() -> Void)? = nil,
-        onConfirmLeave: (() -> Void)? = nil
+        onConfirmLeave: (() -> Void)? = nil,
+        onOpenRoles: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMembersList = onOpenMembersList
@@ -59,6 +61,7 @@ public struct GroupHomeView: View {
         self.onRotateCode = onRotateCode
         self.onInviteMembers = onInviteMembers
         self.onConfirmLeave = onConfirmLeave
+        self.onOpenRoles = onOpenRoles
     }
 
     public var body: some View {
@@ -173,6 +176,23 @@ public struct GroupHomeView: View {
             navRow(icon: "scale.3d", label: "Reglas del grupo", action: onOpenGovernance)
             divider
             navRow(icon: "list.bullet.clipboard", label: "Presets de reglas", action: onOpenRulePresets)
+            if coordinator.hasPermission(.assignRoles), let onOpenRoles {
+                divider
+                navRow(
+                    icon: "person.text.rectangle",
+                    label: "Roles y permisos",
+                    trailing: { trailingValue(rolesSummary) },
+                    action: onOpenRoles
+                )
+            }
+        }
+    }
+
+    private var rolesSummary: String {
+        let total = coordinator.group?.effectiveRoles.count ?? 2
+        switch total {
+        case 0, 1: return "\(total)"
+        default:   return "\(total)"
         }
     }
 

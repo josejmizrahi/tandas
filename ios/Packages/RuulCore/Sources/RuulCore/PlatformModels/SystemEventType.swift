@@ -261,5 +261,15 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// `maintenance_overdue_lock` template.
     case assetMaintenanceOverdue
 
+    // MARK: - Role lifecycle (mig 00229 — Phase 5 RolesV2 completion)
+    /// Emitted by `assign_role` when a member gains a role. Payload:
+    /// `{role, user_id, assigned_by}`. `member_id` = the affected
+    /// group_members row.
+    case roleAssigned
+    /// Emitted by `unassign_role` when a member loses a role. Payload:
+    /// `{role, user_id, unassigned_by}`. `member_id` = the affected
+    /// group_members row.
+    case roleUnassigned
+
     case unknown(String)
 }

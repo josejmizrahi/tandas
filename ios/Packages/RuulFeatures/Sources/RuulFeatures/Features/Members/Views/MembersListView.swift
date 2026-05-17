@@ -29,7 +29,9 @@ public struct MembersListView: View {
                                     MemberDetailView(
                                         memberWithProfile: row,
                                         group: coordinator.group,
-                                        isCurrentUser: row.member.userId == coordinator.actorUserId
+                                        isCurrentUser: row.member.userId == coordinator.actorUserId,
+                                        canManageRoles: coordinator.canManageRoles,
+                                        founderCount: coordinator.founderCount
                                     )
                                 } label: {
                                     memberRow(row)

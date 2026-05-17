@@ -84,6 +84,10 @@ extension SystemEventType {
         .eventCancelled,
         .eventStarted,
         .eventUpdated,
+        .assetCheckoutOverdue,
+        .assetMaintenanceOverdue,
+        .roleAssigned,
+        .roleUnassigned,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -166,6 +170,10 @@ extension SystemEventType {
         "eventCancelled",
         "eventStarted",
         "eventUpdated",
+        "assetCheckoutOverdue",
+        "assetMaintenanceOverdue",
+        "roleAssigned",
+        "roleUnassigned",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -261,6 +269,8 @@ extension SystemEventType {
         case .eventUpdated: return "eventUpdated"
         case .assetCheckoutOverdue: return "assetCheckoutOverdue"
         case .assetMaintenanceOverdue: return "assetMaintenanceOverdue"
+        case .roleAssigned: return "roleAssigned"
+        case .roleUnassigned: return "roleUnassigned"
         case .unknown(let s): return s
         }
     }
@@ -348,6 +358,8 @@ extension SystemEventType {
         case "eventUpdated": return .eventUpdated
         case "assetCheckoutOverdue": return .assetCheckoutOverdue
         case "assetMaintenanceOverdue": return .assetMaintenanceOverdue
+        case "roleAssigned": return .roleAssigned
+        case "roleUnassigned": return .roleUnassigned
         default: return .unknown(raw)
         }
     }
