@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 @MainActor
 @Observable
@@ -371,12 +372,24 @@ public final class AppState {
     public func loadModuleRegistry() async {
         guard let loader = moduleRegistryLoader else { return }
         do {
-            self.moduleRegistry = try await loader.load()
+            let server = try await loader.load()
+            let drift = ModuleRegistry.v1Fallback.drift(against: server)
+            if drift.hasDrift {
+                Self.driftLog.warning(
+                    "Module catalog drift vs v1Fallback — missing on server: \(drift.missingFromOther, privacy: .public); extra on server: \(drift.extraInOther, privacy: .public)"
+                )
+            }
+            self.moduleRegistry = server
         } catch {
-            // Keep current (fallback or last-good) registry. Server drift
-            // is checked by tests + CI parity, not by runtime.
+            // Keep current (fallback or last-good) registry. Transient
+            // network blips don't degrade UX; the v1Fallback covers V1.
         }
     }
+
+    private static let driftLog = Logger(
+        subsystem: "com.josejmizrahi.ruul",
+        category: "module-registry"
+    )
 
     /// Refreshes `ruleShapeRegistry` from `list_rule_shapes` (mig 00084).
     /// Same resilience contract as `loadModuleRegistry`: silent on error,

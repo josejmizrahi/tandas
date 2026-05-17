@@ -118,4 +118,28 @@ public struct ModuleRegistry: Sendable, Equatable {
     private func directDependents(of id: String) -> [String] {
         modules.compactMap { $0.dependencies.contains(id) ? $0.id : nil }
     }
+
+    // MARK: - Drift detection
+
+    /// Symmetric set diff against another registry, by module id. Useful
+    /// to surface drift between `v1Fallback` (hardcoded in Swift) and
+    /// what the server actually returns. Both lists are sorted so logs
+    /// stay stable across boots.
+    public struct Drift: Sendable, Equatable {
+        public let missingFromOther: [String]   // present in self, absent in other
+        public let extraInOther: [String]       // absent in self, present in other
+
+        public var hasDrift: Bool {
+            !missingFromOther.isEmpty || !extraInOther.isEmpty
+        }
+    }
+
+    public func drift(against other: ModuleRegistry) -> Drift {
+        let mine  = Set(modules.map(\.id))
+        let yours = Set(other.modules.map(\.id))
+        return Drift(
+            missingFromOther: mine.subtracting(yours).sorted(),
+            extraInOther:     yours.subtracting(mine).sorted()
+        )
+    }
 }
