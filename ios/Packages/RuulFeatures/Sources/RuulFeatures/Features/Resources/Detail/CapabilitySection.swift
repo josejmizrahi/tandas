@@ -100,6 +100,7 @@ public final class CapabilitySectionCatalog {
         register(MoneySectionView.definition)
         register(RotationSectionView.definition)
         register(RulesSectionView.definition)
+        register(ResourceLinksSectionView.definition)
         register(ActivitySectionView.definition)
     }
 }

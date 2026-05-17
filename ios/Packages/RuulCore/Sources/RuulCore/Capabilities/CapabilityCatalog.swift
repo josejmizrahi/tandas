@@ -38,8 +38,11 @@ public struct CapabilityCatalog: Sendable {
     /// `history` are universal in catalog already; this list is the
     /// canonical Tier-0 contract referenced by builders + the backfill
     /// migration so any future addition is grep-able from one place.
+    ///
+    /// `links` (mig 00233) joined Tier 0 with Fase 2 — every resource
+    /// is a node of the graph and surfaces a "Vinculado con…" section.
     public static let tier0CapabilityIds: [String] = [
-        "status", "description", "history", "rules", "voting"
+        "status", "description", "history", "rules", "voting", "links"
     ]
 
     /// Tier 0.5 — economic universals. Apply to every resource type that
@@ -135,6 +138,7 @@ public struct CapabilityCatalog: Sendable {
         ReminderCapability(),
         StatusCapability(),
         HistoryCapability(),
+        LinksCapability(),
         // Event-shape primitives. Hard-seeded on every event resource by
         // mig 00109 + 00110 (no module provides them — they're inherent
         // to the event shape). Declared here so the catalog resolves the
@@ -1186,6 +1190,33 @@ public struct HistoryCapability: CapabilityBlock {
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "activity_feed", displayName: "Actividad", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
+// links — Fase 2 (mig 00232). Every resource is a node of the polymorphic
+// graph; this cap surfaces the "Vinculado con…" section that lists in/
+// out edges + the "+ Vincular" picker. Tier 0 per
+// `Plans/Active/CapabilityTiers.md §2` — universal across the 6 types.
+public struct LinksCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "links" }
+    public var displayName: String { "Vinculaciones" }
+    public var summary: String { "Conexiones de este recurso con otros del grupo." }
+    public var enabledResourceTypes: [ResourceType] {
+        [.event, .fund, .asset, .space, .slot, .right]
+    }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "links.add", label: "Vincular", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "resource_links_view", displayName: "Vinculaciones", scope: .resource)]
     }
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
