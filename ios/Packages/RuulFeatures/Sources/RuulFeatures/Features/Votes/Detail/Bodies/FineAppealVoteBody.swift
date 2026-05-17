@@ -27,6 +27,10 @@ import RuulCore
 /// (mostrando solo `vote.description` como appeal reason).
 public struct FineAppealVoteBody: View {
     @Bindable var coordinator: VoteDetailCoordinator
+    /// Router del shell — opcional para mantener este body presentable
+    /// fuera del shell (sheets antiguos, previews). Cuando está presente
+    /// se renderiza el botón "Ver multa" que abre el FineDetail real.
+    @Environment(RootRouter.self) private var router
 
     private var fineAmount: Int? {
         coordinator.vote.payload["fine_amount"]?.intValue
@@ -49,35 +53,52 @@ public struct FineAppealVoteBody: View {
     }
 
     private var fineCard: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("MULTA APELADA")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
-            HStack(alignment: .firstTextBaseline) {
-                if let reason = fineReason, !reason.isEmpty {
-                    Text(reason)
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                } else {
-                    Text("(Sin razón registrada)")
-                        .ruulTextStyle(RuulTypography.headline)
+        Button {
+            // referenceId del Vote apunta a la Fine para vote_type=fine_appeal
+            // (migración 00023). Tap abre el detail real en vez de quedarse
+            // en el dump read-only del payload.
+            router.openFineDetail(coordinator.vote.referenceId)
+        } label: {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                HStack {
+                    Text("MULTA APELADA")
+                        .ruulTextStyle(RuulTypography.sectionLabel)
                         .foregroundStyle(Color.ruulTextTertiary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: RuulSpacing.sm)
-                if let amount = fineAmount {
-                    Text("$\(amount)")
-                        .ruulTextStyle(RuulTypography.statMedium)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                HStack(alignment: .firstTextBaseline) {
+                    if let reason = fineReason, !reason.isEmpty {
+                        Text(reason)
+                            .ruulTextStyle(RuulTypography.headline)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                    } else {
+                        Text("(Sin razón registrada)")
+                            .ruulTextStyle(RuulTypography.headline)
+                            .foregroundStyle(Color.ruulTextTertiary)
+                    }
+                    Spacer(minLength: RuulSpacing.sm)
+                    if let amount = fineAmount {
+                        Text("$\(amount)")
+                            .ruulTextStyle(RuulTypography.statMedium)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                    }
                 }
             }
+            .padding(RuulSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+            .contentShape(Rectangle())
         }
-        .padding(RuulSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
-        )
+        .buttonStyle(.plain)
+        .accessibilityHint("Abre el detalle de la multa")
     }
 
     @ViewBuilder
