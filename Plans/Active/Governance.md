@@ -1690,21 +1690,56 @@ Caso clásico anti-tirania: notifica al treasurer cuando alguien
 intenta retirar > $X. Hoy no es expresable como regla — hay que
 hardcodearlo via permission gate del RPC.
 
-### 22.4 Conditions con árbol (AND/OR/NOT) (severidad: **media**)
+### 22.4 Conditions con árbol (AND/OR/NOT) (severidad: **media**) — ✅ shipped (mig 00251)
 
-Hoy `conditions[]` es lista AND plana. Para "fine si [late AND no
-excuse] OR [no-show]" hay que publicar 2 reglas separadas y aceptar
-que aparezcan duplicadas en analytics.
+Hoy `conditions[]` aceptaba sólo lista AND plana. Para "fine si [late
+AND no excuse] OR [no-show]" había que publicar 2 reglas separadas y
+aceptar que aparezcan duplicadas en analytics.
 
-Falta:
+Implementado en mig 00251:
 
-- Schema: `conditions` pasa de `[c1, c2]` a `{op: 'and', children:
-  [c1, c2]}` con `op` ∈ `{and, or, not}`. Backward compat: el array
-  plano se interpreta como `{op: 'and', children: array}`.
-- Engine: condition evaluator recursivo.
-- UI: el composer actual asume lista plana. Editor de árbol es UX
-  fork — probable que se difiera hasta que aparezca un grupo que
-  pida la 3a o 4a regla compuesta.
+- **Schema** — `rules.conditions` (y `rule_versions.compiled.conditions`)
+  acepta EITHER un array plano `[c1, c2]` (legacy implicit AND, sin
+  cambios para pre-§22.4) OR un nodo `{op, children}` con
+  `op ∈ {and, or, not}`. Backward compat absoluto: el array plano se
+  interpreta como `{op:'and', children: array}` en el engine.
+- **Validador SQL** — `public.validate_condition_node(jsonb)` recursivo
+  (op enum + arity: not = 1 child, and/or ≥ 1) + leaf shape.
+  Invocado desde `publish_rule_composition` v6 y `bump_rule_version`
+  v5 antes de persistir.
+- **Helpers SQL** — `compile_condition_tree(jsonb)` traduce
+  `shape_id`→`type` leaf por leaf preservando estructura;
+  `extract_condition_shape_ids(jsonb)` devuelve la lista pre-order de
+  leaf ids para `compiled.shape_ids.conditions` — el view plano que
+  consumen capability checks y conflict signatures sin aprender la
+  forma de árbol.
+- **Engine TS** — `ruleEngine.ts` normaliza arrays a
+  `{op:'and', children: array}` y evalúa con `evalConditionNode`
+  recursivo + short-circuit (AND para en primer false, OR en primer
+  true, NOT invierte). Si una condition no implementada está en una
+  rama que ya cortocircuitó, NO se reporta como missing — la rama no
+  afectó el outcome.
+- **iOS** — `RuulCore.ConditionNode` enum (`leaf` / `.and` / `.or` /
+  `.not`) con Codable que round-trips ambos wire shapes:
+  array → `.and(leaves)`, tree → estructura preservada. Encoding
+  compacta `.and(of leaves)` de vuelta a array (back-compat) y emite
+  `{op,children}` sólo cuando el árbol es no-trivial. `GroupRule`
+  decoder ahora tolera ambas formas: la vista plana `conditions:
+  [RuleCondition]` mantiene el contrato pre-§22.4 (es la pre-order
+  view de los leaves), y `conditionsTree: ConditionNode?` preserva la
+  estructura cuando el wire es un árbol (nil para legacy).
+- **Sentence formatter** — `RuleSentenceFormatter.conditionPhrase(for:
+  node:, registry:)` renderiza el árbol como prosa natural con
+  paréntesis sólo cuando un child es más débil que su parent (OR
+  dentro de AND/NOT, AND dentro de NOT).
+- **Excepciones** — `compiled.exceptions[]` se mantienen como lista
+  plana. La semántica "any blocks" ya es OR implícito; un árbol ahí
+  complica sin valor claro (preserva §22.2).
+
+UI: el composer actual asume lista plana. Editor de árbol AND/OR/NOT
+queda como follow-up — el toggle "Avanzado" en el RuleBuilder es la
+opción de UX consensuada con el founder; ship cuando aparezca el
+primer grupo beta pidiendo la 3a o 4a regla compuesta.
 
 ### 22.5 Membership filter + `module` (severidad: **baja**) — Membership ✅ shipped (mig 00250)
 
@@ -1765,8 +1800,10 @@ trazabilidad módulo→rule que el sistema mantiene automáticamente.
    formales (asociaciones, comunidades religiosas).
 4. **22.5 Membership filter** ✅ shipped (mig 00250). Anti-tirania
    ortogonal al scope: "esta regla solo aplica a Isaac".
-5. **22.4 Tree conditions** — el más invasivo (engine + UI), se queda
-   al final.
+5. **22.4 Tree conditions** ✅ shipped (mig 00251). Engine + iOS read
+   path + sentence formatter listos; composer UI (toggle Avanzado)
+   queda como follow-up cuando un grupo beta pida la 3a o 4a regla
+   compuesta.
 6. **22.6** — picotear cuando UX feedback lo demande.
 
 No construir las 4 a ciegas. Esperar a que un grupo beta haga

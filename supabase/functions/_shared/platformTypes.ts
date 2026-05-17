@@ -46,6 +46,27 @@ export interface RuleCondition {
   config: Record<string, unknown>;
 }
 
+/**
+ * AND/OR/NOT composition of conditions (§22.4 / mig 00251). A rule's
+ * `conditions` field may be:
+ *
+ * - a flat array of leaves — interpreted as `{op:'and', children:array}`
+ *   (legacy / pre-§22.4 wire shape, preserved for backward compat).
+ * - a `{op,children}` object where `op ∈ {'and','or','not'}` and each
+ *   child is either a leaf `{type,config}` or a nested op node.
+ *   `'not'` carries exactly one child; `'and'`/`'or'` carry ≥ 1.
+ *
+ * The engine normalises arrays to `{op:'and', children:array}` before
+ * walking so downstream code only handles the tree form.
+ * Publisher RPCs (publish_rule_composition v6, bump_rule_version v5)
+ * validate the structure before persisting.
+ */
+export type RuleConditionNode =
+  | RuleCondition
+  | { op: "and"; children: RuleConditionNode[] }
+  | { op: "or";  children: RuleConditionNode[] }
+  | { op: "not"; children: RuleConditionNode[] };
+
 export interface RuleConsequence {
   type: ConsequenceType;
   config: Record<string, unknown>;
@@ -79,7 +100,13 @@ export interface Rule {
   name: string;
   is_active: boolean;
   trigger: RuleTrigger;
-  conditions: RuleCondition[];
+  /**
+   * §22.4 (mig 00251): either a flat array of leaves (legacy implicit
+   * AND wire shape) or a `{op,children}` tree object. The engine
+   * normalises arrays to `{op:'and', children: array}` before walking,
+   * so downstream code only deals with the tree form.
+   */
+  conditions: RuleCondition[] | RuleConditionNode;
   consequences: RuleConsequence[];
   // (RuleConsequence carries its own optional `target` selector per
   // mig 00249 — see ruleEngineConsequences.ts resolveTargets.)

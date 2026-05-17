@@ -12,8 +12,21 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let name: String
     public let isActive: Bool
     public let trigger: RuleTrigger
+    /// Flat pre-order list of every condition leaf in the rule. Pre-§22.4
+    /// rules persisted a JSON array; §22.4 (mig 00251) lets the column
+    /// also hold a `{op,children}` AND/OR/NOT tree. For back-compat
+    /// every consumer that doesn't care about the structure (capability
+    /// checks, param extraction, summary renders) keeps reading this
+    /// flat view — the decoder unwraps trees into their leaves here. The
+    /// full structure (when non-trivial) lives in `conditionsTree`.
     public let conditions: [RuleCondition]
     public let consequences: [ConsequenceEnvelope]
+    /// AND/OR/NOT tree of the rule's conditions, when the wire shape is
+    /// a tree (§22.4 / mig 00251). Nil when the wire shape is a flat
+    /// array — in that case `conditions` IS the full picture (implicit
+    /// AND of leaves). When non-nil, this is the source of truth; the
+    /// flat `conditions` is a derived view of the leaves.
+    public let conditionsTree: ConditionNode?
     /// Condition-shaped predicates that BLOCK consequences when ANY
     /// evaluates true (mig 00248, §22.2 Governance.md). Decoded from
     /// `rules.exceptions` jsonb column. Defaults to empty for rules
@@ -45,6 +58,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         conditions: [RuleCondition],
         consequences: [ConsequenceEnvelope],
         exceptions: [RuleCondition] = [],
+        conditionsTree: ConditionNode? = nil,
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
         seriesId: UUID? = nil,
@@ -59,6 +73,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.conditions = conditions
         self.consequences = consequences
         self.exceptions = exceptions
+        self.conditionsTree = conditionsTree
         self.moduleKey = moduleKey
         self.resourceId = resourceId
         self.seriesId = seriesId
@@ -162,7 +177,16 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.name          = try c.decode(String.self, forKey: .name)
         self.isActive      = try c.decode(Bool.self, forKey: .isActive)
         self.trigger       = try c.decode(RuleTrigger.self, forKey: .trigger)
-        self.conditions    = try c.decode([RuleCondition].self, forKey: .conditions)
+        // §22.4 (mig 00251): the wire shape under `conditions` is now
+        // EITHER a flat array (legacy implicit AND) OR a `{op,children}`
+        // AND/OR/NOT tree. Decode through `ConditionNode` so both shapes
+        // work; collapse to `allLeaves` for the back-compat flat view.
+        let tree           = try c.decode(ConditionNode.self, forKey: .conditions)
+        self.conditions    = tree.allLeaves
+        // Preserve the tree only when it carries structure richer than
+        // the legacy AND-of-leaves (which `flatLeaves != nil` detects).
+        // Nil for legacy rows means callers can keep ignoring the field.
+        self.conditionsTree = (tree.flatLeaves == nil) ? tree : nil
         self.consequences  = try c.decode([ConsequenceEnvelope].self, forKey: .consequences)
         // Pre-00248 rows don't have an `exceptions` column; defensively
         // decode as missing-or-non-array → empty.
@@ -171,5 +195,30 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.resourceId    = try c.decodeIfPresent(UUID.self, forKey: .resourceId)
         self.seriesId      = try c.decodeIfPresent(UUID.self, forKey: .seriesId)
         self.membershipId  = try c.decodeIfPresent(UUID.self, forKey: .membershipId)
+    }
+
+    /// Custom encoder so the §22.4 tree, when present, round-trips back
+    /// to the wire as `{op,children}` instead of the lossy flat list of
+    /// leaves. Pre-§22.4 rows (no `conditionsTree`) encode the flat
+    /// array exactly as before.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(groupId, forKey: .groupId)
+        try c.encodeIfPresent(slug, forKey: .slug)
+        try c.encode(name, forKey: .name)
+        try c.encode(isActive, forKey: .isActive)
+        try c.encode(trigger, forKey: .trigger)
+        if let tree = conditionsTree {
+            try c.encode(tree, forKey: .conditions)
+        } else {
+            try c.encode(conditions, forKey: .conditions)
+        }
+        try c.encode(consequences, forKey: .consequences)
+        try c.encode(exceptions, forKey: .exceptions)
+        try c.encodeIfPresent(moduleKey, forKey: .moduleKey)
+        try c.encodeIfPresent(resourceId, forKey: .resourceId)
+        try c.encodeIfPresent(seriesId, forKey: .seriesId)
+        try c.encodeIfPresent(membershipId, forKey: .membershipId)
     }
 }
