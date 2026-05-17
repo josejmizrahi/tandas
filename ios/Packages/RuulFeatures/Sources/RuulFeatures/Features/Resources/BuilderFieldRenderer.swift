@@ -291,16 +291,35 @@ public struct BuilderFieldRenderer: View {
         return iso.string(from: date)
     }
 
-    /// Parses either YYYY-MM-DD (date-only) or a full ISO8601 timestamp.
-    /// Returns nil when neither shape matches so the caller can fall
-    /// back to a default.
+    /// Parses either a full ISO8601 timestamp (with time) or a date-only
+    /// `YYYY-MM-DD` string. Returns nil when neither shape matches so the
+    /// caller can fall back to a default.
+    ///
+    /// Order matters: full ISO datetimes must be tried FIRST. iOS's
+    /// `ISO8601DateFormatter` with `[.withFullDate]` permissively accepts
+    /// strings that include a time component, but silently truncates the
+    /// time to midnight UTC. For a Mexico (UTC-6) user picking 7 PM local,
+    /// formatDate writes `…T01:00:00Z` (UTC). If date-only parsing went
+    /// first and matched, the result would be midnight UTC = 6 PM local
+    /// the previous day. The DatePicker binding would re-read that value
+    /// and snap back to 6 PM — the user's symptom: "no me deja escoger
+    /// después de las 6 pm".
+    ///
+    /// The "contains T" guard short-circuits the formatter ambiguity: a
+    /// string with `T` is unambiguously a full timestamp, never a
+    /// date-only value.
     static func parseDateString(_ raw: String) -> Date? {
+        if raw.contains("T") || raw.contains(":") {
+            let full = ISO8601DateFormatter()
+            if let d = full.date(from: raw) { return d }
+        }
         let dateOnly = ISO8601DateFormatter()
         dateOnly.formatOptions = [.withFullDate]
         if let d = dateOnly.date(from: raw) { return d }
+        // Final fallback: try the full parser even when no T/: hint
+        // (defensive against future serializer changes).
         let full = ISO8601DateFormatter()
-        if let d = full.date(from: raw) { return d }
-        return nil
+        return full.date(from: raw)
     }
 
     /// Binds the field's raw JSONConfig value (nil-able). Used by
