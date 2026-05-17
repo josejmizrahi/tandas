@@ -798,6 +798,8 @@ private struct GroupHomeSheetContent: View {
     let app: AppState
     let router: RootRouter
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var path = NavigationPath()
     @State private var showEditIdentity = false
     @State private var showRotateCode = false
@@ -910,6 +912,16 @@ private struct GroupHomeSheetContent: View {
             .fullScreenCover(isPresented: $showLeave) {
                 LeaveGroupConfirmationSheet(group: group)
                     .environment(app)
+            }
+            .toolbar {
+                // GroupHomeView itself has no close affordance — the
+                // fullScreenCover that hosts it needs to provide one or
+                // the screen becomes a dead-end. Matches the chrome
+                // pattern of every other modal in the app (Switcher,
+                // CreateGroup, Members*, etc.).
+                ToolbarItem(placement: .topBarLeading) {
+                    RuulCloseToolbarButton { dismiss() }
+                }
             }
         }
         .environment(app)
