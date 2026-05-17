@@ -482,20 +482,16 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             throw RuleTemplateError.rpcFailed("draft has no consequences")
         }
 
-        struct ShapePayload: Encodable {
-            let shape_id: String
-            let config: JSONConfig
-            // Optional target — only meaningful for consequences (mig 00249,
-            // §22.3). Encoded only when non-nil so trigger/condition/
-            // exception payloads stay compact.
-            let target: String?
-        }
         struct Params: Encodable {
             let p_group_id: String
             let p_name: String
             let p_scope: JSONConfig
             let p_trigger: ShapePayload
-            let p_conditions: [ShapePayload]
+            // §22.4 (mig 00251): either a flat array of ShapePayload
+            // leaves (legacy/Simple mode) or a `{op,children}` tree
+            // (Avanzado mode). ConditionsPayload picks the encoding
+            // at runtime from the draft state.
+            let p_conditions: ConditionsPayload
             let p_consequences: [ShapePayload]
             let p_change_reason: String?
             let p_slug: String?
@@ -510,7 +506,7 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
             p_scope: RuleBuilderTemplate.scopeJSON(draft.scope),
             p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config, target: nil),
-            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_conditions: Self.conditionsPayload(from: draft),
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
             p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
@@ -539,19 +535,12 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             throw RuleTemplateError.rpcFailed("draft has no consequences")
         }
 
-        struct ShapePayload: Encodable {
-            let shape_id: String
-            let config: JSONConfig
-            // Optional target — only meaningful for consequences (mig 00249,
-            // §22.3). Encoded only when non-nil so trigger/condition/
-            // exception payloads stay compact.
-            let target: String?
-        }
         struct Params: Encodable {
             let p_rule_id: String
             let p_name: String
             let p_trigger: ShapePayload
-            let p_conditions: [ShapePayload]
+            // §22.4 (mig 00251): array or tree, same shape as publish.
+            let p_conditions: ConditionsPayload
             let p_consequences: [ShapePayload]
             let p_change_reason: String?
             let p_exceptions: [ShapePayload]
@@ -572,7 +561,7 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_rule_id: ruleId.uuidString.lowercased(),
             p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
             p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config, target: nil),
-            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
+            p_conditions: Self.conditionsPayload(from: draft),
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
             p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
@@ -588,5 +577,56 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         } catch {
             throw RuleTemplateError.rpcFailed(error.localizedDescription)
         }
+    }
+
+    // MARK: §22.4 — conditions payload (flat array OR tree)
+
+    /// One shape leaf as it appears on the wire — shared by trigger /
+    /// flat conditions / consequences / exceptions and re-used inside
+    /// tree leaves.
+    fileprivate struct ShapePayload: Encodable {
+        let shape_id: String
+        let config: JSONConfig
+        // Optional target — only meaningful for consequences (mig 00249,
+        // §22.3). Encoded only when non-nil so trigger/condition/
+        // exception payloads stay compact.
+        let target: String?
+    }
+
+    /// Polymorphic payload for `p_conditions`: encodes as a JSON array
+    /// of leaves (Simple mode / legacy wire) or as a `{op,children}`
+    /// AND/OR/NOT tree (Avanzado mode, mig 00251). The server's
+    /// `compile_condition_tree` + `validate_condition_node` accept
+    /// both shapes — picking at encode time is the cleanest way to
+    /// keep one RPC path.
+    fileprivate enum ConditionsPayload: Encodable {
+        case flat([ShapePayload])
+        case tree(ShapeNode)
+
+        func encode(to encoder: Encoder) throws {
+            switch self {
+            case .flat(let leaves):
+                var c = encoder.singleValueContainer()
+                try c.encode(leaves)
+            case .tree(let node):
+                var c = encoder.singleValueContainer()
+                try c.encode(node)
+            }
+        }
+    }
+
+    fileprivate static func conditionsPayload(from draft: RuleDraft) -> ConditionsPayload {
+        // §22.4: send the tree when the composer was in Avanzado mode
+        // AND the tree carries OR/NOT structure that would be lost as
+        // a flat array. A pure `.and([leaves])` tree round-trips
+        // identically to the flat path, so we emit the legacy array
+        // shape — keeps `rule_versions.compiled.conditions` unchanged
+        // for the common case.
+        if let tree = draft.conditionsTree, !tree.isFlatAnd {
+            return .tree(tree)
+        }
+        return .flat(draft.conditions.map {
+            ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil)
+        })
     }
 }

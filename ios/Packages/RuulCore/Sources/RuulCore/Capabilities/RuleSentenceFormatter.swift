@@ -66,10 +66,20 @@ public enum RuleSentenceFormatter {
             clauses.append("Cuando (elige un disparador)")
         }
 
-        // Conditions clause.
-        if !draft.conditions.isEmpty {
-            let parts = draft.conditions.map { phrase(for: $0, registry: registry) }
-            clauses.append("si " + joinWithY(parts))
+        // Conditions clause. §22.4 (mig 00251): when the composer is
+        // in Avanzado mode the draft carries a tree; render it via
+        // the recursive prose builder so the user sees parens around
+        // OR-inside-AND, NOT prefixes, etc. Simple mode falls through
+        // to the flat join.
+        if let tree = draft.conditionsTree, !tree.isFlatAnd {
+            if let prose = draftConditionTreePhrase(tree, registry: registry, parent: .none) {
+                clauses.append("si " + prose)
+            }
+        } else if !draft.conditions.isEmpty {
+            let parts = draft.conditions.compactMap { phraseOrNil(for: $0, registry: registry) }
+            if !parts.isEmpty {
+                clauses.append("si " + joinWithY(parts))
+            }
         }
 
         // Exceptions clause (mig 00248 / §22.2 Governance.md). Halajic
@@ -154,6 +164,57 @@ public enum RuleSentenceFormatter {
         let configPairs = inlineInstanceConfig(shape: shape, config: instance.config)
         if configPairs.isEmpty { return label }
         return "\(label) (\(configPairs))"
+    }
+
+    /// Like `phrase(for:)` but returns nil for the `alwaysTrue` leaf
+    /// so it disappears from the rendered sentence (mirrors the
+    /// behavior of the tree leaf phraser). Used by the flat-list path
+    /// when the conditions include an alwaysTrue placeholder.
+    private static func phraseOrNil(
+        for instance: ShapeInstance,
+        registry: RuleShapeRegistry
+    ) -> String? {
+        if instance.shapeId == "alwaysTrue" { return nil }
+        return phrase(for: instance, registry: registry)
+    }
+
+    /// §22.4 — recursive prose builder for an author-side ShapeNode
+    /// tree (used by the live composer preview). Mirrors the
+    /// engine-side `conditionPhrase(for: ConditionNode, registry:)`
+    /// but reads `ShapeInstance` leaves and inlines their config
+    /// values the way the flat path already does.
+    private static func draftConditionTreePhrase(
+        _ node: ShapeNode,
+        registry: RuleShapeRegistry,
+        parent: ParentOp
+    ) -> String? {
+        switch node {
+        case .leaf(let instance):
+            return phraseOrNil(for: instance, registry: registry)
+        case .and(_, let children):
+            let parts = children.compactMap {
+                draftConditionTreePhrase($0, registry: registry, parent: .and)
+            }
+            if parts.isEmpty { return nil }
+            if parts.count == 1 { return parts[0] }
+            return joinWithParens(parts, sep: " y ", own: .and, parent: parent)
+        case .or(_, let children):
+            let parts = children.compactMap {
+                draftConditionTreePhrase($0, registry: registry, parent: .or)
+            }
+            if parts.isEmpty { return nil }
+            if parts.count == 1 { return parts[0] }
+            return joinWithParens(parts, sep: " o ", own: .or, parent: parent)
+        case .not(_, let child):
+            guard let inner = draftConditionTreePhrase(child, registry: registry, parent: .not) else {
+                return nil
+            }
+            let needsParens: Bool = {
+                if case .leaf = child { return false }
+                return true
+            }()
+            return needsParens ? "no (\(inner))" : "no \(inner)"
+        }
     }
 
     /// Build "key: value · key2: value2" from a ShapeInstance.config.
