@@ -42,13 +42,7 @@ public struct MyTimelineView: View {
                 }
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle("Mi línea de tiempo")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Mi línea de tiempo")
             .refreshable { await load() }
             .task { await load() }
         }

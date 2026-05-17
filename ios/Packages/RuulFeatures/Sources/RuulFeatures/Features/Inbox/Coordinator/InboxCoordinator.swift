@@ -6,6 +6,7 @@ import RuulCore
 @Observable @MainActor
 public final class InboxCoordinator {
     public private(set) var actions: [UserAction] = []
+    public private(set) var resolvedActions: [UserAction] = []
     public private(set) var groupsById: [UUID: Group] = [:]
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
@@ -81,8 +82,49 @@ public final class InboxCoordinator {
 
     public func clearError() { error = nil }
 
+    /// Fetches the user's most recent resolved actions. Cross-group.
+    /// Drives the "Resueltas" chip in InboxView.
+    public func loadResolved(limit: Int = 50) async {
+        do {
+            resolvedActions = try await userActionRepo.resolved(userId: userId, limit: limit)
+        } catch {
+            log.warning("loadResolved failed: \(error.localizedDescription)")
+            // resolvedActions stays as-is on failure
+        }
+    }
+
     public func groupName(for action: UserAction) -> String? {
         groupsById[action.groupId]?.name
+    }
+
+    /// Resolves every currently visible pending action in sequence.
+    /// Returns the count of successfully resolved items.
+    public func resolveAll() async -> Int {
+        let snapshot = actions
+        var count = 0
+        for action in snapshot {
+            do {
+                try await userActionRepo.resolve(actionId: action.id)
+                count += 1
+            } catch {
+                log.warning("resolveAll: failed for \(action.id): \(error.localizedDescription)")
+            }
+        }
+        await refresh()
+        return count
+    }
+
+    /// Quick-resolve an action from a swipe or context menu without opening it.
+    /// Removes the row immediately for instant feedback, then fires the repo call.
+    public func resolveQuick(_ actionId: UUID) async {
+        actions.removeAll { $0.id == actionId }
+        do {
+            try await userActionRepo.resolve(actionId: actionId)
+        } catch {
+            log.warning("resolveQuick failed: \(error.localizedDescription)")
+            // On failure: a subsequent refresh() will restore the row if still pending.
+            await refresh()
+        }
     }
 
     /// Mark an action resolved when the user opens it. Server triggers also

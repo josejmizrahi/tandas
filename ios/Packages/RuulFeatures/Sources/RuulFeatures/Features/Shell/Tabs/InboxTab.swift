@@ -24,12 +24,11 @@ public struct InboxTab: View {
                     Task { await dispatch(action) }
                 }
                 .environment(app)
-                .groupSwitcherToolbar()
             } else {
                 ProgressView()
                     .controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .groupSwitcherToolbar()
+                    .ruulAppToolbar()
             }
         }
     }
@@ -80,7 +79,7 @@ public struct InboxTab: View {
                 router.selectTab(.home)
                 router.openEvent(event)
             }
-        case .slotPending, .contributionDue, .compensationDue:
+        case .slotPending, .contributionDue, .compensationDue, .assetActionApproval:
             break
         }
     }

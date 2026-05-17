@@ -23,6 +23,11 @@ public final class CreateGeneralProposalCoordinator {
     public var title: String = ""
     public var description: String = ""
     public var durationHours: Int = 72
+    /// P1: voto anónimo toggle. Default false (transparente — el grupo
+    /// ve quién votó qué). Cuando true, el server omite los individual
+    /// ballots y solo expone los conteos agregados. Útil para temas
+    /// sensibles (member removal indirecto vía proposal, e.g.).
+    public var isAnonymous: Bool = false
     public private(set) var isSubmitting: Bool = false
     public private(set) var error: String?
     public private(set) var createdVoteId: UUID?
@@ -73,7 +78,8 @@ public final class CreateGeneralProposalCoordinator {
                 referenceId: UUID(),
                 title: trimmedTitle,
                 description: description.isEmpty ? nil : description,
-                payload: .empty
+                payload: .empty,
+                isAnonymous: isAnonymous
             )
             createdVoteId = voteId
         } catch {

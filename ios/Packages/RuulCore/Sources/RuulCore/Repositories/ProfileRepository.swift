@@ -9,6 +9,19 @@ public protocol ProfileRepository: Actor {
     func updateTimezone(_ tz: String) async throws
     /// BCP-47 locale tag (e.g., "es-MX"). RLS allows self-write.
     func updateLocale(_ locale: String) async throws
+
+    /// LFPDPPP/CCPA right-to-erasure. Pseudonimiza profile, desactiva
+    /// memberships, purga tokens + preferences, emite memberLeft system
+    /// events. Devuelve el request_id loggeado en
+    /// data_subject_rights_requests para audit trail. El cliente debe
+    /// llamar AuthService.signOut() después.
+    func deleteAccount() async throws -> UUID
+
+    /// LFPDPPP/CCPA right-to-portability. Devuelve un JSON Data con
+    /// profile + memberships + fines + rsvps + votes + system_events +
+    /// ledger_entries + notification_preferences. iOS típicamente lo
+    /// guarda a Files o lo comparte via UIActivityViewController.
+    func exportMyData() async throws -> Data
 }
 
 public actor MockProfileRepository: ProfileRepository {
@@ -36,6 +49,33 @@ public actor MockProfileRepository: ProfileRepository {
 
     public func updateLocale(_ locale: String) async throws {
         _profile.locale = locale
+    }
+
+    public func deleteAccount() async throws -> UUID {
+        _profile.displayName = "Cuenta eliminada"
+        _profile.avatarUrl = nil
+        _profile.phone = nil
+        return UUID()
+    }
+
+    public func exportMyData() async throws -> Data {
+        let payload: [String: Any] = [
+            "exported_at": ISO8601DateFormatter().string(from: .now),
+            "user_id": _profile.id.uuidString,
+            "schema_version": 1,
+            "profile": [
+                "id": _profile.id.uuidString,
+                "display_name": _profile.displayName
+            ],
+            "memberships": [],
+            "fines": [],
+            "rsvps": [],
+            "votes": [],
+            "system_events": [],
+            "ledger_entries": [],
+            "notification_preferences": []
+        ]
+        return try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
     }
 }
 
@@ -110,6 +150,26 @@ public actor LiveProfileRepository: ProfileRepository {
             .update(["locale": locale])
             .eq("id", value: userId.uuidString.lowercased())
             .execute()
+    }
+
+    public func deleteAccount() async throws -> UUID {
+        // SECURITY DEFINER en backend. Devuelve el request_id loggeado
+        // en data_subject_rights_requests (mig 00253). El cliente
+        // debe llamar AuthService.signOut() después para limpiar la
+        // sesión local.
+        let response: UUID = try await client
+            .rpc("delete_my_account")
+            .execute()
+            .value
+        return response
+    }
+
+    public func exportMyData() async throws -> Data {
+        // Devuelve jsonb crudo. PostgREST lo serializa como JSON con
+        // content-type application/json — el bytes ya está listo para
+        // share/save.
+        let raw = try await client.rpc("export_my_data").execute().data
+        return raw
     }
 
     private static func fileExtension(for contentType: String) -> String {

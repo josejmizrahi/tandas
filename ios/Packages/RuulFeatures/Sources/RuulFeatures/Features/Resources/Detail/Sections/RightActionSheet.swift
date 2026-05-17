@@ -130,13 +130,8 @@ public struct RightActionSheet: View {
                     }
                 }
             }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar(title)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                        .disabled(isSubmitting)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await submit() }

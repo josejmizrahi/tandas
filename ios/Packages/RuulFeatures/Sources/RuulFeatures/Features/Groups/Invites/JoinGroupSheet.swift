@@ -50,18 +50,7 @@ public struct JoinGroupSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .ruulAmbientScreen(palette: nil)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Unirme con código")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-            }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+            .ruulSheetToolbar("Unirme con código")
         }
     }
 
@@ -70,7 +59,7 @@ public struct JoinGroupSheet: View {
             Text("¿Cuál es el código?")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("El admin del grupo te lo compartió. Suele tener 6 caracteres.")
+            Text("El fundador del grupo te lo compartió. Suele tener 6 caracteres.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
         }

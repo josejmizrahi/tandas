@@ -28,13 +28,7 @@ public struct RegenerateInviteCodeSheet: View {
                 }
             }
             .padding(RuulSpacing.lg)
-            .navigationTitle(step == .confirm ? "Rotar código" : "Nuevo código")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-            }
+            .ruulSheetToolbar(step == .confirm ? "Rotar código" : "Nuevo código")
         }
     }
 

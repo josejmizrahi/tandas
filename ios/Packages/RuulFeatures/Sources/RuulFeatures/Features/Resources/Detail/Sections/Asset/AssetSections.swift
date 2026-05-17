@@ -37,69 +37,58 @@ public struct AssetCustodySection: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("CUSTODIA")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
-                .padding(.leading, RuulSpacing.xxs)
-            VStack(spacing: 0) {
-                if let custodian = currentCustodian {
-                    row(label: "Custodio", value: custodian.displayName)
-                    if let date = asset.metadata["custody_assigned_at"]?.stringValue {
-                        divider
-                        row(label: "Desde", value: AssetDateFormatter.short(date))
-                    }
-                } else {
-                    row(label: "Custodio", value: "Bajo custodia del grupo")
+        RuulInfoCard("CUSTODIA") {
+            if let custodian = currentCustodian {
+                RuulInfoRow(label: "Custodio", value: custodian.displayName)
+                if let date = asset.metadata["custody_assigned_at"]?.stringValue {
+                    RuulInfoDivider()
+                    RuulInfoRow(label: "Desde", value: AssetDateFormatter.short(date))
                 }
-                if let holder = currentHolder {
-                    divider
-                    row(label: "Prestado a", value: holder.displayName)
-                    if let until = asset.metadata["expected_return_at"]?.stringValue {
-                        divider
-                        row(label: "Devolución esperada", value: AssetDateFormatter.short(until))
-                    }
-                }
-                divider
-                if currentHolder == nil {
-                    actionButton(
-                        label: currentCustodian == nil ? "Asignar custodio" : "Cambiar custodio",
-                        symbol: "person.badge.plus"
-                    ) { showAssign = true }
-                    divider
-                    actionButton(
-                        label: "Prestar (checkout)",
-                        symbol: "arrow.up.right.square"
-                    ) { showCheckout = true }
-                    if currentCustodian != nil {
-                        divider
-                        actionButton(
-                            label: "Liberar custodia",
-                            symbol: "person.crop.rectangle.badge.xmark",
-                            isDestructive: true
-                        ) {
-                            Task { await releaseCustody() }
-                        }
-                    }
-                } else {
-                    actionButton(
-                        label: "Marcar devuelto",
-                        symbol: "arrow.down.left.square"
-                    ) { Task { await checkIn() } }
-                }
-                if let error {
-                    divider
-                    Text(error)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulNegative)
-                        .padding(RuulSpacing.md)
+            } else {
+                RuulInfoRow(label: "Custodio", value: "Bajo custodia del grupo")
+            }
+            if let holder = currentHolder {
+                RuulInfoDivider()
+                RuulInfoRow(label: "Prestado a", value: holder.displayName)
+                if let until = asset.metadata["expected_return_at"]?.stringValue {
+                    RuulInfoDivider()
+                    RuulInfoRow(label: "Devolución esperada", value: AssetDateFormatter.short(until))
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            RuulInfoDivider()
+            if currentHolder == nil {
+                RuulInfoActionRow(
+                    label: currentCustodian == nil ? "Asignar custodio" : "Cambiar custodio",
+                    symbol: "person.badge.plus"
+                ) { showAssign = true }
+                RuulInfoDivider()
+                RuulInfoActionRow(
+                    label: "Prestar (checkout)",
+                    symbol: "arrow.up.right.square"
+                ) { showCheckout = true }
+                if currentCustodian != nil {
+                    RuulInfoDivider()
+                    RuulInfoActionRow(
+                        label: "Liberar custodia",
+                        symbol: "person.crop.rectangle.badge.xmark",
+                        isDestructive: true
+                    ) {
+                        Task { await releaseCustody() }
+                    }
+                }
+            } else {
+                RuulInfoActionRow(
+                    label: "Marcar devuelto",
+                    symbol: "arrow.down.left.square"
+                ) { Task { await checkIn() } }
+            }
+            if let error {
+                RuulInfoDivider()
+                Text(error)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulNegative)
+                    .padding(RuulSpacing.md)
+            }
         }
         .task { await loadMembers() }
         .fullScreenCover(isPresented: $showAssign) {
@@ -178,45 +167,6 @@ public struct AssetCustodySection: View {
         }
     }
 
-    private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
-    }
-
-    private func row(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Spacer()
-            Text(value)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding(RuulSpacing.md)
-    }
-
-    private func actionButton(
-        label: String,
-        symbol: String,
-        isDestructive: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: symbol)
-                    .ruulTextStyle(RuulTypography.body)
-                    .frame(width: 20)
-                Text(label)
-                    .ruulTextStyle(RuulTypography.body)
-                Spacer()
-            }
-            .foregroundStyle(isDestructive ? Color.ruulNegative : Color.ruulTextPrimary)
-            .padding(RuulSpacing.md)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 // MARK: - Ownership
@@ -247,60 +197,49 @@ public struct AssetOwnershipSection: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("PROPIEDAD")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
-                .padding(.leading, RuulSpacing.xxs)
-            VStack(spacing: 0) {
-                if let owner = currentOwner {
-                    row(label: "Dueño", value: owner.displayName)
-                    if let date = asset.metadata["ownership_changed_at"]?.stringValue {
-                        divider
-                        row(label: "Desde", value: AssetDateFormatter.short(date))
-                    }
-                } else {
-                    row(label: "Dueño", value: "Del grupo")
+        RuulInfoCard("PROPIEDAD") {
+            if let owner = currentOwner {
+                RuulInfoRow(label: "Dueño", value: owner.displayName)
+                if let date = asset.metadata["ownership_changed_at"]?.stringValue {
+                    RuulInfoDivider()
+                    RuulInfoRow(label: "Desde", value: AssetDateFormatter.short(date))
                 }
-                if let v = latestValuation {
-                    divider
-                    row(label: "Valor actual", value: AssetMoneyFormatter.format(
-                        cents: v.valueCents, currency: v.currency
-                    ))
-                    divider
-                    row(label: "Valuado", value: v.recordedAt.ruulShortDate)
-                }
-                divider
-                actionButton(label: "Registrar valuación", symbol: "chart.line.uptrend.xyaxis") {
-                    showValuation = true
-                }
-                divider
-                actionButton(label: "Transferir propiedad", symbol: "arrow.left.arrow.right") {
-                    showTransfer = true
-                }
-                if currentOwner != nil {
-                    divider
-                    actionButton(
-                        label: "Devolver al grupo",
-                        symbol: "person.3",
-                        isDestructive: true
-                    ) {
-                        Task { await transferToGroup() }
-                    }
-                }
-                if let error {
-                    divider
-                    Text(error)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulNegative)
-                        .padding(RuulSpacing.md)
+            } else {
+                RuulInfoRow(label: "Dueño", value: "Del grupo")
+            }
+            if let v = latestValuation {
+                RuulInfoDivider()
+                RuulInfoRow(label: "Valor actual", value: AssetMoneyFormatter.format(
+                    cents: v.valueCents, currency: v.currency
+                ))
+                RuulInfoDivider()
+                RuulInfoRow(label: "Valuado", value: v.recordedAt.ruulShortDate)
+            }
+            RuulInfoDivider()
+            RuulInfoActionRow(label: "Registrar valuación", symbol: "chart.line.uptrend.xyaxis") {
+                showValuation = true
+            }
+            RuulInfoDivider()
+            RuulInfoActionRow(label: "Transferir propiedad", symbol: "arrow.left.arrow.right") {
+                showTransfer = true
+            }
+            if currentOwner != nil {
+                RuulInfoDivider()
+                RuulInfoActionRow(
+                    label: "Devolver al grupo",
+                    symbol: "person.3",
+                    isDestructive: true
+                ) {
+                    Task { await transferToGroup() }
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            if let error {
+                RuulInfoDivider()
+                Text(error)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulNegative)
+                    .padding(RuulSpacing.md)
+            }
         }
         .task { await load() }
         .fullScreenCover(isPresented: $showTransfer) {
@@ -366,45 +305,6 @@ public struct AssetOwnershipSection: View {
         }
     }
 
-    private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
-    }
-
-    private func row(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Spacer()
-            Text(value)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding(RuulSpacing.md)
-    }
-
-    private func actionButton(
-        label: String,
-        symbol: String,
-        isDestructive: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: symbol)
-                    .ruulTextStyle(RuulTypography.body)
-                    .frame(width: 20)
-                Text(label)
-                    .ruulTextStyle(RuulTypography.body)
-                Spacer()
-            }
-            .foregroundStyle(isDestructive ? Color.ruulNegative : Color.ruulTextPrimary)
-            .padding(RuulSpacing.md)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 // MARK: - Maintenance
@@ -423,45 +323,34 @@ public struct AssetMaintenanceSection: View {
     public init(asset: ResourceRow) { self.asset = asset }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("MANTENIMIENTO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulTextTertiary)
-                .padding(.leading, RuulSpacing.xxs)
-            VStack(spacing: 0) {
-                actionButton(label: "Registrar mantenimiento", symbol: "wrench.and.screwdriver") {
-                    showLog = true
-                }
-                divider
-                actionButton(
-                    label: "Reportar daño",
-                    symbol: "exclamationmark.triangle",
-                    isDestructive: true
-                ) { showDamage = true }
-                if openItems.isEmpty {
-                    divider
-                    row(label: "Tareas abiertas", value: "0")
-                } else {
-                    divider
-                    row(label: "Tareas abiertas", value: "\(openItems.count)")
-                    ForEach(openItems, id: \.id) { item in
-                        divider
-                        maintenanceItem(item)
-                    }
-                }
-                if let error {
-                    divider
-                    Text(error)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulNegative)
-                        .padding(RuulSpacing.md)
+        RuulInfoCard("MANTENIMIENTO") {
+            RuulInfoActionRow(label: "Registrar mantenimiento", symbol: "wrench.and.screwdriver") {
+                showLog = true
+            }
+            RuulInfoDivider()
+            RuulInfoActionRow(
+                label: "Reportar daño",
+                symbol: "exclamationmark.triangle",
+                isDestructive: true
+            ) { showDamage = true }
+            if openItems.isEmpty {
+                RuulInfoDivider()
+                RuulInfoRow(label: "Tareas abiertas", value: "0")
+            } else {
+                RuulInfoDivider()
+                RuulInfoRow(label: "Tareas abiertas", value: "\(openItems.count)")
+                ForEach(openItems, id: \.id) { item in
+                    RuulInfoDivider()
+                    maintenanceItem(item)
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
+            if let error {
+                RuulInfoDivider()
+                Text(error)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulNegative)
+                    .padding(RuulSpacing.md)
+            }
         }
         .task { await load() }
         .fullScreenCover(isPresented: $showLog) {
@@ -538,44 +427,6 @@ public struct AssetMaintenanceSection: View {
         }
     }
 
-    private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
-    }
-
-    private func row(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Spacer()
-            Text(value)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextPrimary)
-        }
-        .padding(RuulSpacing.md)
-    }
-
-    private func actionButton(
-        label: String,
-        symbol: String,
-        isDestructive: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: symbol)
-                    .ruulTextStyle(RuulTypography.body)
-                    .frame(width: 20)
-                Text(label)
-                    .ruulTextStyle(RuulTypography.body)
-                Spacer()
-            }
-            .foregroundStyle(isDestructive ? Color.ruulNegative : Color.ruulTextPrimary)
-            .padding(RuulSpacing.md)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 // MARK: - Bookings (slots under this asset)
@@ -607,7 +458,7 @@ public struct AssetBookingsSection: View {
                 }
             }
             .padding(.horizontal, RuulSpacing.xxs)
-            VStack(spacing: 0) {
+            RuulInfoCard {
                 if slots.isEmpty {
                     Text("Sin cupos. Crea uno para que los miembros reserven.")
                         .ruulTextStyle(RuulTypography.body)
@@ -622,22 +473,17 @@ public struct AssetBookingsSection: View {
                             slotRow(slot)
                         }
                         .buttonStyle(.plain)
-                        if idx < slots.count - 1 { divider }
+                        if idx < slots.count - 1 { RuulInfoDivider() }
                     }
                 }
                 if let error {
-                    divider
+                    RuulInfoDivider()
                     Text(error)
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulNegative)
                         .padding(RuulSpacing.md)
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
-            )
         }
         .task { await load() }
         .fullScreenCover(isPresented: $showCreateSlot) {
@@ -695,9 +541,5 @@ public struct AssetBookingsSection: View {
         } catch {
             self.error = error.localizedDescription
         }
-    }
-
-    private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
     }
 }

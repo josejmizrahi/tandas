@@ -76,15 +76,21 @@ public final class EditRuleParamsCoordinator: Identifiable {
 
     // MARK: - Param extraction
 
-    /// Walks the rule's trigger.config + conditions[].config + consequences[].config
-    /// and flattens all object entries into a single [String: JSONConfig] dict.
+    /// Walks the rule's trigger.config + every condition leaf's config
+    /// (anywhere in the AND/OR/NOT tree, since `GroupRule.conditions`
+    /// is the flat pre-order leaf view of `conditionsTree` per §22.4)
+    /// + consequences[].config and flattens all object entries into a
+    /// single [String: JSONConfig] dict.
     private static func extractRuleParams(from rule: GroupRule) -> [String: JSONConfig] {
         var out: [String: JSONConfig] = [:]
         // Trigger config
         if case .object(let dict) = rule.trigger.config {
             for (k, v) in dict { out[k] = v }
         }
-        // Conditions
+        // Conditions — `rule.conditions` is already the flat leaves view
+        // (the decoder unwraps trees via `ConditionNode.allLeaves`), so
+        // a tree-shaped rule surfaces every config key its leaves
+        // reference regardless of where in the tree they sit.
         for cond in rule.conditions {
             if case .object(let dict) = cond.config {
                 for (k, v) in dict { out[k] = v }

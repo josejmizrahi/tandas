@@ -78,6 +78,14 @@ public final class ActivityCoordinator {
         return memberDirectoryByMemberId[memberId]?.displayName
     }
 
+    /// Avatar URL del actor para renderizar en RuulTimelineItem. nil
+    /// cuando no hay member_id (events sintéticos como rsvpDeadlinePassed
+    /// o hoursBeforeEvent) o el directory aún no se hidrató.
+    public func actorAvatarURL(for event: SystemEvent) -> URL? {
+        guard let memberId = event.memberId else { return nil }
+        return memberDirectoryByMemberId[memberId]?.avatarURL
+    }
+
     public func loadMore() async {
         guard !isLoading, hasMore else { return }
         isLoading = true

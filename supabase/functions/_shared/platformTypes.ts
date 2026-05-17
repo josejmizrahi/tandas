@@ -46,9 +46,44 @@ export interface RuleCondition {
   config: Record<string, unknown>;
 }
 
+/**
+ * AND/OR/NOT composition of conditions (§22.4 / mig 00251). A rule's
+ * `conditions` field may be:
+ *
+ * - a flat array of leaves — interpreted as `{op:'and', children:array}`
+ *   (legacy / pre-§22.4 wire shape, preserved for backward compat).
+ * - a `{op,children}` object where `op ∈ {'and','or','not'}` and each
+ *   child is either a leaf `{type,config}` or a nested op node.
+ *   `'not'` carries exactly one child; `'and'`/`'or'` carry ≥ 1.
+ *
+ * The engine normalises arrays to `{op:'and', children:array}` before
+ * walking so downstream code only handles the tree form.
+ * Publisher RPCs (publish_rule_composition v6, bump_rule_version v5)
+ * validate the structure before persisting.
+ */
+export type RuleConditionNode =
+  | RuleCondition
+  | { op: "and"; children: RuleConditionNode[] }
+  | { op: "or";  children: RuleConditionNode[] }
+  | { op: "not"; children: RuleConditionNode[] };
+
 export interface RuleConsequence {
   type: ConsequenceType;
   config: Record<string, unknown>;
+  /**
+   * Optional target selector that re-routes this consequence to a
+   * member different from the one the trigger picked. Vocabulary
+   * (mig 00249, §22.3 Governance.md):
+   *
+   *   undefined / "$trigger.actor" → original target.member_id (default)
+   *   "$resource.host"             → resource.metadata.host_id (event)
+   *   "$role.<role_id>"            → multiplex: one fire per active
+   *                                   member assigned that role
+   *
+   * Resolution happens in resolveConsequenceTargets (engine). Missing
+   * resource/role → 0 targets → consequence is a no-op (logged).
+   */
+  target?: string;
 }
 
 export interface Rule {
@@ -65,8 +100,28 @@ export interface Rule {
   name: string;
   is_active: boolean;
   trigger: RuleTrigger;
-  conditions: RuleCondition[];
+  /**
+   * §22.4 (mig 00251): either a flat array of leaves (legacy implicit
+   * AND wire shape) or a `{op,children}` tree object. The engine
+   * normalises arrays to `{op:'and', children: array}` before walking,
+   * so downstream code only deals with the tree form.
+   */
+  conditions: RuleCondition[] | RuleConditionNode;
   consequences: RuleConsequence[];
+  // (RuleConsequence carries its own optional `target` selector per
+  // mig 00249 — see ruleEngineConsequences.ts resolveTargets.)
+  /**
+   * Exceptions are condition-shaped predicates that BLOCK the
+   * consequences when ANY of them evaluates true on the target.
+   * Reuses the same shape catalog (kind=condition) so an `alwaysTrue`,
+   * `responseStatusIs("excused")`, or `slotIsUnassigned` can serve as
+   * an exception. Engine evaluates them AFTER all conditions match,
+   * BEFORE any consequence fires. Empty array = no exceptions (the
+   * default and the behavior pre-mig 00248). See §22.2 Governance.md.
+   *
+   * Optional in the TS shape because pre-00248 fixtures don't set it.
+   */
+  exceptions?: RuleCondition[];
   /**
    * Scope precedence per Taxonomy §29 — read by `runRulesForEvent` to filter
    * which rules apply to a given SystemEvent (mig 00071 + 00078):

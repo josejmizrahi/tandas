@@ -72,6 +72,11 @@ public enum ActionType: String, Codable, Sendable, Hashable, CaseIterable {
     case votePending             = "votePending"
     case contributionDue         = "contributionDue"
     case compensationDue         = "compensationDue"
+    /// Mig 00226+00227 — emitted by the `requireApproval` rule
+    /// consequence when a `damage_approval_required` template fires.
+    /// `reference_id` = the asset's id; the inbox routes to the asset
+    /// detail where the admin reviews + resolves manually for V1.
+    case assetActionApproval     = "assetActionApproval"
 }
 
 public enum ActionPriority: String, Codable, Sendable, Hashable, CaseIterable {

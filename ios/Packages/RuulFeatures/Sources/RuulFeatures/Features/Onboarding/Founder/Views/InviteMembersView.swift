@@ -1,4 +1,5 @@
 import SwiftUI
+import ContactsUI
 import RuulUI
 import RuulCore
 
@@ -23,22 +24,72 @@ public struct InviteMembersView: View {
                     shareLinkCard(group: group)
                     RuulActionableCard(
                         icon: "person.crop.circle.badge.plus",
-                        title: "Agregar por número",
-                        subtitle: "Importa de contactos o escríbelo a mano.",
+                        title: "Importar de contactos",
+                        subtitle: "Elige quién va a estar en el grupo desde tu agenda.",
                         accessory: .badge("Recomendado")
                     ) {
                         contactsPresented = true
                     }
+                    Button {
+                        manualEntryPresented = true
+                    } label: {
+                        HStack(spacing: RuulSpacing.xs) {
+                            Image(systemName: "keyboard")
+                                .ruulTextStyle(RuulTypography.caption)
+                                .accessibilityHidden(true)
+                            Text("Escribirlo a mano")
+                                .ruulTextStyle(RuulTypography.caption)
+                        }
+                        .foregroundStyle(Color.ruulAccent)
+                        .padding(.top, RuulSpacing.xxs)
+                    }
+                    .buttonStyle(.plain)
                     if !coord.pendingInvites.isEmpty {
                         pendingList
                     }
                 }
             }
         }
-        // TODO: re-enable once ruulContactsPicker modifier is restored in RuulUI
-        // .ruulContactsPicker(isPresented: $contactsPresented) { picks in ... }
+        // P1: ContactsUI real (antes el contactsPresented era no-op tras
+        // un TODO/comment). El user-flow: tap "Importar de contactos"
+        // → sheet nativa iOS → multi-pick → callback agrega cada
+        // (name, phone) al pendingInvites. iOS solicita permission la
+        // primera vez automáticamente.
+        .sheet(isPresented: $contactsPresented) {
+            ContactPicker(onPicked: handleContactsPick)
+        }
         .ruulSheet(isPresented: $manualEntryPresented) {
             manualEntrySheet
+        }
+    }
+
+    /// Callback del ContactsUI picker. Por cada contacto seleccionado,
+    /// toma el primer phone disponible y normaliza a E.164 vía
+    /// PhoneFormatter. Skips silently los contactos sin phone válido
+    /// (típicamente solo email) y los duplicados (mismo E.164).
+    private func handleContactsPick(_ contacts: [CNContact]) {
+        var added = 0
+        let existingPhones = Set(coord.pendingInvites.map(\.phoneE164))
+        for contact in contacts {
+            let displayName = [contact.givenName, contact.familyName]
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+            for phone in contact.phoneNumbers {
+                let raw = phone.value.stringValue
+                guard let e164 = PhoneFormatter.smartE164(raw),
+                      !existingPhones.contains(e164) else { continue }
+                coord.pendingInvites.append(
+                    PendingInvite(
+                        phoneE164: e164,
+                        displayName: displayName.isEmpty ? nil : displayName
+                    )
+                )
+                added += 1
+                break  // Solo el primer phone por contacto
+            }
+        }
+        if added > 0 {
+            Task { await coord.persistPendingInvites() }
         }
     }
 
@@ -152,6 +203,55 @@ public struct InviteMembersView: View {
                 RuulTextField("Nombre (opcional)", text: $manualName, label: "Nombre")
                 RuulPhoneField(text: $manualPhone, label: "Teléfono")
             }
+        }
+    }
+}
+
+// MARK: - ContactsUI bridge
+
+/// Multi-select picker nativo iOS para agregar miembros desde la agenda
+/// del usuario. iOS solicita Contacts authorization la primera vez
+/// (Info.plist debe declarar `NSContactsUsageDescription`).
+///
+/// Restringimos display + selection a contactos con al menos un phone
+/// (predicateForEnablingContact). Multi-select habilitado via
+/// `predicateForSelectionOfProperty = false` truco: dejamos la default
+/// que permite selección múltiple a nivel contacto (no a nivel
+/// property — eso quitaría el batch UX).
+private struct ContactPicker: UIViewControllerRepresentable {
+    let onPicked: ([CNContact]) -> Void
+
+    func makeUIViewController(context: Context) -> CNContactPickerViewController {
+        let picker = CNContactPickerViewController()
+        picker.delegate = context.coordinator
+        // Solo contactos con phone (filter al display). Sin esto el
+        // user puede picar un contacto solo-email que se ignoraría
+        // silenciosamente al procesar.
+        picker.predicateForEnablingContact = NSPredicate(format: "phoneNumbers.@count > 0")
+        // Display predicate: misma lógica para que el listado se vea
+        // limpio (no muestra contactos sin phone como grayed-out).
+        picker.displayedPropertyKeys = [CNContactPhoneNumbersKey]
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: CNContactPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPicked: onPicked) }
+
+    final class Coordinator: NSObject, CNContactPickerDelegate {
+        let onPicked: ([CNContact]) -> Void
+        init(onPicked: @escaping ([CNContact]) -> Void) { self.onPicked = onPicked }
+
+        // Multi-select callback (iOS 9+). Cuando el user tap "Done"
+        // tras seleccionar varios contactos.
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
+            onPicked(contacts)
+        }
+
+        // Single-pick callback (fallback). Algunos usuarios solo
+        // pican uno y dismissan — capturamos esa ruta también.
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
+            onPicked([contact])
         }
     }
 }

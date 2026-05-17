@@ -118,13 +118,7 @@ struct MemberPickerSheet: View {
                     }
                 }
             }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-            }
+            .ruulSheetToolbar(title)
         }
     }
 }
@@ -158,12 +152,8 @@ struct LogMaintenanceSheet: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Registrar mantenimiento")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Registrar mantenimiento")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Guardar") { Task { await submit() } }
                         .disabled(isSubmitting || kind.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -231,12 +221,8 @@ struct ReportDamageSheet: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Reportar daño")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Reportar daño")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Reportar") { Task { await submit() } }
                         .disabled(isSubmitting)
@@ -308,12 +294,8 @@ struct CheckOutAssetSheet: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Prestar activo")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Prestar activo")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Prestar") { Task { await submit() } }
                         .disabled(isSubmitting)
@@ -378,12 +360,8 @@ struct RecordValuationSheet: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Registrar valuación")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Registrar valuación")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Guardar") { Task { await submit() } }
                         .disabled(isSubmitting || parsedCents == nil)
@@ -442,12 +420,8 @@ struct CreateSlotSheet: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Nuevo cupo")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Nuevo cupo")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Crear") { Task { await submit() } }
                         .disabled(isSubmitting || endsAt <= startsAt)

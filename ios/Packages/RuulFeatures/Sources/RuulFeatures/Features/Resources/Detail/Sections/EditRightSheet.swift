@@ -138,13 +138,8 @@ public struct EditRightSheet: View {
                     }
                 }
             }
-            .navigationTitle("Editar derecho")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Editar derecho")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                        .disabled(isSubmitting)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await submit() }

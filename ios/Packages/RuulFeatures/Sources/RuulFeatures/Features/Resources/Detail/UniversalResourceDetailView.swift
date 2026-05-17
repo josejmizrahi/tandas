@@ -44,6 +44,16 @@ public struct UniversalResourceDetailView: View {
     /// resource is a right.
     @State private var showEditRight: Bool = false
 
+    /// Active fund action sheet. `nil` means no sheet is presented.
+    /// `dispatchPrimary` (Aportar) and `dispatchSecondary` (Registrar
+    /// gasto / Bloquear / Desbloquear) write this; the body renders
+    /// the matching SwiftUI sheet bound to it.
+    @State private var activeFundSheet: FundSheetSelection?
+
+    /// Bumped after every successful fund action so `FundBalanceSection`'s
+    /// `.task(id:)` re-runs and the projection re-reads.
+    @State private var fundRefreshToken: Int = 0
+
     public init(context: ResourceDetailContext) {
         self.context = context
     }
@@ -51,6 +61,7 @@ public struct UniversalResourceDetailView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                liveBanner
                 if !context.attentionActions.isEmpty {
                     DetailAttentionView(context: context)
                 }
@@ -86,6 +97,17 @@ public struct UniversalResourceDetailView: View {
                         AssetBookingsSection(asset: context.resource)
                     }
                 }
+                if context.resource.resourceType == .fund {
+                    // Fund-specific projection card: current balance,
+                    // target progress, contribution/expense counts, lock
+                    // indicator. Reads from `fund_balance_view` (mig 00202)
+                    // via `fundRepo.get`. Refreshes whenever
+                    // `fundRefreshToken` bumps after a successful action.
+                    FundBalanceSection(
+                        fundId: context.resource.id,
+                        refreshToken: fundRefreshToken
+                    )
+                }
                 if context.enabledCapabilities.contains("rsvp") {
                     RSVPSectionView(context: context)
                 }
@@ -106,6 +128,7 @@ public struct UniversalResourceDetailView: View {
                 if context.enabledCapabilities.contains("activity") {
                     ActivitySectionView(context: context)
                 }
+                stubCapabilitySections
                 SettingsSectionView(
                     onPresentEnableCapability: shouldShowEnableCapability
                         ? context.onPresentEnableCapability
@@ -121,22 +144,8 @@ public struct UniversalResourceDetailView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
         }
+        .ruulSheetToolbar(context.displayName, onClose: context.onDismiss)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton {
-                    if let onDismiss = context.onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
-                    }
-                }
-            }
-            ToolbarItem(placement: .principal) {
-                Text(context.displayName)
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .lineLimit(1)
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 if !secondaryActions.isEmpty {
                     Menu {
@@ -155,7 +164,6 @@ public struct UniversalResourceDetailView: View {
                 }
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $activeRightAction) { action in
             RightActionSheet(
                 action: action,
@@ -194,6 +202,81 @@ public struct UniversalResourceDetailView: View {
                 }
             )
             .environment(app)
+        }
+        // Fund action sheets. `.contribute` is the primary CTA
+        // ("Aportar"); `.recordExpense` lives in the ⋯ menu for admins.
+        // Lock/unlock are surfaced directly in MoneySectionView's
+        // fundLockRow, NOT here — keeping the lock controls grouped
+        // with the dinero card per upstream's choice.
+        .sheet(item: $activeFundSheet) { selection in
+            fundSheet(for: selection)
+                .environment(app)
+        }
+    }
+
+    @ViewBuilder
+    private func fundSheet(for selection: FundSheetSelection) -> some View {
+        switch selection {
+        case .contribute:
+            ContributeToFundSheet(
+                fundId: context.resource.id,
+                fundName: context.displayName,
+                currency: fundCurrency,
+                onDidContribute: { onFundActionSucceeded() }
+            )
+        case .recordExpense:
+            RecordExpenseFromFundSheet(
+                fundId: context.resource.id,
+                fundName: context.displayName,
+                currency: fundCurrency,
+                members: Array(context.memberDirectory.values),
+                onDidRecord: { onFundActionSucceeded() }
+            )
+        }
+    }
+
+    /// Fan-out after a successful fund action. Bumps the FundBalanceSection
+    /// refresh token so its `.task(id:)` re-reads `fund_balance_view`, AND
+    /// calls `context.onResourceMutated` so the parent coordinator refetches
+    /// the resource row (the "Estado: Bloqueado" indicator in the
+    /// INFORMACIÓN card reads from row metadata, so a lock/unlock changes
+    /// it). The two signals are complementary — the projection and the
+    /// row each have their own freshness contract.
+    private func onFundActionSucceeded() {
+        fundRefreshToken &+= 1
+        Task { await context.onResourceMutated() }
+    }
+
+    /// Currency for fund operations. Reads `resources.metadata.currency`,
+    /// falling back to MXN (matches `create_fund`'s default in mig 00139).
+    private var fundCurrency: String {
+        context.resource.metadata["currency"]?.stringValue ?? "MXN"
+    }
+
+    // MARK: - Live banner (UXJourney P1)
+    //
+    // Para eventos sucediendo justo ahora (event.startsAt <= now <
+    // event.resolvedEndsAt, status != closed/cancelled). Sin esto, el
+    // detail no comunicaba el estado live — el usuario tenía que
+    // adivinar por la fecha. Ahora aparece arriba con un pulse animation
+    // hasta que el evento termina.
+
+    @ViewBuilder
+    private var liveBanner: some View {
+        if let interactor = eventInteractor, interactor.event.isLive {
+            // Show one-tap "Llegué" inline cuando el viewer puede self-
+            // check-in: RSVP'd going + no checked-in todavía + capability
+            // habilitada. Cierra el loop más rápido que abrir el card
+            // de la CheckInSection.
+            let canSelfCheckIn = context.enabledCapabilities.contains("check_in")
+                && (interactor.myRSVP?.status == .going)
+                && (interactor.myRSVP?.isCheckedIn == false)
+            LiveEventBanner(
+                eventTitle: interactor.event.title,
+                onSelfCheckIn: canSelfCheckIn ? {
+                    Task { await interactor.selfCheckIn(locationVerified: false) }
+                } : nil
+            )
         }
     }
 
@@ -255,42 +338,15 @@ public struct UniversalResourceDetailView: View {
     private var informationSection: some View {
         let facts = infoRows
         if !facts.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("INFORMACIÓN")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .padding(.leading, RuulSpacing.xxs)
-                VStack(spacing: 0) {
-                    ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
-                        infoRow(fact)
-                        if idx < facts.count - 1 {
-                            Divider()
-                                .background(Color.ruulSeparator)
-                                .padding(.leading, RuulSpacing.md)
-                        }
+            RuulInfoCard("INFORMACIÓN") {
+                ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
+                    RuulInfoRow(label: fact.label, value: fact.value)
+                    if idx < facts.count - 1 {
+                        RuulInfoDivider()
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
-                )
             }
         }
-    }
-
-    private func infoRow(_ fact: (label: String, value: String)) -> some View {
-        HStack {
-            Text(fact.label)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Spacer()
-            Text(fact.value)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding(RuulSpacing.md)
     }
 
     /// Type-aware key facts shown in the INFORMACIÓN card. The set is
@@ -326,8 +382,19 @@ public struct UniversalResourceDetailView: View {
             if let currency = context.resource.metadata["currency"]?.stringValue {
                 out.append(("Moneda", currency))
             }
-            if let goal = goalAmount {
-                out.append(("Meta", formatCurrency(goal)))
+            if let goalCents = fundTargetAmountCents {
+                out.append(("Meta", formatCurrencyCents(goalCents)))
+            }
+            // Surface lock state — fund_lock writes locked_at/locked_by/
+            // locked_reason into metadata + emits fundLocked. Pre-fix
+            // this was invisible to the UI even though the SQL state
+            // existed, so admins couldn't tell whether a fund was locked
+            // without querying the DB.
+            if let lockedAt = context.resource.metadata["locked_at"]?.stringValue,
+               !lockedAt.isEmpty {
+                let reason = context.resource.metadata["locked_reason"]?.stringValue
+                let suffix = (reason?.isEmpty == false) ? " (\(reason!))" : ""
+                out.append(("Estado", "Bloqueado\(suffix)"))
             }
             return out
         case .asset:
@@ -354,8 +421,14 @@ public struct UniversalResourceDetailView: View {
             return out
         case .space:
             var out: [(String, String)] = []
-            if let address = context.resource.metadata["address"]?.stringValue,
-               !address.isEmpty {
+            // `create_space` writes `metadata.location_name` (mig 00207).
+            // Pre-fix this row read the wrong key (`address`), so wizard-
+            // created spaces never surfaced their dirección. Fallback to
+            // `locationName` for any future codepath that uses camelCase
+            // (LocationSectionView already accepts both shapes).
+            let address = context.resource.metadata["location_name"]?.stringValue
+                ?? context.resource.metadata["locationName"]?.stringValue
+            if let address, !address.isEmpty {
                 out.append(("Dirección", address))
             }
             if let cap = context.resource.metadata["capacity"]?.intValue {
@@ -453,18 +526,37 @@ public struct UniversalResourceDetailView: View {
         context.memberDirectory.values.first { $0.member.id == id }
     }
 
-    private var goalAmount: Double? {
-        if case .double(let d)? = context.resource.metadata["goal_amount"] { return d }
-        if case .int(let i)? = context.resource.metadata["goal_amount"] { return Double(i) }
+    /// `create_fund` (mig 00139) stores the target as `target_amount_cents`
+    /// (bigint cents). Previously this read `goal_amount` (which mig
+    /// 00139 never writes) — the "Meta" row was silently empty even when
+    /// the founder set a target. Reads both keys for backwards compat
+    /// with any rows written under the old metadata shape, then converts
+    /// from cents.
+    private var fundTargetAmountCents: Int64? {
+        if case .int(let i)? = context.resource.metadata["target_amount_cents"] {
+            return Int64(i)
+        }
+        // Backwards-compat: pre-mig 00139 hand-written rows could have
+        // stored `goal_amount` in pesos. Treat as pesos → cents conversion.
+        if case .double(let d)? = context.resource.metadata["goal_amount"] {
+            return Int64(d * 100)
+        }
+        if case .int(let i)? = context.resource.metadata["goal_amount"] {
+            return Int64(i) * 100
+        }
         return nil
     }
 
-    private func formatCurrency(_ amount: Double) -> String {
+    /// Renders a cents value as a localized currency string. Centavos →
+    /// pesos divide by 100. Reads the resource's `currency` from
+    /// metadata, falling back to MXN.
+    private func formatCurrencyCents(_ cents: Int64) -> String {
+        let pesos = Double(cents) / 100.0
         let nf = NumberFormatter()
         nf.numberStyle = .currency
         nf.currencyCode = context.resource.metadata["currency"]?.stringValue ?? "MXN"
-        nf.maximumFractionDigits = 0
-        return nf.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        nf.maximumFractionDigits = pesos.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
+        return nf.string(from: NSNumber(value: pesos)) ?? "\(pesos)"
     }
 
     // MARK: - Date parsing helpers
@@ -539,6 +631,43 @@ public struct UniversalResourceDetailView: View {
         context.resource.resourceType != .event
     }
 
+    /// Renders every capability that owns a stub section (Sections/Stubs/).
+    /// Each `if context.enabledCapabilities.contains(...)` only fires when
+    /// the capability is actually enabled on this resource, so a vanilla
+    /// event with no extras still renders zero extra cards. Sections that
+    /// have a bespoke renderer above (rsvp, check_in, money, rules,
+    /// rotation, schedule, location, description, activity) are NOT
+    /// duplicated here.
+    @ViewBuilder
+    private var stubCapabilitySections: some View {
+        let caps = context.enabledCapabilities
+        let isAsset = context.resource.resourceType == .asset
+        if caps.contains("status") { StatusSectionView(context: context) }
+        if caps.contains("recurrence") { RecurrenceSectionView(context: context) }
+        if caps.contains("deadline") { DeadlineSectionView(context: context) }
+        if caps.contains("expiration") { ExpirationSectionView(context: context) }
+        if caps.contains("participants") { ParticipantsSectionView(context: context) }
+        if caps.contains("attendance") { AttendanceSectionView(context: context) }
+        if caps.contains("guest_access") { GuestAccessSectionView(context: context) }
+        if caps.contains("assignment") { AssignmentSectionView(context: context) }
+        // Asset already gets a bespoke AssetBookingsSection / AssetOwnershipSection
+        // upstream when these caps are enabled, so we skip the stub to avoid a
+        // duplicate card on asset detail pages.
+        if caps.contains("booking") && !isAsset { BookingSectionView(context: context) }
+        if caps.contains("valuation") && !isAsset { ValuationSectionView(context: context) }
+        if caps.contains("inventory") { InventorySectionView(context: context) }
+        if caps.contains("access") { AccessSectionView(context: context) }
+        if caps.contains("delegation") { DelegationSectionView(context: context) }
+        if caps.contains("voting") { VotingSectionView(context: context) }
+        if caps.contains("approval") { ApprovalSectionView(context: context) }
+        if caps.contains("appeal") { AppealSectionView(context: context) }
+        if caps.contains("consequence") { ConsequenceSectionView(context: context) }
+        if caps.contains("swap") { SwapSectionView(context: context) }
+        if caps.contains("cancellation") { CancellationSectionView(context: context) }
+        if caps.contains("reminder") { ReminderSectionView(context: context) }
+        if caps.contains("history") { HistorySectionView(context: context) }
+    }
+
     /// Reads `metadata.holder_member_id` off the polymorphic resource row.
     /// Used by `RightActionSheet` to filter the transfer recipient picker
     /// so the current holder isn't offered as a self-transfer target.
@@ -607,7 +736,17 @@ public struct UniversalResourceDetailView: View {
             // pipeline used by the ⋯ menu so success behavior (atom
             // emit + dismiss) is uniform across both surfaces.
             activeRightAction = .exercise
-        case .openContribute, .openBooking, .viewClosed, .none:
+        case .openContribute:
+            // Fund → ContributeToFundSheet (mig 00202 fund_contribute).
+            // Earlier upstream wired this to `context.onPresentLedger()`
+            // which opened the generic ledger composer — usable but not
+            // fund-specific. The dedicated sheet only asks for the two
+            // fields fund_contribute needs (amount + optional note),
+            // matching the wizard ergonomics every other type uses.
+            // Refresh signal travels via `context.onResourceMutated`
+            // which the sheet calls on success.
+            activeFundSheet = .contribute
+        case .openBooking, .viewClosed, .none:
             break
         }
     }
@@ -626,7 +765,10 @@ public struct UniversalResourceDetailView: View {
                 context.onPresentEditResource()
             }
         case .addToCalendar:
-            break  // wire in Pass 1.1; presenter doesn't expose this directly
+            // P1 wire: el presenter ahora invoca CalendarExportService
+            // directamente (sin pasar por ShareEventSheet). EventKit
+            // pide authorization en primer uso.
+            presenter?.onAddToCalendar()
         case .share:
             presenter?.onPresentShareSheet()
         case .generateWalletPass:
@@ -656,6 +798,85 @@ public struct UniversalResourceDetailView: View {
         case .revokeRight:    activeRightAction = .revoke
         case .suspendRight:   activeRightAction = .suspend
         case .restoreRight:   activeRightAction = .restore
+        // Fund lifecycle. Setting activeFundSheet triggers the
+        // `.sheet(item:)` above which renders the matching fund sheet.
+        // Lock/unlock are NOT here — they live on MoneySectionView's
+        // fundLockRow (gated by viewerIsAdmin + resource.type=fund),
+        // keeping every fund admin control grouped with the dinero card.
+        case .recordExpenseFromFund: activeFundSheet = .recordExpense
+        }
+    }
+}
+
+/// Active fund sheet selector. Identifiable so it can drive
+/// `.sheet(item:)` directly.
+enum FundSheetSelection: Identifiable {
+    case contribute
+    case recordExpense
+    var id: Self { self }
+}
+
+/// "EN VIVO" banner que aparece arriba del EventDetail mientras el
+/// evento sucede (startsAt <= now < endsAt). Pulse animation suave
+/// honra accessibilityReduceMotion. Cuando `onSelfCheckIn` está set,
+/// muestra un botón inline "Llegué" como atajo al check-in sin
+/// scroll a la CheckInSection.
+private struct LiveEventBanner: View {
+    let eventTitle: String
+    let onSelfCheckIn: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+    @State private var checkInTriggered = 0
+
+    var body: some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Circle()
+                .fill(Color.ruulNegative)
+                .frame(width: 10, height: 10)
+                .scaleEffect(pulse ? 1.3 : 1.0)
+                .opacity(pulse ? 0.6 : 1.0)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EN VIVO")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulNegative)
+                Text("Sucediendo ahora")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            Spacer(minLength: 0)
+            if let onSelfCheckIn {
+                Button {
+                    checkInTriggered &+= 1
+                    onSelfCheckIn()
+                } label: {
+                    Label("Llegué", systemImage: "checkmark.circle.fill")
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.ruulPositive)
+                .controlSize(.small)
+                .accessibilityLabel("Marcar que llegué al evento")
+            }
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+        .background(
+            Color.ruulNegative.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color.ruulNegative.opacity(0.25), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(eventTitle), evento en vivo")
+        .sensoryFeedback(.success, trigger: checkInTriggered)
+        .onAppear {
+            guard !reduceMotion else { pulse = true; return }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
         }
     }
 }

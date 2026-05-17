@@ -114,7 +114,7 @@ public final class ResourceRulesCoordinator {
             rules = try await ruleRepo.listScopedForResource(resourceId)
         } catch {
             log.warning("load failed: \(error.localizedDescription)")
-            self.error = "No pudimos cargar las reglas."
+            self.error = "No pudimos cargar los acuerdos."
         }
     }
 
@@ -332,24 +332,24 @@ public final class ResourceRulesCoordinator {
         // rules) — surface a clear message instead so the user knows
         // the action is gated rather than failing for an unclear reason.
         if raw.contains("governance requires vote") {
-            return "Las reglas de este grupo requieren votación. (Próximamente: proponer la nueva regla.)"
+            return "Los acuerdos de este grupo requieren votación. (Próximamente: proponer el nuevo acuerdo.)"
         }
         if raw.contains("governance denied") {
-            return "Este grupo no permite crear reglas nuevas."
+            return "Este grupo no permite crear acuerdos nuevos."
         }
         // Pre-00122 wording + post-00122 fallback ("admin only" string).
         if raw.contains("only group admins or the event host") {
             // W2-C4: "host" → "anfitrión".
-            return "Sólo el anfitrión del evento o un admin pueden crear reglas aquí."
+            return "Sólo el anfitrión del evento o un fundador pueden crear acuerdos aquí."
         }
         if raw.contains("only group admins") {
-            return "Sólo los admins del grupo pueden crear reglas para este recurso."
+            return "Sólo los fundadores del grupo pueden crear acuerdos para este recurso."
         }
         if raw.contains("admin only") {
-            return "Sólo administradores pueden crear reglas aquí."
+            return "Sólo fundadores pueden crear acuerdos aquí."
         }
         if raw.contains("resource does not belong") {
-            return "Esta regla no pertenece a este evento."
+            return "Este acuerdo no pertenece a este evento."
         }
         if raw.contains("rule name must be") {
             return "El nombre debe tener al menos 2 caracteres."

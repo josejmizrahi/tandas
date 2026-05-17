@@ -86,7 +86,8 @@ public final class CreateRuleChangeCoordinator {
                 referenceId: rule.id,
                 title: "Cambio: \(rule.name)",
                 description: reason.trimmingCharacters(in: .whitespacesAndNewlines),
-                payload: payload
+                payload: payload,
+                isAnonymous: false
             )
             createdVoteId = voteId
         } catch {

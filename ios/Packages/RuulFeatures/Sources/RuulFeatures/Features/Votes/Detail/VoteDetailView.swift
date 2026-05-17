@@ -15,6 +15,13 @@ public struct VoteDetailView: View {
 
     @State private var showFinalizeConfirm = false
     @State private var showCancelConfirm = false
+    /// P1 — sensoryFeedback trigger para celebrar la resolución cuando
+    /// el vote cierra mientras el usuario está mirando. Cambia de nil
+    /// → outcome al primer refresh post-cierre; el modifier abajo
+    /// dispara haptic + animation. No haptic si el vote ya estaba
+    /// resolved cuando entró (no debería haber celebración para algo
+    /// histórico).
+    @State private var resolutionFeedbackTrigger: VoteResolution?
 
     public var body: some View {
         ScrollView {
@@ -45,6 +52,15 @@ public struct VoteDetailView: View {
         .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .refreshable { await coordinator.refresh() }
+        .sensoryFeedback(.success, trigger: resolutionFeedbackTrigger)
+        .onChange(of: coordinator.vote.counts?.resolution) { oldValue, newValue in
+            // Solo celebra cuando la resolución llega DURANTE esta
+            // sesión (oldValue nil → newValue not nil). Si entramos
+            // con el vote ya cerrado, no haptic — esto no es noticia.
+            if oldValue == nil, let res = newValue {
+                resolutionFeedbackTrigger = res
+            }
+        }
         .alert("Finalizar votación", isPresented: $showFinalizeConfirm) {
             Button("Finalizar", role: .destructive) {
                 Task { await coordinator.finalizeManually() }
@@ -123,9 +139,13 @@ private struct VoteHeader: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(typeLabel.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulAccent)
+            HStack(spacing: RuulSpacing.sm) {
+                Text(typeLabel.uppercased())
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulAccent)
+                Spacer(minLength: 0)
+                countdownChip
+            }
             Text(vote.title)
                 .ruulTextStyle(RuulTypography.titleLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
@@ -134,12 +154,106 @@ private struct VoteHeader: View {
         .padding(.top, RuulSpacing.md)
     }
 
+    /// "Cierra en 3 d 4 h" / "Cierra en 12 h" / "Cierra en 4 min" para
+    /// votos abiertos. Para votos resueltos muestra "Cerrado" + tiempo
+    /// relativo. Sin este chip el usuario no sabía cuánto tiempo tenía
+    /// para votar; el cron `finalize-votes` los cierra al pasar
+    /// `closesAt` sin previo aviso.
+    @ViewBuilder
+    private var countdownChip: some View {
+        switch vote.status {
+        case .open:
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let remaining = vote.closesAt.timeIntervalSince(context.date)
+                if remaining > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .accessibilityHidden(true)
+                        Text("Cierra en \(Self.formatRemaining(remaining))")
+                            .ruulTextStyle(RuulTypography.caption)
+                    }
+                    .foregroundStyle(remaining < 60 * 60 ? Color.ruulWarning : Color.ruulTextSecondary)
+                } else {
+                    Text("Por cerrar")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulWarning)
+                }
+            }
+        case .resolved, .closed:
+            resolutionChip
+        case .quorumFailed:
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(Color.ruulTextTertiary)
+                    .frame(width: 8, height: 8)
+                Text("Sin quórum")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+        case .cancelled:
+            Text("Cancelado")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextTertiary)
+        }
+    }
+
+    /// Chip de outcome cuando el vote ya cerró. Reemplaza el "Cerrado"
+    /// neutral con el resultado real ("Aprobado" / "Rechazado" / "Sin
+    /// quórum") y el dot color matching. Lee de vote.counts.resolution
+    /// (server populated post-finalize_vote). Si la resolución todavía
+    /// no llegó (race window <1s entre cron y refresh), cae al "Cerrado"
+    /// neutral.
+    @ViewBuilder
+    private var resolutionChip: some View {
+        if let res = vote.counts?.resolution {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(resolutionColor(res))
+                    .frame(width: 8, height: 8)
+                Text(resolutionLabel(res))
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+        } else {
+            Text("Cerrado")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextTertiary)
+        }
+    }
+
+    private func resolutionLabel(_ res: VoteResolution) -> String {
+        switch res {
+        case .passed:       return "Aprobado"
+        case .failed:       return "Rechazado"
+        case .quorumFailed: return "Sin quórum"
+        }
+    }
+
+    private func resolutionColor(_ res: VoteResolution) -> Color {
+        switch res {
+        case .passed:       return .ruulPositive
+        case .failed:       return .ruulNegative
+        case .quorumFailed: return .ruulTextTertiary
+        }
+    }
+
+    private static func formatRemaining(_ seconds: TimeInterval) -> String {
+        let totalMinutes = Int(seconds / 60)
+        let days = totalMinutes / (60 * 24)
+        let hours = (totalMinutes / 60) % 24
+        let minutes = totalMinutes % 60
+        if days >= 1 { return hours == 0 ? "\(days) d" : "\(days) d \(hours) h" }
+        if hours >= 1 { return minutes == 0 ? "\(hours) h" : "\(hours) h \(minutes) min" }
+        return "\(max(1, minutes)) min"
+    }
+
     private var typeLabel: String {
         switch vote.voteType {
         case .fineAppeal:       return "Apelación de multa"
         case .generalProposal:  return "Propuesta"
-        case .ruleChange:       return "Cambio de regla"
-        case .ruleRepeal:       return "Archivar regla"
+        case .ruleChange:       return "Cambio de acuerdo"
+        case .ruleRepeal:       return "Archivar acuerdo"
         case .memberRemoval:    return "Remover miembro"
         case .fundWithdrawal:   return "Retirar fondos"
         case .roleAssignment:   return "Asignar rol"

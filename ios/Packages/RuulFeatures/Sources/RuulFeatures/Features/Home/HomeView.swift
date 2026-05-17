@@ -15,6 +15,10 @@ public struct HomeView: View {
     public var onCreateEvent: () -> Void
     public var onOpenEvent: (Event) -> Void
     public var onOpenPastEvents: () -> Void
+    /// MEMORIA DEL GRUPO "decisiones tomadas" tile tap. Abre la historia
+    /// completa (sin filtro — desde ahí el usuario filtra a "Votos"
+    /// con el chip). Default no-op para callsites pre-P1.
+    public var onOpenGroupHistory: () -> Void = {}
     public var onInvitePeople: (() -> Void)? = nil
     /// Tap del GroupSwitcher pill — abre `GroupSwitcherSheet` desde Home.
     /// Per AppShell.md: el switcher es chrome persistente en Home/Inbox/Activity.
@@ -23,7 +27,7 @@ public struct HomeView: View {
     /// resource — drives the non-event-resources re-fetch via .task(id:).
     public var resourceRefreshToken: UUID
 
-    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onInvitePeople: (() -> Void)? = nil, onSwitchGroup: @escaping () -> Void = {}, resourceRefreshToken: UUID = UUID()) {
+    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onOpenGroupHistory: @escaping () -> Void = {}, onInvitePeople: (() -> Void)? = nil, onSwitchGroup: @escaping () -> Void = {}, resourceRefreshToken: UUID = UUID()) {
         self.coordinator = coordinator
         self.inboxCoordinator = inboxCoordinator
         self.onInboxActionTap = onInboxActionTap
@@ -31,6 +35,7 @@ public struct HomeView: View {
         self.onCreateEvent = onCreateEvent
         self.onOpenEvent = onOpenEvent
         self.onOpenPastEvents = onOpenPastEvents
+        self.onOpenGroupHistory = onOpenGroupHistory
         self.onInvitePeople = onInvitePeople
         self.onSwitchGroup = onSwitchGroup
         self.resourceRefreshToken = resourceRefreshToken
@@ -57,14 +62,13 @@ public struct HomeView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.s8) {
-                header
                 pendingsSection
                 upcomingFeedSection
                 groupMemorySection
                 pastEventsLink
             }
             .padding(.horizontal, RuulSpacing.lg)
-            .padding(.top, RuulSpacing.xs)
+            .padding(.top, RuulSpacing.md)
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
@@ -77,6 +81,21 @@ public struct HomeView: View {
             _ = await (h, i, m)
         }
         .ruulAmbientScreen(palette: nil)
+        .ruulAppToolbar()
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if let onInvitePeople {
+                    Button(action: onInvitePeople) {
+                        Image(systemName: "person.badge.plus")
+                    }
+                    .accessibilityLabel("Invitar gente")
+                }
+                Button { router.selectTab(.profile) } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Ajustes")
+            }
+        }
         .task {
             async let h: Void = coordinator.refresh()
             async let i: Void? = inboxCoordinator?.refresh()
@@ -128,70 +147,6 @@ public struct HomeView: View {
             pastEventsCount: past.count,
             resolvedVotesCount: votes.filter { $0.status == .resolved }.count
         )
-    }
-
-    // MARK: - Header — Apple Sports style: tiny tracking-uppercase meta +
-    // huge group name in display weight + settings button (top-right).
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            HStack(alignment: .center) {
-                if let group = app.activeGroup {
-                    RuulGroupSwitcher(activeGroup: group, onTap: onSwitchGroup)
-                } else {
-                    Text("Inicio")
-                        .ruulTextStyle(RuulTypography.title)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-                Spacer()
-                HStack(spacing: RuulSpacing.xs) {
-                    if let onInvitePeople {
-                        headerIconButton(
-                            systemName: "person.badge.plus",
-                            accessibilityLabel: "Invitar gente",
-                            action: onInvitePeople
-                        )
-                    }
-                    headerIconButton(
-                        systemName: "gearshape",
-                        accessibilityLabel: "Ajustes"
-                    ) {
-                        router.selectTab(.profile)
-                    }
-                }
-            }
-            Text(greeting)
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
-                .foregroundStyle(Color.ruulTextSecondary)
-        }
-        .padding(.top, RuulSpacing.md)
-    }
-
-    private func headerIconButton(
-        systemName: String,
-        accessibilityLabel: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .ruulTextStyle(RuulTypography.headlineMedium)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .frame(width: 40, height: 40)
-                .background(Color.ruulSurface, in: Circle())
-                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
-                .accessibilityHidden(true)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: .now)
-        switch hour {
-        case 5..<12:  return "BUENOS DÍAS"
-        case 12..<19: return "BUENAS TARDES"
-        default:      return "BUENAS NOCHES"
-        }
     }
 
 
@@ -287,14 +242,31 @@ public struct HomeView: View {
     /// the user who has it right now without opening the detail sheet.
     private func subtitleFor(_ row: ResourceRow) -> String {
         let type = row.resourceType.humanLabel
-        guard row.resourceType == .asset else { return type }
-        if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
-            return "\(type) · Prestado"
+        switch row.resourceType {
+        case .asset:
+            if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
+                return "\(type) · Prestado"
+            }
+            if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
+                return "\(type) · En custodia"
+            }
+            return "\(type) · Del grupo"
+        case .fund:
+            if let raw = row.metadata["locked_at"]?.stringValue, !raw.isEmpty {
+                return "\(type) · Bloqueado"
+            }
+            return type
+        case .space:
+            // Capacity is the most useful one-liner shortcut — location_name
+            // is long-form and crowds the row. Falls back to the bare type
+            // label when no capacity is set.
+            if let cap = row.metadata["capacity"]?.intValue {
+                return "\(type) · \(cap) cupos"
+            }
+            return type
+        default:
+            return type
         }
-        if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
-            return "\(type) · En custodia"
-        }
-        return "\(type) · Del grupo"
     }
 
     private func unifiedRow(
@@ -506,7 +478,7 @@ public struct HomeView: View {
                         title: action.title,
                         subtitle: action.body,
                         priority: pendingPriority(for: action.priority),
-                        timeRemaining: nil,
+                        timeRemaining: UserActionExpiry.remainingDescription(for: action),
                         onTap: {
                             Task { await onInboxActionTap(action) }
                         }
@@ -529,6 +501,7 @@ public struct HomeView: View {
         case .votePending:             return "hand.raised.fill"
         case .contributionDue:         return "banknote.fill"
         case .compensationDue:         return "arrow.up.right"
+        case .assetActionApproval:     return "checkmark.shield.fill"
         }
     }
 
@@ -570,14 +543,16 @@ public struct HomeView: View {
                         memoryStatCard(
                             value: memoryCountLabel(groupMemory.pastEventsCount, cap: 200),
                             caption: "eventos juntos",
-                            icon: "calendar.badge.checkmark"
+                            icon: "calendar.badge.checkmark",
+                            action: onOpenPastEvents
                         )
                     }
                     if groupMemory.resolvedVotesCount > 0 {
                         memoryStatCard(
                             value: memoryCountLabel(groupMemory.resolvedVotesCount, cap: 200),
                             caption: "decisiones tomadas",
-                            icon: "checkmark.seal"
+                            icon: "checkmark.seal",
+                            action: onOpenGroupHistory
                         )
                     }
                 }
@@ -589,12 +564,17 @@ public struct HomeView: View {
         count >= cap ? "\(cap)+" : "\(count)"
     }
 
+    /// Stat card. Tappeable cuando hay un destino — antes era display-only
+    /// (UXJourney "MEMORIA tappeable"). Cards sin acción siguen rendering
+    /// igual pero sin Button wrap para no leaky el press affordance.
+    @ViewBuilder
     private func memoryStatCard(
         value: String,
         caption: String,
-        icon: String
+        icon: String,
+        action: (() -> Void)? = nil
     ) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+        let content = VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: icon)
                     .ruulTextStyle(RuulTypography.caption)
@@ -612,6 +592,13 @@ public struct HomeView: View {
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ruulCardSurface(.glass, radius: RuulRadius.medium)
+
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(.ruulPress)
+        } else {
+            content
+        }
     }
 
     // MARK: - Past events link — Apple Sports style: subtle row, no chrome.

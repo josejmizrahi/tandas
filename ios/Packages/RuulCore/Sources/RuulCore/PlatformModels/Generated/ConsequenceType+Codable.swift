@@ -76,6 +76,8 @@ extension ConsequenceType {
         case .emitWarning: return "emitWarning"
         case .revokeRight: return "revokeRight"
         case .suspendRight: return "suspendRight"
+        case .requireApproval: return "requireApproval"
+        case .lockBookings: return "lockBookings"
         case .unknown(let s): return s
         }
     }
@@ -100,6 +102,8 @@ extension ConsequenceType {
         case "emitWarning": return .emitWarning
         case "revokeRight": return .revokeRight
         case "suspendRight": return .suspendRight
+        case "requireApproval": return .requireApproval
+        case "lockBookings": return .lockBookings
         default: return .unknown(raw)
         }
     }

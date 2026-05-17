@@ -56,5 +56,21 @@ public enum ConsequenceType: Codable, Sendable, Hashable {
     /// "reason": "…" }` — both optional.
     case suspendRight
 
+    // MARK: - Asset rule consequences (mig 00226 — AssetRules.md §3.3)
+
+    /// Inserts a `user_actions` row of type `assetActionApproval` for
+    /// the asset's group admins. UI surfaces it in the Inbox; an admin
+    /// reviews and resolves manually in V1. Idempotent on (rule_id,
+    /// resource_id, source_atom_id) — re-running the rule doesn't
+    /// double-create the inbox row. Config: `{}` — none today.
+    case requireApproval
+
+    /// Flips `resources.metadata.bookings_locked = true` on the asset
+    /// and emits a `warningEmitted` audit atom referencing the rule.
+    /// Soft policy per Constitution §9 — doesn't block the booking RPC,
+    /// rules + UI react to the flag. Idempotent: re-firing on an
+    /// already-locked asset is a no-op. Config: `{}` — none today.
+    case lockBookings
+
     case unknown(String)
 }

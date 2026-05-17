@@ -16,9 +16,9 @@ import {
   ExecutionResult,
   Rule,
   RuleCondition,
+  RuleConditionNode,
   RuleConsequence,
   RuleTarget,
-  RuleTrigger,
   SystemEvent,
   SystemEventType,
   UUID,
@@ -256,799 +256,103 @@ export interface ConsequenceSink {
     until: string | null;
     reason: string | null;
   }): Promise<UUID>;
+
+  /**
+   * Inserts a `user_actions` row of type `assetActionApproval` for the
+   * `requireApproval` consequence (Plans/Active/AssetRules.md §4.3).
+   * `reference_id` is the asset's resource_id so the inbox surface
+   * routes to its detail. Idempotent on (rule_id, resource_id,
+   * source_atom_id) — the implementation should dedupe so re-running
+   * the rule on the same atom doesn't pile up duplicate inbox rows.
+   * Returns the new user_actions.id.
+   */
+  createUserAction(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    resource_id: UUID;
+    action_type: string;
+    title: string;
+    body: string | null;
+    source_atom_id: UUID | null;
+    payload: Record<string, unknown>;
+  }): Promise<UUID>;
+
+  /**
+   * Flips `resources.metadata.bookings_locked = true` for the
+   * `lockBookings` consequence (Plans/Active/AssetRules.md §4.3).
+   * Soft policy per Constitution §9 — doesn't block booking RPCs;
+   * UI + rules read the flag and react. Idempotent: re-firing on an
+   * already-locked asset is a no-op. Also emits a `warningEmitted`
+   * atom referencing the rule so the audit trail captures the lock.
+   * Returns the asset's resource_id for ExecutionResult bookkeeping.
+   */
+  setBookingsLocked(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    resource_id: UUID;
+    reason: string | null;
+  }): Promise<UUID>;
+
+  /**
+   * Reads the latest `valuationRecorded` atom for an asset and returns
+   * its `value_cents`. Used by the `assetTransferred` trigger
+   * evaluator to project `valuation_cents` onto the target context so
+   * the `transferAmountAbove` condition can compare. Returns null when
+   * the asset has no recorded valuation yet (the condition then short-
+   * circuits to false). Plans/Active/AssetRules.md §4.1.
+   */
+  latestAssetValuationCents(assetId: UUID): Promise<number | null>;
+
+  /**
+   * Returns active `group_members.id` for every member of `group_id`
+   * whose `roles` jsonb array contains `role_id`. Used by the
+   * per-consequence target selector `$role.<role_id>` (mig 00249,
+   * §22.3) to multiplex a consequence — e.g. "notify the treasurer"
+   * fires once per holder. Empty array → no-op consequence (logged
+   * but not failed).
+   */
+  listMembersWithRole(args: { group_id: UUID; role_id: string }): Promise<UUID[]>;
+
+  /**
+   * Returns the `group_members.id` matching the `host_id` user in
+   * `resources.metadata.host_id`. Used by the `$resource.host`
+   * selector for event-scoped consequences. Returns null when:
+   *   - resource has no host_id metadata,
+   *   - the host's user_id doesn't map to an active member.
+   */
+  resolveResourceHostMember(resourceId: UUID): Promise<UUID | null>;
 }
 
 // =============================================================================
-// Trigger evaluators — derive RuleTargets from a SystemEvent
+// Trigger evaluators
 // =============================================================================
+// TRIGGERS lives in ./ruleEngineTriggers.ts (split for legibility
+// 2026-05-17, governance-review item #2). Re-export preserves the
+// `import { TriggerEvaluator } from "./ruleEngine.ts"` API.
+export type { TriggerEvaluator } from "./ruleEngineTriggers.ts";
+import { TRIGGERS } from "./ruleEngineTriggers.ts";
 
-export type TriggerEvaluator = (
-  event: SystemEvent,
-  rule: Rule,
-  context: RuleContext,
-) => Promise<RuleTarget[]>;
-
-const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
-  // (V1) Each member of the group is a candidate for fines (no-show, didn't
-  // RSVP, etc.). Returns one target per member with their RSVP/check-in.
-  eventClosed: async (event, _rule, context) => {
-    if (!event.resource_id) return [];
-    return context.members
-      .filter((m) => m.active)
-      .map((m) => ({
-        member_id: m.id,
-        resource_id: event.resource_id,
-        context: {
-          user_id: m.user_id,
-          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
-          check_in: context.checkIns.find((c) => c.member_user_id === m.user_id) ?? null,
-          event_starts_at: context.resource?.metadata?.starts_at ?? null,
-        },
-      }));
-  },
-
-  // (mig 00203+00209, spec §8+§19) Cancellation is a distinct trigger from
-  // close: the rule engine evaluator MUST NOT enumerate "no-show fines" on
-  // cancellation (you can't no-show a cancelled event). What CAN fire:
-  //   - notification consequences ("avísale a todos los que dijeron 'going'")
-  //   - cancellation-fee rules ("if cancelled <24h before, charge host")
-  // We enumerate going-RSVP members + the host; conditions decide who really fires.
-  eventCancelled: async (event, _rule, context) => {
-    if (!event.resource_id) return [];
-    const hostUserId = context.resource?.metadata?.host_id as UUID | undefined;
-    const startsAt = (context.resource?.metadata?.starts_at as string | undefined)
-      ?? (event.payload?.starts_at as string | undefined)
-      ?? null;
-    return context.members
-      .filter((m) => m.active)
-      .map((m) => ({
-        member_id: m.id,
-        resource_id: event.resource_id,
-        context: {
-          user_id: m.user_id,
-          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
-          is_host: hostUserId === m.user_id,
-          event_starts_at: startsAt,
-          cancellation_reason: event.payload?.reason ?? null,
-          cancelled_by_user: event.payload?.cancelled_by ?? null,
-          cancelled_at: event.occurred_at,
-        },
-      }));
-  },
-
-  // (mig 00208, spec §8) Event just started (cron-emitted when starts_at
-  // elapses). Same target shape as eventClosed but pre-end: conditions can
-  // ask "who hasn't checked in" or "who said going but didn't arrive yet"
-  // for nudge / late-fee rule shapes.
-  eventStarted: async (event, _rule, context) => {
-    if (!event.resource_id) return [];
-    return context.members
-      .filter((m) => m.active)
-      .map((m) => ({
-        member_id: m.id,
-        resource_id: event.resource_id,
-        context: {
-          user_id: m.user_id,
-          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
-          check_in: context.checkIns.find((c) => c.member_user_id === m.user_id) ?? null,
-          event_starts_at: context.resource?.metadata?.starts_at
-            ?? event.payload?.starts_at
-            ?? null,
-          started_at: event.occurred_at,
-        },
-      }));
-  },
-
-  // (mig 00210, spec §8) Event metadata mutated (location, time, host,
-  // description). Target = each member that confirmed 'going' so notification
-  // rules can react ("X cambió la hora — avísale a los que ya dijeron sí").
-  // The `changed_keys` payload lets conditions narrow which kinds of edits
-  // trigger which rules.
-  eventUpdated: async (event, _rule, context) => {
-    if (!event.resource_id) return [];
-    return context.members
-      .filter((m) => m.active)
-      .map((m) => ({
-        member_id: m.id,
-        resource_id: event.resource_id,
-        context: {
-          user_id: m.user_id,
-          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
-          changed_keys: event.payload?.changed_keys ?? [],
-          changed_by_user: event.payload?.changed_by ?? null,
-          title_changed: event.payload?.title_changed ?? false,
-        },
-      }));
-  },
-
-  // (V1) RSVP deadline passed. Mirrors eventClosed in shape — one target
-  // per active member with their RSVP — but fires BEFORE the event so
-  // pre-event rules ("no confirmó a tiempo → warning/fine") can run while
-  // there's still time for a member to respond. emit-deadline-events
-  // emits one row per event (member_id=null, payload carries the
-  // rsvp_deadline + starts_at), so the trigger enumerates members like
-  // eventClosed does. Conditions (e.g. responseStatusIs("pending"))
-  // narrow which targets actually fire.
-  rsvpDeadlinePassed: async (event, _rule, context) => {
-    if (!event.resource_id) return [];
-    return context.members
-      .filter((m) => m.active)
-      .map((m) => ({
-        member_id: m.id,
-        resource_id: event.resource_id,
-        context: {
-          user_id: m.user_id,
-          rsvp: context.rsvps.find((r) => r.member_user_id === m.user_id) ?? null,
-          // Surface the deadline metadata on each target so condition
-          // evaluators that compare against the deadline (Phase 4) can
-          // read it without re-fetching the resource.
-          rsvp_deadline:   event.payload?.rsvp_deadline ?? null,
-          event_starts_at: event.payload?.starts_at
-            ?? context.resource?.metadata?.starts_at
-            ?? null,
-        },
-      }));
-  },
-
-  // (V1) Single target = the member who checked in.
-  checkInRecorded: async (event, _rule, context) => {
-    if (!event.member_id) return [];
-    const checkIn = context.checkIns.find((c) => {
-      const m = context.members.find((x) => x.id === event.member_id);
-      return m && c.member_user_id === m.user_id;
-    });
-    return [{
-      member_id: event.member_id,
-      resource_id: event.resource_id,
-      context: {
-        check_in: checkIn,
-        minutes_late: checkIn?.minutes_late ?? null,
-      },
-    }];
-  },
-
-  // (V1) Single target = the member who flipped their RSVP same-day.
-  // event.member_id is null when iOS emits without resolving group_members.id.
-  // Sprint 1c fix: fall back to event.payload.user_id (the auth.uid the iOS
-  // coordinator includes), looking up the matching group_members row.
-  rsvpChangedSameDay: async (event, _rule, context) => {
-    let memberId = event.member_id;
-    if (!memberId) {
-      const userId = (event.payload?.user_id as string | undefined) ?? null;
-      if (userId) {
-        memberId = context.members.find((m) => m.user_id === userId)?.id ?? null;
-      }
-    }
-    if (!memberId) return [];
-    return [{
-      member_id: memberId,
-      resource_id: event.resource_id,
-      context: { ...event.payload },
-    }];
-  },
-
-  // (V1) Single target = the host (responsible for the menu/description).
-  hoursBeforeEvent: async (event, _rule, context) => {
-    const hostId = context.resource?.metadata?.host_id as UUID | undefined;
-    if (!hostId) return [];
-    const hostMember = context.members.find((m) => m.user_id === hostId);
-    if (!hostMember) return [];
-    return [{
-      member_id: hostMember.id,
-      resource_id: event.resource_id,
-      context: {
-        scheduled_hours: event.payload.hours,
-        description: context.resource?.metadata?.description ?? null,
-      },
-    }];
-  },
-
-  // (mig 00193) Single target = the recorder of the ledger entry.
-  // The DB trigger `ledger_entries_emit_atom` resolves the recorder's
-  // group_members.id and sets it as event.member_id, plus pushes the full
-  // ledger row into event.payload — so the condition evaluators
-  // (`amountAbove`) can read amount_cents from target.context without a
-  // round-trip to ledger_entries.
-  ledgerEntryCreated: async (event, _rule, _context) => {
-    if (!event.member_id) return [];
-    return [{
-      member_id: event.member_id,
-      resource_id: event.resource_id,
-      context: {
-        ledger_entry_id: event.payload.ledger_entry_id,
-        type:            event.payload.type,
-        amount_cents:    event.payload.amount_cents,
-        currency:        event.payload.currency,
-        from_member_id:  event.payload.from_member_id,
-        to_member_id:    event.payload.to_member_id,
-        source_atom_id:  event.id,
-      },
-    }];
-  },
-
-  // (Phase 2) Single target = the assigned holder of the expired slot.
-  // The cron `emit-slot-system-events` projects assigned_member_id +
-  // booking_id onto event.payload so the condition evaluators
-  // (`slotIsUnassigned`) can read them from target.context without a
-  // round-trip to the resource. If no member was assigned, no target —
-  // an unassigned slot expiring without booking is a no-op (you can't
-  // fine someone for not using a cupo they never held).
-  slotExpired: async (event, _rule, _context) => {
-    const assignedMemberId = (event.payload?.assigned_member_id as string | undefined) ?? null;
-    if (!assignedMemberId) return [];
-    if (!event.resource_id) return [];
-    return [{
-      member_id: assignedMemberId,
-      resource_id: event.resource_id,
-      context: {
-        booking_id: (event.payload?.booking_id as string | null | undefined) ?? null,
-        assigned_member_id: assignedMemberId,
-        ends_at: event.payload?.ends_at ?? null,
-        asset_id: event.payload?.asset_id ?? null,
-      },
-    }];
-  },
-
-  // (mig 00198 + 00199) Right resource_type lifecycle atoms. The atom
-  // payloads carry the right-specific context the engine needs
-  // (holder, delegate, target_capability, …) so condition evaluators
-  // don't need to round-trip to the resource. Every evaluator below
-  // projects the *current holder* as the rule target — that's the
-  // member whose claim is being tracked, and it's what consequence
-  // executors will fine/notify/transfer when relevant.
-  //
-  // event.resource_id is the right's id itself (not its target). The
-  // right's target_resource_id (the asset the right governs) lives in
-  // event.payload.target_resource_id when relevant.
-  rightCreated: async (event, _rule, _context) => {
-    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
-    if (!holderMemberId || !event.resource_id) return [];
-    return [{
-      member_id: holderMemberId,
-      resource_id: event.resource_id,
-      context: {
-        holder_member_id:   holderMemberId,
-        target_resource_id: event.payload?.target_resource_id ?? null,
-        target_capability:  event.payload?.target_capability ?? null,
-        scope:              event.payload?.scope ?? null,
-        priority:           event.payload?.priority ?? null,
-        exclusive:          event.payload?.exclusive ?? null,
-        transferable:       event.payload?.transferable ?? null,
-        delegable:          event.payload?.delegable ?? null,
-        divisible:          event.payload?.divisible ?? null,
-        expires_at:         event.payload?.expires_at ?? null,
-        source:             event.payload?.source ?? null,
-        source_atom_id:     event.id,
-      },
-    }];
-  },
-
-  rightTransferred: async (event, _rule, _context) => {
-    const toMemberId = (event.payload?.to_member_id as string | undefined) ?? event.member_id;
-    if (!toMemberId || !event.resource_id) return [];
-    return [{
-      member_id: toMemberId,
-      resource_id: event.resource_id,
-      context: {
-        from_member_id:  event.payload?.from_member_id ?? null,
-        to_member_id:    toMemberId,
-        transferred_by:  event.payload?.transferred_by ?? null,
-        reason:          event.payload?.reason ?? null,
-        source_atom_id:  event.id,
-      },
-    }];
-  },
-
-  rightDelegated: async (event, _rule, _context) => {
-    const delegateMemberId = (event.payload?.delegate_member_id as string | undefined) ?? event.member_id;
-    if (!delegateMemberId || !event.resource_id) return [];
-    return [{
-      member_id: delegateMemberId,
-      resource_id: event.resource_id,
-      context: {
-        delegate_member_id: delegateMemberId,
-        until:              event.payload?.until ?? null,
-        delegated_by:       event.payload?.delegated_by ?? null,
-        reason:             event.payload?.reason ?? null,
-        source_atom_id:     event.id,
-      },
-    }];
-  },
-
-  // Revoke + Suspend + Restore: event.payload doesn't carry the holder
-  // (the action targets the right, not a specific member). We resolve
-  // the current holder from the resource so consequences (notification,
-  // audit) can address the affected party.
-  rightRevoked: async (event, _rule, context) => {
-    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
-    if (!event.resource_id) return [];
-    return [{
-      member_id: holderId ?? null,
-      resource_id: event.resource_id,
-      context: {
-        previous_status: event.payload?.previous_status ?? null,
-        revoked_by:      event.payload?.revoked_by ?? null,
-        reason:          event.payload?.reason ?? null,
-        source_atom_id:  event.id,
-      },
-    }];
-  },
-
-  rightSuspended: async (event, _rule, context) => {
-    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
-    if (!event.resource_id) return [];
-    return [{
-      member_id: holderId ?? null,
-      resource_id: event.resource_id,
-      context: {
-        until:          event.payload?.until ?? null,
-        suspended_by:   event.payload?.suspended_by ?? null,
-        reason:         event.payload?.reason ?? null,
-        source_atom_id: event.id,
-      },
-    }];
-  },
-
-  rightRestored: async (event, _rule, context) => {
-    const holderId = context.resource?.metadata?.holder_member_id as string | undefined;
-    if (!event.resource_id) return [];
-    return [{
-      member_id: holderId ?? null,
-      resource_id: event.resource_id,
-      context: {
-        restored_by:    event.payload?.restored_by ?? null,
-        reason:         event.payload?.reason ?? null,
-        source_atom_id: event.id,
-      },
-    }];
-  },
-
-  // (mig 00199) Cron-emitted when metadata.expires_at <= now(). Holder
-  // is in the payload (resolved by expire_due_rights). Useful for "warn
-  // the holder X days before expiration"-style rules anchored on the
-  // atom rather than a polling read.
-  rightExpired: async (event, _rule, _context) => {
-    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
-    if (!event.resource_id) return [];
-    return [{
-      member_id: holderMemberId ?? null,
-      resource_id: event.resource_id,
-      context: {
-        expired_at:       event.payload?.expired_at ?? null,
-        holder_member_id: holderMemberId ?? null,
-        name:             event.payload?.name ?? null,
-        source:           event.payload?.source ?? null,
-        source_atom_id:   event.id,
-      },
-    }];
-  },
-
-  rightExercised: async (event, _rule, _context) => {
-    const exerciserMemberId = (event.payload?.exercised_by_member_id as string | undefined) ?? event.member_id;
-    if (!event.resource_id) return [];
-    return [{
-      member_id: exerciserMemberId ?? null,
-      resource_id: event.resource_id,
-      context: {
-        exercised_by_user_id:   event.payload?.exercised_by_user_id ?? null,
-        exercised_by_member_id: exerciserMemberId ?? null,
-        right_context:          event.payload?.context ?? {},
-        source_atom_id:         event.id,
-      },
-    }];
-  },
-
-  // (mig 00203) Cron-emitted when an active right enters its pre-expiry
-  // window (default 14 days, set in the cron schedule). The cron already
-  // pre-computes holder_member_id + days_until_expiry into the payload
-  // so the trigger evaluator + condition evaluator avoid a re-fetch of
-  // the resource row. Drives `right_expiration_warning` template +
-  // future "transfer-to-next-priority-on-expiry" style rules.
-  rightExpiringSoon: async (event, _rule, _context) => {
-    const holderMemberId = (event.payload?.holder_member_id as string | undefined) ?? event.member_id;
-    if (!event.resource_id) return [];
-    return [{
-      member_id: holderMemberId ?? null,
-      resource_id: event.resource_id,
-      context: {
-        expires_at:        event.payload?.expires_at ?? null,
-        holder_member_id:  holderMemberId ?? null,
-        name:              event.payload?.name ?? null,
-        days_until_expiry: event.payload?.days_until_expiry ?? null,
-        window_days:       event.payload?.window_days ?? null,
-        source:            event.payload?.source ?? null,
-        source_atom_id:    event.id,
-      },
-    }];
-  },
-};
 
 // =============================================================================
 // Condition evaluators
 // =============================================================================
+// CONDITIONS lives in ./ruleEngineConditions.ts (split for legibility
+// 2026-05-17, governance-review item #2). The export below preserves
+// the `import type { ConditionEvaluator } from "./ruleEngine.ts"` API
+// for downstream callers.
 
-export type ConditionEvaluator = (
-  condition: RuleCondition,
-  target: RuleTarget,
-  context: RuleContext,
-) => Promise<boolean>;
-
-const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
-  alwaysTrue: async () => true,
-
-  // (V1) target.context.rsvp.status === config.status
-  responseStatusIs: async (cond, target) => {
-    const expected = cond.config.status as string | undefined;
-    const rsvp = target.context.rsvp as RSVPLike | null | undefined;
-    if (!expected) return false;
-    return (rsvp?.status ?? "pending") === expected;
-  },
-
-  // (V1) Whether a check-in row exists for the target member.
-  checkInExists: async (cond, target) => {
-    const expected = cond.config.exists as boolean | undefined;
-    const present = target.context.check_in != null;
-    return expected ? present : !present;
-  },
-
-  // (V1) target.context.minutes_late >= config.thresholdMinutes
-  checkInMinutesLate: async (cond, target) => {
-    const threshold = (cond.config.thresholdMinutes as number | undefined) ?? 0;
-    const lateMinutes = (target.context.minutes_late as number | null | undefined) ?? -1;
-    return lateMinutes >= threshold;
-  },
-
-  // (mig 00193) target.context.amount_cents > config.threshold_cents.
-  // Strict inequality so a rule with threshold 200000 fires on 200001 cents
-  // but not on exactly 200000. Used by the `expense_threshold_warning`
-  // template.
-  amountAbove: async (cond, target) => {
-    const threshold = (cond.config.threshold_cents as number | undefined) ?? 0;
-    const amount = (target.context.amount_cents as number | null | undefined) ?? 0;
-    return amount > threshold;
-  },
-
-  // (V1) Used by "anfitrión sin menú" rule.
-  eventDescriptionMissing: async (_cond, target) => {
-    const description = target.context.description as string | null | undefined;
-    return !description || description.trim().length === 0;
-  },
-
-  // (Phase 2) Slot has no booking attached. Used by `shared_no_show`:
-  // fires after slotExpired to fine the assigned holder when nobody used
-  // their cupo. Reads `resources.metadata.booking_id` polymorphically —
-  // the slot resource carries the booking attachment in its metadata.
-  // Falls back to target.context.booking_id if the trigger evaluator
-  // already projected it (avoids re-reading when caller has the value).
-  slotIsUnassigned: async (_cond, target, context) => {
-    const fromTarget = target.context.booking_id;
-    if (fromTarget !== undefined) return fromTarget == null;
-    if (!context.resource) return false;
-    const bookingId = context.resource.metadata.booking_id;
-    return bookingId == null;
-  },
-
-  // (Phase 2) Slot is within X hours of expiring. "Expires" =
-  // `metadata.starts_at` (when the right-of-use lapses for the assigned
-  // holder). Config: `{ "hours": 24 }` — true when 0 < hoursUntilExpiry
-  // <= hours. Negative deltas (slot already started) return false so the
-  // condition behaves as a forward-looking warning gate.
-  slotExpiresInHours: async (cond, _target, context) => {
-    if (!context.resource) return false;
-    const hours = (cond.config.hours as number | undefined) ?? 24;
-    const startsAt = context.resource.metadata.starts_at as string | undefined;
-    if (!startsAt) return false;
-    const expiresAtMs = new Date(startsAt).getTime();
-    if (Number.isNaN(expiresAtMs)) return false;
-    const hoursUntilExpiry = (expiresAtMs - context.now.getTime()) / 3_600_000;
-    return hoursUntilExpiry > 0 && hoursUntilExpiry <= hours;
-  },
-
-  // (mig 00203) target.context.days_until_expiry <= config.days_before.
-  // Used by the `right_expiration_warning` template to gate the warning
-  // to the final N days of the cron's broader window (cron fires at
-  // 14 days; default template threshold = 7). Falls back to the
-  // resource's metadata.expires_at if the trigger evaluator didn't
-  // project days_until_expiry (defensive — shouldn't happen with the
-  // mig 00203 cron, but keeps the evaluator usable for hand-emitted
-  // rightExpiringSoon events).
-  daysBeforeExpiry: async (cond, target, context) => {
-    const threshold = (cond.config.days_before as number | undefined) ?? 7;
-    const projected = target.context.days_until_expiry as number | null | undefined;
-    if (typeof projected === "number") {
-      return projected <= threshold;
-    }
-    const expiresAt = context.resource?.metadata.expires_at as string | undefined;
-    if (!expiresAt) return false;
-    const expiresAtMs = new Date(expiresAt).getTime();
-    if (Number.isNaN(expiresAtMs)) return false;
-    const daysUntilExpiry = (expiresAtMs - context.now.getTime()) / 86_400_000;
-    return daysUntilExpiry > 0 && daysUntilExpiry <= threshold;
-  },
-};
+export type { ConditionEvaluator } from "./ruleEngineConditions.ts";
+import { CONDITIONS } from "./ruleEngineConditions.ts";
 
 // =============================================================================
 // Consequence executors
 // =============================================================================
 
-export type ConsequenceExecutor = (
-  consequence: RuleConsequence,
-  target: RuleTarget,
-  rule: Rule,
-  context: RuleContext,
-) => Promise<ExecutionResult>;
-
-const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>> = {
-  // (V1) Only implemented consequence. Reads `amount` (flat) OR
-  // `baseAmount` + `stepAmount` + `stepMinutes` (escalating per minutes_late).
-  fine: async (cons, target, rule, context) => {
-    if (!target.member_id || !target.resource_id || !context.resource) {
-      return failure(rule.id, target.member_id, "fine requires member + resource");
-    }
-
-    const flatAmount = cons.config.amount as number | undefined;
-    const baseAmount = cons.config.baseAmount as number | undefined;
-    const stepAmount = cons.config.stepAmount as number | undefined;
-    const stepMinutes = cons.config.stepMinutes as number | undefined;
-
-    let amount: number;
-    if (typeof flatAmount === "number") {
-      amount = flatAmount;
-    } else if (
-      typeof baseAmount === "number" &&
-      typeof stepAmount === "number" &&
-      typeof stepMinutes === "number" &&
-      stepMinutes > 0
-    ) {
-      const lateMinutes = Math.max(0, (target.context.minutes_late as number) ?? 0);
-      const steps = Math.floor(lateMinutes / stepMinutes);
-      amount = baseAmount + steps * stepAmount;
-    } else {
-      return failure(rule.id, target.member_id, "fine config missing amount / base+step");
-    }
-
-    // Post §14 step 5c-ii: fines.event_id column dropped. resource_id is
-    // the canonical handle whether the resource is a V1 event or a
-    // Phase 2 non-event (slot, fund, asset).
-    const fineId = await context.sink.proposeFine({
-      rule_id: rule.id,
-      group_id: rule.group_id,
-      resource_id: target.resource_id,
-      member_id: target.member_id,
-      amount,
-      reason: rule.name,
-      evidence: target.context as Record<string, unknown>,
-    });
-
-    return {
-      success: true,
-      rule_id: rule.id,
-      member_id: target.member_id,
-      created_resource_ids: [fineId],
-      emitted_event_types: [],
-      error: null,
-    };
-  },
-
-  // (mig 00194) Opens a `ledger_review` vote when a rule fires on a ledger
-  // entry that crossed a threshold. Phase 1: vote is informational; the
-  // referenced ledger entry is NOT auto-voided on fail. Used by
-  // `expense_threshold_vote` template.
-  startVote: async (cons, target, rule, context) => {
-    const ledgerEntryId = target.context.ledger_entry_id as UUID | undefined;
-    if (!ledgerEntryId) {
-      return failure(rule.id, target.member_id, "startVote requires ledger_entry_id in target context");
-    }
-    const voteType = (cons.config.vote_type as string | undefined) ?? "ledger_review";
-    const title = (cons.config.title as string | undefined) ?? rule.name;
-    const voteId = await context.sink.startVote({
-      rule_id: rule.id,
-      group_id: rule.group_id,
-      vote_type: voteType,
-      reference_id: ledgerEntryId,
-      title,
-      description: (cons.config.description as string | undefined) ?? null,
-      payload: {
-        source_atom_id: target.context.source_atom_id ?? null,
-        amount_cents:   target.context.amount_cents ?? null,
-        currency:       target.context.currency ?? null,
-        ledger_type:    target.context.type ?? null,
-        recorder_member_id: target.member_id,
-      },
-      duration_hours:    (cons.config.duration_hours as number | undefined) ?? null,
-      quorum_percent:    (cons.config.quorum_percent as number | undefined) ?? null,
-      threshold_percent: (cons.config.threshold_percent as number | undefined) ?? null,
-    });
-    return {
-      success: true,
-      rule_id: rule.id,
-      member_id: target.member_id,
-      created_resource_ids: [voteId],
-      emitted_event_types: ["voteOpened"],
-      error: null,
-    };
-  },
-
-  // (mig 00193) Emits a `warningEmitted` system_event so the activity feed
-  // surfaces the rule-driven warning. Pure visibility — no money, no vote.
-  // Used by the `expense_threshold_warning` template.
-  emitWarning: async (_cons, target, rule, context) => {
-    const sourceAtomId = target.context.source_atom_id as UUID | undefined;
-    if (!sourceAtomId) {
-      return failure(rule.id, target.member_id, "emitWarning requires source_atom_id in target context");
-    }
-    const warningId = await context.sink.emitWarning({
-      rule_id: rule.id,
-      group_id: rule.group_id,
-      resource_id: target.resource_id ?? null,
-      member_id: target.member_id ?? null,
-      reason: rule.name,
-      source_atom_id: sourceAtomId,
-      payload: target.context as Record<string, unknown>,
-    });
-    return {
-      success: true,
-      rule_id: rule.id,
-      member_id: target.member_id,
-      created_resource_ids: [warningId],
-      emitted_event_types: ["warningEmitted"],
-      error: null,
-    };
-  },
-
-  // (mig 00200) Transfers a right resource to a new holder via the
-  // canonical `transfer_right` RPC. Two config modes for picking the
-  // recipient:
-  //
-  //   1. `config.to_member_id: "<uuid>"` — explicit recipient
-  //   2. `config.to_target_member: true` — recipient is target.member_id
-  //      (the member the rule's trigger fired on, e.g. "transfer to
-  //      whoever exercised it last")
-  //
-  // The right id itself comes from `target.resource_id` — the rule's
-  // trigger MUST have fired on a `right` resource (e.g. rightCreated,
-  // rightTransferred, rightExercised). Misconfigured rules that fire
-  // on a non-right resource fail safe with "resource is not a right".
-  //
-  // Server-side invariants (mig 00198): transferable=true is still
-  // required; new holder must be an active group member; emits
-  // `rightTransferred` with attribution=NULL (service_role) but a
-  // rule-id reason so the audit row carries enough context.
-  transferRight: async (cons, target, rule, context) => {
-    if (!target.resource_id) {
-      return failure(rule.id, target.member_id, "transferRight requires target.resource_id");
-    }
-    if (context.resource && context.resource.resource_type !== "right") {
-      return failure(
-        rule.id,
-        target.member_id,
-        `transferRight target is a ${context.resource.resource_type}, not a right`,
-      );
-    }
-
-    let toMemberId: UUID | null = null;
-    const explicit = cons.config.to_member_id as string | undefined;
-    const useTarget = cons.config.to_target_member as boolean | undefined;
-    if (explicit) {
-      toMemberId = explicit;
-    } else if (useTarget) {
-      toMemberId = target.member_id;
-    }
-    if (!toMemberId) {
-      return failure(
-        rule.id,
-        target.member_id,
-        "transferRight requires config.to_member_id or config.to_target_member=true",
-      );
-    }
-
-    const reason = (cons.config.reason as string | undefined) ?? rule.name;
-    try {
-      const rightId = await context.sink.transferRight({
-        rule_id:      rule.id,
-        group_id:     rule.group_id,
-        right_id:     target.resource_id,
-        to_member_id: toMemberId,
-        reason,
-      });
-      return {
-        success: true,
-        rule_id: rule.id,
-        member_id: target.member_id,
-        // The transferred right is the "created/affected resource" for
-        // this consequence. Downstream callers use the list to roll up
-        // audit trails per ExecutionResult.
-        created_resource_ids: [rightId],
-        emitted_event_types: ["rightTransferred"],
-        error: null,
-      };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return failure(rule.id, target.member_id, `transferRight failed: ${msg}`);
-    }
-  },
-
-  // (slice 10) Revokes a right. Same guard rails as transferRight:
-  //   - target.resource_id must be set
-  //   - context.resource (if loaded) must be a right
-  // Idempotent server-side: revoke_right RPC short-circuits when status
-  // is already 'revoked'. Use case: "When a holder accumulates N fines
-  // → revoke their priority access" — pair with a fine-counting
-  // condition to gate the revocation.
-  revokeRight: async (cons, target, rule, context) => {
-    if (!target.resource_id) {
-      return failure(rule.id, target.member_id, "revokeRight requires target.resource_id");
-    }
-    if (context.resource && context.resource.resource_type !== "right") {
-      return failure(
-        rule.id,
-        target.member_id,
-        `revokeRight target is a ${context.resource.resource_type}, not a right`,
-      );
-    }
-    const reason = (cons.config.reason as string | undefined) ?? rule.name;
-    try {
-      const rightId = await context.sink.revokeRight({
-        rule_id:  rule.id,
-        group_id: rule.group_id,
-        right_id: target.resource_id,
-        reason,
-      });
-      return {
-        success: true,
-        rule_id: rule.id,
-        member_id: target.member_id,
-        created_resource_ids: [rightId],
-        emitted_event_types: ["rightRevoked"],
-        error: null,
-      };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return failure(rule.id, target.member_id, `revokeRight failed: ${msg}`);
-    }
-  },
-
-  // (slice 10) Suspends a right via metadata.suspended_until.
-  // Config: `{ "until": "<iso>", "reason": "…" }` — both optional.
-  // Status stays 'active'; restore_right (manual admin) is the
-  // canonical lift. Use case: "When holder misses N exercises in a
-  // row → suspend until they confirm engagement" — paired with a
-  // counting condition + an external follow-up.
-  suspendRight: async (cons, target, rule, context) => {
-    if (!target.resource_id) {
-      return failure(rule.id, target.member_id, "suspendRight requires target.resource_id");
-    }
-    if (context.resource && context.resource.resource_type !== "right") {
-      return failure(
-        rule.id,
-        target.member_id,
-        `suspendRight target is a ${context.resource.resource_type}, not a right`,
-      );
-    }
-    const until = (cons.config.until as string | undefined) ?? null;
-    const reason = (cons.config.reason as string | undefined) ?? rule.name;
-    try {
-      const rightId = await context.sink.suspendRight({
-        rule_id:  rule.id,
-        group_id: rule.group_id,
-        right_id: target.resource_id,
-        until,
-        reason,
-      });
-      return {
-        success: true,
-        rule_id: rule.id,
-        member_id: target.member_id,
-        created_resource_ids: [rightId],
-        emitted_event_types: ["rightSuspended"],
-        error: null,
-      };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return failure(rule.id, target.member_id, `suspendRight failed: ${msg}`);
-    }
-  },
-};
+// CONSEQUENCES lives in ./ruleEngineConsequences.ts (split for legibility
+// 2026-05-17, governance-review item #2). The re-exports preserve the
+// `import { ConsequenceExecutor } from "./ruleEngine.ts"` API.
+export type { ConsequenceExecutor } from "./ruleEngineConsequences.ts";
+import { CONSEQUENCES } from "./ruleEngineConsequences.ts";
 
 function failure(rule_id: UUID, member_id: UUID | null, error: string): ExecutionResult {
   return {
@@ -1059,6 +363,121 @@ function failure(rule_id: UUID, member_id: UUID | null, error: string): Executio
     emitted_event_types: [],
     error,
   };
+}
+
+// =============================================================================
+// Condition tree (§22.4 / mig 00251)
+//
+// `rule.conditions` may arrive as a flat array (legacy implicit AND) or as a
+// `{op,children}` tree object. `normalizeConditions` collapses arrays into a
+// synthetic AND so the walker only has to handle one shape.
+// `evalConditionNode` walks the tree with short-circuit semantics and
+// returns either a matched verdict or the first leaf-type that lacks an
+// evaluator (so the orchestrator can record an actionable failure row).
+//
+// Exceptions (§22.2) stay flat per Governance.md §22 — their semantics is
+// already "any blocks" (OR implicit) and a tree there adds complexity
+// without expressive gain.
+// =============================================================================
+
+interface ConditionEvalResult {
+  matched: boolean;
+  missingCondition: ConditionType | null;
+}
+
+interface ConditionEvalCtx {
+  rule: Rule;
+  event: SystemEvent;
+}
+
+function isLeafCondition(node: RuleConditionNode): node is RuleCondition {
+  return typeof (node as RuleCondition).type === "string";
+}
+
+/**
+ * Returns the normalised tree the walker consumes. Arrays become
+ * `{op:'and', children:array}` so pre-§22.4 rules evaluate identically
+ * to before.
+ */
+export function normalizeConditions(
+  conditions: RuleCondition[] | RuleConditionNode,
+): RuleConditionNode {
+  if (Array.isArray(conditions)) {
+    return { op: "and", children: conditions };
+  }
+  return conditions;
+}
+
+async function evalConditionNode(
+  node: RuleConditionNode,
+  target: RuleTarget,
+  context: RuleContext,
+  ctx: ConditionEvalCtx,
+): Promise<ConditionEvalResult> {
+  if (isLeafCondition(node)) {
+    const condFn = CONDITIONS[node.type];
+    if (!condFn) {
+      logNotImplemented({
+        enginePhase: "condition",
+        typeId: node.type,
+        rule: ctx.rule,
+        event: ctx.event,
+        phaseTarget: CONDITION_PHASE[node.type],
+      });
+      return { matched: false, missingCondition: node.type };
+    }
+    const matched = await condFn(node, target, context);
+    return { matched, missingCondition: null };
+  }
+
+  switch (node.op) {
+    case "and": {
+      // Empty AND is vacuously true (matches "no conditions").
+      if (node.children.length === 0) {
+        return { matched: true, missingCondition: null };
+      }
+      for (const child of node.children) {
+        const r = await evalConditionNode(child, target, context, ctx);
+        // Missing condition propagates up immediately — short-circuits
+        // both the AND and the surrounding tree so we don't keep
+        // evaluating with a known gap.
+        if (r.missingCondition) return r;
+        if (!r.matched) return { matched: false, missingCondition: null };
+      }
+      return { matched: true, missingCondition: null };
+    }
+
+    case "or": {
+      // Empty OR is vacuously false (no candidate matched).
+      if (node.children.length === 0) {
+        return { matched: false, missingCondition: null };
+      }
+      let firstMissing: ConditionType | null = null;
+      for (const child of node.children) {
+        const r = await evalConditionNode(child, target, context, ctx);
+        // True short-circuits — surface match even if a later branch
+        // would have hit an unimplemented condition (it's irrelevant
+        // to the outcome).
+        if (r.matched) return { matched: true, missingCondition: null };
+        // Track the first missing condition; only surface it if NO
+        // branch matched. Otherwise the OR succeeded despite the gap.
+        if (r.missingCondition && firstMissing === null) {
+          firstMissing = r.missingCondition;
+        }
+      }
+      return { matched: false, missingCondition: firstMissing };
+    }
+
+    case "not": {
+      // NOT carries exactly one child by contract. The publisher
+      // validates this; the runtime tolerates 0/many and inverts the
+      // first child (or an empty AND when none).
+      const child = node.children[0] ?? { op: "and", children: [] };
+      const r = await evalConditionNode(child, target, context, ctx);
+      if (r.missingCondition) return r;
+      return { matched: !r.matched, missingCondition: null };
+    }
+  }
 }
 
 // =============================================================================
@@ -1203,39 +622,80 @@ export async function runRulesForEvent(
 
     targets = applyMembershipScope(rule, targets);
 
+    // §22.4 (mig 00251): normalise the rule's `conditions` to a tree.
+    // Pre-§22.4 rules ship a flat array, which the engine treats as an
+    // implicit AND of leaves — preserves prior semantics without
+    // forking the walker.
+    const conditionsTree = normalizeConditions(rule.conditions);
+
     for (const target of targets) {
-      // AND across all conditions
-      let allMatched = true;
-      let missingCondition: string | null = null;
-      for (const cond of rule.conditions) {
-        const condFn = CONDITIONS[cond.type];
-        if (!condFn) {
-          logNotImplemented({
-            enginePhase: "condition",
-            typeId: cond.type,
-            rule,
-            event,
-            phaseTarget: CONDITION_PHASE[cond.type],
-          });
-          missingCondition = cond.type;
-          allMatched = false;
-          break;
-        }
-        const matched = await condFn(cond, target, context);
-        if (!matched) {
-          allMatched = false;
-          break;
-        }
-      }
-      if (missingCondition) {
-        // Condition evaluator missing — record a failure per target so the
-        // rule run is observable, not silently skipped.
-        results.push(failure(rule.id, target.member_id, `unimplemented condition: ${missingCondition}`));
+      // Walk the tree with short-circuit semantics (AND stops on first
+      // false, OR on first true). The walker records which leaf was
+      // missing an evaluator so the per-target failure row carries the
+      // actionable type_id, mirroring the pre-§22.4 behavior for arrays.
+      const evalResult = await evalConditionNode(
+        conditionsTree,
+        target,
+        context,
+        { rule, event },
+      );
+      if (evalResult.missingCondition) {
+        results.push(failure(
+          rule.id,
+          target.member_id,
+          `unimplemented condition: ${evalResult.missingCondition}`,
+        ));
         continue;
       }
-      if (!allMatched) continue;
+      if (!evalResult.matched) continue;
 
-      // All conditions matched — fire every consequence.
+      // Exceptions (mig 00248, §22.2 Governance.md). Same shape as
+      // conditions, evaluated by the same CONDITIONS registry, but
+      // semantically inverted: if ANY exception evaluates true the
+      // consequence is BLOCKED for this target. Halajic "regla y
+      // excepción" pattern. Empty / undefined = no exceptions = old
+      // behavior preserved.
+      const exceptions = rule.exceptions ?? [];
+      let blockedByException = false;
+      let missingExceptionShape: ConditionType | null = null;
+      for (const exc of exceptions) {
+        const excFn = CONDITIONS[exc.type];
+        if (!excFn) {
+          // Missing exception shape = we can't prove the exception
+          // wouldn't apply, so fail-safe by blocking. The alternative
+          // (silently ignore the exception) would risk firing
+          // consequences the rule author intended to gate.
+          missingExceptionShape = exc.type;
+          blockedByException = true;
+          break;
+        }
+        const triggered = await excFn(exc, target, context);
+        if (triggered) {
+          blockedByException = true;
+          break;
+        }
+      }
+      if (missingExceptionShape) {
+        logNotImplemented({
+          enginePhase: "condition",
+          typeId: missingExceptionShape,
+          rule,
+          event,
+          phaseTarget: CONDITION_PHASE[missingExceptionShape],
+        });
+        results.push(failure(
+          rule.id,
+          target.member_id,
+          `unimplemented exception shape: ${missingExceptionShape} (blocked consequence as fail-safe)`,
+        ));
+        continue;
+      }
+      if (blockedByException) continue;
+
+      // All conditions matched and no exception applied — fire every
+      // consequence. mig 00249 / §22.3: each consequence may carry a
+      // `target` selector that re-routes / multiplexes execution to
+      // members different from the trigger's original target.
       for (const cons of rule.consequences) {
         const consFn = CONSEQUENCES[cons.type];
         if (!consFn) {
@@ -1249,16 +709,100 @@ export async function runRulesForEvent(
           results.push(failure(rule.id, target.member_id, `unimplemented consequence: ${cons.type}`));
           continue;
         }
-        try {
-          results.push(await consFn(cons, target, rule, context));
-        } catch (e) {
-          results.push(failure(rule.id, target.member_id, `consequence threw: ${(e as Error).message}`));
+        const resolvedTargets = await resolveConsequenceTargets(cons, target, context, rule);
+        if (resolvedTargets.length === 0) {
+          // Selector evaluated to empty set (role with no holders, host
+          // missing). Log and continue — not a failure, just a no-op.
+          logStructured({
+            level: "warn",
+            code: "rule_engine.consequence_target_empty",
+            message: "consequence target resolved to empty set",
+            rule_id: rule.id,
+            consequence_type: cons.type,
+            target_selector: cons.target ?? "$trigger.actor",
+          });
+          continue;
+        }
+        for (const resolved of resolvedTargets) {
+          try {
+            results.push(await consFn(cons, resolved, rule, context));
+          } catch (e) {
+            results.push(failure(rule.id, resolved.member_id, `consequence threw: ${(e as Error).message}`));
+          }
         }
       }
     }
   }
 
   return results;
+}
+
+/**
+ * Resolves a consequence's optional target selector to one or more
+ * RuleTargets (mig 00249 / §22.3 Governance.md).
+ *
+ *   undefined / "$trigger.actor" → [originalTarget] (default, no DB)
+ *   "$resource.host"             → host_member_id from resource.metadata
+ *                                  (1 target, or 0 if missing)
+ *   "$role.<role_id>"            → 0..N targets, one per active member
+ *                                  with that role
+ *
+ * Returned targets preserve the original `resource_id` + `context` so
+ * the consequence executor can still reason about the original event;
+ * only `member_id` is rewritten. This is the talmudic distinction
+ * between actor and subject — the act happened to the original target,
+ * but the consequence binds a different party.
+ */
+async function resolveConsequenceTargets(
+  cons: RuleConsequence,
+  originalTarget: RuleTarget,
+  context: RuleContext,
+  rule: Rule,
+): Promise<RuleTarget[]> {
+  const selector = cons.target ?? "$trigger.actor";
+
+  if (selector === "$trigger.actor") {
+    return [originalTarget];
+  }
+
+  if (selector === "$resource.host") {
+    if (!originalTarget.resource_id) return [];
+    const hostMemberId = await context.sink.resolveResourceHostMember(originalTarget.resource_id);
+    if (!hostMemberId) return [];
+    return [{
+      member_id: hostMemberId,
+      resource_id: originalTarget.resource_id,
+      context: { ...originalTarget.context, redirected_from_member_id: originalTarget.member_id },
+    }];
+  }
+
+  const roleMatch = selector.match(/^\$role\.([a-z][a-z0-9_]{0,31})$/);
+  if (roleMatch) {
+    const role_id = roleMatch[1];
+    const memberIds = await context.sink.listMembersWithRole({
+      group_id: rule.group_id,
+      role_id,
+    });
+    return memberIds.map((member_id) => ({
+      member_id,
+      resource_id: originalTarget.resource_id,
+      context: { ...originalTarget.context, redirected_from_member_id: originalTarget.member_id },
+    }));
+  }
+
+  // Unknown selector — fail-safe: treat as default. The publish RPC
+  // validates the selector vocabulary so this branch shouldn't fire
+  // for any rule that landed via publish_rule_composition or
+  // bump_rule_version (both validate via validate_consequence_target).
+  logStructured({
+    level: "warn",
+    code: "rule_engine.consequence_target_unknown_selector",
+    message: "unknown consequence target selector, falling back to $trigger.actor",
+    rule_id: rule.id,
+    consequence_type: cons.type,
+    selector,
+  });
+  return [originalTarget];
 }
 
 // =============================================================================

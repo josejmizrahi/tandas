@@ -35,7 +35,7 @@ public final class GroupRulesCoordinator {
             policies = try await policyRepo.list(groupId: group.id)
         } catch {
             log.warning("policies load failed: \(error.localizedDescription)")
-            self.error = "No pudimos cargar las reglas del grupo."
+            self.error = "No pudimos cargar la gobernanza del grupo."
         }
     }
 
@@ -96,7 +96,7 @@ public final class GroupRulesCoordinator {
             let threshold = policy.approvalConfig?.thresholdPercent ?? 50
             return "Requiere votación (\(threshold)% a favor)"
         case .adminOnly:
-            return "Solo admins"
+            return "Solo fundadores"
         case .denied:
             return "No permitido"
         }

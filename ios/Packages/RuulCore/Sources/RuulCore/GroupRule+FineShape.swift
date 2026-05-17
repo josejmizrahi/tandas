@@ -45,7 +45,13 @@ public extension GroupRule {
             isActive: isActive,
             trigger: trigger,
             conditions: conditions,
-            consequences: consequences
+            consequences: consequences,
+            exceptions: exceptions,
+            conditionsTree: conditionsTree,
+            moduleKey: moduleKey,
+            resourceId: resourceId,
+            seriesId: seriesId,
+            membershipId: membershipId
         )
     }
 }

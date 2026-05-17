@@ -9,25 +9,57 @@ public final class GroupHomeCoordinator {
     public let groupId: UUID
     private let groupsRepo: any GroupsRepository
     private let moduleRegistry: ModuleRegistry
+    private let groupSummaryRepo: (any GroupSummaryRepository)?
+    private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
     public var group: Group?
     public var memberCount: Int = 0
     public var myRole: String?          // "founder" | "member" | "admin"
+    /// Verbatim roles from `group_members.roles` jsonb for the calling
+    /// user. Drives Phase 5 permission-gated affordances in
+    /// `GroupHomeView`. Empty until the first successful refresh.
+    public var myRawRoles: [String] = []
     public var activeModules: [GroupModule] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
 
+    /// Aggregated group stats — nil until the first successful refresh.
+    public var summary: GroupSummary?
+
     public var isCurrentUserAdmin: Bool { myRole == "founder" }
+
+    /// True when the calling user has p_permission in this group,
+    /// resolved against `group.effectiveRoles` and `myRawRoles`. Mirrors
+    /// the server's `has_permission` RPC (mig 00228) — UI gating only;
+    /// the server is still the authoritative gate.
+    public func hasPermission(_ p: Permission) -> Bool {
+        guard let group else { return false }
+        let catalog = group.effectiveRoles
+        // Legacy admin alias: founder.
+        for raw in myRawRoles {
+            let key = raw == "admin" ? "founder" : raw
+            if let def = catalog[key], def.grants(p) { return true }
+        }
+        if myRawRoles.isEmpty, isCurrentUserAdmin,
+           let founder = catalog["founder"], founder.grants(p) {
+            return true
+        }
+        return false
+    }
 
     public init(
         groupId: UUID,
         groupsRepo: any GroupsRepository,
-        moduleRegistry: ModuleRegistry = .v1Fallback
+        moduleRegistry: ModuleRegistry = .v1Fallback,
+        groupSummaryRepo: (any GroupSummaryRepository)? = nil,
+        actorUserId: UUID? = nil
     ) {
         self.groupId = groupId
         self.groupsRepo = groupsRepo
         self.moduleRegistry = moduleRegistry
+        self.groupSummaryRepo = groupSummaryRepo
+        self.actorUserId = actorUserId
     }
 
     public func refresh() async {
@@ -35,10 +67,14 @@ public final class GroupHomeCoordinator {
         error = nil
         defer { isLoading = false }
         do {
-            let detail = try await groupsRepo.get(groupId)
+            async let detailTask = groupsRepo.get(groupId)
+            async let summaryTask: Void = loadSummary()
+            let detail = try await detailTask
+            _ = await summaryTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
+            self.myRawRoles = detail.myRawRoles
             self.activeModules = resolveModules(slugs: detail.group.activeModules ?? [])
         } catch {
             log.warning("group home refresh failed: \(error.localizedDescription, privacy: .public)")
@@ -47,6 +83,17 @@ public final class GroupHomeCoordinator {
     }
 
     public func clearError() { error = nil }
+
+    // MARK: - Summary
+
+    public func loadSummary() async {
+        guard let repo = groupSummaryRepo, let userId = actorUserId else { return }
+        do {
+            self.summary = try await repo.summary(groupId: groupId, userId: userId)
+        } catch {
+            log.warning("group summary load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
 
     private func resolveModules(slugs: [String]) -> [GroupModule] {
         slugs.compactMap { slug in moduleRegistry.modules.first(where: { $0.id == slug }) }

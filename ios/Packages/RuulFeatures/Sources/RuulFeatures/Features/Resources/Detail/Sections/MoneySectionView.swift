@@ -18,17 +18,20 @@ public struct MoneySectionView: View {
     @State private var topBalances: [MemberBalance] = []
     @State private var hasLoaded: Bool = false
     @State private var settlementSheetPresented: Bool = false
+    @State private var lockSheetPresented: Bool = false
+    @State private var lockBusy: Bool = false
+    @State private var lockError: String?
 
     public static let definition = CapabilitySection(
         id: "money",
         priority: 400,
         isEnabledFor: { caps in
             // `ledger` is the canonical block name basic_fines (V1) and
-            // future common_fund modules provide. The narrower
-            // expenses/contributions/payouts cases hook in once their
-            // Phase 2 modules ship dedicated providedCapabilityBlocks.
-            // Keep `money` as a forward-compat synonym so a future
-            // catalog rename doesn't need a migration.
+            // the FundResourceBuilder (mig 00139) auto-enable. The
+            // narrower expenses/contributions/payouts capability cases
+            // are forward-compat synonyms; should later modules ship
+            // dedicated capability blocks under those names, this section
+            // lights up without a rename migration.
             caps.contains("ledger") ||
             caps.contains("money") ||
             caps.contains("expenses") ||
@@ -94,8 +97,29 @@ public struct MoneySectionView: View {
             }
             .buttonStyle(.plain)
             .cardBackground()
+
+            // Fund-only admin: lock/unlock the fund. Server-side admin gate
+            // is enforced by fund_lock/fund_unlock (is_group_admin); the
+            // UI gates rendering on viewerIsAdmin so non-admins don't see
+            // a button that will 403. Locks are soft policy per
+            // Constitution §9 — they don't block writes, they just stamp
+            // metadata so rules + UI can react.
+            if showsLockControls {
+                fundLockRow
+            }
+            if let lockError {
+                Text(lockError)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulNegative)
+                    .padding(.horizontal, RuulSpacing.md)
+            }
         }
         .task { await loadBalances() }
+        .fullScreenCover(isPresented: $lockSheetPresented) {
+            LockFundSheet(asset: context.resource) {
+                Task { await onFundMutated() }
+            }
+        }
         .fullScreenCover(isPresented: $settlementSheetPresented) {
             SettlementSheet(
                 groupId: context.group.id,
@@ -245,6 +269,139 @@ public struct MoneySectionView: View {
             Image(systemName: systemName)
                 .ruulTextStyle(RuulTypography.subheadSemibold)
                 .foregroundStyle(Color.ruulAccent)
+        }
+    }
+
+    // MARK: - Fund lock / unlock
+
+    /// Renders the lock CTAs only for funds when the current viewer is
+    /// the founder. fund_lock / fund_unlock are admin-only server-side,
+    /// so showing them to non-admins would surface a button that 403s.
+    private var showsLockControls: Bool {
+        guard context.resource.resourceType == .fund else { return false }
+        return viewerIsAdmin
+    }
+
+    private var viewerIsAdmin: Bool {
+        guard let uid = context.currentUserId,
+              let mwp = context.memberDirectory[uid] else { return false }
+        return mwp.member.roles.contains(.founder)
+    }
+
+    private var isLocked: Bool {
+        guard let raw = context.resource.metadata["locked_at"]?.stringValue else { return false }
+        return !raw.isEmpty
+    }
+
+    @ViewBuilder
+    private var fundLockRow: some View {
+        Button {
+            if isLocked {
+                Task { await unlockFund() }
+            } else {
+                lockSheetPresented = true
+            }
+        } label: {
+            HStack(spacing: RuulSpacing.sm) {
+                iconBadge(systemName: isLocked ? "lock.open" : "lock")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isLocked ? "Desbloquear fondo" : "Bloquear fondo")
+                        .ruulTextStyle(RuulTypography.headline)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text(isLocked
+                         ? "Quita la marca de pausa"
+                         : "Marca el fondo como pausado para que los acuerdos reaccionen")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                if lockBusy {
+                    ProgressView()
+                } else {
+                    Image(systemName: "chevron.right")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
+            }
+            .padding(RuulSpacing.md)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(lockBusy)
+        .cardBackground()
+    }
+
+    @MainActor
+    private func unlockFund() async {
+        lockBusy = true
+        defer { lockBusy = false }
+        do {
+            try await app.fundRepo.unlock(fundId: context.resource.id)
+            lockError = nil
+            await onFundMutated()
+        } catch {
+            lockError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func onFundMutated() async {
+        await context.onResourceMutated()
+    }
+}
+
+// MARK: - LockFundSheet
+
+private struct LockFundSheet: View {
+    let asset: ResourceRow
+    let onLocked: () -> Void
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var reason: String = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Razón (opcional)") {
+                    TextField("ej: pausa antes del cierre de mes", text: $reason, axis: .vertical)
+                }
+                Section {
+                    Text("Bloquear el fondo es una marca de política suave: no impide aportar o gastar por sí solo, pero los acuerdos activos pueden reaccionar (bloquear, requerir aprobación, etc.).")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .ruulSheetToolbar("Bloquear fondo")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Bloquear") { Task { await submit() } }
+                        .disabled(isSubmitting)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func submit() async {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        let trimmed = reason.trimmingCharacters(in: .whitespaces)
+        do {
+            try await app.fundRepo.lock(
+                fundId: asset.id,
+                reason: trimmed.isEmpty ? nil : trimmed
+            )
+            onLocked()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }

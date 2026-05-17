@@ -385,7 +385,7 @@ public struct OnboardingPreset: Identifiable, Hashable, Sendable {
     public static let blank = OnboardingPreset(
         id: "blank",
         displayName: "Empezar de cero",
-        summary: "Grupo sin reglas ni módulos. Tú decides qué agregar después.",
+        summary: "Grupo sin acuerdos ni módulos. Tú decides qué agregar después.",
         icon: "square.dashed",
         sampleResources: ["Sin recursos preseteados", "Agrega lo que necesites"],
         templateId: nil

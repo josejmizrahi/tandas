@@ -50,15 +50,8 @@ public struct GovernanceView: View {
             .padding(.bottom, RuulSpacing.xxl)
         }
         .ruulAmbientScreen(palette: nil)
+        .ruulSheetToolbar("Gobierno")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
-            ToolbarItem(placement: .principal) {
-                Text("Gobierno")
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(isSaving ? "Guardando…" : "Guardar") {
                     Task { await save() }
@@ -67,8 +60,6 @@ public struct GovernanceView: View {
                 .disabled(!hasChanges || isSaving)
             }
         }
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
         .onAppear { hydrate() }
     }
 
@@ -76,8 +67,8 @@ public struct GovernanceView: View {
 
     private var modifyRulesCard: some View {
         permissionCard(
-            title: "¿Quién modifica las reglas?",
-            subtitle: "Cambiar montos, agregar reglas, desactivarlas.",
+            title: "¿Quién modifica los acuerdos?",
+            subtitle: "Cambiar montos, agregar acuerdos, desactivarlos.",
             selection: $rules.whoCanModifyRules,
             options: [.founder, .anyMember, .majorityVote]
         )

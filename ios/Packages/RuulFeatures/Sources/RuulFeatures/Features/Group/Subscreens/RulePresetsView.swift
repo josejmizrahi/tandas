@@ -66,7 +66,7 @@ public struct RulePresetsView: View {
                     ])
                 }
 
-                section(title: "Dinero", subtitle: "Reglas financieras globales del grupo.") {
+                section(title: "Dinero", subtitle: "Política financiera global del grupo.") {
                     liveList([
                         ("¿Quién puede registrar gastos?",
                             coordinator.humanAnswer(for: .expenseCreate),
@@ -79,32 +79,21 @@ public struct RulePresetsView: View {
             .padding(.bottom, RuulSpacing.xxl)
         }
         .ruulAmbientScreen(palette: nil)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
-            ToolbarItem(placement: .principal) {
-                Text("Gobierno del grupo")
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-            }
-        }
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+        .ruulSheetToolbar("Gobierno del grupo")
         .task { await coordinator.refresh() }
     }
 
     // MARK: - Intro
 
     /// One-line framing so users get the doctrine without reading docs:
-    /// these rules gobiernan el GRUPO, not the cenas. Keeps the screen
-    /// from being confused with the Acuerdos surface.
+    /// these presets gobiernan el GRUPO (quién puede modificar qué,
+    /// quórum de votos, etc.), no los acuerdos del día a día.
     private var intro: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text("Cómo funciona este grupo")
+            Text("Cómo decide este grupo")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Las reglas de cada cosa (multas, llegadas, RSVP) viven en Acuerdos. Esto es el sistema.")
+            Text("Esto define quién puede cambiar las cosas y cómo se vota. Los acuerdos concretos (multas, llegadas, RSVP) viven en Acuerdos.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)

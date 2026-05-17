@@ -180,6 +180,16 @@ struct TandasApp: App {
             state.resourceLinkRepo = LiveResourceLinkRepository(client: client)
             state.eventLifecycleRepo = LiveEventLifecycleRepository(client: client)
             state.myActivityRepo = LiveMyActivityRepository(client: client)
+            state.notificationPreferenceRepo = LiveNotificationPreferenceRepository(client: client)
+            state.groupSummaryRepo = LiveGroupSummaryRepository(
+                groupsRepo: groups,
+                resourceRepo: resources,
+                balanceRepo: balances,
+                fineRepo: fines,
+                voteRepo: votes,
+                userActionRepo: userActions,
+                client: client
+            )
             _appState = State(initialValue: state)
         }
     }

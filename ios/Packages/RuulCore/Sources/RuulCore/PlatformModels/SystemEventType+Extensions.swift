@@ -123,6 +123,14 @@ public extension SystemEventType {
         case .eventStarted:           return "Evento iniciado"
         case .eventUpdated:           return "Evento actualizado"
 
+        // Asset rule overdue atoms (mig 00225 — Plans/Active/AssetRules.md §5)
+        case .assetCheckoutOverdue:    return "Devolución vencida"
+        case .assetMaintenanceOverdue: return "Mantenimiento atrasado"
+
+        // Role lifecycle (mig 00229 — Phase 5 RolesV2)
+        case .roleAssigned:           return "Rol asignado"
+        case .roleUnassigned:         return "Rol retirado"
+
         // Future / unknown — never leak the raw payload string.
         case .unknown:                return "Actividad"
         }
@@ -190,7 +198,9 @@ public extension SystemEventType {
              .groupRenamed, .governanceUpdated,
              .resourceArchived, .resourceUnarchived, .resourceRenamed,
              .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden,
-             .ledgerEntryCreated, .warningEmitted:
+             .ledgerEntryCreated, .warningEmitted,
+             .assetCheckoutOverdue, .assetMaintenanceOverdue,
+             .roleAssigned, .roleUnassigned:
             return false
         case .unknown:
             return false

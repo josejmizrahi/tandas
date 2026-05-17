@@ -35,12 +35,8 @@ public struct CreateMemberRemovalSheet: View {
             }
             .background(Color.ruulBackground.ignoresSafeArea())
             .scrollIndicators(.hidden)
-            .navigationTitle("Proponer remoción")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Proponer remoción")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(coordinator.isSubmitting ? "Enviando…" : "Iniciar voto") {
                         Task {
@@ -64,7 +60,7 @@ public struct CreateMemberRemovalSheet: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Color.ruulWarning)
                 .accessibilityHidden(true)
-            Text("Si el voto pasa, el admin deberá ejecutar la remoción manualmente desde la pantalla de Miembros.")
+            Text("Si el voto pasa, un fundador deberá ejecutar la remoción manualmente desde la pantalla de Miembros.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)

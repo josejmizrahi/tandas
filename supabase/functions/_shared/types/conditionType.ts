@@ -21,6 +21,8 @@ export const conditionTypeValues = [
   "slotExpiresInHours",
   "daysBeforeExpiry",
   "amountAbove",
+  "damageAmountAbove",
+  "transferAmountAbove",
 ] as const;
 
 export type ConditionType = (typeof conditionTypeValues)[number];

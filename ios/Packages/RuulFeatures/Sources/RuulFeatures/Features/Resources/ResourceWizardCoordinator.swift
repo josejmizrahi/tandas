@@ -223,7 +223,7 @@ public final class ResourceWizardCoordinator {
 
     /// Suggested rules from every enabled capability. Used by step 4 to
     /// render the toggle list and by submit to materialize the user's
-    /// picks into `RuleDraft` rows.
+    /// picks into `OnboardingRuleDraft` rows.
     public var availableSuggestedRules: [(block: any CapabilityBlock, template: RuleTemplate)] {
         availableCapabilityBlocks
             .filter { enabledCapabilities.contains($0.id) }
@@ -304,15 +304,15 @@ public final class ResourceWizardCoordinator {
             return .object(pattern)
         }()
 
-        // Materialize selected suggested rules into RuleDraft rows so the
-        // builder can hand them to the rule repo at create time. The
+        // Materialize selected suggested rules into OnboardingRuleDraft rows
+        // so the builder can hand them to the rule repo at create time. The
         // template's `defaultConfig` flows into the trigger's config jsonb
         // so server-side evaluators see the right thresholds.
-        let initialRules: [RuleDraft] = availableSuggestedRules.compactMap { pair in
+        let initialRules: [OnboardingRuleDraft] = availableSuggestedRules.compactMap { pair in
             guard isSuggestedRuleSelected(blockId: pair.block.id, slug: pair.template.slug) else {
                 return nil
             }
-            return RuleDraft(
+            return OnboardingRuleDraft(
                 slug: pair.template.slug,
                 name: pair.template.displayName,
                 description: pair.template.summary,
@@ -379,14 +379,20 @@ public final class ResourceWizardCoordinator {
         guard let builder = selectedBuilder else { return false }
         // (a) Builder's own fields (title, startsAt, …). Builder fields
         //     don't use dependsOn today, but the helper handles it.
-        for field in builder.requiredFields where isFieldActive(field, in: basicFields) {
+        //     Slice 15: skip fields flagged isOptional — they render
+        //     but don't block the CTA (e.g. RightResourceBuilder's
+        //     holderMemberId / transferable / delegable). Server-side
+        //     defaults take over when the user leaves them empty.
+        for field in builder.requiredFields
+            where !field.isOptional && isFieldActive(field, in: basicFields) {
             if !isFieldFilled(field, in: basicFields) { return false }
         }
         // (b) Required fields of every active capability.
         for blockId in enabledCapabilities {
             guard let block = catalog[blockId] else { continue }
             let configForBlock = capabilityConfigs[blockId] ?? [:]
-            for field in block.requiredFields where isFieldActive(field, in: configForBlock) {
+            for field in block.requiredFields
+                where !field.isOptional && isFieldActive(field, in: configForBlock) {
                 if !isFieldFilled(field, in: configForBlock) { return false }
             }
         }

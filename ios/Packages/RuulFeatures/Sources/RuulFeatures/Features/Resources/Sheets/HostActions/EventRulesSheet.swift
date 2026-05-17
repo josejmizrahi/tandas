@@ -23,9 +23,12 @@ struct ResourceRulesSheet: View {
     @Bindable var coordinator: ResourceRulesCoordinator
     @Environment(AppState.self) private var app
 
-    /// Rule Builder presentation handle. Non-nil when admin opens the "+"
-    /// button to create a resource-scoped rule via the template catalog.
-    @State private var ruleBuilderCoord: RuleBuilderCoordinator?
+    /// Rule Composer presentation handle. Non-nil when admin opens the "+"
+    /// button to create a resource-scoped rule via free composition.
+    /// Replaces the previous template-gallery wizard (mig 00245 sibling):
+    /// templates can now be loaded inside the composer as starting points
+    /// rather than being the only path.
+    @State private var composerCoord: RuleComposerCoordinator?
 
     public init(
         isPresented: Binding<Bool>,
@@ -37,7 +40,7 @@ struct ResourceRulesSheet: View {
 
     var body: some View {
         ModalSheetTemplate(
-            title: "Reglas del evento",
+            title: "Acuerdos del evento",
             dismissAction: { isPresented = false }
         ) {
             if coordinator.isLoading && coordinator.rules.isEmpty {
@@ -46,11 +49,11 @@ struct ResourceRulesSheet: View {
             } else if coordinator.rules.isEmpty {
                 EmptyStateView(
                     systemImage: "list.bullet.clipboard",
-                    title: "Sin reglas aplicables",
+                    title: "Sin acuerdos aplicables",
                     message: coordinator.canCreate
-                        ? "Agrega reglas que sólo apliquen a este evento. Las del grupo seguirán aplicando."
+                        ? "Agrega acuerdos que sólo apliquen a este evento. Los del grupo seguirán aplicando."
                         // W2-C4: "host" → "anfitrión".
-                        : "Sólo el anfitrión o un admin pueden crear reglas específicas para este evento."
+                        : "Sólo el anfitrión o un fundador pueden crear acuerdos específicos para este evento."
                 )
                 .padding(.vertical, RuulSpacing.md)
             } else {
@@ -85,10 +88,15 @@ struct ResourceRulesSheet: View {
                 coordinator: coordinator
             )
         }
-        .fullScreenCover(item: $ruleBuilderCoord) { coord in
-            RuleBuilderView(coord: coord) {
-                ruleBuilderCoord = nil
-            }
+        .fullScreenCover(item: $composerCoord) { coord in
+            RuleComposerView(
+                coord: coord,
+                onPublished: { _ in
+                    composerCoord = nil
+                    Task { await coordinator.load() }
+                },
+                onCancel: { composerCoord = nil }
+            )
             .environment(app)
         }
     }
@@ -194,25 +202,41 @@ struct ResourceRulesSheet: View {
         }
     }
 
-    /// Opens the template-catalog Rule Builder with the resource scope
-    /// pre-set when templates are available (live mode). Falls back to the
-    /// legacy catalog-free form when `app.ruleTemplates` is empty (preview /
-    /// mock).
+    /// Opens the Rule Composer for free composition (no template wizard).
+    /// The composer's draft is pre-scoped to `.resource(<this resource>)`
+    /// and the resourceType context is passed so the trigger picker only
+    /// offers shapes compatible with this resource.
+    ///
+    /// Falls back to the legacy catalog-free form when the live template
+    /// repo isn't wired (preview/mock with no AppState repo).
     private func openRuleBuilder() {
         guard coordinator.canCreate else { return }
         guard let repo = app.ruleTemplateRepo,
-              !app.ruleTemplates.isEmpty,
               let group = app.groups.first(where: { $0.id == coordinator.groupId }) else {
-            // Legacy fallback — shape-based raw form.
+            // Legacy fallback — shape-based raw form on ResourceRulesCoordinator.
             coordinator.resetForm()
             coordinator.addSheetPresented = true
             return
         }
-        ruleBuilderCoord = RuleBuilderCoordinator(
+        // Templates surface as "starter examples" inside the composer,
+        // pre-filtered to the templates whose trigger shape supports
+        // this resource_type (so an asset never sees event templates).
+        // The filter mirrors mig 00244 server-side; we keep it client-
+        // side here for instant gallery render without a round-trip.
+        let resourceType = coordinator.context.resourceType
+        let registry = coordinator.shapeRegistry
+        let compatible = app.ruleTemplates.filter { template in
+            guard let shape = registry.shape(id: template.composition.triggerShapeId) else { return true }
+            if shape.validResourceTypes.isEmpty { return true }
+            return shape.validResourceTypes.contains(resourceType)
+        }
+        composerCoord = RuleComposerCoordinator(
             group: group,
-            templates: app.ruleTemplates,
+            shapeRegistry: coordinator.shapeRegistry,
             repo: repo,
-            initialScope: .resource(coordinator.resourceId)
+            scope: .resource(coordinator.resourceId),
+            resourceType: resourceType,
+            starterTemplates: compatible
         )
     }
 

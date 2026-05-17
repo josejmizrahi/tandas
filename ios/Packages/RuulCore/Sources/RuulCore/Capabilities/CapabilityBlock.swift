@@ -122,6 +122,16 @@ public struct BuilderField: Sendable, Hashable {
     public let kind: Kind
     public let placeholder: String?
     public let helpText: String?
+    /// When true, the wizard renders the field but does NOT block the
+    /// "Continuar" CTA when it's empty. Lets a builder surface knobs
+    /// (e.g. `transferable`, `delegable`, `holderMemberId`) that have
+    /// sensible server-side defaults — users skip them for the default,
+    /// or fill them to override. Slice 15.
+    ///
+    /// Required fields (the default, isOptional=false) keep the
+    /// existing validation behavior — wizard's `isFieldFilled` gate
+    /// blocks submit until they're populated.
+    public let isOptional: Bool
     /// Options for `.picker` / `.multiPicker` kinds. Each option stores
     /// the raw `JSONConfig` value that the renderer writes to the
     /// shared `values` dictionary, plus a human-readable label.
@@ -192,7 +202,8 @@ public struct BuilderField: Sendable, Hashable {
         placeholder: String? = nil,
         helpText: String? = nil,
         options: [PickerOption]? = nil,
-        dependsOn: DependsOn? = nil
+        dependsOn: DependsOn? = nil,
+        isOptional: Bool = false
     ) {
         self.key = key
         self.label = label
@@ -201,6 +212,7 @@ public struct BuilderField: Sendable, Hashable {
         self.helpText = helpText
         self.options = options
         self.dependsOn = dependsOn
+        self.isOptional = isOptional
     }
 }
 

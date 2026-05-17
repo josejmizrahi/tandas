@@ -71,7 +71,7 @@ public struct ConsentRulesView: View {
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
-            Text("Podrás revisar y activar cada acuerdo desde Reglas cuando estén todos listos.")
+            Text("Podrás revisar y activar cada acuerdo desde la sección Acuerdos cuando estén todos listos.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer(minLength: 0)

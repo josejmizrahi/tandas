@@ -45,9 +45,7 @@ public struct ChangeEmailFlow: View {
                 .disabled(sending || newEmail.isEmpty)
         }
         .padding(RuulSpacing.lg)
-        .navigationTitle("Cambiar correo")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarLeading) { Button("Cerrar") { dismiss() } } }
+        .ruulSheetToolbar("Cambiar correo")
     }
 
     private var enterOTPStep: some View {

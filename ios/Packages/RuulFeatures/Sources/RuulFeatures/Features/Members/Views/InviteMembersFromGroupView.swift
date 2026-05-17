@@ -32,11 +32,7 @@ public struct InviteMembersFromGroupView: View {
                 .padding(RuulSpacing.lg)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle("Invitar miembros")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { RuulCloseToolbarButton { dismiss() } }
-            }
+            .ruulSheetToolbar("Invitar miembros")
             .task { await loadPending() }
         }
     }

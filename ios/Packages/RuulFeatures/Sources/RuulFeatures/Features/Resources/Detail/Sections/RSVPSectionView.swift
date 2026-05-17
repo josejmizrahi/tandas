@@ -26,13 +26,25 @@ public struct RSVPSectionView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("Asistentes")
+            Text(sectionTitle)
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .padding(.horizontal, RuulSpacing.xxs)
             rollContent
         }
         .task { await load() }
+    }
+
+    /// True cuando el event ya pasó (closed, cancelled, o tiempo
+    /// agotado). UXJourney P1: las labels de RSVP deben leerse en
+    /// pasado ("Asistieron" vs "Van") para que se sienta como un
+    /// archivo y no una invitación abierta.
+    private var isPast: Bool {
+        interactor?.event.isPast ?? false
+    }
+
+    private var sectionTitle: String {
+        isPast ? "Asistencia" : "Asistentes"
     }
 
     @ViewBuilder
@@ -81,13 +93,18 @@ public struct RSVPSectionView: View {
 
     private var tallyCard: some View {
         VStack(spacing: 0) {
-            tallyRow(.going,    label: "Van",       color: .ruulPositive)
+            tallyRow(.going,    label: isPast ? "Asistieron" : "Van",       color: .ruulPositive)
             divider
-            tallyRow(.maybe,    label: "Tal vez",   color: .ruulWarning)
+            tallyRow(.maybe,    label: isPast ? "Iban tal vez" : "Tal vez",  color: .ruulWarning)
             divider
-            tallyRow(.declined, label: "No van",    color: .ruulNegative)
-            divider
-            tallyRow(.pending,  label: "Pendientes", color: .ruulTextTertiary)
+            tallyRow(.declined, label: isPast ? "No fueron" : "No van",      color: .ruulNegative)
+            if !isPast {
+                // Past events: pending RSVPs are noise — el deadline pasó
+                // y el server los va a auto-promover/cerrar. Solo mostrar
+                // mientras el evento puede aún recibir confirmaciones.
+                divider
+                tallyRow(.pending, label: "Pendientes", color: .ruulTextTertiary)
+            }
         }
     }
 
@@ -211,6 +228,15 @@ public struct RSVPSectionView: View {
     }
 
     private func rollLabel(for status: RSVPStatus) -> String {
+        if isPast {
+            switch status {
+            case .going:      return "Asistieron"
+            case .maybe:      return "Iban tal vez"
+            case .declined:   return "No fueron"
+            case .waitlisted: return "Quedaron en lista"
+            case .pending:    return "No respondieron"
+            }
+        }
         switch status {
         case .going:      return "Van"
         case .maybe:      return "Tal vez"

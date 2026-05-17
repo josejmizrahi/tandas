@@ -37,14 +37,7 @@ public struct AttendeesListSheet: View {
             }
             .scrollIndicators(.hidden)
             .ruulAmbientScreen(palette: nil)
-            .navigationTitle("Asistentes")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cerrar") { dismiss() }
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-            }
+            .ruulSheetToolbar("Asistentes")
         }
     }
 

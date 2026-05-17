@@ -42,7 +42,7 @@ public struct RootShell: View {
             .tag(RootTab.home)
 
             InboxTab(inbox: inboxCoordinator)
-                .tabItem { Label("Inbox", systemImage: "tray.fill") }
+                .tabItem { Label("Pendientes", systemImage: "tray.fill") }
                 .tag(RootTab.inbox)
                 .badge(inboxCoordinator?.actions.count ?? 0)
 
@@ -51,7 +51,7 @@ public struct RootShell: View {
                 .tag(RootTab.create)
 
             ActivityTab(activity: activityCoordinator)
-                .tabItem { Label("Actividad", systemImage: "clock.arrow.circlepath") }
+                .tabItem { Label("Historia", systemImage: "clock.arrow.circlepath") }
                 .tag(RootTab.activity)
 
             ProfileTab(profile: profileCoordinator, myFines: myFinesCoordinator)
@@ -97,14 +97,22 @@ public struct RootShell: View {
         guard let group = app.activeGroup, let session = app.session else { return }
         let userId = session.user.id
 
-        homeCoordinator = HomeCoordinator(
-            group: group,
-            allGroups: app.groups,
-            userId: userId,
-            eventRepo: app.eventRepo,
-            rsvpRepo: app.rsvpRepo,
-            resourceRepo: app.resourceRepo
-        )
+        // HomeCoordinator outlives group switches so its per-group cache
+        // survives — on second+ visits to a group, the swap is instant
+        // (rehydrated from snapshot) with a background refresh. Only the
+        // first build per session shows the loading skeleton.
+        if let existing = homeCoordinator, existing.userId == userId {
+            existing.setActiveGroup(group, allGroups: [group])
+        } else {
+            homeCoordinator = HomeCoordinator(
+                group: group,
+                allGroups: [group],
+                userId: userId,
+                eventRepo: app.eventRepo,
+                rsvpRepo: app.rsvpRepo,
+                resourceRepo: app.resourceRepo
+            )
+        }
         shellState.homeCoordinator = homeCoordinator
 
         inboxCoordinator = InboxCoordinator(

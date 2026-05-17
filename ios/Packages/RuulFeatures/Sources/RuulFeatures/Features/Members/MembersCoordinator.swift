@@ -39,9 +39,13 @@ public final class MembersCoordinator {
 
     public func clearError() { error = nil }
 
-    /// True when the calling user is a founder in this group (= admin).
+    /// True when the calling user has admin role. Mig 00262 separó
+    /// admin de founder — pre-mig todos los founders eran auto-admin;
+    /// post-mig el backfill garantiza que los founders existentes
+    /// también tengan admin role, así que `isAdmin` (que cubre ambos)
+    /// es la verificación correcta.
     public var isCurrentUserAdmin: Bool {
-        members.first(where: { $0.member.userId == actorUserId })?.member.isFounder ?? false
+        members.first(where: { $0.member.userId == actorUserId })?.member.isAdmin ?? false
     }
 
     public func member(for userId: UUID) -> MemberWithProfile? {
@@ -50,5 +54,57 @@ public final class MembersCoordinator {
 
     public var activeMembers: [MemberWithProfile] {
         members.filter { $0.member.active }
+    }
+
+    /// True when the calling user may grant or revoke roles. Resolved
+    /// locally via the role catalog on `group` — server is still the
+    /// authoritative gate via `has_permission(assignRoles)`.
+    public var canManageRoles: Bool {
+        guard let me = members.first(where: { $0.member.userId == actorUserId })?.member else {
+            return false
+        }
+        if me.isAdmin { return true }
+        let catalog = group.effectiveRoles
+        for roleId in me.rawRoles {
+            if let def = catalog[roleId], def.grants(.assignRoles) { return true }
+        }
+        return false
+    }
+
+    /// Count of distinct active admins. Used by `MemberRolesPicker`
+    /// to disable the admin toggle on the last holder so el UI no
+    /// ofrezca una acción que el server rechazaría. Post-mig 00262
+    /// es admin (no founder) lo que importa para el "último que puede
+    /// modificar el grupo" check — el founder badge es identidad
+    /// histórica, no protege capacidades operativas.
+    public var adminCount: Int {
+        activeMembers.filter { $0.member.isAdmin }.count
+    }
+
+    /// Count de active founders. Post-mig 00262 esto es identidad
+    /// (no permisos) — para gating de "último admin" usa `adminCount`.
+    /// Sigue siendo útil para MemberRolesPicker que muestra el founder
+    /// toggle como disabled/badge cuando solo hay uno.
+    public var founderCount: Int {
+        activeMembers.filter { $0.member.isFounder }.count
+    }
+
+    /// True when the calling user may remove other members from the
+    /// group. Hides the kick swipe-action; server-side `remove_member`
+    /// RPC is still the authoritative gate.
+    public var canRemoveMembers: Bool {
+        permission(.removeMember)
+    }
+
+    private func permission(_ p: Permission) -> Bool {
+        guard let me = members.first(where: { $0.member.userId == actorUserId })?.member else {
+            return false
+        }
+        if me.isAdmin { return true }
+        let catalog = group.effectiveRoles
+        for roleId in me.rawRoles {
+            if let def = catalog[roleId], def.grants(p) { return true }
+        }
+        return false
     }
 }
