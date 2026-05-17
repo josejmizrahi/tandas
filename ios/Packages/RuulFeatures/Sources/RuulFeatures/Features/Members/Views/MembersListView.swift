@@ -49,13 +49,7 @@ public struct MembersListView: View {
                 }
             }
         }
-        .navigationTitle("Miembros (\(coordinator.activeMembers.count))")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
-        }
+        .ruulSheetToolbar("Miembros (\(coordinator.activeMembers.count))")
         .task { await coordinator.refresh() }
     }
 

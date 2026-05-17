@@ -92,12 +92,8 @@ public struct RecordExpenseFromFundSheet: View {
                     }
                 }
             }
-            .navigationTitle("Registrar gasto")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Registrar gasto")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSubmitting ? "Registrando…" : "Registrar") {
                         Task { await submit() }

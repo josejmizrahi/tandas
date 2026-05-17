@@ -58,13 +58,7 @@ public struct NotificationPreferencesView: View {
                 .padding(RuulSpacing.lg)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle("Notificaciones")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Notificaciones")
             .task { await load() }
         }
     }

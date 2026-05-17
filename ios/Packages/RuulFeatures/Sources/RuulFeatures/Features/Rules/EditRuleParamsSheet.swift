@@ -61,12 +61,8 @@ public struct EditRuleParamsSheet: View {
                 .padding(RuulSpacing.lg)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle("Editar parámetros")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Editar parámetros")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(coordinator.isSaving ? "Guardando…" : "Guardar") {
                         Task {

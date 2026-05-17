@@ -82,13 +82,7 @@ public struct MemberRolesPicker: View {
                     }
                 }
             }
-            .navigationTitle("Roles del miembro")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Roles del miembro")
         }
     }
 

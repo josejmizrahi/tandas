@@ -46,12 +46,8 @@ public struct CreateGeneralProposalSheet: View {
                     }
                 }
             }
-            .navigationTitle("Propuesta")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Propuesta")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Abrir voto") {
                         Task {

@@ -50,18 +50,7 @@ public struct JoinGroupSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .ruulAmbientScreen(palette: nil)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Unirme con código")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-            }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+            .ruulSheetToolbar("Unirme con código")
         }
     }
 

@@ -39,13 +39,7 @@ public struct LeaveGroupConfirmationSheet: View {
                 Spacer()
             }
             .padding(RuulSpacing.lg)
-            .navigationTitle("Salir del grupo")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Salir del grupo")
             .task { await loadMembers() }
         }
     }

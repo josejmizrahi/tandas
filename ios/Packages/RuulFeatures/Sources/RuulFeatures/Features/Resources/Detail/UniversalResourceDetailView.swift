@@ -143,22 +143,8 @@ public struct UniversalResourceDetailView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ResourcePrimaryCTA(action: primaryAction, onTap: dispatchPrimary)
         }
+        .ruulSheetToolbar(context.displayName, onClose: context.onDismiss)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton {
-                    if let onDismiss = context.onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
-                    }
-                }
-            }
-            ToolbarItem(placement: .principal) {
-                Text(context.displayName)
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .lineLimit(1)
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 if !secondaryActions.isEmpty {
                     Menu {
@@ -177,7 +163,6 @@ public struct UniversalResourceDetailView: View {
                 }
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $activeRightAction) { action in
             RightActionSheet(
                 action: action,

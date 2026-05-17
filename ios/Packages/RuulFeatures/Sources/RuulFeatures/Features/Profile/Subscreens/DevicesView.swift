@@ -55,13 +55,7 @@ public struct DevicesView: View {
                 .padding(RuulSpacing.lg)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle("Dispositivos")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Dispositivos")
             .task { await load() }
         }
     }

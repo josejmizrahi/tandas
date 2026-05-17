@@ -82,12 +82,8 @@ public struct SettlementSheet: View {
                     }
                 }
             }
-            .navigationTitle("Registrar pago")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Registrar pago")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSubmitting ? "Registrando…" : "Registrar") {
                         Task { await submit() }

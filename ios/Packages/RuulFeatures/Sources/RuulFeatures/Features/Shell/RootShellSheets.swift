@@ -438,19 +438,15 @@ public struct RootShellSheets: ViewModifier {
                 },
                 currentUserId: userId
             )
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") {
-                        router.state.activeFine = nil
-                        while router.state.activeRoutes.contains(where: {
-                            if case .fineDetail = $0 { return true }
-                            return false
-                        }) {
-                            router.state.dismissTop()
-                        }
-                    }
+            .ruulSheetToolbar("Multa", onClose: {
+                router.state.activeFine = nil
+                while router.state.activeRoutes.contains(where: {
+                    if case .fineDetail = $0 { return true }
+                    return false
+                }) {
+                    router.state.dismissTop()
                 }
-            }
+            })
         }
         .environment(app)
     }
@@ -481,15 +477,11 @@ public struct RootShellSheets: ViewModifier {
                 ) { event in
                     router.openEvent(event)
                 }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cerrar") {
-                            while router.state.contains(.past) {
-                                router.state.dismissTop()
-                            }
-                        }
+                .ruulSheetToolbar("Eventos pasados", onClose: {
+                    while router.state.contains(.past) {
+                        router.state.dismissTop()
                     }
-                }
+                })
             }
             .environment(app)
         }
@@ -512,18 +504,14 @@ public struct RootShellSheets: ViewModifier {
                     analytics: app.analytics,
                     changeFeed: app.multiDeviceChangeFeed
                 ))
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cerrar") {
-                            while router.state.activeRoutes.contains(where: {
-                                if case .voteDetail = $0 { return true }
-                                return false
-                            }) {
-                                router.state.dismissTop()
-                            }
-                        }
+                .ruulSheetToolbar("Votación", onClose: {
+                    while router.state.activeRoutes.contains(where: {
+                        if case .voteDetail = $0 { return true }
+                        return false
+                    }) {
+                        router.state.dismissTop()
                     }
-                }
+                })
             } else {
                 Text("Grupo no encontrado")
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -991,11 +979,7 @@ private struct MyFinesScreenHost: View {
             MyFinesView(coordinator: coordinator) { fine in
                 path.append(fine)
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar", action: onClose)
-                }
-            }
+            .ruulSheetToolbar("Mis multas", onClose: onClose)
             .navigationDestination(for: Fine.self) { fine in
                 fineDetailDestination(for: fine)
             }

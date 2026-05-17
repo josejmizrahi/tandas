@@ -179,12 +179,8 @@ struct AssignSlotSheet: View {
                 Text(m.displayName)
                     .tag(m.id as UUID?)
             }
-            .navigationTitle("Asignar cupo")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Asignar cupo")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Asignar") { Task { await submit() } }
                         .disabled(selected == nil || isSubmitting)
@@ -231,12 +227,8 @@ struct RequestSwapSheet: View {
                 Text(m.displayName)
                     .tag(m.id as UUID?)
             }
-            .navigationTitle("Pedir swap")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Pedir swap")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Solicitar") { Task { await submit() } }
                         .disabled(selected == nil || isSubmitting)

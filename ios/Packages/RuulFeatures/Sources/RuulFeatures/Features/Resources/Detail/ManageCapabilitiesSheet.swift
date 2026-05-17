@@ -101,13 +101,7 @@ public struct ManageCapabilitiesSheet: View {
                 .padding(RuulSpacing.lg)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
-            .navigationTitle("Capabilities")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Capabilities")
             .fullScreenCover(item: editingBinding) { ctx in
                 EditCapabilityConfigSheet(
                     resourceId: resourceId,

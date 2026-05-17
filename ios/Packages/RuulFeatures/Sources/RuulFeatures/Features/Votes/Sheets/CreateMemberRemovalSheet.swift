@@ -35,12 +35,8 @@ public struct CreateMemberRemovalSheet: View {
             }
             .background(Color.ruulBackground.ignoresSafeArea())
             .scrollIndicators(.hidden)
-            .navigationTitle("Proponer remoción")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Proponer remoción")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(coordinator.isSubmitting ? "Enviando…" : "Iniciar voto") {
                         Task {

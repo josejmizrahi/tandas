@@ -69,13 +69,7 @@ public struct CreateVoteSheet: View {
             }
             .scrollIndicators(.hidden)
             .background(Color.ruulBackground)
-            .navigationTitle("Nueva votación")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Nueva votación")
         }
     }
 

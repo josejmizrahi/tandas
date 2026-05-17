@@ -35,18 +35,7 @@ public struct GroupSwitcherSheet: View {
                 .padding(.bottom, RuulSpacing.xxl)
             }
             .ruulAmbientScreen(palette: nil)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Cambiar grupo")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-            }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+            .ruulSheetToolbar("Cambiar grupo")
         }
     }
 

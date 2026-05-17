@@ -378,12 +378,8 @@ private struct LockFundSheet: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Bloquear fondo")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Bloquear fondo")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Bloquear") { Task { await submit() } }
                         .disabled(isSubmitting)

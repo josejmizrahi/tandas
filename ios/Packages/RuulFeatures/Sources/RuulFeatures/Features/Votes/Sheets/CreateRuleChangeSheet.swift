@@ -67,12 +67,8 @@ public struct CreateRuleChangeSheet: View {
                     }
                 }
             }
-            .navigationTitle("Cambio de regla")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Cambio de regla")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Abrir voto") {
                         Task {

@@ -59,12 +59,8 @@ public struct EditGroupIdentitySheet: View {
                     }
                 }
             }
-            .navigationTitle("Editar grupo")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Editar grupo")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Guardar") { Task { await save() } }
                         .disabled(saving || name.trimmingCharacters(in: .whitespaces).isEmpty)

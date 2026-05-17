@@ -36,13 +36,7 @@ public struct EditEventView: View {
                 .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.s10)
             }
-            .navigationTitle("Editar evento")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
-            }
+            .ruulSheetToolbar("Editar evento")
             .safeAreaInset(edge: .bottom) {
                 saveButton
             }

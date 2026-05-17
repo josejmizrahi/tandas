@@ -25,12 +25,8 @@ public struct MembersAdminView: View {
             Color.ruulBackground.ignoresSafeArea()
             content
         }
-        .navigationTitle("Administrar miembros")
-        .navigationBarTitleDisplayMode(.inline)
+        .ruulSheetToolbar("Administrar miembros")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
             if let onInviteTap {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: onInviteTap) {

@@ -66,19 +66,7 @@ public struct LinkResourcePickerSheet: View {
             }
             .ruulAmbientScreen(palette: nil)
             .task { await loadCandidates() }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Vincular recurso")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-            }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+            .ruulSheetToolbar("Vincular recurso")
         }
     }
 

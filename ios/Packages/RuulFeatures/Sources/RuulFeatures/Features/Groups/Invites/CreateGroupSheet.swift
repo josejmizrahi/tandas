@@ -53,18 +53,7 @@ public struct CreateGroupSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .ruulAmbientScreen(palette: nil)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Nuevo grupo")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                }
-            }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+            .ruulSheetToolbar("Nuevo grupo")
         }
     }
 

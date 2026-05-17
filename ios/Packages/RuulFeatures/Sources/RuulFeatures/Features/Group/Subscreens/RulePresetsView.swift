@@ -79,18 +79,7 @@ public struct RulePresetsView: View {
             .padding(.bottom, RuulSpacing.xxl)
         }
         .ruulAmbientScreen(palette: nil)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                RuulCloseToolbarButton { dismiss() }
-            }
-            ToolbarItem(placement: .principal) {
-                Text("Gobierno del grupo")
-                    .ruulTextStyle(RuulTypography.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
-            }
-        }
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+        .ruulSheetToolbar("Gobierno del grupo")
         .task { await coordinator.refresh() }
     }
 

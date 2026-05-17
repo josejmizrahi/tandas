@@ -53,13 +53,8 @@ public struct EditProfileSheet: View {
             }
             .formStyle(.grouped)
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Editar perfil")
-            .navigationBarTitleDisplayMode(.inline)
+            .ruulSheetToolbar("Editar perfil")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                        .disabled(isSaving || coordinator.isUploadingAvatar)
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar") {
                         Task { await save() }

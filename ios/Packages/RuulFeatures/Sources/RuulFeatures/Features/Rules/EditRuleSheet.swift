@@ -74,12 +74,8 @@ public struct EditRuleSheet: View {
                 }
             }
         }
-        .navigationTitle("Editar regla")
-        .navigationBarTitleDisplayMode(.inline)
+        .ruulSheetToolbar("Editar regla", onClose: onDismiss)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancelar") { onDismiss() }
-            }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await commitAmount() } }
                     .disabled(!isAmountDirty || pending != nil)
