@@ -187,7 +187,8 @@ struct TandasApp: App {
                 balanceRepo: balances,
                 fineRepo: fines,
                 voteRepo: votes,
-                userActionRepo: userActions
+                userActionRepo: userActions,
+                client: client
             )
             _appState = State(initialValue: state)
         }

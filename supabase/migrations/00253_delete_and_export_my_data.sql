@@ -136,8 +136,10 @@ begin
       where gm.user_id = v_user_id
     ),
     fines_data as (
+      -- fines_view (mig 00150) tiene status/paid/waived derivados de
+      -- ledger atoms; la tabla `fines` bare no las expone (mig 00151).
       select coalesce(jsonb_agg(to_jsonb(f.*) order by f.created_at), '[]'::jsonb) as fs
-      from public.fines f where f.user_id = v_user_id
+      from public.fines_view f where f.user_id = v_user_id
     ),
     rsvps_data as (
       select coalesce(jsonb_agg(to_jsonb(r.*) order by r.recorded_at), '[]'::jsonb) as rs

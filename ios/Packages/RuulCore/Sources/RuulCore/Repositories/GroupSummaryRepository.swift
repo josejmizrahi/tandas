@@ -1,16 +1,29 @@
 import Foundation
 import OSLog
+import Supabase
 
 public protocol GroupSummaryRepository: Actor {
     /// Computes a stat snapshot for the group, scoped to the caller's perspective
     /// (e.g., myBalance is the caller's net balance within this group).
     func summary(groupId: UUID, userId: UUID) async throws -> GroupSummary
+
+    /// Per-(group, member) stats vía `get_member_summary` RPC (mig 00254).
+    /// Caller debe ser miembro del grupo. Si el subject no es ni fue
+    /// miembro devuelve MemberSummary.empty con is_member=false.
+    func memberSummary(groupId: UUID, userId: UUID) async throws -> MemberSummary
 }
 
 public actor MockGroupSummaryRepository: GroupSummaryRepository {
     public var seed: GroupSummary
-    public init(seed: GroupSummary = .empty) { self.seed = seed }
+    public var memberSeed: MemberSummary?
+    public init(seed: GroupSummary = .empty, memberSeed: MemberSummary? = nil) {
+        self.seed = seed
+        self.memberSeed = memberSeed
+    }
     public func summary(groupId: UUID, userId: UUID) async throws -> GroupSummary { seed }
+    public func memberSummary(groupId: UUID, userId: UUID) async throws -> MemberSummary {
+        memberSeed ?? .empty(groupId: groupId, userId: userId)
+    }
 }
 
 public actor LiveGroupSummaryRepository: GroupSummaryRepository {
@@ -20,6 +33,9 @@ public actor LiveGroupSummaryRepository: GroupSummaryRepository {
     private let fineRepo: any FineRepository
     private let voteRepo: any VoteRepository
     private let userActionRepo: any UserActionRepository
+    /// Solo lo necesita memberSummary (RPC directo). El summary() del
+    /// grupo se compone desde otros repos sin tocar el client.
+    private let client: SupabaseClient?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.summary")
 
     public init(
@@ -28,7 +44,8 @@ public actor LiveGroupSummaryRepository: GroupSummaryRepository {
         balanceRepo: any BalanceRepository,
         fineRepo: any FineRepository,
         voteRepo: any VoteRepository,
-        userActionRepo: any UserActionRepository
+        userActionRepo: any UserActionRepository,
+        client: SupabaseClient? = nil
     ) {
         self.groupsRepo = groupsRepo
         self.resourceRepo = resourceRepo
@@ -36,6 +53,7 @@ public actor LiveGroupSummaryRepository: GroupSummaryRepository {
         self.fineRepo = fineRepo
         self.voteRepo = voteRepo
         self.userActionRepo = userActionRepo
+        self.client = client
     }
 
     public func summary(groupId: UUID, userId: UUID) async throws -> GroupSummary {
@@ -87,5 +105,26 @@ public actor LiveGroupSummaryRepository: GroupSummaryRepository {
             openVotesCount: votes.count,
             pendingActionsCount: actions.count
         )
+    }
+
+    public func memberSummary(groupId: UUID, userId: UUID) async throws -> MemberSummary {
+        guard let client else {
+            // Wiring incomplete (tests with the legacy init). Devuelve
+            // empty para que la UI no crashee — sigue siendo informativa.
+            log.warning("memberSummary called without SupabaseClient injection")
+            return .empty(groupId: groupId, userId: userId)
+        }
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_user_id: String
+        }
+        let summary: MemberSummary = try await client
+            .rpc("get_member_summary", params: Params(
+                p_group_id: groupId.uuidString.lowercased(),
+                p_user_id: userId.uuidString.lowercased()
+            ))
+            .execute()
+            .value
+        return summary
     }
 }
