@@ -255,7 +255,10 @@ public struct EventDetailHost: View {
             )
         case .rules where rulesCoordinator == nil:
             let me = memberDirectory[currentUserId]?.member
-            let isAdmin = me?.isFounder == true
+            // Mig 00262: admin separó de founder. canCreate de rules
+            // requiere permission, no identity — usamos isAdmin que
+            // cubre founders (vía backfill) y admins explícitos.
+            let isAdmin = me?.isAdmin == true
             let isHost = coordinator.event.hostId == currentUserId
             let ctx = ResourceRuleContext(
                 groupId: event.groupId,

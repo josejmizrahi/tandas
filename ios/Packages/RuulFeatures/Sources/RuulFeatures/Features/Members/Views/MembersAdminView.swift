@@ -74,7 +74,8 @@ public struct MembersAdminView: View {
                             group: coordinator.group,
                             isCurrentUser: row.member.userId == coordinator.actorUserId,
                             canManageRoles: coordinator.canManageRoles,
-                            founderCount: coordinator.founderCount
+                            founderCount: coordinator.founderCount,
+                            adminCount: coordinator.adminCount
                         )
                     } label: {
                         adminRow(row)

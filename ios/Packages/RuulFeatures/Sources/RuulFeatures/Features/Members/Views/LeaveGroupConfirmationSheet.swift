@@ -18,7 +18,11 @@ public struct LeaveGroupConfirmationSheet: View {
 
     private var isSoleAdmin: Bool {
         guard let uid = app.session?.user.id else { return false }
-        let admins = members.filter { $0.member.isFounder && $0.member.active }
+        // Mig 00262: admin ahora es un rol separado de founder. Checkeamos
+        // admin (que cubre founders + admins explícitos) en vez de solo
+        // founder — el grupo puede quedarse sin admin operativo aunque
+        // el founder siga existiendo como identity badge.
+        let admins = members.filter { $0.member.isAdmin && $0.member.active }
         return admins.count == 1 && admins.first?.member.userId == uid
     }
 
@@ -51,10 +55,10 @@ public struct LeaveGroupConfirmationSheet: View {
 
     private var soleAdminBlocker: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            Label("Eres el único fundador", systemImage: "exclamationmark.triangle")
+            Label("Eres el único admin", systemImage: "exclamationmark.triangle")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulWarning)
-            Text("Antes de salir, transfiere el rol de fundador a otro miembro o archiva el grupo.")
+            Text("Antes de salir, asigna el rol de admin a otro miembro o archiva el grupo. Tu badge de fundador permanece como historia del grupo.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button("Entendido") { dismiss() }

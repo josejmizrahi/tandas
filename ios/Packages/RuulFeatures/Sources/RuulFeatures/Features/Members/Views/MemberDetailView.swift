@@ -15,11 +15,14 @@ public struct MemberDetailView: View {
     /// `false` hides the "Editar roles" CTA — server is still the
     /// authoritative gate via `assign_role`/`unassign_role` RPCs.
     public let canManageRoles: Bool
-    /// Active-founder count in this group, surfaced by the parent so the
-    /// `MemberRolesPicker` can disable the founder toggle on the last
-    /// holder. Defaults to 1 (conservative) when the parent doesn't
-    /// supply it.
+    /// Active-founder count in this group. Post-mig 00262: founder es
+    /// identity inmutable; el picker filtra el founder toggle, así que
+    /// este field sirve solo para mostrar el badge "crown" si aplica.
     public let founderCount: Int
+    /// Active-admin count. Post-mig 00262: el picker lockea el admin
+    /// toggle cuando es el último admin (server lo rechazaría también).
+    /// Defaults a 1 (conservative) when parent doesn't supply.
+    public let adminCount: Int
 
     @State private var showRolesPicker: Bool = false
     @State private var summary: MemberSummary?
@@ -30,13 +33,15 @@ public struct MemberDetailView: View {
         group: RuulCore.Group,
         isCurrentUser: Bool,
         canManageRoles: Bool = false,
-        founderCount: Int = 1
+        founderCount: Int = 1,
+        adminCount: Int = 1
     ) {
         self.memberWithProfile = memberWithProfile
         self.group = group
         self.isCurrentUser = isCurrentUser
         self.canManageRoles = canManageRoles
         self.founderCount = founderCount
+        self.adminCount = adminCount
     }
 
     public var body: some View {
@@ -62,7 +67,8 @@ public struct MemberDetailView: View {
             MemberRolesPicker(
                 group: group,
                 target: memberWithProfile,
-                founderCount: founderCount
+                founderCount: founderCount,
+                adminCount: adminCount
             )
             .environment(app)
         }

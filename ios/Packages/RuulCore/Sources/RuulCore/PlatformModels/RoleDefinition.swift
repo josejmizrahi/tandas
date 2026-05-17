@@ -64,12 +64,30 @@ public struct RoleDefinition: Sendable, Hashable, Codable, Identifiable {
         case system
     }
 
-    /// V1 system-roles baseline mirroring the seed in mig 00063.
-    /// Used as the offline / pre-migration fallback when
-    /// `Group.roles` decodes to nil.
+    /// V1 system-roles baseline mirroring the seed in mig 00063 (founder
+    /// + member) y mig 00262 que separó admin de founder.
+    ///
+    /// Doctrina post-mig 00262:
+    /// - `founder` = identidad histórica (quién creó el grupo). System,
+    ///   inmutable, no transferible (P2: vote-gated transfer). MANTIENE
+    ///   los 8 permisos por back-compat con call sites legacy que aún
+    ///   chequean `member.isFounder`. Mig P3 los vaciará.
+    /// - `admin` = set de permisos operativos. Asignable, revocable,
+    ///   transferible. El founder lo recibe automáticamente al crear el
+    ///   grupo (backfill cubre founders pre-mig).
+    /// - `member` = baseline (todos los que se unen).
     public static let v1SystemRoles: [String: RoleDefinition] = [
         "founder": RoleDefinition(
             id: "founder",
+            permissions: [
+                .modifyGovernance, .modifyRules, .modifyMembers,
+                .assignRoles, .removeMember, .voidFine,
+                .closeAppeal, .createVotes
+            ],
+            system: true
+        ),
+        "admin": RoleDefinition(
+            id: "admin",
             permissions: [
                 .modifyGovernance, .modifyRules, .modifyMembers,
                 .assignRoles, .removeMember, .voidFine,

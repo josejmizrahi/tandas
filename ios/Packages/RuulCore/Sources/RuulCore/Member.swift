@@ -137,6 +137,17 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public var isMember:  Bool { holdsRole("member")  }
     public var isHost:    Bool { holdsRole("host")    }
 
+    /// Mig 00262: admin se separó de founder. Admin es el rol con
+    /// permisos operativos (modifyGovernance/Rules/Members/...);
+    /// founder es solo identity badge. La mayoría de gating logic
+    /// debería usar `isAdmin` (o `has_permission(...)` server-side)
+    /// en vez de `isFounder`. Founders también son admin via backfill
+    /// — esta check incluye ambos casos hasta que el legacy role
+    /// "admin"-en-`role`-column (mig 00001) se complete deprecating.
+    public var isAdmin: Bool {
+        holdsRole("admin") || isFounder || role == "admin"
+    }
+
     /// Stable membership check that works for both typed `MemberRole`
     /// cases and custom role ids stored in `rawRoles`. Case-sensitive,
     /// matching jsonb semantics.

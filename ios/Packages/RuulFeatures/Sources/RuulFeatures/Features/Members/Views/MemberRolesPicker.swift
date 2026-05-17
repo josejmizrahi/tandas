@@ -26,11 +26,16 @@ public struct MemberRolesPicker: View {
 
     public let group: RuulCore.Group
     public let target: MemberWithProfile
-    /// Total count of active founders in the group (driven by the parent
-    /// coordinator). Used to disable the "founder" toggle when the
-    /// target is the last one — server would reject, but we hide the
-    /// affordance for clarity.
+    /// Total count of active founders en el grupo. Post-mig 00262
+    /// founder es identidad inmutable — no se asigna desde este picker
+    /// (el toggle queda excluido del catalog). Solo se conserva para
+    /// renderizar el badge de identity arriba (founder no editable).
     public let founderCount: Int
+    /// Total count of active admins. Driven por el coordinator parent.
+    /// Usado para disable el "admin" toggle cuando el target es el
+    /// último admin — server lo rechazaría también; lo gateamos en UI
+    /// para clarity.
+    public let adminCount: Int
     public var onChange: (() async -> Void)?
 
     @State private var roles: [String]
@@ -43,24 +48,32 @@ public struct MemberRolesPicker: View {
         group: RuulCore.Group,
         target: MemberWithProfile,
         founderCount: Int,
+        adminCount: Int = 1,
         onChange: (() async -> Void)? = nil
     ) {
         self.group = group
         self.target = target
         self.founderCount = founderCount
+        self.adminCount = adminCount
         self.onChange = onChange
         _roles = State(initialValue: target.member.rawRoles)
     }
 
+    /// Catalog de roles toggleables. Post-mig 00262 excluimos
+    /// `founder` — es identity badge inmutable, mostrado arriba como
+    /// crown si el target es founder. El picker solo edita
+    /// admin/member/custom.
     private var catalog: [RoleDefinition] {
-        group.effectiveRoles.values.sorted { lhs, rhs in
-            if lhs.system != rhs.system { return lhs.system }
-            if lhs.id == "founder" { return true }
-            if rhs.id == "founder" { return false }
-            if lhs.id == "member"  { return true }
-            if rhs.id == "member"  { return false }
-            return lhs.humanLabel.localizedStandardCompare(rhs.humanLabel) == .orderedAscending
-        }
+        group.effectiveRoles.values
+            .filter { $0.id != "founder" }
+            .sorted { lhs, rhs in
+                if lhs.system != rhs.system { return lhs.system }
+                if lhs.id == "admin"  { return true }
+                if rhs.id == "admin"  { return false }
+                if lhs.id == "member" { return true }
+                if rhs.id == "member" { return false }
+                return lhs.humanLabel.localizedStandardCompare(rhs.humanLabel) == .orderedAscending
+            }
     }
 
     public var body: some View {
@@ -90,9 +103,20 @@ public struct MemberRolesPicker: View {
         HStack(spacing: RuulSpacing.md) {
             RuulAvatar(name: target.displayName, imageURL: target.avatarURL, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
-                Text(target.displayName)
-                    .ruulTextStyle(RuulTypography.body)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                HStack(spacing: RuulSpacing.xs) {
+                    Text(target.displayName)
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    if target.member.isFounder {
+                        // Identity badge — post-mig 00262 founder es
+                        // inmutable. Mostramos crown para reconocimiento
+                        // visual sin afectar la editabilidad del catalog.
+                        Image(systemName: "crown.fill")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulAccent)
+                            .accessibilityLabel("Fundador del grupo")
+                    }
+                }
                 Text("Cambia un toggle para asignar o retirar el rol al instante.")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
@@ -150,7 +174,7 @@ public struct MemberRolesPicker: View {
 
     private func isLocked(_ role: RoleDefinition, isOn: Bool) -> Bool {
         if role.id == "member" { return true }
-        if role.id == "founder", isOn, founderCount <= 1 { return true }
+        if role.id == "admin", isOn, adminCount <= 1 { return true }
         return false
     }
 
@@ -158,8 +182,8 @@ public struct MemberRolesPicker: View {
         if role.id == "member" {
             return "Rol base — siempre presente."
         }
-        if role.id == "founder", isOn, founderCount <= 1 {
-            return "Asigna fundador a otro miembro antes de retirar este."
+        if role.id == "admin", isOn, adminCount <= 1 {
+            return "Asigna admin a otro miembro antes de retirar este. El grupo necesita al menos un admin."
         }
         return nil
     }
