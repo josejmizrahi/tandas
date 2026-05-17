@@ -11,7 +11,7 @@ import RuulFeatures
 ///
 /// **Por qué scaffolding y no full HomeView swap V1**: HomeView's hero
 /// es un render bespoke. ResourceCard V1 es scaffolding + router para
-/// los consumers que SÍ usan EventCard hoy (`MyFeedView`, `PastResourcesView`).
+/// los consumers que SÍ usan EventCard hoy (`PastResourcesView`).
 ///
 /// Invariante: `resource.resourceType == .event ⇒ resource is Event`
 /// (Event conforms to Resource directly post Plan 1; the EventResource

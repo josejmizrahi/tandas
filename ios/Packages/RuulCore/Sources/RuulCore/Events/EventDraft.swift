@@ -1,7 +1,7 @@
 import Foundation
 
-/// In-memory mutable draft used by `ResourceCreationCoordinator`. Not persisted
-/// (event creation is single-shot from CreateEventView; no SwiftData restore).
+/// In-memory mutable draft used by `ResourceWizardCoordinator`. Not persisted
+/// (event creation is single-shot from the wizard cover; no SwiftData restore).
 public struct EventDraft: Sendable, Hashable {
     public var title: String = ""
     public var coverImageName: String?
