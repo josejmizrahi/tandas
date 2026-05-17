@@ -1615,3 +1615,142 @@ Este sistema es **deliberadamente conservador en superficie** y **opinionado en 
 - El UX se obsesiona con la frase humana. La frase **es** la regla; el JSON es trivia interna. Si la frase está rota, la regla está rota.
 
 Si todo lo demás falla y solo construimos los 5 shapes Beta 1 con builder + engine + versioning + history feed: **Ruul ya tiene governance real**, mejor que cualquier herramienta de coordinación grupal en el mercado. Recordatorio cardinal: **user-configurable parameters, not user-programmable logic.**
+
+---
+
+## 22. Límites conocidos del Rule Composer (post-2026-05-17)
+
+> Status: documentado 2026-05-17 después del aterrizaje del composer
+> libre (mig 00245-00246, commits 5a2d7b9 … 89519d2). Estos son los
+> gaps que el composer NO cubre todavía. Cada uno está alineado con la
+> doctrina (§9 scope, §18 estructura halájica) pero requiere trabajo
+> incremental. El orden de implementación es **demand-pull**: se ataca
+> el que aparezca primero con un grupo beta real, no el que parezca
+> arquitectónicamente más bonito.
+
+### 22.1 Edit-in-place sin perder `rule_id` (severidad: **alta**)
+
+Hoy `publish_rule_composition` siempre crea una nueva fila en `rules`
+con un `rule_id` distinto. Eso significa que **editar el monto de una
+multa** (caso 1 de cualquier beta tester) rompe la continuidad de
+atoms históricos: las fines emitidas referenciarán el `rule_id` viejo
++ las nuevas el `rule_id` nuevo. El `slug` ayuda a deduplicar
+analíticamente, pero no es lo mismo.
+
+Falta: RPC `bump_rule_version(p_rule_id, p_new_composition, p_change_reason)`
+que:
+
+- Verifica `has_permission('modifyRules')` + ownership del rule por el
+  grupo del caller.
+- Marca el `rule_versions` actual como `superseded`.
+- Inserta nuevo `rule_versions` con `version+1`, mismo `rule_id`,
+  `previous_version_id` apuntando al anterior.
+- Actualiza `rules.trigger/conditions/consequences/updated_at` con la
+  nueva composición.
+- Re-validate compatibility (trigger ↔ scope ↔ resource_type) y
+  conflict detection.
+
+UI: el composer abre con `RuleDraft.from(rule:)` cuando se invoca con
+un `editing: rule` en vez de scope vacío. Botón "Publicar" llama
+`bump_rule_version` en vez de `publish_rule_composition`.
+
+### 22.2 Exceptions evaluables por el engine (severidad: **media**)
+
+El JSON compilado ya carga `exceptions: []` (mig 00245). El engine
+nunca lo lee. Talmud sin excepciones es solo medio Talmud — "todos
+pagan EXCEPTO si tienen circunstancia X" es estructura fundamental.
+
+Falta:
+
+- Schema decision: ¿exceptions como lista de conditions invertidas
+  (lo más simple, AND NOT), o como predicate tree separado?
+- Engine: extender `ruleEngineConditions.ts` o introducir
+  `ruleEngineExceptions.ts` que se ejecuta DESPUÉS de conditions, y
+  si alguna pasa, skipea la consequence.
+- UI composer: tercera sección entre conditions y consequences,
+  "Excepto si…" con su propio `+`.
+- Sentencia natural: "Cuando X, si Y, **excepto** si Z, entonces W."
+
+### 22.3 Multi-target / subject distinto al actor (severidad: **media-baja**)
+
+`compiled.target = "$trigger.actor"` está hardcoded. No se puede armar
+"cuando alguien transfiere $X de un activo, **notifica al tesorero**".
+
+Falta:
+
+- Schema: `compiled.target` acepta más opciones: `$trigger.actor`,
+  `$role.<role_id>` (todos los holders de un rol), `$member.<uuid>`
+  (explícito), `$resource.host` (member en metadata).
+- Engine: trigger evaluators emiten targets según resolución del
+  selector, no hardcoded al actor.
+- UI composer: picker "a quién aplica esta consecuencia" entre cons
+  shape y sus params.
+
+Caso clásico anti-tirania: notifica al treasurer cuando alguien
+intenta retirar > $X. Hoy no es expresable como regla — hay que
+hardcodearlo via permission gate del RPC.
+
+### 22.4 Conditions con árbol (AND/OR/NOT) (severidad: **media**)
+
+Hoy `conditions[]` es lista AND plana. Para "fine si [late AND no
+excuse] OR [no-show]" hay que publicar 2 reglas separadas y aceptar
+que aparezcan duplicadas en analytics.
+
+Falta:
+
+- Schema: `conditions` pasa de `[c1, c2]` a `{op: 'and', children:
+  [c1, c2]}` con `op` ∈ `{and, or, not}`. Backward compat: el array
+  plano se interpreta como `{op: 'and', children: array}`.
+- Engine: condition evaluator recursivo.
+- UI: el composer actual asume lista plana. Editor de árbol es UX
+  fork — probable que se difiera hasta que aparezca un grupo que
+  pida la 3a o 4a regla compuesta.
+
+### 22.5 Scope `membership` + `module` en el picker (severidad: **baja**)
+
+Schema ya soporta `rules.membership_id` (mig 00078) y `rules.module_key`
+(mig 00074). UI composer solo expone resource / series / group. Faltan:
+
+- Membership: picker de miembro al elegir scope. Util para "esta regla
+  aplica solo a Isaac (que está fuera de rotativa)".
+- Module: picker de módulo activo al elegir scope. Útil para
+  consolidar rules con el módulo que las introduce.
+
+Demand-pull bajo: los pocos casos hoy se cubren con scope=resource o
+scope=group + miembro-condition.
+
+### 22.6 Otros límites menores (severidad: **baja**)
+
+| Área | Limitación | Workaround |
+|---|---|---|
+| Sentencia natural | "multa (cantidad: $200)" rough; falta plantilla de frase per-shape | Aceptable para Beta 1; añadir `rule_shapes.sentence_template_es` cuando UX feedback lo demande |
+| Consequence ordering | Lista ordenada pero UI no permite reorder ni "stop on failure" | Drag-reorder + flag al menú del row cuando aparezca caso real |
+| AI suggest drafts | Constitution §16 lo permite ("AI propone, nunca aplica"). Composer no integra. | Phase Projections (§16 sección dedicada existe pero engine ausente) |
+| Trigger metadata stringly-typed | Cada trigger evaluator accede `context.resource.metadata.host_id` etc. sin schema | Add JSON Schema per resource_type cuando Phase 2 expanda más tipos |
+
+### 22.7 Lo que NO es límite (frontera explícita por diseño)
+
+- **Nuevo trigger/condition/consequence = release**, no INSERT data only.
+  Constitution §0.5 lo declara: shape registry expone building blocks
+  pero **semántica vive en código TS auditable**. Esto es feature, no
+  bug — es lo que hace seguro componer (no se pueden armar piezas
+  inválidas porque las piezas son código auditado).
+- **Resource types frozen a 6** (Constitution §2). Añadir un tipo
+  nuevo es decisión arquitectónica con filtro ontológico §13.
+- **AI no muta estado directo** (Constitution §16). Cualquier propose
+  pasa por workflow humano verificable.
+
+### 22.8 Orden de ataque sugerido
+
+1. **22.1 Edit-in-place** — caso #1 que aparece en beta. RPC + iOS
+   integration es ~3 commits.
+2. **22.2 Exceptions** — doctrinal, "regla y excepción" es estructura
+   halájica fundamental.
+3. **22.3 Multi-target** — anti-tirania pattern. Útil para grupos
+   formales (asociaciones, comunidades religiosas).
+4. **22.4 Tree conditions** — el más invasivo (engine + UI), se queda
+   al final.
+5. **22.5+22.6** — picotear cuando UX feedback lo demande.
+
+No construir las 4 a ciegas. Esperar a que un grupo beta haga
+explícitamente la petición → atacar esa, instrumentar, repetir.
