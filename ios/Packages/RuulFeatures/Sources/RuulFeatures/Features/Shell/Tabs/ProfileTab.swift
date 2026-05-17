@@ -41,7 +41,8 @@ public struct ProfileTab: View {
                     onPickLanguage: { path.append(ProfileNav.language) },
                     onPickTimezone: { path.append(ProfileNav.timezone) },
                     onOpenNotificationPreferences: { showNotificationPreferences = true },
-                    onOpenDevices: { showDevices = true }
+                    onOpenDevices: { showDevices = true },
+                    onOpenGroupSwitcher: { router.openGroupSwitcher() }
                 )
                 .navigationDestination(for: ProfileNav.self) { dest in
                     switch dest {

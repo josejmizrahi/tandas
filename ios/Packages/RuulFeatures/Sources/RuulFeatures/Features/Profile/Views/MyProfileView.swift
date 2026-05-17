@@ -34,6 +34,7 @@ public struct MyProfileView: View {
     public var onPickTimezone: (() -> Void)?
     public var onOpenNotificationPreferences: (() -> Void)?
     public var onOpenDevices: (() -> Void)?
+    public var onOpenGroupSwitcher: (() -> Void)?
 
     @State private var showSignOutConfirm = false
 
@@ -51,7 +52,8 @@ public struct MyProfileView: View {
         onPickLanguage: (() -> Void)? = nil,
         onPickTimezone: (() -> Void)? = nil,
         onOpenNotificationPreferences: (() -> Void)? = nil,
-        onOpenDevices: (() -> Void)? = nil
+        onOpenDevices: (() -> Void)? = nil,
+        onOpenGroupSwitcher: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMyFines = onOpenMyFines
@@ -67,6 +69,7 @@ public struct MyProfileView: View {
         self.onPickTimezone = onPickTimezone
         self.onOpenNotificationPreferences = onOpenNotificationPreferences
         self.onOpenDevices = onOpenDevices
+        self.onOpenGroupSwitcher = onOpenGroupSwitcher
     }
 
     private var appearance: Binding<AppearanceOption> {
@@ -91,6 +94,7 @@ public struct MyProfileView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             hero
+                            myGroupsSection
                             identitySection
                             preferencesSection
                             notificationsSection
@@ -223,6 +227,59 @@ public struct MyProfileView: View {
     private func localeLabel(_ code: String?) -> String {
         guard let code, let entry = LanguagePickerView.supported.first(where: { $0.code == code }) else { return "—" }
         return entry.label
+    }
+
+    /// Lista los primeros 3 grupos del usuario con tap-to-switch + un
+    /// "Ver todos" cuando hay más. Antes el switcher estaba solo en el
+    /// header del Home, lo que para usuarios con 5+ grupos lo volvía
+    /// invisible. El active group queda marcado con dot accent.
+    @ViewBuilder
+    private var myGroupsSection: some View {
+        if !app.groups.isEmpty {
+            sectionContainer(title: "MIS GRUPOS") {
+                let visible = Array(app.groups.prefix(3))
+                ForEach(Array(visible.enumerated()), id: \.element.id) { idx, group in
+                    if idx > 0 { divider }
+                    groupRow(group)
+                }
+                if app.groups.count > 3, let onOpenGroupSwitcher {
+                    divider
+                    navRow(
+                        icon: "ellipsis",
+                        label: "Ver todos (\(app.groups.count))",
+                        trailing: { EmptyView() },
+                        action: onOpenGroupSwitcher
+                    )
+                }
+            }
+        }
+    }
+
+    private func groupRow(_ group: RuulCore.Group) -> some View {
+        let isActive = app.activeGroup?.id == group.id
+        return Button {
+            if !isActive {
+                app.activeGroupId = group.id
+                RuulHaptic.groupSwitch.trigger()
+            }
+        } label: {
+            HStack(spacing: RuulSpacing.sm) {
+                RuulGroupAvatar(group: group, size: .md)
+                Text(group.name)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(1)
+                Spacer()
+                if isActive {
+                    Circle().fill(Color.ruulAccent).frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(RuulSpacing.md)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isActive ? "\(group.name), grupo activo" : "Cambiar a \(group.name)")
     }
 
     private var activitySection: some View {
