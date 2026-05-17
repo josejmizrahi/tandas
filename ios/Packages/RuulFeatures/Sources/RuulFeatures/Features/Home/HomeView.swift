@@ -15,6 +15,10 @@ public struct HomeView: View {
     public var onCreateEvent: () -> Void
     public var onOpenEvent: (Event) -> Void
     public var onOpenPastEvents: () -> Void
+    /// MEMORIA DEL GRUPO "decisiones tomadas" tile tap. Abre la historia
+    /// completa (sin filtro — desde ahí el usuario filtra a "Votos"
+    /// con el chip). Default no-op para callsites pre-P1.
+    public var onOpenGroupHistory: () -> Void = {}
     public var onInvitePeople: (() -> Void)? = nil
     /// Tap del GroupSwitcher pill — abre `GroupSwitcherSheet` desde Home.
     /// Per AppShell.md: el switcher es chrome persistente en Home/Inbox/Activity.
@@ -23,7 +27,7 @@ public struct HomeView: View {
     /// resource — drives the non-event-resources re-fetch via .task(id:).
     public var resourceRefreshToken: UUID
 
-    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onInvitePeople: (() -> Void)? = nil, onSwitchGroup: @escaping () -> Void = {}, resourceRefreshToken: UUID = UUID()) {
+    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onOpenGroupHistory: @escaping () -> Void = {}, onInvitePeople: (() -> Void)? = nil, onSwitchGroup: @escaping () -> Void = {}, resourceRefreshToken: UUID = UUID()) {
         self.coordinator = coordinator
         self.inboxCoordinator = inboxCoordinator
         self.onInboxActionTap = onInboxActionTap
@@ -31,6 +35,7 @@ public struct HomeView: View {
         self.onCreateEvent = onCreateEvent
         self.onOpenEvent = onOpenEvent
         self.onOpenPastEvents = onOpenPastEvents
+        self.onOpenGroupHistory = onOpenGroupHistory
         self.onInvitePeople = onInvitePeople
         self.onSwitchGroup = onSwitchGroup
         self.resourceRefreshToken = resourceRefreshToken
@@ -538,14 +543,16 @@ public struct HomeView: View {
                         memoryStatCard(
                             value: memoryCountLabel(groupMemory.pastEventsCount, cap: 200),
                             caption: "eventos juntos",
-                            icon: "calendar.badge.checkmark"
+                            icon: "calendar.badge.checkmark",
+                            action: onOpenPastEvents
                         )
                     }
                     if groupMemory.resolvedVotesCount > 0 {
                         memoryStatCard(
                             value: memoryCountLabel(groupMemory.resolvedVotesCount, cap: 200),
                             caption: "decisiones tomadas",
-                            icon: "checkmark.seal"
+                            icon: "checkmark.seal",
+                            action: onOpenGroupHistory
                         )
                     }
                 }
@@ -557,12 +564,17 @@ public struct HomeView: View {
         count >= cap ? "\(cap)+" : "\(count)"
     }
 
+    /// Stat card. Tappeable cuando hay un destino — antes era display-only
+    /// (UXJourney "MEMORIA tappeable"). Cards sin acción siguen rendering
+    /// igual pero sin Button wrap para no leaky el press affordance.
+    @ViewBuilder
     private func memoryStatCard(
         value: String,
         caption: String,
-        icon: String
+        icon: String,
+        action: (() -> Void)? = nil
     ) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+        let content = VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: icon)
                     .ruulTextStyle(RuulTypography.caption)
@@ -580,6 +592,13 @@ public struct HomeView: View {
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ruulCardSurface(.glass, radius: RuulRadius.medium)
+
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(.ruulPress)
+        } else {
+            content
+        }
     }
 
     // MARK: - Past events link — Apple Sports style: subtle row, no chrome.

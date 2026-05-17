@@ -53,7 +53,16 @@ public enum RuulErrorTranslator {
         if lower.contains("invalid login credentials") || lower.contains("invalid otp") {
             return "Código incorrecto. Inténtalo de nuevo."
         }
-        if lower.contains("rate limit") || lower.contains("too many requests") {
+        if lower.contains("rate limit") || lower.contains("too many requests")
+            || lower.contains("429") || lower.contains("for security purposes")
+            || lower.contains("only request this after") {
+            // Supabase Auth devuelve "For security purposes, you can only
+            // request this after X seconds" en 429 sin la palabra "rate"
+            // ni el código 429 explícito en localizedDescription. Si el
+            // segundo number aparece, lo respetamos al pie de la letra.
+            if let seconds = Self.extractRateLimitSeconds(from: lower), seconds > 0 {
+                return "Espera \(seconds) segundo\(seconds == 1 ? "" : "s") antes de pedir otro código."
+            }
             return "Demasiados intentos. Espera un momento e inténtalo otra vez."
         }
 
@@ -103,13 +112,28 @@ public enum RuulErrorTranslator {
         if lower.contains("invalid login credentials") || lower.contains("invalid otp") {
             return "otp_invalid"
         }
-        if lower.contains("rate limit") || lower.contains("too many requests") {
+        if lower.contains("rate limit") || lower.contains("too many requests")
+            || lower.contains("429") || lower.contains("for security purposes") {
             return "rate_limited"
         }
         if lower.contains("network connection") || lower.contains("offline") {
             return "network_offline"
         }
         return "generic"
+    }
+
+    /// Parse "after N seconds" / "after N second" del rate-limit message
+    /// que devuelve Supabase Auth. Defensive: si no encuentra patrón
+    /// devuelve nil y el caller fallback al copy genérico.
+    private static func extractRateLimitSeconds(from message: String) -> Int? {
+        let pattern = #"after\s+(\d+)\s+second"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+        let range = NSRange(message.startIndex..<message.endIndex, in: message)
+        guard let match = regex.firstMatch(in: message, options: [], range: range),
+              match.numberOfRanges >= 2,
+              let digitRange = Range(match.range(at: 1), in: message),
+              let value = Int(message[digitRange]) else { return nil }
+        return value
     }
 
     private static func urlMessage(for error: URLError) -> String {

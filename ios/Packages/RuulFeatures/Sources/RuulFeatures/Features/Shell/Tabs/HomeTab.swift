@@ -29,6 +29,7 @@ public struct HomeTab: View {
                     onCreateEvent: { router.present(.createCover) },
                     onOpenEvent: { event in router.openEvent(event) },
                     onOpenPastEvents: { router.openPastEvents() },
+                    onOpenGroupHistory: { router.openGroupHistory() },
                     onInvitePeople: { router.openInviteShare() },
                     onSwitchGroup: { router.openGroupSwitcher() }
                 )
