@@ -255,4 +255,26 @@ actor StubGroupsRepository: GroupsRepository {
     func unarchive(groupId: UUID) async throws {
         fatalError("not used in AddManualFineCoordinatorTests")
     }
+
+    func assignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func unassignRole(groupId: UUID, userId: UUID, role: String) async throws -> Member {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func upsertGroupRole(
+        groupId: UUID,
+        roleId: String,
+        label: String?,
+        permissions: [Permission],
+        maxHolders: Int?
+    ) async throws -> Group {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
+
+    func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group {
+        fatalError("not used in AddManualFineCoordinatorTests")
+    }
 }
