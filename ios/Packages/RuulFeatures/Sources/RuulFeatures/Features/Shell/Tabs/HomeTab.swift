@@ -88,8 +88,21 @@ public struct HomeTab: View {
                 router.selectTab(.home)
                 router.openEvent(event)
             }
-        case .slotPending, .contributionDue, .compensationDue, .assetActionApproval:
-            break
+        case .assetActionApproval:
+            // Mig 00226+00227: reference_id apunta directo al asset; el
+            // admin revisa + resuelve desde el resource detail. V2
+            // tendrá una vista de revisión dedicada.
+            router.openResource(id: action.referenceId)
+        case .slotPending:
+            // reference_id = slot resource id (mig 00204). Abre el
+            // resource detail polimórfico para que el usuario acepte/
+            // decline el slot ofrecido.
+            router.openResource(id: action.referenceId)
+        case .contributionDue, .compensationDue:
+            // Fund-related: el reference_id es el fund. Abre el detail
+            // del fund donde el usuario puede contribuir o marcar
+            // compensación. Sin esto el tap era no-op silencioso.
+            router.openResource(id: action.referenceId)
         }
     }
 

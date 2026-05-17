@@ -473,7 +473,7 @@ public struct HomeView: View {
                         title: action.title,
                         subtitle: action.body,
                         priority: pendingPriority(for: action.priority),
-                        timeRemaining: nil,
+                        timeRemaining: UserActionExpiry.remainingDescription(for: action),
                         onTap: {
                             Task { await onInboxActionTap(action) }
                         }

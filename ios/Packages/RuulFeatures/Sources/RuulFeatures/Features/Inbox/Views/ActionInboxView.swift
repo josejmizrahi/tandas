@@ -45,7 +45,7 @@ public struct ActionInboxView: View {
                             title: action.title,
                             subtitle: action.body,
                             priority: priority(for: action.priority),
-                            timeRemaining: nil,
+                            timeRemaining: UserActionExpiry.remainingDescription(for: action),
                             onTap: { onOpenAction(action) }
                         )
                         .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
