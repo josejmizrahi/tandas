@@ -334,14 +334,18 @@ public struct HistoryItemPresentation {
             self.title = "Un derecho está por expirar"
             self.tone = .warning
 
-        // Resource links (mig 00202_event_resource_links)
+        // Resource links (mig 00198 → mig 00232 polymorphic graph). Reads
+        // the link_kind + from_resource_type + to_resource_type from the
+        // payload so the row reads correctly for each of the 8 V1
+        // relations (uses/funds/governs/located_in/scheduled_in/reserves/
+        // grants_access_to/owns) regardless of source type.
         case .resourceLinked:
             self.icon = "link"
-            self.title = "\(actor) vinculó un recurso al evento"
+            self.title = Self.resourceLinkTitle(event: event, actor: actor, verb: "vinculó")
             self.tone = .info
         case .resourceUnlinked:
-            self.icon = "link.badge.plus"
-            self.title = "\(actor) desvinculó un recurso del evento"
+            self.icon = "link.badge.minus"
+            self.title = Self.resourceLinkTitle(event: event, actor: actor, verb: "desvinculó")
             self.tone = .neutral
 
         // Event lifecycle — eventCancelled (mig 00203_event_cancelled_atom)
@@ -374,5 +378,37 @@ public struct HistoryItemPresentation {
 
         self.subtitle = nil
         self.timestamp = Self.relativeString(for: event.occurredAt)
+    }
+
+    /// Builds a human-readable title for resourceLinked / resourceUnlinked
+    /// atoms. The polymorphic payload (mig 00232) carries `link_kind`,
+    /// `from_resource_type`, `to_resource_type`. We render the active
+    /// voice (source perspective) because the atom is anchored to the
+    /// source resource. Falls back gracefully when the payload is from
+    /// the pre-Fase 2 event-only emitter (link_kind missing → generic).
+    private static func resourceLinkTitle(
+        event: SystemEvent,
+        actor: String,
+        verb: String
+    ) -> String {
+        let kindRaw = event.payload["link_kind"]?.stringValue
+        let fromRaw = event.payload["from_resource_type"]?.stringValue
+        let toRaw   = event.payload["to_resource_type"]?.stringValue
+
+        let kind = kindRaw.flatMap(LinkKind.init(rawValue:))
+        let fromType = fromRaw.map(ResourceType.from(raw:))
+        let toType   = toRaw.map(ResourceType.from(raw:))
+
+        // Best: full sentence using the canonical labels.
+        if let kind, let fromType, let toType {
+            return "\(actor) \(verb): \(fromType.humanLabel.lowercased()) "
+                + "\(kind.activeDisplayName.lowercased()) \(toType.humanLabel.lowercased())"
+        }
+        // Acceptable: just the kind (older atoms missing types).
+        if let kind {
+            return "\(actor) \(verb): \(kind.activeDisplayName.lowercased())"
+        }
+        // Fallback: generic when nothing useful in the payload.
+        return "\(actor) \(verb) un recurso"
     }
 }
