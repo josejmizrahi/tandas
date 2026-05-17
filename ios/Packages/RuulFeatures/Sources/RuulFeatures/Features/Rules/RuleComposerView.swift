@@ -16,6 +16,9 @@ public struct RuleComposerView: View {
     public var onPublished: (RuleVersionPublishResult) -> Void
     public var onCancel: () -> Void
     @State private var showStarterPicker = false
+    /// §22.4: gates the destructive "drop OR/NOT structure" prompt
+    /// when the user toggles Avanzado OFF on a non-flat tree.
+    @State private var showAdvancedExitConfirm = false
 
     public init(
         coord: RuleComposerCoordinator,
@@ -207,18 +210,30 @@ public struct RuleComposerView: View {
 
     private var conditionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            sectionLabel("Condiciones (todas se cumplen)")
-            sectionHint("Filtros adicionales. Sin condiciones, la regla aplica siempre que se dispare.")
-            ForEach(coord.draft.conditions) { instance in
-                if let shape = coord.shape(id: instance.shapeId) {
-                    ShapeInstanceRow(
-                        shape: shape,
-                        instance: instance,
-                        onConfigChange: { key, value in
-                            coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
-                        },
-                        onRemove: { coord.removeCondition(id: instance.id) }
-                    )
+            HStack(alignment: .firstTextBaseline) {
+                sectionLabel(coord.isAdvancedMode
+                             ? "Condiciones (Y / O / NO)"
+                             : "Condiciones (todas se cumplen)")
+                Spacer(minLength: 0)
+                advancedToggle
+            }
+            sectionHint(coord.isAdvancedMode
+                        ? "Combina con O y marca NO desde el menú ⋯ de cada condición. Sin agrupar, todo se combina con Y."
+                        : "Filtros adicionales. Sin condiciones, la regla aplica siempre que se dispare.")
+            if coord.isAdvancedMode, let tree = coord.draft.conditionsTree {
+                conditionTreeView(tree, depth: 0)
+            } else {
+                ForEach(coord.draft.conditions) { instance in
+                    if let shape = coord.shape(id: instance.shapeId) {
+                        ShapeInstanceRow(
+                            shape: shape,
+                            instance: instance,
+                            onConfigChange: { key, value in
+                                coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
+                            },
+                            onRemove: { coord.removeCondition(id: instance.id) }
+                        )
+                    }
                 }
             }
             Menu {
@@ -230,6 +245,147 @@ public struct RuleComposerView: View {
             } label: {
                 pickerLabel(text: "Agregar condición", systemImage: "plus.circle")
             }
+        }
+        // Confirmation when toggling Avanzado OFF would drop OR/NOT.
+        .confirmationDialog(
+            "Aplanar agrupaciones",
+            isPresented: $showAdvancedExitConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Aplanar (perder estructura)", role: .destructive) {
+                coord.exitAdvancedMode()
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Hay agrupaciones O / NO. Aplanar las quita y deja solo la lista plana de condiciones.")
+        }
+    }
+
+    /// Section-header toggle that flips between Simple (flat list) and
+    /// Avanzado (AND/OR/NOT tree). When the user turns it OFF and the
+    /// tree carries structure, asks for confirmation before flattening.
+    @ViewBuilder
+    private var advancedToggle: some View {
+        Toggle(isOn: Binding(
+            get: { coord.isAdvancedMode },
+            set: { newValue in
+                if newValue {
+                    coord.enterAdvancedMode()
+                } else if coord.advancedHasStructure {
+                    showAdvancedExitConfirm = true
+                } else {
+                    coord.exitAdvancedMode()
+                }
+            }
+        )) {
+            Text("Avanzado")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextSecondary)
+        }
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .fixedSize()
+    }
+
+    /// Recursive renderer for an AND/OR/NOT tree. `depth` drives the
+    /// indent — each level offsets by `RuulSpacing.md` so the user
+    /// reads structure as visual nesting.
+    @ViewBuilder
+    private func conditionTreeView(_ node: ShapeNode, depth: Int) -> some View {
+        switch node {
+        case .leaf(let instance):
+            if let shape = coord.shape(id: instance.shapeId) {
+                HStack(alignment: .top, spacing: RuulSpacing.xs) {
+                    ShapeInstanceRow(
+                        shape: shape,
+                        instance: instance,
+                        onConfigChange: { key, value in
+                            coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
+                        },
+                        onRemove: { coord.removeCondition(id: instance.id) }
+                    )
+                    leafActionsMenu(leafId: instance.id)
+                }
+                .padding(.leading, CGFloat(depth) * RuulSpacing.md)
+            }
+        case .and(let id, let children), .or(let id, let children):
+            let isOr: Bool = { if case .or = node { return true } else { return false } }()
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                HStack(spacing: RuulSpacing.xs) {
+                    Text(isOr ? "Cualquiera de estas (O):" : "Todas estas (Y):")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(isOr ? Color.ruulAccent : Color.ruulTextSecondary)
+                    Spacer(minLength: 0)
+                    opActionsMenu(opId: id, canToggle: true)
+                }
+                .padding(.leading, CGFloat(depth) * RuulSpacing.md)
+                ForEach(children) { child in
+                    conditionTreeView(child, depth: depth + 1)
+                }
+            }
+        case .not(let id, let child):
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                HStack(spacing: RuulSpacing.xs) {
+                    Text("NO se cumple:")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(Color.ruulTextWarning)
+                    Spacer(minLength: 0)
+                    opActionsMenu(opId: id, canToggle: false)
+                }
+                .padding(.leading, CGFloat(depth) * RuulSpacing.md)
+                conditionTreeView(child, depth: depth + 1)
+            }
+        }
+    }
+
+    /// Per-leaf actions menu in Avanzado mode. Lets the user wrap the
+    /// leaf with the next sibling as OR (composer's "A AND (B OR C)"
+    /// flow) or wrap it in NOT.
+    @ViewBuilder
+    private func leafActionsMenu(leafId: UUID) -> some View {
+        Menu {
+            Button {
+                coord.wrapWithNextAsOR(id: leafId)
+            } label: {
+                Label("Combinar con siguiente como O", systemImage: "rectangle.connected.to.line.below")
+            }
+            Button {
+                coord.wrapAsNOT(id: leafId)
+            } label: {
+                Label("Marcar como NO (negar)", systemImage: "exclamationmark.octagon")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .ruulTextStyle(RuulTypography.subheadMedium)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.top, RuulSpacing.xs)
+                .accessibilityLabel("Acciones para esta condición")
+        }
+    }
+
+    /// Per-op-node actions menu (AND / OR / NOT). Lets the user flip
+    /// AND ⇄ OR and unwrap the grouping. NOT can be unwrapped but
+    /// can't be toggled (NOT has no AND/OR sibling shape).
+    @ViewBuilder
+    private func opActionsMenu(opId: UUID, canToggle: Bool) -> some View {
+        Menu {
+            if canToggle {
+                Button {
+                    coord.toggleAndOr(id: opId)
+                } label: {
+                    Label("Cambiar Y ⇄ O", systemImage: "arrow.left.arrow.right")
+                }
+            }
+            Button(role: .destructive) {
+                coord.unwrapGrouping(id: opId)
+            } label: {
+                Label("Quitar agrupación", systemImage: "rectangle.dashed")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .accessibilityLabel("Acciones para esta agrupación")
         }
     }
 

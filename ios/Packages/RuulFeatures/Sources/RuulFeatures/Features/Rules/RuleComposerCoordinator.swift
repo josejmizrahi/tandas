@@ -268,6 +268,61 @@ public final class RuleComposerCoordinator: Identifiable {
         draft.removeException(id: id)
     }
 
+    // MARK: §22.4 — Avanzado mode (tree of conditions)
+
+    /// True when the composer is in Avanzado mode (draft carries a
+    /// non-nil `conditionsTree`). View binds the toggle to this.
+    public var isAdvancedMode: Bool {
+        draft.conditionsTree != nil
+    }
+
+    /// True when the tree carries OR / NOT structure — used by the
+    /// view to warn the user before flipping back to Simple (which
+    /// would flatten the tree and lose the structure).
+    public var advancedHasStructure: Bool {
+        guard let tree = draft.conditionsTree else { return false }
+        return !tree.isFlatAnd
+    }
+
+    /// Lifts the flat condition list into a tree (`.and(leaves)`) so
+    /// the user can author OR / NOT structure. Idempotent.
+    public func enterAdvancedMode() {
+        draft.enterAdvancedMode()
+    }
+
+    /// Drops the tree and reverts to the flat list. Caller MUST
+    /// confirm with the user when `advancedHasStructure == true` —
+    /// the leaves survive in the flat list but the OR/NOT wrapping
+    /// is gone.
+    public func exitAdvancedMode() {
+        draft.exitAdvancedMode()
+    }
+
+    /// Wraps the leaf at `id` and the next sibling in a fresh OR
+    /// node — the composer's "Combinar con siguiente como O" action.
+    /// No-op when the leaf has no next sibling.
+    public func wrapWithNextAsOR(id: UUID) {
+        draft.wrapSiblingsAsOR(headId: id)
+    }
+
+    /// Wraps the node at `id` in a NOT — composer's "Marcar como
+    /// excepción (NO)" action.
+    public func wrapAsNOT(id: UUID) {
+        draft.wrapAsNOT(id: id)
+    }
+
+    /// Removes the op wrapper at `id`, lifting its children one level
+    /// up — composer's "Quitar agrupación" action.
+    public func unwrapGrouping(id: UUID) {
+        draft.unwrap(nodeId: id)
+    }
+
+    /// Flips AND ⇄ OR on the op node at `id` — composer's "Cambiar a
+    /// Y / O" action.
+    public func toggleAndOr(id: UUID) {
+        draft.toggleAndOr(nodeId: id)
+    }
+
     /// Sets the target selector on a specific consequence. See
     /// `ConsequenceTargetOption` for the Beta-1 vocabulary surfaced by
     /// `consequenceTargetOptions`.

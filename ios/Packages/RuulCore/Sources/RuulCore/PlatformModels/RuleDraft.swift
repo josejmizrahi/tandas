@@ -68,6 +68,20 @@ public struct RuleDraft: Sendable, Hashable {
     public var trigger: ShapeInstance?
     public var conditions: [ShapeInstance]
     public var consequences: [ShapeInstance]
+    /// AND/OR/NOT tree of conditions when the composer is in
+    /// "Avanzado" mode (§22.4 / mig 00251). When nil, the flat
+    /// `conditions` list is the source of truth (legacy Simple mode,
+    /// implicit AND). When non-nil, this is the source of truth and
+    /// the wire payload sends the tree; `conditions` is kept in sync
+    /// as the flat pre-order leaves view so legacy consumers
+    /// (RuleSentenceFormatter, slug preview, allLeaves walkers)
+    /// continue working unchanged.
+    ///
+    /// The composer's `enterAdvancedMode` lifts `conditions` into a
+    /// fresh `.and([leaves])` tree; `exitAdvancedMode` flattens back
+    /// to `nil` when safe (tree is just `.and([only leaves])`) or
+    /// asks the user to confirm structure loss otherwise.
+    public var conditionsTree: ShapeNode?
     /// Condition-shaped predicates that BLOCK consequences when ANY
     /// evaluates true on the target. Engine evaluates exceptions
     /// AFTER conditions pass, BEFORE consequences fire (mig 00248).
@@ -100,7 +114,8 @@ public struct RuleDraft: Sendable, Hashable {
         exceptions: [ShapeInstance] = [],
         membershipFilter: UUID? = nil,
         changeReason: String = "",
-        slug: String? = nil
+        slug: String? = nil,
+        conditionsTree: ShapeNode? = nil
     ) {
         self.name = name
         self.scope = scope
@@ -111,6 +126,7 @@ public struct RuleDraft: Sendable, Hashable {
         self.membershipFilter = membershipFilter
         self.changeReason = changeReason
         self.slug = slug
+        self.conditionsTree = conditionsTree
     }
 
     /// Preview of the slug the server would auto-derive if the draft
@@ -161,11 +177,185 @@ public struct RuleDraft: Sendable, Hashable {
     }
 
     public mutating func addCondition(_ shapeId: String, config: JSONConfig = .object([:])) {
-        conditions.append(ShapeInstance(shapeId: shapeId, config: config))
+        let instance = ShapeInstance(shapeId: shapeId, config: config)
+        conditions.append(instance)
+        // §22.4: when the composer is in Avanzado mode, mirror the
+        // addition into the tree's top-level AND so the structure
+        // stays in sync. New leaves always land under the root AND
+        // (the user can then wrap them as OR / NOT explicitly).
+        if let tree = conditionsTree {
+            conditionsTree = Self.appendingLeafAtRoot(tree, leaf: instance)
+        }
     }
 
     public mutating func removeCondition(id: UUID) {
         conditions.removeAll { $0.id == id }
+        // §22.4: keep the tree in lockstep — drop the matching leaf
+        // anywhere it sits, collapsing the parent op when it becomes
+        // empty or single-child.
+        if let tree = conditionsTree {
+            conditionsTree = tree.removing(id: id) ?? .and(id: UUID(), children: [])
+        }
+    }
+
+    // MARK: §22.4 — Avanzado mode mutations
+
+    /// Wraps the leaf with the given id in a `NOT` node. No-op when
+    /// the id isn't in the tree or the user isn't in Avanzado mode
+    /// (tree is nil — call `enterAdvancedMode` first).
+    public mutating func wrapAsNOT(id: UUID) {
+        guard let tree = conditionsTree else { return }
+        guard let target = Self.findNode(in: tree, id: id) else { return }
+        let wrapped: ShapeNode = .not(id: UUID(), child: target)
+        conditionsTree = tree.replacing(id: id, with: wrapped) ?? tree
+    }
+
+    /// Wraps two sibling leaves (the target + the next sibling after
+    /// it under the same parent) in a fresh `OR` node. The composer
+    /// uses this for the "Combinar con siguiente como O" action so
+    /// the user can express `A AND (B OR C)` by selecting B then
+    /// merging C in. No-op when the target has no next sibling or
+    /// the tree isn't in Avanzado mode.
+    public mutating func wrapSiblingsAsOR(headId: UUID) {
+        guard let tree = conditionsTree else { return }
+        guard let (parentId, siblings) = Self.findSiblings(in: tree, of: headId) else { return }
+        guard let headIdx = siblings.firstIndex(where: { $0.id == headId }) else { return }
+        guard headIdx + 1 < siblings.count else { return }
+        let next = siblings[headIdx + 1]
+        let head = siblings[headIdx]
+        var newSiblings = siblings
+        newSiblings.removeSubrange(headIdx...(headIdx + 1))
+        let orNode: ShapeNode = .or(id: UUID(), children: [head, next])
+        newSiblings.insert(orNode, at: headIdx)
+        // Replace the parent with the rebuilt siblings list.
+        guard let parentNode = Self.findNode(in: tree, id: parentId) else { return }
+        let rebuiltParent: ShapeNode
+        switch parentNode {
+        case .and(let id, _): rebuiltParent = .and(id: id, children: newSiblings)
+        case .or(let id, _):  rebuiltParent = .or(id: id, children: newSiblings)
+        case .not, .leaf:     return  // siblings only exist under AND/OR
+        }
+        conditionsTree = tree.replacing(id: parentId, with: rebuiltParent) ?? tree
+    }
+
+    /// Removes the op wrapping at `nodeId` and lifts its children one
+    /// level up (under the wrapper's parent). For `NOT`, the single
+    /// inner child replaces the NOT in place. For `AND`/`OR`, the
+    /// children inline into the parent's children. No-op on leaves.
+    public mutating func unwrap(nodeId: UUID) {
+        guard let tree = conditionsTree else { return }
+        guard let node = Self.findNode(in: tree, id: nodeId) else { return }
+        switch node {
+        case .leaf:
+            return
+        case .not(_, let child):
+            conditionsTree = tree.replacing(id: nodeId, with: child) ?? tree
+        case .and(_, let children), .or(_, let children):
+            // Replace the wrapper with its children inline. If the
+            // wrapper is the root, demote to a fresh AND wrapping the
+            // children (the root must be a single node).
+            if tree.id == nodeId {
+                conditionsTree = .and(id: UUID(), children: children)
+                return
+            }
+            guard let (parentId, siblings) = Self.findSiblings(in: tree, of: nodeId) else { return }
+            guard let idx = siblings.firstIndex(where: { $0.id == nodeId }) else { return }
+            var newSiblings = siblings
+            newSiblings.remove(at: idx)
+            newSiblings.insert(contentsOf: children, at: idx)
+            guard let parentNode = Self.findNode(in: tree, id: parentId) else { return }
+            let rebuiltParent: ShapeNode
+            switch parentNode {
+            case .and(let id, _): rebuiltParent = .and(id: id, children: newSiblings)
+            case .or(let id, _):  rebuiltParent = .or(id: id, children: newSiblings)
+            case .not, .leaf:     return
+            }
+            conditionsTree = tree.replacing(id: parentId, with: rebuiltParent) ?? tree
+        }
+    }
+
+    /// Toggle `AND ⇄ OR` on the op node with the given id. Composer
+    /// surface for "Cambiar agrupación: Y ⇄ O". No-op on leaves /
+    /// NOT.
+    public mutating func toggleAndOr(nodeId: UUID) {
+        guard let tree = conditionsTree else { return }
+        guard let node = Self.findNode(in: tree, id: nodeId) else { return }
+        let swapped: ShapeNode
+        switch node {
+        case .and(let id, let cs): swapped = .or(id: id, children: cs)
+        case .or(let id, let cs):  swapped = .and(id: id, children: cs)
+        case .not, .leaf:          return
+        }
+        conditionsTree = tree.replacing(id: nodeId, with: swapped) ?? tree
+    }
+
+    /// Lifts the flat `conditions` list into a fresh `.and([leaves])`
+    /// tree and writes it to `conditionsTree`. Idempotent — calling
+    /// again on a draft already in Avanzado mode is a no-op.
+    public mutating func enterAdvancedMode() {
+        guard conditionsTree == nil else { return }
+        conditionsTree = .and(conditions)
+    }
+
+    /// Drops the tree and reverts to the flat `conditions` list. The
+    /// caller MUST verify `conditionsTree?.isFlatAnd == true` first
+    /// (or accept the structure loss) — this method just flattens
+    /// `allLeaves` and clears the tree.
+    public mutating func exitAdvancedMode() {
+        guard let tree = conditionsTree else { return }
+        conditions = tree.allLeaves
+        conditionsTree = nil
+    }
+
+    // MARK: Tree helpers (static — pure functions, easy to unit-test)
+
+    private static func appendingLeafAtRoot(_ tree: ShapeNode, leaf: ShapeInstance) -> ShapeNode {
+        switch tree {
+        case .and(let id, let cs):
+            return .and(id: id, children: cs + [.leaf(leaf)])
+        default:
+            // Root isn't an AND (rare — user wrapped everything in OR
+            // or NOT). Demote to a fresh AND containing the old root
+            // plus the new leaf so the leaf shows up somewhere
+            // predictable.
+            return .and(id: UUID(), children: [tree, .leaf(leaf)])
+        }
+    }
+
+    private static func findNode(in tree: ShapeNode, id targetId: UUID) -> ShapeNode? {
+        if tree.id == targetId { return tree }
+        switch tree {
+        case .leaf:
+            return nil
+        case .and(_, let cs), .or(_, let cs):
+            for child in cs {
+                if let hit = findNode(in: child, id: targetId) { return hit }
+            }
+            return nil
+        case .not(_, let child):
+            return findNode(in: child, id: targetId)
+        }
+    }
+
+    /// Returns the parent's id + the parent's children array if
+    /// `childId` sits directly under an AND/OR. Returns nil for the
+    /// root, for nodes under NOT (which only has one child), or for
+    /// ids not present in the tree.
+    private static func findSiblings(in tree: ShapeNode, of childId: UUID) -> (UUID, [ShapeNode])? {
+        switch tree {
+        case .leaf:
+            return nil
+        case .and(let id, let cs), .or(let id, let cs):
+            if cs.contains(where: { $0.id == childId }) {
+                return (id, cs)
+            }
+            for child in cs {
+                if let hit = findSiblings(in: child, of: childId) { return hit }
+            }
+            return nil
+        case .not(_, let child):
+            return findSiblings(in: child, of: childId)
+        }
     }
 
     public mutating func addConsequence(_ shapeId: String, config: JSONConfig = .object([:])) {
@@ -297,6 +487,11 @@ extension RuleDraft {
             ShapeInstance(shapeId: c.type.rawString, config: c.config)
         }
         let scope = scopeFrom(rule: rule)
+        // §22.4: preserve the tree when the rule was published with
+        // OR/NOT structure (rule.conditionsTree is non-nil). For
+        // pre-§22.4 rules (flat array on wire), `conditionsTree`
+        // stays nil so the composer opens in Simple mode.
+        let tree = treeFrom(rule: rule, fallbackLeaves: conditions)
         return RuleDraft(
             name: rule.name,
             scope: scope,
@@ -305,8 +500,49 @@ extension RuleDraft {
             consequences: consequences,
             exceptions: exceptions,
             membershipFilter: rule.membershipId,
-            slug: rule.slug
+            slug: rule.slug,
+            conditionsTree: tree
         )
+    }
+
+    /// Maps a `GroupRule`'s `conditionsTree` (engine-side ConditionNode
+    /// of `RuleCondition` leaves) to the composer's `ShapeNode` (with
+    /// `ShapeInstance` leaves). Returns nil when the rule was
+    /// published as a flat array (no tree on the wire) — composer
+    /// opens in Simple mode in that case.
+    private static func treeFrom(rule: GroupRule, fallbackLeaves: [ShapeInstance]) -> ShapeNode? {
+        guard let conditionTree = rule.conditionsTree else { return nil }
+        // Use the same leaf identities the flat `conditions` view
+        // exposes so the composer's edit handles match the rows.
+        var leafCursor = fallbackLeaves.makeIterator()
+        return convert(conditionTree, nextLeaf: { leafCursor.next() })
+    }
+
+    private static func convert(
+        _ node: ConditionNode,
+        nextLeaf: () -> ShapeInstance?
+    ) -> ShapeNode {
+        switch node {
+        case .leaf:
+            // The flat `fallbackLeaves` mirrors the pre-order leaves
+            // of the same tree, so the next iterator value is the
+            // ShapeInstance corresponding to this leaf. Fallback to a
+            // fresh ShapeInstance if the iterator ran out (defensive
+            // — only happens on stale data).
+            if let instance = nextLeaf() {
+                return .leaf(instance)
+            }
+            if case .leaf(let c) = node {
+                return .leaf(ShapeInstance(shapeId: c.type.rawString, config: c.config))
+            }
+            return .leaf(ShapeInstance(shapeId: "alwaysTrue"))
+        case .and(let children):
+            return .and(id: UUID(), children: children.map { convert($0, nextLeaf: nextLeaf) })
+        case .or(let children):
+            return .or(id: UUID(), children: children.map { convert($0, nextLeaf: nextLeaf) })
+        case .not(let child):
+            return .not(id: UUID(), child: convert(child, nextLeaf: nextLeaf))
+        }
     }
 
     private static func reconstructConfig(from cfg: GroupRule.ConsequenceEnvelope.Config?) -> JSONConfig {
