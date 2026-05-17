@@ -92,3 +92,37 @@ Después de aplicar este documento, el founder puede afirmar:
 > *"Cualquier resource del grupo tiene status, description, history, rules y voting. Cualquier resource económicamente relevante (todos menos `right`) además tiene ledger y money. Si un resource no tiene una capability, es porque no le aplica semánticamente, no por accidente histórico."*
 
 Esa es la base sobre la que la Fase 2 (grafo polimórfico `resource_links`) y Fase 3 (superficies agregadas del grupo) pueden construirse sin más debates ontológicos.
+
+---
+
+## §8 — Capability ≠ Surface (regla cardinal)
+
+Tener una capability **no obliga** a renderizar una sección UI para ella. Encontrado al cierre de Fase 1: la cap `valuation` está sancionada para fund pero no hay `FundValuationSection`. La cap `voting` es universal pero no hay `VotingSectionView`. Eso **no es bug** — es la consecuencia natural de separar potencial estructural de superficie visual.
+
+**Regla**:
+
+> *Una capability declara que el resource puede, doctrinalmente, sostener cierta función. Una surface UI es el render concreto de esa función. Las dos evolucionan en distinta velocidad. Es válido tener cap activa sin surface, y la inversa (surface que sólo aparece bajo data específica) también.*
+
+**Implicancias**:
+1. Un resource creado puede tener 8 caps en `resource_capabilities` y mostrar 3 sections en el detalle. Normal.
+2. Agregar una surface después (ej: `FundValuationSection`) no requiere migración de caps — los caps ya están.
+3. **No** justifica crear caps de más "por si acaso". Cap nueva = compromiso doctrinal (§6).
+4. **No** justifica esconder caps que ya están — la falta de surface es transitoria, no doctrinal.
+
+Esta regla es la que permite a Ruul evolucionar incrementalmente sin sobrediseñar UI ni subdiseñar el modelo.
+
+---
+
+## §9 — Deferred backlog (Phase 1.1 cleanup)
+
+Los siguientes items son consecuencia natural de Fase 1 pero **NO** se ejecutan ahora. Quedan documentados para retomar después de Fase 2 (`resource_links`). Hacerlos prematuramente abre el riesgo "ya que estamos" — alcance creciendo en paralelo a cambios estructurales mayores.
+
+| # | Item | Motivo de diferir |
+|---|---|---|
+| 1 | `ActivitySectionView` gate `caps.contains("activity")` → `caps.contains("history")` | "activity" no existe como cap; eliminarlo confirma `activity = history` per §2. Cleanup de doctrina, no de feature. |
+| 2 | `FundValuationSection` (surface para valuation cap en fund) | Cap ya está, surface no — §8 admite el desfase. Crearlo cuando un caso de uso lo demande. |
+| 3 | `VotingSectionView` universal | Voting cap es Tier 0 desde hace tiempo pero no tiene surface dedicada. Mismo principio §8. |
+| 4 | Normalización de copy en rule shapes que asumen lenguaje event-flavored | Cosmético; sale después de Fase 2 cuando el grafo permita rule shapes cross-resource. |
+| 5 | Empty-state polish en Money/Rules cuando resource recién creado | Las cards funcionan; el polish es estética. |
+
+**Promesa**: estos items se retoman como "Phase 1.1 cleanup" después de cerrar Fase 2. No antes.
