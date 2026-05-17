@@ -18,9 +18,40 @@ public struct GroupSwitcherSheet: View {
     public var onCreateGroup: () -> Void
     public var onJoinGroup: () -> Void
 
+    /// Pinned group IDs persistidos en UserDefaults. Cross-device sync
+    /// es nice-to-have V2 (no critical state) — local first-write wins.
+    @AppStorage("ruul.switcher.pinnedGroupIds") private var pinnedIdsCSV: String = ""
+
     public init(onCreateGroup: @escaping () -> Void, onJoinGroup: @escaping () -> Void) {
         self.onCreateGroup = onCreateGroup
         self.onJoinGroup = onJoinGroup
+    }
+
+    private var pinnedIds: Set<UUID> {
+        Set(pinnedIdsCSV.split(separator: ",").compactMap { UUID(uuidString: String($0)) })
+    }
+
+    /// Pinned groups first (in their original order), then unpinned.
+    /// Keeps stable ordering within each bucket.
+    private var sortedGroups: [RuulCore.Group] {
+        let pinned = pinnedIds
+        return app.groups.sorted { a, b in
+            let aP = pinned.contains(a.id)
+            let bP = pinned.contains(b.id)
+            if aP != bP { return aP }
+            return false  // stable
+        }
+    }
+
+    private func togglePin(_ groupId: UUID) {
+        var current = pinnedIds
+        if current.contains(groupId) {
+            current.remove(groupId)
+        } else {
+            current.insert(groupId)
+        }
+        pinnedIdsCSV = current.map { $0.uuidString }.joined(separator: ",")
+        RuulHaptic.groupSwitch.trigger()
     }
 
     public var body: some View {
@@ -42,7 +73,7 @@ public struct GroupSwitcherSheet: View {
     private var groupsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             RuulListSectionHeader("TUS GRUPOS", count: app.groups.count)
-            RuulSeparatedRows(items: app.groups) { group in
+            RuulSeparatedRows(items: sortedGroups) { group in
                 groupRow(group)
             }
         }
@@ -59,6 +90,7 @@ public struct GroupSwitcherSheet: View {
 
     private func groupRow(_ group: RuulCore.Group) -> some View {
         let isActive = app.activeGroup?.id == group.id
+        let isPinned = pinnedIds.contains(group.id)
         return Button {
             // DS v3 §4.3: haptic feedback al cambiar grupo activo. Solo
             // dispara cuando hay cambio real (idempotente si ya es el
@@ -72,10 +104,18 @@ public struct GroupSwitcherSheet: View {
             HStack(spacing: RuulSpacing.md) {
                 RuulGroupAvatar(group: group, size: .lg)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(group.name)
-                        .ruulTextStyle(RuulTypography.body)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .lineLimit(1)
+                    HStack(spacing: RuulSpacing.xs) {
+                        Text(group.name)
+                            .ruulTextStyle(RuulTypography.body)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                            .lineLimit(1)
+                        if isPinned {
+                            Image(systemName: "pin.fill")
+                                .ruulTextStyle(RuulTypography.caption)
+                                .foregroundStyle(Color.ruulAccent)
+                                .accessibilityLabel("Fijado")
+                        }
+                    }
                     Text(group.eventVocabulary.capitalized)
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
@@ -98,6 +138,23 @@ public struct GroupSwitcherSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isActive ? "\(group.name), grupo activo" : "Cambiar a \(group.name)")
+        .swipeActions(edge: .leading) {
+            Button {
+                togglePin(group.id)
+            } label: {
+                Label(isPinned ? "Desfijar" : "Fijar",
+                      systemImage: isPinned ? "pin.slash.fill" : "pin.fill")
+            }
+            .tint(Color.ruulAccent)
+        }
+        .contextMenu {
+            Button {
+                togglePin(group.id)
+            } label: {
+                Label(isPinned ? "Desfijar grupo" : "Fijar al inicio",
+                      systemImage: isPinned ? "pin.slash" : "pin")
+            }
+        }
     }
 
     private func actionRow(_ action: SwitcherAction) -> some View {
