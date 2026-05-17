@@ -601,7 +601,10 @@ export async function runRulesForEvent(
         if (resolvedTargets.length === 0) {
           // Selector evaluated to empty set (role with no holders, host
           // missing). Log and continue — not a failure, just a no-op.
-          logStructured("warn", "consequence target resolved to empty set", {
+          logStructured({
+            level: "warn",
+            code: "rule_engine.consequence_target_empty",
+            message: "consequence target resolved to empty set",
             rule_id: rule.id,
             consequence_type: cons.type,
             target_selector: cons.target ?? "$trigger.actor",
@@ -679,7 +682,10 @@ async function resolveConsequenceTargets(
   // validates the selector vocabulary so this branch shouldn't fire
   // for any rule that landed via publish_rule_composition or
   // bump_rule_version (both validate via validate_consequence_target).
-  logStructured("warn", "unknown consequence target selector, falling back to $trigger.actor", {
+  logStructured({
+    level: "warn",
+    code: "rule_engine.consequence_target_unknown_selector",
+    message: "unknown consequence target selector, falling back to $trigger.actor",
     rule_id: rule.id,
     consequence_type: cons.type,
     selector,

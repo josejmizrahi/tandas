@@ -64,7 +64,7 @@ public struct ResourceDraft: Sendable {
     /// Rules the user wants seeded along with the resource. Builder
     /// creates each via the rules pipeline scoped to the resource (or
     /// its series, if any).
-    public let initialRules: [RuleDraft]
+    public let initialRules: [OnboardingRuleDraft]
 
     public init(
         groupId: UUID,
@@ -73,7 +73,7 @@ public struct ResourceDraft: Sendable {
         enabledCapabilities: [String] = [],
         capabilityConfigs: [String: JSONConfig] = [:],
         seriesPattern: JSONConfig? = nil,
-        initialRules: [RuleDraft] = []
+        initialRules: [OnboardingRuleDraft] = []
     ) {
         self.groupId = groupId
         self.resourceType = resourceType

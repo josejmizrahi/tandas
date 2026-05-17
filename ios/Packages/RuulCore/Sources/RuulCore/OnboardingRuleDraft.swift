@@ -5,7 +5,7 @@ import Foundation
 /// onto the platform shape — `slug`, `trigger`, `conditions`, and
 /// `consequences` are now stored fields and the LiveRuleRepository sends
 /// them straight to `create_initial_rule`.
-public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
+public struct OnboardingRuleDraft: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
     /// Stable cross-group identifier (e.g. `dinner_late_arrival`). Persisted
     /// in `rules.slug`. The 5 dinner-template values are defined under
@@ -76,9 +76,9 @@ public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
 /// Mirrors `templates.config.defaultRules` (the canonical jsonb seeded by
 /// migration 00038) and `seed_dinner_template_rules`. Consequences match
 /// the values the rule engine expects: rule 1 escalating, rules 2–5 flat.
-public extension RuleDraft {
-    static let defaults: [RuleDraft] = [
-        RuleDraft(
+public extension OnboardingRuleDraft {
+    static let defaults: [OnboardingRuleDraft] = [
+        OnboardingRuleDraft(
             slug: DinnerRecurringTemplate.RuleSlug.lateArrival,
             name: "Llegar tarde",
             description: "$200 base + $50 por cada 30 min después.",
@@ -101,7 +101,7 @@ public extension RuleDraft {
                 )
             ]
         ),
-        RuleDraft(
+        OnboardingRuleDraft(
             slug: DinnerRecurringTemplate.RuleSlug.noResponse,
             name: "No confirmar antes del día anterior",
             description: "Si no confirmas asistencia antes de las 20:00 del día anterior.",
@@ -120,7 +120,7 @@ public extension RuleDraft {
                 )
             ]
         ),
-        RuleDraft(
+        OnboardingRuleDraft(
             slug: DinnerRecurringTemplate.RuleSlug.sameDayCancel,
             name: "Cancelar el mismo día",
             description: "Si cancelas tu asistencia el día del evento.",
@@ -134,7 +134,7 @@ public extension RuleDraft {
                 )
             ]
         ),
-        RuleDraft(
+        OnboardingRuleDraft(
             slug: DinnerRecurringTemplate.RuleSlug.noShow,
             name: "No-show",
             description: "Si confirmaste y no llegaste sin avisar.",
@@ -157,7 +157,7 @@ public extension RuleDraft {
                 )
             ]
         ),
-        RuleDraft(
+        OnboardingRuleDraft(
             slug: DinnerRecurringTemplate.RuleSlug.hostNoMenu,
             name: "Anfitrión sin avisar el menú",
             description: "Si eres host y no avisas el menú con 24h de anticipación.",
