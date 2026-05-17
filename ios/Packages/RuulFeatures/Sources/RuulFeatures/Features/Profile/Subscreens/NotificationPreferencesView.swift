@@ -13,41 +13,50 @@ public struct NotificationPreferencesView: View {
 
     public init() {}
 
-    /// Beta-1 notification types (matches BE emit list).
-    private static let types: [(key: String, label: String, icon: String)] = [
-        ("voteOpened",           "Votaciones abiertas",     "hand.raised"),
-        ("voteResolved",         "Resultados de voto",      "checkmark.seal"),
-        ("fineOfficialized",     "Multas nuevas",           "creditcard"),
-        ("eventCreated",         "Eventos nuevos",          "calendar.badge.plus"),
-        ("rsvpDeadlinePassed",   "Recordatorios de RSVP",   "clock"),
-        ("expenseReversed",      "Gastos reversados",       "arrow.uturn.backward.circle")
+    private struct PrefType {
+        let key: String
+        let label: String
+        let icon: String
+    }
+
+    private struct PrefGroup {
+        let title: String
+        let types: [PrefType]
+    }
+
+    /// Beta-1 notification types agrupados por dominio (UXJourney P1 —
+    /// antes era flat list de 6, ahora 3 secciones temáticas con header
+    /// tracked uppercase consistente con el rest of Profile/Group).
+    private static let groups: [PrefGroup] = [
+        PrefGroup(title: "VOTACIONES", types: [
+            PrefType(key: "voteOpened",   label: "Votaciones abiertas", icon: "hand.raised"),
+            PrefType(key: "voteResolved", label: "Resultados de voto",  icon: "checkmark.seal")
+        ]),
+        PrefGroup(title: "MULTAS Y DINERO", types: [
+            PrefType(key: "fineOfficialized", label: "Multas nuevas",      icon: "creditcard"),
+            PrefType(key: "expenseReversed",  label: "Gastos reversados",  icon: "arrow.uturn.backward.circle")
+        ]),
+        PrefGroup(title: "EVENTOS", types: [
+            PrefType(key: "eventCreated",       label: "Eventos nuevos",       icon: "calendar.badge.plus"),
+            PrefType(key: "rsvpDeadlinePassed", label: "Recordatorios de RSVP", icon: "clock")
+        ])
     ]
+
+    private static let allTypes: [PrefType] = groups.flatMap(\.types)
 
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                     Text("Activa o desactiva tipos de aviso. Tu dispositivo recibirá solo los tipos activos.")
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextSecondary)
                     if isLoading {
                         ProgressView()
                     } else {
-                        VStack(spacing: 0) {
-                            ForEach(Self.types, id: \.key) { entry in
-                                prefRow(entry)
-                                if entry.key != Self.types.last?.key {
-                                    Divider()
-                                        .background(Color.ruulSeparator)
-                                        .padding(.leading, 56)
-                                }
-                            }
+                        ForEach(Self.groups, id: \.title) { group in
+                            prefGroupSection(group)
                         }
-                        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                                .stroke(Color.ruulSeparator, lineWidth: 0.5)
-                        )
                     }
                     if let msg = errorMessage {
                         Text(msg)
@@ -63,7 +72,32 @@ public struct NotificationPreferencesView: View {
         }
     }
 
-    private func prefRow(_ entry: (key: String, label: String, icon: String)) -> some View {
+    @ViewBuilder
+    private func prefGroupSection(_ group: PrefGroup) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            Text(group.title)
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.leading, RuulSpacing.xxs)
+            VStack(spacing: 0) {
+                ForEach(group.types, id: \.key) { entry in
+                    prefRow(entry)
+                    if entry.key != group.types.last?.key {
+                        Divider()
+                            .background(Color.ruulSeparator)
+                            .padding(.leading, 56)
+                    }
+                }
+            }
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg)
+                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+            )
+        }
+    }
+
+    private func prefRow(_ entry: PrefType) -> some View {
         let isOn = prefs[entry.key] ?? true  // default ON
         return HStack {
             Image(systemName: entry.icon)
@@ -88,11 +122,11 @@ public struct NotificationPreferencesView: View {
         do {
             guard let repo = app.notificationPreferenceRepo else {
                 // Repo not wired (mock mode); show defaults.
-                prefs = Dictionary(uniqueKeysWithValues: Self.types.map { ($0.key, true) })
+                prefs = Dictionary(uniqueKeysWithValues: Self.allTypes.map { ($0.key, true) })
                 return
             }
             let stored = try await repo.loadMine()
-            var map: [String: Bool] = Dictionary(uniqueKeysWithValues: Self.types.map { ($0.key, true) })
+            var map: [String: Bool] = Dictionary(uniqueKeysWithValues: Self.allTypes.map { ($0.key, true) })
             for p in stored { map[p.notificationType] = p.enabled }
             prefs = map
         } catch {

@@ -442,10 +442,20 @@ public struct ResourceWizardSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 // Beta 1 W2-C1: "capacidades" → "lo que activaste arriba" (drops the leaked model term).
-                Text("Estos acuerdos van con lo que activaste arriba. Apaga lo que no quieras.")
-                    .ruulTextStyle(RuulTypography.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .padding(.leading, RuulSpacing.xxs)
+                // UXJourney P1: agrega explicación de la fuente. Antes el
+                // usuario veía "Acuerdos sugeridos" sin saber de dónde
+                // venían (template del grupo? módulo? hardcoded?). Ahora
+                // el copy indica que son template-defaults editables.
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                    Text("Estos acuerdos van con lo que activaste arriba.")
+                        .ruulTextStyle(RuulTypography.footnote)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                    Text("Vienen del template del grupo (\(coordinator.group.eventVocabulary)). Puedes apagar los que no apliquen — los activos crean reglas que el grupo podrá modificar después.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.leading, RuulSpacing.xxs)
                 rulesByCapability
                 RuulButton(
                     rulesAdvanceLabel,
