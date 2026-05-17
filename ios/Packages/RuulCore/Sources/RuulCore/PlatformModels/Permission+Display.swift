@@ -11,10 +11,14 @@ public extension Permission {
         case .modifyMembers:    return "Editar miembros"
         case .assignRoles:      return "Asignar roles"
         case .removeMember:     return "Echar miembros"
+        case .issueFine:        return "Emitir multas"
         case .voidFine:         return "Anular multas"
+        case .markFinePaid:     return "Marcar multas pagadas"
         case .closeAppeal:      return "Cerrar apelaciones"
         case .createVotes:      return "Iniciar votaciones"
         case .castVote:         return "Votar"
+        case .manageEvents:     return "Administrar eventos"
+        case .manageModules:    return "Activar módulos"
 
         case .assignSlot:       return "Asignar cupos"
         case .bookSlot:         return "Reservar cupos"
@@ -46,10 +50,14 @@ public extension Permission {
         case .modifyMembers:    return "Cambiar nombre o foto de miembros."
         case .assignRoles:      return "Otorgar o quitar roles dentro del grupo."
         case .removeMember:     return "Sacar a alguien del grupo."
+        case .issueFine:        return "Crear una multa manual contra un miembro."
         case .voidFine:         return "Cancelar una multa después de emitida."
+        case .markFinePaid:     return "Marcar como pagada la multa de otro miembro."
         case .closeAppeal:      return "Resolver una apelación de multa."
         case .createVotes:      return "Abrir una votación de cualquier tipo."
         case .castVote:         return "Emitir un voto en votaciones abiertas."
+        case .manageEvents:     return "Cerrar, cancelar o editar cualquier evento."
+        case .manageModules:    return "Activar o desactivar módulos del grupo."
 
         case .assignSlot:       return "Otorgar cupos a miembros (palco, casa…)."
         case .bookSlot:         return "Reservar un cupo para sí."
@@ -76,9 +84,10 @@ public extension Permission {
     var category: Category {
         switch self {
         case .modifyGovernance, .modifyRules, .modifyMembers,
-             .assignRoles, .removeMember, .createVotes, .castVote:
+             .assignRoles, .removeMember, .createVotes, .castVote,
+             .manageEvents, .manageModules:
             return .governance
-        case .voidFine, .closeAppeal:
+        case .issueFine, .voidFine, .markFinePaid, .closeAppeal:
             return .fines
         case .assignSlot, .bookSlot, .approveSlotSwap:
             return .slots
