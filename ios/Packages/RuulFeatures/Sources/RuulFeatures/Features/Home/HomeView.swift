@@ -57,14 +57,13 @@ public struct HomeView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.s8) {
-                header
                 pendingsSection
                 upcomingFeedSection
                 groupMemorySection
                 pastEventsLink
             }
             .padding(.horizontal, RuulSpacing.lg)
-            .padding(.top, RuulSpacing.xs)
+            .padding(.top, RuulSpacing.md)
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
@@ -77,6 +76,9 @@ public struct HomeView: View {
             _ = await (h, i, m)
         }
         .ruulAmbientScreen(palette: nil)
+        .toolbar { homeToolbar }
+        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             async let h: Void = coordinator.refresh()
             async let i: Void? = inboxCoordinator?.refresh()
@@ -130,67 +132,49 @@ public struct HomeView: View {
         )
     }
 
-    // MARK: - Header — Apple Sports style: tiny tracking-uppercase meta +
-    // huge group name in display weight + settings button (top-right).
+    // MARK: - Toolbar — branding centered, group + actions on the sides.
+    //
+    // Previously the home rendered an in-body header (group switcher pill +
+    // greeting + icon row, ~140pt tall) on top of the scroll content. That
+    // ate vertical space without paying for it; the same affordances fit in
+    // the system navigation bar (~44pt). Layout:
+    //   .topBarLeading   — group avatar (tap → switcher)
+    //   .principal       — "ruul" wordmark centered
+    //   .topBarTrailing  — invite + settings icons
+    //
+    // The toolbar shares iOS 26's Liquid Glass treatment via
+    // `.toolbarBackground` and tucks under tabBarMinimizeBehavior — no
+    // hand-rolled padding needed.
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            HStack(alignment: .center) {
-                if let group = app.activeGroup {
-                    RuulGroupSwitcher(activeGroup: group, onTap: onSwitchGroup)
-                } else {
-                    Text("Inicio")
-                        .ruulTextStyle(RuulTypography.title)
-                        .foregroundStyle(Color.ruulTextPrimary)
+    @ToolbarContentBuilder
+    private var homeToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            if let group = app.activeGroup {
+                Button(action: onSwitchGroup) {
+                    RuulGroupAvatar(group: group, size: .lg)
                 }
-                Spacer()
-                HStack(spacing: RuulSpacing.xs) {
-                    if let onInvitePeople {
-                        headerIconButton(
-                            systemName: "person.badge.plus",
-                            accessibilityLabel: "Invitar gente",
-                            action: onInvitePeople
-                        )
-                    }
-                    headerIconButton(
-                        systemName: "gearshape",
-                        accessibilityLabel: "Ajustes"
-                    ) {
-                        router.selectTab(.profile)
-                    }
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cambiar grupo. Actual: \(group.name).")
             }
-            Text(greeting)
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
-                .foregroundStyle(Color.ruulTextSecondary)
         }
-        .padding(.top, RuulSpacing.md)
-    }
-
-    private func headerIconButton(
-        systemName: String,
-        accessibilityLabel: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .ruulTextStyle(RuulTypography.headlineMedium)
+        ToolbarItem(placement: .principal) {
+            Text("ruul")
+                .font(.custom("InterVariable", size: 20).weight(.bold))
+                .tracking(-0.4)
                 .foregroundStyle(Color.ruulTextPrimary)
-                .frame(width: 40, height: 40)
-                .background(Color.ruulSurface, in: Circle())
-                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
-                .accessibilityHidden(true)
+                .accessibilityAddTraits(.isHeader)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: .now)
-        switch hour {
-        case 5..<12:  return "BUENOS DÍAS"
-        case 12..<19: return "BUENAS TARDES"
-        default:      return "BUENAS NOCHES"
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if let onInvitePeople {
+                Button(action: onInvitePeople) {
+                    Image(systemName: "person.badge.plus")
+                }
+                .accessibilityLabel("Invitar gente")
+            }
+            Button { router.selectTab(.profile) } label: {
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel("Ajustes")
         }
     }
 
