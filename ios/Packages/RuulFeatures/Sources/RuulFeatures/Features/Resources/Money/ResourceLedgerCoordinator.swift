@@ -131,10 +131,23 @@ public final class ResourceLedgerCoordinator {
         isLoading = true
         error = nil
         defer { isLoading = false }
+        // Load entries + members INDEPENDENTLY. A failure in one must not
+        // wipe the other — the prior do { try await entriesTask; try await
+        // membersTask } chain skipped the members assignment when entries
+        // threw, so the counterparty picker rendered as "No hay otros
+        // miembros" even in groups with 3 active peers. We still surface
+        // a banner if EITHER tail fails, but neither blocks the other.
+        async let entriesTask = ledgerRepo.listForResource(resourceId, limit: 200)
+        async let membersTask = groupsRepo.membersWithProfiles(of: groupId)
+
+        var failures: [String] = []
         do {
-            async let entriesTask = ledgerRepo.listForResource(resourceId, limit: 200)
-            async let membersTask = groupsRepo.membersWithProfiles(of: groupId)
             entries = try await entriesTask
+        } catch {
+            log.warning("load entries failed: \(error.localizedDescription)")
+            failures.append("movimientos")
+        }
+        do {
             members = try await membersTask.sorted { lhs, rhs in
                 if lhs.member.isFounder != rhs.member.isFounder {
                     return lhs.member.isFounder
@@ -142,8 +155,11 @@ public final class ResourceLedgerCoordinator {
                 return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
             }
         } catch {
-            log.warning("load failed: \(error.localizedDescription)")
-            self.error = "No pudimos cargar los movimientos."
+            log.warning("load members failed: \(error.localizedDescription)")
+            failures.append("miembros")
+        }
+        if !failures.isEmpty {
+            self.error = "No pudimos cargar los \(failures.joined(separator: " ni los "))."
         }
     }
 

@@ -122,13 +122,35 @@ struct AddLedgerEntrySheet: View {
             : "¿A QUIÉN LE PAGASTE?"
     }
 
+    private var emptyCounterpartyMessage: String {
+        if coordinator.isLoading {
+            return "Cargando miembros…"
+        }
+        // Reaches this branch only when the load completed AND the filter
+        // returned zero. For .settlement the filter drops the current
+        // user, so 0 ↔ you're the only active member. For .payout the
+        // filter doesn't drop you, so 0 ↔ no active members at all
+        // (which shouldn't be possible if you're viewing the sheet, but
+        // we keep the wording generic just in case).
+        if coordinator.formKind == .settlement {
+            return "Sos el único miembro activo del grupo. Invitá a alguien para registrar pagos a miembros."
+        }
+        return "No hay miembros activos en el grupo."
+    }
+
     private var counterpartySection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(counterpartySectionLabel)
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             if coordinator.counterpartyOptions.isEmpty {
-                Text("No hay otros miembros en este grupo.")
+                // Three reasons the list is empty: (1) still loading,
+                // (2) the group really has only one active member,
+                // (3) the load() request failed. The error banner above
+                // surfaces (3); here we distinguish (1) vs (2) so users
+                // in a multi-member group don't think the app forgot
+                // their friends.
+                Text(emptyCounterpartyMessage)
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             } else {
