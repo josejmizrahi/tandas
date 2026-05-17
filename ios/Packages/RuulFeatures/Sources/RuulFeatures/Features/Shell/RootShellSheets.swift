@@ -811,7 +811,12 @@ private struct GroupHomeSheetContent: View {
     }
 
     var body: some View {
-        let coord = GroupHomeCoordinator(groupId: group.id, groupsRepo: app.groupsRepo)
+        let coord = GroupHomeCoordinator(
+            groupId: group.id,
+            groupsRepo: app.groupsRepo,
+            groupSummaryRepo: app.groupSummaryRepo,
+            actorUserId: app.session?.user.id
+        )
         NavigationStack(path: $path) {
             GroupHomeView(
                 coordinator: coord,

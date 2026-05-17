@@ -9,6 +9,8 @@ public final class GroupHomeCoordinator {
     public let groupId: UUID
     private let groupsRepo: any GroupsRepository
     private let moduleRegistry: ModuleRegistry
+    private let groupSummaryRepo: (any GroupSummaryRepository)?
+    private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
     public var group: Group?
@@ -21,6 +23,9 @@ public final class GroupHomeCoordinator {
     public var activeModules: [GroupModule] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
+
+    /// Aggregated group stats — nil until the first successful refresh.
+    public var summary: GroupSummary?
 
     public var isCurrentUserAdmin: Bool { myRole == "founder" }
 
@@ -46,11 +51,15 @@ public final class GroupHomeCoordinator {
     public init(
         groupId: UUID,
         groupsRepo: any GroupsRepository,
-        moduleRegistry: ModuleRegistry = .v1Fallback
+        moduleRegistry: ModuleRegistry = .v1Fallback,
+        groupSummaryRepo: (any GroupSummaryRepository)? = nil,
+        actorUserId: UUID? = nil
     ) {
         self.groupId = groupId
         self.groupsRepo = groupsRepo
         self.moduleRegistry = moduleRegistry
+        self.groupSummaryRepo = groupSummaryRepo
+        self.actorUserId = actorUserId
     }
 
     public func refresh() async {
@@ -58,7 +67,10 @@ public final class GroupHomeCoordinator {
         error = nil
         defer { isLoading = false }
         do {
-            let detail = try await groupsRepo.get(groupId)
+            async let detailTask = groupsRepo.get(groupId)
+            async let summaryTask: Void = loadSummary()
+            let detail = try await detailTask
+            _ = await summaryTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -71,6 +83,17 @@ public final class GroupHomeCoordinator {
     }
 
     public func clearError() { error = nil }
+
+    // MARK: - Summary
+
+    public func loadSummary() async {
+        guard let repo = groupSummaryRepo, let userId = actorUserId else { return }
+        do {
+            self.summary = try await repo.summary(groupId: groupId, userId: userId)
+        } catch {
+            log.warning("group summary load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
 
     private func resolveModules(slugs: [String]) -> [GroupModule] {
         slugs.compactMap { slug in moduleRegistry.modules.first(where: { $0.id == slug }) }
