@@ -30,6 +30,12 @@ public struct GroupHomeView: View {
     public var onConfirmLeave: (() -> Void)?
     public var onOpenRoles: (() -> Void)?
 
+    // Pass 2 — dashboard callbacks
+    public var onOpenMyLedger: (() -> Void)?
+    public var onOpenMyFines: (() -> Void)?
+    public var onOpenVotes: (() -> Void)?
+    public var onOpenInbox: (() -> Void)?
+
     public init(
         coordinator: GroupHomeCoordinator,
         onOpenMembersList: (() -> Void)? = nil,
@@ -45,7 +51,11 @@ public struct GroupHomeView: View {
         onRotateCode: (() -> Void)? = nil,
         onInviteMembers: (() -> Void)? = nil,
         onConfirmLeave: (() -> Void)? = nil,
-        onOpenRoles: (() -> Void)? = nil
+        onOpenRoles: (() -> Void)? = nil,
+        onOpenMyLedger: (() -> Void)? = nil,
+        onOpenMyFines: (() -> Void)? = nil,
+        onOpenVotes: (() -> Void)? = nil,
+        onOpenInbox: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMembersList = onOpenMembersList
@@ -62,6 +72,10 @@ public struct GroupHomeView: View {
         self.onInviteMembers = onInviteMembers
         self.onConfirmLeave = onConfirmLeave
         self.onOpenRoles = onOpenRoles
+        self.onOpenMyLedger = onOpenMyLedger
+        self.onOpenMyFines = onOpenMyFines
+        self.onOpenVotes = onOpenVotes
+        self.onOpenInbox = onOpenInbox
     }
 
     public var body: some View {
@@ -77,6 +91,7 @@ public struct GroupHomeView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                             hero
+                            summarySection
                             configurationSection
                             communitySection
                             advancedSection
@@ -230,6 +245,81 @@ public struct GroupHomeView: View {
                 destructive: true
             )
         }
+    }
+
+    // MARK: Summary Section
+
+    @ViewBuilder
+    private var summarySection: some View {
+        if let summary = coordinator.summary {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("RESUMEN")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .padding(.leading, RuulSpacing.xxs)
+                HStack(spacing: RuulSpacing.sm) {
+                    statTile(
+                        value: "\(summary.memberCount)",
+                        label: "Miembros",
+                        action: { onOpenMembersList?() }
+                    )
+                    statTile(
+                        value: "\(summary.upcomingEventsCount)",
+                        label: "Próximos",
+                        action: nil
+                    )
+                    statTile(
+                        value: formatCurrency(summary.myBalanceCents, currency: summary.myBalanceCurrency),
+                        label: "Mi balance",
+                        action: onOpenMyLedger.map { cb in { cb() } }
+                    )
+                    if summary.pendingFinesCount > 0 {
+                        statTile(
+                            value: formatCurrency(summary.pendingFinesOutstandingCents, currency: summary.myBalanceCurrency),
+                            label: "Multas",
+                            action: onOpenMyFines.map { cb in { cb() } }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func statTile(value: String, label: String, action: (() -> Void)?) -> some View {
+        let content = VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+            Text(value)
+                .ruulTextStyle(RuulTypography.statMedium)
+                .foregroundStyle(Color.ruulTextPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(label.uppercased())
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg).stroke(Color.ruulSeparator, lineWidth: 0.5)
+        )
+
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(.plain)
+        } else {
+            content
+        }
+    }
+
+    private func formatCurrency(_ cents: Int64, currency: String) -> String {
+        let units = Double(cents) / 100.0
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = currency
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: units)) ?? "\(currency) \(Int(units))"
     }
 
     // MARK: Reusable
