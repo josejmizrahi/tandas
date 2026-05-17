@@ -189,7 +189,9 @@ public struct ActivityView: View {
                         timestamp: presentation.timestamp,
                         tone: presentation.tone,
                         isFirst: index == 0,
-                        isLast: index == visibleEvents.count - 1
+                        isLast: index == visibleEvents.count - 1,
+                        actorName: coordinator.actorName(for: ev),
+                        actorAvatarURL: coordinator.actorAvatarURL(for: ev)
                     )
                 }
                 .buttonStyle(.plain)

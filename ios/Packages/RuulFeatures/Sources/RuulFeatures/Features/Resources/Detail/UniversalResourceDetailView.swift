@@ -263,8 +263,20 @@ public struct UniversalResourceDetailView: View {
 
     @ViewBuilder
     private var liveBanner: some View {
-        if let event = eventInteractor?.event, event.isLive {
-            LiveEventBanner(eventTitle: event.title)
+        if let interactor = eventInteractor, interactor.event.isLive {
+            // Show one-tap "Llegué" inline cuando el viewer puede self-
+            // check-in: RSVP'd going + no checked-in todavía + capability
+            // habilitada. Cierra el loop más rápido que abrir el card
+            // de la CheckInSection.
+            let canSelfCheckIn = context.enabledCapabilities.contains("check_in")
+                && (interactor.myRSVP?.status == .going)
+                && (interactor.myRSVP?.isCheckedIn == false)
+            LiveEventBanner(
+                eventTitle: interactor.event.title,
+                onSelfCheckIn: canSelfCheckIn ? {
+                    Task { await interactor.selfCheckIn(locationVerified: false) }
+                } : nil
+            )
         }
     }
 
@@ -806,11 +818,15 @@ enum FundSheetSelection: Identifiable {
 
 /// "EN VIVO" banner que aparece arriba del EventDetail mientras el
 /// evento sucede (startsAt <= now < endsAt). Pulse animation suave
-/// honra accessibilityReduceMotion.
+/// honra accessibilityReduceMotion. Cuando `onSelfCheckIn` está set,
+/// muestra un botón inline "Llegué" como atajo al check-in sin
+/// scroll a la CheckInSection.
 private struct LiveEventBanner: View {
     let eventTitle: String
+    let onSelfCheckIn: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulse = false
+    @State private var checkInTriggered = 0
 
     var body: some View {
         HStack(spacing: RuulSpacing.sm) {
@@ -829,6 +845,19 @@ private struct LiveEventBanner: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
+            if let onSelfCheckIn {
+                Button {
+                    checkInTriggered &+= 1
+                    onSelfCheckIn()
+                } label: {
+                    Label("Llegué", systemImage: "checkmark.circle.fill")
+                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.ruulPositive)
+                .controlSize(.small)
+                .accessibilityLabel("Marcar que llegué al evento")
+            }
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
@@ -842,6 +871,7 @@ private struct LiveEventBanner: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(eventTitle), evento en vivo")
+        .sensoryFeedback(.success, trigger: checkInTriggered)
         .onAppear {
             guard !reduceMotion else { pulse = true; return }
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {

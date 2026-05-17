@@ -35,6 +35,12 @@ public struct RuulTimelineItem: View {
     private let tone: Tone
     private let isFirst: Bool
     private let isLast: Bool
+    /// Opcional: cuando set, el dot icon se reemplaza por un avatar
+    /// del actor (28pt) con tone dot como accent. Surfacea "quién"
+    /// además de "qué" pasó en la timeline — útil cuando el title ya
+    /// dice "Jose hizo X" y el avatar refuerza visualmente la lectura.
+    private let actorName: String?
+    private let actorAvatarURL: URL?
 
     public init(
         icon: String,
@@ -43,7 +49,9 @@ public struct RuulTimelineItem: View {
         timestamp: String,
         tone: Tone = .neutral,
         isFirst: Bool = false,
-        isLast: Bool = false
+        isLast: Bool = false,
+        actorName: String? = nil,
+        actorAvatarURL: URL? = nil
     ) {
         self.icon = icon
         self.title = title
@@ -52,6 +60,8 @@ public struct RuulTimelineItem: View {
         self.tone = tone
         self.isFirst = isFirst
         self.isLast = isLast
+        self.actorName = actorName
+        self.actorAvatarURL = actorAvatarURL
     }
 
     public var body: some View {
@@ -79,12 +89,22 @@ public struct RuulTimelineItem: View {
                     .frame(maxHeight: isLast ? 24 : .infinity, alignment: .top)
             }
             ZStack {
-                Circle()
-                    .fill(Color.ruulBackgroundRecessed)
-                    .frame(width: 28, height: 28)
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                if let actorName {
+                    // Avatar mode — el actor es conocido. La tone dot
+                    // queda como accent encima a la derecha (badge style
+                    // tipo Slack/Apple Messages).
+                    RuulAvatar(name: actorName, imageURL: actorAvatarURL, size: .medium)
+                        .frame(width: 28, height: 28)
+                } else {
+                    // Icon mode — fallback para events sin actor (rsvp
+                    // deadline, hours-before-event reminders sintéticos).
+                    Circle()
+                        .fill(Color.ruulBackgroundRecessed)
+                        .frame(width: 28, height: 28)
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color.ruulTextPrimary)
+                }
                 Circle()
                     .fill(tone.dotColor)
                     .frame(width: 6, height: 6)

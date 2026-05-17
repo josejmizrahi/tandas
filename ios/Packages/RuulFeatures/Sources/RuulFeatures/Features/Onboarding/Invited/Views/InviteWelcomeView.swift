@@ -121,6 +121,10 @@ public struct InviteWelcomeView: View {
                 Text(metaCopy(for: preview))
                     .ruulTextStyle(RuulTypography.callout)
                     .foregroundStyle(Color.ruulOnImageSecondary)
+                    .lineLimit(2)
+                Text(vintageCopy(for: preview))
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulOnImageSecondary.opacity(0.85))
             }
             .padding(RuulSpacing.lg)
         }
@@ -129,9 +133,32 @@ public struct InviteWelcomeView: View {
         .ruulElevation(.lg)
     }
 
+    /// Meta line del poster card. Antes era genérico "12 miembros";
+    /// ahora prioriza social proof (nombres reales) cuando el preview
+    /// los carga, fallback al count. P1 — el primer momento del
+    /// invitado se siente más humano si ve "Miguel, Ana, Jose..."
+    /// vs un número crudo.
     private func metaCopy(for preview: InvitePreview) -> String {
+        if let names = preview.recentMemberNames, !names.isEmpty {
+            let firstFew = names.prefix(3).joined(separator: ", ")
+            let rest = preview.memberCount - min(3, names.count)
+            if rest > 0 {
+                return "\(firstFew) y \(rest) más"
+            }
+            return firstFew
+        }
         let count = preview.memberCount
         return "\(count) \(count == 1 ? "miembro" : "miembros")"
+    }
+
+    /// "Activo desde mayo 2026" — agrega historial al poster para que
+    /// el invitado entienda que entra a un grupo establecido, no uno
+    /// recién creado.
+    private func vintageCopy(for preview: InvitePreview) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_MX")
+        formatter.dateFormat = "MMMM yyyy"
+        return "Activo desde \(formatter.string(from: preview.groupCreatedAt))"
     }
 
     // MARK: - Action stack (bottom)
