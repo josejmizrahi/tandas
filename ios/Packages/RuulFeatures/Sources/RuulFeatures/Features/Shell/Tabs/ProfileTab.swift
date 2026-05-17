@@ -16,6 +16,7 @@ public struct ProfileTab: View {
     @State private var showChangeEmail = false
     @State private var showTimeline = false
     @State private var showDevices = false
+    @State private var showNotificationPreferences = false
 
     private enum ProfileNav: Hashable { case language, timezone }
 
@@ -39,7 +40,7 @@ public struct ProfileTab: View {
                     onChangeEmail: { showChangeEmail = true },
                     onPickLanguage: { path.append(ProfileNav.language) },
                     onPickTimezone: { path.append(ProfileNav.timezone) },
-                    onOpenNotificationPreferences: { /* wired in Task 7 (Pass 2) */ },
+                    onOpenNotificationPreferences: { showNotificationPreferences = true },
                     onOpenDevices: { showDevices = true }
                 )
                 .navigationDestination(for: ProfileNav.self) { dest in
@@ -52,6 +53,9 @@ public struct ProfileTab: View {
                 .fullScreenCover(isPresented: $showChangeEmail) { ChangeEmailFlow() }
                 .fullScreenCover(isPresented: $showTimeline) { MyTimelineView().environment(app) }
                 .fullScreenCover(isPresented: $showDevices) { DevicesView().environment(app) }
+                .fullScreenCover(isPresented: $showNotificationPreferences) {
+                    NotificationPreferencesView().environment(app)
+                }
                 .environment(app)
                 .task { await myFinesCoordinator?.refresh() }
             } else {
