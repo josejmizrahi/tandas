@@ -139,7 +139,7 @@ public final class EditRulesCoordinator {
             pendingVotes = pending
         } catch {
             log.warning("rules load failed: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            self.error = error.ruulUserMessage
         }
     }
 

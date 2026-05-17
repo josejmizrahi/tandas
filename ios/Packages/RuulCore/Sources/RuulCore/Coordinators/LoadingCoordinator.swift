@@ -12,11 +12,15 @@ public struct CoordinatorError: Equatable, Sendable {
         self.isRetryable = isRetryable
     }
 
-    /// Convenience constructor desde Swift Error.
+    /// Convenience constructor desde Swift Error. Pasa el error por
+    /// `RuulErrorTranslator` para no exponer strings raw del sistema
+    /// (PostgREST codes, URLError descriptions, GoTrue JWT messages).
+    /// Antes el message decía cosas como "URLError(.notConnectedToInternet)"
+    /// que el usuario regular no entiende.
     public static func from(_ error: Error, fallback: String = "Algo salió mal") -> CoordinatorError {
         CoordinatorError(
             title: fallback,
-            message: error.localizedDescription,
+            message: error.ruulUserMessage,
             isRetryable: true
         )
     }

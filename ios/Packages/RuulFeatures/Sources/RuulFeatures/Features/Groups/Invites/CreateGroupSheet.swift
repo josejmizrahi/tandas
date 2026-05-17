@@ -105,7 +105,7 @@ public struct CreateGroupSheet: View {
             } catch {
                 log.warning("create group failed: \(error.localizedDescription)")
                 await MainActor.run {
-                    self.error = "No pudimos crear el grupo: \(error.localizedDescription)"
+                    self.error = "No pudimos crear el grupo. \(error.ruulUserMessage)"
                 }
             }
         }
