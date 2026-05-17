@@ -41,7 +41,7 @@ public struct RuleComposerView: View {
                     if let error = coord.error {
                         Text(error)
                             .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulTextWarning)
+                            .foregroundStyle(Color.ruulWarning)
                     }
                 }
                 .padding(.horizontal, RuulSpacing.lg)
