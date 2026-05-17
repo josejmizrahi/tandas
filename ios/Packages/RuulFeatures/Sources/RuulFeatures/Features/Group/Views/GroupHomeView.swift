@@ -29,6 +29,7 @@ public struct GroupHomeView: View {
     public var onInviteMembers: (() -> Void)?
     public var onConfirmLeave: (() -> Void)?
     public var onOpenRoles: (() -> Void)?
+    public var onArchiveGroup: (() -> Void)?
 
     // Pass 2 — dashboard callbacks
     public var onOpenMyLedger: (() -> Void)?
@@ -52,6 +53,7 @@ public struct GroupHomeView: View {
         onInviteMembers: (() -> Void)? = nil,
         onConfirmLeave: (() -> Void)? = nil,
         onOpenRoles: (() -> Void)? = nil,
+        onArchiveGroup: (() -> Void)? = nil,
         onOpenMyLedger: (() -> Void)? = nil,
         onOpenMyFines: (() -> Void)? = nil,
         onOpenVotes: (() -> Void)? = nil,
@@ -72,6 +74,7 @@ public struct GroupHomeView: View {
         self.onInviteMembers = onInviteMembers
         self.onConfirmLeave = onConfirmLeave
         self.onOpenRoles = onOpenRoles
+        self.onArchiveGroup = onArchiveGroup
         self.onOpenMyLedger = onOpenMyLedger
         self.onOpenMyFines = onOpenMyFines
         self.onOpenVotes = onOpenVotes
@@ -257,6 +260,20 @@ public struct GroupHomeView: View {
     private var advancedSection: some View {
         sectionContainer(title: "AVANZADO") {
             navRow(icon: "arrow.triangle.2.circlepath", label: "Rotar código de invitación", action: { onRotateCode?() })
+            if let onArchiveGroup {
+                divider
+                // Archivar es soft-delete: el grupo se oculta de la lista
+                // pero su historia + ledger + atoms permanecen. Útil para
+                // grupos pausados o estacionales (cenas de invierno, viaje
+                // que terminó). Distinct de salir — el grupo sigue siendo
+                // tuyo y puedes desarchivarlo.
+                navRow(
+                    icon: "archivebox",
+                    label: "Archivar grupo",
+                    action: onArchiveGroup,
+                    destructive: true
+                )
+            }
             divider
             navRow(
                 icon: "rectangle.portrait.and.arrow.right",
