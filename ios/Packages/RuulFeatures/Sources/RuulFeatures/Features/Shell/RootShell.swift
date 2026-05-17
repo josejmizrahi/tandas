@@ -99,7 +99,14 @@ public struct RootShell: View {
 
         homeCoordinator = HomeCoordinator(
             group: group,
-            allGroups: app.groups,
+            // Single-group scope: Home only shows resources / events of the
+            // active group. The user picks a group via the switcher and
+            // expects Home to reflect that. Cross-group mode was making
+            // every group's upcoming feed pour into one list, with no
+            // origin tag rendered on the rows (HomeView never wired it),
+            // so the mix was indistinguishable. `task(id: activeGroupId)`
+            // above re-runs this builder on every switch.
+            allGroups: [group],
             userId: userId,
             eventRepo: app.eventRepo,
             rsvpRepo: app.rsvpRepo,
