@@ -46,6 +46,27 @@ export interface RuleCondition {
   config: Record<string, unknown>;
 }
 
+/**
+ * AND/OR/NOT composition of conditions (§22.4). A rule's conditions
+ * may be:
+ *
+ * - a flat array of leaves — interpreted as `{op:'and', children:array}`
+ *   (legacy / pre-§22.4 wire shape, preserved for backward compat).
+ * - a `{op,children}` object where `op ∈ {'and','or','not'}` and each
+ *   child is itself either a leaf `{type,config}` or a nested op
+ *   node. `'not'` carries exactly one child; `'and'`/`'or'` carry at
+ *   least one (the publisher validates ≥2 but the runtime is tolerant).
+ *
+ * The engine evaluates the tree recursively with short-circuit
+ * semantics; the publisher (`publish_rule_version`) is responsible for
+ * structural validation before persisting to `rule_versions.compiled`.
+ */
+export type RuleConditionNode =
+  | RuleCondition
+  | { op: "and"; children: RuleConditionNode[] }
+  | { op: "or";  children: RuleConditionNode[] }
+  | { op: "not"; children: RuleConditionNode[] };
+
 export interface RuleConsequence {
   type: ConsequenceType;
   config: Record<string, unknown>;
@@ -65,7 +86,13 @@ export interface Rule {
   name: string;
   is_active: boolean;
   trigger: RuleTrigger;
-  conditions: RuleCondition[];
+  /**
+   * §22.4: either a flat array of leaves (legacy implicit-AND wire
+   * shape) or a `{op,children}` tree object. The engine normalises
+   * arrays to `{op:'and', children: array}` before evaluation, so
+   * downstream code only deals with the tree form.
+   */
+  conditions: RuleCondition[] | RuleConditionNode;
   consequences: RuleConsequence[];
   /**
    * Scope precedence per Taxonomy §29 — read by `runRulesForEvent` to filter

@@ -18,7 +18,11 @@ public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
     public var description: String
     public var isActive: Bool
     public let trigger: RuleTrigger
-    public let conditions: [RuleCondition]
+    /// AND/OR/NOT tree of conditions. Pre-§22.4 drafts stored a flat
+    /// list — those now decode as `.and(leaves)`. Builder "simple"
+    /// mode authors via the `init(... conditions: [RuleCondition] ...)`
+    /// shadow; "advanced" mode builds the tree directly.
+    public let conditions: ConditionNode
     public var consequences: [RuleConsequence]
 
     public init(
@@ -28,7 +32,7 @@ public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
         description: String,
         isActive: Bool,
         trigger: RuleTrigger,
-        conditions: [RuleCondition],
+        conditions: ConditionNode,
         consequences: [RuleConsequence]
     ) {
         self.id = id
@@ -39,6 +43,26 @@ public struct RuleDraft: Identifiable, Codable, Sendable, Hashable {
         self.trigger = trigger
         self.conditions = conditions
         self.consequences = consequences
+    }
+
+    /// Flat-list shadow init (legacy / "simple" composer mode). Wraps as
+    /// `.and(leaves)` — same semantics as pre-§22.4 drafts.
+    public init(
+        id: UUID = UUID(),
+        slug: String,
+        name: String,
+        description: String,
+        isActive: Bool,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
+        consequences: [RuleConsequence]
+    ) {
+        self.init(
+            id: id, slug: slug, name: name, description: description,
+            isActive: isActive, trigger: trigger,
+            conditions: ConditionNode(leaves: conditions),
+            consequences: consequences
+        )
     }
 
     /// Convenience read/write over the first `fine` consequence's amount.

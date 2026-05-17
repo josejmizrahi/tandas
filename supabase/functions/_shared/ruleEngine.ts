@@ -16,6 +16,7 @@ import {
   ExecutionResult,
   Rule,
   RuleCondition,
+  RuleConditionNode,
   RuleConsequence,
   RuleTarget,
   RuleTrigger,
@@ -1267,6 +1268,118 @@ function failure(rule_id: UUID, member_id: UUID | null, error: string): Executio
 }
 
 // =============================================================================
+// Condition tree (§22.4)
+//
+// `rule.conditions` may arrive as a flat array (legacy implicit AND) or as
+// a `{op,children}` tree object. `normalizeConditions` collapses the array
+// case into a synthetic AND so the walker only has to handle one shape.
+// `evalConditionNode` walks the tree with short-circuit semantics and
+// returns either a matched verdict or the first leaf-type that lacks an
+// evaluator (so the orchestrator can record an actionable failure row).
+// =============================================================================
+
+interface ConditionEvalResult {
+  matched: boolean;
+  missingCondition: string | null;
+}
+
+interface ConditionEvalCtx {
+  rule: Rule;
+  event: SystemEvent;
+}
+
+function isLeafCondition(node: RuleConditionNode): node is RuleCondition {
+  return typeof (node as RuleCondition).type === "string";
+}
+
+/**
+ * Returns the normalised tree the walker consumes. Arrays become
+ * `{op:'and', children:array}` so pre-§22.4 rules evaluate identically
+ * to before.
+ */
+function normalizeConditions(
+  conditions: RuleCondition[] | RuleConditionNode,
+): RuleConditionNode {
+  if (Array.isArray(conditions)) {
+    return { op: "and", children: conditions };
+  }
+  return conditions;
+}
+
+async function evalConditionNode(
+  node: RuleConditionNode,
+  target: RuleTarget,
+  context: RuleContext,
+  ctx: ConditionEvalCtx,
+): Promise<ConditionEvalResult> {
+  // Leaf — look up the evaluator and run it.
+  if (isLeafCondition(node)) {
+    const condFn = CONDITIONS[node.type];
+    if (!condFn) {
+      logNotImplemented({
+        enginePhase: "condition",
+        typeId: node.type,
+        rule: ctx.rule,
+        event: ctx.event,
+        phaseTarget: CONDITION_PHASE[node.type],
+      });
+      return { matched: false, missingCondition: node.type };
+    }
+    const matched = await condFn(node, target, context);
+    return { matched, missingCondition: null };
+  }
+
+  switch (node.op) {
+    case "and": {
+      // Empty AND is vacuously true (semantic match for "no conditions").
+      if (node.children.length === 0) {
+        return { matched: true, missingCondition: null };
+      }
+      for (const child of node.children) {
+        const r = await evalConditionNode(child, target, context, ctx);
+        // Missing condition propagates up immediately — short-circuits
+        // both the AND and the surrounding tree so we don't keep
+        // evaluating with a known gap.
+        if (r.missingCondition) return r;
+        if (!r.matched) return { matched: false, missingCondition: null };
+      }
+      return { matched: true, missingCondition: null };
+    }
+
+    case "or": {
+      // Empty OR is vacuously false (no candidate matched).
+      if (node.children.length === 0) {
+        return { matched: false, missingCondition: null };
+      }
+      let firstMissing: string | null = null;
+      for (const child of node.children) {
+        const r = await evalConditionNode(child, target, context, ctx);
+        // True short-circuits — surface match even if a later branch
+        // would have hit an unimplemented condition (it's irrelevant
+        // to the outcome).
+        if (r.matched) return { matched: true, missingCondition: null };
+        // Track the first missing condition; only surface it if NO
+        // branch matched. Otherwise the OR succeeded despite the gap.
+        if (r.missingCondition && firstMissing === null) {
+          firstMissing = r.missingCondition;
+        }
+      }
+      return { matched: false, missingCondition: firstMissing };
+    }
+
+    case "not": {
+      // NOT carries exactly one child by contract. The publisher
+      // validates this; the runtime tolerates 0/many and inverts the
+      // first child (or an empty AND when none).
+      const child = node.children[0] ?? { op: "and", children: [] };
+      const r = await evalConditionNode(child, target, context, ctx);
+      if (r.missingCondition) return r;
+      return { matched: !r.matched, missingCondition: null };
+    }
+  }
+}
+
+// =============================================================================
 // Orchestrator
 // =============================================================================
 
@@ -1408,37 +1521,33 @@ export async function runRulesForEvent(
 
     targets = applyMembershipScope(rule, targets);
 
+    // §22.4: normalise the rule's conditions into a tree. Pre-§22.4
+    // rules ship a flat array, which the engine treats as an implicit
+    // AND of leaves — preserves prior semantics without forking the
+    // walker.
+    const conditionsTree = normalizeConditions(rule.conditions);
+
     for (const target of targets) {
-      // AND across all conditions
-      let allMatched = true;
-      let missingCondition: string | null = null;
-      for (const cond of rule.conditions) {
-        const condFn = CONDITIONS[cond.type];
-        if (!condFn) {
-          logNotImplemented({
-            enginePhase: "condition",
-            typeId: cond.type,
-            rule,
-            event,
-            phaseTarget: CONDITION_PHASE[cond.type],
-          });
-          missingCondition = cond.type;
-          allMatched = false;
-          break;
-        }
-        const matched = await condFn(cond, target, context);
-        if (!matched) {
-          allMatched = false;
-          break;
-        }
-      }
-      if (missingCondition) {
-        // Condition evaluator missing — record a failure per target so the
-        // rule run is observable, not silently skipped.
-        results.push(failure(rule.id, target.member_id, `unimplemented condition: ${missingCondition}`));
+      // Walk the tree with short-circuit semantics (AND stops on
+      // first false, OR stops on first true). The walker records
+      // which leaf was missing an evaluator so the per-target
+      // failure row carries the actionable type_id, mirroring the
+      // pre-§22.4 behavior for arrays.
+      const evalResult = await evalConditionNode(
+        conditionsTree,
+        target,
+        context,
+        { rule, event },
+      );
+      if (evalResult.missingCondition) {
+        results.push(failure(
+          rule.id,
+          target.member_id,
+          `unimplemented condition: ${evalResult.missingCondition}`,
+        ));
         continue;
       }
-      if (!allMatched) continue;
+      if (!evalResult.matched) continue;
 
       // All conditions matched — fire every consequence.
       for (const cons of rule.consequences) {

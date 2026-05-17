@@ -1615,3 +1615,103 @@ Este sistema es **deliberadamente conservador en superficie** y **opinionado en 
 - El UX se obsesiona con la frase humana. La frase **es** la regla; el JSON es trivia interna. Si la frase está rota, la regla está rota.
 
 Si todo lo demás falla y solo construimos los 5 shapes Beta 1 con builder + engine + versioning + history feed: **Ruul ya tiene governance real**, mejor que cualquier herramienta de coordinación grupal en el mercado. Recordatorio cardinal: **user-configurable parameters, not user-programmable logic.**
+
+---
+
+## 22. Iteraciones Beta 1 (post-§21)
+
+Las cinco subsecciones de §22 cubren capacidades que cerraron post-§21 sin
+alterar la doctrina de §0-§19. Cada una mantiene los Cardinal Rules de §21.2.
+
+### 22.1 Edit-in-place (mig 00247)
+
+`bump_rule_version` permite a un admin con `modifyRules` editar el nombre,
+trigger, condiciones, consequences, exceptions y membership de una regla
+existente sin re-crearla. Cada bump escribe una versión nueva con
+`previous_version_id` para preservar la cadena append-only de `rule_versions`.
+
+### 22.2 Exceptions (mig 00248)
+
+`rule_versions.compiled.exceptions[]` aceptan condiciones tipo shape
+(`{type, config}`) que el engine evalúa como "any blocks": si alguna excepción
+match, la regla NO dispara. Se mantienen como lista plana (OR implícito) porque
+el dominio no requiere árboles de excepciones.
+
+### 22.3 Multi-target consequences (mig 00249)
+
+Cada consequence puede declarar un `target` distinto del default `$trigger.actor`:
+`$resource.host`, `$role.<role_id>`. El engine resuelve el target por consequence
+en lugar de aplicarlo a toda la regla. Permite "si X pasa, multa a quien causó
++ avisa al host" en una sola regla.
+
+### 22.4 Tree-based conditions (AND/OR/NOT — mig 00251) [shipped]
+
+**Problema.** Hasta §22.3, `rules.conditions` era una lista plana que el engine
+trataba como un gran AND. "Si A ó B" requería duplicar la regla — anti-Talmud,
+anti-DRY, anti-composable. Constitution §18 lo gritaba.
+
+**Cambio.** `rules.conditions` ahora acepta:
+
+- **Array plano** de leaves `[{type, config}, …]` — interpretado como
+  `.and(leaves)` (legacy implicit AND; pre-§22.4 rules siguen funcionando
+  sin tocar).
+- **Tree node** `{op, children}` con `op ∈ {and, or, not}`, donde cada child
+  es otro node (leaf o `{op, children}` anidado). `not` lleva exactamente
+  1 child; `and`/`or` llevan ≥1.
+
+**Backend.**
+- `public.validate_condition_node(jsonb)` valida la estructura recursivamente
+  (op enum + arity + leaf shape) y se invoca desde `publish_rule_composition`
+  v6 y `bump_rule_version` v5 antes de persistir.
+- `public.compile_condition_tree(jsonb)` traduce shape_id→type leaf por leaf
+  preservando la estructura del árbol.
+- `public.extract_condition_shape_ids(jsonb)` devuelve la lista pre-order de
+  todos los leaf shape ids para `compiled.shape_ids.conditions` — el view plano
+  que necesitan los capability checks y el conflict signature sin aprender la
+  forma de árbol.
+
+**Engine TS.** `supabase/functions/_shared/ruleEngine.ts` normaliza arrays a
+`{op:'and', children: array}` y evalúa con `evalConditionNode` recursivo +
+short-circuit (AND para en primer false, OR en primer true). Si una condición
+no implementada está en una rama que ya cortocircuito, el engine NO la
+reporta como missing — la rama no afectó el outcome.
+
+**iOS.** `RuulCore.ConditionNode` es el modelo enum (`leaf` / `.and` / `.or`
+/ `.not`) con Codable que round-trips ambos wire shapes: array → `.and(leaves)`,
+tree → estructura preservada. Encoding compacta `.and(of leaves)` de vuelta a
+array (back-compat) y emite `{op,children}` solo cuando el árbol es no-trivial.
+`RuleSentenceFormatter.conditionPhrase(for:registry:)` renderiza el árbol como
+prosa natural con paréntesis solo cuando un child es más débil que su parent
+(OR dentro de AND/NOT, AND dentro de NOT).
+
+**UI.** El composer mantiene la vista plana por defecto (auto-AND). Un toggle
+`Avanzado` revela el editor de árbol con botones Agrupar como OR/NOT —
+detalle pendiente en el siguiente commit. La mayoría de las reglas no necesita
+árbol; quien lo necesita lo activa explícitamente.
+
+**Compatibility.** Migración aplicada sin advisor warnings nuevos. Reglas
+pre-§22.4 (array plano) siguen funcionando sin re-publish. El campo
+`compiled.shape_ids.conditions` mantiene el shape plano para consumers que
+no aprenden el árbol (capability checks, conflict signatures).
+
+### 22.5 Membership filter (mig 00250)
+
+`rule.membership_id` agrega una dimensión ortogonal a las cuatro de §21.3.4:
+una regla puede aplicar a un solo miembro (override por persona) sin importar
+si su scope es group/series/resource. `publish_rule_composition` y
+`bump_rule_version` validan que `membership_id`, cuando se setea, referencie un
+miembro activo del mismo grupo.
+
+### 22.6 Resumen del orden de ataque (§22.7)
+
+Las cinco mejoras shipean entre §22.1 y §22.5 sin tocar ninguna de las
+secciones §0-§21. Son capas adicionales sobre la doctrina existente, no
+cambios fundamentales.
+
+| § | Cambio | Mig | Estado |
+|---|---|---|---|
+| 22.1 | Edit-in-place (`bump_rule_version`) | 00247 | shipped |
+| 22.2 | Exceptions en compiled (`exceptions[]`) | 00248 | shipped |
+| 22.3 | Multi-target consequences (`target` per consequence) | 00249 | shipped |
+| 22.4 | Tree conditions (AND/OR/NOT) | 00251 | shipped (este commit) |
+| 22.5 | Membership filter (`membership_id`) | 00250 | shipped |

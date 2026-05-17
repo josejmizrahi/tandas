@@ -96,7 +96,7 @@ public protocol RuleRepository: Actor {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: [RuleCondition],
+        conditions: ConditionNode,
         consequences: [RuleConsequence]
     ) async throws -> GroupRule
 
@@ -190,7 +190,7 @@ public actor MockRuleRepository: RuleRepository {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: [RuleCondition],
+        conditions: ConditionNode,
         consequences: [RuleConsequence]
     ) async throws -> GroupRule {
         let envelopes = consequences.map { c -> GroupRule.ConsequenceEnvelope in
@@ -258,7 +258,11 @@ public actor LiveRuleRepository: RuleRepository {
             let p_name: String
             let p_is_active: Bool
             let p_trigger: RuleTrigger
-            let p_conditions: [RuleCondition]
+            /// `ConditionNode` round-trips through Codable to the right
+            /// jsonb shape: AND-of-leaves emits as a compact array
+            /// (back-compat with the legacy `create_initial_rule` shape),
+            /// non-trivial trees emit as `{op, children}`.
+            let p_conditions: ConditionNode
             let p_consequences: [RuleConsequence]
         }
 
@@ -361,7 +365,7 @@ public actor LiveRuleRepository: RuleRepository {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: [RuleCondition],
+        conditions: ConditionNode,
         consequences: [RuleConsequence]
     ) async throws -> GroupRule {
         struct Params: Encodable {
@@ -369,7 +373,7 @@ public actor LiveRuleRepository: RuleRepository {
             let p_resource_id: String
             let p_name: String
             let p_trigger: RuleTrigger
-            let p_conditions: [RuleCondition]
+            let p_conditions: ConditionNode
             let p_consequences: [RuleConsequence]
         }
         do {
@@ -637,7 +641,7 @@ public actor InterceptingRuleRepository: RuleRepository {
         resourceId: UUID,
         name: String,
         trigger: RuleTrigger,
-        conditions: [RuleCondition],
+        conditions: ConditionNode,
         consequences: [RuleConsequence]
     ) async throws -> GroupRule {
         try await inner.createResourceRule(

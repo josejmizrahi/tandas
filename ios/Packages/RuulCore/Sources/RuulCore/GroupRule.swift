@@ -12,7 +12,10 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let name: String
     public let isActive: Bool
     public let trigger: RuleTrigger
-    public let conditions: [RuleCondition]
+    /// AND/OR/NOT tree of conditions. Decodes legacy flat arrays as
+    /// `.and(leaves)` for backward compat; tree-shaped jsonb decodes
+    /// into the corresponding `ConditionNode` cases.
+    public let conditions: ConditionNode
     public let consequences: [ConsequenceEnvelope]
     /// Module that owns this rule. Set when seeded via module activation
     /// (mig 00073 `seed_module_rules`). Null = group-level rule with no
@@ -37,7 +40,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         name: String,
         isActive: Bool,
         trigger: RuleTrigger,
-        conditions: [RuleCondition],
+        conditions: ConditionNode,
         consequences: [ConsequenceEnvelope],
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
@@ -56,6 +59,31 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.resourceId = resourceId
         self.seriesId = seriesId
         self.membershipId = membershipId
+    }
+
+    /// Flat-list shadow init (legacy callers + tests). Wraps as `.and(leaves)`.
+    public init(
+        id: UUID,
+        groupId: UUID,
+        slug: String? = nil,
+        name: String,
+        isActive: Bool,
+        trigger: RuleTrigger,
+        conditions: [RuleCondition],
+        consequences: [ConsequenceEnvelope],
+        moduleKey: String? = nil,
+        resourceId: UUID? = nil,
+        seriesId: UUID? = nil,
+        membershipId: UUID? = nil
+    ) {
+        self.init(
+            id: id, groupId: groupId, slug: slug, name: name,
+            isActive: isActive, trigger: trigger,
+            conditions: ConditionNode(leaves: conditions),
+            consequences: consequences,
+            moduleKey: moduleKey, resourceId: resourceId,
+            seriesId: seriesId, membershipId: membershipId
+        )
     }
 
     /// Computes the scope label this rule lives at, picking the most

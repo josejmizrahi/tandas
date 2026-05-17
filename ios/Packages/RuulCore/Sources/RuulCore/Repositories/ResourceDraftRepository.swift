@@ -127,13 +127,40 @@ private extension JSONConfig {
         ])
     }
 
-    static func fromConditions(_ list: [RuleCondition]) -> JSONConfig {
-        .array(list.map { c in
-            .object([
+    static func fromConditions(_ node: ConditionNode) -> JSONConfig {
+        switch node {
+        case .leaf(let c):
+            return .object([
                 "type":   .string(c.type.rawString),
                 "config": c.config
             ])
-        })
+        case .and(let children):
+            // Compact form for the legacy AND-of-leaves case: emit a
+            // JSON array so the server-side wire shape doesn't change
+            // for pre-§22.4 drafts.
+            if let leaves = node.flatLeaves {
+                return .array(leaves.map { c in
+                    .object([
+                        "type":   .string(c.type.rawString),
+                        "config": c.config
+                    ])
+                })
+            }
+            return .object([
+                "op":       .string("and"),
+                "children": .array(children.map(fromConditions))
+            ])
+        case .or(let children):
+            return .object([
+                "op":       .string("or"),
+                "children": .array(children.map(fromConditions))
+            ])
+        case .not(let child):
+            return .object([
+                "op":       .string("not"),
+                "children": .array([fromConditions(child)])
+            ])
+        }
     }
 
     static func fromConsequences(_ list: [RuleConsequence]) -> JSONConfig {
