@@ -235,11 +235,16 @@ public struct GroupRoleEditorSheet: View {
                 roleId: normalizedId,
                 label: label.isEmpty ? nil : label,
                 permissions: Array(perms).sorted { $0.rawString < $1.rawString },
-                maxHolders: maxHoldersOn ? maxHolders : nil
+                maxHolders: maxHoldersOn ? maxHolders : nil,
+                expectedVersion: app.groups.first { $0.id == groupId }?.rolesVersion
             )
             let updatedRole = saved.effectiveRoles[normalizedId]
             dismiss()
             await onClose(updatedRole)
+        } catch GroupsError.rolesVersionConflict {
+            log.warning("upsert_group_role: roles_version conflict for group \(groupId.uuidString, privacy: .public)")
+            await app.refreshProfileAndGroups()
+            self.error = "Otro admin cambió los roles mientras editabas. Revisa los cambios y guarda otra vez."
         } catch {
             log.warning("upsert_group_role failed: \(error.localizedDescription, privacy: .public)")
             self.error = "No pudimos guardar el rol: \(error.localizedDescription)"

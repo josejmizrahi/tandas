@@ -182,9 +182,18 @@ public struct GroupRolesSheet: View {
         saving = true
         defer { saving = false }
         do {
-            _ = try await app.groupsRepo.deleteGroupRole(groupId: groupId, roleId: role.id)
+            _ = try await app.groupsRepo.deleteGroupRole(
+                groupId: groupId,
+                roleId: role.id,
+                expectedVersion: app.groups.first { $0.id == groupId }?.rolesVersion
+            )
             deletingRole = nil
             await app.refreshProfileAndGroups()
+        } catch GroupsError.rolesVersionConflict {
+            log.warning("delete_group_role: roles_version conflict for group \(groupId.uuidString, privacy: .public)")
+            await app.refreshProfileAndGroups()
+            self.error = "Otro admin cambió los roles mientras eliminabas. Revisa los cambios y vuelve a intentar."
+            deletingRole = nil
         } catch {
             log.warning("delete_group_role failed: \(error.localizedDescription, privacy: .public)")
             self.error = "No pudimos eliminar el rol: \(error.localizedDescription)"

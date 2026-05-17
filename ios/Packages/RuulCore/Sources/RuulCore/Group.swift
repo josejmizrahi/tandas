@@ -37,6 +37,13 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     /// (`founder`, `member`); custom roles come from templates or
     /// founder edits.
     public let roles: [String: RoleDefinition]?
+    /// Monotonic counter for the `roles` jsonb column (mig 00251). Bumped
+    /// server-side whenever `roles` changes; passed back as
+    /// `p_expected_version` in `upsert_group_role` / `delete_group_role`
+    /// so concurrent edits surface as errcode 40001 instead of silent
+    /// last-write-wins. Optional so groups loaded from pre-00251
+    /// snapshots still decode.
+    public let rolesVersion: Int?
 
     // MARK: - DS v3 multi-group avatar fields (mig 00036)
 
@@ -56,6 +63,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         case updatedAt       = "updated_at"
         case avatarUrl       = "avatar_url"
         case archivedAt      = "archived_at"
+        case rolesVersion    = "roles_version"
     }
 
     public init(
@@ -71,6 +79,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         governance: GovernanceRules? = nil,
         settings: GroupSettings? = nil,
         roles: [String: RoleDefinition]? = nil,
+        rolesVersion: Int? = nil,
         category: GroupCategory = .socialRecurring,
         initials: String = "",
         avatarUrl: String? = nil,
@@ -91,6 +100,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         self.governance = governance
         self.settings = settings
         self.roles = roles
+        self.rolesVersion = rolesVersion
         self.category = category
         self.initials = initials.isEmpty ? Self.derivedInitials(from: name) : initials
         self.avatarUrl = avatarUrl
@@ -128,6 +138,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
         } else {
             self.roles = nil
         }
+        self.rolesVersion    = try c.decodeIfPresent(Int.self, forKey: .rolesVersion)
 
         self.category        = (try? c.decode(GroupCategory.self, forKey: .category)) ?? .socialRecurring
         let decodedInitials  = try c.decodeIfPresent(String.self, forKey: .initials) ?? ""
@@ -166,6 +177,7 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
             governance: governance,
             settings: settings,
             roles: roles,
+            rolesVersion: rolesVersion,
             category: category,
             initials: initials,
             avatarUrl: avatarUrl,

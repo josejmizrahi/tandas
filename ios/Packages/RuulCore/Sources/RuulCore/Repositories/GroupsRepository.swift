@@ -5,6 +5,10 @@ public enum GroupsError: Error, Equatable {
     case inviteCodeNotFound
     case rpcFailed(String)
     case notFound
+    /// Server raised errcode 40001 from `upsert_group_role` /
+    /// `delete_group_role` because the local `roles_version` didn't
+    /// match (mig 00251). The caller should refetch the group and retry.
+    case rolesVersionConflict
 }
 
 public protocol GroupsRepository: Actor {
@@ -77,19 +81,29 @@ public protocol GroupsRepository: Actor {
     /// `upsert_group_role` RPC (mig 00230). System roles
     /// (`founder`/`member`) keep their `system: true` flag; founder
     /// retains the `assignRoles` permission as a lockout safeguard.
+    /// Pass `expectedVersion` from `Group.rolesVersion` so the server
+    /// can reject concurrent edits with errcode 40001 (mig 00251 CAS),
+    /// surfaced here as `GroupsError.rolesVersionConflict`.
     func upsertGroupRole(
         groupId: UUID,
         roleId: String,
         label: String?,
         permissions: [Permission],
-        maxHolders: Int?
+        maxHolders: Int?,
+        expectedVersion: Int?
     ) async throws -> Group
 
     /// Removes a custom role from `groups.roles` and cascades to strip
     /// the role from every membership in the group via
     /// `delete_group_role` RPC (mig 00230). System roles cannot be
-    /// deleted.
-    func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group
+    /// deleted. Pass `expectedVersion` from `Group.rolesVersion` to
+    /// surface concurrent edits as `GroupsError.rolesVersionConflict`
+    /// (mig 00251 CAS).
+    func deleteGroupRole(
+        groupId: UUID,
+        roleId: String,
+        expectedVersion: Int?
+    ) async throws -> Group
 }
 
 /// Partial update payload for the new bare-group config.
@@ -473,10 +487,15 @@ public actor MockGroupsRepository: GroupsRepository {
         roleId: String,
         label: String?,
         permissions: [Permission],
-        maxHolders: Int?
+        maxHolders: Int?,
+        expectedVersion: Int?
     ) async throws -> Group {
         guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
             throw GroupsError.notFound
+        }
+        if let expected = expectedVersion,
+           expected != (_groups[idx].rolesVersion ?? 0) {
+            throw GroupsError.rolesVersionConflict
         }
         let normalized = roleId.lowercased()
         let isSystem = ["founder", "member"].contains(normalized)
@@ -495,9 +514,17 @@ public actor MockGroupsRepository: GroupsRepository {
         return _groups[idx]
     }
 
-    public func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group {
+    public func deleteGroupRole(
+        groupId: UUID,
+        roleId: String,
+        expectedVersion: Int?
+    ) async throws -> Group {
         guard let idx = _groups.firstIndex(where: { $0.id == groupId }) else {
             throw GroupsError.notFound
+        }
+        if let expected = expectedVersion,
+           expected != (_groups[idx].rolesVersion ?? 0) {
+            throw GroupsError.rolesVersionConflict
         }
         let normalized = roleId.lowercased()
         if ["founder", "member"].contains(normalized) {
@@ -579,6 +606,7 @@ public actor MockGroupsRepository: GroupsRepository {
             governance: g.governance,
             settings: g.settings,
             roles: roles,
+            rolesVersion: (g.rolesVersion ?? 0) + 1,
             category: g.category,
             initials: g.initials,
             avatarUrl: g.avatarUrl,
@@ -1036,53 +1064,77 @@ public actor LiveGroupsRepository: GroupsRepository {
         roleId: String,
         label: String?,
         permissions: [Permission],
-        maxHolders: Int?
+        maxHolders: Int?,
+        expectedVersion: Int?
     ) async throws -> Group {
         struct Params: Encodable {
-            let p_group_id:    String
-            let p_role_id:     String
-            let p_label:       String?
-            let p_permissions: [String]
-            let p_max_holders: Int?
+            let p_group_id:         String
+            let p_role_id:          String
+            let p_label:            String?
+            let p_permissions:      [String]
+            let p_max_holders:      Int?
+            let p_expected_version: Int?
         }
         do {
             return try await client
                 .rpc(
                     "upsert_group_role",
                     params: Params(
-                        p_group_id:    groupId.uuidString.lowercased(),
-                        p_role_id:     roleId,
-                        p_label:       label,
-                        p_permissions: permissions.map(\.rawString),
-                        p_max_holders: maxHolders
+                        p_group_id:         groupId.uuidString.lowercased(),
+                        p_role_id:          roleId,
+                        p_label:            label,
+                        p_permissions:      permissions.map(\.rawString),
+                        p_max_holders:      maxHolders,
+                        p_expected_version: expectedVersion
                     )
                 )
                 .execute()
                 .value
         } catch {
-            throw GroupsError.rpcFailed(error.localizedDescription)
+            throw Self.translateRoleRpcError(error)
         }
     }
 
-    public func deleteGroupRole(groupId: UUID, roleId: String) async throws -> Group {
+    public func deleteGroupRole(
+        groupId: UUID,
+        roleId: String,
+        expectedVersion: Int?
+    ) async throws -> Group {
         struct Params: Encodable {
-            let p_group_id: String
-            let p_role_id:  String
+            let p_group_id:         String
+            let p_role_id:          String
+            let p_expected_version: Int?
         }
         do {
             return try await client
                 .rpc(
                     "delete_group_role",
                     params: Params(
-                        p_group_id: groupId.uuidString.lowercased(),
-                        p_role_id:  roleId
+                        p_group_id:         groupId.uuidString.lowercased(),
+                        p_role_id:          roleId,
+                        p_expected_version: expectedVersion
                     )
                 )
                 .execute()
                 .value
         } catch {
-            throw GroupsError.rpcFailed(error.localizedDescription)
+            throw Self.translateRoleRpcError(error)
         }
+    }
+
+    /// Surfaces the CAS conflict from `upsert_group_role` /
+    /// `delete_group_role` as a dedicated error so coordinators can
+    /// refetch + retry. PostgreSQL emits errcode 40001
+    /// (serialization_failure) when `p_expected_version` doesn't match
+    /// `groups.roles_version` (mig 00251). PostgREST wraps it into a
+    /// human-readable string that contains "40001" or
+    /// "roles version conflict".
+    private static func translateRoleRpcError(_ error: Error) -> GroupsError {
+        let msg = error.localizedDescription
+        if msg.contains("40001") || msg.localizedCaseInsensitiveContains("roles version conflict") {
+            return .rolesVersionConflict
+        }
+        return .rpcFailed(msg)
     }
 
     private static func fileExtension(for contentType: String) -> String {
