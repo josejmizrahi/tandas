@@ -1,4 +1,4 @@
--- Rollback for 00235_event_rpcs_gated_on_has_permission.sql
+-- Rollback for 00236_event_rpcs_gated_on_has_permission.sql
 --
 -- Restores prior bodies (gate on is_group_admin). Catalog backfill of
 -- manageEvents in groups.roles and templates is left in place; it is

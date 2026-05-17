@@ -1,4 +1,4 @@
--- Rollback for 00242_system_event_payload_schemas.sql.
+-- Rollback for 00243_system_event_payload_schemas.sql.
 --
 -- Restores the plain record_system_event (no validation) and drops
 -- the validator + schema table.

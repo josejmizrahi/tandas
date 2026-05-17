@@ -1,4 +1,4 @@
--- Rollback for 00237_member_rpcs_gated_on_has_permission.sql
+-- Rollback for 00238_member_rpcs_gated_on_has_permission.sql
 --
 -- Restores prior bodies (is_group_admin gate). seed_template_roles
 -- from mig 00067, set_turn_order from mig 00003.

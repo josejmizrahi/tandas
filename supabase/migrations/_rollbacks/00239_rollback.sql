@@ -1,4 +1,4 @@
--- Rollback for 00238_resolve_governance_rule_fallback_uses_has_permission.sql
+-- Rollback for 00239_resolve_governance_rule_fallback_uses_has_permission.sql
 --
 -- Restores the prior body from mig 00114 (last functional rewrite of
 -- resolve_governance): the rule.% fallback compares created_by to

@@ -1,4 +1,4 @@
--- Rollback for 00236_module_rpc_gated_on_has_permission.sql
+-- Rollback for 00237_module_rpc_gated_on_has_permission.sql
 --
 -- Restores set_group_module body from mig 00074 (is_group_admin
 -- gate). Catalog backfill of manageModules in groups.roles +

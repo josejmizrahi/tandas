@@ -1,4 +1,4 @@
--- Rollback for 00241_vote_resolution_handlers_registry.sql.
+-- Rollback for 00242_vote_resolution_handlers_registry.sql.
 --
 -- Restores the monolithic finalize_vote (mig 00163 + 00032) and drops
 -- the two extracted handlers.

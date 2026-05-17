@@ -1,4 +1,4 @@
--- Rollback for 00240_groups_roles_version_cas.sql.
+-- Rollback for 00241_groups_roles_version_cas.sql.
 --
 -- Drops the column, trigger, and restores the prior 5-arg RPC
 -- signatures (without p_expected_version). Note: this DROPs the new

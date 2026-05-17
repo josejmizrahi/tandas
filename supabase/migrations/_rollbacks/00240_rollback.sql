@@ -1,4 +1,4 @@
--- Rollback for 00239_reconcile_stuck_fine_states.sql.
+-- Rollback for 00240_reconcile_stuck_fine_states.sql.
 
 select cron.unschedule('reconcile-stuck-appeals-30min');
 

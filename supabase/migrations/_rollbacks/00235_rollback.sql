@@ -1,4 +1,4 @@
--- Rollback for 00234_rule_rpcs_gated_on_has_permission.sql
+-- Rollback for 00235_rule_rpcs_gated_on_has_permission.sql
 --
 -- Restores prior bodies: publish_rule_version from mig 00182 +
 -- seed_template_rules from mig 00075. Both gate on is_group_admin.

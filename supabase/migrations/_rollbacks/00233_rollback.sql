@@ -1,4 +1,4 @@
--- Rollback for 00232_fines_rpcs_gated_on_has_permission.sql
+-- Rollback for 00233_fines_rpcs_gated_on_has_permission.sql
 --
 -- Restores the pre-00232 RPC bodies that gated on is_group_admin.
 -- Catalog backfill (issueFine + markFinePaid added to groups.roles

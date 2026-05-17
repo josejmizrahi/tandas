@@ -1,4 +1,4 @@
--- Rollback for 00233_vote_rpcs_gated_on_has_permission.sql
+-- Rollback for 00234_vote_rpcs_gated_on_has_permission.sql
 --
 -- Restores the pre-00233 RPC bodies (no permission gate, membership
 -- check only). Matches deployed pre-00233 state: start_vote from
