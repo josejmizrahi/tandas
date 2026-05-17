@@ -43,6 +43,12 @@ public enum Permission: Codable, Sendable, Hashable {
     case createVotes
     /// Cast a vote in any open vote.
     case castVote
+    /// Govern event lifecycle: close/cancel an event, edit its
+    /// metadata, check in another member. Hosts of their own event
+    /// retain these powers without needing the permission (mig 00235).
+    /// Custom roles like `event_coordinator` declare this permission
+    /// to manage events they don't host themselves.
+    case manageEvents
 
     // MARK: - Phase 2 (`shared_resource`)
 

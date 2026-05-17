@@ -16,6 +16,7 @@ extension Permission {
         .closeAppeal,
         .createVotes,
         .castVote,
+        .manageEvents,
         .assignSlot,
         .bookSlot,
         .approveSlotSwap,
@@ -43,6 +44,7 @@ extension Permission {
         "closeAppeal",
         "createVotes",
         "castVote",
+        "manageEvents",
         "assignSlot",
         "bookSlot",
         "approveSlotSwap",
@@ -81,6 +83,7 @@ extension Permission {
         case .closeAppeal: return "closeAppeal"
         case .createVotes: return "createVotes"
         case .castVote: return "castVote"
+        case .manageEvents: return "manageEvents"
         case .assignSlot: return "assignSlot"
         case .bookSlot: return "bookSlot"
         case .approveSlotSwap: return "approveSlotSwap"
@@ -111,6 +114,7 @@ extension Permission {
         case "closeAppeal": return .closeAppeal
         case "createVotes": return .createVotes
         case "castVote": return .castVote
+        case "manageEvents": return .manageEvents
         case "assignSlot": return .assignSlot
         case "bookSlot": return .bookSlot
         case "approveSlotSwap": return .approveSlotSwap
