@@ -1,6 +1,10 @@
 import Foundation
 import Supabase
 
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
 public enum RuleTemplateError: Error, Equatable, Sendable {
     case rpcFailed(String)
     case decodingFailed(String)
@@ -451,6 +455,7 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             let p_conditions: [ShapePayload]
             let p_consequences: [ShapePayload]
             let p_change_reason: String?
+            let p_slug: String?
         }
 
         let params = Params(
@@ -460,7 +465,8 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config),
             p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
-            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason
+            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
+            p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
 
         do {

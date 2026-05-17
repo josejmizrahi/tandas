@@ -59,13 +59,23 @@ public struct RuleDraft: Sendable, Hashable {
     public var consequences: [ShapeInstance]
     public var changeReason: String
 
+    /// Stable identifier for this rule. Honors Constitution §7 and
+    /// Social-Primitives §7 — rules need IDs that don't change with
+    /// copy localization. When nil, the server auto-derives
+    /// `<trigger_snake>_<first_cons_snake>_<6hex>` and returns the
+    /// final value in `RuleVersionPublishResult.slug`. When set, must
+    /// match `[a-z][a-z0-9_]{0,63}` and be unique within the group
+    /// (server enforces both, mig 00246).
+    public var slug: String?
+
     public init(
         name: String = "",
         scope: RuleTemplateScope = .group,
         trigger: ShapeInstance? = nil,
         conditions: [ShapeInstance] = [],
         consequences: [ShapeInstance] = [],
-        changeReason: String = ""
+        changeReason: String = "",
+        slug: String? = nil
     ) {
         self.name = name
         self.scope = scope
@@ -73,6 +83,34 @@ public struct RuleDraft: Sendable, Hashable {
         self.conditions = conditions
         self.consequences = consequences
         self.changeReason = changeReason
+        self.slug = slug
+    }
+
+    /// Preview of the slug the server would auto-derive if the draft
+    /// publishes without an explicit one. Mirrors the SQL formula in
+    /// mig 00246: `<trigger_snake>_<first_cons_snake>_…` (sans the
+    /// random suffix — the random part is unknowable client-side).
+    /// Returns nil when the draft has no trigger or no consequence yet.
+    /// Used by the composer to show "tu acuerdo se guardará como X_…".
+    public var suggestedSlugStem: String? {
+        guard let triggerId = trigger?.shapeId else { return nil }
+        guard let firstConsId = consequences.first?.shapeId else { return nil }
+        return RuleDraft.slugifyCamel(triggerId) + "_" + RuleDraft.slugifyCamel(firstConsId)
+    }
+
+    /// Pure helper: camelCase → snake_case. Mirrors the SQL
+    /// `slugify_camel` function so the iOS-side suggestion matches the
+    /// server-side derivation exactly.
+    public static func slugifyCamel(_ input: String) -> String {
+        guard !input.isEmpty else { return "" }
+        var result = ""
+        for (i, ch) in input.enumerated() {
+            if ch.isUppercase && i > 0 {
+                result.append("_")
+            }
+            result.append(ch.lowercased())
+        }
+        return result
     }
 
     /// True when the draft satisfies the server's invariants — what the

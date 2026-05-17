@@ -91,6 +91,22 @@ public struct RuleComposerView: View {
             TextField("Ej. Multa por llegar tarde", text: nameBinding)
                 .textFieldStyle(.roundedBorder)
                 .ruulTextStyle(RuulTypography.body)
+            if let preview = coord.slugPreview {
+                HStack(spacing: RuulSpacing.xxs) {
+                    Image(systemName: "tag")
+                        .ruulTextStyle(RuulTypography.captionBold)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .accessibilityHidden(true)
+                    Text("ID: \(preview)")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, 2)
+                .accessibilityLabel("Identificador estable del acuerdo: \(preview)")
+            }
         }
     }
 
@@ -203,26 +219,15 @@ public struct RuleComposerView: View {
     }
 
     private var previewSentence: String {
-        // Lightweight inline render. The canonical RuleSentenceFormatter
-        // takes a published GroupRule; the draft isn't published yet so
-        // we build a synthetic sentence from the picked shape labels.
-        var parts: [String] = []
-        if let trigger = coord.draft.trigger, let s = coord.shape(id: trigger.shapeId) {
-            parts.append("Cuando: \(s.labelES)")
-        } else {
-            parts.append("Cuando: (elige un disparador)")
-        }
-        if !coord.draft.conditions.isEmpty {
-            let names = coord.draft.conditions.compactMap { coord.shape(id: $0.shapeId)?.labelES }.joined(separator: " · ")
-            parts.append("Si: \(names)")
-        }
-        if !coord.draft.consequences.isEmpty {
-            let names = coord.draft.consequences.compactMap { coord.shape(id: $0.shapeId)?.labelES }.joined(separator: " · ")
-            parts.append("Entonces: \(names)")
-        } else {
-            parts.append("Entonces: (agrega al menos una consecuencia)")
-        }
-        return parts.joined(separator: "\n")
+        // Canonical formatter — same one used by published rule rows.
+        // Renders as Halajic-style teaching sentence: "Cuando X, si Y,
+        // entonces Z." per Constitution §18 (Talmud structural
+        // inspiration) and Vision §rules.
+        RuleSentenceFormatter.sentence(
+            for: coord.draft,
+            registry: coord.shapeRegistry,
+            singleLine: false
+        )
     }
 
     private func sectionLabel(_ text: String) -> some View {

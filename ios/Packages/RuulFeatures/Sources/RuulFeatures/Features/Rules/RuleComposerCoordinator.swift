@@ -137,6 +137,25 @@ public final class RuleComposerCoordinator: Identifiable {
         draft.name = newValue
     }
 
+    /// Admin-override of the auto-derived slug. Empty/whitespace falls
+    /// back to nil so the server keeps auto-generating. Format
+    /// validation happens server-side (mig 00246) on publish; iOS only
+    /// trims here so the picker preview matches what gets sent.
+    public func setSlug(_ newValue: String) {
+        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        draft.slug = trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Preview of the slug the server will assign. Returns user's
+    /// override if set; else the deterministic stem (without the
+    /// random suffix that only the server knows); else nil when the
+    /// trigger/consequence aren't picked yet.
+    public var slugPreview: String? {
+        if let custom = draft.slug { return custom }
+        guard let stem = draft.suggestedSlugStem else { return nil }
+        return stem + "_…"
+    }
+
     public func setChangeReason(_ newValue: String) {
         draft.changeReason = newValue
     }

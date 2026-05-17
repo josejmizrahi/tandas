@@ -28,6 +28,95 @@ public enum RuleSentenceFormatter {
         return "Si \(triggerPhrase)"
     }
 
+    /// Composer-flavored sentence for a `RuleDraft` (multi-condition,
+    /// multi-consequence). Reads inline config from each ShapeInstance,
+    /// so threshold/amount values appear within the natural phrase
+    /// ("multa de $200", "más de 15 minutos tarde", …).
+    ///
+    /// Shape: "Cuando <trigger>[, si <cond1> y <cond2>], entonces
+    /// <cons1>[, también <cons2>]." Renders nicely with line breaks
+    /// for long lists by inserting `\n` between clauses; the caller
+    /// can replace with `, ` if they want a single line.
+    public static func sentence(
+        for draft: RuleDraft,
+        registry: RuleShapeRegistry,
+        singleLine: Bool = false
+    ) -> String {
+        let separator = singleLine ? " " : "\n"
+        var clauses: [String] = []
+
+        // Trigger clause.
+        if let trigger = draft.trigger {
+            clauses.append("Cuando " + phrase(for: trigger, registry: registry))
+        } else {
+            clauses.append("Cuando (elige un disparador)")
+        }
+
+        // Conditions clause.
+        if !draft.conditions.isEmpty {
+            let parts = draft.conditions.map { phrase(for: $0, registry: registry) }
+            clauses.append("si " + joinWithY(parts))
+        }
+
+        // Consequences clause.
+        if draft.consequences.isEmpty {
+            clauses.append("entonces (agrega al menos una consecuencia)")
+        } else if draft.consequences.count == 1 {
+            clauses.append("entonces " + phrase(for: draft.consequences[0], registry: registry))
+        } else {
+            let parts = draft.consequences.map { phrase(for: $0, registry: registry) }
+            clauses.append("entonces " + joinWithY(parts))
+        }
+
+        return clauses.joined(separator: singleLine ? ", " : separator).appending(".")
+    }
+
+    /// Joins a list of phrases with natural Spanish conjunctions:
+    /// ["a"] → "a"; ["a","b"] → "a y b"; ["a","b","c"] → "a, b y c".
+    private static func joinWithY(_ items: [String]) -> String {
+        switch items.count {
+        case 0:  return ""
+        case 1:  return items[0]
+        case 2:  return "\(items[0]) y \(items[1])"
+        default:
+            let head = items.dropLast().joined(separator: ", ")
+            return "\(head) y \(items.last ?? "")"
+        }
+    }
+
+    /// Natural-language phrase for a single shape instance. Uses the
+    /// shape's labelES as the base and inlines any config values that
+    /// resolve to a renderable type (int / currency / string).
+    private static func phrase(
+        for instance: ShapeInstance,
+        registry: RuleShapeRegistry
+    ) -> String {
+        guard let shape = registry.shape(id: instance.shapeId) else {
+            return instance.shapeId
+        }
+        let label = shape.labelES.lowercased()
+        let configPairs = inlineInstanceConfig(shape: shape, config: instance.config)
+        if configPairs.isEmpty { return label }
+        return "\(label) (\(configPairs))"
+    }
+
+    /// Build "key: value · key2: value2" from a ShapeInstance.config.
+    /// Skips fields the config doesn't carry; skips values that don't
+    /// match the field's declared kind.
+    private static func inlineInstanceConfig(
+        shape: RuleShape,
+        config: JSONConfig
+    ) -> String {
+        var pieces: [String] = []
+        for field in shape.configFields {
+            guard let value = config[field.key] else { continue }
+            if let str = renderValue(value, kind: field.kind) {
+                pieces.append("\(field.labelES.lowercased()): \(str)")
+            }
+        }
+        return pieces.joined(separator: " · ")
+    }
+
     /// Same shape but for the rule builder's live preview, where the user
     /// hasn't submitted yet. Reads the picked shape ids + field values
     /// (raw strings, same dictionary the form binds to).

@@ -138,18 +138,27 @@ public struct RuleVersionConflict: Codable, Sendable, Hashable {
     }
 }
 
-/// Result of `publish_rule_version`. The returned rule is already active
-/// — the iOS layer can navigate to its detail view.
+/// Result of `publish_rule_version` / `publish_rule_composition`. The
+/// returned rule is already active — the iOS layer can navigate to
+/// its detail view.
+///
+/// `slug` is set by the composition endpoint (mig 00246) — every
+/// composer-published rule gets a stable id. `publish_rule_version`
+/// (template-driven) returns null here today because the template id
+/// IS the slug equivalent; if/when that's unified the field becomes
+/// canonical for both paths.
 public struct RuleVersionPublishResult: Codable, Sendable, Hashable {
     public let ruleId: UUID
     public let ruleVersionId: UUID
     public let version: Int
+    public let slug: String?
     public let conflicts: [RuleVersionConflict]
 
     public enum CodingKeys: String, CodingKey {
         case ruleId        = "rule_id"
         case ruleVersionId = "rule_version_id"
         case version
+        case slug
         case conflicts
     }
 
@@ -157,12 +166,23 @@ public struct RuleVersionPublishResult: Codable, Sendable, Hashable {
         ruleId: UUID,
         ruleVersionId: UUID,
         version: Int,
+        slug: String? = nil,
         conflicts: [RuleVersionConflict] = []
     ) {
         self.ruleId        = ruleId
         self.ruleVersionId = ruleVersionId
         self.version       = version
+        self.slug          = slug
         self.conflicts     = conflicts
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.ruleId        = try c.decode(UUID.self, forKey: .ruleId)
+        self.ruleVersionId = try c.decode(UUID.self, forKey: .ruleVersionId)
+        self.version       = try c.decode(Int.self, forKey: .version)
+        self.slug          = try c.decodeIfPresent(String.self, forKey: .slug)
+        self.conflicts     = (try? c.decode([RuleVersionConflict].self, forKey: .conflicts)) ?? []
     }
 }
 
