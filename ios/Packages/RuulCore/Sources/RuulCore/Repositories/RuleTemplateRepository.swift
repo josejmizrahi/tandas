@@ -41,6 +41,23 @@ public protocol RuleTemplateRepository: Actor {
         title: String?,
         changeReason: String?
     ) async throws -> RuleVersionPublishResult
+
+    /// Publishes a free-composition rule. Caller picks the trigger + N
+    /// conditions + N consequences directly from the shape catalog —
+    /// no template required. Powers the Rule Composer flow.
+    ///
+    /// Server-side validation (mig 00245):
+    /// - Has modifyRules permission
+    /// - Trigger compatible with scope.type + resource's resource_type
+    /// - Every shape id exists in rule_shapes with the right kind
+    /// - At least one consequence
+    ///
+    /// Returns the same envelope as `publishRuleVersion`: rule id +
+    /// version id + any same_scope_overlapping warnings.
+    func publishRuleComposition(
+        groupId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult
 }
 
 public extension RuleTemplateRepository {
@@ -115,6 +132,25 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
         lastPublishCall = (groupId, templateId, shapeParams, scope)
         guard stubTemplates.contains(where: { $0.id == templateId }) else {
             throw RuleTemplateError.rpcFailed("template \(templateId) not in mock catalog")
+        }
+        return RuleVersionPublishResult(
+            ruleId: UUID(),
+            ruleVersionId: UUID(),
+            version: 1,
+            conflicts: []
+        )
+    }
+
+    public private(set) var lastCompositionCall: (groupId: UUID, draft: RuleDraft)?
+
+    public func publishRuleComposition(
+        groupId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        if let err = nextPublishError { nextPublishError = nil; throw err }
+        lastCompositionCall = (groupId, draft)
+        guard draft.isPublishable else {
+            throw RuleTemplateError.rpcFailed("draft is incomplete (name/trigger/consequence missing)")
         }
         return RuleVersionPublishResult(
             ruleId: UUID(),
@@ -385,6 +421,51 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
         do {
             return try await client
                 .rpc("publish_rule_version", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RuleTemplateError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func publishRuleComposition(
+        groupId: UUID,
+        draft: RuleDraft
+    ) async throws -> RuleVersionPublishResult {
+        guard let triggerInstance = draft.trigger else {
+            throw RuleTemplateError.rpcFailed("draft has no trigger")
+        }
+        guard !draft.consequences.isEmpty else {
+            throw RuleTemplateError.rpcFailed("draft has no consequences")
+        }
+
+        struct ShapePayload: Encodable {
+            let shape_id: String
+            let config: JSONConfig
+        }
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_name: String
+            let p_scope: JSONConfig
+            let p_trigger: ShapePayload
+            let p_conditions: [ShapePayload]
+            let p_consequences: [ShapePayload]
+            let p_change_reason: String?
+        }
+
+        let params = Params(
+            p_group_id: groupId.uuidString.lowercased(),
+            p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            p_scope: RuleBuilderTemplate.scopeJSON(draft.scope),
+            p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config),
+            p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason
+        )
+
+        do {
+            return try await client
+                .rpc("publish_rule_composition", params: params)
                 .execute()
                 .value
         } catch {

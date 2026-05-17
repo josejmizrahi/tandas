@@ -1,0 +1,166 @@
+import Foundation
+
+/// One use of a `RuleShape` inside a `RuleDraft`: the shape's id plus
+/// the per-instance config the user filled in. The config conforms to
+/// the shape's declared `config_fields` schema (validated server-side
+/// by `publish_rule_composition`, mig 00245).
+///
+/// Pure value type — easy to diff, copy, persist, share. The composer
+/// builds up a draft of these and the publish step serializes them
+/// straight into the RPC payload.
+public struct ShapeInstance: Codable, Sendable, Hashable, Identifiable {
+    /// Stable instance id used for SwiftUI ForEach + drag-reorder.
+    /// Server doesn't see this — it's only meaningful in-app.
+    public var id: UUID
+    public let shapeId: String
+    public var config: JSONConfig
+
+    public init(shapeId: String, config: JSONConfig = .object([:]), id: UUID = UUID()) {
+        self.id = id
+        self.shapeId = shapeId
+        self.config = config
+    }
+
+    public enum CodingKeys: String, CodingKey {
+        case shapeId = "shape_id"
+        case config
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = UUID()
+        self.shapeId = try c.decode(String.self, forKey: .shapeId)
+        self.config  = try c.decodeIfPresent(JSONConfig.self, forKey: .config) ?? .object([:])
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(shapeId, forKey: .shapeId)
+        try c.encode(config, forKey: .config)
+    }
+}
+
+/// A rule under construction. The composer builds these from scratch
+/// (free composition) or seeded from a template / existing rule
+/// ("start from an example"). On publish, it's serialized into the
+/// `publish_rule_composition` RPC (mig 00245).
+///
+/// Validation invariants (also enforced server-side):
+///   - name: 2+ chars trimmed
+///   - trigger: exactly one (nil = draft incomplete)
+///   - conditions: 0..N, AND-chained
+///   - consequences: 1+ (at least one effect — a rule with no effect
+///     is just a comment)
+public struct RuleDraft: Sendable, Hashable {
+    public var name: String
+    public var scope: RuleTemplateScope
+    public var trigger: ShapeInstance?
+    public var conditions: [ShapeInstance]
+    public var consequences: [ShapeInstance]
+    public var changeReason: String
+
+    public init(
+        name: String = "",
+        scope: RuleTemplateScope = .group,
+        trigger: ShapeInstance? = nil,
+        conditions: [ShapeInstance] = [],
+        consequences: [ShapeInstance] = [],
+        changeReason: String = ""
+    ) {
+        self.name = name
+        self.scope = scope
+        self.trigger = trigger
+        self.conditions = conditions
+        self.consequences = consequences
+        self.changeReason = changeReason
+    }
+
+    /// True when the draft satisfies the server's invariants — what the
+    /// composer's "Publicar" button gates on.
+    public var isPublishable: Bool {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedName.count >= 2 else { return false }
+        guard trigger != nil else { return false }
+        guard !consequences.isEmpty else { return false }
+        return true
+    }
+
+    // MARK: Mutations
+
+    public mutating func setTrigger(_ shapeId: String, config: JSONConfig = .object([:])) {
+        if let existing = trigger, existing.shapeId == shapeId {
+            // Same shape — preserve config.
+            return
+        }
+        trigger = ShapeInstance(shapeId: shapeId, config: config)
+    }
+
+    public mutating func addCondition(_ shapeId: String, config: JSONConfig = .object([:])) {
+        conditions.append(ShapeInstance(shapeId: shapeId, config: config))
+    }
+
+    public mutating func removeCondition(id: UUID) {
+        conditions.removeAll { $0.id == id }
+    }
+
+    public mutating func addConsequence(_ shapeId: String, config: JSONConfig = .object([:])) {
+        consequences.append(ShapeInstance(shapeId: shapeId, config: config))
+    }
+
+    public mutating func removeConsequence(id: UUID) {
+        consequences.removeAll { $0.id == id }
+    }
+
+    public mutating func updateConfig(forShapeInstanceId instanceId: UUID, key: String, value: JSONConfig) {
+        func patch(_ instance: inout ShapeInstance) {
+            guard case .object(var dict) = instance.config else {
+                instance.config = .object([key: value])
+                return
+            }
+            dict[key] = value
+            instance.config = .object(dict)
+        }
+        if let i = conditions.firstIndex(where: { $0.id == instanceId }) {
+            patch(&conditions[i])
+            return
+        }
+        if let i = consequences.firstIndex(where: { $0.id == instanceId }) {
+            patch(&consequences[i])
+            return
+        }
+        if var t = trigger, t.id == instanceId {
+            patch(&t)
+            trigger = t
+        }
+    }
+}
+
+// MARK: - Seeding from templates / existing rules
+
+extension RuleDraft {
+    /// Seed a draft from a curated template — the "start from an
+    /// example" path. The user can freely edit / remove pieces after
+    /// (the draft is no longer tied to the template).
+    public static func from(
+        template: RuleBuilderTemplate,
+        scope: RuleTemplateScope
+    ) -> RuleDraft {
+        let triggerInstance = ShapeInstance(
+            shapeId: template.composition.triggerShapeId,
+            config: template.defaultParams
+        )
+        let conditions = template.composition.conditionShapeIds.map { id in
+            ShapeInstance(shapeId: id, config: template.defaultParams)
+        }
+        let consequences = template.composition.consequenceShapeIds.map { id in
+            ShapeInstance(shapeId: id, config: template.defaultParams)
+        }
+        return RuleDraft(
+            name: template.displayNameES,
+            scope: scope,
+            trigger: triggerInstance,
+            conditions: conditions,
+            consequences: consequences
+        )
+    }
+}
