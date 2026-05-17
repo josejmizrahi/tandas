@@ -91,15 +91,17 @@ struct LinkKindCatalogTests {
 
     @Test("self-link semantics: catalog never sanctions same-type loops where it makes no sense")
     func selfTypeLoopsAreSane() {
-        // Loops are not categorically banned (e.g. fund->fund 'uses' is
-        // valid per V1 catalog), but obvious nonsense like 'event uses
-        // event' or 'asset located_in asset' should be off the table.
+        // Loops are not categorically banned at the schema level, but
+        // the V1 catalog doesn't include any same-type tuple — every
+        // canonical relation goes between distinct resource types
+        // (event → space, fund → asset, right → fund, etc.). Lock that
+        // doctrine here so a future relation that adds a same-type
+        // edge has to update this test deliberately.
         #expect(!LinkKind.uses.isValid(from: .event, to: .event))
         #expect(!LinkKind.locatedIn.isValid(from: .asset, to: .asset))
         #expect(!LinkKind.governs.isValid(from: .right, to: .right))
-        // fund→fund uses is sanctioned (e.g., "this fund draws from
-        // another"). Keep it as a positive-control.
-        #expect(LinkKind.uses.isValid(from: .fund, to: .fund))
+        #expect(!LinkKind.uses.isValid(from: .fund, to: .fund),
+                "fund→fund :uses is NOT in the V1 catalog (mig 00267 only declares fund→{asset,space} for uses)")
     }
 
     // MARK: - Candidate helper
