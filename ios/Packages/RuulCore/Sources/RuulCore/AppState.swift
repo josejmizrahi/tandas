@@ -421,6 +421,20 @@ public final class AppState {
         for await s in auth.sessionStream {
             self.session = s
             if s != nil {
+                // Verify the cached JWT still maps to a live auth.users row.
+                // If the user was deleted server-side (DB wipe, manual delete),
+                // the Keychain token is stale: PostgREST 401s silently and
+                // AuthGate strands the user in a zombie-authenticated state.
+                // Force sign-out and let AuthGate route to SignInView.
+                let valid = await auth.verifySession()
+                if !valid {
+                    try? await auth.signOut()
+                    self.session = nil
+                    self.profile = nil
+                    self.groups = []
+                    self.isBootstrapping = false
+                    continue
+                }
                 // list_modules() RPC is grant-restricted to authenticated;
                 // refresh the catalog only once we have a session. v1Fallback
                 // covers the pre-auth surface.
