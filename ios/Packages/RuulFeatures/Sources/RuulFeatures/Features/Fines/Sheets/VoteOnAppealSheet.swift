@@ -44,6 +44,9 @@ public struct VoteOnAppealSheet: View {
                         totalEligible: counts.totalEligible,
                         resolution:    nil
                     ))
+                    thresholdFootnote(counts: counts)
+                } else {
+                    thresholdFootnote(counts: nil)
                 }
                 votingButtons
                 Text("Tu voto es anónimo. Solo se publican los conteos agregados.")
@@ -95,6 +98,28 @@ public struct VoteOnAppealSheet: View {
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .stroke(Color.ruulSeparator, lineWidth: 0.5)
         )
+    }
+
+    /// P1 — UXJourney: "no muestra cuántos miembros votarán ni el
+    /// threshold". El usuario antes votaba sin entender qué hace falta
+    /// para anular. Ahora muestra una línea con la regla.
+    /// Si tenemos counts (server populated), uses el totalEligible
+    /// real; si no, copy genérico al estilo template default (50% a
+    /// favor de los que voten para anular).
+    @ViewBuilder
+    private func thresholdFootnote(counts: AppealVoteCounts?) -> some View {
+        let copy: String = {
+            if let counts {
+                let needed = max(1, Int(ceil(Double(counts.totalEligible) * 0.5)) + 1)
+                return "Necesitan \(needed) de \(counts.totalEligible) miembros votar a favor para anular la multa."
+            }
+            return "La multa se anula si la mayoría del grupo vota a favor."
+        }()
+        Text(copy)
+            .ruulTextStyle(RuulTypography.caption)
+            .foregroundStyle(Color.ruulTextSecondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
     }
 
     private var votingButtons: some View {
