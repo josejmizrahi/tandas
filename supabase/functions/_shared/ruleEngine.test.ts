@@ -70,6 +70,14 @@ function captureSink(): {
     // unaffected.
     listMembersWithRole: async () => [],
     resolveResourceHostMember: async () => null,
+    // AssetRules.md §4.3 stubs — not exercised by the rule fixtures in
+    // this file, but required by the ConsequenceSink contract. Default
+    // implementations are no-ops that return a synthetic id so any
+    // accidental invocation surfaces as observable state rather than a
+    // runtime crash.
+    createUserAction: async (args) => `user-action-${args.rule_id}`,
+    setBookingsLocked: async (args) => args.resource_id,
+    latestAssetValuationCents: async () => null,
   };
   return { sink, captured, warnings, votes, transfers, revokes, suspends };
 }
