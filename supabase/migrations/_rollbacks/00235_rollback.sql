@@ -1,190 +1,232 @@
--- Rollback for 00235_event_rpcs_gated_on_has_permission.sql
+-- Rollback for 00234_rule_rpcs_gated_on_has_permission.sql
 --
--- Restores prior bodies (gate on is_group_admin). Catalog backfill of
--- manageEvents in groups.roles and templates is left in place; it is
--- additive and harmless if the column DEFAULT also keeps the
--- v2 shape (new groups seed with manageEvents which is then a no-op).
+-- Restores prior bodies: publish_rule_version from mig 00182 +
+-- seed_template_rules from mig 00075. Both gate on is_group_admin.
 
-create or replace function public.close_event(p_event_id uuid)
-returns public.events_view
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_resource public.resources;
-  v_view_row public.events_view;
-begin
-  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
-  if v_resource.id is null then raise exception 'event not found'; end if;
-  if not public.is_group_admin(v_resource.group_id, auth.uid()) then
-    raise exception 'admin only';
-  end if;
-
-  update public.resources
-     set status = 'completed',
-         metadata = jsonb_set(metadata, '{closed_at}', to_jsonb(now()::text)),
-         updated_at = now()
-   where id = p_event_id;
-
-  perform public.record_system_event(
-    v_resource.group_id, 'eventClosed', p_event_id, null,
-    jsonb_build_object(
-      'title', v_resource.metadata->>'title',
-      'closed_at', now(),
-      'status', 'completed'
-    )
-  );
-
-  select * into v_view_row from public.events_view where id = p_event_id;
-  return v_view_row;
-end;
-$$;
-
-create or replace function public.close_event_no_fines(p_event_id uuid)
-returns public.events_view
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_resource public.resources;
-  v_view_row public.events_view;
-  v_host_id  uuid;
-begin
-  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
-  if v_resource.id is null then raise exception 'event not found'; end if;
-  v_host_id := (v_resource.metadata->>'host_id')::uuid;
-  if not (public.is_group_admin(v_resource.group_id, auth.uid()) or v_host_id = auth.uid()) then
-    raise exception 'host or admin only';
-  end if;
-
-  update public.resources
-     set status = 'completed',
-         metadata = jsonb_set(metadata, '{closed_at}', to_jsonb(now()::text)),
-         updated_at = now()
-   where id = p_event_id;
-
-  perform public.record_system_event(
-    v_resource.group_id, 'eventClosed', p_event_id, null,
-    jsonb_build_object(
-      'title', v_resource.metadata->>'title',
-      'closed_at', now(),
-      'status', 'completed'
-    )
-  );
-
-  select * into v_view_row from public.events_view where id = p_event_id;
-  return v_view_row;
-end;
-$$;
-
-create or replace function public.cancel_event(p_event_id uuid, p_reason text default null)
-returns public.events_view
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_resource public.resources;
-  v_view_row public.events_view;
-  v_host_id  uuid;
-begin
-  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
-  if v_resource.id is null then raise exception 'event not found'; end if;
-  v_host_id := (v_resource.metadata->>'host_id')::uuid;
-  if not (public.is_group_admin(v_resource.group_id, auth.uid()) or v_host_id = auth.uid()) then
-    raise exception 'host or admin only';
-  end if;
-
-  update public.resources
-     set status   = 'cancelled',
-         metadata = case
-           when p_reason is null then metadata
-           else jsonb_set(metadata, '{cancellation_reason}', to_jsonb(p_reason::text))
-         end,
-         updated_at = now()
-   where id = p_event_id;
-
-  select * into v_view_row from public.events_view where id = p_event_id;
-  return v_view_row;
-end;
-$$;
-
-create or replace function public.update_event_metadata(p_event_id uuid, p_patch jsonb)
-returns public.events_view
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_resource public.resources;
-  v_host_id  uuid;
-  v_view_row public.events_view;
-begin
-  select * into v_resource from public.resources
-   where id = p_event_id and resource_type = 'event';
-  if v_resource.id is null then raise exception 'event not found'; end if;
-
-  v_host_id := (v_resource.metadata->>'host_id')::uuid;
-  if not (public.is_group_admin(v_resource.group_id, auth.uid()) or v_host_id = auth.uid()) then
-    raise exception 'host or admin only';
-  end if;
-
-  update public.resources
-     set metadata = metadata || p_patch,
-         updated_at = now()
-   where id = p_event_id;
-
-  select * into v_view_row from public.events_view where id = p_event_id;
-  return v_view_row;
-end;
-$$;
-
-create or replace function public.check_in_v2(
-  p_event_id           uuid,
-  p_user_id            uuid,
-  p_method             text default 'self',
-  p_location_verified  boolean default false,
-  p_arrived_at         timestamptz default null
+create or replace function public.publish_rule_version(
+  p_group_id     uuid,
+  p_template_id  text,
+  p_shape_params jsonb default '{}'::jsonb,
+  p_scope        jsonb default '{"type": "group"}'::jsonb,
+  p_title        text default null,
+  p_change_reason text default null
 )
-returns public.attendance_view
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_resource  public.resources;
-  v_member_id uuid;
-  v_view_row  public.attendance_view;
+  v_uid             uuid := auth.uid();
+  v_template        public.rule_templates;
+  v_scope_type      text;
+  v_resource_id     uuid;
+  v_series_id       uuid;
+  v_trigger_id      text;
+  v_condition_ids   text[];
+  v_consequence_ids text[];
+  v_params          jsonb;
+  v_compiled        jsonb;
+  v_rule_id         uuid;
+  v_rule_version_id uuid;
+  v_title           text;
+  v_conflicts       jsonb := '[]'::jsonb;
+  v_against         record;
 begin
-  if p_method not in ('self', 'qr_scan', 'host_marked') then
-    raise exception 'invalid method: %', p_method;
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
   end if;
-  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
-  if v_resource.id is null then raise exception 'event not found'; end if;
-  if not (auth.uid() = p_user_id or public.is_group_admin(v_resource.group_id, auth.uid())) then
-    raise exception 'not allowed';
+  if not public.is_group_admin(p_group_id, v_uid) then
+    raise exception 'admin only' using errcode = '42501';
   end if;
 
-  select id into v_member_id from public.group_members
-   where group_id = v_resource.group_id and user_id = p_user_id limit 1;
-  if v_member_id is null then raise exception 'membership not found'; end if;
+  select * into v_template from public.rule_templates where id = p_template_id;
+  if not found then
+    raise exception 'rule_template % not found', p_template_id using errcode = '22023';
+  end if;
+  if v_template.status <> 'active' then
+    raise exception 'rule_template % is %', p_template_id, v_template.status using errcode = '22023';
+  end if;
 
-  insert into public.check_in_actions (
-    resource_id, member_id, arrived_at, metadata
-  ) values (
-    p_event_id, v_member_id, coalesce(p_arrived_at, now()),
-    jsonb_strip_nulls(jsonb_build_object(
-      'check_in_method', p_method,
-      'check_in_location_verified', coalesce(p_location_verified, false),
-      'marked_by', auth.uid(),
-      'via', 'check_in_v2'
-    ))
+  v_scope_type := coalesce(p_scope->>'type', 'group');
+  if v_scope_type = 'resource' then
+    v_resource_id := (p_scope->>'id')::uuid;
+    if v_resource_id is null then
+      raise exception 'scope.id required for type=resource' using errcode = '22023';
+    end if;
+  elsif v_scope_type = 'series' then
+    v_series_id := (p_scope->>'id')::uuid;
+    if v_series_id is null then
+      raise exception 'scope.id required for type=series' using errcode = '22023';
+    end if;
+  elsif v_scope_type = 'group' then
+    -- no-op
+  else
+    raise exception 'unsupported scope.type=%', v_scope_type using errcode = '22023';
+  end if;
+
+  v_trigger_id      := v_template.composition->>'trigger_shape_id';
+  v_condition_ids   := coalesce(array(select jsonb_array_elements_text(v_template.composition->'condition_shape_ids')),   '{}'::text[]);
+  v_consequence_ids := coalesce(array(select jsonb_array_elements_text(v_template.composition->'consequence_shape_ids')), '{}'::text[]);
+
+  if v_trigger_id is null then
+    raise exception 'template % missing composition.trigger_shape_id', p_template_id using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.rule_shapes where id = v_trigger_id and kind = 'trigger') then
+    raise exception 'trigger shape % not found (or wrong kind)', v_trigger_id using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+    from unnest(v_condition_ids) as cid
+    where not exists (select 1 from public.rule_shapes where id = cid and kind = 'condition')
+  ) then
+    raise exception 'one or more condition shapes invalid: %', v_condition_ids using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+    from unnest(v_consequence_ids) as cid
+    where not exists (select 1 from public.rule_shapes where id = cid and kind = 'consequence')
+  ) then
+    raise exception 'one or more consequence shapes invalid: %', v_consequence_ids using errcode = '22023';
+  end if;
+
+  v_params := coalesce(v_template.default_params, '{}'::jsonb) || coalesce(p_shape_params, '{}'::jsonb);
+
+  v_compiled := jsonb_build_object(
+    'trigger',      jsonb_build_object('eventType', v_trigger_id, 'config', v_params),
+    'conditions',   (
+      select coalesce(jsonb_agg(jsonb_build_object('type', cid, 'config', v_params)), '[]'::jsonb)
+      from unnest(v_condition_ids) as cid
+    ),
+    'consequences', (
+      select coalesce(jsonb_agg(jsonb_build_object('type', cid, 'config', v_params)), '[]'::jsonb)
+      from unnest(v_consequence_ids) as cid
+    ),
+    'exceptions',   '[]'::jsonb,
+    'scope',        p_scope,
+    'target',       jsonb_build_object('type', 'ref', 'value', '$trigger.actor'),
+    'shape_ids',    jsonb_build_object(
+                      'trigger',      v_trigger_id,
+                      'conditions',   to_jsonb(v_condition_ids),
+                      'consequences', to_jsonb(v_consequence_ids)
+                    )
   );
 
-  select * into v_view_row from public.attendance_view
-   where resource_id = p_event_id and member_id = v_member_id;
-  return v_view_row;
+  for v_against in (
+    select rv.id as rv_id, r2.name as r_title
+    from public.rule_versions rv
+    join public.rules r2 on r2.id = rv.rule_id
+    where r2.group_id = p_group_id
+      and rv.status = 'active'
+      and rv.compiled->'trigger'->>'eventType' = v_trigger_id
+      and coalesce(rv.compiled->'scope', '{}'::jsonb) = p_scope
+  ) loop
+    v_conflicts := v_conflicts || jsonb_build_object(
+      'type',     'same_scope_overlapping',
+      'severity', 'warning',
+      'against_rule_version_id', v_against.rv_id,
+      'against_rule_title',      v_against.r_title
+    );
+  end loop;
+
+  v_title := coalesce(nullif(trim(p_title), ''), v_template.display_name_es);
+  insert into public.rules (
+    group_id, name, trigger, conditions, consequences,
+    is_active, slug,
+    resource_id, series_id, membership_id, module_key,
+    proposed_by, created_at, updated_at
+  )
+  values (
+    p_group_id, v_title,
+    v_compiled->'trigger', v_compiled->'conditions', v_compiled->'consequences',
+    true, p_template_id,
+    v_resource_id, v_series_id, null, null,
+    v_uid, now(), now()
+  )
+  returning id into v_rule_id;
+
+  insert into public.rule_versions (
+    rule_id, version, template_id, shape_params, compiled,
+    status, effective_from, effective_until,
+    previous_version_id, created_by, change_reason
+  )
+  values (
+    v_rule_id, 1, p_template_id, p_shape_params, v_compiled,
+    'active', now(), null,
+    null, v_uid, p_change_reason
+  )
+  returning id into v_rule_version_id;
+
+  if jsonb_array_length(v_conflicts) > 0 then
+    insert into public.rule_conflicts (group_id, rule_a_version_id, rule_b_version_id, conflict_type, severity)
+    select p_group_id, v_rule_version_id, (c->>'against_rule_version_id')::uuid, c->>'type', c->>'severity'
+    from jsonb_array_elements(v_conflicts) as c;
+  end if;
+
+  return jsonb_build_object(
+    'rule_id',         v_rule_id,
+    'rule_version_id', v_rule_version_id,
+    'version',         1,
+    'conflicts',       v_conflicts
+  );
+end;
+$$;
+
+create or replace function public.seed_template_rules(
+  p_template_id text,
+  p_group_id    uuid
+)
+returns setof public.rules
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid                uuid := auth.uid();
+  v_active_modules   jsonb;
+  v_module_slug      text;
+  v_template_exists  boolean;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if not public.is_group_admin(p_group_id, uid) then
+    raise exception 'only group admins can seed template rules';
+  end if;
+
+  select exists(select 1 from public.templates where id = p_template_id)
+    into v_template_exists;
+
+  if not v_template_exists then
+    raise exception 'template % does not exist', p_template_id;
+  end if;
+
+  if exists (
+    select 1 from public.rules
+     where group_id   = p_group_id
+       and module_key is not null
+  ) then
+    return;
+  end if;
+
+  select active_modules into v_active_modules
+    from public.groups
+   where id = p_group_id;
+
+  if v_active_modules is null or jsonb_typeof(v_active_modules) <> 'array' then
+    return query
+      select * from public.seed_template_rules_legacy(p_template_id, p_group_id);
+    return;
+  end if;
+
+  for v_module_slug in
+    select jsonb_array_elements_text(v_active_modules)
+  loop
+    return query
+      select * from public.seed_module_rules(p_group_id, v_module_slug);
+  end loop;
+
+  return;
 end;
 $$;

@@ -1,207 +1,183 @@
--- Rollback for 00233_vote_rpcs_gated_on_has_permission.sql
+-- Rollback for 00232_fines_rpcs_gated_on_has_permission.sql
 --
--- Restores the pre-00233 RPC bodies (no permission gate, membership
--- check only). Matches deployed pre-00233 state: start_vote from
--- mig 00130 and cast_vote from mig 00163.
+-- Restores the pre-00232 RPC bodies that gated on is_group_admin.
+-- Catalog backfill (issueFine + markFinePaid added to groups.roles
+-- and templates.config.defaultRoles) is left in place: it is additive
+-- and harmless, and rolling it back would risk dropping permissions a
+-- founder may have intentionally edited after apply. The column
+-- DEFAULT is also left at the v2 shape — new groups will simply seed
+-- with permissions that aren't enforced post-rollback (no-op).
+--
+-- If a hard rollback of the catalog is also required, do it manually
+-- with care after auditing groups.roles per-group.
 
-create or replace function public.start_vote(
-  p_group_id              uuid,
-  p_vote_type             text,
-  p_reference_id          uuid,
-  p_title                 text,
-  p_description           text    default null,
-  p_payload               jsonb   default '{}'::jsonb,
-  p_duration_hours        int     default null,
-  p_quorum_percent        int     default null,
-  p_threshold_percent     int     default null,
-  p_is_anonymous          boolean default null,
-  p_quorum_min_absolute   int     default null
+-- Restore issue_manual_fine body from mig 00155.
+create or replace function public.issue_manual_fine(
+  p_group_id    uuid,
+  p_user_id     uuid,
+  p_amount      numeric,
+  p_reason      text,
+  p_rule_id     uuid default null,
+  p_resource_id uuid default null
 )
-returns uuid
+returns public.fines
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_vote_id            uuid;
-  v_caller_id          uuid;
-  v_creator_member_id  uuid;
-  v_governance         jsonb;
-  v_voting_cfg         jsonb;
-  v_duration           int;
-  v_quorum             int;
-  v_threshold          int;
-  v_anonymous          boolean;
-  v_quorum_min         int;
-  v_excluded_member_id uuid;
-  v_closes_at          timestamptz;
+  f             public.fines;
+  r             public.rules;
+  v_snapshot    jsonb;
+  v_member_id   uuid;
 begin
-  v_caller_id := auth.uid();
-  if v_caller_id is null then
-    raise exception 'not authenticated' using errcode = '42501';
+  if auth.uid() is null then raise exception 'auth required'; end if;
+  if not public.is_group_admin(p_group_id, auth.uid()) then raise exception 'admin only'; end if;
+  if not public.is_group_member(p_group_id, p_user_id) then raise exception 'target user not a member'; end if;
+  if p_amount < 0 then raise exception 'amount must be non-negative'; end if;
+  if length(coalesce(p_reason, '')) < 2 then raise exception 'reason required'; end if;
+
+  if p_rule_id is not null then
+    select * into r from public.rules where id = p_rule_id;
+    if found then
+      v_snapshot := jsonb_build_object(
+        'trigger',     coalesce(r.trigger, to_jsonb(r.conditions)),
+        'action',      coalesce(r.action,  to_jsonb(r.consequences)),
+        'rule_title',  coalesce(r.title,   r.name),
+        'rule_slug',   r.slug
+      );
+    end if;
   end if;
 
-  if p_vote_type is null or length(trim(p_vote_type)) = 0 then
-    raise exception 'vote_type required';
-  end if;
-
-  if not public.is_known_vote_type(p_vote_type) then
-    raise notice 'start_vote: unknown vote_type % (group=%) — vote inserted but iOS clients may fail to decode it; fix the caller or ship a whitelist update.',
-      p_vote_type, p_group_id;
-  end if;
-
-  select id into v_creator_member_id
-  from public.group_members
-  where group_id = p_group_id
-    and user_id  = v_caller_id
-    and active   = true;
-
-  if v_creator_member_id is null then
-    raise exception 'not a member of this group' using errcode = '42501';
-  end if;
-
-  select governance into v_governance from public.groups where id = p_group_id;
-
-  v_voting_cfg := coalesce(p_payload->'capability_config'->'voting', '{}'::jsonb);
-
-  v_duration   := coalesce(
-    p_duration_hours,
-    (v_voting_cfg->>'durationHours')::int,
-    (v_governance->>'votingDurationHours')::int,
-    72
-  );
-  v_quorum     := coalesce(
-    p_quorum_percent,
-    (v_voting_cfg->>'quorumPercent')::int,
-    (v_governance->>'votingQuorumPercent')::int,
-    50
-  );
-  v_threshold  := coalesce(
-    p_threshold_percent,
-    (v_voting_cfg->>'thresholdPercent')::int,
-    (v_governance->>'votingThresholdPercent')::int,
-    50
-  );
-  v_anonymous  := coalesce(
-    p_is_anonymous,
-    (v_voting_cfg->>'anonymous')::boolean,
-    (v_governance->>'votesAreAnonymous')::boolean,
-    true
-  );
-  v_quorum_min := coalesce(
-    p_quorum_min_absolute,
-    (v_voting_cfg->>'quorumMinAbsolute')::int,
-    (v_governance->>'votingQuorumMinAbsolute')::int,
-    2
-  );
-  v_closes_at  := now() + (v_duration || ' hours')::interval;
-
-  if p_vote_type = 'fine_appeal' then
-    v_excluded_member_id := nullif(p_payload->>'member_id', '')::uuid;
-  end if;
-
-  insert into public.votes (
-    group_id, vote_type, reference_id, title, description,
-    created_by_member_id, opened_at, closes_at,
-    quorum_percent, threshold_percent, is_anonymous, quorum_min_absolute,
-    status, payload
+  insert into public.fines (
+    group_id, user_id, amount, reason, rule_id, resource_id,
+    auto_generated, issued_by, rule_snapshot
   )
   values (
-    p_group_id, p_vote_type, p_reference_id, p_title, p_description,
-    v_creator_member_id, now(), v_closes_at,
-    v_quorum, v_threshold, v_anonymous, v_quorum_min,
-    'open', p_payload
+    p_group_id, p_user_id, p_amount, p_reason, p_rule_id, p_resource_id,
+    false, auth.uid(), v_snapshot
   )
-  returning id into v_vote_id;
+  returning * into f;
 
-  insert into public.vote_casts (vote_id, member_id, choice)
-  select v_vote_id, gm.id, 'pending'
-  from public.group_members gm
-  where gm.group_id = p_group_id
-    and gm.active   = true
-    and (v_excluded_member_id is null or gm.id <> v_excluded_member_id);
+  select id into v_member_id from public.group_members
+   where group_id = f.group_id and user_id = f.user_id limit 1;
 
-  insert into public.system_events (group_id, event_type, resource_id, member_id, payload)
+  insert into public.ledger_entries (
+    group_id, resource_id, type, amount_cents, currency,
+    from_member_id, to_member_id, metadata,
+    occurred_at, recorded_at, recorded_by
+  )
   values (
-    p_group_id,
-    'voteOpened',
-    v_vote_id,
-    v_creator_member_id,
-    jsonb_build_object('vote_type', p_vote_type, 'reference_id', p_reference_id)
+    f.group_id, f.resource_id, 'fine_officialized', (f.amount * 100)::bigint, 'MXN',
+    v_member_id, null,
+    jsonb_build_object('fine_id', f.id, 'rule_id', f.rule_id, 'via', 'issue_manual_fine'),
+    now(), now(), auth.uid()
   );
 
-  insert into public.notifications_outbox (
-    group_id, recipient_member_id, notification_type, payload, deep_link
-  )
-  select
-    p_group_id,
-    gm.id,
-    'voteOpened',
-    jsonb_build_object(
-      'vote_id',      v_vote_id,
-      'vote_type',    p_vote_type,
-      'reference_id', p_reference_id,
-      'title',        p_title,
-      'closes_at',    v_closes_at
-    ),
-    'ruul://vote/' || v_vote_id::text
-  from public.group_members gm
-  where gm.group_id = p_group_id
-    and gm.active   = true
-    and (v_excluded_member_id is null or gm.id <> v_excluded_member_id);
-
-  return v_vote_id;
+  return f;
 end;
 $$;
 
-create or replace function public.cast_vote(p_vote_id uuid, p_choice text)
+-- Restore void_fine body from mig 00142.
+create or replace function public.void_fine(p_fine_id uuid, p_reason text default null)
+returns public.fines
+language plpgsql security definer set search_path = public as $$
+declare
+  f public.fines;
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  select * into f from public.fines where id = p_fine_id;
+  if f.id is null then raise exception 'fine not found'; end if;
+  if not public.is_group_admin(f.group_id, uid) then
+    raise exception 'only admins can void fines';
+  end if;
+  if f.status not in ('proposed','officialized') then
+    raise exception 'cannot void fine with status %', f.status;
+  end if;
+  if length(coalesce(p_reason, '')) < 2 then
+    raise exception 'reason required';
+  end if;
+
+  update public.fines
+     set status = 'voided',
+         waived = true,
+         waived_at = now(),
+         waived_reason = p_reason
+   where id = p_fine_id
+   returning * into f;
+
+  insert into public.user_actions (
+    user_id, group_id, action_type, reference_id,
+    title, body, priority
+  ) values (
+    f.user_id, f.group_id, 'fineVoided', f.id,
+    'Multa anulada por admin: $' || trim(to_char(f.amount, 'FM999G999D00')),
+    p_reason,
+    'low'
+  );
+
+  perform public.record_system_event(
+    f.group_id,
+    'fineVoided',
+    f.id,
+    null,
+    jsonb_build_object(
+      'amount', f.amount,
+      'reason', p_reason,
+      'voided_by_user_id', uid
+    )
+  );
+
+  return f;
+end;
+$$;
+
+-- Restore pay_fine body from mig 00146.
+create or replace function public.pay_fine(p_fine_id uuid)
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_caller_id        uuid;
-  v_caller_member_id uuid;
-  v_vote_status      text;
-  v_group_id         uuid;
+  f public.fines;
+  g public.groups;
+  v_updated int;
 begin
-  v_caller_id := auth.uid();
-  if v_caller_id is null then
-    raise exception 'not authenticated' using errcode = '42501';
+  select * into f
+    from public.fines
+   where id = p_fine_id
+   for update;
+
+  if not found then
+    raise exception 'fine not found';
   end if;
 
-  if p_choice not in ('in_favor', 'against', 'abstained') then
-    raise exception 'invalid choice' using errcode = '22023';
+  select * into g from public.groups where id = f.group_id;
+
+  if not (f.user_id = auth.uid() or public.is_group_admin(f.group_id, auth.uid())) then
+    raise exception 'not allowed';
   end if;
 
-  select status, group_id into v_vote_status, v_group_id
-  from public.votes where id = p_vote_id for key share;
+  if f.paid then return; end if;
 
-  if v_vote_status is null then
-    raise exception 'vote not found' using errcode = '02000';
-  end if;
-  if v_vote_status <> 'open' then
-    raise exception 'vote is not open' using errcode = '22023';
-  end if;
+  update public.fines
+     set paid          = true,
+         paid_at       = now(),
+         paid_to_fund  = g.fund_enabled
+   where id   = p_fine_id
+     and paid = false;
 
-  select id into v_caller_member_id
-  from public.group_members
-  where group_id = v_group_id
-    and user_id  = v_caller_id
-    and active   = true;
-
-  if v_caller_member_id is null then
-    raise exception 'not eligible to vote' using errcode = '42501';
+  get diagnostics v_updated = row_count;
+  if v_updated = 0 then
+    return;
   end if;
 
-  insert into public.vote_casts (vote_id, member_id, choice, cast_at)
-  values (p_vote_id, v_caller_member_id, p_choice, now());
-
-  insert into public.system_events (group_id, event_type, resource_id, member_id, payload)
-  values (
-    v_group_id, 'voteCast', p_vote_id, v_caller_member_id,
-    jsonb_build_object('choice', p_choice)
-  );
+  if g.fund_enabled then
+    update public.groups
+       set fund_balance = fund_balance + f.amount
+     where id = g.id;
+  end if;
 end;
 $$;

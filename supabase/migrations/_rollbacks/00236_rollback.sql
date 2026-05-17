@@ -1,154 +1,190 @@
--- Rollback for 00236_module_rpc_gated_on_has_permission.sql
+-- Rollback for 00235_event_rpcs_gated_on_has_permission.sql
 --
--- Restores set_group_module body from mig 00074 (is_group_admin
--- gate). Catalog backfill of manageModules in groups.roles +
--- templates.config is left in place — additive and harmless if
--- rolled back.
+-- Restores prior bodies (gate on is_group_admin). Catalog backfill of
+-- manageEvents in groups.roles and templates is left in place; it is
+-- additive and harmless if the column DEFAULT also keeps the
+-- v2 shape (new groups seed with manageEvents which is then a no-op).
 
-create or replace function public.set_group_module(
-  p_group_id    uuid,
-  p_module_slug text,
-  p_enabled     boolean
-)
-returns public.groups
+create or replace function public.close_event(p_event_id uuid)
+returns public.events_view
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  g            public.groups;
-  v_modules    jsonb;
-  v_before     jsonb;
-  v_to_apply   text;
-  v_conflict   text;
-  v_to_seed    jsonb := '[]'::jsonb;
-  v_to_archive jsonb := '[]'::jsonb;
-  v_slug       text;
+  v_resource public.resources;
+  v_view_row public.events_view;
 begin
-  if p_module_slug is null or length(trim(p_module_slug)) = 0 then
-    raise exception 'set_group_module: p_module_slug is required';
+  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
+  if v_resource.id is null then raise exception 'event not found'; end if;
+  if not public.is_group_admin(v_resource.group_id, auth.uid()) then
+    raise exception 'admin only';
   end if;
 
-  if p_enabled is null then
-    raise exception 'set_group_module: p_enabled is required';
-  end if;
-
-  if not public.is_group_admin(p_group_id, auth.uid()) then
-    raise exception 'only admins can change group modules';
-  end if;
-
-  select active_modules into v_modules
-    from public.groups
-   where id = p_group_id
-   for update;
-
-  if not found then
-    raise exception 'group not found: %', p_group_id;
-  end if;
-
-  v_before := v_modules;
-
-  if p_enabled then
-    for v_conflict in
-      with direct_conflicts as (
-        select unnest(m.conflicts_with) as id
-          from public.modules m
-         where m.id = p_module_slug
-        union
-        select m.id
-          from public.modules m
-         where p_module_slug = any(m.conflicts_with)
-      ),
-      conflict_with_dependents as (
-        select id from direct_conflicts
-        union
-        select m.id
-          from public.modules m
-         join direct_conflicts dc on m.dependencies && array[dc.id]
-        union
-        select m2.id
-          from public.modules m2
-         join public.modules m1 on m2.dependencies && array[m1.id]
-         join direct_conflicts dc on m1.dependencies && array[dc.id]
-      )
-      select id from conflict_with_dependents
-       where id <> p_module_slug
-    loop
-      if v_modules ? v_conflict then
-        v_modules := v_modules - v_conflict;
-        raise notice 'set_group_module: cascade-disabled % (conflicts with %)', v_conflict, p_module_slug;
-      end if;
-    end loop;
-
-    if not (v_modules ? p_module_slug) then
-      v_modules := v_modules || jsonb_build_array(p_module_slug);
-    end if;
-
-    for v_to_apply in
-      with recursive deps_closure as (
-        select unnest(m.dependencies) as id
-          from public.modules m
-         where m.id = p_module_slug
-        union
-        select unnest(m2.dependencies)
-          from public.modules m2
-          join deps_closure dc on dc.id = m2.id
-      )
-      select id from deps_closure
-    loop
-      if not (v_modules ? v_to_apply) then
-        v_modules := v_modules || jsonb_build_array(v_to_apply);
-      end if;
-    end loop;
-  else
-    v_modules := v_modules - p_module_slug;
-
-    for v_to_apply in
-      with recursive dependents_closure as (
-        select m.id
-          from public.modules m
-         where p_module_slug = any(m.dependencies)
-        union
-        select m2.id
-          from public.modules m2
-          join dependents_closure dc on dc.id = any(m2.dependencies)
-      )
-      select id from dependents_closure
-    loop
-      v_modules := v_modules - v_to_apply;
-    end loop;
-  end if;
-
-  for v_slug in
-    select jsonb_array_elements_text(v_modules)
-    except
-    select jsonb_array_elements_text(v_before)
-  loop
-    v_to_seed := v_to_seed || jsonb_build_array(v_slug);
-  end loop;
-
-  for v_slug in
-    select jsonb_array_elements_text(v_before)
-    except
-    select jsonb_array_elements_text(v_modules)
-  loop
-    v_to_archive := v_to_archive || jsonb_build_array(v_slug);
-  end loop;
-
-  update public.groups
-     set active_modules = v_modules,
+  update public.resources
+     set status = 'completed',
+         metadata = jsonb_set(metadata, '{closed_at}', to_jsonb(now()::text)),
          updated_at = now()
-   where id = p_group_id
-   returning * into g;
+   where id = p_event_id;
 
-  for v_slug in select jsonb_array_elements_text(v_to_seed) loop
-    perform public.seed_module_rules(p_group_id, v_slug);
-  end loop;
+  perform public.record_system_event(
+    v_resource.group_id, 'eventClosed', p_event_id, null,
+    jsonb_build_object(
+      'title', v_resource.metadata->>'title',
+      'closed_at', now(),
+      'status', 'completed'
+    )
+  );
 
-  for v_slug in select jsonb_array_elements_text(v_to_archive) loop
-    perform public.archive_module_rules(p_group_id, v_slug);
-  end loop;
+  select * into v_view_row from public.events_view where id = p_event_id;
+  return v_view_row;
+end;
+$$;
 
-  return g;
+create or replace function public.close_event_no_fines(p_event_id uuid)
+returns public.events_view
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_resource public.resources;
+  v_view_row public.events_view;
+  v_host_id  uuid;
+begin
+  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
+  if v_resource.id is null then raise exception 'event not found'; end if;
+  v_host_id := (v_resource.metadata->>'host_id')::uuid;
+  if not (public.is_group_admin(v_resource.group_id, auth.uid()) or v_host_id = auth.uid()) then
+    raise exception 'host or admin only';
+  end if;
+
+  update public.resources
+     set status = 'completed',
+         metadata = jsonb_set(metadata, '{closed_at}', to_jsonb(now()::text)),
+         updated_at = now()
+   where id = p_event_id;
+
+  perform public.record_system_event(
+    v_resource.group_id, 'eventClosed', p_event_id, null,
+    jsonb_build_object(
+      'title', v_resource.metadata->>'title',
+      'closed_at', now(),
+      'status', 'completed'
+    )
+  );
+
+  select * into v_view_row from public.events_view where id = p_event_id;
+  return v_view_row;
+end;
+$$;
+
+create or replace function public.cancel_event(p_event_id uuid, p_reason text default null)
+returns public.events_view
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_resource public.resources;
+  v_view_row public.events_view;
+  v_host_id  uuid;
+begin
+  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
+  if v_resource.id is null then raise exception 'event not found'; end if;
+  v_host_id := (v_resource.metadata->>'host_id')::uuid;
+  if not (public.is_group_admin(v_resource.group_id, auth.uid()) or v_host_id = auth.uid()) then
+    raise exception 'host or admin only';
+  end if;
+
+  update public.resources
+     set status   = 'cancelled',
+         metadata = case
+           when p_reason is null then metadata
+           else jsonb_set(metadata, '{cancellation_reason}', to_jsonb(p_reason::text))
+         end,
+         updated_at = now()
+   where id = p_event_id;
+
+  select * into v_view_row from public.events_view where id = p_event_id;
+  return v_view_row;
+end;
+$$;
+
+create or replace function public.update_event_metadata(p_event_id uuid, p_patch jsonb)
+returns public.events_view
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_resource public.resources;
+  v_host_id  uuid;
+  v_view_row public.events_view;
+begin
+  select * into v_resource from public.resources
+   where id = p_event_id and resource_type = 'event';
+  if v_resource.id is null then raise exception 'event not found'; end if;
+
+  v_host_id := (v_resource.metadata->>'host_id')::uuid;
+  if not (public.is_group_admin(v_resource.group_id, auth.uid()) or v_host_id = auth.uid()) then
+    raise exception 'host or admin only';
+  end if;
+
+  update public.resources
+     set metadata = metadata || p_patch,
+         updated_at = now()
+   where id = p_event_id;
+
+  select * into v_view_row from public.events_view where id = p_event_id;
+  return v_view_row;
+end;
+$$;
+
+create or replace function public.check_in_v2(
+  p_event_id           uuid,
+  p_user_id            uuid,
+  p_method             text default 'self',
+  p_location_verified  boolean default false,
+  p_arrived_at         timestamptz default null
+)
+returns public.attendance_view
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_resource  public.resources;
+  v_member_id uuid;
+  v_view_row  public.attendance_view;
+begin
+  if p_method not in ('self', 'qr_scan', 'host_marked') then
+    raise exception 'invalid method: %', p_method;
+  end if;
+  select * into v_resource from public.resources where id = p_event_id and resource_type='event';
+  if v_resource.id is null then raise exception 'event not found'; end if;
+  if not (auth.uid() = p_user_id or public.is_group_admin(v_resource.group_id, auth.uid())) then
+    raise exception 'not allowed';
+  end if;
+
+  select id into v_member_id from public.group_members
+   where group_id = v_resource.group_id and user_id = p_user_id limit 1;
+  if v_member_id is null then raise exception 'membership not found'; end if;
+
+  insert into public.check_in_actions (
+    resource_id, member_id, arrived_at, metadata
+  ) values (
+    p_event_id, v_member_id, coalesce(p_arrived_at, now()),
+    jsonb_strip_nulls(jsonb_build_object(
+      'check_in_method', p_method,
+      'check_in_location_verified', coalesce(p_location_verified, false),
+      'marked_by', auth.uid(),
+      'via', 'check_in_v2'
+    ))
+  );
+
+  select * into v_view_row from public.attendance_view
+   where resource_id = p_event_id and member_id = v_member_id;
+  return v_view_row;
 end;
 $$;
