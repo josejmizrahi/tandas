@@ -284,47 +284,53 @@ public final class ResourceLedgerCoordinator {
         defer { isSubmitting = false }
 
         // Governance gate (Group Rule, expense.create — mig 00112).
-        // Default policy is `direct` (anyone can record), so this is a
-        // no-op for groups that haven't customized their money policy.
-        // Strict / admin-curated groups can lift it to `admin_only` via
-        // RulePresetsView once V2 ships per-question editing.
-        // amount_cents is included in the payload so V2's threshold-aware
-        // policies (condition_config.min_amount_cents) can evaluate the
-        // expense's size — the resolver ignores it today.
-        let decision: PolicyDecision
-        do {
-            decision = try await policyRepo.resolve(
-                groupId: groupId,
-                actorUserId: currentUserId,
-                action: .expenseCreate,
-                targetPayload: [
-                    "resource_id":   resourceId.uuidString.lowercased(),
-                    "amount_cents":  String(amountCents),
-                ]
-            )
-        } catch let resolveError {
-            log.warning("resolve(.expenseCreate) failed: \(resolveError.localizedDescription)")
-            // Fail-open: if the resolver itself can't be reached, fall back
-            // to the existing record_ledger_entry RLS for gating. Keeps the
-            // primary money flow working under network blips.
-            decision = .allowed
-        }
+        // ONLY applies when the form kind is `.expense`. Settlement /
+        // contribution / payout are different atoms under Constitution §11
+        // and have their own (currently absent) policies — running them
+        // through the expense gate would block bilateral debt-clearing in
+        // any group that scopes expense.create to `admin_only`.
+        //
+        // Default expense policy is `direct` (anyone can record), so the
+        // resolver is a no-op for groups that haven't customized money
+        // governance. Strict groups lift it to `admin_only` via
+        // RulePresetsView; v2 will add threshold-aware variants
+        // (condition_config.min_amount_cents) that read amount_cents.
+        if formKind == .expense {
+            let decision: PolicyDecision
+            do {
+                decision = try await policyRepo.resolve(
+                    groupId: groupId,
+                    actorUserId: currentUserId,
+                    action: .expenseCreate,
+                    targetPayload: [
+                        "resource_id":   resourceId.uuidString.lowercased(),
+                        "amount_cents":  String(amountCents),
+                    ]
+                )
+            } catch let resolveError {
+                log.warning("resolve(.expenseCreate) failed: \(resolveError.localizedDescription)")
+                // Fail-open: if the resolver itself can't be reached, fall back
+                // to the existing record_ledger_entry RLS for gating. Keeps the
+                // primary money flow working under network blips.
+                decision = .allowed
+            }
 
-        switch decision {
-        case .allowed:
-            break
-        case .adminOnly:
-            self.error = "Solo los admins pueden registrar gastos en este grupo."
-            return nil
-        case .voteRequired:
-            // V2: open a vote with the expense envelope + apply on pass.
-            // For now this is a soft block so the user knows the policy
-            // exists; nothing in V1 produces this decision via the seeder.
-            self.error = "Este grupo requiere aprobación por votación para gastos. La flow llega en una próxima versión."
-            return nil
-        case .denied(let reason):
-            self.error = "No se puede registrar este gasto: \(reason)."
-            return nil
+            switch decision {
+            case .allowed:
+                break
+            case .adminOnly:
+                self.error = "Solo los admins pueden registrar gastos en este grupo."
+                return nil
+            case .voteRequired:
+                // V2: open a vote with the expense envelope + apply on pass.
+                // For now this is a soft block so the user knows the policy
+                // exists; nothing in V1 produces this decision via the seeder.
+                self.error = "Este grupo requiere aprobación por votación para gastos. La flow llega en una próxima versión."
+                return nil
+            case .denied(let reason):
+                self.error = "No se puede registrar este gasto: \(reason)."
+                return nil
+            }
         }
 
         do {
