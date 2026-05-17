@@ -44,6 +44,12 @@ public final class AppState {
     /// Pending rule_change deep link (Phase G3).
     public var pendingRuleChangeDeepLink: RuleChangeDeepLink?
 
+    /// Pending vote deep link (Level 15 — notification tap → vote detail).
+    public var pendingVoteId: UUID?
+
+    /// Pending fine deep link (Level 15 — notification tap → fine detail).
+    public var pendingFineId: UUID?
+
     public let auth: any AuthService
     public let profileRepo: any ProfileRepository
     public let groupsRepo: any GroupsRepository
@@ -469,9 +475,18 @@ public final class AppState {
     }
 
     public func handleIncomingURL(_ url: URL) {
+        // Invite codes take precedence (ruul://invite/...)
         if let code = InviteLinkGenerator.parseInviteCode(from: url) {
             pendingInviteCode = code
-        } else if let ruleLink = RuleChangeDeepLink(url: url) {
+            return
+        }
+        // Unified deeplink catalog (Level 15)
+        if let link = NotificationDeepLink(url: url) {
+            applyDeepLink(link)
+            return
+        }
+        // Legacy fallbacks for back-compat
+        if let ruleLink = RuleChangeDeepLink(url: url) {
             pendingRuleChangeDeepLink = ruleLink
         } else if let link = EventDeepLink(url: url) {
             pendingEventDeepLink = link
@@ -485,8 +500,32 @@ public final class AppState {
         let beta = BetaAnalytics(analytics: analytics)
         Task { await beta.notificationTapped(kind: kind) }
 
+        // Unified deeplink catalog (Level 15)
+        if let link = NotificationDeepLink(userInfo: userInfo) {
+            applyDeepLink(link)
+            return
+        }
+        // Legacy fallback
         if let link = EventDeepLink(userInfo: userInfo) {
             pendingEventDeepLink = link
+        }
+    }
+
+    private func applyDeepLink(_ link: NotificationDeepLink) {
+        switch link {
+        case .event(let id):
+            pendingEventDeepLink = EventDeepLink(eventId: id)
+        case .vote(let id):
+            pendingVoteId = id
+        case .fine(let id):
+            pendingFineId = id
+        case .ruleChange(let ruleId, let amount):
+            // Reconstruct the canonical URL so RuleChangeDeepLink.init?(url:) can parse it.
+            let proposedAmount = amount ?? 0
+            if let url = URL(string: "ruul://rule/\(ruleId.uuidString)/edit?proposedAmount=\(proposedAmount)"),
+               let ruleLink = RuleChangeDeepLink(url: url) {
+                pendingRuleChangeDeepLink = ruleLink
+            }
         }
     }
 
@@ -500,5 +539,13 @@ public final class AppState {
 
     public func consumeRuleChangeDeepLink() {
         pendingRuleChangeDeepLink = nil
+    }
+
+    public func consumeVoteDeepLink() {
+        pendingVoteId = nil
+    }
+
+    public func consumeFineDeepLink() {
+        pendingFineId = nil
     }
 }

@@ -32,6 +32,8 @@ public struct MyProfileView: View {
     public var onChangeEmail: (() -> Void)?
     public var onPickLanguage: (() -> Void)?
     public var onPickTimezone: (() -> Void)?
+    public var onOpenNotificationPreferences: (() -> Void)?
+    public var onOpenDevices: (() -> Void)?
 
     public init(
         coordinator: ProfileCoordinator,
@@ -45,7 +47,9 @@ public struct MyProfileView: View {
         onChangePhone: (() -> Void)? = nil,
         onChangeEmail: (() -> Void)? = nil,
         onPickLanguage: (() -> Void)? = nil,
-        onPickTimezone: (() -> Void)? = nil
+        onPickTimezone: (() -> Void)? = nil,
+        onOpenNotificationPreferences: (() -> Void)? = nil,
+        onOpenDevices: (() -> Void)? = nil
     ) {
         self._coordinator = State(initialValue: coordinator)
         self.onOpenMyFines = onOpenMyFines
@@ -59,6 +63,8 @@ public struct MyProfileView: View {
         self.onChangeEmail = onChangeEmail
         self.onPickLanguage = onPickLanguage
         self.onPickTimezone = onPickTimezone
+        self.onOpenNotificationPreferences = onOpenNotificationPreferences
+        self.onOpenDevices = onOpenDevices
     }
 
     private var appearance: Binding<AppearanceOption> {
@@ -85,6 +91,7 @@ public struct MyProfileView: View {
                             hero
                             identitySection
                             preferencesSection
+                            notificationsSection
                             activitySection
                             settingsSection
                             appearanceSection
@@ -170,6 +177,24 @@ public struct MyProfileView: View {
                 label: "Zona horaria",
                 trailing: { trailingValue(coordinator.profile?.timezone ?? "—") },
                 action: { onPickTimezone?() }
+            )
+        }
+    }
+
+    private var notificationsSection: some View {
+        sectionContainer(title: "NOTIFICACIONES") {
+            navRow(
+                icon: "bell.badge",
+                label: "Preferencias",
+                trailing: { EmptyView() },
+                action: { onOpenNotificationPreferences?() }
+            )
+            divider
+            navRow(
+                icon: "iphone.and.arrow.forward",
+                label: "Dispositivos",
+                trailing: { EmptyView() },
+                action: { onOpenDevices?() }
             )
         }
     }
