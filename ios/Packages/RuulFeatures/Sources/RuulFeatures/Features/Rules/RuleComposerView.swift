@@ -290,51 +290,60 @@ public struct RuleComposerView: View {
     /// Recursive renderer for an AND/OR/NOT tree. `depth` drives the
     /// indent — each level offsets by `RuulSpacing.md` so the user
     /// reads structure as visual nesting.
-    @ViewBuilder
-    private func conditionTreeView(_ node: ShapeNode, depth: Int) -> some View {
+    // Recursive renderer — return AnyView to break the opaque-type
+    // self-reference cycle (some View inferred from a body that calls
+    // itself recursively can't be inferred).
+    private func conditionTreeView(_ node: ShapeNode, depth: Int) -> AnyView {
         switch node {
         case .leaf(let instance):
             if let shape = coord.shape(id: instance.shapeId) {
-                HStack(alignment: .top, spacing: RuulSpacing.xs) {
-                    ShapeInstanceRow(
-                        shape: shape,
-                        instance: instance,
-                        onConfigChange: { key, value in
-                            coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
-                        },
-                        onRemove: { coord.removeCondition(id: instance.id) }
-                    )
-                    leafActionsMenu(leafId: instance.id)
-                }
-                .padding(.leading, CGFloat(depth) * RuulSpacing.md)
+                return AnyView(
+                    HStack(alignment: .top, spacing: RuulSpacing.xs) {
+                        ShapeInstanceRow(
+                            shape: shape,
+                            instance: instance,
+                            onConfigChange: { key, value in
+                                coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
+                            },
+                            onRemove: { coord.removeCondition(id: instance.id) }
+                        )
+                        leafActionsMenu(leafId: instance.id)
+                    }
+                    .padding(.leading, CGFloat(depth) * RuulSpacing.md)
+                )
             }
+            return AnyView(EmptyView())
         case .and(let id, let children), .or(let id, let children):
             let isOr: Bool = { if case .or = node { return true } else { return false } }()
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                HStack(spacing: RuulSpacing.xs) {
-                    Text(isOr ? "Cualquiera de estas (O):" : "Todas estas (Y):")
-                        .ruulTextStyle(RuulTypography.captionBold)
-                        .foregroundStyle(isOr ? Color.ruulAccent : Color.ruulTextSecondary)
-                    Spacer(minLength: 0)
-                    opActionsMenu(opId: id, canToggle: true)
+            return AnyView(
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                    HStack(spacing: RuulSpacing.xs) {
+                        Text(isOr ? "Cualquiera de estas (O):" : "Todas estas (Y):")
+                            .ruulTextStyle(RuulTypography.captionBold)
+                            .foregroundStyle(isOr ? Color.ruulAccent : Color.ruulTextSecondary)
+                        Spacer(minLength: 0)
+                        opActionsMenu(opId: id, canToggle: true)
+                    }
+                    .padding(.leading, CGFloat(depth) * RuulSpacing.md)
+                    ForEach(children) { child in
+                        conditionTreeView(child, depth: depth + 1)
+                    }
                 }
-                .padding(.leading, CGFloat(depth) * RuulSpacing.md)
-                ForEach(children) { child in
+            )
+        case .not(let id, let child):
+            return AnyView(
+                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                    HStack(spacing: RuulSpacing.xs) {
+                        Text("NO se cumple:")
+                            .ruulTextStyle(RuulTypography.captionBold)
+                            .foregroundStyle(Color.ruulWarning)
+                        Spacer(minLength: 0)
+                        opActionsMenu(opId: id, canToggle: false)
+                    }
+                    .padding(.leading, CGFloat(depth) * RuulSpacing.md)
                     conditionTreeView(child, depth: depth + 1)
                 }
-            }
-        case .not(let id, let child):
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                HStack(spacing: RuulSpacing.xs) {
-                    Text("NO se cumple:")
-                        .ruulTextStyle(RuulTypography.captionBold)
-                        .foregroundStyle(Color.ruulTextWarning)
-                    Spacer(minLength: 0)
-                    opActionsMenu(opId: id, canToggle: false)
-                }
-                .padding(.leading, CGFloat(depth) * RuulSpacing.md)
-                conditionTreeView(child, depth: depth + 1)
-            }
+            )
         }
     }
 

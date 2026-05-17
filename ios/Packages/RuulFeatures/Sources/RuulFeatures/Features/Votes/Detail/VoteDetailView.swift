@@ -180,8 +180,17 @@ private struct VoteHeader: View {
                         .foregroundStyle(Color.ruulWarning)
                 }
             }
-        case .resolved:
+        case .resolved, .closed:
             resolutionChip
+        case .quorumFailed:
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(Color.ruulTextTertiary)
+                    .frame(width: 8, height: 8)
+                Text("Sin quórum")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
         case .cancelled:
             Text("Cancelado")
                 .ruulTextStyle(RuulTypography.caption)
