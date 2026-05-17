@@ -198,6 +198,13 @@ struct ResourceRulesSheet: View {
     /// pre-set when templates are available (live mode). Falls back to the
     /// legacy catalog-free form when `app.ruleTemplates` is empty (preview /
     /// mock).
+    ///
+    /// Templates are pre-filtered by the current resource's `resource_type`:
+    /// the trigger shape backing each template declares which
+    /// `valid_resource_types` it can fire on (rule_shapes catalog). A
+    /// template whose trigger doesn't list this resource type would never
+    /// fire, so we hide it from the gallery rather than showing dormant
+    /// options to the user.
     private func openRuleBuilder() {
         guard coordinator.canCreate else { return }
         guard let repo = app.ruleTemplateRepo,
@@ -208,9 +215,23 @@ struct ResourceRulesSheet: View {
             coordinator.addSheetPresented = true
             return
         }
+        let resourceType = coordinator.context.resourceType
+        let registry = coordinator.shapeRegistry
+        let compatible = app.ruleTemplates.filter { template in
+            let triggerId = template.composition.triggerShapeId
+            guard let shape = registry.shape(id: triggerId) else {
+                // Shape unknown locally (server ahead of iOS enum) — trust
+                // the server side and let it through; the gallery will
+                // surface decoder issues separately.
+                return true
+            }
+            // Empty list = universal trigger, applies anywhere.
+            if shape.validResourceTypes.isEmpty { return true }
+            return shape.validResourceTypes.contains(resourceType)
+        }
         ruleBuilderCoord = RuleBuilderCoordinator(
             group: group,
-            templates: app.ruleTemplates,
+            templates: compatible,
             repo: repo,
             initialScope: .resource(coordinator.resourceId)
         )
