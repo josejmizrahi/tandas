@@ -234,11 +234,17 @@ public struct GroupDetail: Codable, Sendable {
     public let group: Group
     public let memberCount: Int
     public let myRole: String  // founder | member | admin (alias)
+    /// Verbatim `group_members.roles` jsonb array for the calling user.
+    /// Empty for legacy paths that don't fetch it. Populated by
+    /// `LiveGroupsRepository.get` so Phase 5 permission-gated UI can
+    /// resolve against the role catalog without a second fetch.
+    public let myRawRoles: [String]
 
-    public init(group: Group, memberCount: Int, myRole: String) {
+    public init(group: Group, memberCount: Int, myRole: String, myRawRoles: [String] = []) {
         self.group = group
         self.memberCount = memberCount
         self.myRole = myRole
+        self.myRawRoles = myRawRoles
     }
 }
 

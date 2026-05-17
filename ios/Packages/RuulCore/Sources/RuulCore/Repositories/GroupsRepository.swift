@@ -150,7 +150,12 @@ public actor MockGroupsRepository: GroupsRepository {
 
     public func get(_ id: UUID) async throws -> GroupDetail {
         guard let g = _groups.first(where: { $0.id == id }) else { throw GroupsError.notFound }
-        return GroupDetail(group: g, memberCount: _members[id]?.count ?? 1, myRole: "founder")
+        return GroupDetail(
+            group: g,
+            memberCount: _members[id]?.count ?? 1,
+            myRole: "founder",
+            myRawRoles: ["founder", "member"]
+        )
     }
 
     public func create(_ p: CreateGroupParams) async throws -> Group {
@@ -621,10 +626,13 @@ public actor LiveGroupsRepository: GroupsRepository {
             .execute()
             .value
         let userId = try await client.auth.session.user.id
-        struct RoleRow: Decodable { let role: String }
-        let role: RoleRow? = try? await client
+        struct RoleRow: Decodable {
+            let role: String
+            let roles: [String]?
+        }
+        let row: RoleRow? = try? await client
             .from("group_members")
-            .select("role")
+            .select("role, roles")
             .eq("group_id", value: id.uuidString.lowercased())
             .eq("user_id", value: userId.uuidString.lowercased())
             .single()
@@ -633,7 +641,8 @@ public actor LiveGroupsRepository: GroupsRepository {
         return GroupDetail(
             group: group,
             memberCount: countRow.first?.count ?? 1,
-            myRole: role?.role ?? "member"
+            myRole: row?.role ?? "member",
+            myRawRoles: row?.roles ?? []
         )
     }
 

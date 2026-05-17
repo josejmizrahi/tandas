@@ -14,11 +14,34 @@ public final class GroupHomeCoordinator {
     public var group: Group?
     public var memberCount: Int = 0
     public var myRole: String?          // "founder" | "member" | "admin"
+    /// Verbatim roles from `group_members.roles` jsonb for the calling
+    /// user. Drives Phase 5 permission-gated affordances in
+    /// `GroupHomeView`. Empty until the first successful refresh.
+    public var myRawRoles: [String] = []
     public var activeModules: [GroupModule] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
 
     public var isCurrentUserAdmin: Bool { myRole == "founder" }
+
+    /// True when the calling user has p_permission in this group,
+    /// resolved against `group.effectiveRoles` and `myRawRoles`. Mirrors
+    /// the server's `has_permission` RPC (mig 00228) — UI gating only;
+    /// the server is still the authoritative gate.
+    public func hasPermission(_ p: Permission) -> Bool {
+        guard let group else { return false }
+        let catalog = group.effectiveRoles
+        // Legacy admin alias: founder.
+        for raw in myRawRoles {
+            let key = raw == "admin" ? "founder" : raw
+            if let def = catalog[key], def.grants(p) { return true }
+        }
+        if myRawRoles.isEmpty, isCurrentUserAdmin,
+           let founder = catalog["founder"], founder.grants(p) {
+            return true
+        }
+        return false
+    }
 
     public init(
         groupId: UUID,
@@ -39,6 +62,7 @@ public final class GroupHomeCoordinator {
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
+            self.myRawRoles = detail.myRawRoles
             self.activeModules = resolveModules(slugs: detail.group.activeModules ?? [])
         } catch {
             log.warning("group home refresh failed: \(error.localizedDescription, privacy: .public)")

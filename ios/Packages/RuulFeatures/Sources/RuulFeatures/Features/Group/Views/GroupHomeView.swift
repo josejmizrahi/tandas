@@ -176,7 +176,7 @@ public struct GroupHomeView: View {
             navRow(icon: "scale.3d", label: "Reglas del grupo", action: onOpenGovernance)
             divider
             navRow(icon: "list.bullet.clipboard", label: "Presets de reglas", action: onOpenRulePresets)
-            if coordinator.isCurrentUserAdmin, let onOpenRoles {
+            if coordinator.hasPermission(.assignRoles), let onOpenRoles {
                 divider
                 navRow(
                     icon: "person.text.rectangle",
