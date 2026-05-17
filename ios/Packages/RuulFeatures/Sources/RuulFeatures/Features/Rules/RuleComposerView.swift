@@ -14,6 +14,7 @@ public struct RuleComposerView: View {
     @Bindable var coord: RuleComposerCoordinator
     public var onPublished: (RuleVersionPublishResult) -> Void
     public var onCancel: () -> Void
+    @State private var showStarterPicker = false
 
     public init(
         coord: RuleComposerCoordinator,
@@ -51,6 +52,13 @@ public struct RuleComposerView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar", action: onCancel)
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    if !coord.starterTemplates.isEmpty {
+                        Button { showStarterPicker = true } label: {
+                            Label("Ejemplo", systemImage: "lightbulb")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Publicar") {
                         Task {
@@ -61,6 +69,16 @@ public struct RuleComposerView: View {
                     }
                     .disabled(!coord.canPublish)
                 }
+            }
+            .sheet(isPresented: $showStarterPicker) {
+                StarterTemplatePickerSheet(
+                    templates: coord.starterTemplates,
+                    onSelect: { template in
+                        coord.loadStarterTemplate(template)
+                        showStarterPicker = false
+                    },
+                    onCancel: { showStarterPicker = false }
+                )
             }
         }
     }
@@ -356,6 +374,54 @@ private struct FieldRow: View {
             return .int(n)
         case .string:
             return .string(trimmed)
+        }
+    }
+}
+
+// MARK: - Starter template picker
+
+/// Sheet that lists curated templates as starter patterns. Picking one
+/// seeds the composer's draft (replacing whatever was there). Templates
+/// are not mandatory — the user can compose from scratch by just
+/// closing this sheet without picking.
+private struct StarterTemplatePickerSheet: View {
+    let templates: [RuleBuilderTemplate]
+    var onSelect: (RuleBuilderTemplate) -> Void
+    var onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(templates, id: \.id) { template in
+                        Button(action: { onSelect(template) }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(template.displayNameES)
+                                    .ruulTextStyle(RuulTypography.headline)
+                                    .foregroundStyle(Color.ruulTextPrimary)
+                                Text(template.descriptionES)
+                                    .ruulTextStyle(RuulTypography.caption)
+                                    .foregroundStyle(Color.ruulTextSecondary)
+                                    .lineLimit(3)
+                            }
+                            .padding(.vertical, RuulSpacing.xs)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Cargar un ejemplo te ahorra empezar de cero. Después puedes editarlo libremente.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                        .textCase(nil)
+                }
+            }
+            .navigationTitle("Empezar de un ejemplo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar", action: onCancel)
+                }
+            }
         }
     }
 }

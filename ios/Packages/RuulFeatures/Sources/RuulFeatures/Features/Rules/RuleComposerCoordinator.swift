@@ -39,6 +39,12 @@ public final class RuleComposerCoordinator: Identifiable {
     public let shapeRegistry: RuleShapeRegistry
     public let resourceType: String?
 
+    /// Optional list of curated templates the caller surfaces as
+    /// starter examples. When empty, the composer hides the "Cargar
+    /// ejemplo" action. The caller is responsible for filtering by
+    /// resource_type before passing (the composer doesn't re-filter).
+    public let starterTemplates: [RuleBuilderTemplate]
+
     public private(set) var isPublishing: Bool = false
     public private(set) var publishResult: RuleVersionPublishResult?
     public private(set) var error: String?
@@ -53,12 +59,14 @@ public final class RuleComposerCoordinator: Identifiable {
         shapeRegistry: RuleShapeRegistry,
         repo: any RuleTemplateRepository,
         scope: RuleTemplateScope,
-        resourceType: String? = nil
+        resourceType: String? = nil,
+        starterTemplates: [RuleBuilderTemplate] = []
     ) {
         self.group = group
         self.shapeRegistry = shapeRegistry
         self.repo = repo
         self.resourceType = resourceType
+        self.starterTemplates = starterTemplates
         self.draft = RuleDraft(scope: scope)
     }
 
@@ -71,13 +79,25 @@ public final class RuleComposerCoordinator: Identifiable {
         shapeRegistry: RuleShapeRegistry,
         repo: any RuleTemplateRepository,
         draft: RuleDraft,
-        resourceType: String? = nil
+        resourceType: String? = nil,
+        starterTemplates: [RuleBuilderTemplate] = []
     ) {
         self.group = group
         self.shapeRegistry = shapeRegistry
         self.repo = repo
         self.resourceType = resourceType
+        self.starterTemplates = starterTemplates
         self.draft = draft
+    }
+
+    /// Replace the current draft with one seeded from a curated
+    /// template. The "start from an example" path — the user can edit
+    /// freely after; the draft is no longer tied to the template.
+    /// Preserves the current scope so a resource-scoped composer stays
+    /// resource-scoped after seeding.
+    public func loadStarterTemplate(_ template: RuleBuilderTemplate) {
+        draft = RuleDraft.from(template: template, scope: draft.scope)
+        error = nil
     }
 
     // MARK: Catalog options

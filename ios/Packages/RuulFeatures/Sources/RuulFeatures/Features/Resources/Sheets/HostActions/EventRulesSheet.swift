@@ -218,12 +218,25 @@ struct ResourceRulesSheet: View {
             coordinator.addSheetPresented = true
             return
         }
+        // Templates surface as "starter examples" inside the composer,
+        // pre-filtered to the templates whose trigger shape supports
+        // this resource_type (so an asset never sees event templates).
+        // The filter mirrors mig 00244 server-side; we keep it client-
+        // side here for instant gallery render without a round-trip.
+        let resourceType = coordinator.context.resourceType
+        let registry = coordinator.shapeRegistry
+        let compatible = app.ruleTemplates.filter { template in
+            guard let shape = registry.shape(id: template.composition.triggerShapeId) else { return true }
+            if shape.validResourceTypes.isEmpty { return true }
+            return shape.validResourceTypes.contains(resourceType)
+        }
         composerCoord = RuleComposerCoordinator(
             group: group,
             shapeRegistry: coordinator.shapeRegistry,
             repo: repo,
             scope: .resource(coordinator.resourceId),
-            resourceType: coordinator.context.resourceType
+            resourceType: resourceType,
+            starterTemplates: compatible
         )
     }
 
