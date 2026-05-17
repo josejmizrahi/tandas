@@ -655,6 +655,7 @@ public struct UniversalResourceDetailView: View {
     @ViewBuilder
     private var stubCapabilitySections: some View {
         let caps = context.enabledCapabilities
+        let isAsset = context.resource.resourceType == .asset
         if caps.contains("status") { StatusSectionView(context: context) }
         if caps.contains("recurrence") { RecurrenceSectionView(context: context) }
         if caps.contains("deadline") { DeadlineSectionView(context: context) }
@@ -663,8 +664,11 @@ public struct UniversalResourceDetailView: View {
         if caps.contains("attendance") { AttendanceSectionView(context: context) }
         if caps.contains("guest_access") { GuestAccessSectionView(context: context) }
         if caps.contains("assignment") { AssignmentSectionView(context: context) }
-        if caps.contains("booking") { BookingSectionView(context: context) }
-        if caps.contains("valuation") { ValuationSectionView(context: context) }
+        // Asset already gets a bespoke AssetBookingsSection / AssetOwnershipSection
+        // upstream when these caps are enabled, so we skip the stub to avoid a
+        // duplicate card on asset detail pages.
+        if caps.contains("booking") && !isAsset { BookingSectionView(context: context) }
+        if caps.contains("valuation") && !isAsset { ValuationSectionView(context: context) }
         if caps.contains("inventory") { InventorySectionView(context: context) }
         if caps.contains("access") { AccessSectionView(context: context) }
         if caps.contains("delegation") { DelegationSectionView(context: context) }
