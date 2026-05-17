@@ -92,7 +92,6 @@ struct TandasApp: App {
                 bookingRepo: bookings,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 eventNotificationDispatcher: MockEventNotificationDispatcher(),
-                walletService: StubWalletPassService(),
                 analytics: analytics
             ))
         } else {
@@ -167,7 +166,6 @@ struct TandasApp: App {
                 bookingRepo: bookings,
                 notifications: NotificationService(tokenRepo: notifTokens),
                 eventNotificationDispatcher: LiveEventNotificationDispatcher(client: client),
-                walletService: StubWalletPassService(),
                 analytics: analytics,
                 realtimeFactory: { eventId in
                     RSVPRealtimeService(client: client, eventId: eventId)

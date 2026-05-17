@@ -1,16 +1,20 @@
 import Foundation
 import OSLog
 
-/// Generates Apple Wallet `.pkpass` files for event RSVPs. V1 ships a stub
-/// because Apple Developer Pass Type ID + signing cert aren't configured.
-/// See Plans/EventLayerV1.md §1.3 for the V1.x setup steps.
+/// Generates Apple Wallet `.pkpass` files for event RSVPs.
+///
+/// `StubWalletPassService` is the canonical implementation in all
+/// environments today — it gates the "Add to Wallet" UI via
+/// `isAvailable == false`, so the button never appears. This is **not**
+/// technical debt; it is a Null Object placeholder until Apple Developer
+/// Pass Type ID + signing certificate are provisioned and a
+/// `LiveWalletPassService` lands. Swap the binding in `TandasApp` (and
+/// in the `AppState.init` default) when that happens.
 public protocol WalletPassService: Sendable {
     var isAvailable: Bool { get }
     func generatePass(for event: Event, member: Member) async -> URL?
 }
 
-/// V1 stub. `isAvailable` returns false so the "Add to Wallet" button never
-/// appears in `RSVPSectionView` until the real implementation is wired.
 public final class StubWalletPassService: WalletPassService {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "wallet")
 
