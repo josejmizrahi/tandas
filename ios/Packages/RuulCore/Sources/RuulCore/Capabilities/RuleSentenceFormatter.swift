@@ -58,6 +58,15 @@ public enum RuleSentenceFormatter {
             clauses.append("si " + joinWithY(parts))
         }
 
+        // Exceptions clause (mig 00248 / §22.2 Governance.md). Halajic
+        // "regla y excepción" — listed BEFORE the consequence so the
+        // sentence reads as "…, excepto si Z, entonces W." which is
+        // the natural Spanish ordering.
+        if !draft.exceptions.isEmpty {
+            let parts = draft.exceptions.map { phrase(for: $0, registry: registry) }
+            clauses.append("excepto si " + joinWithY(parts))
+        }
+
         // Consequences clause.
         if draft.consequences.isEmpty {
             clauses.append("entonces (agrega al menos una consecuencia)")

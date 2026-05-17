@@ -517,7 +517,51 @@ export async function runRulesForEvent(
       }
       if (!allMatched) continue;
 
-      // All conditions matched — fire every consequence.
+      // Exceptions (mig 00248, §22.2 Governance.md). Same shape as
+      // conditions, evaluated by the same CONDITIONS registry, but
+      // semantically inverted: if ANY exception evaluates true the
+      // consequence is BLOCKED for this target. Halajic "regla y
+      // excepción" pattern. Empty / undefined = no exceptions = old
+      // behavior preserved.
+      const exceptions = rule.exceptions ?? [];
+      let blockedByException = false;
+      let missingExceptionShape: string | null = null;
+      for (const exc of exceptions) {
+        const excFn = CONDITIONS[exc.type];
+        if (!excFn) {
+          // Missing exception shape = we can't prove the exception
+          // wouldn't apply, so fail-safe by blocking. The alternative
+          // (silently ignore the exception) would risk firing
+          // consequences the rule author intended to gate.
+          missingExceptionShape = exc.type;
+          blockedByException = true;
+          break;
+        }
+        const triggered = await excFn(exc, target, context);
+        if (triggered) {
+          blockedByException = true;
+          break;
+        }
+      }
+      if (missingExceptionShape) {
+        logNotImplemented({
+          enginePhase: "condition",
+          typeId: missingExceptionShape,
+          rule,
+          event,
+          phaseTarget: CONDITION_PHASE[missingExceptionShape],
+        });
+        results.push(failure(
+          rule.id,
+          target.member_id,
+          `unimplemented exception shape: ${missingExceptionShape} (blocked consequence as fail-safe)`,
+        ));
+        continue;
+      }
+      if (blockedByException) continue;
+
+      // All conditions matched and no exception applied — fire every
+      // consequence.
       for (const cons of rule.consequences) {
         const consFn = CONSEQUENCES[cons.type];
         if (!consFn) {

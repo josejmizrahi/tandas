@@ -68,6 +68,18 @@ export interface Rule {
   conditions: RuleCondition[];
   consequences: RuleConsequence[];
   /**
+   * Exceptions are condition-shaped predicates that BLOCK the
+   * consequences when ANY of them evaluates true on the target.
+   * Reuses the same shape catalog (kind=condition) so an `alwaysTrue`,
+   * `responseStatusIs("excused")`, or `slotIsUnassigned` can serve as
+   * an exception. Engine evaluates them AFTER all conditions match,
+   * BEFORE any consequence fires. Empty array = no exceptions (the
+   * default and the behavior pre-mig 00248). See §22.2 Governance.md.
+   *
+   * Optional in the TS shape because pre-00248 fixtures don't set it.
+   */
+  exceptions?: RuleCondition[];
+  /**
    * Scope precedence per Taxonomy §29 — read by `runRulesForEvent` to filter
    * which rules apply to a given SystemEvent (mig 00071 + 00078):
    *

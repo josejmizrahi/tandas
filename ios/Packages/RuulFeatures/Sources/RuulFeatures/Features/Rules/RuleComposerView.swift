@@ -33,6 +33,7 @@ public struct RuleComposerView: View {
                     nameSection
                     triggerSection
                     conditionsSection
+                    exceptionsSection
                     consequencesSection
                     previewSection
                     if let error = coord.error {
@@ -175,6 +176,33 @@ public struct RuleComposerView: View {
                 }
             } label: {
                 pickerLabel(text: "Agregar condición", systemImage: "plus.circle")
+            }
+        }
+    }
+
+    private var exceptionsSection: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            sectionLabel("Excepto si (cualquiera bloquea la consecuencia)")
+            ForEach(coord.draft.exceptions) { instance in
+                if let shape = coord.shape(id: instance.shapeId) {
+                    ShapeInstanceRow(
+                        shape: shape,
+                        instance: instance,
+                        onConfigChange: { key, value in
+                            coord.updateConfig(forShapeInstanceId: instance.id, key: key, value: value)
+                        },
+                        onRemove: { coord.removeException(id: instance.id) }
+                    )
+                }
+            }
+            Menu {
+                ForEach(coord.availableExceptions) { shape in
+                    Button(action: { coord.addException(shapeId: shape.id) }) {
+                        Label(shape.labelES, systemImage: shape.icon ?? "exclamationmark.octagon")
+                    }
+                }
+            } label: {
+                pickerLabel(text: "Agregar excepción", systemImage: "plus.circle")
             }
         }
     }

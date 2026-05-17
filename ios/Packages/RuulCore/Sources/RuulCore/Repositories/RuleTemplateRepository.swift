@@ -495,6 +495,7 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             let p_consequences: [ShapePayload]
             let p_change_reason: String?
             let p_slug: String?
+            let p_exceptions: [ShapePayload]
         }
 
         let params = Params(
@@ -505,7 +506,8 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
-            p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) }
         )
 
         do {
@@ -540,15 +542,21 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             let p_conditions: [ShapePayload]
             let p_consequences: [ShapePayload]
             let p_change_reason: String?
+            let p_exceptions: [ShapePayload]
         }
 
+        // Bump always sends p_exceptions (even if empty) so the server
+        // sees the draft's authoritative current view. Server-side null
+        // would mean "preserve previous"; since the composer holds the
+        // full state, we explicitly assert it.
         let params = Params(
             p_rule_id: ruleId.uuidString.lowercased(),
             p_name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
             p_trigger: ShapePayload(shape_id: triggerInstance.shapeId, config: triggerInstance.config),
             p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
-            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason
+            p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) }
         )
 
         do {

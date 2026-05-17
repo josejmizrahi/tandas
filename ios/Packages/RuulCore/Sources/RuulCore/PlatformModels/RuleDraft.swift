@@ -57,6 +57,12 @@ public struct RuleDraft: Sendable, Hashable {
     public var trigger: ShapeInstance?
     public var conditions: [ShapeInstance]
     public var consequences: [ShapeInstance]
+    /// Condition-shaped predicates that BLOCK consequences when ANY
+    /// evaluates true on the target. Engine evaluates exceptions
+    /// AFTER conditions pass, BEFORE consequences fire (mig 00248).
+    /// Honors Constitution §18 (Talmud "regla y excepción") and §22.2
+    /// Governance.md. Empty = no exceptions = old behavior.
+    public var exceptions: [ShapeInstance]
     public var changeReason: String
 
     /// Stable identifier for this rule. Honors Constitution §7 and
@@ -74,6 +80,7 @@ public struct RuleDraft: Sendable, Hashable {
         trigger: ShapeInstance? = nil,
         conditions: [ShapeInstance] = [],
         consequences: [ShapeInstance] = [],
+        exceptions: [ShapeInstance] = [],
         changeReason: String = "",
         slug: String? = nil
     ) {
@@ -82,6 +89,7 @@ public struct RuleDraft: Sendable, Hashable {
         self.trigger = trigger
         self.conditions = conditions
         self.consequences = consequences
+        self.exceptions = exceptions
         self.changeReason = changeReason
         self.slug = slug
     }
@@ -149,6 +157,14 @@ public struct RuleDraft: Sendable, Hashable {
         consequences.removeAll { $0.id == id }
     }
 
+    public mutating func addException(_ shapeId: String, config: JSONConfig = .object([:])) {
+        exceptions.append(ShapeInstance(shapeId: shapeId, config: config))
+    }
+
+    public mutating func removeException(id: UUID) {
+        exceptions.removeAll { $0.id == id }
+    }
+
     public mutating func updateConfig(forShapeInstanceId instanceId: UUID, key: String, value: JSONConfig) {
         func patch(_ instance: inout ShapeInstance) {
             guard case .object(var dict) = instance.config else {
@@ -164,6 +180,10 @@ public struct RuleDraft: Sendable, Hashable {
         }
         if let i = consequences.firstIndex(where: { $0.id == instanceId }) {
             patch(&consequences[i])
+            return
+        }
+        if let i = exceptions.firstIndex(where: { $0.id == instanceId }) {
+            patch(&exceptions[i])
             return
         }
         if var t = trigger, t.id == instanceId {

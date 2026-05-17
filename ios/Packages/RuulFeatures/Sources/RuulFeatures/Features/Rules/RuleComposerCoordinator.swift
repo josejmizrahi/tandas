@@ -150,6 +150,13 @@ public final class RuleComposerCoordinator: Identifiable {
             .sorted { ($0.sortOrder, $0.labelES) < ($1.sortOrder, $1.labelES) }
     }
 
+    /// Exceptions reuse the condition catalog — an exception IS a
+    /// condition, just evaluated with inverted semantics (mig 00248).
+    /// Identical list as `availableConditions`.
+    public var availableExceptions: [RuleShape] {
+        availableConditions
+    }
+
     /// Consequences the user may add. Same rationale as conditions.
     public var availableConsequences: [RuleShape] {
         shapeRegistry.shapes(of: .consequence)
@@ -218,6 +225,14 @@ public final class RuleComposerCoordinator: Identifiable {
 
     public func removeConsequence(id: UUID) {
         draft.removeConsequence(id: id)
+    }
+
+    public func addException(shapeId: String) {
+        draft.addException(shapeId, config: defaultConfig(for: shapeId))
+    }
+
+    public func removeException(id: UUID) {
+        draft.removeException(id: id)
     }
 
     public func updateConfig(forShapeInstanceId instanceId: UUID, key: String, value: JSONConfig) {
