@@ -16,7 +16,6 @@ import RuulCore
 @MainActor
 public struct GroupRolesSheet: View {
     @Environment(AppState.self) private var app
-    @Environment(\.dismiss) private var dismiss
 
     public let groupId: UUID
 
@@ -46,49 +45,44 @@ public struct GroupRolesSheet: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("Roles del grupo")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        RuulCloseToolbarButton { dismiss() }
+        content
+            .navigationTitle("Roles y permisos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        editing = .init(role: nil)
+                    } label: {
+                        Image(systemName: "plus")
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            editing = .init(role: nil)
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        .accessibilityLabel("Crear rol")
-                        .disabled(saving)
-                    }
+                    .accessibilityLabel("Crear rol")
+                    .disabled(saving)
                 }
-        }
-        .fullScreenCover(item: $editing) { target in
-            GroupRoleEditorSheet(
-                groupId: groupId,
-                existing: target.role
-            ) { saved in
-                editing = nil
-                if saved != nil { await app.refreshProfileAndGroups() }
             }
-            .environment(app)
-        }
-        .alert(
-            "Eliminar este rol",
-            isPresented: deleteAlertBinding,
-            presenting: deletingRole
-        ) { role in
-            Button("Eliminar", role: .destructive) {
-                Task { await delete(role) }
+            .fullScreenCover(item: $editing) { target in
+                GroupRoleEditorSheet(
+                    groupId: groupId,
+                    existing: target.role
+                ) { saved in
+                    editing = nil
+                    if saved != nil { await app.refreshProfileAndGroups() }
+                }
+                .environment(app)
             }
-            Button("Cancelar", role: .cancel) {
-                deletingRole = nil
+            .alert(
+                "Eliminar este rol",
+                isPresented: deleteAlertBinding,
+                presenting: deletingRole
+            ) { role in
+                Button("Eliminar", role: .destructive) {
+                    Task { await delete(role) }
+                }
+                Button("Cancelar", role: .cancel) {
+                    deletingRole = nil
+                }
+            } message: { role in
+                Text("«\(role.humanLabel)» se quitará del catálogo del grupo y de cada miembro que lo tenga asignado.")
             }
-        } message: { role in
-            Text("«\(role.humanLabel)» se quitará del catálogo del grupo y de cada miembro que lo tenga asignado.")
-        }
     }
 
     @ViewBuilder
@@ -114,10 +108,14 @@ public struct GroupRolesSheet: View {
                     }
                 }
             } header: {
-                Text("Cualquier miembro con el permiso \"Asignar roles\" puede crear o editar.")
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .textCase(nil)
+                VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+                    Text("Este es el catálogo de roles del grupo: qué roles existen y qué permisos otorga cada uno.")
+                    Text("Para asignar un rol a una persona, ve a Miembros → tap en el miembro → \"Editar\" en sus roles.")
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .textCase(nil)
             } footer: {
                 if let error {
                     Text(error)
