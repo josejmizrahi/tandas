@@ -362,6 +362,12 @@ public final class AppState {
     /// live mode; mock/preview environments can assign `MockMyActivityRepository`.
     public var myActivityRepo: (any MyActivityRepository)?
 
+    /// Aggregated per-group stats (memberCount, balance, fines, votes, actions).
+    /// Optional so existing constructors don't break; GroupHomeView degrades
+    /// to hiding the summarySection when nil. Wired by `TandasApp` in
+    /// live mode; mock/preview environments can assign `MockGroupSummaryRepository`.
+    public var groupSummaryRepo: (any GroupSummaryRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
