@@ -81,6 +81,10 @@ public struct SignInView: View {
     @State private var error: String?
     @State private var isLoading: Bool = false
     @State private var hasOTPError: Bool = false
+    /// Seconds remaining before "Reenviar código" becomes tappable. Reset
+    /// to 30 each time we send/resend; ticks down once per second via the
+    /// `TimelineView` in `otpEntry`.
+    @State private var resendCooldownExpiresAt: Date = .distantPast
 
     public enum Step: Hashable { case start, otp }
 
@@ -194,6 +198,7 @@ public struct SignInView: View {
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
+            resendRow
             HStack(spacing: RuulSpacing.sm) {
                 RuulButton("Atrás", style: .secondary, size: .medium) {
                     step = .start
@@ -215,17 +220,43 @@ public struct SignInView: View {
         }
     }
 
+    /// Tick once per second so the cooldown copy ("Reenviar en 12 s")
+    /// updates without a Timer publisher. When `remaining <= 0` the row
+    /// flips to an actionable button that re-runs `sendOTP()`.
+    private var resendRow: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = max(0, Int(resendCooldownExpiresAt.timeIntervalSince(context.date).rounded(.up)))
+            HStack(spacing: RuulSpacing.xs) {
+                Text("¿No te llegó?")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                if remaining > 0 {
+                    Text("Reenviar en \(remaining) s")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextTertiary)
+                } else {
+                    Button("Reenviar código") { resendOTP() }
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulAccent)
+                        .buttonStyle(.plain)
+                        .disabled(isLoading)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
     // MARK: - Create account link
 
     private var createAccountLink: some View {
         HStack(spacing: RuulSpacing.xs) {
-            Text("¿No tienes cuenta?")
+            Text("¿Empezar de cero?")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button {
                 createNewAccount()
             } label: {
-                Text("Crear nueva")
+                Text("Crear grupo nuevo")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulAccent)
             }
@@ -264,6 +295,7 @@ public struct SignInView: View {
                     step = .otp
                     otpCode = ""
                     hasOTPError = false
+                    resendCooldownExpiresAt = Date().addingTimeInterval(30)
                 }
             } catch {
                 await MainActor.run {
@@ -273,6 +305,32 @@ public struct SignInView: View {
                     self.error = "No pudimos enviar el código. \(error.ruulUserMessage)"
                 }
                 // Beta 1 W4 F-4.5: bucket-coded telemetry.
+                let beta = BetaAnalytics(analytics: app.analytics)
+                await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
+            }
+        }
+    }
+
+    /// Re-issues an OTP for the same `phoneE164` the user already typed in
+    /// the start step. Disabled by `resendRow` until the 30 s cooldown
+    /// elapses so we don't spam the SMS provider on rapid taps.
+    private func resendOTP() {
+        guard !phoneE164.isEmpty, !isLoading else { return }
+        error = nil
+        hasOTPError = false
+        isLoading = true
+        Task {
+            defer { Task { @MainActor in isLoading = false } }
+            do {
+                try await app.auth.sendPhoneOTP(phoneE164)
+                await MainActor.run {
+                    otpCode = ""
+                    resendCooldownExpiresAt = Date().addingTimeInterval(30)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "No pudimos reenviar el código. \(error.ruulUserMessage)"
+                }
                 let beta = BetaAnalytics(analytics: app.analytics)
                 await beta.errorShown(code: RuulErrorTranslator.errorCode(for: error))
             }

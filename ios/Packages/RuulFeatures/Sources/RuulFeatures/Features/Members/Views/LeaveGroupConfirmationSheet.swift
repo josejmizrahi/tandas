@@ -10,6 +10,7 @@ public struct LeaveGroupConfirmationSheet: View {
 
     @State private var leaving = false
     @State private var members: [MemberWithProfile] = []
+    @State private var pendingFinesInGroup: [Fine] = []
     @State private var loading = true
     @State private var error: String?
 
@@ -19,6 +20,10 @@ public struct LeaveGroupConfirmationSheet: View {
         guard let uid = app.session?.user.id else { return false }
         let admins = members.filter { $0.member.isFounder && $0.member.active }
         return admins.count == 1 && admins.first?.member.userId == uid
+    }
+
+    private var pendingFinesTotal: Decimal {
+        pendingFinesInGroup.reduce(Decimal(0)) { $0 + $1.amount }
     }
 
     public var body: some View {
@@ -40,7 +45,7 @@ public struct LeaveGroupConfirmationSheet: View {
             }
             .padding(RuulSpacing.lg)
             .ruulSheetToolbar("Salir del grupo")
-            .task { await loadMembers() }
+            .task { await loadContext() }
         }
     }
 
@@ -65,6 +70,7 @@ public struct LeaveGroupConfirmationSheet: View {
             Text("Perderás acceso a este grupo y a su actividad.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
+            pendingFinesWarning
             Button(role: .destructive) {
                 Task { await leave() }
             } label: {
@@ -80,13 +86,51 @@ public struct LeaveGroupConfirmationSheet: View {
         }
     }
 
-    private func loadMembers() async {
+    /// Surfaces unresolved fines the user owes IN THIS GROUP before they
+    /// leave. Salir no las cancela — siguen apareciendo en "Mis multas"
+    /// cross-group. Hacer esto explícito evita que el founder asuma que
+    /// "salirme borra lo que debo".
+    @ViewBuilder
+    private var pendingFinesWarning: some View {
+        if !pendingFinesInGroup.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Label("Tienes multas pendientes aquí", systemImage: "exclamationmark.triangle.fill")
+                    .ruulTextStyle(RuulTypography.subheadSemibold)
+                    .foregroundStyle(Color.ruulWarning)
+                let count = pendingFinesInGroup.count
+                Text("\(count == 1 ? "1 multa" : "\(count) multas") por \(formatCurrency(pendingFinesTotal)). Salir no las cancela — siguen visibles en Mis multas.")
+                    .ruulTextStyle(RuulTypography.footnote)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            .padding(RuulSpacing.md)
+            .background(Color.ruulWarning.opacity(0.08), in: RoundedRectangle(cornerRadius: RuulRadius.md))
+        }
+    }
+
+    private func formatCurrency(_ amount: Decimal) -> String {
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = "MXN"
+        nf.maximumFractionDigits = 0
+        return nf.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+    }
+
+    private func loadContext() async {
         loading = true
         defer { loading = false }
-        do {
-            members = try await app.groupsRepo.membersWithProfiles(of: group.id)
-        } catch {
+        guard let uid = app.session?.user.id else {
             self.error = "No pudimos verificar tu rol."
+            return
+        }
+        async let membersTask = (try? app.groupsRepo.membersWithProfiles(of: group.id)) ?? []
+        async let finesTask = (try? app.fineRepo.myFines(userId: uid)) ?? []
+        let (loadedMembers, allFines) = await (membersTask, finesTask)
+        members = loadedMembers
+        pendingFinesInGroup = allFines.filter {
+            $0.groupId == group.id
+                && !$0.paid
+                && !$0.waived
+                && ($0.status == .proposed || $0.status == .officialized || $0.status == .inAppeal)
         }
     }
 

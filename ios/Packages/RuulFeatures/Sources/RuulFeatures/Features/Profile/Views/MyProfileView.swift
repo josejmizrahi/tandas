@@ -35,6 +35,8 @@ public struct MyProfileView: View {
     public var onOpenNotificationPreferences: (() -> Void)?
     public var onOpenDevices: (() -> Void)?
 
+    @State private var showSignOutConfirm = false
+
     public init(
         coordinator: ProfileCoordinator,
         onOpenMyFines: @escaping () -> Void,
@@ -112,6 +114,16 @@ public struct MyProfileView: View {
         }
         .ruulAppToolbar(showsGroupAvatar: false)
         .task { await coordinator.refresh() }
+        .confirmationDialog(
+            "¿Salir de tu cuenta?",
+            isPresented: $showSignOutConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Cerrar sesión", role: .destructive, action: onSignOut)
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Tus grupos, multas e historia siguen guardados. Vuelves a entrar con el mismo teléfono o Apple ID.")
+        }
     }
 
     // MARK: Hero (avatar + name + cross-group meta)
@@ -293,7 +305,7 @@ public struct MyProfileView: View {
     }
 
     private var signOutButton: some View {
-        Button(action: onSignOut) {
+        Button { showSignOutConfirm = true } label: {
             Text("Cerrar sesión")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulNegative)

@@ -42,7 +42,7 @@ public struct RootShell: View {
             .tag(RootTab.home)
 
             InboxTab(inbox: inboxCoordinator)
-                .tabItem { Label("Inbox", systemImage: "tray.fill") }
+                .tabItem { Label("Pendientes", systemImage: "tray.fill") }
                 .tag(RootTab.inbox)
                 .badge(inboxCoordinator?.actions.count ?? 0)
 
@@ -51,7 +51,7 @@ public struct RootShell: View {
                 .tag(RootTab.create)
 
             ActivityTab(activity: activityCoordinator)
-                .tabItem { Label("Actividad", systemImage: "clock.arrow.circlepath") }
+                .tabItem { Label("Historia", systemImage: "clock.arrow.circlepath") }
                 .tag(RootTab.activity)
 
             ProfileTab(profile: profileCoordinator, myFines: myFinesCoordinator)
