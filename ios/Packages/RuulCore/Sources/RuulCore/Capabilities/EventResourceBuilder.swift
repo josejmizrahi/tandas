@@ -57,19 +57,22 @@ public actor EventResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .event else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .event else {
             throw ResourceBuilderError.underlying("EventResourceBuilder cannot build this type")
         }
 
         // Required-field validation. Surface specific keys so the wizard
         // can highlight the missing field.
-        guard case let .string(title)? = draft.basicFields["title"], !title.isEmpty else {
+        guard case let .string(title)? = rawDraft.basicFields["title"], !title.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("title")
         }
-        guard let startsAt = draft.basicFields["startsAt"]?.dateValue else {
+        guard let startsAt = rawDraft.basicFields["startsAt"]?.dateValue else {
             throw ResourceBuilderError.missingRequiredField("startsAt")
         }
+
+        // Tier 0 + Tier 0.5 caps merged in per CapabilityTiers.md §2-3.
+        let draft = rawDraft.withTierDefaults()
 
         // Atomic path (founder framing 2026-05-11 #5): when the host
         // app injected the draft repo, send the entire draft to the

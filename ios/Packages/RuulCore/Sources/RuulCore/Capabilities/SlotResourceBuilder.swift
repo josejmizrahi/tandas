@@ -47,19 +47,22 @@ public actor SlotResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .slot else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .slot else {
             throw ResourceBuilderError.underlying("SlotResourceBuilder cannot build this type")
         }
-        guard draft.basicFields["assetId"]?.uuidValue != nil else {
+        guard rawDraft.basicFields["assetId"]?.uuidValue != nil else {
             throw ResourceBuilderError.missingRequiredField("assetId")
         }
-        guard draft.basicFields["startsAt"]?.dateValue != nil else {
+        guard rawDraft.basicFields["startsAt"]?.dateValue != nil else {
             throw ResourceBuilderError.missingRequiredField("startsAt")
         }
-        guard draft.basicFields["endsAt"]?.dateValue != nil else {
+        guard rawDraft.basicFields["endsAt"]?.dateValue != nil else {
             throw ResourceBuilderError.missingRequiredField("endsAt")
         }
+
+        // Tier 0 + Tier 0.5 caps merged in per CapabilityTiers.md §2-3.
+        let draft = rawDraft.withTierDefaults()
 
         // Atomic submit via build_resource_from_draft. The RPC's
         // `when 'slot'` branch (mig 00204) parses the three fields and

@@ -62,13 +62,16 @@ public actor SpaceResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .space else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .space else {
             throw ResourceBuilderError.underlying("SpaceResourceBuilder cannot build this type")
         }
-        guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
+        guard case let .string(name)? = rawDraft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
+
+        // Tier 0 + Tier 0.5 caps merged in per CapabilityTiers.md §2-3.
+        let draft = rawDraft.withTierDefaults()
 
         do {
             let resourceId = try await draftRepo.build(draft)

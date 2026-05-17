@@ -83,6 +83,29 @@ public struct ResourceDraft: Sendable {
         self.seriesPattern = seriesPattern
         self.initialRules = initialRules
     }
+
+    /// Returns a copy of this draft with Tier 0 + Tier 0.5 capability
+    /// defaults merged into `enabledCapabilities`. Builders call this
+    /// before persisting so every new resource ships with the universals
+    /// (status/description/history/rules/voting) and — when the type is
+    /// eligible — the economic Tier 0.5 (ledger/money). See
+    /// `Plans/Active/CapabilityTiers.md` for the canonical contract.
+    public func withTierDefaults() -> ResourceDraft {
+        let merged = CapabilityCatalog.mergeTierDefaults(
+            explicit: enabledCapabilities,
+            for: resourceType
+        )
+        if merged.elementsEqual(enabledCapabilities) { return self }
+        return ResourceDraft(
+            groupId: groupId,
+            resourceType: resourceType,
+            basicFields: basicFields,
+            enabledCapabilities: merged,
+            capabilityConfigs: capabilityConfigs,
+            seriesPattern: seriesPattern,
+            initialRules: initialRules
+        )
+    }
 }
 
 /// What the builder produced. Coordinator can use this to navigate to

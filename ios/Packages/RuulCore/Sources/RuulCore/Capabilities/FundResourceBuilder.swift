@@ -50,13 +50,18 @@ public actor FundResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .fund else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .fund else {
             throw ResourceBuilderError.underlying("FundResourceBuilder cannot build this type")
         }
-        guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
+        guard case let .string(name)? = rawDraft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
+
+        // Tier 0 + Tier 0.5 caps merged in. For funds the economic block
+        // (money/ledger) was historically guaranteed; the universals
+        // (rules/voting/history/etc.) now arrive through the same path.
+        let draft = rawDraft.withTierDefaults()
 
         // Atomic submit via build_resource_from_draft. The RPC's
         // `when 'fund'` branch calls create_fund — same shape as

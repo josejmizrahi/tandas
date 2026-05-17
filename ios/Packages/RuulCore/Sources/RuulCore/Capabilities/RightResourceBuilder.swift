@@ -96,17 +96,21 @@ public actor RightResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .right else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .right else {
             throw ResourceBuilderError.underlying("RightResourceBuilder cannot build this type")
         }
 
-        guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
+        guard case let .string(name)? = rawDraft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
         // holderMemberId is optional in the wizard's basic_fields (mig 00201):
         // when absent, create_right defaults to the caller's membership. The
         // Swift side mirrors that — submitting without a holder is valid.
+
+        // Tier 0 caps merged in (no Tier 0.5 for `right` per
+        // CapabilityTiers.md §3 — rights are relations, not balance holders).
+        let draft = rawDraft.withTierDefaults()
 
         do {
             let resourceId = try await draftRepo.build(draft)
