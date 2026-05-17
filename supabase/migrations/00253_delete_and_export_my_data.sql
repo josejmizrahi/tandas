@@ -1,94 +1,75 @@
--- Mig 00253: delete_my_account + export_my_data RPCs
+-- Mig 00253: delete_my_account wrapper + export_my_data sync
 --
--- Cierra el gap de compliance LFPDPPP/CCPA marcado como pending en
--- Vision.md §"Checklist inmediato" item #7-equivalent (privacy ARCO).
--- Sin estas RPCs, un usuario que quiere ejercer su derecho de
--- supresión/portabilidad no tiene cómo desde la app.
+-- Contexto: ya existe infra ARCO completa (mig 00170 data_subject_rights,
+-- mig 00174 data_rights_janitor):
+--   - `request_data_deletion(p_scope)` — SYNC, pseudonimiza profile +
+--     deactivates memberships + purge tokens. Logged en
+--     data_subject_rights_requests + data_deletion_log.
+--   - `request_data_export(p_kind)` — ASYNC, crea pending request que
+--     debería procesarse por un cron... pero el executor no existe
+--     todavía. iOS no puede simplemente llamarla y obtener data.
 --
--- Ambas son SECURITY DEFINER porque cruzan tablas con RLS por user_id;
--- el guard inicial es `auth.uid()` para asegurar que un usuario solo
--- puede operar sobre su propia data.
+-- Esta migración:
+--   1. `delete_my_account()` — wrapper Spanish-friendly que llama al
+--      existente request_data_deletion + agrega los extras que faltan
+--      (purge notification_preferences, set profiles.deleted_at flag
+--      añadido en mig 00252, emit memberLeft system_event por grupo).
+--      iOS llama esta y se desentiende del p_scope text[] underlying.
+--   2. `export_my_data()` — SYNC executor: devuelve jsonb directo.
+--      También loggea en data_subject_rights_requests como 'completed'
+--      para audit trail compliance. Coexiste con request_data_export
+--      async — V2 puede deprecar la async cuando export crezca lo
+--      suficiente para necesitar offline processing.
 
 -- =============================================================================
--- 1. delete_my_account — pseudonymize PII, preserve atoms
+-- 1. delete_my_account — extiende request_data_deletion
 -- =============================================================================
---
--- Estrategia (alineada con Vision.md §"Migración, UX y flujos" sobre
--- privacy + append-only):
---
---   PSEUDONIMIZAR identidad personal:
---     - profiles: blank display_name, avatar_url, phone; locale/tz
---       resetean al default; deleted_at = now()
---     - notification_tokens: DELETE (push tokens son PII vivos sin
---       valor de retención auditable)
---     - notification_preferences: DELETE (preferencias personales)
---
---   PRESERVAR átomos (audit trail):
---     - group_members: active=false + joined_at intacto; FKs preservan
---       referencia simbólica en system_events/vote_casts/rsvp_actions/
---       ledger_entries
---     - fines: no se tocan; user_id sigue apuntando a auth.users id
---     - system_events/vote_casts/rsvp_actions/ledger_entries: no se
---       tocan; ya son append-only por guards (migs 00103/00162/00163/
---       00166)
---
---   NO TOCAR auth.users:
---     - Para evitar cascade-delete que rompería los FKs append-only
---       (fines.user_id ON DELETE CASCADE, etc.). El usuario puede
---       técnicamente volver a iniciar sesión pero su profile estará
---       pseudonimizado y sin grupos activos — efectivamente account
---       muerta desde la perspectiva del producto.
---     - Si el operador necesita bannear el auth.user, lo hace fuera
---       de banda (Supabase Studio o edge function con service_role).
 
 create or replace function public.delete_my_account()
-returns void
+returns uuid
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 declare
   v_user_id uuid := auth.uid();
+  v_request_id uuid;
 begin
   if v_user_id is null then
-    raise exception 'Not authenticated'
-      using errcode = 'P0001';
+    raise exception 'authentication required'
+      using errcode = 'insufficient_privilege';
   end if;
 
-  -- 1. Pseudonimizar profile. Idempotente: si ya está eliminado,
-  --    refresca timestamp pero no rompe.
+  -- 1. Delegar al RPC existente para la parte estándar (profile blank,
+  --    tokens delete, memberships deactivate). Devuelve el request_id
+  --    que loggea data_subject_rights_requests.
+  v_request_id := public.request_data_deletion(
+    ARRAY['profile', 'devices', 'group_membership']
+  );
+
+  -- 2. Spanish-friendly override del display_name (request_data_deletion
+  --    pone "Removed user" en inglés). También set deleted_at flag para
+  --    que la UI proyecte "Cuenta eliminada" sin tener que adivinar.
   update public.profiles set
     display_name = 'Cuenta eliminada',
-    avatar_url   = null,
-    phone        = null,
-    locale       = 'es-MX',
-    timezone     = 'America/Mexico_City',
-    deleted_at   = now(),
-    updated_at   = now()
+    deleted_at   = now()
   where id = v_user_id;
 
-  -- 2. Deactivate group memberships. Atoms con member_id apuntando
-  --    a estos rows siguen siendo legibles; las vistas proyectarán
-  --    "Cuenta eliminada" como actor name via profiles join.
-  update public.group_members set
-    active = false
-  where user_id = v_user_id and active = true;
-
-  -- 3. PURGE push tokens (PII viva, no audit value).
-  delete from public.notification_tokens
-   where user_id = v_user_id;
-
-  -- 4. PURGE notification preferences (personal config).
+  -- 3. Purga preferencias de notificación (PII personal, no audit value).
+  --    El existente request_data_deletion no las tocaba.
   delete from public.notification_preferences
    where user_id = v_user_id;
 
-  -- 5. Append a system_event en cada grupo donde era miembro para
-  --    que el historial muestre el evento de eliminación.
+  -- 4. Emit memberLeft system_event en cada grupo donde era miembro con
+  --    reason=account_deleted. Sin esto el historial del grupo no
+  --    refleja qué pasó — solo aparece "Jose" desactivado silenciosamente.
   insert into public.system_events (group_id, event_type, member_id, payload)
   select gm.group_id, 'memberLeft', gm.id,
          jsonb_build_object('reason', 'account_deleted')
     from public.group_members gm
-   where gm.user_id = v_user_id;
+   where gm.user_id = v_user_id and not gm.active and gm.id is not null;
+
+  return v_request_id;
 end;
 $$;
 
@@ -96,26 +77,19 @@ revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
 
 comment on function public.delete_my_account() is
-  'LFPDPPP/CCPA right-to-erasure. Pseudonimiza profile, desactiva memberships, purga push tokens + notification preferences. NO toca atoms (system_events, vote_casts, rsvp_actions, ledger_entries, fines) ni auth.users — son append-only por design. El cliente debe llamar signOut() después.';
+  'LFPDPPP/CCPA right-to-erasure wrapper. Llama a request_data_deletion(full_scope) + override Spanish copy + set profiles.deleted_at + purge notification_preferences + emit memberLeft system_event por grupo. Devuelve request_id loggeado en data_subject_rights_requests. El cliente debe llamar signOut() después.';
 
 -- =============================================================================
--- 2. export_my_data — right to data portability
+-- 2. export_my_data — SYNC version del data export
 -- =============================================================================
 --
--- Devuelve jsonb con todo lo que el usuario actual puede reclamar como
--- "su data". Compatible con LFPDPPP art. 22 (acceso) y CCPA §1798.110
--- (right to know). Formato: un solo JSON document, fácil de descargar/
--- compartir desde iOS.
+-- Diferencia con request_data_export(p_kind): éste devuelve jsonb directo
+-- en la llamada, no un request_id que hay que polling. Loggea el evento
+-- en data_subject_rights_requests como 'completed' para audit ARCO.
 --
--- Cobertura:
---   - profile (identidad)
---   - memberships (group_members + group name + role)
---   - fines (issued contra mí)
---   - rsvps (mis respuestas a eventos, vía member_id)
---   - vote_casts (mis votos emitidos, vía member_id)
---   - system_events donde yo fui actor (member_id en mis memberships)
---   - ledger_entries donde yo soy from o to member
---   - notification_preferences
+-- Cobertura: profile + memberships + fines + rsvps + votes +
+-- system_events (donde fui actor) + ledger_entries (de o hacia mí) +
+-- notification_preferences. Scoped a auth.uid().
 
 create or replace function public.export_my_data()
 returns jsonb
@@ -126,20 +100,20 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   v_member_ids uuid[];
+  v_request_id uuid;
   v_result jsonb;
 begin
   if v_user_id is null then
-    raise exception 'Not authenticated'
-      using errcode = 'P0001';
+    raise exception 'authentication required'
+      using errcode = 'insufficient_privilege';
   end if;
 
-  -- Mis member_ids across grupos. Incluye inactivos para que el export
-  -- sea histórico completo, no solo "lo que tengo ahora".
-  select array_agg(id) into v_member_ids
+  -- Mis member_ids across grupos (incluye inactivos para export histórico).
+  select coalesce(array_agg(id), '{}'::uuid[]) into v_member_ids
     from public.group_members
    where user_id = v_user_id;
-  v_member_ids := coalesce(v_member_ids, '{}'::uuid[]);
 
+  -- Construir el JSON agregado.
   with
     profile_data as (
       select to_jsonb(p.*) as p
@@ -212,7 +186,30 @@ begin
     'notification_preferences', (select ps from prefs_data)
   ) into v_result;
 
-  return v_result;
+  -- Loggear el export en data_subject_rights_requests para audit ARCO.
+  -- portability = derecho a llevarse la data (LFPDPPP art. 22 acceso +
+  -- CCPA right-to-know). status=completed porque ya está hecho.
+  insert into public.data_subject_rights_requests (
+    user_id, kind, status, payload, executed_at, result
+  ) values (
+    v_user_id,
+    'portability'::data_right_kind,
+    'completed'::data_right_status,
+    jsonb_build_object('requested_via', 'export_my_data', 'sync', true),
+    now(),
+    jsonb_build_object('records_exported', jsonb_build_object(
+      'memberships', jsonb_array_length(v_result->'memberships'),
+      'fines',       jsonb_array_length(v_result->'fines'),
+      'rsvps',       jsonb_array_length(v_result->'rsvps'),
+      'votes',       jsonb_array_length(v_result->'votes'),
+      'events',      jsonb_array_length(v_result->'system_events'),
+      'ledger',      jsonb_array_length(v_result->'ledger_entries')
+    ))
+  ) returning id into v_request_id;
+
+  -- Embed el request_id en la respuesta para que iOS pueda referenciarlo
+  -- si el usuario pregunta por audit trail.
+  return v_result || jsonb_build_object('audit_request_id', v_request_id);
 end;
 $$;
 
@@ -220,4 +217,4 @@ revoke execute on function public.export_my_data() from public, anon;
 grant execute on function public.export_my_data() to authenticated;
 
 comment on function public.export_my_data() is
-  'LFPDPPP/CCPA right-to-know / data portability. Devuelve jsonb con profile + memberships + fines + rsvps + votes + system_events + ledger_entries + notification_preferences del usuario actual. schema_version=1 — bump cuando cambie shape.';
+  'LFPDPPP art. 22 / CCPA right-to-know. SYNC version — devuelve jsonb directo + loggea en data_subject_rights_requests como portability completed. Coexiste con request_data_export async. Cobertura: profile, memberships, fines, rsvps, votes, system_events (donde fui actor), ledger_entries, notification_preferences. schema_version=1.';
