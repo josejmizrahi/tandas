@@ -116,8 +116,6 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
     /// copies this into `groups.roles` at group creation. Optional so
     /// V1 templates (no custom roles) decode without errors.
     public let defaultRoles: [String: RoleDefinition]?
-    public let suggestedTabs: [TabConfig]?
-    public let onboardingFlow: [OnboardingStepConfig]?
 
     /// Resource types this template instantiates. V1 always `[.event]`
     /// for backward compat. Phase 2+ templates (shared_resource,
@@ -154,8 +152,6 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         defaultSettings: JSONConfig? = nil,
         defaultRules: [TemplateRule]? = nil,
         defaultRoles: [String: RoleDefinition]? = nil,
-        suggestedTabs: [TabConfig]? = nil,
-        onboardingFlow: [OnboardingStepConfig]? = nil,
         resourceTypes: [ResourceType]? = nil,
         presentation: TemplatePresentation? = nil,
         defaultCategory: GroupCategory? = nil,
@@ -168,8 +164,6 @@ public struct TemplateConfig: Sendable, Codable, Hashable {
         self.defaultSettings = defaultSettings
         self.defaultRules = defaultRules
         self.defaultRoles = defaultRoles
-        self.suggestedTabs = suggestedTabs
-        self.onboardingFlow = onboardingFlow
         self.resourceTypes = resourceTypes
         self.presentation = presentation
         self.defaultCategory = defaultCategory

@@ -92,53 +92,6 @@ public struct CapabilityResolver: Sendable {
         availableResourceTypes(for: group, template: template).contains(resourceType)
     }
 
-    // MARK: - Tabs
-
-    /// Ordered list of `TabConfig` to render in `RootShell` for this
-    /// group. V1 templates declare 4 universal tabs in
-    /// `template.config.suggestedTabs`; Phase 2+ may filter by module
-    /// activation (e.g. drop the "Reglas" tab if `basic_fines` is off).
-    ///
-    /// When a template hasn't loaded yet (cold start before
-    /// `TemplateRegistry.refresh()` completes), the resolver falls back to
-    /// the canonical V1 4-tab set so RootShell always has something to
-    /// render.
-    public func availableTabs(
-        for group: Group?,
-        template: Template?
-    ) -> [TabConfig] {
-        if let suggested = template?.config.suggestedTabs, !suggested.isEmpty {
-            // For V1 every suggested tab is `isUniversal=true`; module
-            // gating arrives in Phase 2 when non-universal tabs appear.
-            // Today we just sort by `order` and return.
-            let visible = suggested.filter { tab in
-                tab.isUniversal || tabIsActiveForGroup(tab, in: group)
-            }
-            return visible.sorted { $0.order < $1.order }
-        }
-
-        // Fallback when template isn't loaded yet OR template doesn't
-        // declare suggestedTabs (legacy templates pre-00021).
-        return CapabilityResolver.fallbackV1Tabs
-    }
-
-    /// Whether a non-universal tab is wired up for the given group's
-    /// active modules. V1 has no non-universal tabs so this is unreachable.
-    /// Phase 2+ may have e.g. a "Slots" tab gated by `slot_assignment`.
-    private func tabIsActiveForGroup(_ tab: TabConfig, in group: Group?) -> Bool {
-        guard let group else { return false }
-        // Convention: a non-universal tab's `id` matches the module that
-        // provides it (e.g. tab id "slots" → module "slot_assignment"
-        // declares `providedTabs: ["slots"]`).
-        for moduleId in group.effectiveActiveModules {
-            if let module = modules.module(id: moduleId),
-               module.providedTabs.contains(tab.id) {
-                return true
-            }
-        }
-        return false
-    }
-
     // MARK: - Group sub-tabs
 
     /// Stable identifiers for the sub-tabs rendered inside the "Grupo" tab.
@@ -211,41 +164,4 @@ public struct CapabilityResolver: Sendable {
         return false
     }
 
-    /// Canonical V1 4-tab fallback when no template is loaded. Mirrors
-    /// `RootShell.Tab` enum exactly; updates here must keep parity until
-    /// Phase 2 ships dynamic rendering.
-    public static let fallbackV1Tabs: [TabConfig] = [
-        TabConfig(
-            id: "home",
-            title: "Inicio",
-            icon: "house.fill",
-            order: 0,
-            viewType: "home",
-            isUniversal: true
-        ),
-        TabConfig(
-            id: "group",
-            title: "Grupo",
-            icon: "person.3.fill",
-            order: 1,
-            viewType: "group",
-            isUniversal: true
-        ),
-        TabConfig(
-            id: "history",
-            title: "Historial",
-            icon: "clock.arrow.circlepath",
-            order: 2,
-            viewType: "history",
-            isUniversal: true
-        ),
-        TabConfig(
-            id: "settings",
-            title: "Ajustes",
-            icon: "gear",
-            order: 3,
-            viewType: "settings",
-            isUniversal: true
-        ),
-    ]
 }
