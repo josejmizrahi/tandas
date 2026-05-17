@@ -310,42 +310,15 @@ public struct UniversalResourceDetailView: View {
     private var informationSection: some View {
         let facts = infoRows
         if !facts.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("INFORMACIÓN")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .padding(.leading, RuulSpacing.xxs)
-                VStack(spacing: 0) {
-                    ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
-                        infoRow(fact)
-                        if idx < facts.count - 1 {
-                            Divider()
-                                .background(Color.ruulSeparator)
-                                .padding(.leading, RuulSpacing.md)
-                        }
+            RuulInfoCard("INFORMACIÓN") {
+                ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
+                    RuulInfoRow(label: fact.label, value: fact.value)
+                    if idx < facts.count - 1 {
+                        RuulInfoDivider()
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
-                )
             }
         }
-    }
-
-    private func infoRow(_ fact: (label: String, value: String)) -> some View {
-        HStack {
-            Text(fact.label)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-            Spacer()
-            Text(fact.value)
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding(RuulSpacing.md)
     }
 
     /// Type-aware key facts shown in the INFORMACIÓN card. The set is
