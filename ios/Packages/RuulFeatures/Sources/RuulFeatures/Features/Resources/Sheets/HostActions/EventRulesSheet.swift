@@ -23,9 +23,12 @@ struct ResourceRulesSheet: View {
     @Bindable var coordinator: ResourceRulesCoordinator
     @Environment(AppState.self) private var app
 
-    /// Rule Builder presentation handle. Non-nil when admin opens the "+"
-    /// button to create a resource-scoped rule via the template catalog.
-    @State private var ruleBuilderCoord: RuleBuilderCoordinator?
+    /// Rule Composer presentation handle. Non-nil when admin opens the "+"
+    /// button to create a resource-scoped rule via free composition.
+    /// Replaces the previous template-gallery wizard (mig 00245 sibling):
+    /// templates can now be loaded inside the composer as starting points
+    /// rather than being the only path.
+    @State private var composerCoord: RuleComposerCoordinator?
 
     public init(
         isPresented: Binding<Bool>,
@@ -85,10 +88,15 @@ struct ResourceRulesSheet: View {
                 coordinator: coordinator
             )
         }
-        .fullScreenCover(item: $ruleBuilderCoord) { coord in
-            RuleBuilderView(coord: coord) {
-                ruleBuilderCoord = nil
-            }
+        .fullScreenCover(item: $composerCoord) { coord in
+            RuleComposerView(
+                coord: coord,
+                onPublished: { _ in
+                    composerCoord = nil
+                    Task { await coordinator.load() }
+                },
+                onCancel: { composerCoord = nil }
+            )
             .environment(app)
         }
     }
@@ -194,46 +202,28 @@ struct ResourceRulesSheet: View {
         }
     }
 
-    /// Opens the template-catalog Rule Builder with the resource scope
-    /// pre-set when templates are available (live mode). Falls back to the
-    /// legacy catalog-free form when `app.ruleTemplates` is empty (preview /
-    /// mock).
+    /// Opens the Rule Composer for free composition (no template wizard).
+    /// The composer's draft is pre-scoped to `.resource(<this resource>)`
+    /// and the resourceType context is passed so the trigger picker only
+    /// offers shapes compatible with this resource.
     ///
-    /// Templates are pre-filtered by the current resource's `resource_type`:
-    /// the trigger shape backing each template declares which
-    /// `valid_resource_types` it can fire on (rule_shapes catalog). A
-    /// template whose trigger doesn't list this resource type would never
-    /// fire, so we hide it from the gallery rather than showing dormant
-    /// options to the user.
+    /// Falls back to the legacy catalog-free form when the live template
+    /// repo isn't wired (preview/mock with no AppState repo).
     private func openRuleBuilder() {
         guard coordinator.canCreate else { return }
         guard let repo = app.ruleTemplateRepo,
-              !app.ruleTemplates.isEmpty,
               let group = app.groups.first(where: { $0.id == coordinator.groupId }) else {
-            // Legacy fallback — shape-based raw form.
+            // Legacy fallback — shape-based raw form on ResourceRulesCoordinator.
             coordinator.resetForm()
             coordinator.addSheetPresented = true
             return
         }
-        let resourceType = coordinator.context.resourceType
-        let registry = coordinator.shapeRegistry
-        let compatible = app.ruleTemplates.filter { template in
-            let triggerId = template.composition.triggerShapeId
-            guard let shape = registry.shape(id: triggerId) else {
-                // Shape unknown locally (server ahead of iOS enum) — trust
-                // the server side and let it through; the gallery will
-                // surface decoder issues separately.
-                return true
-            }
-            // Empty list = universal trigger, applies anywhere.
-            if shape.validResourceTypes.isEmpty { return true }
-            return shape.validResourceTypes.contains(resourceType)
-        }
-        ruleBuilderCoord = RuleBuilderCoordinator(
+        composerCoord = RuleComposerCoordinator(
             group: group,
-            templates: compatible,
+            shapeRegistry: coordinator.shapeRegistry,
             repo: repo,
-            initialScope: .resource(coordinator.resourceId)
+            scope: .resource(coordinator.resourceId),
+            resourceType: coordinator.context.resourceType
         )
     }
 
