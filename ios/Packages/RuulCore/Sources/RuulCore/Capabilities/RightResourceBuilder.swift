@@ -82,11 +82,12 @@ public actor RightResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Tier 0 (rules/voting/status/description/history) merged in by
+    /// `withTierDefaults()`. Right is NOT eligible for Tier 0.5
+    /// (ledger/money) per CapabilityTiers.md §3. Only the type-specific
+    /// Tier 1 opt-ins remain here.
     public nonisolated var optionalCapabilities: [String] {
-        // Rights mostly govern OTHER resources' capabilities. Capacity +
-        // expiration + voting + rules are the ones that make sense as
-        // capability rows on the right itself (vs. on its target).
-        ["capacity", "expiration", "voting", "rules"]
+        ["capacity", "expiration"]
     }
 
     private let draftRepo: any ResourceDraftRepository

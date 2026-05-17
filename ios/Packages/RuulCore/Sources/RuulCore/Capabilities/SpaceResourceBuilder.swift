@@ -51,8 +51,10 @@ public actor SpaceResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Tier 0/0.5 (status/description/history/rules/voting/ledger/money)
+    /// are merged in by `withTierDefaults()` — they're not listed here.
     public nonisolated var optionalCapabilities: [String] {
-        ["booking", "schedule", "check_in", "capacity", "location", "guest_access", "voting", "rules"]
+        ["booking", "schedule", "check_in", "capacity", "location", "guest_access"]
     }
 
     private let draftRepo: any ResourceDraftRepository

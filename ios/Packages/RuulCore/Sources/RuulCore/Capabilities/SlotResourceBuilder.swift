@@ -36,8 +36,10 @@ public actor SlotResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Tier 0/0.5 are merged via `withTierDefaults()`; only Tier 1
+    /// type-specific opt-ins listed here.
     public nonisolated var optionalCapabilities: [String] {
-        ["capacity", "booking", "swap", "guest_access", "rules"]
+        ["capacity", "booking", "swap", "guest_access"]
     }
 
     private let draftRepo: any ResourceDraftRepository

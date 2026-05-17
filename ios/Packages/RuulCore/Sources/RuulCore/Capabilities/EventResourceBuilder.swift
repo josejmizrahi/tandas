@@ -20,8 +20,10 @@ public actor EventResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Tier 0/0.5 (rules/voting/money/ledger/etc) merged in by
+    /// `withTierDefaults()`. Only Tier 1 event-specific opt-ins listed.
     public nonisolated var optionalCapabilities: [String] {
-        ["rsvp", "check_in", "rotation", "money", "rules", "voting", "recurrence"]
+        ["rsvp", "check_in", "rotation", "recurrence"]
     }
 
     private let eventRepo: any EventRepository

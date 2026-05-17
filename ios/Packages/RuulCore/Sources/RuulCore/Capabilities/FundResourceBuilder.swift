@@ -39,9 +39,12 @@ public actor FundResourceBuilder: ResourceBuilder {
         ]
     }
 
-    public nonisolated var optionalCapabilities: [String] {
-        ["money", "ledger", "voting", "rules"]
-    }
+    /// All of fund's previously-listed opt-in caps (money/ledger/voting/
+    /// rules) are now Tier 0 / Tier 0.5 — auto-merged via
+    /// `withTierDefaults()`. Fund has no remaining type-specific opt-in
+    /// capabilities in V1. Leave the array empty rather than surface
+    /// no-op toggles.
+    public nonisolated var optionalCapabilities: [String] { [] }
 
     private let draftRepo: any ResourceDraftRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.builder.fund")

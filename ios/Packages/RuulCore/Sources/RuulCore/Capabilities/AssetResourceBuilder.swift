@@ -16,15 +16,17 @@ public actor AssetResourceBuilder: ResourceBuilder {
         ]
     }
 
-    /// Spec §8: capabilities that ANY asset can wear. The wizard
-    /// surfaces these (filtered by CapabilityStatus) in step 3.
-    /// `slot` is intentionally NOT a capability — slots are a
-    /// separate resource_type per spec §18.
+    /// Spec §8: capabilities that ANY asset can wear AND that are opt-in.
+    /// Tier 0 + Tier 0.5 caps (status/description/history/rules/voting +
+    /// ledger/money/valuation) are NOT listed here — `withTierDefaults()`
+    /// merges them at build time, so the wizard would surface decorative
+    /// toggles that can't actually be turned off. The opt-in surface
+    /// stays focused on type-specific Tier 1 capabilities.
     public nonisolated var optionalCapabilities: [String] {
         [
-            "custody", "maintenance", "valuation", "transfer",
+            "custody", "maintenance", "transfer",
             "inventory", "booking", "capacity", "guest_access",
-            "delegation", "access", "voting", "rules", "history"
+            "delegation", "access"
         ]
     }
 
