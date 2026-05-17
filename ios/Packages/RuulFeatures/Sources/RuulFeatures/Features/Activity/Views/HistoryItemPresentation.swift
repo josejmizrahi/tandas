@@ -376,6 +376,16 @@ public struct HistoryItemPresentation {
             self.title = "Un mantenimiento lleva demasiado tiempo abierto"
             self.tone = .warning
 
+        case .roleAssigned:
+            self.icon = "person.text.rectangle.fill"
+            self.title = "\(actor) recibió un rol"
+            self.tone = .info
+
+        case .roleUnassigned:
+            self.icon = "person.text.rectangle"
+            self.title = "\(actor) perdió un rol"
+            self.tone = .neutral
+
         case .unknown:
             self.icon = "questionmark.circle"
             self.title = "Actividad"
