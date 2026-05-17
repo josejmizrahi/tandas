@@ -374,6 +374,12 @@ public final class AppState {
     /// live mode; mock/preview environments can assign `MockGroupSummaryRepository`.
     public var groupSummaryRepo: (any GroupSummaryRepository)?
 
+    /// Per-user per-type notification opt-out (mig 00232).
+    /// Optional so existing constructors don't break; `NotificationPreferencesView`
+    /// degrades to showing default ON states when nil. Wired by `TandasApp`
+    /// in live mode; mock/preview can assign `MockNotificationPreferenceRepository`.
+    public var notificationPreferenceRepo: (any NotificationPreferenceRepository)?
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
