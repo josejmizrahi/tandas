@@ -53,7 +53,7 @@ struct ResourceRulesSheet: View {
                     message: coordinator.canCreate
                         ? "Agrega acuerdos que sólo apliquen a este evento. Los del grupo seguirán aplicando."
                         // W2-C4: "host" → "anfitrión".
-                        : "Sólo el anfitrión o un admin pueden crear acuerdos específicos para este evento."
+                        : "Sólo el anfitrión o un fundador pueden crear acuerdos específicos para este evento."
                 )
                 .padding(.vertical, RuulSpacing.md)
             } else {

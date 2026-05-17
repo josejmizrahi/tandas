@@ -60,7 +60,7 @@ public struct CreateMemberRemovalSheet: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Color.ruulWarning)
                 .accessibilityHidden(true)
-            Text("Si el voto pasa, el admin deberá ejecutar la remoción manualmente desde la pantalla de Miembros.")
+            Text("Si el voto pasa, un fundador deberá ejecutar la remoción manualmente desde la pantalla de Miembros.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)

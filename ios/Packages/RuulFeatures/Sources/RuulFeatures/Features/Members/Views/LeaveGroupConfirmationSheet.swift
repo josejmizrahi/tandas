@@ -51,10 +51,10 @@ public struct LeaveGroupConfirmationSheet: View {
 
     private var soleAdminBlocker: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            Label("Eres el único admin", systemImage: "exclamationmark.triangle")
+            Label("Eres el único fundador", systemImage: "exclamationmark.triangle")
                 .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulWarning)
-            Text("Antes de salir, transfiere admin a otro miembro o archiva el grupo.")
+            Text("Antes de salir, transfiere el rol de fundador a otro miembro o archiva el grupo.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button("Entendido") { dismiss() }

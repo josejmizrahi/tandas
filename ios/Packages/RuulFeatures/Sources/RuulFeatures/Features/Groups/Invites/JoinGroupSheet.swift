@@ -59,7 +59,7 @@ public struct JoinGroupSheet: View {
             Text("¿Cuál es el código?")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("El admin del grupo te lo compartió. Suele tener 6 caracteres.")
+            Text("El fundador del grupo te lo compartió. Suele tener 6 caracteres.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
         }

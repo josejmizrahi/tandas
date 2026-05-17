@@ -96,7 +96,7 @@ public final class GroupRulesCoordinator {
             let threshold = policy.approvalConfig?.thresholdPercent ?? 50
             return "Requiere votación (\(threshold)% a favor)"
         case .adminOnly:
-            return "Solo admins"
+            return "Solo fundadores"
         case .denied:
             return "No permitido"
         }

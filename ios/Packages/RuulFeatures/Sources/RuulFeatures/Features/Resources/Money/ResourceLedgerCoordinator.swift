@@ -314,7 +314,7 @@ public final class ResourceLedgerCoordinator {
         case .allowed:
             break
         case .adminOnly:
-            self.error = "Solo los admins pueden registrar gastos en este grupo."
+            self.error = "Solo los fundadores pueden registrar gastos en este grupo."
             return nil
         case .voteRequired:
             // V2: open a vote with the expense envelope + apply on pass.

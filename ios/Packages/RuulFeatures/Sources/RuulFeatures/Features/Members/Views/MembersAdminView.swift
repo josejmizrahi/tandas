@@ -25,7 +25,7 @@ public struct MembersAdminView: View {
             Color.ruulBackground.ignoresSafeArea()
             content
         }
-        .ruulSheetToolbar("Administrar miembros")
+        .ruulSheetToolbar("Gestionar miembros")
         .toolbar {
             if let onInviteTap {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -131,7 +131,7 @@ public struct MembersAdminView: View {
         switch m.joinedVia {
         case "founder_seed":  return "Fundador del grupo"
         case "invite_code":   return "Se unió por código"
-        case "admin_add":     return "Agregado por admin"
+        case "admin_add":     return "Agregado por un fundador"
         default:              return "Miembro"
         }
     }
