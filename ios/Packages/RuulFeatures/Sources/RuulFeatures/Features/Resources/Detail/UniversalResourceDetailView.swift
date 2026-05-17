@@ -61,6 +61,7 @@ public struct UniversalResourceDetailView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                liveBanner
                 if !context.attentionActions.isEmpty {
                     DetailAttentionView(context: context)
                 }
@@ -250,6 +251,21 @@ public struct UniversalResourceDetailView: View {
     /// falling back to MXN (matches `create_fund`'s default in mig 00139).
     private var fundCurrency: String {
         context.resource.metadata["currency"]?.stringValue ?? "MXN"
+    }
+
+    // MARK: - Live banner (UXJourney P1)
+    //
+    // Para eventos sucediendo justo ahora (event.startsAt <= now <
+    // event.resolvedEndsAt, status != closed/cancelled). Sin esto, el
+    // detail no comunicaba el estado live — el usuario tenía que
+    // adivinar por la fecha. Ahora aparece arriba con un pulse animation
+    // hasta que el evento termina.
+
+    @ViewBuilder
+    private var liveBanner: some View {
+        if let event = eventInteractor?.event, event.isLive {
+            LiveEventBanner(eventTitle: event.title)
+        }
     }
 
     // MARK: - Hero (Fund-style icon badge + title + subtitle)
@@ -786,6 +802,53 @@ enum FundSheetSelection: Identifiable {
     case contribute
     case recordExpense
     var id: Self { self }
+}
+
+/// "EN VIVO" banner que aparece arriba del EventDetail mientras el
+/// evento sucede (startsAt <= now < endsAt). Pulse animation suave
+/// honra accessibilityReduceMotion.
+private struct LiveEventBanner: View {
+    let eventTitle: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    var body: some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Circle()
+                .fill(Color.ruulNegative)
+                .frame(width: 10, height: 10)
+                .scaleEffect(pulse ? 1.3 : 1.0)
+                .opacity(pulse ? 0.6 : 1.0)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EN VIVO")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulNegative)
+                Text("Sucediendo ahora")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+        .background(
+            Color.ruulNegative.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color.ruulNegative.opacity(0.25), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(eventTitle), evento en vivo")
+        .onAppear {
+            guard !reduceMotion else { pulse = true; return }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
 }
 
 #if DEBUG

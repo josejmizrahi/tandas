@@ -170,6 +170,15 @@ public extension Event {
         status == .closed || status == .cancelled || resolvedEndsAt < .now
     }
 
+    /// True cuando el evento está sucediendo justo ahora: empezó pero no
+    /// terminó. P1 — drives the "EN VIVO" sticky banner en EventDetail
+    /// para que el usuario sepa de un vistazo que puede hacer check-in.
+    public var isLive: Bool {
+        guard status != .cancelled, status != .closed else { return false }
+        let now = Date.now
+        return startsAt <= now && now < resolvedEndsAt
+    }
+
     public var isHostedBy: (UUID) -> Bool {
         { userId in self.hostId == userId }
     }
