@@ -11,7 +11,7 @@
 -- now lists "links").
 --
 -- `enabled_by` sourced from `resources.created_by` to preserve
--- provenance — same pattern mig 00231 used for the Fase 1 backfill.
+-- provenance — same pattern mig 00266 used for the Fase 1 backfill.
 
 BEGIN;
 
@@ -36,7 +36,7 @@ begin
   select count(*) into v_count
     from public.resource_capabilities
    where capability_block_id = 'links' AND enabled;
-  raise notice 'mig 00233: % resources now expose the links capability', v_count;
+  raise notice 'mig 00268: % resources now expose the links capability', v_count;
 end;
 $$;
 

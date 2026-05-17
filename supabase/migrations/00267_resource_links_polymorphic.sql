@@ -408,7 +408,7 @@ declare
 begin
   select count(*) into v_catalog_count from public.resource_link_kinds;
   select count(*) into v_link_count    from public.resource_links;
-  raise notice 'mig 00232: catalog has % tuples, resource_links has % rows',
+  raise notice 'mig 00267: catalog has % tuples, resource_links has % rows',
     v_catalog_count, v_link_count;
 end;
 $$;

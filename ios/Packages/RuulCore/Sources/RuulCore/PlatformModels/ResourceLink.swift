@@ -128,7 +128,7 @@ public enum LinkKind: String, Codable, Sendable, Hashable, CaseIterable {
     }
 
     /// Validation matrix mirrored from `public.resource_link_kinds`
-    /// (mig 00232). Used by the iOS picker so invalid tuples never
+    /// (mig 00267). Used by the iOS picker so invalid tuples never
     /// reach the server. Server-side enforces the same catalog as
     /// the safety net.
     public func isValid(from: ResourceType, to: ResourceType) -> Bool {

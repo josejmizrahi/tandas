@@ -334,7 +334,7 @@ public struct HistoryItemPresentation {
             self.title = "Un derecho está por expirar"
             self.tone = .warning
 
-        // Resource links (mig 00198 → mig 00232 polymorphic graph). Reads
+        // Resource links (mig 00198 → mig 00267 polymorphic graph). Reads
         // the link_kind + from_resource_type + to_resource_type from the
         // payload so the row reads correctly for each of the 8 V1
         // relations (uses/funds/governs/located_in/scheduled_in/reserves/
@@ -381,7 +381,7 @@ public struct HistoryItemPresentation {
     }
 
     /// Builds a human-readable title for resourceLinked / resourceUnlinked
-    /// atoms. The polymorphic payload (mig 00232) carries `link_kind`,
+    /// atoms. The polymorphic payload (mig 00267) carries `link_kind`,
     /// `from_resource_type`, `to_resource_type`. We render the active
     /// voice (source perspective) because the atom is anchored to the
     /// source resource. Falls back gracefully when the payload is from

@@ -1,6 +1,6 @@
 -- Mig 00230: add DEFAULT NULL to issue_manual_fine.p_rule_id.
 --
--- Audit (sweep following mig 00229) found one remaining RPC whose
+-- Audit (sweep following mig 00264) found one remaining RPC whose
 -- signature trips the same Swift Codable + PostgREST overload
 -- resolution trap that broke record_ledger_entry:
 --

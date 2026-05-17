@@ -3,7 +3,7 @@ import Foundation
 import RuulCore
 
 /// Locks the V1 link catalog (Plans/Active/ResourceLinks.md §3) at
-/// the Swift layer. Server-side mirror lives in mig 00232
+/// the Swift layer. Server-side mirror lives in mig 00267
 /// (`public.resource_link_kinds`); these tests don't query SQL, they
 /// assert that the in-code matrix matches the declared catalog. A
 /// catalog drift between client and server will fail here.
@@ -37,7 +37,7 @@ struct LinkKindCatalogTests {
     @Test("isValid mirrors the V1 catalog exactly")
     func isValidMatchesCatalog() {
         // (from, to, kind, expectedValid). The full set of tuples we
-        // INSERT'd in mig 00232 is reproduced here so a drift on either
+        // INSERT'd in mig 00267 is reproduced here so a drift on either
         // side trips this test.
         let valid: [(LinkKind, ResourceType, ResourceType)] = [
             // uses

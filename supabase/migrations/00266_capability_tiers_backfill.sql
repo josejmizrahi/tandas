@@ -132,7 +132,7 @@ BEGIN
        GROUP BY capability_block_id
        ORDER BY capability_block_id
     ) t;
-  RAISE NOTICE 'mig 00231: % total resource_capabilities rows post-backfill; tier 0/0.5 distribution = %',
+  RAISE NOTICE 'mig 00266: % total resource_capabilities rows post-backfill; tier 0/0.5 distribution = %',
     v_total, v_by_block;
 END;
 $$;

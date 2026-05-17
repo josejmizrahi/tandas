@@ -40,7 +40,7 @@ alter table public.groups
         'revokeRight',
         'suspendRight',
         'exerciseRight',
-        -- mig 00228: expense submission gate for admin_only policy.
+        -- mig 00263: expense submission gate for admin_only policy.
         'expenseSubmit'
       )
     ),
@@ -77,7 +77,7 @@ begin
   select count(*) into v_count
     from public.groups
    where roles->'founder'->'permissions' ? 'expenseSubmit';
-  raise notice 'mig 00228: % groups now grant founder.expenseSubmit', v_count;
+  raise notice 'mig 00263: % groups now grant founder.expenseSubmit', v_count;
 end;
 $$;
 
