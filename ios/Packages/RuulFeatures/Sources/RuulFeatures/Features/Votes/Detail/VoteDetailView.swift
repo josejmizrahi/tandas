@@ -123,15 +123,66 @@ private struct VoteHeader: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(typeLabel.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
-                .foregroundStyle(Color.ruulAccent)
+            HStack(spacing: RuulSpacing.sm) {
+                Text(typeLabel.uppercased())
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulAccent)
+                Spacer(minLength: 0)
+                countdownChip
+            }
             Text(vote.title)
                 .ruulTextStyle(RuulTypography.titleLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, RuulSpacing.md)
+    }
+
+    /// "Cierra en 3 d 4 h" / "Cierra en 12 h" / "Cierra en 4 min" para
+    /// votos abiertos. Para votos resueltos muestra "Cerrado" + tiempo
+    /// relativo. Sin este chip el usuario no sabía cuánto tiempo tenía
+    /// para votar; el cron `finalize-votes` los cierra al pasar
+    /// `closesAt` sin previo aviso.
+    @ViewBuilder
+    private var countdownChip: some View {
+        switch vote.status {
+        case .open:
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let remaining = vote.closesAt.timeIntervalSince(context.date)
+                if remaining > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .accessibilityHidden(true)
+                        Text("Cierra en \(Self.formatRemaining(remaining))")
+                            .ruulTextStyle(RuulTypography.caption)
+                    }
+                    .foregroundStyle(remaining < 60 * 60 ? Color.ruulWarning : Color.ruulTextSecondary)
+                } else {
+                    Text("Por cerrar")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulWarning)
+                }
+            }
+        case .resolved:
+            Text("Cerrado")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextTertiary)
+        case .cancelled:
+            Text("Cancelado")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextTertiary)
+        }
+    }
+
+    private static func formatRemaining(_ seconds: TimeInterval) -> String {
+        let totalMinutes = Int(seconds / 60)
+        let days = totalMinutes / (60 * 24)
+        let hours = (totalMinutes / 60) % 24
+        let minutes = totalMinutes % 60
+        if days >= 1 { return hours == 0 ? "\(days) d" : "\(days) d \(hours) h" }
+        if hours >= 1 { return minutes == 0 ? "\(hours) h" : "\(hours) h \(minutes) min" }
+        return "\(max(1, minutes)) min"
     }
 
     private var typeLabel: String {
