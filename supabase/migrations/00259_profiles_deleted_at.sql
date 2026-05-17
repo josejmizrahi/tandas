@@ -12,7 +12,7 @@
 --      NOT NULL se considera "cuenta eliminada" — la UI proyecta
 --      "Cuenta eliminada" como display_name aunque el campo real
 --      siga teniendo lo último que tuviera (pseudonimizado por la
---      RPC delete_my_account en mig 00253).
+--      RPC delete_my_account en mig 00260).
 --   2. Crea un helper inmutable `is_deleted_profile(uuid)` que las
 --      vistas y proyecciones consultan en JOIN cuando renderizan
 --      actor names en historias.
@@ -26,7 +26,7 @@ alter table public.profiles
   add column if not exists deleted_at timestamptz;
 
 comment on column public.profiles.deleted_at is
-  'Marca de soft-delete. NOT NULL = cuenta pseudonimizada por delete_my_account RPC (mig 00253). PII (display_name/avatar/phone) ya quedó blank en ese momento. La fila se mantiene para no romper FKs append-only (group_members, fines, system_events, ledger_entries, etc.).';
+  'Marca de soft-delete. NOT NULL = cuenta pseudonimizada por delete_my_account RPC (mig 00260). PII (display_name/avatar/phone) ya quedó blank en ese momento. La fila se mantiene para no romper FKs append-only (group_members, fines, system_events, ledger_entries, etc.).';
 
 create index if not exists idx_profiles_deleted_at
   on public.profiles(deleted_at)

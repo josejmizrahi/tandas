@@ -13,7 +13,7 @@
 --   1. `delete_my_account()` — wrapper Spanish-friendly que llama al
 --      existente request_data_deletion + agrega los extras que faltan
 --      (purge notification_preferences, set profiles.deleted_at flag
---      añadido en mig 00252, emit memberLeft system_event por grupo).
+--      añadido en mig 00259, emit memberLeft system_event por grupo).
 --      iOS llama esta y se desentiende del p_scope text[] underlying.
 --   2. `export_my_data()` — SYNC executor: devuelve jsonb directo.
 --      También loggea en data_subject_rights_requests como 'completed'
