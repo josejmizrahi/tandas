@@ -76,9 +76,21 @@ public struct HomeView: View {
             _ = await (h, i, m)
         }
         .ruulAmbientScreen(palette: nil)
-        .toolbar { homeToolbar }
-        .toolbarBackground(Color.ruulBackground, for: .navigationBar)
-        .navigationBarTitleDisplayMode(.inline)
+        .ruulAppToolbar()
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if let onInvitePeople {
+                    Button(action: onInvitePeople) {
+                        Image(systemName: "person.badge.plus")
+                    }
+                    .accessibilityLabel("Invitar gente")
+                }
+                Button { router.selectTab(.profile) } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Ajustes")
+            }
+        }
         .task {
             async let h: Void = coordinator.refresh()
             async let i: Void? = inboxCoordinator?.refresh()
@@ -130,52 +142,6 @@ public struct HomeView: View {
             pastEventsCount: past.count,
             resolvedVotesCount: votes.filter { $0.status == .resolved }.count
         )
-    }
-
-    // MARK: - Toolbar — branding centered, group + actions on the sides.
-    //
-    // Previously the home rendered an in-body header (group switcher pill +
-    // greeting + icon row, ~140pt tall) on top of the scroll content. That
-    // ate vertical space without paying for it; the same affordances fit in
-    // the system navigation bar (~44pt). Layout:
-    //   .topBarLeading   — group avatar (tap → switcher)
-    //   .principal       — "ruul" wordmark centered
-    //   .topBarTrailing  — invite + settings icons
-    //
-    // The toolbar shares iOS 26's Liquid Glass treatment via
-    // `.toolbarBackground` and tucks under tabBarMinimizeBehavior — no
-    // hand-rolled padding needed.
-
-    @ToolbarContentBuilder
-    private var homeToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            if let group = app.activeGroup {
-                Button(action: onSwitchGroup) {
-                    RuulGroupAvatar(group: group, size: .lg)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Cambiar grupo. Actual: \(group.name).")
-            }
-        }
-        ToolbarItem(placement: .principal) {
-            Text("ruul")
-                .font(.custom("InterVariable", size: 20).weight(.bold))
-                .tracking(-0.4)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .accessibilityAddTraits(.isHeader)
-        }
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            if let onInvitePeople {
-                Button(action: onInvitePeople) {
-                    Image(systemName: "person.badge.plus")
-                }
-                .accessibilityLabel("Invitar gente")
-            }
-            Button { router.selectTab(.profile) } label: {
-                Image(systemName: "gearshape")
-            }
-            .accessibilityLabel("Ajustes")
-        }
     }
 
 

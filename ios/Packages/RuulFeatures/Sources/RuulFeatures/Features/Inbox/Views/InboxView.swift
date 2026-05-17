@@ -97,8 +97,7 @@ public struct InboxView: View {
             Divider()
             filteredInbox
         }
-        .navigationTitle("Inbox")
-        .navigationBarTitleDisplayMode(.large)
+        .ruulAppToolbar()
         .task(id: selectedChip) {
             if selectedChip == .resueltas {
                 await coordinator.loadResolved()

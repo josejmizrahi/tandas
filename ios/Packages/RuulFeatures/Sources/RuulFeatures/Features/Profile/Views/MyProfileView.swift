@@ -110,6 +110,7 @@ public struct MyProfileView: View {
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
             .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
         }
+        .ruulAppToolbar(showsGroupAvatar: false)
         .task { await coordinator.refresh() }
     }
 

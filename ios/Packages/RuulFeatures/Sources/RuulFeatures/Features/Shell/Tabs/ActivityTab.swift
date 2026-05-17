@@ -15,12 +15,11 @@ public struct ActivityTab: View {
             if let coord = coordinator {
                 ActivityView(coordinator: coord)
                     .environment(app)
-                    .groupSwitcherToolbar()
             } else {
                 ProgressView()
                     .controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .groupSwitcherToolbar()
+                    .ruulAppToolbar()
             }
         }
     }
