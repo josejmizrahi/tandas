@@ -251,6 +251,9 @@ extension RuleDraft {
                 config: reconstructConfig(from: env.config)
             )
         }
+        let exceptions = rule.exceptions.map { c in
+            ShapeInstance(shapeId: c.type.rawString, config: c.config)
+        }
         let scope = scopeFrom(rule: rule)
         return RuleDraft(
             name: rule.name,
@@ -258,6 +261,7 @@ extension RuleDraft {
             trigger: triggerInstance,
             conditions: conditions,
             consequences: consequences,
+            exceptions: exceptions,
             slug: rule.slug
         )
     }

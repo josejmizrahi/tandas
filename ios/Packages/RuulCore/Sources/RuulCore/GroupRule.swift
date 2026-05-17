@@ -14,6 +14,11 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
     public let trigger: RuleTrigger
     public let conditions: [RuleCondition]
     public let consequences: [ConsequenceEnvelope]
+    /// Condition-shaped predicates that BLOCK consequences when ANY
+    /// evaluates true (mig 00248, §22.2 Governance.md). Decoded from
+    /// `rules.exceptions` jsonb column. Defaults to empty for rules
+    /// published before exceptions landed.
+    public let exceptions: [RuleCondition]
     /// Module that owns this rule. Set when seeded via module activation
     /// (mig 00073 `seed_module_rules`). Null = group-level rule with no
     /// module affinity.
@@ -39,6 +44,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         trigger: RuleTrigger,
         conditions: [RuleCondition],
         consequences: [ConsequenceEnvelope],
+        exceptions: [RuleCondition] = [],
         moduleKey: String? = nil,
         resourceId: UUID? = nil,
         seriesId: UUID? = nil,
@@ -52,6 +58,7 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         self.trigger = trigger
         self.conditions = conditions
         self.consequences = consequences
+        self.exceptions = exceptions
         self.moduleKey = moduleKey
         self.resourceId = resourceId
         self.seriesId = seriesId
@@ -124,9 +131,29 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         case trigger
         case conditions
         case consequences
+        case exceptions
         case moduleKey    = "module_key"
         case resourceId   = "resource_id"
         case seriesId     = "series_id"
         case membershipId = "membership_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id            = try c.decode(UUID.self, forKey: .id)
+        self.groupId       = try c.decode(UUID.self, forKey: .groupId)
+        self.slug          = try c.decodeIfPresent(String.self, forKey: .slug)
+        self.name          = try c.decode(String.self, forKey: .name)
+        self.isActive      = try c.decode(Bool.self, forKey: .isActive)
+        self.trigger       = try c.decode(RuleTrigger.self, forKey: .trigger)
+        self.conditions    = try c.decode([RuleCondition].self, forKey: .conditions)
+        self.consequences  = try c.decode([ConsequenceEnvelope].self, forKey: .consequences)
+        // Pre-00248 rows don't have an `exceptions` column; defensively
+        // decode as missing-or-non-array → empty.
+        self.exceptions    = (try? c.decodeIfPresent([RuleCondition].self, forKey: .exceptions)) ?? []
+        self.moduleKey     = try c.decodeIfPresent(String.self, forKey: .moduleKey)
+        self.resourceId    = try c.decodeIfPresent(UUID.self, forKey: .resourceId)
+        self.seriesId      = try c.decodeIfPresent(UUID.self, forKey: .seriesId)
+        self.membershipId  = try c.decodeIfPresent(UUID.self, forKey: .membershipId)
     }
 }

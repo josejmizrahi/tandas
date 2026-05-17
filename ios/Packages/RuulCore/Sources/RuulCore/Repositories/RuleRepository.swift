@@ -325,7 +325,7 @@ public actor LiveRuleRepository: RuleRepository {
     public func list(groupId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id,membership_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,exceptions,module_key,resource_id,series_id,membership_id")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()
@@ -335,7 +335,7 @@ public actor LiveRuleRepository: RuleRepository {
     public func listForResource(_ resourceId: UUID) async throws -> [GroupRule] {
         try await client
             .from("rules")
-            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,module_key,resource_id,series_id,membership_id")
+            .select("id,group_id,slug,name,is_active,trigger,conditions,consequences,exceptions,module_key,resource_id,series_id,membership_id")
             .eq("resource_id", value: resourceId.uuidString.lowercased())
             .order("created_at", ascending: false)
             .execute()
