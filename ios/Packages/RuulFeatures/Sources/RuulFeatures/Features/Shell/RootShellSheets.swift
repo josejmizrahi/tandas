@@ -840,7 +840,13 @@ private struct GroupHomeSheetContent: View {
                 onRotateCode: { showRotateCode = true },
                 onInviteMembers: { showInvite = true },
                 onConfirmLeave: { showLeave = true },
-                onOpenRoles: { path.append(GroupNav.roles) }
+                onOpenRoles: { path.append(GroupNav.roles) },
+                onOpenMyLedger: nil,
+                onOpenMyFines: { router.openSanciones() },
+                onOpenVotes: {
+                    router.openOpenVotes(OpenVotesRouteContext(id: group.id))
+                },
+                onOpenInbox: { router.selectTab(.inbox) }
             )
             .navigationDestination(for: GroupNav.self) { dest in
                 switch dest {

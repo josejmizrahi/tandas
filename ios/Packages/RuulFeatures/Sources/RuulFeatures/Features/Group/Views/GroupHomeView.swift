@@ -231,6 +231,26 @@ public struct GroupHomeView: View {
                     action: { onInviteMembers?() }
                 )
             }
+            if let summary = coordinator.summary, summary.openVotesCount > 0 {
+                divider
+                navRow(
+                    icon: "hand.raised",
+                    label: summary.openVotesCount == 1
+                        ? "1 voto abierto"
+                        : "\(summary.openVotesCount) votos abiertos",
+                    action: { onOpenVotes?() }
+                )
+            }
+            if let summary = coordinator.summary, summary.pendingActionsCount > 0 {
+                divider
+                navRow(
+                    icon: "tray.fill",
+                    label: summary.pendingActionsCount == 1
+                        ? "1 acción pendiente"
+                        : "\(summary.pendingActionsCount) acciones pendientes",
+                    action: { onOpenInbox?() }
+                )
+            }
         }
     }
 
