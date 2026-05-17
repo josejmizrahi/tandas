@@ -102,10 +102,10 @@ public struct ResourceLinksSectionView: View {
         } else {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 if !outgoing.isEmpty {
-                    subsection(title: "Salientes", links: outgoing, direction: .out)
+                    subsection(title: "Salientes", links: outgoing, direction: .outgoing)
                 }
                 if !incoming.isEmpty {
-                    subsection(title: "Entrantes", links: incoming, direction: .in)
+                    subsection(title: "Entrantes", links: incoming, direction: .incoming)
                 }
             }
         }
@@ -152,10 +152,8 @@ public struct ResourceLinksSectionView: View {
         }
     }
 
-    private enum Direction { case `in`, out }
-
     @ViewBuilder
-    private func subsection(title: String, links: [ResourceLink], direction: Direction) -> some View {
+    private func subsection(title: String, links: [ResourceLink], direction: LinkDirection) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
                 .ruulTextStyle(RuulTypography.sectionLabel)
@@ -171,13 +169,16 @@ public struct ResourceLinksSectionView: View {
     }
 
     @ViewBuilder
-    private func kindGroup(kind: LinkKind, links: [ResourceLink], direction: Direction) -> some View {
+    private func kindGroup(kind: LinkKind, links: [ResourceLink], direction: LinkDirection) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: iconForKind(kind))
                     .ruulTextStyle(RuulTypography.captionBold)
                     .foregroundStyle(Color.ruulAccent)
-                Text(kind.displayName.uppercased())
+                // Active voice for outgoing ("Es dueño de"), passive for
+                // incoming ("Es propiedad de") so the relation reads
+                // correctly from whichever side the user is viewing.
+                Text(kind.displayName(direction: direction).uppercased())
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
@@ -191,11 +192,11 @@ public struct ResourceLinksSectionView: View {
     }
 
     @ViewBuilder
-    private func linkRow(_ link: ResourceLink, direction: Direction) -> some View {
+    private func linkRow(_ link: ResourceLink, direction: LinkDirection) -> some View {
         // For an outgoing edge (this resource is the FROM), display the
         // other side as the TO resource. For incoming, the other side
         // is the FROM. This keeps the UI mental model "vinculado con X".
-        let otherId = direction == .out ? link.toResourceId : link.fromResourceId
+        let otherId = direction == .outgoing ? link.toResourceId : link.fromResourceId
         let target = targetsById[otherId]
         HStack(spacing: RuulSpacing.sm) {
             iconBadge(systemName: iconForType(target?.resourceType))
@@ -405,7 +406,9 @@ struct LinkResourcePolymorphicPickerSheet: View {
                         Picker("Tipo", selection: $selectedKind) {
                             Text("Elegí…").tag(LinkKind?.none)
                             ForEach(availableKinds, id: \.self) { kind in
-                                Text(kind.displayName).tag(Optional(kind))
+                                // The picker is always from the source's
+                                // perspective → active voice.
+                                Text(kind.activeDisplayName).tag(Optional(kind))
                             }
                         }
                     }
@@ -421,7 +424,7 @@ struct LinkResourcePolymorphicPickerSheet: View {
                                     .foregroundStyle(Color.ruulTextSecondary)
                             }
                         } else if candidates.isEmpty {
-                            Text("No hay recursos del grupo compatibles con \(kind.displayName).")
+                            Text("No hay recursos del grupo compatibles con \(kind.activeDisplayName).")
                                 .ruulTextStyle(RuulTypography.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                         } else {

@@ -58,6 +58,13 @@ public struct ResourceLink: Identifiable, Codable, Sendable, Hashable {
     }
 }
 
+/// Which side of a link the current viewer is on. Drives label voice
+/// (active for outgoing, passive for incoming) in the UI.
+public enum LinkDirection: Sendable, Hashable {
+    case outgoing  // viewer = `from`
+    case incoming  // viewer = `to`
+}
+
 /// Relation verb on a `resource_links` row. The V1 catalog (8 kinds)
 /// matches the SQL `resource_link_kinds` table per
 /// `Plans/Active/ResourceLinks.md §3`. Raw values are snake_case to
@@ -77,18 +84,46 @@ public enum LinkKind: String, Codable, Sendable, Hashable, CaseIterable {
     case grantsAccessTo = "grants_access_to"
     case owns
 
-    /// Spanish label for the picker / details UI. Source of truth lives
-    /// here so the wizard doesn't have to know SQL slugs.
-    public var displayName: String {
+    /// Active-voice label, used when THIS resource is the `from` side of
+    /// the link. Reads as `<from> <activeDisplayName> <to>`.
+    public var activeDisplayName: String {
         switch self {
         case .uses:            return "Usa"
         case .funds:           return "Financia"
         case .governs:         return "Gobierna"
         case .locatedIn:       return "Ubicado en"
-        case .scheduledIn:     return "Ocurre en"
+        case .scheduledIn:     return "Programado en"
         case .reserves:        return "Reserva"
         case .grantsAccessTo:  return "Da acceso a"
         case .owns:            return "Es dueño de"
+        }
+    }
+
+    /// Passive-voice label, used when THIS resource is the `to` side of
+    /// the link. Reads as `<to> <passiveDisplayName> <from>`. Not
+    /// cosmetic — relations are directional, so rendering an `owns`
+    /// edge from the target side as "Es dueño de" would misread as if
+    /// the target owned the source.
+    public var passiveDisplayName: String {
+        switch self {
+        case .uses:            return "Usado por"
+        case .funds:           return "Financiado por"
+        case .governs:         return "Gobernado por"
+        case .locatedIn:       return "Contiene"
+        case .scheduledIn:     return "Tiene programado"
+        case .reserves:        return "Reservado por"
+        case .grantsAccessTo:  return "Acceso otorgado por"
+        case .owns:            return "Es propiedad de"
+        }
+    }
+
+    /// Convenience: pick the right label given the viewer's perspective.
+    /// `.outgoing` means the viewer is the `from` side; `.incoming`
+    /// means viewer is the `to` side.
+    public func displayName(direction: LinkDirection) -> String {
+        switch direction {
+        case .outgoing: return activeDisplayName
+        case .incoming: return passiveDisplayName
         }
     }
 
