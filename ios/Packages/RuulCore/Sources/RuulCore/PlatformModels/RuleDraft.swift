@@ -74,6 +74,12 @@ public struct RuleDraft: Sendable, Hashable {
     /// Honors Constitution §18 (Talmud "regla y excepción") and §22.2
     /// Governance.md. Empty = no exceptions = old behavior.
     public var exceptions: [ShapeInstance]
+    /// Membership filter — orthogonal axis to scope (§22.5 / mig 00250).
+    /// When non-nil, the engine restricts targets to this single
+    /// member. Useful for "Isaac está fuera de rotativa" style
+    /// deviations that coexist with group/series/resource scope.
+    /// Stored as the `group_members.id` UUID.
+    public var membershipFilter: UUID?
     public var changeReason: String
 
     /// Stable identifier for this rule. Honors Constitution §7 and
@@ -92,6 +98,7 @@ public struct RuleDraft: Sendable, Hashable {
         conditions: [ShapeInstance] = [],
         consequences: [ShapeInstance] = [],
         exceptions: [ShapeInstance] = [],
+        membershipFilter: UUID? = nil,
         changeReason: String = "",
         slug: String? = nil
     ) {
@@ -101,6 +108,7 @@ public struct RuleDraft: Sendable, Hashable {
         self.conditions = conditions
         self.consequences = consequences
         self.exceptions = exceptions
+        self.membershipFilter = membershipFilter
         self.changeReason = changeReason
         self.slug = slug
     }
@@ -174,6 +182,14 @@ public struct RuleDraft: Sendable, Hashable {
 
     public mutating func removeException(id: UUID) {
         exceptions.removeAll { $0.id == id }
+    }
+
+    /// Set or clear the membership filter (§22.5). Pass nil to remove
+    /// the filter — the rule then applies to every member matching the
+    /// trigger/scope. Pass a `group_members.id` UUID to restrict
+    /// targets to that single member.
+    public mutating func setMembershipFilter(_ membershipId: UUID?) {
+        membershipFilter = membershipId
     }
 
     /// Sets the target selector on the consequence with the given id.
@@ -288,6 +304,7 @@ extension RuleDraft {
             conditions: conditions,
             consequences: consequences,
             exceptions: exceptions,
+            membershipFilter: rule.membershipId,
             slug: rule.slug
         )
     }

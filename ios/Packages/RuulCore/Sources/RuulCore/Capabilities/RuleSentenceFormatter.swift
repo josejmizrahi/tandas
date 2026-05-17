@@ -37,13 +37,27 @@ public enum RuleSentenceFormatter {
     /// <cons1>[, también <cons2>]." Renders nicely with line breaks
     /// for long lists by inserting `\n` between clauses; the caller
     /// can replace with `, ` if they want a single line.
+    ///
+    /// When `draft.membershipFilter` is set, the sentence is prefixed
+    /// with "Solo para <name>:" (§22.5 / mig 00250). The caller passes
+    /// `memberNameProvider` so the formatter can resolve the UUID to a
+    /// human name; when nil or the lookup misses, falls back to "este
+    /// miembro" so the sentence still reads.
     public static func sentence(
         for draft: RuleDraft,
         registry: RuleShapeRegistry,
-        singleLine: Bool = false
+        singleLine: Bool = false,
+        memberNameProvider: ((UUID) -> String?)? = nil
     ) -> String {
         let separator = singleLine ? " " : "\n"
         var clauses: [String] = []
+
+        // Membership prefix (§22.5). Render before the trigger so the
+        // sentence reads as a scoped statement: "Solo para Isaac: Cuando…".
+        if let membershipId = draft.membershipFilter {
+            let name = memberNameProvider?(membershipId) ?? "este miembro"
+            clauses.append("Solo para \(name):")
+        }
 
         // Trigger clause.
         if let trigger = draft.trigger {

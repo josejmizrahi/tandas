@@ -1706,18 +1706,33 @@ Falta:
   fork — probable que se difiera hasta que aparezca un grupo que
   pida la 3a o 4a regla compuesta.
 
-### 22.5 Scope `membership` + `module` en el picker (severidad: **baja**)
+### 22.5 Membership filter + `module` (severidad: **baja**) — Membership ✅ shipped (mig 00250)
 
-Schema ya soporta `rules.membership_id` (mig 00078) y `rules.module_key`
-(mig 00074). UI composer solo expone resource / series / group. Faltan:
+**Membership** — eje ORTOGONAL al scope (no scope alternativo). Una
+regla puede ser `scope=group + membership=Isaac` (todos los eventos
+del grupo pero solo Isaac dispara) o `scope=resource(X) +
+membership=Isaac` (solo este evento, solo Isaac). Caso típico:
+"Isaac está fuera de rotativa".
 
-- Membership: picker de miembro al elegir scope. Util para "esta regla
-  aplica solo a Isaac (que está fuera de rotativa)".
-- Module: picker de módulo activo al elegir scope. Útil para
-  consolidar rules con el módulo que las introduce.
+Implementado en mig 00250:
+- `publish_rule_composition` v5 acepta `p_membership_id uuid` opcional.
+  Valida `group_members.active = true` + `group_id` matching.
+- `bump_rule_version` v4 acepta `p_membership_id` + `p_clear_membership
+  boolean`. Semántica explícita: clear → null; non-null → reemplaza;
+  ambos null → preserva. iOS composer es authoritative así que siempre
+  manda `p_clear_membership = (draft.membershipFilter == nil)`.
+- iOS: `RuleDraft.membershipFilter: UUID?`, picker en composer carga
+  miembros activos via `groupsRepo.membersWithProfiles()`, sentence
+  formatter prefija "Solo para X:" cuando set.
+- Engine read path ya existía (`rules.membership_id` mig 00078 +
+  `applyMembershipScope` filtrando targets).
 
-Demand-pull bajo: los pocos casos hoy se cubren con scope=resource o
-scope=group + miembro-condition.
+**Module** — DELIBERADAMENTE NO surface. `rules.module_key` se setea
+solo por `set_group_module` cuando se activa un módulo; no es concepto
+de usuario. Composer puede mostrar badge read-only en EditRuleSheet
+cuando `rule.moduleKey != null` para señalar provenance, pero el
+picker no permite settearlo. Esto evita que el usuario rompa la
+trazabilidad módulo→rule que el sistema mantiene automáticamente.
 
 ### 22.6 Otros límites menores (severidad: **baja**)
 
@@ -1748,9 +1763,11 @@ scope=group + miembro-condition.
    halájica fundamental.
 3. **22.3 Multi-target** — anti-tirania pattern. Útil para grupos
    formales (asociaciones, comunidades religiosas).
-4. **22.4 Tree conditions** — el más invasivo (engine + UI), se queda
+4. **22.5 Membership filter** ✅ shipped (mig 00250). Anti-tirania
+   ortogonal al scope: "esta regla solo aplica a Isaac".
+5. **22.4 Tree conditions** — el más invasivo (engine + UI), se queda
    al final.
-5. **22.5+22.6** — picotear cuando UX feedback lo demande.
+6. **22.6** — picotear cuando UX feedback lo demande.
 
 No construir las 4 a ciegas. Esperar a que un grupo beta haga
 explícitamente la petición → atacar esa, instrumentar, repetir.

@@ -500,6 +500,9 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             let p_change_reason: String?
             let p_slug: String?
             let p_exceptions: [ShapePayload]
+            // Mig 00250 / §22.5: orthogonal membership filter. When non-nil,
+            // engine restricts targets to this single `group_members.id`.
+            let p_membership_id: String?
         }
 
         let params = Params(
@@ -511,7 +514,8 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
             p_slug: draft.slug?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) }
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_membership_id: draft.membershipFilter?.uuidString.lowercased()
         )
 
         do {
@@ -551,6 +555,13 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             let p_consequences: [ShapePayload]
             let p_change_reason: String?
             let p_exceptions: [ShapePayload]
+            // Mig 00250 / §22.5: composer is authoritative — always assert
+            // the membership state explicitly. nil filter → clear=true;
+            // non-nil → send id + clear=false. Server's "preserve" mode
+            // (clear=false + null id) is for callers that don't hold the
+            // full draft; we always hold it.
+            let p_membership_id: String?
+            let p_clear_membership: Bool
         }
 
         // Bump always sends p_exceptions (even if empty) so the server
@@ -564,7 +575,9 @@ public actor LiveRuleTemplateRepository: RuleTemplateRepository {
             p_conditions: draft.conditions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: nil) },
             p_consequences: draft.consequences.map { ShapePayload(shape_id: $0.shapeId, config: $0.config, target: $0.target) },
             p_change_reason: draft.changeReason.isEmpty ? nil : draft.changeReason,
-            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) }
+            p_exceptions: draft.exceptions.map { ShapePayload(shape_id: $0.shapeId, config: $0.config) },
+            p_membership_id: draft.membershipFilter?.uuidString.lowercased(),
+            p_clear_membership: draft.membershipFilter == nil
         )
 
         do {

@@ -12,6 +12,7 @@ import RuulCore
 /// operate on the rule target, not the scope.
 public struct RuleComposerView: View {
     @Bindable var coord: RuleComposerCoordinator
+    @Environment(AppState.self) private var app
     public var onPublished: (RuleVersionPublishResult) -> Void
     public var onCancel: () -> Void
     @State private var showStarterPicker = false
@@ -35,6 +36,7 @@ public struct RuleComposerView: View {
                     conditionsSection
                     exceptionsSection
                     consequencesSection
+                    membershipFilterSection
                     previewSection
                     if let error = coord.error {
                         Text(error)
@@ -83,6 +85,12 @@ public struct RuleComposerView: View {
                     },
                     onCancel: { showStarterPicker = false }
                 )
+            }
+            // Loads the active roster so the §22.5 membership filter
+            // picker has names to show. No-op on re-appear; failures
+            // log silently (picker just stays empty).
+            .task {
+                await coord.loadAvailableMembers(using: app.groupsRepo)
             }
         }
     }
@@ -273,6 +281,42 @@ public struct RuleComposerView: View {
         }
     }
 
+    /// Optional "Solo para X" filter (§22.5 / mig 00250). Hidden when
+    /// no members loaded — preview / test contexts don't surface a
+    /// picker because there's nothing to pick from. Selecting "Todos
+    /// los miembros" clears the filter.
+    @ViewBuilder
+    private var membershipFilterSection: some View {
+        if !coord.availableMembers.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                sectionLabel("Solo para un miembro (opcional)")
+                Menu {
+                    Button(action: { coord.setMembershipFilter(nil) }) {
+                        Label("Todos los miembros", systemImage: "person.3.fill")
+                    }
+                    ForEach(coord.availableMembers) { member in
+                        Button(action: { coord.setMembershipFilter(member.member.id) }) {
+                            Label(member.displayName, systemImage: "person.fill")
+                        }
+                    }
+                } label: {
+                    pickerLabel(
+                        text: membershipFilterLabel,
+                        systemImage: coord.draft.membershipFilter == nil ? "person.3" : "person.fill"
+                    )
+                }
+            }
+        }
+    }
+
+    private var membershipFilterLabel: String {
+        guard let id = coord.draft.membershipFilter else {
+            return "Aplica a todos los miembros"
+        }
+        let name = coord.memberDisplayName(forMembershipId: id) ?? "este miembro"
+        return "Solo para \(name)"
+    }
+
     private var previewSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Vista previa")
@@ -292,11 +336,13 @@ public struct RuleComposerView: View {
         // Canonical formatter — same one used by published rule rows.
         // Renders as Halajic-style teaching sentence: "Cuando X, si Y,
         // entonces Z." per Constitution §18 (Talmud structural
-        // inspiration) and Vision §rules.
+        // inspiration) and Vision §rules. Passes a name resolver so the
+        // membership prefix (§22.5) shows the real name, not a UUID.
         RuleSentenceFormatter.sentence(
             for: coord.draft,
             registry: coord.shapeRegistry,
-            singleLine: false
+            singleLine: false,
+            memberNameProvider: { coord.memberDisplayName(forMembershipId: $0) }
         )
     }
 

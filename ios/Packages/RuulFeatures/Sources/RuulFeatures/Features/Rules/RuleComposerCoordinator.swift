@@ -56,6 +56,16 @@ public final class RuleComposerCoordinator: Identifiable {
     public let shapeRegistry: RuleShapeRegistry
     public let resourceType: String?
 
+    /// Roster of active members the composer surfaces in the membership
+    /// filter picker (§22.5). When empty, the picker hides — caller
+    /// didn't load it (e.g. preview / test contexts). Order is the
+    /// caller's responsibility; the picker renders as-is.
+    ///
+    /// Initially empty; `loadAvailableMembers(using:)` populates it
+    /// asynchronously when the composer view appears so the call sites
+    /// don't have to fetch + await before constructing the coordinator.
+    public private(set) var availableMembers: [MemberWithProfile]
+
     /// When non-nil, the composer is editing an existing rule in place:
     /// publish() routes to `bumpRuleVersion` (preserving rule_id +
     /// slug + scope) instead of `publishRuleComposition` (which creates
@@ -84,13 +94,15 @@ public final class RuleComposerCoordinator: Identifiable {
         repo: any RuleTemplateRepository,
         scope: RuleTemplateScope,
         resourceType: String? = nil,
-        starterTemplates: [RuleBuilderTemplate] = []
+        starterTemplates: [RuleBuilderTemplate] = [],
+        availableMembers: [MemberWithProfile] = []
     ) {
         self.group = group
         self.shapeRegistry = shapeRegistry
         self.repo = repo
         self.resourceType = resourceType
         self.starterTemplates = starterTemplates
+        self.availableMembers = availableMembers
         self.editingRuleId = nil
         self.draft = RuleDraft(scope: scope)
     }
@@ -105,13 +117,15 @@ public final class RuleComposerCoordinator: Identifiable {
         repo: any RuleTemplateRepository,
         draft: RuleDraft,
         resourceType: String? = nil,
-        starterTemplates: [RuleBuilderTemplate] = []
+        starterTemplates: [RuleBuilderTemplate] = [],
+        availableMembers: [MemberWithProfile] = []
     ) {
         self.group = group
         self.shapeRegistry = shapeRegistry
         self.repo = repo
         self.resourceType = resourceType
         self.starterTemplates = starterTemplates
+        self.availableMembers = availableMembers
         self.editingRuleId = nil
         self.draft = draft
     }
@@ -127,13 +141,15 @@ public final class RuleComposerCoordinator: Identifiable {
         shapeRegistry: RuleShapeRegistry,
         repo: any RuleTemplateRepository,
         editing rule: GroupRule,
-        resourceType: String? = nil
+        resourceType: String? = nil,
+        availableMembers: [MemberWithProfile] = []
     ) {
         self.group = group
         self.shapeRegistry = shapeRegistry
         self.repo = repo
         self.resourceType = resourceType
         self.starterTemplates = []
+        self.availableMembers = availableMembers
         self.editingRuleId = rule.id
         self.draft = RuleDraft.from(rule: rule)
     }
@@ -304,6 +320,39 @@ public final class RuleComposerCoordinator: Identifiable {
 
     public func updateConfig(forShapeInstanceId instanceId: UUID, key: String, value: JSONConfig) {
         draft.updateConfig(forShapeInstanceId: instanceId, key: key, value: value)
+    }
+
+    // MARK: Membership filter (§22.5 / mig 00250)
+
+    /// Set or clear the membership filter. Pass nil to remove the filter
+    /// (rule applies to every matching member); pass a `group_members.id`
+    /// to restrict targets to that single member.
+    public func setMembershipFilter(_ membershipId: UUID?) {
+        draft.setMembershipFilter(membershipId)
+    }
+
+    /// Display name of a member by `group_members.id`. Used by the
+    /// preview sentence + picker label so the formatter doesn't have to
+    /// re-lookup. Returns nil when the id isn't in `availableMembers`.
+    public func memberDisplayName(forMembershipId id: UUID) -> String? {
+        availableMembers.first(where: { $0.member.id == id })?.displayName
+    }
+
+    /// Async loader called by the view's `.task` once the composer
+    /// appears. Filters to active members only — the server rejects
+    /// inactive memberships in `publish_rule_composition` (mig 00250),
+    /// so surfacing them would just produce errors. No-op when called
+    /// twice (avoids redundant fetches on re-appearance).
+    public func loadAvailableMembers(using groupsRepo: any GroupsRepository) async {
+        guard availableMembers.isEmpty else { return }
+        do {
+            let rows = try await groupsRepo.membersWithProfiles(of: group.id)
+            availableMembers = rows
+                .filter { $0.member.active }
+                .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        } catch {
+            log.warning("composer membersWithProfiles failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: Publish
