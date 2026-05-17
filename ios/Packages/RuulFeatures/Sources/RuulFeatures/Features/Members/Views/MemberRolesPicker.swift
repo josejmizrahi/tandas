@@ -10,6 +10,12 @@ import RuulCore
 /// immediately — no draft state, no commit button — so the activity
 /// feed records each grant/revoke as a discrete atom.
 ///
+/// Toggle pattern: optimistic. `roles` @State is updated synchronously
+/// inside the Binding.set so SwiftUI sees the new value on the same
+/// render cycle (otherwise the Toggle reverts visually because the
+/// async RPC hasn't completed yet). On RPC failure we roll back and
+/// surface the error at the top of the sheet.
+///
 /// Gating: only presented when the calling user has `assignRoles`. The
 /// `member` system role and the last `founder` toggle are disabled
 /// in-UI; server enforces the same rules as the authoritative gate.
@@ -60,6 +66,13 @@ public struct MemberRolesPicker: View {
     public var body: some View {
         NavigationStack {
             Form {
+                if let error {
+                    Section {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Color.ruulNegative)
+                            .ruulTextStyle(RuulTypography.caption)
+                    }
+                }
                 Section {
                     headerRow
                 }
@@ -67,9 +80,6 @@ public struct MemberRolesPicker: View {
                     ForEach(catalog, id: \.id) { role in
                         roleToggle(role)
                     }
-                }
-                if let error {
-                    Section { Text(error).foregroundStyle(Color.ruulNegative) }
                 }
             }
             .navigationTitle("Roles del miembro")
@@ -102,10 +112,25 @@ public struct MemberRolesPicker: View {
     private func roleToggle(_ role: RoleDefinition) -> some View {
         let isOn = roles.contains(role.id)
         let locked = isLocked(role, isOn: isOn)
-        let bound = Binding(
-            get: { isOn },
+        // Binding.get reads live state on every query so the optimistic
+        // update in set() is reflected immediately. Capturing `isOn` in
+        // a `let` would make the Toggle visually snap back to its old
+        // value until the async RPC finished.
+        let bound = Binding<Bool>(
+            get: { roles.contains(role.id) },
             set: { newOn in
-                if locked { return }
+                guard !locked,
+                      !inFlight.contains(role.id),
+                      newOn != roles.contains(role.id)
+                else { return }
+                // Optimistic: mutate local state synchronously so the
+                // Toggle stays in the new visual position while the RPC
+                // is in flight. Rollback happens in `toggle` on error.
+                if newOn {
+                    roles.append(role.id)
+                } else {
+                    roles.removeAll { $0 == role.id }
+                }
                 Task { await toggle(role: role.id, on: newOn) }
             }
         )
@@ -178,10 +203,19 @@ public struct MemberRolesPicker: View {
                     role: role
                 )
             }
+            // Server is the source of truth; align with whatever it
+            // returned (e.g. idempotent no-op still gives us the
+            // canonical rawRoles).
             roles = updated.rawRoles
             error = nil
             if let onChange { await onChange() }
         } catch {
+            // Rollback the optimistic mutation so the toggle reverts.
+            if on {
+                roles.removeAll { $0 == role }
+            } else if !roles.contains(role) {
+                roles.append(role)
+            }
             log.warning("toggle role \(role, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             self.error = "No pudimos actualizar el rol: \(error.localizedDescription)"
         }
