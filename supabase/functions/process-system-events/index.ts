@@ -361,9 +361,13 @@ async function buildContext(
     // type assetActionApproval for the asset's admins. Idempotent via
     // a SELECT on (rule_id, reference_id, action_type, source_atom_id)
     // — re-running the rule on the same atom doesn't pile up dupes.
-    // Inserts one row per active group founder; for V1 we treat the
-    // founder roles list as the approver pool. assignSlot / treasurer
-    // role expansion lands in a follow-up.
+    //
+    // Sprint D follow-up (RolesAudit V6): the approver pool is now
+    // resolved via `list_members_with_permission(group, perm)` (mig
+    // 00298) instead of hardcoded `.contains("roles", ["founder"])`.
+    // Default permission for the V1 approval flow is `modifyGovernance`
+    // — any member of any role granting that perm qualifies. Per-action_type
+    // permission split (assignSlot, treasurer, etc.) lands in a follow-up.
     createUserAction: async (args) => {
       const sourceAtomTag = args.source_atom_id ?? "no-source";
 
@@ -381,24 +385,29 @@ async function buildContext(
         .maybeSingle();
       if (existing) return existing.id as string;
 
-      // Resolve founder user_ids for this group — they're the V1
-      // approver pool. group_members.roles is a jsonb array; ?| is the
-      // PostgREST operator for "contains any of".
-      const { data: founders, error: foundersErr } = await supabase
-        .from("group_members")
-        .select("user_id")
-        .eq("group_id", args.group_id)
-        .eq("active", true)
-        .contains("roles", ["founder"]);
-      if (foundersErr) {
-        throw new Error(`createUserAction founders lookup failed: ${foundersErr.message}`);
+      // Sprint D V6 fix: resolve approvers by PERMISSION, not by role
+      // string. Default action_type → modifyGovernance mapping for V1;
+      // per-action permission split is a future Sprint item.
+      const requiredPermission = "modifyGovernance";
+      const { data: approvers, error: approversErr } = await supabase.rpc(
+        "list_members_with_permission",
+        { p_group_id: args.group_id, p_permission: requiredPermission },
+      );
+      if (approversErr) {
+        throw new Error(
+          `createUserAction approvers lookup failed (perm=${requiredPermission}): ${approversErr.message}`,
+        );
       }
-      const targets = (founders ?? []).map((f) => f.user_id as string);
+      const targets = ((approvers ?? []) as Array<{ user_id: string }>).map(
+        (r) => r.user_id,
+      );
       if (targets.length === 0) {
-        // No admins to notify — log and short-circuit. Returning a
+        // No member can approve — log and short-circuit. Returning a
         // synthetic id keeps ExecutionResult well-formed; the rule
         // engine doesn't observe the row, only its existence.
-        console.warn(`createUserAction: group ${args.group_id} has no active founder; skipping`);
+        console.warn(
+          `createUserAction: group ${args.group_id} has no active member with ${requiredPermission}; skipping`,
+        );
         return crypto.randomUUID();
       }
 
