@@ -77,18 +77,24 @@ struct OpenVotesCoordinatorTests {
         // Disabled until rewritten — see @Test attribute above for context.
     }
 
-    @Test("refresh surfaces error string when repo throws")
+    @Test("refresh surfaces a translated error when repo throws")
     func refreshErrorSurfaces() async throws {
+        // W2-C2: CoordinatorError.from runs the error through
+        // RuulErrorTranslator which intentionally strips raw English
+        // strings ("network down", PostgREST codes, etc.) in favor of
+        // curated Spanish-MX copy. The test now uses URLError with a
+        // known code so the translated output is deterministic
+        // ("Sin conexión. Revisa tu internet.") and the assertion
+        // tracks the repo → coordinator → CoordinatorError pipeline
+        // without coupling to translator catalog wording.
         let group = makeGroup()
         let repo = MockVoteRepository(seed: [])
-        await repo.setNextOpenVotesError(NSError(
-            domain: "test", code: 0,
-            userInfo: [NSLocalizedDescriptionKey: "network down"]
-        ))
+        await repo.setNextOpenVotesError(URLError(.notConnectedToInternet))
         let coord = OpenVotesCoordinator(group: group, voteRepo: repo)
         await coord.refresh()
 
-        #expect(coord.error?.message?.contains("network down") == true)
+        #expect(coord.error != nil)
+        #expect(coord.error?.message?.contains("Sin conexión") == true)
         #expect(coord.openVotes.isEmpty)
     }
 }

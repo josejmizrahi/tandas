@@ -10,7 +10,7 @@ public struct RecurrenceSectionView: View {
     public static let definition = CapabilitySection(
         id: "recurrence",
         priority: 110,
-        isEnabledFor: { caps in caps.contains("recurrence") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.recurrence) },
         render: { ctx in AnyView(RecurrenceSectionView(context: ctx)) }
     )
 
@@ -43,7 +43,7 @@ public struct DeadlineSectionView: View {
     public static let definition = CapabilitySection(
         id: "deadline",
         priority: 120,
-        isEnabledFor: { caps in caps.contains("deadline") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.deadline) },
         render: { ctx in AnyView(DeadlineSectionView(context: ctx)) }
     )
 
@@ -76,7 +76,7 @@ public struct ExpirationSectionView: View {
     public static let definition = CapabilitySection(
         id: "expiration",
         priority: 130,
-        isEnabledFor: { caps in caps.contains("expiration") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.expiration) },
         render: { ctx in AnyView(ExpirationSectionView(context: ctx)) }
     )
 
@@ -109,7 +109,7 @@ public struct ReminderSectionView: View {
     public static let definition = CapabilitySection(
         id: "reminder",
         priority: 770,
-        isEnabledFor: { caps in caps.contains("reminder") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.reminder) },
         render: { ctx in AnyView(ReminderSectionView(context: ctx)) }
     )
 
@@ -133,7 +133,7 @@ public struct CancellationSectionView: View {
     public static let definition = CapabilitySection(
         id: "cancellation",
         priority: 760,
-        isEnabledFor: { caps in caps.contains("cancellation") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.cancellation) },
         render: { ctx in AnyView(CancellationSectionView(context: ctx)) }
     )
 

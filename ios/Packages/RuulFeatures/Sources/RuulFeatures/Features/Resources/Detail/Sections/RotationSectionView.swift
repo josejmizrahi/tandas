@@ -33,7 +33,7 @@ public struct RotationSectionView: View {
     public static let definition = CapabilitySection(
         id: "rotation",
         priority: 600,
-        isEnabledFor: { caps in caps.contains("rotation") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.rotation) },
         render: { ctx in AnyView(RotationSectionView(context: ctx)) }
     )
 

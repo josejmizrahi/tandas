@@ -91,8 +91,22 @@ struct ResourceIntentRegistryTests {
         }
     }
 
-    @Test("Beta catalog has exactly 18 intents (matching design count)")
-    func intentCount() {
-        #expect(registry.allIntents.count == 18)
+    @Test("Beta catalog contains the 18 post-create universal verbs")
+    func postCreateIntentsPresent() {
+        // The post-create screen relies on these 18 ids; toolbar-only
+        // intents (releaseCustody, transferAsset, etc.) extend the
+        // catalog but aren't asserted here. Hard count removed because
+        // the catalog grows independently of the post-create surface.
+        let postCreateIds: Set<String> = [
+            "invite_people", "check_in_attendees", "track_money",
+            "record_contribution", "record_expense", "allow_reservations",
+            "assign_holder", "grant_access", "assign_custody",
+            "record_valuation", "link_resource", "add_rules",
+            "create_child_event", "create_child_slot", "define_priority",
+            "change_control", "view_history", "view_balance"
+        ]
+        let registered = Set(registry.allIntents.map(\.id))
+        let missing = postCreateIds.subtracting(registered)
+        #expect(missing.isEmpty, "missing post-create intents: \(missing)")
     }
 }

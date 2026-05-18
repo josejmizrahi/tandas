@@ -152,10 +152,13 @@ final class ShapeNodeTests: XCTestCase {
         guard let updated = tree.removing(id: a.id) else {
             return XCTFail("expected removal to succeed")
         }
-        // The AND root now wraps the surviving leaf directly (OR
-        // collapsed because only one child was left).
-        guard case .and(_, let cs) = updated, cs.count == 1, case .leaf(let l) = cs[0] else {
-            return XCTFail("expected AND with single surviving leaf")
+        // Auto-collapse cascades: OR collapses to its single surviving
+        // leaf, then AND collapses (also single child) to that leaf.
+        // The tree minimization keeps the sentence renderer + server
+        // validator happy. (Pre-collapse behavior preserved the AND
+        // wrapping; updated to match current collapseRemoval doctrine.)
+        guard case .leaf(let l) = updated else {
+            return XCTFail("expected fully-collapsed surviving leaf, got \(updated)")
         }
         XCTAssertEqual(l.shapeId, "responseStatusIs")
     }

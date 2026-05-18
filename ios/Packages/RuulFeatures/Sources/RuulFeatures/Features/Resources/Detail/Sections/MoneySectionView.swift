@@ -18,9 +18,6 @@ public struct MoneySectionView: View {
     @State private var topBalances: [MemberBalance] = []
     @State private var hasLoaded: Bool = false
     @State private var settlementSheetPresented: Bool = false
-    @State private var lockSheetPresented: Bool = false
-    @State private var lockBusy: Bool = false
-    @State private var lockError: String?
 
     public static let definition = CapabilitySection(
         id: "money",
@@ -32,8 +29,8 @@ public struct MoneySectionView: View {
             // are forward-compat synonyms; should later modules ship
             // dedicated capability blocks under those names, this section
             // lights up without a rename migration.
-            caps.contains("ledger") ||
-            caps.contains("money") ||
+            caps.contains(CapabilityID.ledger) ||
+            caps.contains(CapabilityID.money) ||
             caps.contains("expenses") ||
             caps.contains("contributions") ||
             caps.contains("payouts")
@@ -98,28 +95,11 @@ public struct MoneySectionView: View {
             .buttonStyle(.plain)
             .cardBackground()
 
-            // Fund-only admin: lock/unlock the fund. Server-side admin gate
-            // is enforced by fund_lock/fund_unlock (is_group_admin); the
-            // UI gates rendering on viewerIsAdmin so non-admins don't see
-            // a button that will 403. Locks are soft policy per
-            // Constitution §9 — they don't block writes, they just stamp
-            // metadata so rules + UI can react.
-            if showsLockControls {
-                fundLockRow
-            }
-            if let lockError {
-                Text(lockError)
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulNegative)
-                    .padding(.horizontal, RuulSpacing.md)
-            }
+            // Fund lock/unlock moved to the resource detail toolbar `+`
+            // (`fund_lock` / `unlock_fund` intents) per doctrine 2026-05-18.
+            // MoneySectionView is now a pure display card — no buttons.
         }
         .task { await loadBalances() }
-        .fullScreenCover(isPresented: $lockSheetPresented) {
-            LockFundSheet(asset: context.resource) {
-                Task { await onFundMutated() }
-            }
-        }
         .fullScreenCover(isPresented: $settlementSheetPresented) {
             SettlementSheet(
                 groupId: context.group.id,
@@ -277,92 +257,14 @@ public struct MoneySectionView: View {
     /// Renders the lock CTAs only for funds when the current viewer is
     /// the founder. fund_lock / fund_unlock are admin-only server-side,
     /// so showing them to non-admins would surface a button that 403s.
-    private var showsLockControls: Bool {
-        guard context.resource.resourceType == .fund else { return false }
-        return viewerIsAdmin
-    }
-
-    /// Sprint E (V19 fix): gate on has_permission(modifyGovernance) at
-    /// the catalog walk, not on role-name membership. The server's
-    /// fund_lock / fund_unlock RPCs require modifyGovernance per mig
-    /// 00291 — keeping UI in lockstep. A future Post-Beta sprint can
-    /// split a dedicated lockFund permission and update both layers.
-    private var viewerIsAdmin: Bool {
-        guard let uid = context.currentUserId,
-              let mwp = context.memberDirectory[uid] else { return false }
-        let catalog = context.group.effectiveRoles
-        for raw in mwp.member.rawRoles {
-            if let def = catalog[raw], def.grants(.modifyGovernance) { return true }
-        }
-        return false
-    }
-
-    private var isLocked: Bool {
-        guard let raw = context.resource.metadata["locked_at"]?.stringValue else { return false }
-        return !raw.isEmpty
-    }
-
-    @ViewBuilder
-    private var fundLockRow: some View {
-        Button {
-            if isLocked {
-                Task { await unlockFund() }
-            } else {
-                lockSheetPresented = true
-            }
-        } label: {
-            HStack(spacing: RuulSpacing.sm) {
-                iconBadge(systemName: isLocked ? "lock.open" : "lock")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(isLocked ? "Desbloquear fondo" : "Bloquear fondo")
-                        .ruulTextStyle(RuulTypography.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Text(isLocked
-                         ? "Quita la marca de pausa"
-                         : "Marca el fondo como pausado para que los acuerdos reaccionen")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                if lockBusy {
-                    ProgressView()
-                } else {
-                    Image(systemName: "chevron.right")
-                        .ruulTextStyle(RuulTypography.captionBold)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
-            }
-            .padding(RuulSpacing.md)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(lockBusy)
-        .cardBackground()
-    }
-
-    @MainActor
-    private func unlockFund() async {
-        lockBusy = true
-        defer { lockBusy = false }
-        do {
-            try await app.fundRepo.unlock(fundId: context.resource.id)
-            lockError = nil
-            await onFundMutated()
-        } catch {
-            lockError = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func onFundMutated() async {
-        await context.onResourceMutated()
-    }
 }
 
 // MARK: - LockFundSheet
 
-private struct LockFundSheet: View {
+// Promoted from `private` to file-internal so UniversalResourceDetailView's
+// intent dispatcher (.fundLockSheet case) can present it. Same module;
+// no API surface change beyond intra-feature access.
+struct LockFundSheet: View {
     let asset: ResourceRow
     let onLocked: () -> Void
     @Environment(AppState.self) private var app

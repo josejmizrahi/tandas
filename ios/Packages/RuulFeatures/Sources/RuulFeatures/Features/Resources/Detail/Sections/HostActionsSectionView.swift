@@ -22,7 +22,7 @@ public struct HostActionsSectionView: View {
     public static let definition = CapabilitySection(
         id: "host_actions",
         priority: 350,
-        isEnabledFor: { caps in caps.contains("host_actions") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.hostActions) },
         render: { ctx in AnyView(HostActionsSectionView(context: ctx)) }
     )
 

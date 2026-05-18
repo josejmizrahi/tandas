@@ -9,24 +9,24 @@ import RuulCore
 /// event detail (one scroll, hairline-separated rows).
 ///
 /// Four sections, each gated by a capability flag on the parent view:
-///   1. `AssetCustodySection`     — who has the asset right now + checkouts (custody capability)
-///   2. `AssetOwnershipSection`   — who owns it + valuation history (transfer | valuation)
-///   3. `AssetMaintenanceSection` — open service items + log/report actions (maintenance)
-///   4. `AssetBookingsSection`    — slot list under this asset (booking)
+///   1. `AssetCustodySection`     — who has the asset right now (read-only display)
+///   2. `AssetOwnershipSection`   — who owns it + valuation history (read-only display)
+///   3. `AssetMaintenanceSection` — open service items (read-only display + close items)
+///   4. `AssetBookingsSection`    — slot list under this asset (read-only display)
+///
+/// Per doctrine 2026-05-18: all action verbs live in the resource detail
+/// toolbar `+` menu (`ResourceIntentRegistry`). Sections are pure
+/// information cards — no buttons, no sheets, no RPC dispatch.
 @MainActor
 public struct AssetCustodySection: View {
     @Environment(AppState.self) private var app
     public let asset: ResourceRow
-    /// Bubble called after a custody/checkout RPC mutates
-    /// `resources.metadata`. The parent re-fetches the row so the
-    /// custodian/holder display updates without a sheet dismiss.
+    /// Kept for API stability — sections no longer mutate the resource
+    /// (the toolbar does). The bubble is a no-op for now; remove when
+    /// no caller passes it.
     public let onMetadataChanged: () async -> Void
 
     @State private var members: [MemberWithProfile] = []
-    @State private var showAssign: Bool = false
-    @State private var showCheckout: Bool = false
-    @State private var isReleasing: Bool = false
-    @State private var error: String?
 
     public init(
         asset: ResourceRow,
@@ -42,7 +42,7 @@ public struct AssetCustodySection: View {
     public static let definition = CapabilitySection(
         id: "asset.custody",
         priority: 160,
-        isEnabledFor: { caps in caps.contains("custody") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.custody) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetCustodySection(
             asset: ctx.resource,
@@ -69,56 +69,8 @@ public struct AssetCustodySection: View {
                     RuulInfoRow(label: "Devolución esperada", value: AssetDateFormatter.short(until))
                 }
             }
-            RuulInfoDivider()
-            if currentHolder == nil {
-                RuulInfoActionRow(
-                    label: currentCustodian == nil ? "Asignar custodio" : "Cambiar custodio",
-                    symbol: "person.badge.plus"
-                ) { showAssign = true }
-                RuulInfoDivider()
-                RuulInfoActionRow(
-                    label: "Prestar (checkout)",
-                    symbol: "arrow.up.right.square"
-                ) { showCheckout = true }
-                if currentCustodian != nil {
-                    RuulInfoDivider()
-                    RuulInfoActionRow(
-                        label: "Liberar custodia",
-                        symbol: "person.crop.rectangle.badge.xmark",
-                        isDestructive: true
-                    ) {
-                        Task { await releaseCustody() }
-                    }
-                }
-            } else {
-                RuulInfoActionRow(
-                    label: "Marcar devuelto",
-                    symbol: "arrow.down.left.square"
-                ) { Task { await checkIn() } }
-            }
-            if let error {
-                RuulInfoDivider()
-                Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulNegative)
-                    .padding(RuulSpacing.md)
-            }
         }
         .task { await loadMembers() }
-        .fullScreenCover(isPresented: $showAssign) {
-            MemberPickerSheet(
-                members: assignableCustodians,
-                title: "Asignar custodia"
-            ) { memberId in
-                Task { await assignCustody(to: memberId) }
-            }
-        }
-        .fullScreenCover(isPresented: $showCheckout) {
-            CheckOutAssetSheet(asset: asset, members: members) {
-                error = nil
-                Task { await onMetadataChanged() }
-            }
-        }
     }
 
     private var currentCustodian: MemberWithProfile? {
@@ -133,54 +85,10 @@ public struct AssetCustodySection: View {
         return members.first { $0.id == id }
     }
 
-    /// Excludes the current custodian from the picker — selecting the
-    /// same person is a no-op server-side but creates a confusing audit
-    /// trail (custodyAssigned event with no actual change).
-    private var assignableCustodians: [MemberWithProfile] {
-        guard let current = currentCustodian else { return members }
-        return members.filter { $0.id != current.id }
-    }
-
     @MainActor
     private func loadMembers() async {
         members = (try? await app.groupsRepo.membersWithProfiles(of: asset.groupId)) ?? []
     }
-
-    @MainActor
-    private func assignCustody(to memberId: UUID) async {
-        do {
-            try await app.assetLifecycleRepo.assignCustody(asset: asset.id, to: memberId, notes: nil)
-            error = nil
-            await onMetadataChanged()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func releaseCustody() async {
-        isReleasing = true
-        defer { isReleasing = false }
-        do {
-            try await app.assetLifecycleRepo.releaseCustody(asset: asset.id, notes: nil)
-            error = nil
-            await onMetadataChanged()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func checkIn() async {
-        do {
-            try await app.assetLifecycleRepo.checkInAsset(asset: asset.id, conditionNotes: nil)
-            error = nil
-            await onMetadataChanged()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
 }
 
 // MARK: - Ownership
@@ -189,18 +97,11 @@ public struct AssetCustodySection: View {
 public struct AssetOwnershipSection: View {
     @Environment(AppState.self) private var app
     public let asset: ResourceRow
-    /// Bubble called after a transfer RPC mutates `resources.metadata`.
-    /// Valuation also fires it (the section's own `load()` reloads the
-    /// valuation row, but the parent still re-fetches the polymorphic
-    /// row so INFORMACIÓN stays in sync).
+    /// Kept for API stability — sections are read-only post-doctrine.
     public let onMetadataChanged: () async -> Void
 
     @State private var members: [MemberWithProfile] = []
     @State private var latestValuation: AssetValuationRow?
-    @State private var showTransfer: Bool = false
-    @State private var showValuation: Bool = false
-    @State private var isReleasing: Bool = false
-    @State private var error: String?
 
     public init(
         asset: ResourceRow,
@@ -216,7 +117,7 @@ public struct AssetOwnershipSection: View {
     public static let definition = CapabilitySection(
         id: "asset.ownership",
         priority: 161,
-        isEnabledFor: { caps in caps.contains("transfer") || caps.contains("valuation") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.transfer) || caps.contains(CapabilityID.valuation) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetOwnershipSection(
             asset: ctx.resource,
@@ -243,54 +144,8 @@ public struct AssetOwnershipSection: View {
                 RuulInfoDivider()
                 RuulInfoRow(label: "Valuado", value: v.recordedAt.ruulShortDate)
             }
-            RuulInfoDivider()
-            RuulInfoActionRow(label: "Registrar valuación", symbol: "chart.line.uptrend.xyaxis") {
-                showValuation = true
-            }
-            RuulInfoDivider()
-            RuulInfoActionRow(label: "Transferir propiedad", symbol: "arrow.left.arrow.right") {
-                showTransfer = true
-            }
-            if currentOwner != nil {
-                RuulInfoDivider()
-                RuulInfoActionRow(
-                    label: "Devolver al grupo",
-                    symbol: "person.3",
-                    isDestructive: true
-                ) {
-                    Task { await transferToGroup() }
-                }
-            }
-            if let error {
-                RuulInfoDivider()
-                Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulNegative)
-                    .padding(RuulSpacing.md)
-            }
         }
         .task { await load() }
-        .fullScreenCover(isPresented: $showTransfer) {
-            MemberPickerSheet(
-                members: transferableMembers,
-                title: "Transferir a"
-            ) { memberId in
-                Task { await transfer(to: memberId) }
-            }
-        }
-        .fullScreenCover(isPresented: $showValuation) {
-            RecordValuationSheet(asset: asset) {
-                Task { await load() }
-            }
-        }
-    }
-
-    /// Excludes the current owner from the picker — transferring to
-    /// the same owner is a no-op server-side but creates a confusing
-    /// assetTransferred event with from == to.
-    private var transferableMembers: [MemberWithProfile] {
-        guard let current = currentOwner else { return members }
-        return members.filter { $0.id != current.id }
     }
 
     private var currentOwner: MemberWithProfile? {
@@ -308,31 +163,6 @@ public struct AssetOwnershipSection: View {
         members = (try? await membersTask) ?? []
         latestValuation = await valuationTask
     }
-
-    @MainActor
-    private func transfer(to memberId: UUID) async {
-        do {
-            try await app.assetLifecycleRepo.transferAsset(asset: asset.id, to: memberId, notes: nil)
-            error = nil
-            await onMetadataChanged()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func transferToGroup() async {
-        isReleasing = true
-        defer { isReleasing = false }
-        do {
-            try await app.assetLifecycleRepo.transferAsset(asset: asset.id, to: nil, notes: nil)
-            error = nil
-            await onMetadataChanged()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
 }
 
 // MARK: - Maintenance
@@ -344,8 +174,6 @@ public struct AssetMaintenanceSection: View {
 
     @State private var openItems: [SystemEvent] = []
     @State private var members: [MemberWithProfile] = []
-    @State private var showLog: Bool = false
-    @State private var showDamage: Bool = false
     @State private var error: String?
 
     public init(asset: ResourceRow) { self.asset = asset }
@@ -357,27 +185,16 @@ public struct AssetMaintenanceSection: View {
     public static let definition = CapabilitySection(
         id: "asset.maintenance",
         priority: 162,
-        isEnabledFor: { caps in caps.contains("maintenance") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.maintenance) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetMaintenanceSection(asset: ctx.resource)) }
     )
 
     public var body: some View {
         RuulInfoCard("MANTENIMIENTO") {
-            RuulInfoActionRow(label: "Registrar mantenimiento", symbol: "wrench.and.screwdriver") {
-                showLog = true
-            }
-            RuulInfoDivider()
-            RuulInfoActionRow(
-                label: "Reportar daño",
-                symbol: "exclamationmark.triangle",
-                isDestructive: true
-            ) { showDamage = true }
             if openItems.isEmpty {
-                RuulInfoDivider()
                 RuulInfoRow(label: "Tareas abiertas", value: "0")
             } else {
-                RuulInfoDivider()
                 RuulInfoRow(label: "Tareas abiertas", value: "\(openItems.count)")
                 ForEach(openItems, id: \.id) { item in
                     RuulInfoDivider()
@@ -393,12 +210,6 @@ public struct AssetMaintenanceSection: View {
             }
         }
         .task { await load() }
-        .fullScreenCover(isPresented: $showLog) {
-            LogMaintenanceSheet(asset: asset) { Task { await load() } }
-        }
-        .fullScreenCover(isPresented: $showDamage) {
-            ReportDamageSheet(asset: asset) { Task { await load() } }
-        }
     }
 
     @ViewBuilder
@@ -477,7 +288,6 @@ public struct AssetBookingsSection: View {
     public let asset: ResourceRow
 
     @State private var slots: [ResourceRow] = []
-    @State private var showCreateSlot: Bool = false
     @State private var error: String?
 
     public init(asset: ResourceRow) { self.asset = asset }
@@ -490,30 +300,20 @@ public struct AssetBookingsSection: View {
     public static let definition = CapabilitySection(
         id: "asset.bookings",
         priority: 163,
-        isEnabledFor: { caps in caps.contains("booking") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.booking) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetBookingsSection(asset: ctx.resource)) }
     )
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("CUPOS")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
-                    .foregroundStyle(Color.ruulTextTertiary)
-                Spacer()
-                Button {
-                    showCreateSlot = true
-                } label: {
-                    Label("Nuevo", systemImage: "plus")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulAccent)
-                }
-            }
-            .padding(.horizontal, RuulSpacing.xxs)
+            Text("CUPOS")
+                .ruulTextStyle(RuulTypography.sectionLabel)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.horizontal, RuulSpacing.xxs)
             RuulInfoCard {
                 if slots.isEmpty {
-                    Text("Sin cupos. Crea uno para que los miembros reserven.")
+                    Text("Sin cupos. Usa “+” → Crear cupo para agregar uno.")
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -539,9 +339,6 @@ public struct AssetBookingsSection: View {
             }
         }
         .task { await load() }
-        .fullScreenCover(isPresented: $showCreateSlot) {
-            CreateSlotSheet(asset: asset) { Task { await load() } }
-        }
     }
 
     private func slotRow(_ slot: ResourceRow) -> some View {
@@ -604,24 +401,12 @@ public struct AssetBookingsSection: View {
 /// constitution Rule 6. Registered with `ResourceInfoRegistry` at boot.
 @MainActor
 public enum AssetInfoProvider {
-    public static func register() {
-        ResourceInfoRegistry.shared.register(type: .asset, provider: rows)
-    }
-
     public static func rows(for ctx: ResourceDetailContext) -> [ResourceInfoRow] {
+        // Owner / custodian / borrower already live in dedicated
+        // sections (PROPIEDAD / CUSTODIA) two rows below. Repeating
+        // them here duplicated the info — INFORMACIÓN only holds
+        // facts the section list won't surface elsewhere.
         var out: [ResourceInfoRow] = []
-        if let custodianId = uuidFromMeta(ctx, "custodian_id"),
-           let m = memberByMemberId(ctx, id: custodianId) {
-            out.append(ResourceInfoRow(label: "Custodio", value: m.displayName))
-        }
-        if let ownerId = uuidFromMeta(ctx, "owner_id"),
-           let m = memberByMemberId(ctx, id: ownerId) {
-            out.append(ResourceInfoRow(label: "Dueño", value: m.displayName))
-        }
-        if let holderId = uuidFromMeta(ctx, "checked_out_to"),
-           let m = memberByMemberId(ctx, id: holderId) {
-            out.append(ResourceInfoRow(label: "Prestado a", value: m.displayName))
-        }
         if let cap = ctx.resource.metadata["capacity"]?.intValue {
             out.append(ResourceInfoRow(label: "Capacidad", value: "\(cap)"))
         }

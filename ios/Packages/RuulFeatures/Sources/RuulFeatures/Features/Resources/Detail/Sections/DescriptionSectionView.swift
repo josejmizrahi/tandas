@@ -16,7 +16,7 @@ public struct DescriptionSectionView: View {
     public static let definition = CapabilitySection(
         id: "description",
         priority: 150,
-        isEnabledFor: { caps in caps.contains("description") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.description) },
         render: { ctx in AnyView(DescriptionSectionView(context: ctx)) }
     )
 

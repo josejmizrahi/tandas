@@ -418,10 +418,10 @@ public extension CapabilityResolver {
             kind: .share
         ))
 
-        // Post-Pass-1: `.enableCapability` is no longer surfaced from
-        // the ⋯ menu — capability management lives in the Governance
-        // tab (`GovernanceTabView`). The SecondaryAction.Kind case stays
-        // defined for future re-use but is never emitted here.
+        // Doctrine: capabilities are auto-on at resource creation and
+        // never user-visible. `.enableCapability` is no longer emitted
+        // here. The SecondaryAction.Kind case stays defined for future
+        // re-use if a use-case ever needs a "turn this on" prompt inline.
         if viewerPermissions.contains(.modifyGovernance) {
             items.append(SecondaryAction(
                 label: "Archivar",

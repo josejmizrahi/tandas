@@ -10,7 +10,7 @@ public struct AssignmentSectionView: View {
     public static let definition = CapabilitySection(
         id: "assignment",
         priority: 350,
-        isEnabledFor: { caps in caps.contains("assignment") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.assignment) },
         render: { ctx in AnyView(AssignmentSectionView(context: ctx)) }
     )
 
@@ -48,7 +48,7 @@ public struct BookingSectionView: View {
     public static let definition = CapabilitySection(
         id: "booking",
         priority: 380,
-        isEnabledFor: { caps in caps.contains("booking") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.booking) },
         render: { ctx in AnyView(BookingSectionView(context: ctx)) }
     )
 
@@ -72,7 +72,7 @@ public struct SwapSectionView: View {
     public static let definition = CapabilitySection(
         id: "swap",
         priority: 750,
-        isEnabledFor: { caps in caps.contains("swap") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.swap) },
         render: { ctx in AnyView(SwapSectionView(context: ctx)) }
     )
 

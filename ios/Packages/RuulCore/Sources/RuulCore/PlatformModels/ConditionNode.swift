@@ -140,8 +140,13 @@ extension ConditionNode: Codable {
     public func encode(to encoder: Encoder) throws {
         // Compact form for the common case: an AND of leaves encodes as
         // a JSON array so pre-§22.4 consumers (and `rule_versions.compiled`
-        // snapshots) see the same shape they always saw.
-        if let leaves = flatLeaves {
+        // snapshots) see the same shape they always saw. Gated on the
+        // top-level case being `.and` because `flatLeaves` also matches
+        // a bare `.leaf` — if we let the fast path swallow a leaf node,
+        // the encoder writes `[c]` and the decoder reads it back as
+        // `.and([.leaf(c)])`, breaking round-trip symmetry on nested
+        // leaves inside `.or`/`.not`.
+        if case .and = self, let leaves = flatLeaves {
             var single = encoder.singleValueContainer()
             try single.encode(leaves)
             return

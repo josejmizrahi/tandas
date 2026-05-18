@@ -12,10 +12,6 @@ import RuulUI
 /// implicit).
 @MainActor
 public enum RightInfoProvider {
-    public static func register() {
-        ResourceInfoRegistry.shared.register(type: .right, provider: rows)
-    }
-
     public static func rows(for ctx: ResourceDetailContext) -> [ResourceInfoRow] {
         var out: [ResourceInfoRow] = []
 
