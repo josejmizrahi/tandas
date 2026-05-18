@@ -1,0 +1,4 @@
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: max-age=300
+  X-Robots-Tag: noindex
