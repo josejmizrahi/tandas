@@ -179,7 +179,7 @@ check_in
 capacity
 location
 guest_access
-access_control
+access
 voting
 rules
 ledger
@@ -220,7 +220,7 @@ booking
 availability
 capacity
 check_in
-access_control
+access
 ledger
 ```
 
@@ -555,7 +555,7 @@ Catálogo canónico:
 | `location`      | dónde vive físicamente (address + coords)                  | stable     |
 | `guest_access`  | invitados externos del miembro                             | stable     |
 | `availability`  | consultar ventanas libres                                  | mig 00265  |
-| `access_control`| gate de quién puede entrar (RBAC contextual)               | mig 00265  |
+| `access`        | gate de quién puede entrar (compartida con asset, mig 00208 + space gate en 00265) | stable |
 | `waitlist`      | cola ordenada cuando se llena                              | mig 00265  |
 | `maintenance`   | reportar limpieza / daños / utilities                      | stable (shared with asset) |
 | `voting`        | decisiones sobre el space                                   | stable     |
@@ -565,7 +565,7 @@ Catálogo canónico:
 | `description`   | texto libre                                                 | stable     |
 | `history`       | feed cronológico                                            | stable     |
 
-`availability` + `access_control` + `waitlist` se materializan en mig 00265 (capability catalog extension + dependency edges).
+`availability` + `access` + `waitlist` se materializan en mig 00265 (capability catalog extension + dependency edges).
 
 ---
 
@@ -718,7 +718,7 @@ Cuando `resource_type='space'` y la capability está activa, `UniversalResourceD
 | `SpaceCapacitySection`     | `capacity`                 | `space_capacity_view`          |
 | `SpaceWaitlistSection`     | `waitlist`                 | `space_waitlist_view` (P2)     |
 | `SpaceBookingsSection`     | `booking`                  | `bookings` + `space_history_view` |
-| `SpaceAccessSection`       | `access_control`           | `space_access_view` (P2)        |
+| `SpaceAccessSection`       | `access`           | `space_access_view` (P2)        |
 
 Cada sección es un componente SwiftUI independiente bajo `Features/Resources/Detail/Sections/Space/SpaceSections.swift`. Hablan con `SpaceLifecycleRepository` directamente y disparan los atoms canónicos del §9.
 
@@ -857,8 +857,8 @@ El sistema debe poder modelar:
 | `build_resource_from_draft` (space)  | `00207`             | Wizard atomic path                                       |
 | `bookings` atom + `book_slot`        | `00216`             | Compartido con space (slot_id reused polimórficamente)   |
 | Atoms whitelist (7 nuevos)           | `00264`             | spaceBooked / spaceReleased / spaceCapacityReached / spaceWaitlistJoined / spaceWaitlistPromoted / spaceAccessGranted / spaceAccessRevoked |
-| Capabilities (3 nuevos universales)  | `00265`             | availability / access_control / waitlist                 |
-| RPCs lifecycle (9)                   | `00265`             | book_space / cancel_booking / expire_booking / join_waitlist / promote_from_waitlist / check_in_to_space / grant_space_access / revoke_space_access / update_space_metadata / archive_space / unarchive_space |
+| Capabilities (3 nuevos universales)  | `00265`             | availability / access / waitlist                 |
+| RPCs lifecycle (9)                   | `00265`             | book_space / cancel_booking / expire_booking / join_waitlist / promote_space_from_waitlist / check_in_to_space / grant_space_access / revoke_space_access / update_space_metadata / archive_space / unarchive_space |
 | Projections (4 vistas)               | `00266`             | space_availability_view / space_capacity_view / space_occupancy_view / space_history_view |
 | Rule shapes + templates (space)      | `00267`             | space.capacity_reached → waitlist; cancellation<24h → fine; no_check_in_30m → release; etc. |
 

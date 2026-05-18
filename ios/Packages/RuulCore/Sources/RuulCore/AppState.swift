@@ -161,9 +161,14 @@ public final class AppState {
     /// Right resource_type lifecycle: transfer/delegate/revoke/suspend/
     /// restore/exercise/updateMetadata. Mig 00198 + 00199.
     public let rightRepo: any RightRepository
-    /// Space resource_type (mig 00203): list / get / create reservable
+    /// Space resource_type (mig 00207): list / get / create reservable
     /// venues. No dedicated table — reads `resources WHERE resource_type='space'`.
     public let spaceRepo: any SpaceRepository
+    /// Canonical space spec lifecycle (mig 00266): book / cancel / waitlist /
+    /// check-in / access grant-revoke / metadata patch. Plans/Active/Space.md
+    /// §28. Reads (availability/occupancy/capacity/history) flow through
+    /// projection views shipped in mig 00267.
+    public let spaceLifecycleRepo: any SpaceLifecycleRepository
     /// Slot resource_type (mig 00070 + 00204): typed reads of reservable
     /// asset windows. Writes go through `slotLifecycleRepo` (assign/book/swap)
     /// or `resourceDraftRepo` (wizard-driven create).
@@ -225,6 +230,7 @@ public final class AppState {
         resourceDraftRepo: any ResourceDraftRepository,
         rightRepo: any RightRepository,
         spaceRepo: any SpaceRepository,
+        spaceLifecycleRepo: any SpaceLifecycleRepository,
         slotRepo: any SlotRepository,
         bookingRepo: any BookingRepository,
         notifications: NotificationService? = nil,
@@ -266,6 +272,7 @@ public final class AppState {
         self.resourceDraftRepo = resourceDraftRepo
         self.rightRepo = rightRepo
         self.spaceRepo = spaceRepo
+        self.spaceLifecycleRepo = spaceLifecycleRepo
         self.slotRepo = slotRepo
         self.bookingRepo = bookingRepo
         let eventBuilder = EventResourceBuilder(

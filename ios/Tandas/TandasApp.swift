@@ -53,6 +53,7 @@ struct TandasApp: App {
             let draftRepo = MockResourceDraftRepository()
             let rights = MockRightRepository()
             let spaces = MockSpaceRepository()
+            let spaceLifecycle = MockSpaceLifecycleRepository()
             let slots = MockSlotRepository()
             let bookings = MockBookingRepository()
             let analytics = LogAnalyticsService()
@@ -88,6 +89,7 @@ struct TandasApp: App {
                 resourceDraftRepo: draftRepo,
                 rightRepo: rights,
                 spaceRepo: spaces,
+                spaceLifecycleRepo: spaceLifecycle,
                 slotRepo: slots,
                 bookingRepo: bookings,
                 notifications: NotificationService(tokenRepo: notifTokens),
@@ -128,6 +130,7 @@ struct TandasApp: App {
             let draftRepo = LiveResourceDraftRepository(client: client)
             let rights = LiveRightRepository(client: client)
             let spaces = LiveSpaceRepository(client: client)
+            let spaceLifecycle = LiveSpaceLifecycleRepository(client: client)
             let slots = LiveSlotRepository(client: client)
             let bookings = LiveBookingRepository(client: client)
             let analytics = LogAnalyticsService()
@@ -163,6 +166,7 @@ struct TandasApp: App {
                 resourceDraftRepo: draftRepo,
                 rightRepo: rights,
                 spaceRepo: spaces,
+                spaceLifecycleRepo: spaceLifecycle,
                 slotRepo: slots,
                 bookingRepo: bookings,
                 notifications: NotificationService(tokenRepo: notifTokens),
