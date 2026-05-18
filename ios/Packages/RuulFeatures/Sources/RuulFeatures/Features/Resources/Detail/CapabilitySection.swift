@@ -35,6 +35,12 @@ public struct CapabilitySection: Identifiable {
     /// zone after the dynamic sections finish.
     public let priority: Int
 
+    /// Which tab this section renders inside. Default "overview" matches
+    /// pre-Pass-1 behavior (everything stacked in one scroll). Sections
+    /// that move tabs declare their target explicitly. The string is
+    /// matched against `ResourceDetailTab.id`.
+    public let tabId: String
+
     /// Predicate: does the resource's enabled-capability set include the
     /// inputs that activate this section? Allowed to OR multiple
     /// capability ids — e.g. money is enabled by `money`, `expenses`,
@@ -60,12 +66,14 @@ public struct CapabilitySection: Identifiable {
     public init(
         id: String,
         priority: Int,
+        tabId: String = "overview",
         isEnabledFor: @escaping (Set<String>) -> Bool,
         isVisibleFor: ((ResourceDetailContext) -> Bool)? = nil,
         render: @escaping (ResourceDetailContext) -> AnyView
     ) {
         self.id = id
         self.priority = priority
+        self.tabId = tabId
         self.isEnabledFor = isEnabledFor
         self.isVisibleFor = isVisibleFor
         self.render = render
