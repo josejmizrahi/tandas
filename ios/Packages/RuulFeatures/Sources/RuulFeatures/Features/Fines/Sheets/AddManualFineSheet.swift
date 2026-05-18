@@ -71,7 +71,7 @@ public struct AddManualFineSheet: View {
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
                     if mwp.member.isFounder {
-                        Text("ADMIN")
+                        Text("FUNDADOR")
                             .ruulTextStyle(RuulTypography.footnote)
                             .foregroundStyle(Color.ruulAccent)
                     }
