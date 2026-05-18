@@ -17,7 +17,7 @@ Cualquier sesión (humana o IA) que toque arquitectura lee este documento antes 
 
 1. **Group es el dominio social.** Único sujeto colectivo de coordinación. Persistente, gobernable, propietario de todo lo demás.
 
-2. **Resource es el objeto coordinado.** Único primitive‑objeto top‑level. Polimórfico vía `resource_type`. Enum congelado: `event`, `fund`, `asset`, `space`, `slot`, `right`. Cualquier subtype nuevo pasa el filtro ontológico (§13). Specs canónicos por tipo: `Plans/Active/EventResource.md` (event), `Plans/Active/Asset.md` (asset), `Plans/Active/Space.md` (space), `Plans/Active/Fund.md` (fund), `Plans/Active/Slot.md` (slot). Los 6 cubiertos al 2026-05-18 — siguiente: `Plans/Active/Right.md`.
+2. **Resource es el objeto coordinado.** Único primitive‑objeto top‑level. Polimórfico vía `resource_type`. Enum congelado: `event`, `fund`, `asset`, `space`, `slot`, `right`. Cualquier subtype nuevo pasa el filtro ontológico (§13). Specs canónicos por tipo: `Plans/Active/EventResource.md` (event), `Plans/Active/Asset.md` (asset), `Plans/Active/Space.md` (space), `Plans/Active/Fund.md` (fund), `Plans/Active/Slot.md` (slot), `Plans/Active/Right.md` (right). **Los 6 cubiertos al 2026-05-18.**
 
 3. **Project es futuro y excepcional.** Sólo cuando Resource + capabilities no alcanzan para coordinar un objetivo multi‑mes con milestones reales. Hoy: no existe.
 
