@@ -359,6 +359,11 @@ public struct HistoryItemPresentation {
             self.icon = "pencil.and.list.clipboard"
             self.title = "\(actor) actualizó el evento"
             self.tone = .neutral
+        // Event lifecycle — eventReopened (mig 00295, status revert to scheduled)
+        case .eventReopened:
+            self.icon = "arrow.counterclockwise.circle"
+            self.title = "\(actor) reabrió el evento"
+            self.tone = .info
 
         // Space lifecycle (mig 00207_space_writers + mig 00264_space_universal_atoms)
         case .spaceCreated:

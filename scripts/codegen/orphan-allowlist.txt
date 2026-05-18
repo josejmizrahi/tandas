@@ -32,3 +32,13 @@ assetBookingsUnlocked  # mig 00284 — emitted by unlock_asset_bookings RPC
 identityPromoted       # verify-otp edge fn — emitted on anon→phone identity upgrade
 rightMetadataUpdated   # mig 00199 right atom — emitted by update_right_metadata RPC
 groupRolesChanged      # role write guards — emitted when groups.roles jsonb is updated
+memberCapabilityOverrideDeactivated  # mig_00286 — emitted on deactivate of member_capability_overrides row
+
+# Dot-notation atoms from mig 00314 placeholder-member workflow. CANNOT be
+# promoted to Swift enum cases as-is because the codegen parser only
+# accepts camelCase identifiers (scripts/codegen/parser.ts CASE_RE). When
+# iOS needs to consume these, either rename the DB events or extend the
+# parser to support `case name = "raw.value"` raw-string mapping.
+member.claimed             # mig_00314 — accept_placeholder_claim
+member.merge_declined      # mig_00314 — decline_placeholder_claim
+member.placeholder_created # mig_00314 — finalize_placeholder_member

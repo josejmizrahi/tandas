@@ -126,9 +126,10 @@ public extension SystemEventType {
         // Right lifecycle (mig 00198 + mig 00203_right_expiration_warning)
         case .rightExpiringSoon:      return "Derecho próximo a expirar"
 
-        // Event lifecycle additions (mig 00208 — eventStarted, mig 00210 — eventUpdated)
+        // Event lifecycle additions (mig 00208 — eventStarted, mig 00210 — eventUpdated, mig 00295 — eventReopened)
         case .eventStarted:           return "Evento iniciado"
         case .eventUpdated:           return "Evento actualizado"
+        case .eventReopened:          return "Evento reabierto"
 
         // Space rule overdue atoms (mig 00269 — Plans/Active/SpaceRules.md PR-2)
         case .bookingNoCheckIn:        return "Nadie marcó llegada a la reserva"
@@ -193,7 +194,7 @@ public extension SystemEventType {
              .assetCheckedIn, .custodyAssigned, .custodyReleased,
              .maintenanceLogged, .maintenanceCompleted, .damageReported,
              .valuationRecorded, .resourceLinked, .resourceUnlinked,
-             .eventCancelled, .eventStarted, .eventUpdated,
+             .eventCancelled, .eventStarted, .eventUpdated, .eventReopened,
              .rightCreated, .rightTransferred, .rightDelegated,
              .rightRevoked, .rightExpired, .rightExercised,
              .rightSuspended, .rightRestored, .rightExpiringSoon,

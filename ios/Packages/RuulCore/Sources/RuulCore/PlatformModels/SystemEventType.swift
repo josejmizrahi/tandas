@@ -280,6 +280,12 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// through `resourceRenamed`. Payload: `{changed_keys, changed_by,
     /// title, title_changed}`.
     case eventUpdated
+    /// Emitted by `reopen_event` RPC (mig 00295) which reverses the
+    /// `close_event_no_fines` / `cancel_event` status flip. Permits
+    /// transition `status=completed|cancelled → scheduled`. Payload:
+    /// `{previous_status, reopened_by, title}`. Drives "X reabrió el
+    /// evento Y" in the activity feed.
+    case eventReopened
 
     // MARK: - Space rule overdue atoms (mig 00269 — Plans/Active/SpaceRules.md PR-2)
     /// Emitted by the `emit-space-no-check-in-events` cron (mig 00270)
