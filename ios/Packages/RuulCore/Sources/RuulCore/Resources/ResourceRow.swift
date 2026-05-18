@@ -83,3 +83,24 @@ public struct ResourceRow: Resource, Codable, Sendable, Hashable {
     public var isArchived: Bool { archivedAt != nil }
 }
 
+extension ResourceRow {
+    /// Member-row id of the current holder for a `right` resource. Reads
+    /// `metadata.holder_member_id` (populated by `create_right` alongside
+    /// `holder_user_id`). Returns nil for non-right resources or when
+    /// the metadata key is missing / unparseable.
+    ///
+    /// Used by `RightActionSheet` to filter the transfer recipient picker
+    /// so the current holder isn't offered as a self-transfer target.
+    /// Lives on the model so the view layer stays type-agnostic — per
+    /// ontology constitution Rule 6 ("UI siempre capability-driven; cero
+    /// switch resource_type en routing").
+    public var rightHolderMemberId: UUID? {
+        guard resourceType == .right,
+              let raw = metadata["holder_member_id"]?.stringValue,
+              !raw.isEmpty,
+              let id = UUID(uuidString: raw)
+        else { return nil }
+        return id
+    }
+}
+

@@ -151,7 +151,7 @@ public struct UniversalResourceDetailView: View {
                 action: action,
                 rightId: context.resource.id,
                 members: Array(context.memberDirectory.values),
-                holderMemberId: currentHolderMemberId,
+                holderMemberId: context.resource.rightHolderMemberId,
                 onCompleted: {
                     // The right's resource row mutated server-side
                     // (status/metadata). The outer detail screen owns
@@ -513,16 +513,6 @@ public struct UniversalResourceDetailView: View {
         "delegation", "voting", "approval", "appeal",
         "consequence", "swap", "cancellation", "reminder", "history",
     ]
-
-    /// Reads `metadata.holder_member_id` off the polymorphic resource row.
-    /// Used by `RightActionSheet` to filter the transfer recipient picker
-    /// so the current holder isn't offered as a self-transfer target.
-    private var currentHolderMemberId: UUID? {
-        guard context.resource.resourceType == .right,
-              let raw = context.resource.metadata["holder_member_id"]?.stringValue,
-              let id = UUID(uuidString: raw) else { return nil }
-        return id
-    }
 
     // MARK: - Resolver-driven actions
 
