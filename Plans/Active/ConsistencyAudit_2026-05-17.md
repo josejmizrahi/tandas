@@ -478,15 +478,15 @@ Truth > Projection > Cache > UI — restored across the 6 resource types, rule e
 **TRANSITIONAL DEBT (Post-Beta safe):**
 - F6 resource_links narrow kind
 - F9 transfer_asset owner mutation
-- F11 record_ledger_entry stale whitelist
+- F11 record_ledger_entry stale whitelist — **CLOSED Post-Beta (mig 00285 P6)** whitelist synced to 11 canonical types
 - F12 resource_links sin atom_guard
-- F14 rule_versions.status weak guard
+- F14 rule_versions.status weak guard — **CLOSED Post-Beta (mig 00285 P3)** transitions enforced active→superseded/inactive
 - F15 book_slot non-idempotent
 - F16 member_capability_overrides mutable
 - F18 fund.target unguarded mutability
 
 **DOCUMENTATION ONLY:**
-- F13 notifications_outbox guard option
+- F13 notifications_outbox guard option — **CLOSED Post-Beta (mig 00285 P9)** partial guard: only dispatched_at/status/error mutable, no DELETE
 - F17 space.status dead field
 - F21 vote_casts pending pre-seed not dup-guarded
 
