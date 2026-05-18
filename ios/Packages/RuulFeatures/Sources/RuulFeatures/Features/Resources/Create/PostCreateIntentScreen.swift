@@ -485,6 +485,11 @@ struct PresentedIntent: Identifiable {
 ///   - `childResourceWizard` → caller-driven (e.g. dismiss current
 ///     sheet + present a fresh `ResourceCreationSheet`) via
 ///     `PostCreateResourceActions.onCreateChildResource`
+///   - `checkoutAssetSheet` → `CheckOutAssetSheet`
+///   - `logMaintenanceSheet` → `LogMaintenanceSheet`
+///   - `reportDamageSheet` → `ReportDamageSheet`
+///   - `createSlotUnderAssetSheet` → `CreateSlotSheet`
+///   - `fundLockSheet` → `LockFundSheet`
 ///
 ///   Navigation-targeting (call `onNavigate(.matching_case)` →
 ///   caller dismisses sheet + routes):
@@ -570,6 +575,50 @@ private struct DestinationPresenter: View {
             // deps into the presenter.
             if let onCreate = resourceContext?.actions.onCreateChildResource {
                 childWizardLauncher(prefilledType: prefilledType, onCreate: onCreate)
+            } else {
+                placeholder
+            }
+
+        // Asset-toolbar sheets — all take `asset: ResourceRow` and
+        // a completion callback; each handles its own RPC via the
+        // sheet's @Environment(AppState.self). Reuse same pattern as
+        // UniversalResourceDetailView's toolbar dispatcher.
+        case .checkoutAssetSheet:
+            if let row = resourceContext?.resourceRow,
+               let ctx = resourceContext {
+                CheckOutAssetSheet(
+                    asset: row,
+                    members: ctx.members,
+                    onSubmitted: onClose
+                )
+            } else {
+                placeholder
+            }
+
+        case .logMaintenanceSheet:
+            if let row = resourceContext?.resourceRow {
+                LogMaintenanceSheet(asset: row, onSubmitted: onClose)
+            } else {
+                placeholder
+            }
+
+        case .reportDamageSheet:
+            if let row = resourceContext?.resourceRow {
+                ReportDamageSheet(asset: row, onSubmitted: onClose)
+            } else {
+                placeholder
+            }
+
+        case .createSlotUnderAssetSheet:
+            if let row = resourceContext?.resourceRow {
+                CreateSlotSheet(asset: row, onCreated: onClose)
+            } else {
+                placeholder
+            }
+
+        case .fundLockSheet:
+            if let row = resourceContext?.resourceRow {
+                LockFundSheet(asset: row, onLocked: onClose)
             } else {
                 placeholder
             }
