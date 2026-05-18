@@ -27,7 +27,7 @@ import {
   type ResourcesRow,
 } from "../_shared/ruleContext.ts";
 import { getNow } from "../_shared/time.ts";
-import type { Rule, SystemEvent } from "../_shared/platformTypes.ts";
+import type { ExecutionResult, Rule, SystemEvent } from "../_shared/platformTypes.ts";
 import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -85,6 +85,14 @@ serve(withSentry(async (req) => {
       totalResults += results.length;
       totalErrors += results.filter((r) => !r.success).length;
 
+      // 4.5. Sprint 4.10 (mig 00284 + Plans/Active/RuleEngineDoctrine §6,12)
+      // per ConsistencyAudit F5. Write one rule_evaluations row per
+      // ExecutionResult. ON CONFLICT (idempotency_key) DO NOTHING handles
+      // retry de-duplication. The per-sink dedup checks (proposeFine, etc.)
+      // remain as defense-in-depth; rule_evaluations now provides the
+      // canonical audit trail the doctrine requires.
+      await recordRuleEvaluations(supabase, event, results);
+
       // 5. Mark processed
       await markProcessed(supabase, event.id, now, results);
     } catch (e) {
@@ -115,6 +123,125 @@ async function markProcessed(
     update.payload = { results };
   }
   await supabase.from("system_events").update(update).eq("id", eventId);
+}
+
+/**
+ * Sprint 4.10 (Plans/Active/ConsistencyAudit_2026-05-17.md F5,
+ * Plans/Active/RuleEngineDoctrine.md §6+§12). Writes one rule_evaluations
+ * row per ExecutionResult so the engine has the audit trail + dedup contract
+ * the doctrine requires. idempotency_key encodes
+ * `rule_version_id|trigger_event_id|actor|index_within_rule` so a retry of
+ * the same event hits the UNIQUE and short-circuits.
+ *
+ * Verdict mapping (subset of CHECK constraint values):
+ *   success=true  + emitted/created → 'matched_consequences'
+ *   success=true  + neither         → 'matched_no_action'
+ *   success=false                   → 'error'
+ *
+ * Skip semantics ('no_match', 'exception_short_circuit') happen INSIDE
+ * runRulesForEvent and don't surface as ExecutionResult — they remain
+ * unaudited at this layer. Adding them is a follow-up that requires
+ * engine-level instrumentation (Plans/Active/ConsistencyAudit Sprint 4
+ * post-Beta cleanup).
+ *
+ * Rule versions: looks up the current rule_version per rule_id. If a rule
+ * has no rule_version row yet (legacy rule pre-publish), the audit row is
+ * skipped (rule_evaluations.rule_version_id is NOT NULL).
+ */
+async function recordRuleEvaluations(
+  supabase: ReturnType<typeof createClient>,
+  event: SystemEvent,
+  results: ExecutionResult[],
+) {
+  if (results.length === 0) return;
+
+  const ruleIds = [...new Set(results.map((r) => r.rule_id))];
+
+  // Batch fetch active rule_versions for the affected rules.
+  // The active set is enforced single-version-per-rule by publisher RPCs
+  // (mig 00181/00247). When status-mgmt drift creates multiple, pick the
+  // highest version deterministically.
+  const { data: versions } = await supabase
+    .from("rule_versions")
+    .select("id, rule_id, version")
+    .in("rule_id", ruleIds)
+    .eq("status", "active")
+    .order("version", { ascending: false });
+
+  const versionByRule = new Map<string, string>();
+  for (const v of (versions ?? []) as Array<{ id: string; rule_id: string; version: number }>) {
+    if (!versionByRule.has(v.rule_id)) versionByRule.set(v.rule_id, v.id);
+  }
+
+  // Index within (rule, actor) gives a deterministic position so the
+  // idempotency_key is stable across retries of the same engine run.
+  const indexCounter = new Map<string, number>();
+
+  type EvalRow = {
+    rule_id: string;
+    rule_version_id: string;
+    trigger_event_id: string;
+    trigger_event_table: string;
+    group_id: string;
+    actor_id: string | null;
+    verdict: string;
+    consequences: unknown;
+    conflicts_detected: unknown;
+    error_message: string | null;
+    idempotency_key: string;
+  };
+
+  const rows: EvalRow[] = [];
+  for (const r of results) {
+    const ruleVersionId = versionByRule.get(r.rule_id);
+    if (!ruleVersionId) continue; // can't audit without rule_version FK
+
+    const groupKey = `${r.rule_id}|${r.member_id ?? "null"}`;
+    const idx = indexCounter.get(groupKey) ?? 0;
+    indexCounter.set(groupKey, idx + 1);
+
+    let verdict: string;
+    if (!r.success) {
+      verdict = "error";
+    } else if (
+      r.emitted_event_types.length > 0 || r.created_resource_ids.length > 0
+    ) {
+      verdict = "matched_consequences";
+    } else {
+      verdict = "matched_no_action";
+    }
+
+    rows.push({
+      rule_id: r.rule_id,
+      rule_version_id: ruleVersionId,
+      trigger_event_id: event.id,
+      trigger_event_table: "system_events",
+      group_id: event.group_id,
+      actor_id: r.member_id,
+      verdict,
+      consequences: {
+        emitted_event_types: r.emitted_event_types,
+        created_resource_ids: r.created_resource_ids,
+      },
+      conflicts_detected: [],
+      error_message: r.error,
+      idempotency_key: `${ruleVersionId}|${event.id}|${r.member_id ?? "null"}|${idx}`,
+    });
+  }
+
+  if (rows.length === 0) return;
+
+  const { error } = await supabase
+    .from("rule_evaluations")
+    .upsert(rows, { onConflict: "idempotency_key", ignoreDuplicates: true });
+
+  if (error) {
+    // Don't fail the cron run because of audit-write failure — log + continue.
+    // markProcessed still runs so the event isn't retried in a tight loop.
+    console.warn(
+      `[process-system-events] recordRuleEvaluations failed: ${error.message}`,
+    );
+  }
 }
 
 async function buildContext(
@@ -396,52 +523,18 @@ async function buildContext(
       return data.id as string;
     },
 
-    // (mig 00227, AssetRules.md §4.3) Flip resources.metadata.bookings_locked
-    // = true and emit a warningEmitted audit atom. Idempotent — re-firing
-    // on an already-locked asset returns the asset id without re-emitting
-    // the audit atom (avoids spamming the activity feed).
+    // Sprint 4.12 (mig 00284) per ConsistencyAudit F8. Refactored from direct
+    // resources.metadata UPDATE to canonical lock_asset_bookings RPC, which
+    // emits the assetBookingsLocked atom and writes the cache atomically.
+    // is_locked truth derives from asset_booking_lock_view. RPC is idempotent
+    // server-side (short-circuits when view already reports is_locked=true).
     setBookingsLocked: async (args) => {
-      const { data: current, error: readErr } = await supabase
-        .from("resources")
-        .select("metadata")
-        .eq("id", args.resource_id)
-        .single();
-      if (readErr) throw new Error(`setBookingsLocked read failed: ${readErr.message}`);
-
-      const meta = (current?.metadata ?? {}) as Record<string, unknown>;
-      if (meta.bookings_locked === true) {
-        // Already locked — no-op. Return the asset id so the rule
-        // engine still completes successfully (idempotent run).
-        return args.resource_id;
-      }
-
-      const nextMeta = {
-        ...meta,
-        bookings_locked: true,
-        bookings_locked_at: new Date().toISOString(),
-        bookings_locked_by_rule_id: args.rule_id,
-      };
-      const { error: updErr } = await supabase
-        .from("resources")
-        .update({ metadata: nextMeta })
-        .eq("id", args.resource_id);
-      if (updErr) throw new Error(`setBookingsLocked update failed: ${updErr.message}`);
-
-      // Audit atom — visibility for admins / activity feed.
-      const { error: emitErr } = await supabase.rpc("record_system_event", {
-        p_group_id:    args.group_id,
-        p_event_type:  "warningEmitted",
-        p_resource_id: args.resource_id,
-        p_member_id:   null,
-        p_payload:     {
-          rule_id: args.rule_id,
-          reason:  args.reason ?? "bookings locked by rule",
-          kind:    "lockBookings",
-        },
+      const { error } = await supabase.rpc("lock_asset_bookings", {
+        p_asset_id: args.resource_id,
+        p_reason:   args.reason ?? "bookings locked by rule",
+        p_rule_id:  args.rule_id,
       });
-      if (emitErr) {
-        console.warn(`setBookingsLocked: audit atom emit failed (lock still applied): ${emitErr.message}`);
-      }
+      if (error) throw new Error(`setBookingsLocked lock_asset_bookings failed: ${error.message}`);
       return args.resource_id;
     },
 
