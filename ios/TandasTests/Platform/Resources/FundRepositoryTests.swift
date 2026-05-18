@@ -105,6 +105,52 @@ struct FundRepositoryTests {
         #expect(unlocked?.lockedReason == nil)
     }
 
+    /// Per Plans/Active/CleanupAudit_2026-05-18/08_tests.md §9.4 fund-lock
+    /// idempotency guard. Re-locking an already-locked fund must preserve
+    /// the original lockedAt + lockedReason — the server-side `fund_lock`
+    /// RPC (mig 00198) short-circuits on already-locked state so no second
+    /// `fundLocked` atom is emitted; the mock mirrors that contract.
+    @Test("lock twice preserves original lockedAt + reason (idempotent)")
+    func lockIsIdempotent() async throws {
+        let fundId = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(fundId: fundId)])
+
+        try await repo.lock(fundId: fundId, reason: "primera razón")
+        let firstLock = try await repo.get(fundId).first
+        let firstLockedAt = firstLock?.lockedAt
+        #expect(firstLockedAt != nil)
+        #expect(firstLock?.lockedReason == "primera razón")
+
+        // Wait so any non-idempotent re-stamp would produce a measurably
+        // newer lockedAt; without idempotency this assertion would catch
+        // the regression because firstLockedAt < secondLockedAt.
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        try await repo.lock(fundId: fundId, reason: "razón distinta — debe ignorarse")
+        let secondLock = try await repo.get(fundId).first
+        #expect(secondLock?.lockedAt == firstLockedAt)
+        #expect(secondLock?.lockedReason == "primera razón")
+    }
+
+    /// Symmetric guard: re-unlocking an already-unlocked fund must be a
+    /// no-op (no atom emission, no state churn).
+    @Test("unlock on an already-unlocked fund is a no-op")
+    func unlockIsIdempotent() async throws {
+        let fundId = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(fundId: fundId)])
+
+        let baseline = try await repo.get(fundId).first
+        #expect(baseline?.isLocked == false)
+
+        // unlock on a never-locked fund must not throw and must leave
+        // state identical to the seed.
+        try await repo.unlock(fundId: fundId)
+        let after = try await repo.get(fundId).first
+        #expect(after?.isLocked == false)
+        #expect(after?.lockedAt == baseline?.lockedAt)
+        #expect(after?.lockedReason == baseline?.lockedReason)
+    }
+
     @Test("progressTowardsTarget computes ratio")
     func targetProgress() {
         let half = Fund(
