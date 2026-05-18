@@ -50,10 +50,6 @@ public struct UniversalResourceDetailView: View {
     /// the matching SwiftUI sheet bound to it.
     @State private var activeFundSheet: FundSheetSelection?
 
-    /// Bumped after every successful fund action so `FundBalanceSection`'s
-    /// `.task(id:)` re-runs and the projection re-reads.
-    @State private var fundRefreshToken: Int = 0
-
     public init(context: ResourceDetailContext) {
         self.context = context
     }
@@ -80,17 +76,6 @@ public struct UniversalResourceDetailView: View {
                 // needs to switch on resource_type here. Per ontology
                 // constitution Rule 6 ("UI siempre capability-driven").
                 catalogSections(idIn: Self.bespokePreRSVPSectionIds)
-                if context.resource.resourceType == .fund {
-                    // Fund-specific projection card. Stays inline because
-                    // FundBalanceSection takes a `refreshToken: Int` that
-                    // the catalog render closure can't capture. Fase 3:
-                    // refactor section to take context-only and use an
-                    // observable refresh signal.
-                    FundBalanceSection(
-                        fundId: context.resource.id,
-                        refreshToken: fundRefreshToken
-                    )
-                }
                 if context.enabledCapabilities.contains("rsvp") {
                     RSVPSectionView(context: context)
                 }
@@ -217,15 +202,12 @@ public struct UniversalResourceDetailView: View {
         }
     }
 
-    /// Fan-out after a successful fund action. Bumps the FundBalanceSection
-    /// refresh token so its `.task(id:)` re-reads `fund_balance_view`, AND
-    /// calls `context.onResourceMutated` so the parent coordinator refetches
-    /// the resource row (the "Estado: Bloqueado" indicator in the
-    /// INFORMACIÓN card reads from row metadata, so a lock/unlock changes
-    /// it). The two signals are complementary — the projection and the
-    /// row each have their own freshness contract.
+    /// Fan-out after a successful fund action. Calls
+    /// `context.onResourceMutated` so the parent coordinator re-fetches
+    /// the resource row. FundBalanceSection observes the new row's
+    /// `updatedAt` via `.task(id: fund.updatedAt)` and re-reads the
+    /// projection automatically — one signal, single source of truth.
     private func onFundActionSucceeded() {
-        fundRefreshToken &+= 1
         Task { await context.onResourceMutated() }
     }
 
@@ -489,10 +471,12 @@ public struct UniversalResourceDetailView: View {
     }
 
     /// Bespoke sections rendered BEFORE the rsvp inline section.
-    /// Type-aware (asset.* + space.*) per their `isVisibleFor` predicates.
+    /// Type-aware (asset.* + space.* + fund.balance) per their
+    /// `isVisibleFor` predicates.
     private static let bespokePreRSVPSectionIds: Set<String> = [
         "asset.custody", "asset.ownership", "asset.maintenance", "asset.bookings",
         "space.capacity", "space.occupancy", "space.bookings",
+        "fund.balance",
     ]
 
     /// Bespoke sections rendered AFTER the rules inline section.

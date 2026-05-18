@@ -143,6 +143,7 @@ public final class CapabilitySectionCatalog {
         register(SpaceCapacitySection.definition)
         register(SpaceOccupancySection.definition)
         register(SpaceBookingsSection.definition)
+        register(FundBalanceSection.definition)
         register(ResourcesUsedSectionView.definition)
 
         // Stub sections (Sections/Stubs/). Backend wiring lands per

@@ -17,22 +17,34 @@ import RuulUI
 /// Multi-currency funds surface multiple snapshots (one per currency)
 /// stacked vertically. V1 single-currency groups see one row.
 ///
-/// Refresh contract: the parent passes `refreshToken` from a `@State`
-/// counter that bumps after every successful contribute / record-expense
-/// / lock action. `.task(id:)` re-runs whenever that token changes so
-/// the card stays in sync without manual reload.
+/// Refresh contract: the parent calls `context.onResourceMutated()`
+/// after every successful contribute / record-expense / lock action,
+/// which re-fetches the resource row server-side. The new row carries
+/// a fresh `updatedAt` (touched by every fund mutation RPC), so
+/// `.task(id: fund.updatedAt)` re-runs and the projection re-reads.
+/// No external refresh-token plumbing needed — the row's timestamp IS
+/// the refresh signal. Per Plans/Active/UniversalRuleTemplates.md §14
+/// catalog migration pattern.
 public struct FundBalanceSection: View {
     @Environment(AppState.self) private var app
-    public let fundId: UUID
-    public let refreshToken: Int
+    public let fund: ResourceRow
 
     @State private var snapshots: [Fund] = []
     @State private var loadError: String?
 
-    public init(fundId: UUID, refreshToken: Int) {
-        self.fundId = fundId
-        self.refreshToken = refreshToken
+    public init(fund: ResourceRow) {
+        self.fund = fund
     }
+
+    /// Catalog registration — fund-only via isVisibleFor. No capability
+    /// gate (fund is the resource type, the balance card is intrinsic).
+    public static let definition = CapabilitySection(
+        id: "fund.balance",
+        priority: 167,
+        isEnabledFor: { _ in true },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .fund },
+        render: { ctx in AnyView(FundBalanceSection(fund: ctx.resource)) }
+    )
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
@@ -45,7 +57,7 @@ public struct FundBalanceSection: View {
                 }
             }
         }
-        .task(id: refreshToken) { await reload() }
+        .task(id: fund.updatedAt) { await reload() }
     }
 
     // MARK: - Cards
@@ -168,7 +180,7 @@ public struct FundBalanceSection: View {
     @MainActor
     private func reload() async {
         do {
-            snapshots = try await app.fundRepo.get(fundId)
+            snapshots = try await app.fundRepo.get(fund.id)
             loadError = nil
         } catch {
             snapshots = []
