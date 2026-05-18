@@ -141,11 +141,6 @@ public struct EventDetailHost: View {
             onPresentLedger: { sheet = .ledger },
             onPresentRules: { sheet = .rules },
             onPresentEditResource: { onEditEvent(coordinator.event) },
-            // Events have their capability set hard-seeded by mig
-            // 00109/00110 — surfacing "Activar capability" would be a
-            // dead route. The top-nav menu filters this item out via
-            // ResourceDetailContext.usesEventHero.
-            onPresentEnableCapability: { },
             onOpenInboxAction: { action in
                 await openInboxAction(action, coordinator: coordinator)
             },

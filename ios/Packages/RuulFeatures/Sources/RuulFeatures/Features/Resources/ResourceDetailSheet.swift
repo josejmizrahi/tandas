@@ -37,7 +37,6 @@ public struct ResourceDetailSheet: View {
     @State private var ledgerCoordinator: ResourceLedgerCoordinator?
     @State private var rulesSheetPresented: Bool = false
     @State private var rulesCoordinator: ResourceRulesCoordinator?
-    @State private var enableCapabilityPresented: Bool = false
 
     public init(resource: ResourceRow) { self.resource = resource }
 
@@ -72,18 +71,6 @@ public struct ResourceDetailSheet: View {
             if presented && rulesCoordinator == nil {
                 rulesCoordinator = makeRulesCoordinator()
             }
-        }
-        .fullScreenCover(isPresented: $enableCapabilityPresented) {
-            ManageCapabilitiesSheet(
-                resourceId: resource.id,
-                resourceType: resource.resourceType,
-                enabled: capabilities.filter { $0.enabled },
-                onChanged: {
-                    // Refresh capabilities so the new section renders.
-                    Task { await reloadCapabilities() }
-                }
-            )
-
         }
     }
 
@@ -210,7 +197,6 @@ public struct ResourceDetailSheet: View {
             // edit path. Keep as no-op rather than crashing if a future
             // resource type opts back in before its editor exists.
             onPresentEditResource:     { },
-            onPresentEnableCapability: { enableCapabilityPresented = true },
             onOpenInboxAction: { action in
                 await handleInboxAction(action)
             },

@@ -41,7 +41,6 @@ public struct ResourceDetailContext {
     public let onPresentLedger: () -> Void
     public let onPresentRules: () -> Void
     public let onPresentEditResource: () -> Void
-    public let onPresentEnableCapability: () -> Void
     public let onOpenInboxAction: (UserAction) async -> Void
     /// Tap callback for a member-row in any section (RSVP roll, attendance
     /// list, host check-in roll). Optional — when nil, sections render
@@ -73,7 +72,6 @@ public struct ResourceDetailContext {
         onPresentLedger: @escaping () -> Void = {},
         onPresentRules: @escaping () -> Void = {},
         onPresentEditResource: @escaping () -> Void = {},
-        onPresentEnableCapability: @escaping () -> Void = {},
         onOpenInboxAction: @escaping (UserAction) async -> Void = { _ in },
         onSelectMember: @escaping (UUID) -> Void = { _ in },
         onDismiss: (() -> Void)? = nil,
@@ -89,7 +87,6 @@ public struct ResourceDetailContext {
         self.onPresentLedger = onPresentLedger
         self.onPresentRules = onPresentRules
         self.onPresentEditResource = onPresentEditResource
-        self.onPresentEnableCapability = onPresentEnableCapability
         self.onOpenInboxAction = onOpenInboxAction
         self.onSelectMember = onSelectMember
         self.onDismiss = onDismiss

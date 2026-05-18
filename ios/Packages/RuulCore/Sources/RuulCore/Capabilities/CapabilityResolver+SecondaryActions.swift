@@ -418,16 +418,10 @@ public extension CapabilityResolver {
             kind: .share
         ))
 
-        // Sprint E (V15): enableCapability + archive both require
-        // modifyGovernance (matches server-side after mig 00291).
-        if viewerPermissions.contains(.manageModules) {
-            items.append(SecondaryAction(
-                label: "Activar capability",
-                symbol: "switch.2",
-                section: .governance,
-                kind: .enableCapability
-            ))
-        }
+        // Post-Pass-1: `.enableCapability` is no longer surfaced from
+        // the ⋯ menu — capability management lives in the Governance
+        // tab (`GovernanceTabView`). The SecondaryAction.Kind case stays
+        // defined for future re-use but is never emitted here.
         if viewerPermissions.contains(.modifyGovernance) {
             items.append(SecondaryAction(
                 label: "Archivar",
