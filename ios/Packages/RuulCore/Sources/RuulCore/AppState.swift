@@ -410,6 +410,27 @@ public final class AppState {
     /// in live mode; mock/preview can assign `MockNotificationPreferenceRepository`.
     public var notificationPreferenceRepo: (any NotificationPreferenceRepository)?
 
+    /// Placeholder member creation (admin agrega miembro pre-signup) —
+    /// mig 00310-00315 + edge fn `create-placeholder-member`. Optional
+    /// so existing constructors don't break; UI hides the "Agregar
+    /// pendiente" affordance when nil. Wired by `TandasApp` in live mode.
+    public var placeholderMemberRepo: (any PlaceholderMemberRepository)?
+
+    /// Claim/discover/decline for placeholder members (mig 00317-00318).
+    /// Optional so existing constructors don't break; `PendingClaimsView`
+    /// and `ClaimReviewView` degrade to no-op when nil.
+    public var claimRepo: (any ClaimRepository)?
+
+    /// Pending placeholder-claim token from a Universal Link
+    /// (`ruul://claim/<token>` or `https://ruul.app/claim/<token>`).
+    /// `ClaimReviewView` consumes this when the root shell mounts post-auth.
+    public var pendingClaimToken: String?
+
+    /// Pending placeholder claims discovered post-login via phone match
+    /// (Camino B). Refreshed by `start()` once a session is live. Empty
+    /// when the user has no matching placeholders.
+    public var pendingPlaceholderClaims: [PendingPlaceholderClaim] = []
+
     /// Refreshes `moduleRegistry` from the server-side `public.modules`
     /// catalog (mig 00060). Falls back to the existing registry on error
     /// — the cold-start `v1Fallback` is always good enough for the V1
@@ -473,6 +494,7 @@ public final class AppState {
                 async let templates: Void = loadRuleTemplates()
                 _ = await (modules, shapes, templates)
                 await refreshProfileAndGroups()
+                await refreshPendingPlaceholderClaims()
                 // Beta 1 W3 E-3.1: open cross-device realtime channels
                 // once we have a session. RLS scopes incoming rows so a
                 // single un-filtered channel per table is enough.
@@ -525,7 +547,15 @@ public final class AppState {
     }
 
     public func handleIncomingURL(_ url: URL) {
-        // Invite codes take precedence (ruul://invite/...)
+        // Placeholder claim magic link (ruul://claim/<token> or
+        // https://ruul.app/claim/<token>). Token is opaque hex from
+        // mig 00315 — captured into `pendingClaimToken`; the root shell
+        // shows ClaimReviewView when this is set.
+        if let token = Self.parseClaimToken(from: url) {
+            pendingClaimToken = token
+            return
+        }
+        // Invite codes take precedence over deeplinks below
         if let code = InviteLinkGenerator.parseInviteCode(from: url) {
             pendingInviteCode = code
             return
@@ -590,6 +620,46 @@ public final class AppState {
 
     public func consumePendingInvite() {
         pendingInviteCode = nil
+    }
+
+    public func consumePendingClaimToken() {
+        pendingClaimToken = nil
+    }
+
+    /// Re-fetches `pendingPlaceholderClaims` from `claimRepo`. Called by
+    /// `start()` once a session is live and after a claim accept/decline so
+    /// PendingClaimsView reflects the latest server state. Silent on error
+    /// — leaves the previous list intact rather than blocking the UI.
+    public func refreshPendingPlaceholderClaims() async {
+        guard let repo = claimRepo else {
+            self.pendingPlaceholderClaims = []
+            return
+        }
+        do {
+            self.pendingPlaceholderClaims = try await repo.discoverPending()
+        } catch {
+            // Network/RLS errors are non-fatal; keep last-good list.
+        }
+    }
+
+    /// Parses a placeholder-claim token from either the custom scheme
+    /// (`ruul://claim/<token>`) or the universal link
+    /// (`https://ruul.app/claim/<token>`). Returns nil for any other URL
+    /// shape so the caller can fall through to other handlers.
+    static func parseClaimToken(from url: URL) -> String? {
+        // Custom scheme: ruul://claim/<token>
+        if url.scheme == "ruul", url.host == "claim" {
+            let token = url.lastPathComponent
+            return token.isEmpty ? nil : token
+        }
+        // Universal link: https://ruul.app/claim/<token>
+        if url.scheme == "https",
+           let host = url.host, host == "ruul.app" || host == "www.ruul.app",
+           url.pathComponents.count >= 3, url.pathComponents[1] == "claim" {
+            let token = url.pathComponents[2]
+            return token.isEmpty ? nil : token
+        }
+        return nil
     }
 
     public func consumeEventDeepLink() {

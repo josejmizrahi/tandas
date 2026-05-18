@@ -200,6 +200,8 @@ struct TandasApp: App {
                 userActionRepo: userActions,
                 client: client
             )
+            state.placeholderMemberRepo = LivePlaceholderMemberRepository(client: client)
+            state.claimRepo = LiveClaimRepository(client: client)
             _appState = State(initialValue: state)
         }
     }
