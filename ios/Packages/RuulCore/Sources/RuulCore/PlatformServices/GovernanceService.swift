@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import Supabase
 
 /// Abstraction over `GovernanceService` so coordinators can inject mocks in
 /// tests. The single requirement mirrors the actor's `canPerform` signature.
@@ -83,7 +84,110 @@ public extension GovernanceServiceProtocol {
 public actor GovernanceService: GovernanceServiceProtocol {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "governance")
 
-    public init() {}
+    /// When non-nil, `hasPermission` consults the server's `has_permission`
+    /// RPC (mig 00228) with a short TTL cache. When nil (tests / mocks /
+    /// pure-local previews), falls back to the protocol default impl which
+    /// walks `group.roles` locally — same semantics, no I/O.
+    private let client: SupabaseClient?
+
+    /// Cache key for the server-RPC hasPermission cache.
+    private struct PermissionCacheKey: Hashable {
+        let groupId: UUID
+        let userId: UUID
+        let permission: String
+    }
+
+    /// (group, user, permission) → (result, timestamp). 30s TTL — server
+    /// is authoritative on actions, so a brief UI gating drift is bounded
+    /// (worst case: stale cache shows/hides a control; the RPC re-validates).
+    private var permissionCache: [PermissionCacheKey: (result: Bool, at: Date)] = [:]
+    private static let permissionCacheTTL: TimeInterval = 30
+
+    public init(client: SupabaseClient? = nil) {
+        self.client = client
+    }
+
+    // MARK: - hasPermission server override
+    //
+    // Sprint E (V17 fix): override the protocol-extension default impl
+    // to consult the server's has_permission RPC (mig 00228) when wired
+    // with a SupabaseClient. Sub-30s TTL cache prevents N+1 round-trips
+    // for repeated UI gating reads in the same render cycle.
+    //
+    // No explicit invalidation hooks today: 30s TTL is short enough that
+    // role mutations (assign/unassign/upsert/delete role RPCs) become
+    // visible within one refresh. The server remains the authoritative
+    // gate for actions — a stale cache only mis-renders, never escalates.
+    public func hasPermission(
+        _ permission: Permission,
+        member: Member,
+        in group: Group
+    ) async throws -> Bool {
+        guard let client else {
+            return localHasPermission(permission, member: member, in: group)
+        }
+
+        let permString = permission.rawString
+        let key = PermissionCacheKey(
+            groupId: group.id,
+            userId: member.userId,
+            permission: permString
+        )
+
+        if let cached = permissionCache[key],
+           Date().timeIntervalSince(cached.at) < Self.permissionCacheTTL {
+            return cached.result
+        }
+
+        struct RpcParams: Encodable {
+            let p_group_id:   String
+            let p_user_id:    String
+            let p_permission: String
+        }
+        let result: Bool = try await client
+            .rpc("has_permission", params: RpcParams(
+                p_group_id:   group.id.uuidString.lowercased(),
+                p_user_id:    member.userId.uuidString.lowercased(),
+                p_permission: permString
+            ))
+            .execute()
+            .value
+
+        permissionCache[key] = (result, Date())
+        return result
+    }
+
+    /// Local fallback used when no Supabase client is wired (tests / mocks).
+    /// Same semantics as the protocol default impl. Inlined here to keep
+    /// the actor self-contained.
+    private nonisolated func localHasPermission(
+        _ permission: Permission,
+        member: Member,
+        in group: Group
+    ) -> Bool {
+        let catalog = group.effectiveRoles
+        let candidates: [String] =
+            !member.rawRoles.isEmpty ? member.rawRoles :
+            (!member.role.isEmpty ? [member.role] : [])
+        for rawRoleId in candidates {
+            if let def = catalog[rawRoleId], def.grants(permission) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Manually invalidate the cache. Callers that just mutated roles
+    /// (assignRole, unassignRole, upsert/delete role catalog) can call
+    /// this to force a fresh server read on the next hasPermission.
+    public func clearPermissionCache() {
+        permissionCache.removeAll()
+    }
+
+    /// Scope-limited cache invalidation: drop entries for one group.
+    public func clearPermissionCache(groupId: UUID) {
+        permissionCache = permissionCache.filter { $0.key.groupId != groupId }
+    }
 
     /// Decides whether `member` can perform `action` in `group`.
     ///

@@ -1,10 +1,19 @@
 import Foundation
 
 /// Action-typed permission identifier used by `RoleDefinition.permissions`
-/// to declare what a role can do. Consulted by
-/// `GovernanceService.hasPermission` (which calls the server's
-/// `has_permission()` RPC, mig 00063) before falling back to the
-/// legacy governance jsonb (`whoCan*` PermissionLevel).
+/// to declare what a role can do.
+///
+/// Resolved via `GovernanceService.hasPermission(_:member:in:)`. When the
+/// actor is wired with a SupabaseClient (live path), this calls the
+/// server's `has_permission()` RPC (mig 00228) with a 30s TTL cache.
+/// When wired without a client (tests / mocks / previews), it walks the
+/// local `group.roles` catalog — same semantics, no I/O. Sprint E
+/// fulfilled this contract; pre-Sprint-E this docstring was aspirational.
+///
+/// Independent from the legacy governance jsonb (`whoCan*` PermissionLevel)
+/// evaluated by `GovernanceService.canPerform`. The two compose: an
+/// action may be allowed via either the role permission OR the governance
+/// `whoCan*` level. Server-side RLS + RPC gates remain authoritative.
 ///
 /// Foundation slice ships the V1 actions actually checked today plus
 /// Phase 2/3 placeholders so templates declaring custom roles

@@ -108,7 +108,9 @@ struct TandasApp: App {
             let rules = LiveRuleRepository(client: client)
             let votes = LiveVoteRepository(client: client)
             let voteCasts = LiveVoteCastRepository(client: client)
-            let governance = GovernanceService()
+            // Sprint E (V17): wire SupabaseClient so hasPermission calls the
+            // server has_permission RPC (cached, 30s TTL).
+            let governance = GovernanceService(client: client)
             let otp = LiveOTPService(client: client)
             let templates = TemplateRegistry(repository: LiveTemplateRepository(client: client))
             let events = LiveEventRepository(client: client)
