@@ -31,10 +31,19 @@ public actor FundResourceBuilder: ResourceBuilder {
         [
             BuilderField(
                 key: "targetAmountCents",
-                label: "Meta (centavos, opcional)",
+                label: "Meta (centavos)",
                 kind: .integer,
                 placeholder: "ej: 500000 = $5,000",
-                helpText: "Meta opcional para mostrar progreso. Se almacena en centavos."
+                helpText: "Meta opcional para mostrar progreso. Se almacena en centavos.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "currency",
+                label: "Moneda",
+                kind: .text,
+                placeholder: "MXN",
+                helpText: "Por defecto MXN.",
+                isOptional: true
             )
         ]
     }
