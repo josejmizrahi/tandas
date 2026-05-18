@@ -278,6 +278,7 @@ public extension PostCreateIntentScreen {
         attachedCapabilities: Set<String>,
         viewerPermissions: Set<Permission>,
         activator: LazyCapabilityActivator,
+        resourceContext: PostCreateResourceContext? = nil,
         intents: any ResourceIntentRegistry = DefaultResourceIntentRegistry.v1,
         visibility: IntentVisibilityResolver = IntentVisibilityResolver(),
         onClose: (() -> Void)? = nil
@@ -290,10 +291,31 @@ public extension PostCreateIntentScreen {
             attachedCapabilities: attachedCapabilities,
             viewerPermissions: viewerPermissions,
             activator: activator,
+            resourceContext: resourceContext,
             intents: intents,
             visibility: visibility,
             onClose: onClose
         )
+    }
+}
+
+/// Optional context the post-create screen needs to render the wired
+/// `Destination` cases (instead of the placeholder card). Callers that
+/// don't pass this leave all destinations on placeholder — useful for
+/// tests / previews / surfaces that just want the screen to display.
+///
+/// What each field unlocks:
+///   - `metadata`: source of `name` + `currency` for fund-shaped
+///     destinations (ContributeToFundSheet / RecordExpenseFromFundSheet)
+///     and any future destination that needs resource attributes.
+///   - `members`: required by RecordExpenseFromFundSheet's recipient
+///     picker. Pulled from `AppState.memberDirectory` in production.
+public struct PostCreateResourceContext: Sendable {
+    public let metadata: [String: JSONConfig]
+    public let members: [MemberWithProfile]
+    public init(metadata: [String: JSONConfig], members: [MemberWithProfile]) {
+        self.metadata = metadata
+        self.members = members
     }
 }
 
@@ -308,6 +330,7 @@ private struct PostCreateIntentScreenContainer: View {
     let attachedCapabilities: Set<String>
     let viewerPermissions: Set<Permission>
     let activator: LazyCapabilityActivator
+    let resourceContext: PostCreateResourceContext?
     let intents: any ResourceIntentRegistry
     let visibility: IntentVisibilityResolver
     let onClose: (() -> Void)?
@@ -338,6 +361,9 @@ private struct PostCreateIntentScreenContainer: View {
         .sheet(item: $presentedIntent) { wrapped in
             DestinationPresenter(
                 intent: wrapped.intent,
+                resourceId: resourceId,
+                groupId: group.id,
+                resourceContext: resourceContext,
                 onClose: { presentedIntent = nil }
             )
         }
@@ -354,20 +380,83 @@ struct PresentedIntent: Identifiable {
     let intent: ResourceIntent
 }
 
-/// Renders the matching view for an intent's `Destination`. Phase B.1
-/// scope: a placeholder card per case with intent-specific copy +
-/// "Cerrar" CTA. Real per-destination view wiring (ContributeToFundSheet,
-/// LinkResourcePickerSheet, RecordValuationSheet, …) is deferred to
-/// per-surface PRs so each one can land with proper smoke testing.
+/// Renders the matching view for an intent's `Destination`. Wires the
+/// destinations that have an existing sheet impl + are commonly used
+/// across the 5 founder validation cases. Unwired cases fall through
+/// to a placeholder card with intent-specific copy.
 ///
-/// Doctrine: every Destination case has a renderer here — never a
-/// `default: EmptyView()`. An unwired destination renders a "próximamente"
-/// card so the user knows the tap registered.
+/// Doctrine: every Destination case has a renderer — never a `default:
+/// EmptyView()`. Taps must never dead-end silently.
+///
+/// Currently wired (B.2 in progress):
+///   - `linkPicker` → `LinkResourcePickerSheet`
+///   - `ledgerEntryForm(.credit)` → `ContributeToFundSheet`
+///   - `ledgerEntryForm(.debit)` → `RecordExpenseFromFundSheet`
+///
+/// Wired destinations require `resourceContext`. When the context is
+/// nil (tests, previews, callers that opted out), they fall back to
+/// the placeholder so the screen still renders coherently.
 private struct DestinationPresenter: View {
     let intent: ResourceIntent
+    let resourceId: UUID
+    let groupId: UUID
+    let resourceContext: PostCreateResourceContext?
     let onClose: () -> Void
 
     var body: some View {
+        switch intent.destination {
+        case .linkPicker:
+            LinkResourcePickerSheet(
+                eventId: resourceId,
+                groupId: groupId,
+                alreadyLinkedIds: [],
+                onLinked: { _ in onClose() }
+            )
+
+        case .ledgerEntryForm(let prefill):
+            if let ctx = resourceContext {
+                ledgerSheet(prefill: prefill, ctx: ctx)
+            } else {
+                placeholder
+            }
+
+        default:
+            placeholder
+        }
+    }
+
+    @ViewBuilder
+    private func ledgerSheet(
+        prefill: Destination.LedgerPrefill?,
+        ctx: PostCreateResourceContext
+    ) -> some View {
+        let name = ctx.metadata["name"]?.stringValue ?? "Fondo"
+        let currency = ctx.metadata["currency"]?.stringValue ?? "MXN"
+        switch prefill {
+        case .credit, nil:
+            // Credit = aportación. Nil treated as credit because the
+            // standard "money in" verb is the more common entry point;
+            // callers wanting a debit explicitly pass .debit.
+            ContributeToFundSheet(
+                fundId: resourceId,
+                fundName: name,
+                currency: currency,
+                onDidContribute: onClose
+            )
+        case .debit:
+            RecordExpenseFromFundSheet(
+                fundId: resourceId,
+                fundName: name,
+                currency: currency,
+                members: ctx.members,
+                onDidRecord: onClose
+            )
+        }
+    }
+
+    /// Placeholder card for not-yet-wired destinations + cases where
+    /// resourceContext is required but absent.
+    private var placeholder: some View {
         VStack(spacing: RuulSpacing.lg) {
             Image(systemName: intent.icon)
                 .font(.system(size: 48, weight: .semibold))
@@ -392,11 +481,9 @@ private struct DestinationPresenter: View {
         .presentationDetents([.medium])
     }
 
-    /// Copy shown until the destination has a real renderer. Pulls
-    /// `firstRunCopy` when set — that's already founder-voiced;
-    /// otherwise falls back to a generic "próximamente". Phase B.2
-    /// replaces this whole struct with a real switch on
-    /// `intent.destination`.
+    /// Copy shown for destinations that don't have a wired renderer
+    /// yet. Pulls `firstRunCopy` when set (already founder-voiced);
+    /// otherwise generic "próximamente".
     private var placeholderCopy: String {
         if !intent.firstRunCopy.isEmpty {
             return "\(intent.firstRunCopy)\n\n(Esta pantalla llega en la siguiente iteración.)"
