@@ -13,6 +13,7 @@ public struct InviteMembersFromGroupView: View {
     @State private var loading = false
     @State private var sending = false
     @State private var error: String?
+    @State private var showAddPlaceholder = false
 
     public init(group: RuulCore.Group) { self.group = group }
 
@@ -34,6 +35,11 @@ public struct InviteMembersFromGroupView: View {
             .background(Color.ruulBackground.ignoresSafeArea())
             .ruulSheetToolbar("Invitar miembros")
             .task { await loadPending() }
+            .sheet(isPresented: $showAddPlaceholder) {
+                AddPlaceholderSheet(group: group) { _ in
+                    Task { await loadPending() }
+                }
+            }
         }
     }
 
@@ -71,6 +77,20 @@ public struct InviteMembersFromGroupView: View {
                 Button("Enviar") { Task { await sendInvite() } }
                     .buttonStyle(.borderedProminent)
                     .disabled(sending || newPhone.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            // Placeholder member: cuenta para turnos/RSVP/fines/votos antes
+            // de que la persona acepte (mig 00310-00319 + edge fn
+            // create-placeholder-member). Solo visible cuando el repo está
+            // wireado (live builds) — mocks/previews lo ocultan.
+            if app.placeholderMemberRepo != nil {
+                Button {
+                    showAddPlaceholder = true
+                } label: {
+                    Label("Agregar pendiente (cuenta desde ya)", systemImage: "person.fill.badge.plus")
+                        .ruulTextStyle(RuulTypography.footnote)
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, RuulSpacing.xs)
             }
         }
     }
