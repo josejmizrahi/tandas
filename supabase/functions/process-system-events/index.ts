@@ -501,6 +501,108 @@ async function buildContext(
       if (mErr || !m) return null;
       return m.id as string;
     },
+
+    // (mig 00268, SpaceRules.md PR-3) Booking metadata lookup for the
+    // bookingCancelled trigger evaluator. Reads the bookings atom row
+    // and unpacks starts_at / ends_at / target_kind from its metadata
+    // jsonb. Returns null on stale references — atom payloads can
+    // outlive the booking row in edge cases (FK on delete restrict
+    // normally prevents this, but defensive).
+    loadBookingMetadata: async (bookingId) => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("group_id, slot_id, member_id, metadata")
+        .eq("id", bookingId)
+        .maybeSingle();
+      if (error) {
+        console.warn(`loadBookingMetadata read failed: ${error.message}`);
+        return null;
+      }
+      if (!data) return null;
+      const meta = (data.metadata ?? {}) as Record<string, unknown>;
+      return {
+        group_id: data.group_id as string,
+        target_resource_id: data.slot_id as string,
+        target_kind: (meta.target_kind as string | null) ?? null,
+        member_id: data.member_id as string,
+        starts_at: (meta.starts_at as string | null) ?? null,
+        ends_at:   (meta.ends_at as string | null) ?? null,
+        booked_at: (meta.booked_at as string | null) ?? null,
+      };
+    },
+
+    // (mig 00268, SpaceRules.md PR-3) Reads group_members.roles for the
+    // actorHasRole condition. Returns [] when the member doesn't exist
+    // or has no roles array; condition then short-circuits to false.
+    loadMemberRoles: async (memberId) => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("roles")
+        .eq("id", memberId)
+        .maybeSingle();
+      if (error) {
+        console.warn(`loadMemberRoles read failed: ${error.message}`);
+        return [];
+      }
+      if (!data) return [];
+      const raw = data.roles;
+      if (!Array.isArray(raw)) return [];
+      return raw.filter((r): r is string => typeof r === "string");
+    },
+
+    // (mig 00268, SpaceRules.md PR-3) Invokes expire_booking RPC. Idempotent
+    // server-side — short-circuits when a bookingCancelled/Expired atom
+    // already exists. Reason is the cron-style identifier (`no_check_in`,
+    // `expired`); the rule_id is folded into the reason string for
+    // traceability since the RPC doesn't take a rule_id parameter.
+    expireBooking: async (args) => {
+      const reason = args.reason ?? "expired";
+      const { error } = await supabase.rpc("expire_booking", {
+        p_booking_id: args.booking_id,
+        p_reason:     `rule:${args.rule_id}:${reason}`,
+      });
+      if (error) throw new Error(`expireBooking expire_booking failed: ${error.message}`);
+      return args.booking_id;
+    },
+
+    // (mig 00268, SpaceRules.md PR-3) Re-emits a spaceWaitlistJoined
+    // atom with bumped priority for the actor. Idempotent: tags the
+    // new atom with `priority_bumped_by: source_atom_id` and skips
+    // when a previous bump on the same source atom exists. Reads
+    // group_id from the space resource (resource_id = space). The
+    // atom's payload.priority = original + delta so the projection
+    // (space_waitlist_view, follow-up) reorders the queue accordingly.
+    bumpWaitlistPriority: async (args) => {
+      // Idempotency: check if any spaceWaitlistJoined atom already
+      // carries this source_atom_id as priority_bumped_by.
+      const { data: existing } = await supabase
+        .from("system_events")
+        .select("id")
+        .eq("event_type", "spaceWaitlistJoined")
+        .eq("resource_id", args.space_id)
+        .eq("member_id", args.member_id)
+        .eq("payload->>priority_bumped_by", args.source_atom_id)
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) return existing.id as string;
+
+      const newPriority = args.original_priority + args.priority_delta;
+      const { data, error } = await supabase.rpc("record_system_event", {
+        p_group_id:    args.group_id,
+        p_event_type:  "spaceWaitlistJoined",
+        p_resource_id: args.space_id,
+        p_member_id:   args.member_id,
+        p_payload:     {
+          priority:           newPriority,
+          joined_at:          new Date().toISOString(),
+          priority_bumped_by: args.source_atom_id,
+          priority_delta:     args.priority_delta,
+          rule_id:            args.rule_id,
+        },
+      });
+      if (error) throw new Error(`bumpWaitlistPriority record_system_event failed: ${error.message}`);
+      return data as string;
+    },
   };
 
   return {

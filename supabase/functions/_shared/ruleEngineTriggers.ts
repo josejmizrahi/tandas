@@ -494,4 +494,122 @@ export const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
       },
     }];
   },
+
+  // ===========================================================================
+  // Space rule triggers (mig 00268, Plans/Active/SpaceRules.md §3.1)
+  // ===========================================================================
+
+  // (PR-3) Emitted by book_space when a booking lands at capacity. Single
+  // target = the booker. Drives `space_capacity_overflow_waitlist` template
+  // (notifies group; UI then offers join_waitlist to subsequent bookers).
+  // The atom is a signal — no obligation enumeration here.
+  spaceCapacityReached: async (event, _rule, _context) => {
+    if (!event.resource_id) return [];
+    return [{
+      member_id: event.member_id ?? null,
+      resource_id: event.resource_id,
+      context: {
+        capacity:             event.payload?.capacity ?? null,
+        triggered_booking_id: event.payload?.triggered_booking_id ?? null,
+        source_atom_id:       event.id,
+      },
+    }];
+  },
+
+  // (PR-3) Emitted by cancel_booking. Single target = the original booker
+  // (event.member_id, stamped by cancel_booking). Loads the booking row
+  // to project starts_at into target.context so cancelledWithinHours can
+  // compute hours-before-start without a re-fetch from inside the
+  // condition evaluator. Drives `space_cancellation_late_fine`.
+  bookingCancelled: async (event, _rule, context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    const bookingId = event.payload?.booking_id as string | undefined;
+    const bookingMeta = bookingId
+      ? await context.sink.loadBookingMetadata(bookingId)
+      : null;
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        booking_id:            bookingId ?? null,
+        target_kind:           event.payload?.target_kind ?? bookingMeta?.target_kind ?? null,
+        cancelled_by:          event.payload?.cancelled_by ?? null,
+        reason:                event.payload?.reason ?? null,
+        cancelled_at:          event.occurred_at,
+        booking_starts_at:     bookingMeta?.starts_at ?? null,
+        booking_ends_at:       bookingMeta?.ends_at ?? null,
+        source_atom_id:        event.id,
+      },
+    }];
+  },
+
+  // (PR-3) Synthetic atom emitted by emit-space-no-check-in-events cron.
+  // member_id = the booker (cron stamps it). Drives
+  // `space_no_check_in_release` template — releaseBooking consequence
+  // closes the claim. Payload already carries booking_id + starts_at +
+  // minutes_overdue (the cron projects them) so no booking lookup needed.
+  bookingNoCheckIn: async (event, _rule, _context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        booking_id:       event.payload?.booking_id ?? null,
+        booking_starts_at: event.payload?.starts_at ?? null,
+        minutes_overdue:  event.payload?.minutes_overdue ?? null,
+        grace_minutes:    event.payload?.grace_minutes ?? null,
+        source_atom_id:   event.id,
+      },
+    }];
+  },
+
+  // (PR-3) Emitted by book_space (and book_slot) every time a booking
+  // is created. Single target = the booker. Projects starts_at + ends_at
+  // + computed duration_minutes onto target.context so
+  // bookingDurationAbove / outsideAllowedHours can read them. Drives
+  // `space_outside_allowed_hours_deny` + `space_long_booking_vote`.
+  bookingCreated: async (event, _rule, _context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    const startsAtRaw = event.payload?.starts_at as string | undefined;
+    const endsAtRaw   = event.payload?.ends_at as string | undefined;
+    let durationMinutes: number | null = null;
+    if (startsAtRaw && endsAtRaw) {
+      const startMs = new Date(startsAtRaw).getTime();
+      const endMs   = new Date(endsAtRaw).getTime();
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
+        durationMinutes = Math.floor((endMs - startMs) / 60_000);
+      }
+    }
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        booking_id:                event.payload?.booking_id ?? null,
+        target_kind:               event.payload?.target_kind ?? null,
+        booking_starts_at:         startsAtRaw ?? null,
+        booking_ends_at:           endsAtRaw ?? null,
+        booking_duration_minutes:  durationMinutes,
+        source_atom_id:            event.id,
+      },
+    }];
+  },
+
+  // (PR-3) Emitted by join_waitlist. Single target = the joiner. Projects
+  // priority + actor_roles into target.context so actorHasRole +
+  // bumpPriority can read without re-fetching the member row. Drives
+  // `space_founder_priority_bump` template.
+  spaceWaitlistJoined: async (event, _rule, context) => {
+    if (!event.resource_id || !event.member_id) return [];
+    const actorRoles = await context.sink.loadMemberRoles(event.member_id);
+    return [{
+      member_id: event.member_id,
+      resource_id: event.resource_id,
+      context: {
+        priority:       event.payload?.priority ?? 0,
+        joined_at:      event.payload?.joined_at ?? event.occurred_at,
+        actor_roles:    actorRoles,
+        source_atom_id: event.id,
+      },
+    }];
+  },
 };

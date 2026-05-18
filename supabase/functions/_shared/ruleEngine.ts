@@ -321,6 +321,72 @@ export interface ConsequenceSink {
    *   - the host's user_id doesn't map to an active member.
    */
   resolveResourceHostMember(resourceId: UUID): Promise<UUID | null>;
+
+  /**
+   * Loads metadata for a booking atom row. Used by `bookingCancelled`
+   * and other space rule trigger evaluators that need to project the
+   * booking's `starts_at` / `ends_at` into target.context so condition
+   * evaluators (cancelledWithinHours, bookingDurationAbove,
+   * outsideAllowedHours) can read them without a second round-trip.
+   *
+   * Returns null when the booking_id doesn't resolve — defensive for
+   * stale atoms referencing deleted rows. Plans/Active/SpaceRules.md
+   * PR-3.
+   */
+  loadBookingMetadata(bookingId: UUID): Promise<
+    | {
+      group_id: UUID;
+      target_resource_id: UUID;
+      target_kind: string | null;
+      member_id: UUID;
+      starts_at: string | null;
+      ends_at: string | null;
+      booked_at: string | null;
+    }
+    | null
+  >;
+
+  /**
+   * Returns the roles array for a member (`group_members.roles` jsonb).
+   * Used by the `spaceWaitlistJoined` trigger to project actor_roles
+   * onto target.context so the `actorHasRole` condition can compare
+   * without a second round-trip. Empty array when the member has no
+   * roles or doesn't exist. Plans/Active/SpaceRules.md PR-3.
+   */
+  loadMemberRoles(memberId: UUID): Promise<string[]>;
+
+  /**
+   * Invokes `expire_booking(booking_id, reason)` for the `releaseBooking`
+   * consequence (Plans/Active/SpaceRules.md PR-3). Emits `bookingExpired`
+   * + (when target is a space) `spaceReleased`. Idempotent server-side:
+   * the RPC short-circuits when a bookingCancelled / bookingExpired atom
+   * already exists for the booking. Returns the booking id for
+   * ExecutionResult bookkeeping.
+   */
+  expireBooking(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    booking_id: UUID;
+    reason: string | null;
+  }): Promise<UUID>;
+
+  /**
+   * Re-emits a `spaceWaitlistJoined` atom for the actor with a bumped
+   * `priority` payload value. Used by the `bumpPriority` consequence
+   * (Plans/Active/SpaceRules.md PR-3). Idempotent on `source_atom_id`
+   * — the implementation tags the new atom's payload with
+   * `priority_bumped_by` and skips when a previous bump for the same
+   * source atom already exists. Returns the new system_events id.
+   */
+  bumpWaitlistPriority(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    space_id: UUID;
+    member_id: UUID;
+    original_priority: number;
+    priority_delta: number;
+    source_atom_id: UUID;
+  }): Promise<UUID>;
 }
 
 // =============================================================================

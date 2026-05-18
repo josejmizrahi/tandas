@@ -136,4 +136,83 @@ export const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
     if (typeof valuation !== "number") return false;
     return valuation > threshold;
   },
+
+  // ===========================================================================
+  // Space rule conditions (mig 00268, Plans/Active/SpaceRules.md §3.2)
+  // ===========================================================================
+
+  // (PR-3) True when the cancellation occurred within `hours` of the
+  // booking's `starts_at`. Reads target.context.cancelled_at (atom's
+  // occurred_at) vs booking_starts_at (projected by bookingCancelled
+  // trigger). Returns false when starts_at is unknown (atom was
+  // emitted on a deleted booking, etc.) — open-ended bookings can't
+  // be "late cancellations" by definition.
+  cancelledWithinHours: async (cond, target) => {
+    const hours = (cond.config.hours as number | undefined) ?? 24;
+    const startsAtRaw = target.context.booking_starts_at as string | null | undefined;
+    const cancelledAtRaw = target.context.cancelled_at as string | null | undefined;
+    if (!startsAtRaw || !cancelledAtRaw) return false;
+    const startsMs = new Date(startsAtRaw).getTime();
+    const cancelledMs = new Date(cancelledAtRaw).getTime();
+    if (Number.isNaN(startsMs) || Number.isNaN(cancelledMs)) return false;
+    // Cancellation must be BEFORE the booking start (cancelling after
+    // start isn't "late cancellation" — it's a no-show, different rule).
+    const hoursBeforeStart = (startsMs - cancelledMs) / 3_600_000;
+    return hoursBeforeStart > 0 && hoursBeforeStart < hours;
+  },
+
+  // (PR-3) True when the booking's start_at hour falls outside
+  // `[start_hour, end_hour)`. Reads target.context.booking_starts_at;
+  // returns false when missing. Hour comparison runs in UTC — the cron
+  // and the booker share the resource's timezone is a Phase 4 follow-up
+  // (today we approximate with UTC; matches the rest of the engine).
+  outsideAllowedHours: async (cond, target) => {
+    const startHour = (cond.config.start_hour as number | undefined) ?? 8;
+    const endHour   = (cond.config.end_hour   as number | undefined) ?? 22;
+    const startsAtRaw = target.context.booking_starts_at as string | null | undefined;
+    if (!startsAtRaw) return false;
+    const d = new Date(startsAtRaw);
+    if (Number.isNaN(d.getTime())) return false;
+    const hour = d.getUTCHours();
+    return hour < startHour || hour >= endHour;
+  },
+
+  // (PR-3) True when the actor (target.member_id) carries the configured
+  // role. Reads target.context.actor_roles projected from
+  // group_members.roles by the spaceWaitlistJoined trigger. Returns
+  // false when actor_roles isn't projected (defensive — shouldn't
+  // happen with PR-3 triggers but keeps the condition usable for hand-
+  // emitted atoms).
+  actorHasRole: async (cond, target) => {
+    const role = cond.config.role as string | undefined;
+    if (!role) return false;
+    const roles = target.context.actor_roles as string[] | null | undefined;
+    if (!Array.isArray(roles)) return false;
+    return roles.includes(role);
+  },
+
+  // (PR-3) True when target.context.booking_duration_minutes >
+  // config.minutes. The bookingCreated trigger projects the duration
+  // from starts_at/ends_at. Open-ended bookings (no ends_at) return
+  // false — duration is undefined, the rule short-circuits.
+  bookingDurationAbove: async (cond, target) => {
+    const threshold = (cond.config.minutes as number | undefined) ?? 0;
+    const duration = target.context.booking_duration_minutes as number | null | undefined;
+    if (typeof duration !== "number") return false;
+    return duration > threshold;
+  },
+
+  // (PR-3) True when severity >= configured level. Reads
+  // target.context.severity (projected by damageReported trigger,
+  // mig 00226). Ordering: minor < moderate < major < total. Reused
+  // across space + asset rule shapes (same atom, same semantic).
+  damageSeverityAbove: async (cond, target) => {
+    const level = (cond.config.level as string | undefined) ?? "major";
+    const sev = target.context.severity as string | null | undefined;
+    if (!sev) return false;
+    const order: Record<string, number> = { minor: 1, moderate: 2, major: 3, total: 4 };
+    const sevRank = order[sev] ?? 0;
+    const thresholdRank = order[level] ?? 0;
+    return sevRank >= thresholdRank;
+  },
 };

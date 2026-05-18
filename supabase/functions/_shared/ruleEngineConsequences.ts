@@ -373,4 +373,114 @@ export const CONSEQUENCES: Partial<Record<ConsequenceType, ConsequenceExecutor>>
       error: null,
     };
   },
+
+  // ===========================================================================
+  // Space rule consequences (mig 00268, Plans/Active/SpaceRules.md §3.3)
+  // ===========================================================================
+
+  // (PR-3) Calls expire_booking(booking_id, reason) to retire the
+  // booking that triggered the rule. Emits bookingExpired + (when
+  // target is a space) spaceReleased downstream. Idempotent — the RPC
+  // short-circuits when a bookingCancelled/Expired atom already exists.
+  // Drives `space_no_check_in_release` template.
+  releaseBooking: async (cons, target, rule, context) => {
+    const bookingId = target.context.booking_id as UUID | null | undefined;
+    if (!bookingId) {
+      return failure(rule.id, target.member_id, "releaseBooking requires target.context.booking_id");
+    }
+    const reason = (cons.config.reason as string | undefined) ?? "no_check_in";
+    try {
+      const id = await context.sink.expireBooking({
+        rule_id: rule.id,
+        group_id: rule.group_id,
+        booking_id: bookingId,
+        reason,
+      });
+      return {
+        success: true,
+        rule_id: rule.id,
+        member_id: target.member_id,
+        created_resource_ids: [id],
+        emitted_event_types: ["bookingExpired", "spaceReleased"],
+        error: null,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return failure(rule.id, target.member_id, `releaseBooking failed: ${msg}`);
+    }
+  },
+
+  // (PR-3) Soft block per TalmudicGovernance §4.G. Does NOT roll back
+  // the triggering atom (the action happened — atom is truth). Emits a
+  // warningEmitted companion atom carrying the deny message so the
+  // activity feed + admins see the rejection. UI on the caller side
+  // is what surfaces the rejection to the user — this consequence is
+  // the audit record. Idempotent via emitWarning's source_atom_id.
+  denyAction: async (cons, target, rule, context) => {
+    if (!target.resource_id) {
+      return failure(rule.id, target.member_id, "denyAction requires target.resource_id");
+    }
+    const message = (cons.config.message_es as string | undefined)
+      ?? "Esta acción no está permitida";
+    const sourceAtomId = (target.context.source_atom_id as UUID | null | undefined) ?? rule.id;
+    const id = await context.sink.emitWarning({
+      rule_id: rule.id,
+      group_id: rule.group_id,
+      resource_id: target.resource_id,
+      member_id: target.member_id,
+      reason: message,
+      source_atom_id: sourceAtomId,
+      payload: {
+        kind:         "denyAction",
+        deny_message: message,
+        ...(target.context as Record<string, unknown>),
+      },
+    });
+    return {
+      success: true,
+      rule_id: rule.id,
+      member_id: target.member_id,
+      created_resource_ids: [id],
+      emitted_event_types: ["warningEmitted"],
+      error: null,
+    };
+  },
+
+  // (PR-3) Re-emits a spaceWaitlistJoined atom for the actor with a
+  // bumped priority. Sink dedupes on source_atom_id so re-running the
+  // rule against the same join doesn't ladder priorities upward
+  // infinitely. Drives `space_founder_priority_bump`.
+  bumpPriority: async (cons, target, rule, context) => {
+    if (!target.resource_id || !target.member_id) {
+      return failure(rule.id, target.member_id, "bumpPriority requires resource_id + member_id");
+    }
+    const delta = (cons.config.priority_delta as number | undefined) ?? 100;
+    const originalPriority = (target.context.priority as number | null | undefined) ?? 0;
+    const sourceAtomId = (target.context.source_atom_id as UUID | null | undefined);
+    if (!sourceAtomId) {
+      return failure(rule.id, target.member_id, "bumpPriority requires source_atom_id in target context");
+    }
+    try {
+      const id = await context.sink.bumpWaitlistPriority({
+        rule_id: rule.id,
+        group_id: rule.group_id,
+        space_id: target.resource_id,
+        member_id: target.member_id,
+        original_priority: originalPriority,
+        priority_delta: delta,
+        source_atom_id: sourceAtomId,
+      });
+      return {
+        success: true,
+        rule_id: rule.id,
+        member_id: target.member_id,
+        created_resource_ids: [id],
+        emitted_event_types: ["spaceWaitlistJoined"],
+        error: null,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return failure(rule.id, target.member_id, `bumpPriority failed: ${msg}`);
+    }
+  },
 };

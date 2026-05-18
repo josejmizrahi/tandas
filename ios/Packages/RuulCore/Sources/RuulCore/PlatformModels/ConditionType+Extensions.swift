@@ -6,7 +6,13 @@ public extension ConditionType {
         case .alwaysTrue, .responseStatusIs, .checkInExists,
              .checkInMinutesLate, .eventDescriptionMissing,
              .amountAbove,
-             .damageAmountAbove, .transferAmountAbove:
+             .damageAmountAbove, .transferAmountAbove,
+             // Space rule conditions — evaluators landed in PR-3 of
+             // SpaceRules roadmap (engine update mig 00268 + edge
+             // function process-system-events redeploy).
+             .cancelledWithinHours, .outsideAllowedHours,
+             .actorHasRole, .bookingDurationAbove,
+             .damageSeverityAbove:
             return true
         case .minutesAfterScheduled, .hoursBeforeEvent,
              .memberHasMultipleFines, .memberFinesAbove,
@@ -14,12 +20,7 @@ public extension ConditionType {
              .eventTimeWindow, .fundBalanceAbove,
              .fundBalanceBelow, .rotationPositionEquals,
              .slotIsUnassigned, .slotExpiresInHours,
-             .daysBeforeExpiry,
-             // Space rule conditions — shapes in catalog (mig 00268)
-             // but evaluators land in PR-3 of SpaceRules roadmap.
-             .cancelledWithinHours, .outsideAllowedHours,
-             .actorHasRole, .bookingDurationAbove,
-             .damageSeverityAbove:
+             .daysBeforeExpiry:
             return false
         case .unknown:
             return false
