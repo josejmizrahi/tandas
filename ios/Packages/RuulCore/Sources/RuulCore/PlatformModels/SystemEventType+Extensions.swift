@@ -79,8 +79,15 @@ public extension SystemEventType {
         case .fundLocked:             return "Fondo bloqueado"
         case .fundUnlocked:           return "Fondo desbloqueado"
 
-        // Space (mig 00203)
+        // Space (mig 00207 + 00264 — Plans/Active/Space.md §9)
         case .spaceCreated:           return "Espacio creado"
+        case .spaceBooked:            return "Espacio reservado"
+        case .spaceReleased:          return "Espacio liberado"
+        case .spaceCapacityReached:   return "Espacio llegó al aforo"
+        case .spaceWaitlistJoined:    return "Entró a la lista de espera"
+        case .spaceWaitlistPromoted:  return "Promovido desde la lista de espera"
+        case .spaceAccessGranted:     return "Acceso al espacio concedido"
+        case .spaceAccessRevoked:     return "Acceso al espacio revocado"
 
         // Rotation / membership
         case .positionChanged:        return "Cambio de turno"
@@ -190,6 +197,9 @@ public extension SystemEventType {
              .fundCreated, .fundDeposit, .fundThresholdReached,
              .fundLocked, .fundUnlocked,
              .spaceCreated,
+             .spaceBooked, .spaceReleased, .spaceCapacityReached,
+             .spaceWaitlistJoined, .spaceWaitlistPromoted,
+             .spaceAccessGranted, .spaceAccessRevoked,
              .positionChanged,
              .ruleEnabledChanged, .ruleAmountChanged,
              .pendingChangeApplied,

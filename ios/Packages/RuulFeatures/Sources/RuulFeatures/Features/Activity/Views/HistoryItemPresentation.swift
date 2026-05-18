@@ -360,11 +360,39 @@ public struct HistoryItemPresentation {
             self.title = "\(actor) actualizó el evento"
             self.tone = .neutral
 
-        // Space lifecycle (mig 00203_space_writers)
+        // Space lifecycle (mig 00207_space_writers + mig 00264_space_universal_atoms)
         case .spaceCreated:
             self.icon = "building.2"
             self.title = "\(actor) creó un espacio"
             self.tone = .info
+        case .spaceBooked:
+            self.icon = "calendar.badge.checkmark"
+            self.title = "\(actor) reservó un espacio"
+            self.tone = .info
+        case .spaceReleased:
+            self.icon = "arrow.uturn.backward"
+            self.title = "Un espacio se liberó"
+            self.tone = .neutral
+        case .spaceCapacityReached:
+            self.icon = "person.3.fill"
+            self.title = "Un espacio llegó al aforo"
+            self.tone = .warning
+        case .spaceWaitlistJoined:
+            self.icon = "person.crop.circle.badge.clock"
+            self.title = "\(actor) entró a la lista de espera"
+            self.tone = .info
+        case .spaceWaitlistPromoted:
+            self.icon = "person.crop.circle.badge.checkmark"
+            self.title = "\(actor) fue promovido desde la lista de espera"
+            self.tone = .info
+        case .spaceAccessGranted:
+            self.icon = "key.fill"
+            self.title = "\(actor) recibió acceso a un espacio"
+            self.tone = .info
+        case .spaceAccessRevoked:
+            self.icon = "key.slash"
+            self.title = "Se revocó el acceso de \(actor) a un espacio"
+            self.tone = .warning
 
         case .assetCheckoutOverdue:
             self.icon = "clock.badge.exclamationmark"

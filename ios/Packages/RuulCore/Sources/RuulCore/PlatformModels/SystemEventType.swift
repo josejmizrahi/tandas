@@ -60,12 +60,47 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// fund lock. Payload: `{unlocked_by, previous_locked_at}`.
     case fundUnlocked
 
-    // MARK: - Space (mig 00203)
-    /// Emitted by `create_space` (mig 00203) when a new space resource
+    // MARK: - Space (mig 00207 + 00264 — Plans/Active/Space.md §9)
+    /// Emitted by `create_space` (mig 00207) when a new space resource
     /// lands. Payload: `{name, capacity?, location_name?, location_lat?,
     /// location_lng?, description?}`. Drives "X creó el espacio Y" in
     /// the activity feed.
     case spaceCreated
+    /// Emitted by `book_space` (mig 00265) when the *entire* space is
+    /// claimed for a window (vs a single slot inside it). `member_id` =
+    /// booker. Payload: `{booking_id, starts_at?, ends_at?, notes?}`.
+    /// Coarser than `bookingCreated` (which fires per atom row in
+    /// public.bookings); both atoms coexist so projections can derive
+    /// "Palco entero" vs "slot 19:00".
+    case spaceBooked
+    /// Emitted by `release_space` (mig 00265) or by the auto-release
+    /// rule when a no-check-in window expires. `member_id` = previous
+    /// booker. Payload: `{released_by, reason}` where reason ∈
+    /// {`manual`, `expired`, `cancelled`, `no_check_in`}.
+    case spaceReleased
+    /// Emitted by `join_waitlist` (mig 00265) when a member tries to
+    /// book a space that is at capacity. `member_id` = the member that
+    /// joined the queue. Payload: `{requested_at, priority,
+    /// triggered_booking_id?}`.
+    case spaceCapacityReached
+    /// Emitted by `join_waitlist` (mig 00265) — appends a member to the
+    /// ordered waitlist projection. Distinct atom from
+    /// `spaceCapacityReached`: capacity reached fires once per overflow,
+    /// waitlist joined fires per member. `member_id` = the joining
+    /// member. Payload: `{priority, joined_at, notes?}`.
+    case spaceWaitlistJoined
+    /// Emitted by `promote_from_waitlist` (mig 00265) when a freed slot
+    /// promotes the top of the waitlist. `member_id` = promoted member.
+    /// Payload: `{promoted_by, original_joined_at, promoted_at}`.
+    case spaceWaitlistPromoted
+    /// Emitted by `grant_space_access` (mig 00265) — admin override or
+    /// explicit grant that bypasses normal booking gates. `member_id` =
+    /// granted member. Payload: `{granted_by, until?, reason?}`.
+    case spaceAccessGranted
+    /// Emitted by `revoke_space_access` (mig 00265) — terminates a
+    /// previously-granted access. `member_id` = revoked member. Payload:
+    /// `{revoked_by, reason?}`.
+    case spaceAccessRevoked
 
     // MARK: - Rotation / membership
     case positionChanged

@@ -38,6 +38,13 @@ extension SystemEventType {
         .fundLocked,
         .fundUnlocked,
         .spaceCreated,
+        .spaceBooked,
+        .spaceReleased,
+        .spaceCapacityReached,
+        .spaceWaitlistJoined,
+        .spaceWaitlistPromoted,
+        .spaceAccessGranted,
+        .spaceAccessRevoked,
         .positionChanged,
         .memberJoined,
         .memberLeft,
@@ -124,6 +131,13 @@ extension SystemEventType {
         "fundLocked",
         "fundUnlocked",
         "spaceCreated",
+        "spaceBooked",
+        "spaceReleased",
+        "spaceCapacityReached",
+        "spaceWaitlistJoined",
+        "spaceWaitlistPromoted",
+        "spaceAccessGranted",
+        "spaceAccessRevoked",
         "positionChanged",
         "memberJoined",
         "memberLeft",
@@ -221,6 +235,13 @@ extension SystemEventType {
         case .fundLocked: return "fundLocked"
         case .fundUnlocked: return "fundUnlocked"
         case .spaceCreated: return "spaceCreated"
+        case .spaceBooked: return "spaceBooked"
+        case .spaceReleased: return "spaceReleased"
+        case .spaceCapacityReached: return "spaceCapacityReached"
+        case .spaceWaitlistJoined: return "spaceWaitlistJoined"
+        case .spaceWaitlistPromoted: return "spaceWaitlistPromoted"
+        case .spaceAccessGranted: return "spaceAccessGranted"
+        case .spaceAccessRevoked: return "spaceAccessRevoked"
         case .positionChanged: return "positionChanged"
         case .memberJoined: return "memberJoined"
         case .memberLeft: return "memberLeft"
@@ -310,6 +331,13 @@ extension SystemEventType {
         case "fundLocked": return .fundLocked
         case "fundUnlocked": return .fundUnlocked
         case "spaceCreated": return .spaceCreated
+        case "spaceBooked": return .spaceBooked
+        case "spaceReleased": return .spaceReleased
+        case "spaceCapacityReached": return .spaceCapacityReached
+        case "spaceWaitlistJoined": return .spaceWaitlistJoined
+        case "spaceWaitlistPromoted": return .spaceWaitlistPromoted
+        case "spaceAccessGranted": return .spaceAccessGranted
+        case "spaceAccessRevoked": return .spaceAccessRevoked
         case "positionChanged": return .positionChanged
         case "memberJoined": return .memberJoined
         case "memberLeft": return .memberLeft
