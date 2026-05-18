@@ -21,6 +21,7 @@
 | **C** | RPCs — eliminar `is_group_admin` callsites; fix HERESY V3 + V9/V10/V11/V12 (V13 deferred — needs finalize_vote whole-function re-ship) | DB SQL | **APPLIED 2026-05-17** (mig 00291; 11 RPCs migrated) |
 | **D** | Edge functions — fix HERESY V5 (send-event-notification auth) + V25 (verify-otp atom). V8 deferred (8 files, perf concerns) | Deno + DB | **PARTIAL APPLIED 2026-05-17** (V5+V25 shipped; V8 deferred) |
 | **E** | Swift `GovernanceService.hasPermission` llama RPC server + cache; refactor `CapabilityResolver+SecondaryActions` (cierra V15, V16, V17, V18, V19, V20) | Swift | pendiente |
+| **F.0** (out-of-order, urgent) | DB infra — migrar `is_known_system_event_type` whitelist a tabla `known_event_types` (eliminada vulnerabilidad a parallel-write that perdió `groupRolesChanged` 2 veces) | DB SQL | **APPLIED 2026-05-17** (mig 00293) |
 | **F** | Cleanup tail — eliminar `group_members.role` text + sync trigger; Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23, V24) | mixed | pendiente |
 
 Cada sprint se completa con su propio commit. Sprint B se cubre detalladamente abajo; los siguientes se especificarán cuando se inicien.
