@@ -16,65 +16,74 @@ public struct PastResourcesView: View {
         self.onOpenEvent = onOpenEvent
     }
 
-    @State private var events: [Event] = []
-    @State private var isLoading = true
-    @State private var error: EventError?
+    /// LoadPhase-driven state — uses the standard `AsyncContentView` shell
+    /// instead of the ad-hoc isLoading/error/empty switch. Stale-on-error
+    /// is "free" here: if a refresh fails after the user saw the list, the
+    /// banner appears without dumping them back to a blank screen.
+    @State private var phase: LoadPhase<[Event]> = .idle
 
     public var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            content
+            AsyncContentView(
+                phase: phase,
+                onRetry: { await load() },
+                empty: {
+                    EmptyStateView(
+                        systemImage: "clock",
+                        title: "Sin eventos pasados",
+                        message: "Aquí aparecen los eventos cerrados o cancelados."
+                    )
+                    .padding(RuulSpacing.lg)
+                },
+                loaded: { events in loadedScroll(events) }
+            )
         }
         .navigationTitle("Historial")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if isLoading {
-            RuulLoadingState()
-        } else if let error {
-            ErrorStateView(
-                systemImage: "wifi.exclamationmark",
-                title: "No pudimos cargar el historial",
-                message: error.localizedDescription,
-                retryAction: ("Reintentar", { Task { await load() } })
-            )
-            .padding(RuulSpacing.lg)
-        } else if events.isEmpty {
-            EmptyStateView(
-                systemImage: "clock",
-                title: "Sin eventos pasados",
-                message: "Aquí aparecen los eventos cerrados o cancelados."
-            )
-            .padding(RuulSpacing.lg)
-        } else {
-            ScrollView {
-                RuulSeparatedRows(items: events) { event in
-                    EventCard(
-                        event: event,
-                        myStatus: nil,
-                        isHostedByMe: event.hostId == userId
-                    ) { onOpenEvent(event) }
-                    .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
-                        content
-                            .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
-                    }
+    private func loadedScroll(_ events: [Event]) -> some View {
+        ScrollView {
+            RuulSeparatedRows(items: events) { event in
+                EventCard(
+                    event: event,
+                    myStatus: nil,
+                    isHostedByMe: event.hostId == userId
+                ) { onOpenEvent(event) }
+                .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
+                    content
+                        .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
                 }
-                .padding(RuulSpacing.lg)
             }
+            .padding(RuulSpacing.lg)
         }
+        .refreshable { await load() }
     }
 
     @MainActor
     private func load() async {
-        isLoading = true
-        defer { isLoading = false }
+        // Promote loaded → refreshing so AsyncContentView shows the inline
+        // top progress indicator instead of swapping to the full-screen
+        // spinner.
+        switch phase {
+        case .loaded(let prev): phase = .refreshing(prev)
+        case .refreshing, .failed(_, .some): break
+        default: phase = .loading
+        }
         do {
-            events = try await eventRepo.pastEvents(in: group.id, limit: 50)
+            let events = try await eventRepo.pastEvents(in: group.id, limit: 50)
+            phase = events.isEmpty ? .empty : .loaded(events)
         } catch {
-            self.error = .fetchFailed(error.localizedDescription)
+            phase = .failed(
+                CoordinatorError(
+                    title: "No pudimos cargar el historial",
+                    message: error.localizedDescription,
+                    isRetryable: true
+                ),
+                previous: phase.value
+            )
         }
     }
 }

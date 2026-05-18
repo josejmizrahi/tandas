@@ -101,34 +101,39 @@ public struct GroupHomeView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.group == nil {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(RuulSpacing.lg)
-                } else if coordinator.group == nil && coordinator.isLoading {
-                    RuulLoadingState()
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                            hero
-                            summarySection
-                            identitySection
-                            peopleSection
-                            rulesAndModulesSection
-                            moneyAndZoneSection
-                            pendingsSection
-                            advancedSection
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.xs)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
-                }
-            }
+            AsyncContentView(
+                phase: coordinator.phase,
+                onRetry: { await coordinator.refresh() },
+                loaded: { _ in loadedScroll }
+            )
         }
         .task { await coordinator.refresh() }
+    }
+
+    /// Body once `coordinator.group` is non-nil. Reads from `coordinator`
+    /// directly (not the AsyncContentView closure value) so all the
+    /// sections — which already pull from `coordinator.*` — can stay
+    /// unchanged. Stale-on-error: if a refresh fails while the user is
+    /// browsing, AsyncContentView keeps this view mounted and overlays
+    /// an error banner instead of dumping back to a blank screen.
+    private var loadedScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                hero
+                summarySection
+                identitySection
+                peopleSection
+                rulesAndModulesSection
+                moneyAndZoneSection
+                pendingsSection
+                advancedSection
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
     }
 
     /// Slim hero: avatar + nombre + member count. El código de

@@ -10,6 +10,10 @@ public struct NotificationPreferencesView: View {
     @State private var prefs: [String: Bool] = [:]
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// True después de que `load()` corrió al menos una vez. Permite
+    /// distinguir "primera carga" (mapa vacío esperando server) de
+    /// "loaded con prefs reales" en `LoadPhase.from`.
+    @State private var hasLoaded = false
 
     public init() {}
 
@@ -44,6 +48,24 @@ public struct NotificationPreferencesView: View {
 
     private static let allTypes: [PrefType] = groups.flatMap(\.types)
 
+    /// `LoadPhase` adapter inline. Notificaciones es scalar (mapa de
+    /// toggles), no aplica `.empty`. Errores de set/save siguen siendo
+    /// inline below the form — sólo el load inicial pasa por
+    /// `AsyncContentView`.
+    private var phase: LoadPhase<[String: Bool]> {
+        // El error inline (set/save) NO se eleva al `phase` — se
+        // mantiene como banner abajo del form para no desmontar los
+        // toggles cuando el usuario falla un cambio. Sólo errores de
+        // load inicial llegarían aquí, pero el load actual no setea
+        // errorMessage en el catch del load — sólo en set(). Así que
+        // pasamos nil siempre.
+        return LoadPhase.from(
+            value: hasLoaded ? prefs : nil,
+            isLoading: isLoading,
+            error: nil
+        )
+    }
+
     public var body: some View {
         NavigationStack {
             ScrollView {
@@ -51,11 +73,15 @@ public struct NotificationPreferencesView: View {
                     Text("Activa o desactiva tipos de aviso. Tu dispositivo recibirá solo los tipos activos.")
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextSecondary)
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        ForEach(Self.groups, id: \.title) { group in
-                            prefGroupSection(group)
+                    // Form area: `AsyncContentView` maneja loading
+                    // (spinner) y loaded (form). No usamos retry: el
+                    // load no expone errores al phase, así que las
+                    // únicas fases visibles son `.loading` y `.loaded`.
+                    AsyncContentView(phase: phase) { _ in
+                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                            ForEach(Self.groups, id: \.title) { group in
+                                prefGroupSection(group)
+                            }
                         }
                     }
                     if let msg = errorMessage {
@@ -118,7 +144,10 @@ public struct NotificationPreferencesView: View {
 
     private func load() async {
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             guard let repo = app.notificationPreferenceRepo else {
                 // Repo not wired (mock mode); show defaults.

@@ -14,6 +14,10 @@ public final class MembersCoordinator {
     public var members: [MemberWithProfile] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
+    /// True después de que `refresh()` completó al menos una vez. Permite
+    /// distinguir "primera carga" de "loaded empty" cuando `members == []`.
+    /// Consumido por `LoadPhase.fromCollection` en la computed `phase`.
+    public private(set) var hasLoaded: Bool = false
 
     public init(
         group: RuulCore.Group,
@@ -25,10 +29,37 @@ public final class MembersCoordinator {
         self.groupsRepo = groupsRepo
     }
 
+    /// Adapter para `AsyncContentView`. Deriva el `LoadPhase` desde los
+    /// campos `@Observable` que ya mantenemos.
+    public var phase: LoadPhase<[MemberWithProfile]> {
+        LoadPhase.fromCollection(
+            value: members,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
+    /// Phase derivado sobre `activeMembers` — las vistas que solo muestran
+    /// miembros activos (Members list/admin) usan esto para que el caso
+    /// `.empty` se evalúe contra el subset visible y no contra la lista
+    /// total (que incluye placeholders/inactivos invisibles).
+    public var activePhase: LoadPhase<[MemberWithProfile]> {
+        LoadPhase.fromCollection(
+            value: activeMembers,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             self.members = try await groupsRepo.membersWithProfiles(of: group.id)
         } catch {

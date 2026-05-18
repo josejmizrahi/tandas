@@ -214,45 +214,56 @@ private struct FilteredInboxList: View {
     let onOpenAction: (UserAction) -> Void
     let onRefresh: () async -> Void
 
+    /// Locally-derived phase. Filtered list never surfaces a coordinator
+    /// error (parent surface handles it) y siempre que se renderiza ya
+    /// disparamos `task` en el padre — `hasLoaded` se infiere desde
+    /// `!isLoading` para no exigir un segundo flag por chip.
+    private var phase: LoadPhase<[UserAction]> {
+        LoadPhase.fromCollection(
+            value: actions,
+            hasLoaded: !isLoading || !actions.isEmpty,
+            isLoading: isLoading,
+            error: nil
+        )
+    }
+
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            if actions.isEmpty && isLoading {
-                RuulLoadingState()
-                    .transition(.opacity)
-            } else if actions.isEmpty {
-                EmptyStateView(
-                    systemImage: "tray",
-                    title: "Sin pendientes",
-                    message: "No hay acciones en esta categoria."
-                )
-                .transition(.opacity)
-            } else {
-                ScrollView {
-                    VStack(spacing: RuulSpacing.sm) {
-                        ForEach(actions) { action in
-                            ActionCard(
-                                icon: icon(for: action.actionType),
-                                meta: nil,
-                                title: action.title,
-                                subtitle: action.body,
-                                priority: priority(for: action.priority),
-                                timeRemaining: UserActionExpiry.remainingDescription(for: action),
-                                onTap: { onOpenAction(action) }
-                            )
+            AsyncContentView(
+                phase: phase,
+                onRetry: { await onRefresh() },
+                empty: {
+                    EmptyStateView(
+                        systemImage: "tray",
+                        title: "Sin pendientes",
+                        message: "No hay acciones en esta categoria."
+                    )
+                },
+                loaded: { actions in
+                    ScrollView {
+                        VStack(spacing: RuulSpacing.sm) {
+                            ForEach(actions) { action in
+                                ActionCard(
+                                    icon: icon(for: action.actionType),
+                                    meta: nil,
+                                    title: action.title,
+                                    subtitle: action.body,
+                                    priority: priority(for: action.priority),
+                                    timeRemaining: UserActionExpiry.remainingDescription(for: action),
+                                    onTap: { onOpenAction(action) }
+                                )
+                            }
                         }
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
+                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.md)
-                    .padding(.bottom, RuulSpacing.s12)
+                    .scrollIndicators(.hidden)
+                    .refreshable { await onRefresh() }
                 }
-                .scrollIndicators(.hidden)
-                .refreshable { await onRefresh() }
-                .transition(.opacity)
-            }
+            )
         }
-        .animation(.linear(duration: RuulDuration.fast), value: actions.isEmpty)
-        .animation(.linear(duration: RuulDuration.fast), value: isLoading)
     }
 
     private func icon(for type: ActionType) -> String {
@@ -299,36 +310,44 @@ private struct ResolvedInboxList: View {
         return f
     }()
 
+    /// Locally-derived phase. Resolved list is read-only — no retry path
+    /// is exposed (parent reloads when the user re-taps the chip).
+    private var phase: LoadPhase<[UserAction]> {
+        LoadPhase.fromCollection(
+            value: actions,
+            hasLoaded: !isLoading || !actions.isEmpty,
+            isLoading: isLoading,
+            error: nil
+        )
+    }
+
     var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            if actions.isEmpty && isLoading {
-                RuulLoadingState()
-                    .transition(.opacity)
-            } else if actions.isEmpty {
-                EmptyStateView(
-                    systemImage: "checkmark.circle",
-                    title: "Sin resueltas",
-                    message: "Cuando completes acciones aparecerán aquí."
-                )
-                .transition(.opacity)
-            } else {
-                ScrollView {
-                    VStack(spacing: RuulSpacing.sm) {
-                        ForEach(actions) { action in
-                            resolvedRow(action)
+            AsyncContentView(
+                phase: phase,
+                empty: {
+                    EmptyStateView(
+                        systemImage: "checkmark.circle",
+                        title: "Sin resueltas",
+                        message: "Cuando completes acciones aparecerán aquí."
+                    )
+                },
+                loaded: { actions in
+                    ScrollView {
+                        VStack(spacing: RuulSpacing.sm) {
+                            ForEach(actions) { action in
+                                resolvedRow(action)
+                            }
                         }
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
+                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.md)
-                    .padding(.bottom, RuulSpacing.s12)
+                    .scrollIndicators(.hidden)
                 }
-                .scrollIndicators(.hidden)
-                .transition(.opacity)
-            }
+            )
         }
-        .animation(.linear(duration: RuulDuration.fast), value: actions.isEmpty)
-        .animation(.linear(duration: RuulDuration.fast), value: isLoading)
     }
 
     @ViewBuilder

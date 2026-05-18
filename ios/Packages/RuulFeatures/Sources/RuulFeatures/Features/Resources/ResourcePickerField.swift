@@ -31,8 +31,12 @@ struct ResourcePickerField: View {
     @Binding var binding: JSONConfig?
 
     @Environment(AppState.self) private var app
-    @State private var resources: [ResourceRow] = []
-    @State private var isLoading: Bool = true
+    /// LoadPhase-driven state replaces the legacy `@State isLoading = true`
+    /// + silent-error pattern. Previously a failed query left the spinner
+    /// stuck forever (silent fail in production); now `.failed` renders a
+    /// compact inline retry row so the user can recover without bouncing
+    /// out of the sheet.
+    @State private var phase: LoadPhase<[ResourceRow]> = .idle
 
     init(
         label: String,
@@ -56,7 +60,8 @@ struct ResourcePickerField: View {
 
     @ViewBuilder
     private var content: some View {
-        if isLoading {
+        switch phase {
+        case .idle, .loading:
             HStack(spacing: RuulSpacing.sm) {
                 ProgressView()
                 Text("Cargando recursos…")
@@ -65,7 +70,7 @@ struct ResourcePickerField: View {
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
-        } else if candidates.isEmpty {
+        case .empty:
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "tray")
                     .foregroundStyle(Color.ruulTextTertiary)
@@ -75,26 +80,68 @@ struct ResourcePickerField: View {
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
-        } else {
-            Picker("", selection: pickerBinding) {
-                Text("Selecciona…").tag(Optional<UUID>(nil))
-                ForEach(candidates) { row in
-                    Text(displayName(row)).tag(Optional(row.id))
+        case .failed(let err, _):
+            inlineErrorRow(err)
+        case .loaded(let rows), .refreshing(let rows):
+            picker(for: rows)
+        }
+    }
+
+    /// Compact inline error replacement for the spinner. Sheet-friendly —
+    /// the full-screen `ErrorStateView` would dominate a picker row. Tap
+    /// "Reintentar" to re-run `load()`.
+    private func inlineErrorRow(_ err: CoordinatorError) -> some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(Color.ruulNegative)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(err.title)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                    .lineLimit(2)
+                if let msg = err.message {
+                    Text(msg)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .lineLimit(2)
                 }
             }
-            .pickerStyle(.menu)
-            .padding(.horizontal, RuulSpacing.md)
-            .padding(.vertical, RuulSpacing.xs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 1)
-            )
+            Spacer(minLength: 0)
+            Button("Reintentar") { Task { await load() } }
+                .ruulTextStyle(RuulTypography.callout)
+                .foregroundStyle(Color.ruulAccent)
         }
+        .padding(RuulSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulNegative.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    private func picker(for rows: [ResourceRow]) -> some View {
+        let visible = filteredAndSorted(rows)
+        return Picker("", selection: pickerBinding) {
+            Text("Selecciona…").tag(Optional<UUID>(nil))
+            ForEach(visible) { row in
+                Text(displayName(row)).tag(Optional(row.id))
+            }
+        }
+        .pickerStyle(.menu)
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                .stroke(Color.ruulSeparator, lineWidth: 1)
+        )
     }
 
     // MARK: - Picker bridging
@@ -115,8 +162,10 @@ struct ResourcePickerField: View {
         )
     }
 
-    private var candidates: [ResourceRow] {
-        resources
+    /// Filters out archived rows and sorts alphabetically. Pulled out of
+    /// the body so both `.loaded` and `.refreshing` reuse it.
+    private func filteredAndSorted(_ rows: [ResourceRow]) -> [ResourceRow] {
+        rows
             .filter { $0.archivedAt == nil }
             .sorted { lhs, rhs in
                 displayName(lhs).localizedCaseInsensitiveCompare(displayName(rhs)) == .orderedAscending
@@ -136,9 +185,11 @@ struct ResourcePickerField: View {
 
     private func load() async {
         guard let groupId = app.activeGroupId else {
-            isLoading = false
+            // No active group → treat as empty (not a failure).
+            await MainActor.run { self.phase = .empty }
             return
         }
+        await MainActor.run { self.phase = .loading }
         do {
             // ResourceRepository.list takes a non-nullable `types` array,
             // so we pass the canonical six. A future BuilderField hint
@@ -150,14 +201,16 @@ struct ResourcePickerField: View {
                 statuses: nil,
                 limit: 200
             )
+            let visible = filteredAndSorted(rows)
             await MainActor.run {
-                self.resources = rows
-                self.isLoading = false
+                self.phase = visible.isEmpty ? .empty : .loaded(rows)
             }
         } catch {
             await MainActor.run {
-                self.resources = []
-                self.isLoading = false
+                self.phase = .failed(
+                    CoordinatorError.from(error, fallback: "No pudimos cargar los recursos"),
+                    previous: nil
+                )
             }
         }
     }

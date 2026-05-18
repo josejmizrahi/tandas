@@ -13,38 +13,71 @@ public struct MyTimelineView: View {
     @State private var items: [MyActivityItem] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// True después de que `load()` corrió al menos una vez. Permite
+    /// que `LoadPhase.fromCollection` distinga "primera carga" de
+    /// "loaded empty" (sin actividad propia todavía).
+    @State private var hasLoaded = false
 
     public init() {}
 
+    /// Computa el `LoadPhase` para `AsyncContentView` desde el state
+    /// local. No hay coordinator dedicado (este es un sheet auto-
+    /// contenido que lee `app.myActivityRepo`), así que el adapter
+    /// vive inline en lugar de un método público.
+    private var phase: LoadPhase<[MyActivityItem]> {
+        let coordError: CoordinatorError? = errorMessage.map { msg in
+            CoordinatorError(
+                title: "No pudimos cargar tu actividad",
+                message: msg,
+                isRetryable: true
+            )
+        }
+        return LoadPhase.fromCollection(
+            value: items,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: coordError
+        )
+    }
+
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                if isLoading && items.isEmpty {
-                    ProgressView().padding(RuulSpacing.xl)
-                } else if items.isEmpty {
-                    Text("Aún no hay actividad")
-                        .ruulTextStyle(RuulTypography.body)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                        .padding(RuulSpacing.xl)
-                } else {
-                    LazyVStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                        ForEach(groupedByDay, id: \.day) { group in
-                            section(day: group.day, items: group.items)
-                        }
-                    }
-                    .padding(RuulSpacing.lg)
-                }
-                if let errorMessage {
-                    Text(errorMessage)
-                        .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulNegative)
-                        .padding(.horizontal, RuulSpacing.lg)
-                }
-            }
+            AsyncContentView(
+                phase: phase,
+                onRetry: { await load() },
+                empty: { emptyScroll },
+                loaded: { _ in loadedScroll }
+            )
             .background(Color.ruulBackground.ignoresSafeArea())
             .ruulSheetToolbar("Mi línea de tiempo")
             .refreshable { await load() }
             .task { await load() }
+        }
+    }
+
+    /// Loaded path: lista agrupada por día. Preserva `.refreshable`
+    /// y scroll vertical originales.
+    private var loadedScroll: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                ForEach(groupedByDay, id: \.day) { group in
+                    section(day: group.day, items: group.items)
+                }
+            }
+            .padding(RuulSpacing.lg)
+        }
+    }
+
+    /// Empty path: el mensaje conversacional original envuelto en
+    /// scroll para mantener `.refreshable` operativo cuando no hay
+    /// nada todavía.
+    private var emptyScroll: some View {
+        ScrollView {
+            Text("Aún no hay actividad")
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(RuulSpacing.xl)
+                .frame(maxWidth: .infinity)
         }
     }
 
@@ -192,7 +225,10 @@ public struct MyTimelineView: View {
     private func load() async {
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         guard let repo = app.myActivityRepo else { return }
         do {
             items = try await repo.loadRecent(limit: 100)

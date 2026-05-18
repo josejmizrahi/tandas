@@ -23,6 +23,10 @@ public final class OpenVotesCoordinator {
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
     public private(set) var lastRefreshedAt: Date?
+    /// True después de que `refresh()` completó al menos una vez. Permite
+    /// distinguir "primera carga" de "loaded empty" cuando `openVotes == []`.
+    /// Consumido por `LoadPhase.fromCollection` en la computed `phase`.
+    public private(set) var hasLoaded: Bool = false
 
     private let cacheTTL: TimeInterval = 60
 
@@ -59,6 +63,17 @@ public final class OpenVotesCoordinator {
 
     deinit { changeFeedTask?.cancel() }
 
+    /// Adapter para `AsyncContentView`. Deriva el `LoadPhase` desde los
+    /// campos `@Observable` que ya mantenemos.
+    public var phase: LoadPhase<[Vote]> {
+        LoadPhase.fromCollection(
+            value: openVotes,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
     public func refresh(force: Bool = false) async {
         if !force, let last = lastRefreshedAt,
            Date.now.timeIntervalSince(last) < cacheTTL {
@@ -66,7 +81,10 @@ public final class OpenVotesCoordinator {
         }
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             let votes = try await voteRepo.openVotes(for: group.id)
             openVotes = votes

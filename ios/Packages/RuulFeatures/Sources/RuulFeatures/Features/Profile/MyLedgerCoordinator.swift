@@ -14,7 +14,7 @@ import RuulCore
 /// the cached directory pattern used everywhere else in the app.
 @Observable @MainActor
 public final class MyLedgerCoordinator {
-    public struct GroupLedger: Identifiable, Hashable {
+    public struct GroupLedger: Identifiable, Hashable, Sendable {
         public let group: RuulCore.Group
         public let myMemberId: UUID
         public let entries: [LedgerEntry]
@@ -31,6 +31,11 @@ public final class MyLedgerCoordinator {
     public private(set) var ledgers: [GroupLedger] = []
     public private(set) var isLoading: Bool = true
     public private(set) var error: String?
+    /// True después de que `refresh()` corrió al menos una vez. Permite
+    /// que `LoadPhase.fromCollection` distinga "primera carga" (sin
+    /// ledgers todavía) de "loaded empty" (el usuario no tiene
+    /// movimientos en ningún grupo).
+    public private(set) var hasLoaded: Bool = false
 
     private let ledgerRepo: any LedgerRepository
     private let groupsRepo: any GroupsRepository
@@ -53,7 +58,10 @@ public final class MyLedgerCoordinator {
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
 
         var collected: [GroupLedger] = []
         for group in allGroups {
@@ -102,6 +110,27 @@ public final class MyLedgerCoordinator {
             if entry.toMemberId == myMemberId { received += entry.amountCents }
         }
         return (paid, received)
+    }
+
+    /// Adapter para `AsyncContentView`. El primary signal son `ledgers`;
+    /// el view luego branches en `hasAnyActivity` dentro del builder
+    /// `loaded` para distinguir "ledgers cargados pero nadie movió plata"
+    /// vs "ledgers con totales reales". `error` (String legacy) se eleva
+    /// a `CoordinatorError` con el message conservado.
+    public var phase: LoadPhase<[GroupLedger]> {
+        let coordError: CoordinatorError? = error.map { msg in
+            CoordinatorError(
+                title: "Sin acceso",
+                message: msg,
+                isRetryable: true
+            )
+        }
+        return LoadPhase.fromCollection(
+            value: ledgers,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: coordError
+        )
     }
 
     // MARK: - Aggregates

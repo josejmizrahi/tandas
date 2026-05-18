@@ -188,22 +188,24 @@ public struct HomeView: View {
 
     @ViewBuilder
     private var upcomingFeedSection: some View {
-        if let error = coordinator.error, upcomingFeed.isEmpty {
-            ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
-                .frame(minHeight: 240, alignment: .top)
-        } else if coordinator.isLoading && upcomingFeed.isEmpty {
-            RuulLoadingState()
-                .frame(minHeight: 240, alignment: .top)
-        } else if upcomingFeed.isEmpty {
-            emptyHero
-        } else {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                RuulListSectionHeader("PRÓXIMO", count: upcomingFeed.count)
-                RuulSeparatedRows(items: upcomingFeed) { item in
-                    activityRow(item)
+        // AsyncContentView centraliza loading/error/refresh/empty/stale.
+        // El `loaded` builder recibe el `HomeFeed` agregado del coordinator
+        // pero la lista de filas que rendereamos sigue siendo `upcomingFeed`
+        // (mismo merge cronológico events + resources).
+        AsyncContentView(
+            phase: coordinator.phase,
+            onRetry: { await coordinator.refresh(force: true) },
+            empty: { emptyHero },
+            loaded: { _ in
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                    RuulListSectionHeader("PRÓXIMO", count: upcomingFeed.count)
+                    RuulSeparatedRows(items: upcomingFeed) { item in
+                        activityRow(item)
+                    }
                 }
             }
-        }
+        )
+        .frame(minHeight: 240, alignment: .top)
     }
 
     /// Single row used for every feed entry — events and other resources

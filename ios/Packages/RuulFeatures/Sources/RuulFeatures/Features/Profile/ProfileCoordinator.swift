@@ -18,6 +18,10 @@ public final class ProfileCoordinator {
     public var isLoading: Bool = false
     public var isUploadingAvatar: Bool = false
     public var error: CoordinatorError?
+    /// True después de que `refresh()` corrió al menos una vez. Permite
+    /// que `LoadPhase.from` distinga "primera carga sin profile" de
+    /// "refresh fallido sin datos previos".
+    public private(set) var hasLoaded: Bool = false
 
     public init(userId: UUID, profileRepo: any ProfileRepository) {
         self.userId = userId
@@ -27,13 +31,28 @@ public final class ProfileCoordinator {
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             self.profile = try await profileRepo.loadMine()
         } catch {
             log.warning("profile refresh failed: \(error.localizedDescription, privacy: .public)")
             self.error = CoordinatorError.from(error, fallback: "No pudimos cargar tu perfil")
         }
+    }
+
+    /// Adapter para `AsyncContentView`. Profile es un value scalar
+    /// (no collection) — no aplica el caso `.empty`. Usamos
+    /// `LoadPhase.from` con isEmpty default; el view sólo branches
+    /// sobre loaded/loading/failed.
+    public var phase: LoadPhase<Profile> {
+        LoadPhase.from(
+            value: profile,
+            isLoading: isLoading,
+            error: error
+        )
     }
 
     public func clearError() { error = nil }

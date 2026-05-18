@@ -20,16 +20,10 @@ public struct OpenVotesListView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.openVotes.isEmpty {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh(force: true) } })
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.lg)
-                        .transition(.opacity)
-                } else if coordinator.openVotes.isEmpty && coordinator.isLoading {
-                    RuulLoadingState()
-                        .transition(.opacity)
-                } else if coordinator.openVotes.isEmpty {
+            AsyncContentView(
+                phase: coordinator.phase,
+                onRetry: { await coordinator.refresh(force: true) },
+                empty: {
                     // Beta 1 W4 F-4.3: hide the "Crear votación" CTA
                     // while generic vote creation is gated. Appeal-driven
                     // votes still open from the fine flow.
@@ -41,8 +35,8 @@ public struct OpenVotesListView: View {
                             ? ("Crear votación", onCreateVote) : nil
                     )
                     .padding(.top, RuulSpacing.s10)
-                    .transition(.opacity)
-                } else {
+                },
+                loaded: { _ in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: RuulSpacing.lg) {
                             ForEach(coordinator.sectioned(), id: \.0) { section, votes in
@@ -65,12 +59,8 @@ public struct OpenVotesListView: View {
                     }
                     .scrollIndicators(.hidden)
                     .refreshable { await coordinator.refresh(force: true) }
-                    .transition(.opacity)
                 }
-            }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.openVotes.isEmpty)
+            )
         }
         .navigationTitle("Votos abiertos")
         .toolbar {

@@ -18,6 +18,10 @@ public final class MyFeedCoordinator {
     public var groupsById: [UUID: Group] = [:]
     public var isLoading: Bool = false
     public var loadError: String?
+    /// True después de que `refresh()` corrió al menos una vez. Permite a
+    /// `LoadPhase.fromCollection` distinguir "primera carga" de "loaded
+    /// empty" cuando `events == []`.
+    public private(set) var hasLoaded: Bool = false
 
     public init(eventRepo: any EventRepository, groupsRepo: any GroupsRepository) {
         self.eventRepo = eventRepo
@@ -26,7 +30,10 @@ public final class MyFeedCoordinator {
 
     public func refresh() async {
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         loadError = nil
         do {
             async let evts = eventRepo.feedAcrossGroups(limit: 100)
@@ -38,6 +45,26 @@ public final class MyFeedCoordinator {
             log.error("feed refresh failed: \(error.localizedDescription, privacy: .public)")
             loadError = error.localizedDescription
         }
+    }
+
+    /// Adapter para `AsyncContentView`. El error string se eleva a
+    /// `CoordinatorError` para encajar en la API del LoadPhase — el
+    /// banner inline preserva el tono conversacional usando el message
+    /// que ya teníamos.
+    public var phase: LoadPhase<[Event]> {
+        let coordError: CoordinatorError? = loadError.map { msg in
+            CoordinatorError(
+                title: "No pudimos cargar tu feed",
+                message: msg,
+                isRetryable: true
+            )
+        }
+        return LoadPhase.fromCollection(
+            value: events,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: coordError
+        )
     }
 
     // MARK: - Sectioning
