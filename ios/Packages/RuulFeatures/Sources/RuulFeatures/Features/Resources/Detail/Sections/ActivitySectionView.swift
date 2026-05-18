@@ -20,6 +20,7 @@ public struct ActivitySectionView: View {
     public static let definition = CapabilitySection(
         id: "activity",
         priority: 900,
+        tabId: "activity",
         // Always render — every resource has a history.
         isEnabledFor: { _ in true },
         render: { ctx in AnyView(ActivitySectionView(context: ctx)) }
