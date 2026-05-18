@@ -23,6 +23,11 @@ export const conditionTypeValues = [
   "amountAbove",
   "damageAmountAbove",
   "transferAmountAbove",
+  "cancelledWithinHours",
+  "outsideAllowedHours",
+  "actorHasRole",
+  "bookingDurationAbove",
+  "damageSeverityAbove",
 ] as const;
 
 export type ConditionType = (typeof conditionTypeValues)[number];
