@@ -439,16 +439,20 @@ public struct UniversalResourceDetailView: View {
 
     /// All dynamic catalog sections rendered between the hero/info card
     /// and the stub overflow. Priority-sorted so the natural top-to-bottom
-    /// order is: description (150) → asset.*/space.*/fund.balance (160-167)
-    /// → rsvp (200) → check_in (250) → money (400) → rules (800) →
-    /// resource_links (850) → activity (900). Each section gates its own
-    /// empty/missing-data state and contributes nothing when not applicable.
+    /// order is: schedule (100) → description (150) → asset.*/space.*/
+    /// fund.balance (160-167) → rsvp (200) → check_in (250) →
+    /// host_actions (350) → money (400) → rotation (600) → rules (800)
+    /// → resource_links (850) → activity (900). Each section gates its
+    /// own empty/missing-data state and contributes nothing when not
+    /// applicable. Schedule/host_actions/rotation were registered in the
+    /// catalog but never consumed; this is the fix that surfaces them.
     private static let dynamicSectionIds: Set<String> = [
+        "schedule",
         "description", "location",
         "asset.custody", "asset.ownership", "asset.maintenance", "asset.bookings",
         "space.capacity", "space.occupancy", "space.bookings",
         "fund.balance",
-        "rsvp", "check_in", "money", "rules",
+        "rsvp", "check_in", "host_actions", "money", "rotation", "rules",
         "resource_links",
         "activity",
     ]
