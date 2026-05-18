@@ -8,7 +8,7 @@ should update the row below.
 
 | Need                         | Use                                    |
 |------------------------------|----------------------------------------|
-| Screen with active group     | `.ruulAmbientScreen(palette: app.activeGroup?.ambientPalette)` |
+| Screen with active group     | `.ruulAmbientScreen(palette: app.activeGroup.map { RuulCoverPalette.deterministicCover(for: $0.id).palette })` |
 | List/dashboard screen        | `.ruulAmbientScreen(palette: nil)` (canvas only) |
 | Modal (any flow)             | `.fullScreenCover(...)` or `.ruulSheet(...)` wrapper (full-screen takeover, explicit close) |
 | Card body (default)          | `.ruulCardSurface(.glass)` — no chrome, paired with `RuulSeparatedRows` for separator |
@@ -32,7 +32,7 @@ should update the row below.
 |------------------------------|----------------------------------------|
 | Resource detail cover        | `ResourceCoverHero(palette:height:...)` — pass `palette` + per-type `height` |
 | Full-screen ambient layer    | `RuulAmbientBackground(palette:style:)` — `.soft` for global, `.vivid` for hero-adjacent |
-| Per-group palette            | `Group.ambientPalette` (UUID-determined cover from catalog) |
+| Per-group palette            | `RuulCoverPalette.deterministicCover(for: group.id).palette` (UUID-determined cover from catalog) |
 | Per-resource palette         | `ResourceAmbientPalette.resolve(for: ctx)` |
 
 ## Inputs, buttons, badges
