@@ -1,0 +1,153 @@
+# Post-Execution Corrections — Cleanup Audit 2026-05-18
+
+> Written after starting to fix audit findings one by one. Several audit
+> claims turned out to be wrong when cross-checked against the live Supabase
+> project (via `mcp__supabase__list_edge_functions`, `cron.job`,
+> `known_event_types` table, `orphan-allowlist.txt`). This doc enumerates
+> the corrections so anyone re-reading the audit gets the accurate picture.
+
+## False positives — items the audit flagged but were not actual problems
+
+### 1. `generate-wallet-pass` is NOT dead
+**Audit said:** Edge function dead (no caller, no cron) → delete the folder.
+**Reality:** The function is an **intentional 503 stub**. Its docstring
+documents the wallet creds wiring procedure and states the stub returns 503
+specifically so iOS `WalletPassService.isAvailable` reports false. Deleting
+it would break that contract (404 instead of 503 confuses iOS error
+handling) and erase the implementation-readiness guide.
+**Action taken:** None — DO NOT delete.
+
+### 2. `send-fine-reminders` is NOT dead
+**Audit said:** Edge function dead (no caller, no cron) → delete the folder.
+**Reality:** Production-quality function that hasn't been scheduled yet. Its
+own docstring says "Suggested schedule: `0 12 * * *` (daily at noon UTC)".
+The implementation is complete: reads unpaid officialized fines, records
+reminders idempotently in `fines.details.reminders[]`, emits
+`fineReminderSent` via the V8-correct `record_system_event` RPC path. The
+"missing cron" is a deployment gap, not dead code.
+**Action taken:** None — DO NOT delete. Schedule decision is a product call.
+
+### 3. `myAtom` is NOT in the production seed
+**Audit said:** `myAtom` literal seeded into `known_event_types` —
+"doctrinal smell — example value leaked into production seed".
+**Reality:** `myAtom` does NOT exist in the `known_event_types` table
+(verified via `SELECT event_type FROM known_event_types`). It only appears
+as a placeholder in a doc-comment inside mig 00293's `register_event_type()`
+documentation, and that single string is already explicitly allowlisted in
+`scripts/codegen/orphan-allowlist.txt:21` with the comment "Doc-comment
+placeholder in mig 00293 register_event_type() example".
+**Action taken:** None — no seed entry to drop.
+
+### 4. The "9 missing SystemEventType cases" was 7 already-allowlisted + 2 actually-missing
+**Audit said:** 9 atoms in DB not in Swift enum, "Beta-1 surface gap".
+**Reality:** Cross-check against `orphan-allowlist.txt`:
+- **7 of 9** (`slotCreated`, `slotReleased`, `assetBookingsLocked`,
+  `assetBookingsUnlocked`, `identityPromoted`, `rightMetadataUpdated`,
+  `groupRolesChanged`) were ALREADY explicitly allowlisted as intentional
+  deferred backlog by commit `16c1329 chore(codegen): allowlist 10 orphan
+  atoms unblocking ios-ci` with per-line provenance and a "promote to
+  Swift case once iOS consumes" doctrine.
+- **`memberCapabilityOverrideDeactivated`** was genuinely missing and not
+  allowlisted.
+- **`eventReopened`** (introduced by mig 00295) was genuinely missing.
+- **3 dot-notation atoms** (`member.claimed`, `member.merge_declined`,
+  `member.placeholder_created` — mig 00314) cannot be Swift enum cases
+  at all because `scripts/codegen/parser.ts` CASE_RE only matches
+  camelCase identifiers. Would need either a DB rename or a parser
+  extension to support `case name = "raw.value"` mapping.
+
+**Action taken:** commit `d36cdbc` promoted `eventReopened` to the Swift
+enum (full propagation: case + humanLabel + isImplementedInV1 +
+HistoryItemPresentation arm + regenerated `SystemEventType+Codable.swift`
+via `make gen`), and allowlisted the 4 others with explanatory comments.
+
+## True new findings — discovered during fix execution
+
+### 5. Three deployed edge functions are NOT in `supabase/functions/`
+`mcp__supabase__list_edge_functions` returned 22 ACTIVE functions; only 19
+exist in the repo. The 3 orphans:
+- **`finalize-appeal-votes`** (v6, ACTIVE) — distinct from `finalize-votes`.
+  Reads the `appeals` table, calls `close_appeal_vote()` RPC, handles
+  quorum + threshold + fine voiding. The audit thought its cron was hitting
+  a 404 because the audit only grepped the repo. Cron is real.
+- **`evaluate-event-rules`** (v9, ACTIVE) — function called inline by older
+  RPCs / iOS paths.
+- **`export-user-data`** (v1, ACTIVE) — user data export workflow.
+
+**Action taken:** Tracked as task #18. Pull each via
+`mcp__supabase__get_edge_function` and restore source to repo as a
+follow-up commit.
+
+### 6. The "cron missing for process-system-events" worry was false alarm
+**Audit said:** "no DB cron schedule found for `process-system-events` in
+any migration grep. If true, the rule engine is dormant."
+**Reality:** Cron `process-system-events-every-minute` is ACTIVE in prod
+(verified via `SELECT * FROM cron.job`). It was set up via the Supabase
+dashboard before the migration-tracked cron pattern (mig 00030+) was
+adopted. Same applies to `auto-close-events-hourly`,
+`emit-asset-overdue-events-5min`, `expire-due-rights-every-hour`,
+`fail-stale-data-rights-every-5-minutes`, `finalize-appeal-votes-15min`
+(pre-correction), `finalize-fine-reviews-hourly`,
+`notify-rights-expiring-soon-daily`, `reconcile-stuck-appeals-30min`,
+`reset-stale-outbox-every-5-minutes`, `resolve-stale-fine-voided-daily`.
+
+**Cron inventory at 2026-05-18** (post-mig-00327/00328):
+
+| Job | Schedule | Calls |
+|---|---|---|
+| process-system-events-every-minute | `* * * * *` | edge fn |
+| dispatch-notifications-every-minute | `* * * * *` | edge fn (mig 00030) |
+| auto-close-events-hourly | `0 * * * *` | edge fn |
+| emit-asset-overdue-events-5min | `*/5 * * * *` | edge fn |
+| emit-event-reminder-events-5min | `*/5 * * * *` | edge fn (mig 00131) |
+| emit-event-started-atoms-5min | `*/5 * * * *` | edge fn (mig 00214) |
+| emit-slot-system-events-5min | `*/5 * * * *` | edge fn (mig 00069) |
+| emit-space-no-check-in-events-5min | `*/5 * * * *` | edge fn (mig 00270) |
+| expire-due-rights-every-hour | `17 * * * *` | RPC `expire_due_rights()` |
+| fail-stale-data-rights-every-5-minutes | `*/5 * * * *` | RPC `fail_stale_data_rights_requests()` |
+| finalize-appeal-votes-15min | `*/15 * * * *` | edge fn `finalize-appeal-votes` (deployed-not-in-repo) |
+| finalize-fine-reviews-hourly | `0 * * * *` | edge fn |
+| finalize-votes-every-15min | `*/15 * * * *` | edge fn (added by mig 00327) |
+| notify-rights-expiring-soon-daily | `7 12 * * *` | RPC `notify_rights_expiring_soon(14)` |
+| reconcile-stuck-appeals-30min | `*/30 * * * *` | RPC `reconcile_stuck_appeals()` |
+| reset-stale-outbox-every-5-minutes | `*/5 * * * *` | RPC `reset_stale_outbox_claims()` |
+| resolve-stale-fine-voided-daily | `20 3 * * *` | RPC `resolve_stale_fine_voided()` |
+
+Not scheduled (dead OR awaiting scheduling decision):
+- `emit-deadline-events` — exists in repo, no cron. Docstring suggests `*/5 * * * *`.
+- `auto-generate-events` — exists in repo, no cron.
+- `send-fine-reminders` — exists in repo, no cron. Suggested `0 12 * * *`.
+- `send-event-notification` — exists in repo, RPC-triggered (no cron needed).
+- `send-otp` / `verify-otp` / `send-whatsapp-invite` — RPC-triggered.
+- `create-placeholder-member` — RPC-triggered.
+- `generate-wallet-pass` — intentional stub returning 503.
+
+## Process correction for future audits
+
+The audit was generated by 10 parallel agents grepping the repo. Several
+false negatives arose because the agents only saw the source tree. Going
+forward:
+
+1. **Cross-check edge fn "dead" verdicts with `list_edge_functions`** — a
+   function in prod with no caller is still deployed and reachable.
+2. **Cross-check cron "missing" verdicts with `SELECT * FROM cron.job`** —
+   crons predating the migration-tracked pattern live in dashboard only.
+3. **Cross-check seed claims with `SELECT * FROM <seed_table>`** — comment
+   placeholders are not seed entries.
+4. **Cross-check enum drift with `orphan-allowlist.txt`** — explicitly
+   allowlisted "missing" cases are intentional deferred backlog, not bugs.
+
+The 4 corrections above were caught only because each fix attempt
+double-checked the underlying assumption before deleting/modifying.
+
+## Commits produced 2026-05-18 (fix-by-fix execution)
+
+| Commit | Audit ref | Verdict at time of audit | Reality |
+|---|---|---|---|
+| `bc5a806` fix(engine) markProcessed | §6 #4 BLOCKER-hard | Real bug | Confirmed real bug. Fixed. |
+| `8b1ba97` fix(cron) repoint | §10 inferred 404 | 404 claim wrong | Reverted by 94592e1. |
+| `94592e1` fix(cron) restore appeals | — | Self-correction | Net positive: kept the legitimate finalize-votes-every-15min addition. |
+| `bb89e35` chore(cleanup) UI primitives | §4 dead code HIGH | Confirmed dead | -234 LOC deleted. |
+| `acf7959` fix(ui) FUNDADOR label | §6 #12 | Confirmed | Label fixed. |
+| `d36cdbc` fix(codegen) SystemEventType | §11 myAtom + 9 cases | Mostly wrong | Did the genuine 1 + allowlisted the rest. |
+| `9f15d7e` refactor(core) folder move | §3 16 loose files | Confirmed | 14 moved (AppState + JSONCoding stay). |
