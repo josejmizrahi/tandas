@@ -86,57 +86,37 @@ serve(withSentry(async (_req) => {
     );
   }
 
-  // Project metadata fields the trigger evaluator needs onto payload, so
-  // it doesn't have to re-read the resource. The slotIsUnassigned condition
-  // (Slice 2.1) prefers target.context.booking_id over resource.metadata.
-  const rows = toEmit.map((s) => ({
-    group_id: s.group_id,
-    event_type: "slotExpired",
-    resource_id: s.id,
-    payload: {
-      assigned_member_id: s.metadata?.assigned_member_id ?? null,
-      booking_id: s.metadata?.booking_id ?? null,
-      ends_at: s.metadata?.ends_at ?? null,
-      asset_id: s.metadata?.asset_id ?? null,
-    },
-  }));
+  // Mig 00329 fix: atom emit + status flip happen in ONE transaction via
+  // mark_slots_expired_batch. Previously this was two separate writes —
+  // (1) record_system_events_batch RPC, (2) resources UPDATE — which could
+  // diverge if the second one failed mid-batch. The new RPC loops the
+  // slot_ids server-side and pairs each atom with its status transition;
+  // the trigger evaluator's payload (assigned_member_id, booking_id,
+  // ends_at, asset_id) is reconstructed from resources.metadata inside the
+  // RPC so this edge fn no longer ships it. Per CleanupAudit_2026-05-18
+  // §06.4.1.
+  const emittedIds = toEmit.map((s) => s.id);
+  const { data: transitionedCount, error: rpcErr } = await supabase
+    .rpc("mark_slots_expired_batch", { p_slot_ids: emittedIds });
 
-  // V8 fix (mig 00302): route through record_system_events_batch RPC.
-  const { error: insErr } = await supabase.rpc("record_system_events_batch", { p_events: rows });
-  if (insErr) {
-    console.error("emit-slot-system-events insert failed", insErr);
-    return new Response(JSON.stringify({ error: insErr.message }), {
+  if (rpcErr) {
+    console.error("emit-slot-system-events mark_slots_expired_batch failed", rpcErr);
+    return new Response(JSON.stringify({ error: rpcErr.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  // Flip slot status to 'expired' so the next run filters them out cheaply.
-  // Idempotent: we filter by id IN (...) regardless of current status. If
-  // a parallel writer beat us to a swap_request the status may already have
-  // changed; this UPDATE is conservative and only writes the new status.
-  const emittedIds = toEmit.map((s) => s.id);
-  const { error: updErr } = await supabase
-    .from("resources")
-    .update({ status: "expired" })
-    .in("id", emittedIds);
-
-  if (updErr) {
-    console.error("emit-slot-system-events status flip failed", updErr);
-    // Non-fatal: system_event already inserted, the dedup check protects
-    // us from re-emitting. Surface the error for observability but return
-    // success so the cron doesn't retry the whole batch.
-  }
-
   const finishedAt = new Date();
   console.log(
-    `emit-slot-system-events: scanned ${candidates.length}, emitted ${toEmit.length} in ${finishedAt.getTime() - startedAt.getTime()}ms`,
+    `emit-slot-system-events: scanned ${candidates.length}, attempted ${toEmit.length}, transitioned ${transitionedCount ?? 0} in ${finishedAt.getTime() - startedAt.getTime()}ms`,
   );
 
   return new Response(
     JSON.stringify({
       scanned: candidates.length,
-      emitted: toEmit.length,
+      emitted: transitionedCount ?? 0,
+      attempted: toEmit.length,
       duration_ms: finishedAt.getTime() - startedAt.getTime(),
     }),
     { headers: { "Content-Type": "application/json" } },
