@@ -35,16 +35,16 @@ struct InviteLinkGeneratorTests {
         #expect(url.absoluteString == "ruul://invite/abc123")
     }
 
-    @Test("universal URL")
+    @Test("universal URL points at canonical ruul.mx")
     func universal() {
         let url = InviteLinkGenerator.universal(code: "abc123")
-        #expect(url.absoluteString == "https://ruul.app/invite/abc123")
+        #expect(url.absoluteString == "https://ruul.mx/invite/abc123")
     }
 
     @Test("share message includes group name and plaintext code (no dead URL)")
     func shareMessage() {
         // Beta 1 W1-5: shareMessage must NOT carry the universal
-        // https://ruul.app/invite/<code> URL — AASA isn't live yet, so
+        // https URL — AASA may not be live in all environments, so
         // that link opens Safari to a 404 and the invitee abandons.
         // Plaintext code is the primary affordance; recipient opens
         // the app and pastes it into JoinGroupSheet.
@@ -52,7 +52,7 @@ struct InviteLinkGeneratorTests {
         #expect(msg.contains("Los Cuates"))
         #expect(msg.uppercased().contains("XYZ"), "code must appear in plaintext")
         #expect(msg.localizedCaseInsensitiveContains("código"), "must label the code clearly")
-        #expect(!msg.contains("https://ruul.app"), "must not ship the broken universal link")
+        #expect(!msg.contains("https://"), "must not ship any broken universal link in share body")
         #expect(!msg.contains("http://"), "must not ship any dead http URL")
     }
 
@@ -68,8 +68,16 @@ struct InviteLinkGeneratorTests {
         #expect(InviteLinkGenerator.parseInviteCode(from: url) == "abc12345")
     }
 
-    @Test("parseInviteCode extracts from https url")
-    func parseHTTPS() {
+    @Test("parseInviteCode extracts from canonical https url (ruul.mx)")
+    func parseHTTPS_canonical() {
+        let url = URL(string: "https://ruul.mx/invite/xyz")!
+        #expect(InviteLinkGenerator.parseInviteCode(from: url) == "xyz")
+    }
+
+    @Test("parseInviteCode still extracts from legacy ruul.app url")
+    func parseHTTPS_legacy() {
+        // Whitelisted via RuulDomain.acceptedHosts so old WhatsApp
+        // messages keep working post-cutover.
         let url = URL(string: "https://ruul.app/invite/xyz")!
         #expect(InviteLinkGenerator.parseInviteCode(from: url) == "xyz")
     }

@@ -4,9 +4,9 @@ import Foundation
 /// to avoid the AASA dependency. The code is identical to the existing
 /// `groups.invite_code` (8-char hex string).
 ///
-/// Invariant: the URL format must remain identical when V2 swaps to
-/// `https://ruul.app/invite/<code>` so old shared messages keep working.
-/// AppEnvironment URL handler accepts BOTH forms.
+/// Canonical web host comes from `RuulDomain` (mig to ruul.mx 2026-05-18).
+/// Old shared messages on `ruul.app` keep parsing because RuulDomain
+/// still whitelists that host.
 public enum InviteLinkGenerator {
     /// Custom scheme URL — only opens the app if installed. Used for paste
     /// 5 founder share message in V1.
@@ -14,11 +14,11 @@ public enum InviteLinkGenerator {
         URL(string: "ruul://invite/\(code)")!
     }
 
-    /// HTTPS URL — used in shareable messages for V2 once AASA is live.
-    /// In V1 we still send this in the message body (because users may not
-    /// have ruul installed) but pair it with the App Store fallback.
+    /// HTTPS URL — used in shareable messages once AASA is live. Emits
+    /// the canonical host (`ruul.mx`). Older messages with `ruul.app`
+    /// still parse via the accepted-hosts list.
     public static func universal(code: String) -> URL {
-        URL(string: "https://ruul.app/invite/\(code)")!
+        URL(string: "https://\(RuulDomain.canonical)/invite/\(code)")!
     }
 
     /// Pre-formatted share message used by `ShareLink` in `InviteMembersView`
@@ -46,9 +46,8 @@ public enum InviteLinkGenerator {
         if url.scheme == "ruul", url.host == "invite" {
             return url.pathComponents.dropFirst().first
         }
-        // https://ruul.app/invite/<code>
-        if (url.scheme == "https" || url.scheme == "http"),
-           url.host == "ruul.app",
+        // https://{ruul.mx,ruul.app}/invite/<code>
+        if RuulDomain.isOurHTTPS(url),
            url.pathComponents.count >= 3,
            url.pathComponents[1] == "invite" {
             return url.pathComponents[2]

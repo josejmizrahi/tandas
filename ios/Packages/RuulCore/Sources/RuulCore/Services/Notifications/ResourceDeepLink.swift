@@ -15,7 +15,7 @@ import Foundation
 ///   - `ruul://event/<uuid>`               — back-compat con EventDeepLink
 ///   - `ruul://<type>/<uuid>` donde type ∈
 ///     {fund, asset, slot, space, right}   — semantic deep link
-///   - `https://ruul.app/<path>/<uuid>`    — universal links equivalentes
+///   - `https://{ruul.mx,ruul.app}/<path>/<uuid>` — universal links equivalentes
 public struct ResourceDeepLink: Sendable, Hashable {
     public let resourceId: UUID
     /// Tipo hint para que el receptor escoja chrome correcto sin
@@ -64,9 +64,8 @@ public struct ResourceDeepLink: Sendable, Hashable {
                 return nil
             }
         }
-        // https://ruul.app/<path>/<uuid>
-        if (scheme == "https" || scheme == "http"),
-           url.host == "ruul.app",
+        // https://{ruul.mx,ruul.app}/<path>/<uuid>
+        if RuulDomain.isOurHTTPS(url),
            url.pathComponents.count >= 3,
            let id = UUID(uuidString: url.pathComponents[2]) {
             let segment = url.pathComponents[1].lowercased()

@@ -644,21 +644,16 @@ public final class AppState {
 
     /// Parses a placeholder-claim token from either the custom scheme
     /// (`ruul://claim/<token>`) or the universal link
-    /// (`https://ruul.app/claim/<token>`). Returns nil for any other URL
-    /// shape so the caller can fall through to other handlers.
+    /// (`https://{ruul.mx,ruul.app}/claim/<token>`). Returns nil for any
+    /// other URL shape so the caller can fall through to other handlers.
     static func parseClaimToken(from url: URL) -> String? {
         // Custom scheme: ruul://claim/<token>
         if url.scheme == "ruul", url.host == "claim" {
             let token = url.lastPathComponent
             return token.isEmpty ? nil : token
         }
-        // Universal link: https://ruul.mx/claim/<token> (primary, post
-        // dominio compra 2026-05-18). Also accepts the legacy ruul.app
-        // variants in case the WhatsApp body cached or hand-typed an old
-        // URL — both resolve to the same backend.
-        if url.scheme == "https",
-           let host = url.host,
-           ["ruul.mx", "www.ruul.mx", "ruul.app", "www.ruul.app"].contains(host),
+        // Universal link via RuulDomain (canonical ruul.mx + legacy ruul.app).
+        if RuulDomain.isOurHTTPS(url),
            url.pathComponents.count >= 3, url.pathComponents[1] == "claim" {
             let token = url.pathComponents[2]
             return token.isEmpty ? nil : token

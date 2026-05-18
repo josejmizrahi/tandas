@@ -19,7 +19,7 @@ public struct EventDeepLink: Sendable, Hashable {
     }
 
     public init?(url: URL) {
-        // Accepts both ruul://event/<id> and https://ruul.app/event/<id>.
+        // Accepts both ruul://event/<id> and https://{ruul.mx,ruul.app}/event/<id>.
         let scheme = url.scheme?.lowercased() ?? ""
         if scheme == "ruul", url.host == "event",
            let last = url.pathComponents.last(where: { $0 != "/" }),
@@ -27,8 +27,7 @@ public struct EventDeepLink: Sendable, Hashable {
             self.eventId = id
             return
         }
-        if (scheme == "https" || scheme == "http"),
-           url.host == "ruul.app",
+        if RuulDomain.isOurHTTPS(url),
            url.pathComponents.count >= 3,
            url.pathComponents[1] == "event",
            let id = UUID(uuidString: url.pathComponents[2]) {

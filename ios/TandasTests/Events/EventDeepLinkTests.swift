@@ -13,8 +13,16 @@ struct EventDeepLinkTests {
         #expect(link?.eventId == id)
     }
 
-    @Test("https url parses")
-    func httpsURL() {
+    @Test("https url parses on canonical host (ruul.mx)")
+    func httpsURL_canonical() {
+        let id = UUID()
+        let url = URL(string: "https://ruul.mx/event/\(id.uuidString)")!
+        let link = EventDeepLink(url: url)
+        #expect(link?.eventId == id)
+    }
+
+    @Test("https url still parses on legacy host (ruul.app)")
+    func httpsURL_legacy() {
         let id = UUID()
         let url = URL(string: "https://ruul.app/event/\(id.uuidString)")!
         let link = EventDeepLink(url: url)
