@@ -419,9 +419,9 @@ public extension CapabilityResolver {
         ))
 
         // Doctrine: capabilities are auto-on at resource creation and
-        // never user-visible. `.enableCapability` is no longer emitted
-        // here. The SecondaryAction.Kind case stays defined for future
-        // re-use if a use-case ever needs a "turn this on" prompt inline.
+        // never user-visible. The legacy `.enableCapability` SecondaryAction
+        // kind was deleted 2026-05-18 as dead surface — re-introduce a new
+        // kind if a future use-case ever needs a "turn this on" prompt inline.
         if viewerPermissions.contains(.modifyGovernance) {
             items.append(SecondaryAction(
                 label: "Archivar",

@@ -544,88 +544,6 @@ public struct UniversalResourceDetailView: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
     }
 
-    /// Stub capability sections sourced from `CapabilitySectionCatalog`.
-    /// Each section file declares `static let definition = CapabilitySection(
-    /// id, priority, isEnabledFor, render)` and registers itself once at
-    /// catalog boot. Filter to the stubs by id-set so we don't re-render
-    /// dynamic sections (rsvp, check_in, money, rules, …) that already
-    /// rendered via `dynamicSectionIds` above.
-    ///
-    /// Asset/space still skip the universal `booking` + `valuation` stubs
-    /// because the bespoke `asset.bookings` / `asset.ownership` /
-    /// `space.bookings` sections cover the same caps with type-aware
-    /// renderers. Once stub rendering is rebalanced (some stubs deserve
-    /// to render near their semantic priority instead of at the bottom),
-    /// this whole helper collapses into the main catalog call.
-    @ViewBuilder
-    private var stubCapabilitySections: some View {
-        let isAsset = context.resource.resourceType == .asset
-        let isSpace = context.resource.resourceType == .space
-        let sections = CapabilitySectionCatalog.shared
-            .sectionsFor(context: context)
-            .filter { Self.stubSectionIds.contains($0.id) }
-            .filter { section in
-                // Universal `booking` + `valuation` stubs are duplicated
-                // by the bespoke `asset.bookings`/`asset.ownership` /
-                // `space.bookings` sections. Skip the stub when a bespoke
-                // already handles this resource.
-                if section.id == "booking", isAsset || isSpace { return false }
-                if section.id == "valuation", isAsset { return false }
-                return true
-            }
-        ForEach(sections, id: \.id) { section in
-            section.render(context)
-        }
-    }
-
-    /// Sections from the catalog whose id is in `ids`. Filtered by both
-    /// `isEnabledFor(caps)` and `isVisibleFor(context)` predicates, then
-    /// sorted by priority. SwiftUI @Environment values (eventInteractor,
-    /// eventDetailPresenter) propagate through the ForEach body, so
-    /// sections that read them internally (RSVP, CheckIn, HostActions)
-    /// work transparently.
-    @ViewBuilder
-    private func catalogSections(idIn ids: Set<String>) -> some View {
-        let sections = CapabilitySectionCatalog.shared
-            .sectionsFor(context: context)
-            .filter { ids.contains($0.id) }
-        ForEach(sections, id: \.id) { section in
-            section.render(context)
-        }
-    }
-
-    /// All dynamic catalog sections rendered between the hero/info card
-    /// and the stub overflow. Priority-sorted so the natural top-to-bottom
-    /// order is: schedule (100) → description (150) → asset.*/space.*/
-    /// fund.balance (160-167) → rsvp (200) → check_in (250) →
-    /// host_actions (350) → money (400) → rotation (600) → rules (800)
-    /// → resource_links (850) → activity (900). Each section gates its
-    /// own empty/missing-data state and contributes nothing when not
-    /// applicable. Schedule/host_actions/rotation were registered in the
-    /// catalog but never consumed; this is the fix that surfaces them.
-    private static let dynamicSectionIds: Set<String> = [
-        "schedule",
-        "description", "location",
-        "asset.custody", "asset.ownership", "asset.maintenance", "asset.bookings",
-        "space.capacity", "space.occupancy", "space.bookings",
-        "fund.balance",
-        "rsvp", "check_in", "host_actions", "money", "rotation", "rules",
-        "resource_links",
-        "activity",
-    ]
-
-    /// Ids of catalog sections rendered here. The complement (canonical
-    /// ids like `rsvp`, `check_in`, `money`, `rules`, `schedule`,
-    /// `location`, `description`, `activity`, `host_actions`,
-    /// `rotation`, `capacity_progress`) is rendered inline above and
-    /// must NOT appear in this set or the page renders twice.
-    private static let stubSectionIds: Set<String> = [
-        "status", "recurrence", "deadline", "expiration",
-        "participants", "attendance", "guest_access", "assignment",
-        "booking", "valuation", "inventory", "access",
-        "delegation", "voting", "approval", "appeal",
-        "consequence", "swap", "cancellation", "reminder", "history",
-    ]
 
     // MARK: - Resolver-driven actions
 
@@ -775,11 +693,6 @@ public struct UniversalResourceDetailView: View {
             presenter?.onPresentManualFineSheet()
         case .openRules:
             context.onPresentRules()
-        case .enableCapability:
-            // Post-Pass-1 dead route — the Governance tab is the
-            // canonical entry point. The resolver no longer emits this
-            // kind, so the case stays only for switch exhaustiveness.
-            break
         case .archive:
             break  // no archive endpoint yet
         // Right lifecycle (slice 6). Setting activeRightAction triggers
