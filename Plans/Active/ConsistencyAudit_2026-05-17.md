@@ -481,9 +481,9 @@ Truth > Projection > Cache > UI — restored across the 6 resource types, rule e
 - F11 record_ledger_entry stale whitelist — **CLOSED Post-Beta (mig 00285 P6)** whitelist synced to 11 canonical types
 - F12 resource_links sin atom_guard
 - F14 rule_versions.status weak guard — **CLOSED Post-Beta (mig 00285 P3)** transitions enforced active→superseded/inactive
-- F15 book_slot non-idempotent
-- F16 member_capability_overrides mutable
-- F18 fund.target unguarded mutability
+- F15 book_slot non-idempotent — **CLOSED Post-Beta (mig 00286 P5)** short-circuits to existing active booking for (slot, caller)
+- F16 member_capability_overrides mutable — **CLOSED Post-Beta (mig 00286 P7)** emits memberCapabilityOverrideDeactivated atom on effective_until null→ts
+- F18 fund.target unguarded mutability — **CLOSED Post-Beta (mig 00286 P8)** trigger blocks value→value mutation of metadata.target_amount_cents
 
 **DOCUMENTATION ONLY:**
 - F13 notifications_outbox guard option — **CLOSED Post-Beta (mig 00285 P9)** partial guard: only dispatched_at/status/error mutable, no DELETE
