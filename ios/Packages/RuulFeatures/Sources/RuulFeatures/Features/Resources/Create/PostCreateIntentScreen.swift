@@ -313,9 +313,19 @@ public extension PostCreateIntentScreen {
 public struct PostCreateResourceContext: Sendable {
     public let metadata: [String: JSONConfig]
     public let members: [MemberWithProfile]
-    public init(metadata: [String: JSONConfig], members: [MemberWithProfile]) {
+    /// Full ResourceRow for destinations whose sheets accept the row
+    /// directly (RecordValuationSheet, CheckOutAssetSheet, …). Optional
+    /// because some callers only have id + metadata at hand; those
+    /// destinations fall back to placeholder when row is absent.
+    public let resourceRow: ResourceRow?
+    public init(
+        metadata: [String: JSONConfig],
+        members: [MemberWithProfile],
+        resourceRow: ResourceRow? = nil
+    ) {
         self.metadata = metadata
         self.members = members
+        self.resourceRow = resourceRow
     }
 }
 
@@ -392,6 +402,7 @@ struct PresentedIntent: Identifiable {
 ///   - `linkPicker` → `LinkResourcePickerSheet`
 ///   - `ledgerEntryForm(.credit)` → `ContributeToFundSheet`
 ///   - `ledgerEntryForm(.debit)` → `RecordExpenseFromFundSheet`
+///   - `valuationForm` / `recordValuationSheet` → `RecordValuationSheet`
 ///
 /// Wired destinations require `resourceContext`. When the context is
 /// nil (tests, previews, callers that opted out), they fall back to
@@ -416,6 +427,20 @@ private struct DestinationPresenter: View {
         case .ledgerEntryForm(let prefill):
             if let ctx = resourceContext {
                 ledgerSheet(prefill: prefill, ctx: ctx)
+            } else {
+                placeholder
+            }
+
+        case .valuationForm, .recordValuationSheet:
+            // Both cases route to the same sheet — `.valuationForm` is
+            // the post-create navigation flavor, `.recordValuationSheet`
+            // is the toolbar action flavor. Mirrors the toolbar's
+            // dispatcher pattern in UniversalResourceDetailView.
+            if let row = resourceContext?.resourceRow {
+                RecordValuationSheet(
+                    asset: row,
+                    onSubmitted: onClose
+                )
             } else {
                 placeholder
             }
