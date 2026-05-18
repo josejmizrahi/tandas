@@ -254,7 +254,7 @@ public struct ResourceDetailSheet: View {
             resourceId: resource.id,
             resourceType: resourceTypeString,
             displayName: displayName,
-            canCreate: isFounder
+            canCreate: canCreateRules
         )
         return ResourceRulesCoordinator(
             context: ctx,
@@ -263,13 +263,23 @@ public struct ResourceDetailSheet: View {
         )
     }
 
-    /// True when the current user created the parent group. The
-    /// ResourceRulesCoordinator's CTA stays hidden when this is false;
-    /// the server still gates the write at the RPC level.
-    private var isFounder: Bool {
+    /// True when the current user holds a role with the `modifyRules`
+    /// permission. Local catalog walk (server still gates the write at
+    /// the RPC level via has_permission(modifyRules)).
+    ///
+    /// Sprint E (V18 fix): pre-Sprint-E this gated on identity (`group
+    /// .createdBy == userId`) which meant a transferred-founder or a
+    /// custom rules-managing role couldn't see the create-rule CTA.
+    /// Now reads the catalog so any role with `modifyRules` qualifies.
+    private var canCreateRules: Bool {
         guard let userId = app.session?.user.id,
-              let group = parentGroup else { return false }
-        return group.createdBy == userId
+              let group = parentGroup,
+              let me = memberDirectory[userId]?.member else { return false }
+        let catalog = group.effectiveRoles
+        for raw in me.rawRoles {
+            if let def = catalog[raw], def.grants(.modifyRules) { return true }
+        }
+        return false
     }
 
     /// Raw wire-format string for the resource type ("event", "fund", etc.).

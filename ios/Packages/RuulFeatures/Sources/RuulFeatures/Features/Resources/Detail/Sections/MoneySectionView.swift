@@ -282,10 +282,19 @@ public struct MoneySectionView: View {
         return viewerIsAdmin
     }
 
+    /// Sprint E (V19 fix): gate on has_permission(modifyGovernance) at
+    /// the catalog walk, not on role-name membership. The server's
+    /// fund_lock / fund_unlock RPCs require modifyGovernance per mig
+    /// 00291 — keeping UI in lockstep. A future Post-Beta sprint can
+    /// split a dedicated lockFund permission and update both layers.
     private var viewerIsAdmin: Bool {
         guard let uid = context.currentUserId,
               let mwp = context.memberDirectory[uid] else { return false }
-        return mwp.member.roles.contains(.founder)
+        let catalog = context.group.effectiveRoles
+        for raw in mwp.member.rawRoles {
+            if let def = catalog[raw], def.grants(.modifyGovernance) { return true }
+        }
+        return false
     }
 
     private var isLocked: Bool {

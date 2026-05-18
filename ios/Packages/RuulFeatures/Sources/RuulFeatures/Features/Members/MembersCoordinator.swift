@@ -58,17 +58,13 @@ public final class MembersCoordinator {
 
     /// True when the calling user may grant or revoke roles. Resolved
     /// locally via the role catalog on `group` — server is still the
-    /// authoritative gate via `has_permission(assignRoles)`.
+    /// authoritative gate via `has_permission(assignRoles)`. Sprint E
+    /// (V20 fix): dropped the `me.isAdmin → return true` short-circuit
+    /// — after mig 00290 every admin has the role in roles[] explicitly,
+    /// so the catalog walk is sufficient. Custom roles get the same
+    /// chance to declare assignRoles.
     public var canManageRoles: Bool {
-        guard let me = members.first(where: { $0.member.userId == actorUserId })?.member else {
-            return false
-        }
-        if me.isAdmin { return true }
-        let catalog = group.effectiveRoles
-        for roleId in me.rawRoles {
-            if let def = catalog[roleId], def.grants(.assignRoles) { return true }
-        }
-        return false
+        permission(.assignRoles)
     }
 
     /// Count of distinct active admins. Used by `MemberRolesPicker`
@@ -96,11 +92,17 @@ public final class MembersCoordinator {
         permission(.removeMember)
     }
 
+    /// Sprint E (V20 fix): dropped the `me.isAdmin → return true`
+    /// short-circuit. Every role's permissions are now resolved via the
+    /// catalog walk, so a custom role can grant or deny any permission
+    /// without the admin-role shortcut hiding the answer. Founders + admins
+    /// still get the right answer because mig 00290 backfilled 'admin' into
+    /// their roles[] and the admin role in the catalog already grants
+    /// modifyGovernance/Rules/Members/assignRoles/removeMember/etc.
     private func permission(_ p: Permission) -> Bool {
         guard let me = members.first(where: { $0.member.userId == actorUserId })?.member else {
             return false
         }
-        if me.isAdmin { return true }
         let catalog = group.effectiveRoles
         for roleId in me.rawRoles {
             if let def = catalog[roleId], def.grants(p) { return true }
