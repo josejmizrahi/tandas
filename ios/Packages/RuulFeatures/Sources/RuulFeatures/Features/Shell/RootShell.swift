@@ -23,6 +23,10 @@ public struct RootShell: View {
     @State private var myFinesCoordinator: MyFinesCoordinator?
     @State private var activityCoordinator: ActivityCoordinator?
 
+    // Placeholder-member claim surfacing (Phase 5 — Tasks 5.4 + 5.5).
+    @State private var showPendingClaims = false
+    @State private var pendingClaimToken: String?
+
     /// Per-group member directory cache — mirrors MainTabView.memberDirectory.
     @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
 
@@ -74,7 +78,37 @@ public struct RootShell: View {
             guard let link else { return }
             Task { await handleRuleChangeDeepLink(link) }
         }
+        .onAppear {
+            // Auto-surface pending claims after start() populates them.
+            if !app.pendingPlaceholderClaims.isEmpty { showPendingClaims = true }
+            if app.pendingClaimToken != nil { pendingClaimToken = app.pendingClaimToken }
+        }
+        .onChange(of: app.pendingPlaceholderClaims) { _, claims in
+            if !claims.isEmpty { showPendingClaims = true }
+        }
+        .onChange(of: app.pendingClaimToken) { _, token in
+            guard let token else { return }
+            pendingClaimToken = token
+            app.consumePendingClaimToken()
+        }
+        .sheet(isPresented: $showPendingClaims) {
+            PendingClaimsView()
+        }
+        .sheet(item: Binding(
+            get: { pendingClaimToken.map(IdentifiableToken.init) },
+            set: { pendingClaimToken = $0?.value }
+        )) { holder in
+            ClaimReviewView(token: holder.value, placeholderUid: nil)
+        }
         .environment(\.locale, Locale(identifier: app.profile?.locale ?? "es-MX"))
+    }
+
+    /// Wraps the raw claim token so `sheet(item:)` (which needs Identifiable)
+    /// can present ClaimReviewView. Kept private to this shell — the model
+    /// layer carries a plain `String?`.
+    private struct IdentifiableToken: Identifiable, Equatable {
+        let value: String
+        var id: String { value }
     }
 
     // MARK: - Tab selection
