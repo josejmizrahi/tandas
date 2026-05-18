@@ -25,6 +25,7 @@
 | **F.1** (V24) | is_group_admin reads jsonb + drop sync_role_text + role_validation triggers + iOS Member.isAdmin = holdsRole("admin") only | DB + Swift | **APPLIED 2026-05-17** (mig 00299) |
 | **F.2** (V26) | LiveGroupsRepository.leave delegates to leave_group RPC | Swift | **APPLIED 2026-05-17** |
 | **F.3** (V7) | Rule engine — new actorHasPermission condition + loadMemberPermissions sink + actor_permissions projection; mig 00300 helper. actorHasRole kept (label-only, documented) | DB + Deno + Swift | **APPLIED 2026-05-17** (mig 00300) |
+| **F.4** (V23) | is_group_admin → delegates to has_permission(modifyGovernance). Single-fn rewrite, ~50 RLS policies inherit the doctrinal fix transparently | DB | **APPLIED 2026-05-17** (mig 00301) |
 | **F** | Cleanup tail — eliminar `group_members.role` text column physically (V24.2 once iOS rollout complete); Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23) | mixed | pendiente |
 
 Cada sprint se completa con su propio commit. Sprint B se cubre detalladamente abajo; los siguientes se especificarán cuando se inicien.
