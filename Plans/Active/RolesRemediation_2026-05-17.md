@@ -28,6 +28,8 @@
 | **F.4** (V23) | is_group_admin → delegates to has_permission(modifyGovernance). Single-fn rewrite, ~50 RLS policies inherit the doctrinal fix transparently | DB | **APPLIED 2026-05-17** (mig 00301) |
 | **F.5** (V8) | 8 cron/emit edge functions route via record_system_events_batch RPC (mig 00302). Atom validation centralized; transactional semantics preserved | DB + Deno | **APPLIED 2026-05-17** (mig 00302) |
 | **F.6** (V24.2) | Physical drop of group_members.role text column. iOS Member.role field removed; get_member_summary + export_my_data derive role from roles[]; group_members_with_founder view recreated with jsonb is_founder | DB + Swift | **APPLIED 2026-05-17** (mig 00303) |
+| **F.7** (V27) | Doctrinal analysis of founder identity vs founder role. 3 options (status quo / right materialization / orthogonal de-link). Recommendation: Option C as minimum, Option B if transfer becomes a real feature | doc | **WRITTEN 2026-05-17** (`V27_FounderIdentity_doctrine.md`) — implementation deferred pending product decision |
+| **F.8** (V23.2) | Cosmetic rename `is_group_admin` → `has_admin_capability` | DB | **DECLINED** — high churn (~50 RLS policies + RPCs cascade), zero functional value; comment in mig 00301 documents the misnomer |
 | **F** | Cleanup tail — eliminar `group_members.role` text column physically (V24.2 once iOS rollout complete); Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23) | mixed | pendiente |
 
 Cada sprint se completa con su propio commit. Sprint B se cubre detalladamente abajo; los siguientes se especificarán cuando se inicien.
