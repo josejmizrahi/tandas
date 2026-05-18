@@ -476,10 +476,10 @@ Migration sequence (00273 → 00284) applied. Edge function deployed (v21). Doct
 Truth > Projection > Cache > UI — restored across the 6 resource types, rule engine, and audit trail. Beta is unblocked from doctrinal posture.
 
 **TRANSITIONAL DEBT (Post-Beta safe):**
-- F6 resource_links narrow kind
+- ~~F6 resource_links narrow kind~~ — **MISDIAGNOSED, CLOSED 2026-05-18**: live state has 8 kinds in CHECK + 24-tuple `resource_link_kinds` catalog + `is_valid_resource_link()` semantic validator. `grants_access_to` correctly requires from=right. Audit agent missed the catalog table.
 - F9 transfer_asset owner mutation
 - F11 record_ledger_entry stale whitelist — **CLOSED Post-Beta (mig 00285 P6)** whitelist synced to 11 canonical types
-- F12 resource_links sin atom_guard
+- F12 resource_links sin atom_guard — **CLOSED Post-Beta (mig 00287)** partial guard: DELETE rejected; UPDATE only of unlinked_at+unlinked_by paired null→set with set-once
 - F14 rule_versions.status weak guard — **CLOSED Post-Beta (mig 00285 P3)** transitions enforced active→superseded/inactive
 - F15 book_slot non-idempotent — **CLOSED Post-Beta (mig 00286 P5)** short-circuits to existing active booking for (slot, caller)
 - F16 member_capability_overrides mutable — **CLOSED Post-Beta (mig 00286 P7)** emits memberCapabilityOverrideDeactivated atom on effective_until null→ts
