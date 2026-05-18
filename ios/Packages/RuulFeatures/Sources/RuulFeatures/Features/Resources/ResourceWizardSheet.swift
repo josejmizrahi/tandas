@@ -852,17 +852,23 @@ public struct ResourceWizardSheet: View {
 
     /// Publishes each selected universal template scoped to the
     /// freshly-created resource. Called from `submit()` after
-    /// `coordinator.submit()` succeeds. Individual failures bubble up
-    /// as a warning string — the resource itself is still created.
-    /// Per UniversalRuleTemplates.md §14 Fase 2 — runs alongside the
-    /// legacy createInitialRules path until pipelines converge.
+    /// `coordinator.submit()` succeeds. Two sources:
+    ///   1. `selectedUniversalTemplateIds` — picks from the explicit
+    ///      "PATRONES UNIVERSALES" section (uses universal's defaults).
+    ///   2. `selectedCapabilityUniversalPublishes` — picks from the
+    ///      legacy "POR CAPACIDAD" section that map to a universal
+    ///      (UniversalRuleTemplates.md §14 Fase 2 — pipeline unification).
+    ///      Capability-side defaults (e.g. amount=150) override the
+    ///      universal's defaults so per-vertical tuning is preserved.
+    /// Individual failures bubble up as a warning list; the resource
+    /// itself is still created.
     private func publishSelectedUniversals(resourceId: UUID) async -> [String] {
         guard let repo = app.ruleTemplateRepo else { return [] }
-        let selected = coordinator.selectedUniversalTemplateIds
-        if selected.isEmpty { return [] }
         let byId = Dictionary(uniqueKeysWithValues: coordinator.universalTemplates.map { ($0.id, $0) })
         var failures: [String] = []
-        for templateId in selected {
+
+        // 1. Explicit universal picks (UI section "PATRONES UNIVERSALES").
+        for templateId in coordinator.selectedUniversalTemplateIds {
             guard let template = byId[templateId] else { continue }
             do {
                 _ = try await repo.publishRuleVersion(
@@ -877,7 +883,46 @@ public struct ResourceWizardSheet: View {
                 failures.append(template.displayNameES)
             }
         }
+
+        // 2. Legacy capability picks mapped to a universal.
+        for entry in coordinator.selectedCapabilityUniversalPublishes {
+            guard let template = byId[entry.universalTemplateId] else { continue }
+            let merged = mergedParams(universalDefaults: template.defaultParams, overrides: entry.defaultConfig)
+            do {
+                _ = try await repo.publishRuleVersion(
+                    groupId: coordinator.group.id,
+                    templateId: entry.universalTemplateId,
+                    shapeParams: merged,
+                    scope: .resource(resourceId),
+                    title: template.displayNameES,
+                    changeReason: "Activado al crear el recurso (desde capacidad)"
+                )
+            } catch {
+                failures.append(template.displayNameES)
+            }
+        }
         return failures
+    }
+
+    /// Merges a CapabilityRuleOption's `defaultConfig` ([String:String])
+    /// onto a universal template's `defaultParams` (JSONConfig.object).
+    /// String values that parse as Int become `.int`; others become
+    /// `.string`. Keys not in `overrides` keep the universal default.
+    private func mergedParams(universalDefaults: JSONConfig, overrides: [String: String]) -> JSONConfig {
+        var dict: [String: JSONConfig]
+        if case .object(let existing) = universalDefaults {
+            dict = existing
+        } else {
+            dict = [:]
+        }
+        for (key, rawValue) in overrides {
+            if let asInt = Int(rawValue) {
+                dict[key] = .int(asInt)
+            } else {
+                dict[key] = .string(rawValue)
+            }
+        }
+        return .object(dict)
     }
 }
 

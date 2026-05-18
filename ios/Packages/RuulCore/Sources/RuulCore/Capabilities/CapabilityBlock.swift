@@ -307,6 +307,15 @@ public struct CapabilityRuleOption: Sendable, Hashable {
     /// default to `true`; monetary fines default to `false` so the
     /// user explicitly opts in. Founder framing 2026-05-11.
     public let defaultEnabled: Bool
+    /// Universal template id this option maps to in
+    /// `public.rule_templates` (mig 00296 + 00320 + 00321 + 00325).
+    /// When non-nil, the wizard publishes the option via
+    /// `publishRuleVersion` (canonical pipeline) instead of the legacy
+    /// `createInitialRules` direct-write. Options without a universal
+    /// equivalent yet (notification reminders, rotation auto-skip)
+    /// keep flowing through the legacy path until the universal catalog
+    /// covers them. Per UniversalRuleTemplates.md §14 Fase 2.
+    public let universalTemplateId: String?
 
     public init(
         slug: String,
@@ -315,7 +324,8 @@ public struct CapabilityRuleOption: Sendable, Hashable {
         triggerEventType: SystemEventType,
         consequenceType: ConsequenceType = .fine,
         defaultConfig: [String: String] = [:],
-        defaultEnabled: Bool = true
+        defaultEnabled: Bool = true,
+        universalTemplateId: String? = nil
     ) {
         self.slug = slug
         self.displayName = displayName
@@ -324,5 +334,6 @@ public struct CapabilityRuleOption: Sendable, Hashable {
         self.consequenceType = consequenceType
         self.defaultConfig = defaultConfig
         self.defaultEnabled = defaultEnabled
+        self.universalTemplateId = universalTemplateId
     }
 }

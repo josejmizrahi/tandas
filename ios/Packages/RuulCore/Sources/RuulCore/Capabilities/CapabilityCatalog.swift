@@ -158,7 +158,8 @@ public struct RsvpCapability: CapabilityBlock {
                 triggerEventType: .rsvpChangedSameDay,
                 consequenceType: .fine,
                 defaultConfig: ["amount": "150"],
-                defaultEnabled: false
+                defaultEnabled: false,
+                universalTemplateId: "late_cancellation_consequence"
             )
         ]
     }
@@ -200,7 +201,8 @@ public struct CheckInCapability: CapabilityBlock {
                 triggerEventType: .checkInRecorded,
                 consequenceType: .fine,
                 defaultConfig: ["amount": "100"],
-                defaultEnabled: false
+                defaultEnabled: false,
+                universalTemplateId: "missed_obligation_consequence"
             ),
             CapabilityRuleOption(
                 slug: "event_closed_no_show_fine",
@@ -209,7 +211,8 @@ public struct CheckInCapability: CapabilityBlock {
                 triggerEventType: .eventClosed,
                 consequenceType: .fine,
                 defaultConfig: ["amount": "250"],
-                defaultEnabled: false
+                defaultEnabled: false,
+                universalTemplateId: "no_show_consequence"
             )
         ]
     }
@@ -446,7 +449,8 @@ public struct RotationCapability: CapabilityBlock {
                 triggerEventType: .rsvpChangedSameDay,
                 consequenceType: .fine,
                 defaultConfig: ["amount": "200"],
-                defaultEnabled: false
+                defaultEnabled: false,
+                universalTemplateId: "late_cancellation_consequence"
             )
         ]
     }

@@ -312,6 +312,20 @@ public final class ResourceWizardCoordinator {
         }
     }
 
+    /// Selected capability options that map to a universal template.
+    /// Returns `(universalTemplateId, defaultConfig)` so the sheet can
+    /// publish each via `publishRuleVersion` with per-option params
+    /// merged on top of the universal's catalog defaults.
+    /// Per UniversalRuleTemplates.md §14 Fase 2 pipeline unification.
+    public var selectedCapabilityUniversalPublishes: [(universalTemplateId: String, defaultConfig: [String: String])] {
+        availableSuggestedRules.compactMap { pair in
+            guard isSuggestedRuleSelected(blockId: pair.block.id, slug: pair.template.slug),
+                  let uid = pair.template.universalTemplateId
+            else { return nil }
+            return (uid, pair.template.defaultConfig)
+        }
+    }
+
     // MARK: - Submit
 
     public var canSubmit: Bool {
@@ -367,10 +381,18 @@ public final class ResourceWizardCoordinator {
         // so the builder can hand them to the rule repo at create time. The
         // template's `defaultConfig` flows into the trigger's config jsonb
         // so server-side evaluators see the right thresholds.
+        //
+        // SKIP options that map to a universal — those publish via
+        // ResourceWizardSheet.publishSelectedCapabilityUniversals after
+        // resource creation (canonical publishRuleVersion path).
+        // UniversalRuleTemplates.md §14 Fase 2 pipeline unification.
         let initialRules: [OnboardingRuleDraft] = availableSuggestedRules.compactMap { pair in
             guard isSuggestedRuleSelected(blockId: pair.block.id, slug: pair.template.slug) else {
                 return nil
             }
+            // Universal-mapped options are published post-create via the
+            // canonical pipeline. Don't double-write them through legacy.
+            if pair.template.universalTemplateId != nil { return nil }
             return OnboardingRuleDraft(
                 slug: pair.template.slug,
                 name: pair.template.displayName,
