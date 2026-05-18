@@ -491,7 +491,7 @@ Truth > Projection > Cache > UI — restored across the 6 resource types, rule e
 - F21 vote_casts pending pre-seed not dup-guarded
 
 **INVESTIGATE:**
-- F19 data_deletion_log / data_subject_rights_requests creation source
+- F19 data_deletion_log / data_subject_rights_requests creation source — **CLOSED Post-Beta (mig 00294)**. Tables verified to exist in `public` (live query 2026-05-18) with correct doctrine: data_deletion_log has atom_guard (append-only), both have RLS self-read policies, FK chain to auth.users intact, enums (data_right_kind / data_right_status) present. Root cause: tables were created out-of-band (likely hand-applied DDL or removed migration). Retroactive mig 00294 captures the live schema with `IF NOT EXISTS` so fresh dev/staging environments materialize them correctly. No-op in production.
 
 ---
 
