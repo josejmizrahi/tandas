@@ -49,7 +49,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cobra una multa cuando un miembro llega tarde a un evento (después de X minutos).",
             category: "attendance",
             templateKind: "penalty",
-            requiredCapabilities: ["check_in", "fines"],
+            requiredCapabilities: [CapabilityID.checkIn, "fines"],
             defaultParams: .object(["amount": .int(200), "minutes": .int(15)]),
             composition: .init(
                 triggerShapeId: "checkInRecorded",
@@ -65,7 +65,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cobra una multa a los miembros que no hicieron check-in cuando el evento se cierra.",
             category: "attendance",
             templateKind: "penalty",
-            requiredCapabilities: ["rsvp", "check_in", "fines"],
+            requiredCapabilities: [CapabilityID.rsvp, CapabilityID.checkIn, "fines"],
             defaultParams: .object(["amount": .int(300)]),
             composition: .init(
                 triggerShapeId: "eventClosed",
@@ -81,7 +81,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cobra una multa cuando un miembro cambia su RSVP a \"no voy\" el mismo día del evento.",
             category: "attendance",
             templateKind: "penalty",
-            requiredCapabilities: ["rsvp", "fines"],
+            requiredCapabilities: [CapabilityID.rsvp, "fines"],
             defaultParams: .object(["amount": .int(250)]),
             composition: .init(
                 triggerShapeId: "rsvpChangedSameDay",
@@ -97,7 +97,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cobra una multa a quien no haya respondido al RSVP antes de la fecha límite.",
             category: "attendance",
             templateKind: "penalty",
-            requiredCapabilities: ["rsvp", "fines"],
+            requiredCapabilities: [CapabilityID.rsvp, "fines"],
             defaultParams: .object(["amount": .int(150)]),
             composition: .init(
                 triggerShapeId: "rsvpDeadlinePassed",
@@ -129,7 +129,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cuando alguien registre un movimiento de dinero mayor a X pesos, el grupo recibe un aviso en la actividad. Útil para que los administradores vean gastos grandes sin tener que pedir aprobación previa.",
             category: "money",
             templateKind: "governance",
-            requiredCapabilities: ["ledger"],
+            requiredCapabilities: [CapabilityID.ledger],
             defaultParams: .object(["threshold_cents": .int(200_000)]),
             composition: .init(
                 triggerShapeId: "ledgerEntryCreated",
@@ -145,7 +145,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cuando alguien registre un movimiento de dinero mayor a X pesos, se abre automáticamente una votación. Si el grupo la rechaza, el gasto se reversa con un reembolso automático.",
             category: "money",
             templateKind: "governance",
-            requiredCapabilities: ["ledger", "voting"],
+            requiredCapabilities: [CapabilityID.ledger, CapabilityID.voting],
             defaultParams: .object([
                 "threshold_cents":   .int(500_000),
                 "duration_hours":    .int(48),
@@ -169,7 +169,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si alguien reporta un daño con costo estimado mayor a $X, se crea una acción pendiente para que un admin apruebe el siguiente paso.",
             category: "assets",
             templateKind: "governance",
-            requiredCapabilities: ["maintenance"],
+            requiredCapabilities: [CapabilityID.maintenance],
             defaultParams: .object(["threshold_cents": .int(500_000)]),
             composition: .init(
                 triggerShapeId: "damageReported",
@@ -185,7 +185,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si quien hizo checkout no devuelve el activo después de la fecha esperada (con X días de tolerancia), cobra una multa.",
             category: "assets",
             templateKind: "penalty",
-            requiredCapabilities: ["custody"],
+            requiredCapabilities: [CapabilityID.custody],
             defaultParams: .object([
                 "grace_days": .int(1),
                 "amount":     .int(200),
@@ -204,7 +204,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si un mantenimiento queda abierto más de X días, bloquea nuevos bookings del activo hasta que el mantenimiento se cierre o se desbloquee manualmente.",
             category: "assets",
             templateKind: "governance",
-            requiredCapabilities: ["maintenance", "booking"],
+            requiredCapabilities: [CapabilityID.maintenance, CapabilityID.booking],
             defaultParams: .object(["days": .int(7)]),
             composition: .init(
                 triggerShapeId: "maintenanceOverdue",
@@ -220,7 +220,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si la última valuación del activo supera $X y se intenta transferir, abre automáticamente una votación al grupo.",
             category: "assets",
             templateKind: "governance",
-            requiredCapabilities: ["transfer", "voting"],
+            requiredCapabilities: [CapabilityID.transfer, CapabilityID.voting],
             defaultParams: .object([
                 "threshold_cents":   .int(5_000_000),
                 "duration_hours":    .int(48),
@@ -241,7 +241,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cualquier daño reportado emite un aviso visible en la actividad del grupo. Útil para que los admins vean reportes sin esperar a que se acumulen.",
             category: "assets",
             templateKind: "governance",
-            requiredCapabilities: ["maintenance"],
+            requiredCapabilities: [CapabilityID.maintenance],
             defaultParams: .object([:]),
             composition: .init(
                 triggerShapeId: "damageReported",
@@ -260,7 +260,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Cuando una reserva completa el aforo del espacio, emite un aviso visible en la actividad. La UI sugiere a los siguientes interesados unirse a la lista de espera.",
             category: "spaces",
             templateKind: "governance",
-            requiredCapabilities: ["capacity"],
+            requiredCapabilities: [CapabilityID.capacity],
             defaultParams: .object([:]),
             composition: .init(
                 triggerShapeId: "spaceCapacityReached",
@@ -276,7 +276,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si alguien cancela una reserva con menos de X horas antes de su inicio, cobra una multa. Justo cuando ya no hay tiempo para que otro miembro use el espacio.",
             category: "spaces",
             templateKind: "penalty",
-            requiredCapabilities: ["booking", "consequence"],
+            requiredCapabilities: [CapabilityID.booking, CapabilityID.consequence],
             defaultParams: .object([
                 "hours":  .int(24),
                 "amount": .int(200),
@@ -295,7 +295,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si pasa la hora de inicio y nadie ha hecho check-in en los siguientes X minutos, libera automáticamente la reserva para que otro miembro pueda ocupar el espacio.",
             category: "spaces",
             templateKind: "governance",
-            requiredCapabilities: ["booking", "check_in"],
+            requiredCapabilities: [CapabilityID.booking, CapabilityID.checkIn],
             defaultParams: .object(["grace_minutes": .int(30)]),
             composition: .init(
                 triggerShapeId: "bookingNoCheckIn",
@@ -311,7 +311,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si alguien intenta reservar fuera del horario permitido (por ejemplo, fuera de 8am-10pm), el sistema lo marca como no permitido. La UI captura el rechazo y avisa al usuario.",
             category: "spaces",
             templateKind: "governance",
-            requiredCapabilities: ["booking", "schedule"],
+            requiredCapabilities: [CapabilityID.booking, CapabilityID.schedule],
             defaultParams: .object([
                 "start_hour": .int(8),
                 "end_hour":   .int(22),
@@ -350,7 +350,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si alguien reserva el espacio por más de X minutos en una sola sesión, abre automáticamente una votación al grupo. Útil para gates de uso intensivo (ej. canchas, palco).",
             category: "spaces",
             templateKind: "governance",
-            requiredCapabilities: ["booking", "voting"],
+            requiredCapabilities: [CapabilityID.booking, CapabilityID.voting],
             defaultParams: .object([
                 "minutes":           .int(120),
                 "duration_hours":    .int(24),
@@ -371,7 +371,7 @@ public enum RuleTemplateCatalog {
             descriptionES: "Si alguien reporta un daño con severidad grave o total, abre automáticamente una votación al grupo para decidir si cerrar temporalmente el espacio mientras se repara.",
             category: "spaces",
             templateKind: "governance",
-            requiredCapabilities: ["maintenance", "voting"],
+            requiredCapabilities: [CapabilityID.maintenance, CapabilityID.voting],
             defaultParams: .object([
                 "level":             .string("major"),
                 "duration_hours":    .int(48),
