@@ -41,6 +41,7 @@ public struct ResourcesUsedSectionView: View {
     public static let definition = CapabilitySection(
         id: "resource_links",
         priority: 850,
+        tabId: "connections",
         isEnabledFor: { _ in true },
         isVisibleFor: { ctx in ctx.resource.resourceType == .event },
         render: { ctx in AnyView(ResourcesUsedSectionView(context: ctx)) }

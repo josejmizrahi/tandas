@@ -12,6 +12,7 @@ public struct RulesSectionView: View {
     public static let definition = CapabilitySection(
         id: "rules",
         priority: 800,
+        tabId: "rules",
         isEnabledFor: { caps in caps.contains("rules") },
         render: { ctx in AnyView(RulesSectionView(context: ctx)) }
     )
