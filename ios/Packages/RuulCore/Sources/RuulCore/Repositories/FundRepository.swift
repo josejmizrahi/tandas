@@ -127,6 +127,12 @@ public actor MockFundRepository: FundRepository {
 
     public func lock(fundId: UUID, reason: String?) async throws {
         guard let original = funds[fundId]?.first else { throw FundError.notFound }
+        // Idempotent: if already locked, preserve original lockedAt +
+        // lockedReason so re-calling doesn't emit a second fundLocked
+        // atom (mirrors the `fund_lock` server RPC contract per mig 00198
+        // + Plans/Active/CleanupAudit_2026-05-18/08_tests.md §9.4 doctrine
+        // — Atoms append-only, lock idempotency).
+        if original.isLocked { return }
         let stamped = Fund(
             fundId: original.fundId,
             groupId: original.groupId,
@@ -149,6 +155,8 @@ public actor MockFundRepository: FundRepository {
 
     public func unlock(fundId: UUID) async throws {
         guard let original = funds[fundId]?.first else { throw FundError.notFound }
+        // Symmetric idempotency: if already unlocked, no atom to emit.
+        if !original.isLocked { return }
         let cleared = Fund(
             fundId: original.fundId,
             groupId: original.groupId,
