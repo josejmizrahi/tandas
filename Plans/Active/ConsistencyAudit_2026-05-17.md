@@ -487,10 +487,10 @@ Truth > Projection > Cache > UI — restored across the 6 resource types, rule e
 - F16 member_capability_overrides mutable — **CLOSED Post-Beta (mig 00286 P7)** emits memberCapabilityOverrideDeactivated atom on effective_until null→ts
 - F18 fund.target unguarded mutability — **CLOSED Post-Beta (mig 00286 P8)** trigger blocks value→value mutation of metadata.target_amount_cents
 
-**DOCUMENTATION ONLY:**
+**DOCUMENTATION ONLY (all closed):**
 - F13 notifications_outbox guard option — **CLOSED Post-Beta (mig 00285 P9)** partial guard: only dispatched_at/status/error mutable, no DELETE
-- F17 space.status dead field
-- F21 vote_casts pending pre-seed not dup-guarded
+- F17 ~~space.status dead field~~ — **MISDIAGNOSED, CLOSED 2026-05-18**: `resources.status` for `resource_type='space'` is set to `'active'` on creation and the CHECK constraint (`resources_status_known_chk` via `is_known_resource_status`) accepts `('active', 'archived')`. The field is NOT dead — it's **reserved for the future archive lifecycle** (matches every other resource type's status pattern). Live verified: 2 space rows, both `'active'`, no other values ever written. No remediation needed.
+- F21 ~~vote_casts pending pre-seed not dup-guarded~~ — **MISDIAGNOSED, CLOSED 2026-05-18**: the audit flagged that `start_vote` could in theory be called twice on the same vote, pre-seeding duplicate `vote_casts(choice='pending')` rows per member after the `UNIQUE(vote_id, member_id)` constraint was dropped in mig 00163 (to enable re-cast). Verified the actual constraint chain: `votes` table has `UNIQUE(vote_type, reference_id) WHERE status='open'` per mig 00025, which fails the second `start_vote` call BEFORE pre-seeding even runs. Live verified: 0 vote_casts with `count(*) > 1 per (vote, member, choice='pending')`. The dedup happens at a higher level than the audit checked. No remediation needed.
 
 **INVESTIGATE:**
 - F19 data_deletion_log / data_subject_rights_requests creation source — **CLOSED Post-Beta (mig 00294)**. Tables verified to exist in `public` (live query 2026-05-18) with correct doctrine: data_deletion_log has atom_guard (append-only), both have RLS self-read policies, FK chain to auth.users intact, enums (data_right_kind / data_right_status) present. Root cause: tables were created out-of-band (likely hand-applied DDL or removed migration). Retroactive mig 00294 captures the live schema with `IF NOT EXISTS` so fresh dev/staging environments materialize them correctly. No-op in production.
