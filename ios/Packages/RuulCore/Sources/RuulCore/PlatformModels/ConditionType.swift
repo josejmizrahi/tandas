@@ -91,5 +91,41 @@ public enum ConditionType: Codable, Sendable, Hashable {
     /// `transfer_large_vote` template. Config: `{ "threshold_cents": 5000000 }`.
     case transferAmountAbove
 
+    // MARK: - Space rule conditions (mig 00268 — SpaceRules.md §3.2)
+
+    /// True when the cancellation occurs within `hours` of the booking's
+    /// `starts_at`. Reads `target.context.booking_starts_at` projected by
+    /// the `bookingCancelled` evaluator (PR-3). Drives the
+    /// `space_cancellation_late_fine` template.
+    /// Config: `{ "hours": 24 }`.
+    case cancelledWithinHours
+
+    /// True when the booking's `starts_at` hour falls outside the
+    /// `[start_hour, end_hour)` window in the resource's timezone. Reads
+    /// `target.context.booking_starts_at`. Drives the
+    /// `space_outside_allowed_hours_deny` template.
+    /// Config: `{ "start_hour": 8, "end_hour": 22 }` (24h clock).
+    case outsideAllowedHours
+
+    /// True when the actor (member that fired the trigger) carries the
+    /// configured role. Reads `target.context.actor_roles` projected from
+    /// `group_members.roles` jsonb. Drives the
+    /// `space_founder_priority_bump` template.
+    /// Config: `{ "role": "founder" }`.
+    case actorHasRole
+
+    /// True when the booking's `ends_at - starts_at` exceeds the
+    /// configured minutes. Reads `target.context.booking_duration_minutes`.
+    /// Drives the `space_long_booking_vote` template.
+    /// Config: `{ "minutes": 120 }`.
+    case bookingDurationAbove
+
+    /// True when the damage atom's severity is at or above the configured
+    /// level (minor < moderate < major < total). Reads
+    /// `target.context.severity`. Drives the
+    /// `space_damage_temporary_closure_vote` template (and reused by
+    /// asset variants). Config: `{ "level": "major" }`.
+    case damageSeverityAbove
+
     case unknown(String)
 }

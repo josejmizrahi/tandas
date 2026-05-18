@@ -72,5 +72,35 @@ public enum ConsequenceType: Codable, Sendable, Hashable {
     /// already-locked asset is a no-op. Config: `{}` — none today.
     case lockBookings
 
+    // MARK: - Space rule consequences (mig 00268 — SpaceRules.md §3.3)
+
+    /// Calls `expire_booking(booking_id, reason)` to terminate the
+    /// active booking that triggered the rule. Emits `bookingExpired`
+    /// + (when target is a space) `spaceReleased`. Drives the
+    /// `space_no_check_in_release` template — auto-frees a booking
+    /// when nobody checked in within the grace window.
+    /// Config: `{ "reason": "no_check_in" }`.
+    case releaseBooking
+
+    /// Soft block per TalmudicGovernance §4.G — instead of silently
+    /// swallowing the triggering action, returns an explicit error to
+    /// the caller via `target.context.deny_message`. Used by
+    /// `space_outside_allowed_hours_deny` to surface "fuera de horario"
+    /// errors that the UI captures and shows to the user. The action's
+    /// atom does NOT get rolled back (atom is truth) — denyAction
+    /// fires AFTER the trigger and registers the rejection as a
+    /// `warningEmitted` companion atom for audit.
+    /// Config: `{ "message_es": "Esta acción no está permitida" }`.
+    case denyAction
+
+    /// Modifies the `priority` payload of the next `spaceWaitlistJoined`
+    /// row for the actor by `priority_delta`. Drives the
+    /// `space_founder_priority_bump` template — gives founders +100
+    /// priority so they jump the waitlist. Idempotent: re-applying the
+    /// same bump on the same atom is a no-op (engine tracks
+    /// `metadata.priority_bumped_by` to avoid double-counting).
+    /// Config: `{ "priority_delta": 100 }`.
+    case bumpPriority
+
     case unknown(String)
 }

@@ -14,7 +14,12 @@ public extension ConditionType {
              .eventTimeWindow, .fundBalanceAbove,
              .fundBalanceBelow, .rotationPositionEquals,
              .slotIsUnassigned, .slotExpiresInHours,
-             .daysBeforeExpiry:
+             .daysBeforeExpiry,
+             // Space rule conditions — shapes in catalog (mig 00268)
+             // but evaluators land in PR-3 of SpaceRules roadmap.
+             .cancelledWithinHours, .outsideAllowedHours,
+             .actorHasRole, .bookingDurationAbove,
+             .damageSeverityAbove:
             return false
         case .unknown:
             return false

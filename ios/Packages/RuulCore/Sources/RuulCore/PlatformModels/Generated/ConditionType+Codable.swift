@@ -24,6 +24,13 @@ extension ConditionType {
         .slotExpiresInHours,
         .daysBeforeExpiry,
         .amountAbove,
+        .damageAmountAbove,
+        .transferAmountAbove,
+        .cancelledWithinHours,
+        .outsideAllowedHours,
+        .actorHasRole,
+        .bookingDurationAbove,
+        .damageSeverityAbove,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -46,6 +53,13 @@ extension ConditionType {
         "slotExpiresInHours",
         "daysBeforeExpiry",
         "amountAbove",
+        "damageAmountAbove",
+        "transferAmountAbove",
+        "cancelledWithinHours",
+        "outsideAllowedHours",
+        "actorHasRole",
+        "bookingDurationAbove",
+        "damageSeverityAbove",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +95,11 @@ extension ConditionType {
         case .amountAbove: return "amountAbove"
         case .damageAmountAbove: return "damageAmountAbove"
         case .transferAmountAbove: return "transferAmountAbove"
+        case .cancelledWithinHours: return "cancelledWithinHours"
+        case .outsideAllowedHours: return "outsideAllowedHours"
+        case .actorHasRole: return "actorHasRole"
+        case .bookingDurationAbove: return "bookingDurationAbove"
+        case .damageSeverityAbove: return "damageSeverityAbove"
         case .unknown(let s): return s
         }
     }
@@ -108,6 +127,11 @@ extension ConditionType {
         case "amountAbove": return .amountAbove
         case "damageAmountAbove": return .damageAmountAbove
         case "transferAmountAbove": return .transferAmountAbove
+        case "cancelledWithinHours": return .cancelledWithinHours
+        case "outsideAllowedHours": return .outsideAllowedHours
+        case "actorHasRole": return .actorHasRole
+        case "bookingDurationAbove": return .bookingDurationAbove
+        case "damageSeverityAbove": return .damageSeverityAbove
         default: return .unknown(raw)
         }
     }

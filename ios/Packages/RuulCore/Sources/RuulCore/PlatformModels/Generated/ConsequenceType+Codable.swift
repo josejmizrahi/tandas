@@ -23,6 +23,11 @@ extension ConsequenceType {
         .emitWarning,
         .revokeRight,
         .suspendRight,
+        .requireApproval,
+        .lockBookings,
+        .releaseBooking,
+        .denyAction,
+        .bumpPriority,
     ]
 
     public static let knownRawValues: Set<String> = [
@@ -44,6 +49,11 @@ extension ConsequenceType {
         "emitWarning",
         "revokeRight",
         "suspendRight",
+        "requireApproval",
+        "lockBookings",
+        "releaseBooking",
+        "denyAction",
+        "bumpPriority",
     ]
 
     public init(from decoder: Decoder) throws {
@@ -78,6 +88,9 @@ extension ConsequenceType {
         case .suspendRight: return "suspendRight"
         case .requireApproval: return "requireApproval"
         case .lockBookings: return "lockBookings"
+        case .releaseBooking: return "releaseBooking"
+        case .denyAction: return "denyAction"
+        case .bumpPriority: return "bumpPriority"
         case .unknown(let s): return s
         }
     }
@@ -104,6 +117,9 @@ extension ConsequenceType {
         case "suspendRight": return .suspendRight
         case "requireApproval": return .requireApproval
         case "lockBookings": return .lockBookings
+        case "releaseBooking": return .releaseBooking
+        case "denyAction": return .denyAction
+        case "bumpPriority": return .bumpPriority
         default: return .unknown(raw)
         }
     }
