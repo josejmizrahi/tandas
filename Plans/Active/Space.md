@@ -70,11 +70,41 @@ La diferencia es enorme. Un `space` es **continuo** — existe entre los actos d
 | Horario 19:00-20:00 en la cancha | `slot` | Partición temporal/atómica del espacio |
 | Una reserva del palco | `booking` (atom) | Acto de reservar, no objeto |
 
-**Ejemplo concreto del "palco" (ambigüedad clásica):**
+**Ejemplo concreto del "palco" (capas, no alternativas):**
 
-- Si la coordinación dominante es ownership, valuation, custody y transfer → **asset** (ver Asset.md §20)
-- Si la coordinación dominante es booking, availability, occupancy, capacity → **space** (este doc)
-- Un grupo puede modelarlo simultáneamente como asset *y* space si quiere ambas dimensiones, pero canónicamente conviene uno solo según el caso de uso dominante. El wizard de iOS debe ayudar a desambiguar.
+Asset y Space NO son alternativas mutuamente excluyentes — son **capas distintas** que el grupo coordina sobre la misma realidad. Lo correcto es **vincularlas** cuando ambas existen:
+
+| Capa | Pregunta que responde | En el caso del palco |
+|------|-----------------------|----------------------|
+| **Asset** | "¿Quién posee esto económicamente?" | `asset: 50% Palco Mundial` — ownership, valuación, equity, herencia, venta, impuestos |
+| **Space** | "¿Quién usa esto, cuándo, cómo?" | `space: Palco Mundial` — ocupación, partidos, reservas, asignación, reglas de uso |
+| **Event** | "¿Qué pasa en él en este momento?" | `event: Final Mundial` — momento social específico |
+| **Right** | "¿Quién tiene derecho a entrar?" | `right: Uso preferente semifinales` — acceso, boletos |
+
+**Vínculo canónico:**
+
+```
+ASSET                                  SPACE                          EVENT                       RIGHT
+50% Palco Mundial    —owns→     Palco Mundial    —scheduled_in→   Final Mundial    ←grants_access_to—  Boleto VIP
+(layer económico/legal)          (layer operativo)                  (layer temporal)            (layer entitlement)
+```
+
+Esto refleja la distinción jurídica clásica entre **propiedad**, **posesión**, **usufructo**, **acceso**, **uso**, **ocupación**, **licencia** y **temporalidad** — Ruul las separa porque son operacionalmente distintas:
+
+| Caso real         | Asset (ownership)              | Space (occupancy)               |
+|-------------------|--------------------------------|----------------------------------|
+| Oficina           | propiedad del inmueble         | oficina usable                   |
+| Avión             | ownership financiero           | asientos / vuelos                |
+| Yate              | ownership                      | camarotes / slots                |
+| Hotel             | edificio                       | habitaciones                     |
+| Estadio           | propiedad                      | palco / asientos                 |
+| Coworking         | lease / propiedad              | desks / salas                    |
+| Parking           | propiedad del lote             | lugares específicos              |
+| Hospital          | propiedad del edificio         | quirófanos                       |
+
+Un mismo `space` puede tener múltiples `assets` (fractional ownership), múltiples `rights` (entitlements), múltiples `events` (timeline), múltiples `funds` (sub-pools) y múltiples `slots` (partition) sobre él. El space es el **operational layer central** que orquesta el uso real; el asset es el **ownership ledger** que orquesta el valor económico.
+
+El wizard de iOS debe permitir crear ambos con un solo flow cuando aplica ("Crear palco" = `space` + `asset` linked vía `resource_links` con kind `owns`) — no forzar al usuario a elegir entre dos primitivas que el mundo real combina.
 
 ---
 
@@ -124,9 +154,21 @@ booking --reserves   --> space|slot    # booking atom carries the claim
 
 ## §5 — Ejemplos canónicos
 
-### Caso 1 — Palco compartido del grupo
+### Caso 1 — Palco compartido del grupo (multi-layer)
 
-**Resource:** `space: Palco Mundial Estadio Azteca`
+**Resources (3 vinculados):**
+
+```
+asset: 50% Palco Mundial Estadio Azteca   (ownership: custody + valuation + transfer)
+  └─owns→
+space: Palco Mundial Estadio Azteca       (occupancy: booking + waitlist + check-in)
+  ├─scheduled_in←
+  │   event: Final Mundial 2026           (occurrence)
+  └─grants_access_to←
+      right: Boleto VIP Semifinales       (entitlement)
+```
+
+El space coordina **operación**; el asset coordina **propiedad**. Vinculados via `resource_links` con kind `owns`.
 
 **Capabilities:**
 
@@ -598,21 +640,41 @@ Un `event` puede **scheduled_in** un space (la cena usa el palco). Un `space` pu
 
 ---
 
-## §20 — Space NO es asset ni slot ni right
+## §20 — Space, Asset, Slot, Right son CAPAS, no alternativas
 
-**Asset:** objeto persistente cuya coordinación dominante es custody, valuation, transfer (ver Asset.md §20).
+**Asset:** **ownership layer** — quién posee económicamente. Custody, valuation, transfer, equity, herencia, impuestos.
 
-**Slot:** unidad atómica de tiempo o cupo (un turno de 1h, un lugar en lineup, un asiento). Un slot puede ser **child** de un space (la cancha tiene slots 19:00, 20:00, 21:00).
+**Space:** **operational/occupancy layer** — quién usa, cuándo, cómo. Booking, availability, capacity, access, scheduling.
 
-**Right:** derecho normativo de acceso. Un right puede **grant_access_to** un space, pero el right mismo no es el space.
+**Slot:** **partition layer** — unidad atómica de tiempo o cupo dentro de un space. La cancha tiene slots 19:00, 20:00, 21:00; el palco tiene lugar 14.
 
-**Space:** lugar/superficie ocupable persistente cuya coordinación dominante es booking/availability/capacity/access.
+**Right:** **entitlement layer** — derecho normativo de acceso o uso preferente. Membresía, boleto VIP, equity de voto, day pass.
 
-La diferencia práctica:
+**Event:** **temporal coordination layer** — momento social específico que ocupa el space.
 
-- "Palco" puede modelarse como **asset** (cuando ownership/valuación/custody domina) **o** como **space** (cuando booking/access domina). El equipo elige según qué capabilities domina la coordinación.
-- "Lugar 14 del palco" es **slot** dentro del space/asset.
-- "Membresía Gold con acceso al palco" es **right** que `grants_access_to` el space.
+La diferencia práctica NO es elegir uno — es **vincularlos** cuando aplica:
+
+```
+ASSET (ownership)            owns →  SPACE (occupancy)
+                                     SPACE  partitioned_in → SLOTS (time/seat windows)
+                                     SPACE  scheduled_in   → EVENTS (occurrences)
+                                     SPACE  ←grants_access_to— RIGHTS (entitlements)
+                                     SPACE  ←linked_to—  FUNDS (sub-pools / maintenance)
+```
+
+**Ejemplos:**
+
+- "Palco Mundial" → `space` (operación) **+** `asset 50%` (ownership) linked via `owns`.
+- "Lugar 14 del palco" → `slot` child del space.
+- "Membresía Gold con acceso al palco" → `right` que `grants_access_to` el space.
+- "Final Mundial" → `event` que `scheduled_in` el space.
+- "Fondo Palco" → `fund` que `owns` o `funds_maintenance_of` el space.
+
+**Cuándo crear solo space sin asset:** cuando el grupo no quiere tracking de ownership/valuación (e.g. sala de juntas corporativa que la empresa simplemente "tiene"; coworking floor rentada).
+
+**Cuándo crear solo asset sin space:** cuando el objeto no es ocupable temporalmente (e.g. herramienta que se presta — más cerca de custody que de occupancy; NFT/equity que no tiene "ocupación").
+
+**Cuándo crear ambos linked:** cuando ambas capas existen como realidades coordinadas distintas (palco con ownership compartido, hotel con habitaciones reservables, yacht con camarotes, oficina con sub-rooms). Esto es **lo más común** en el mundo real.
 
 ---
 
