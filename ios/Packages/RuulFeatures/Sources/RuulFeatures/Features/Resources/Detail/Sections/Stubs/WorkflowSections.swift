@@ -10,7 +10,7 @@ public struct ParticipantsSectionView: View {
     public static let definition = CapabilitySection(
         id: "participants",
         priority: 250,
-        isEnabledFor: { caps in caps.contains("participants") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.participants) },
         render: { ctx in AnyView(ParticipantsSectionView(context: ctx)) }
     )
 
@@ -39,7 +39,7 @@ public struct AttendanceSectionView: View {
     public static let definition = CapabilitySection(
         id: "attendance",
         priority: 260,
-        isEnabledFor: { caps in caps.contains("attendance") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.attendance) },
         render: { ctx in AnyView(AttendanceSectionView(context: ctx)) }
     )
 
@@ -63,7 +63,7 @@ public struct GuestAccessSectionView: View {
     public static let definition = CapabilitySection(
         id: "guest_access",
         priority: 270,
-        isEnabledFor: { caps in caps.contains("guest_access") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.guestAccess) },
         render: { ctx in AnyView(GuestAccessSectionView(context: ctx)) }
     )
 
@@ -87,7 +87,7 @@ public struct ApprovalSectionView: View {
     public static let definition = CapabilitySection(
         id: "approval",
         priority: 720,
-        isEnabledFor: { caps in caps.contains("approval") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.approval) },
         render: { ctx in AnyView(ApprovalSectionView(context: ctx)) }
     )
 
@@ -119,7 +119,7 @@ public struct AppealSectionView: View {
     public static let definition = CapabilitySection(
         id: "appeal",
         priority: 730,
-        isEnabledFor: { caps in caps.contains("appeal") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.appeal) },
         render: { ctx in AnyView(AppealSectionView(context: ctx)) }
     )
 

@@ -37,7 +37,7 @@ public struct SpaceCapacitySection: View {
     public static let definition = CapabilitySection(
         id: "space.capacity",
         priority: 164,
-        isEnabledFor: { caps in caps.contains("capacity") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.capacity) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .space },
         render: { ctx in AnyView(SpaceCapacitySection(space: ctx.resource)) }
     )
@@ -120,7 +120,7 @@ public struct SpaceOccupancySection: View {
     public static let definition = CapabilitySection(
         id: "space.occupancy",
         priority: 165,
-        isEnabledFor: { caps in caps.contains("check_in") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.checkIn) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .space },
         render: { ctx in AnyView(SpaceOccupancySection(
             space: ctx.resource,
@@ -224,7 +224,7 @@ public struct SpaceBookingsSection: View {
     public static let definition = CapabilitySection(
         id: "space.bookings",
         priority: 166,
-        isEnabledFor: { caps in caps.contains("booking") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.booking) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .space },
         render: { ctx in AnyView(SpaceBookingsSection(
             space: ctx.resource,

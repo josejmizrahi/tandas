@@ -29,8 +29,8 @@ public struct MoneySectionView: View {
             // are forward-compat synonyms; should later modules ship
             // dedicated capability blocks under those names, this section
             // lights up without a rename migration.
-            caps.contains("ledger") ||
-            caps.contains("money") ||
+            caps.contains(CapabilityID.ledger) ||
+            caps.contains(CapabilityID.money) ||
             caps.contains("expenses") ||
             caps.contains("contributions") ||
             caps.contains("payouts")

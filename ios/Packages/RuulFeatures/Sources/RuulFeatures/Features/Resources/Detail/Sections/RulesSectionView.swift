@@ -19,7 +19,7 @@ public struct RulesSectionView: View {
         id: "rules",
         priority: 800,
         tabId: "rules",
-        isEnabledFor: { caps in caps.contains("rules") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.rules) },
         render: { ctx in AnyView(RulesSectionView(context: ctx)) }
     )
 

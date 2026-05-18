@@ -18,7 +18,7 @@ public struct LocationSectionView: View {
     public static let definition = CapabilitySection(
         id: "location",
         priority: 120,
-        isEnabledFor: { caps in caps.contains("location") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.location) },
         render: { ctx in AnyView(LocationSectionView(context: ctx)) }
     )
 

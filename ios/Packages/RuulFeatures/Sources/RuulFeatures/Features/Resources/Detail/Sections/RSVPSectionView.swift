@@ -20,7 +20,7 @@ public struct RSVPSectionView: View {
     public static let definition = CapabilitySection(
         id: "rsvp",
         priority: 200,
-        isEnabledFor: { caps in caps.contains("rsvp") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.rsvp) },
         render: { ctx in AnyView(RSVPSectionView(context: ctx)) }
     )
 

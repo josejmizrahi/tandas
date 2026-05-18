@@ -18,7 +18,7 @@ public struct ScheduleSectionView: View {
         id: "schedule",
         priority: 100,
         isEnabledFor: { caps in
-            caps.contains("schedule") || caps.contains("recurrence")
+            caps.contains(CapabilityID.schedule) || caps.contains(CapabilityID.recurrence)
         },
         render: { ctx in AnyView(ScheduleSectionView(context: ctx)) }
     )

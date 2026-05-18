@@ -19,7 +19,7 @@ public struct CapacityProgressSectionView: View {
     public static let definition = CapabilitySection(
         id: "capacity_progress",
         priority: 110,
-        isEnabledFor: { caps in caps.contains("capacity") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.capacity) },
         render: { ctx in AnyView(CapacityProgressSectionView(context: ctx)) }
     )
 

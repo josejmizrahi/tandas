@@ -14,7 +14,7 @@ public struct VotingSectionView: View {
     public static let definition = CapabilitySection(
         id: "voting",
         priority: 700,
-        isEnabledFor: { caps in caps.contains("voting") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.voting) },
         render: { ctx in AnyView(VotingSectionView(context: ctx)) }
     )
 
@@ -61,7 +61,7 @@ public struct ConsequenceSectionView: View {
     public static let definition = CapabilitySection(
         id: "consequence",
         priority: 740,
-        isEnabledFor: { caps in caps.contains("consequence") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.consequence) },
         render: { ctx in AnyView(ConsequenceSectionView(context: ctx)) }
     )
 

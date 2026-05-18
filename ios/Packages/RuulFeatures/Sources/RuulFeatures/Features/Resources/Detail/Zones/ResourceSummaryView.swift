@@ -343,9 +343,9 @@ public struct ResourceSummaryView: View {
 
     private var isMoneyEnabled: Bool {
         let caps = context.enabledCapabilities
-        return caps.contains("money") || caps.contains("expenses")
+        return caps.contains(CapabilityID.money) || caps.contains("expenses")
             || caps.contains("contributions") || caps.contains("payouts")
-            || caps.contains("ledger")
+            || caps.contains(CapabilityID.ledger)
     }
 
     private var moneyLabel: String {

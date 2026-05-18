@@ -42,7 +42,7 @@ public struct AssetCustodySection: View {
     public static let definition = CapabilitySection(
         id: "asset.custody",
         priority: 160,
-        isEnabledFor: { caps in caps.contains("custody") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.custody) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetCustodySection(
             asset: ctx.resource,
@@ -117,7 +117,7 @@ public struct AssetOwnershipSection: View {
     public static let definition = CapabilitySection(
         id: "asset.ownership",
         priority: 161,
-        isEnabledFor: { caps in caps.contains("transfer") || caps.contains("valuation") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.transfer) || caps.contains(CapabilityID.valuation) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetOwnershipSection(
             asset: ctx.resource,
@@ -185,7 +185,7 @@ public struct AssetMaintenanceSection: View {
     public static let definition = CapabilitySection(
         id: "asset.maintenance",
         priority: 162,
-        isEnabledFor: { caps in caps.contains("maintenance") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.maintenance) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetMaintenanceSection(asset: ctx.resource)) }
     )
@@ -300,7 +300,7 @@ public struct AssetBookingsSection: View {
     public static let definition = CapabilitySection(
         id: "asset.bookings",
         priority: 163,
-        isEnabledFor: { caps in caps.contains("booking") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.booking) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetBookingsSection(asset: ctx.resource)) }
     )

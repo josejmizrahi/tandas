@@ -10,7 +10,7 @@ public struct StatusSectionView: View {
     public static let definition = CapabilitySection(
         id: "status",
         priority: 90,
-        isEnabledFor: { caps in caps.contains("status") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.status) },
         render: { ctx in AnyView(StatusSectionView(context: ctx)) }
     )
 
@@ -51,7 +51,7 @@ public struct HistorySectionView: View {
     public static let definition = CapabilitySection(
         id: "history",
         priority: 950,
-        isEnabledFor: { caps in caps.contains("history") },
+        isEnabledFor: { caps in caps.contains(CapabilityID.history) },
         render: { ctx in AnyView(HistorySectionView(context: ctx)) }
     )
 
