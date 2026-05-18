@@ -9,8 +9,23 @@ public struct Invite: Identifiable, Codable, Sendable, Hashable {
     public let usedByUserId: UUID?
     public let expiresAt: Date
     public let createdAt: Date
+    /// When set, this invite was created for a placeholder member (mig
+    /// 00311). The raw claim token is never decoded into this struct —
+    /// it lives only in the WhatsApp magic link. Use the existence of
+    /// this field to distinguish placeholder invites from regular ones.
+    public let placeholderUserId: UUID?
 
-    public init(id: UUID, groupId: UUID, invitedBy: UUID, phoneE164: String?, usedAt: Date?, usedByUserId: UUID?, expiresAt: Date, createdAt: Date) {
+    public init(
+        id: UUID,
+        groupId: UUID,
+        invitedBy: UUID,
+        phoneE164: String?,
+        usedAt: Date?,
+        usedByUserId: UUID?,
+        expiresAt: Date,
+        createdAt: Date,
+        placeholderUserId: UUID? = nil
+    ) {
         self.id = id
         self.groupId = groupId
         self.invitedBy = invitedBy
@@ -19,17 +34,32 @@ public struct Invite: Identifiable, Codable, Sendable, Hashable {
         self.usedByUserId = usedByUserId
         self.expiresAt = expiresAt
         self.createdAt = createdAt
+        self.placeholderUserId = placeholderUserId
     }
 
     public enum CodingKeys: String, CodingKey {
         case id
-        case groupId       = "group_id"
-        case invitedBy     = "invited_by"
-        case phoneE164     = "phone_e164"
-        case usedAt        = "used_at"
-        case usedByUserId  = "used_by_user_id"
-        case expiresAt     = "expires_at"
-        case createdAt     = "created_at"
+        case groupId           = "group_id"
+        case invitedBy         = "invited_by"
+        case phoneE164         = "phone_e164"
+        case usedAt            = "used_at"
+        case usedByUserId      = "used_by_user_id"
+        case expiresAt         = "expires_at"
+        case createdAt         = "created_at"
+        case placeholderUserId = "placeholder_user_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.groupId = try c.decode(UUID.self, forKey: .groupId)
+        self.invitedBy = try c.decode(UUID.self, forKey: .invitedBy)
+        self.phoneE164 = try c.decodeIfPresent(String.self, forKey: .phoneE164)
+        self.usedAt = try c.decodeIfPresent(Date.self, forKey: .usedAt)
+        self.usedByUserId = try c.decodeIfPresent(UUID.self, forKey: .usedByUserId)
+        self.expiresAt = try c.decode(Date.self, forKey: .expiresAt)
+        self.createdAt = try c.decode(Date.self, forKey: .createdAt)
+        self.placeholderUserId = try c.decodeIfPresent(UUID.self, forKey: .placeholderUserId)
     }
 }
 
