@@ -68,14 +68,14 @@ public struct ConsequenceSectionView: View {
     public init(context: ResourceDetailContext) { self.context = context }
 
     public var body: some View {
-        CapabilityStubCard(label: "CONSECUENCIAS") {
+        CapabilityStubCard(label: "MULTAS APLICADAS") {
             if loaded {
                 if emittedCount > 0 {
-                    StubMetadataRow(label: "Aplicadas", value: "\(emittedCount)")
+                    StubMetadataRow(label: "Total", value: "\(emittedCount)")
                 } else {
                     StubPlaceholderRow(
                         symbol: "checkmark.circle",
-                        subtitle: "Sin consecuencias emitidas para este recurso."
+                        subtitle: "Aún no hay multas oficializadas en este recurso."
                     )
                 }
             } else {

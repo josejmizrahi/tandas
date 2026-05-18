@@ -167,8 +167,11 @@ struct CapabilityResolverSecondaryActionsTests {
 
     // MARK: - Test 6: fund with non-admin viewer → minimal common menu
 
-    @Test("fund + member viewer → only share; no archive or enableCapability")
+    @Test("fund + member viewer → only share; no archive")
     func fundMemberViewer() {
+        // Doctrine 2026-05-18: SecondaryAction.Kind no longer has
+        // .enableCapability — capabilities are infrastructure and stay
+        // hidden, never surfaced via toolbar entries.
         let actions = resolver.secondaryActions(
             for: makeResource(type: .fund),
             viewerRole: .member,
@@ -179,7 +182,6 @@ struct CapabilityResolverSecondaryActionsTests {
 
         #expect(kinds.contains(.share))
         #expect(!kinds.contains(.archive))
-        #expect(!kinds.contains(.enableCapability))
     }
 
     // MARK: - Fund admin: registrar gasto + archive (lock lives in MoneySectionView)
