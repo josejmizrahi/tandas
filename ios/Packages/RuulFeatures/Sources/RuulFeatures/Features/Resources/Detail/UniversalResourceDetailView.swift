@@ -50,6 +50,11 @@ public struct UniversalResourceDetailView: View {
     /// the matching SwiftUI sheet bound to it.
     @State private var activeFundSheet: FundSheetSelection?
 
+    /// Selected tab in the segmented control. Always starts at `.overview`
+    /// when the detail is freshly presented — no persistence across
+    /// presentations (Pass 1 default; revisit in Pass 2 per founder feedback).
+    @State private var selectedTab: ResourceDetailTab = .overview
+
     public init(context: ResourceDetailContext) {
         self.context = context
     }
@@ -63,21 +68,14 @@ public struct UniversalResourceDetailView: View {
                 }
                 hero
                 informationSection
-                // All dynamic sections (canonical + bespoke + resource_links)
-                // sourced from the CapabilitySectionCatalog and rendered in
-                // priority order. Each section gates its own empty state —
-                // CheckIn returns empty when no eventInteractor, Description
-                // returns empty when no metadata text, etc. Per ontology
-                // constitution Rule 6 (the view is a renderer; section
-                // visibility lives in the section's own definition).
-                catalogSections(idIn: Self.dynamicSectionIds)
-                stubCapabilitySections
-                SettingsSectionView(
-                    onPresentEnableCapability: shouldShowEnableCapability
-                        ? context.onPresentEnableCapability
-                        : nil,
-                    onArchive: nil
+
+                RuulSegmentedControl(
+                    selection: $selectedTab,
+                    segments: ResourceDetailTab.allCases.map { ($0, $0.label) }
                 )
+                .padding(.top, RuulSpacing.xs)
+
+                tabContent
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.vertical, RuulSpacing.lg)
@@ -377,14 +375,107 @@ public struct UniversalResourceDetailView: View {
         return f
     }()
 
-    // MARK: - Capability gating
+    // MARK: - Tab dispatch
 
-    private var shouldShowEnableCapability: Bool {
-        // Reads the resource-type-level knowledge from the enum extension
-        // (ResourceType.capabilitiesAreUserManaged) so the view no longer
-        // hardcodes the event-special-case. Per ontology constitution
-        // Rule 6 (capability knowledge belongs in the model, not the view).
-        context.resource.resourceType.capabilitiesAreUserManaged
+    /// All catalog sections (canonical + bespoke + stubs) that
+    /// (a) gate-in for the current enabled capabilities and context,
+    /// AND (b) belong to the supplied tab. Sorted by `priority` ascending.
+    private func sectionsForTab(_ tab: ResourceDetailTab) -> [CapabilitySection] {
+        CapabilitySectionCatalog.shared
+            .sectionsFor(context: context)
+            .filter { $0.tabId == tab.id }
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .overview:    overviewContent
+        case .activity:    activityContent
+        case .rules:       rulesContent
+        case .connections: connectionsContent
+        case .governance:  governanceContent
+        }
+    }
+
+    @ViewBuilder
+    private var overviewContent: some View {
+        let sections = sectionsForTab(.overview)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.overview.symbol,
+                message: "No hay información para mostrar todavía."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var activityContent: some View {
+        let sections = sectionsForTab(.activity)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.activity.symbol,
+                message: "Aún no hay actividad. Cuando alguien interactúe con este recurso, lo verás aquí."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rulesContent: some View {
+        let sections = sectionsForTab(.rules)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.rules.symbol,
+                message: "Sin reglas propias. Las reglas del grupo aplican aquí por defecto."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var connectionsContent: some View {
+        let sections = sectionsForTab(.connections)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.connections.symbol,
+                message: "Aún no hay recursos vinculados. Las conexiones aparecerán aquí cuando se agreguen."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var governanceContent: some View {
+        GovernanceTabView(resource: context.resource, onArchive: nil)
+    }
+
+    @ViewBuilder
+    private func emptyTab(symbol: String, message: String) -> some View {
+        VStack(spacing: RuulSpacing.sm) {
+            Image(systemName: symbol)
+                .ruulTextStyle(RuulTypography.title)
+                .foregroundStyle(Color.ruulTextTertiary)
+            Text(message)
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(RuulSpacing.xl)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
     }
 
     /// Stub capability sections sourced from `CapabilitySectionCatalog`.
@@ -604,7 +695,10 @@ public struct UniversalResourceDetailView: View {
         case .openRules:
             context.onPresentRules()
         case .enableCapability:
-            context.onPresentEnableCapability()
+            // Post-Pass-1 dead route — the Governance tab is the
+            // canonical entry point. The resolver no longer emits this
+            // kind, so the case stays only for switch exhaustiveness.
+            break
         case .archive:
             break  // no archive endpoint yet
         // Right lifecycle (slice 6). Setting activeRightAction triggers
