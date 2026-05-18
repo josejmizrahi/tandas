@@ -79,7 +79,18 @@ public struct MembersListView: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()
-            if row.member.isFounder {
+            if row.member.joinedVia == "placeholder" {
+                Text("PENDIENTE")
+                    .ruulTextStyle(RuulTypography.captionBold)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .padding(.horizontal, RuulSpacing.xs)
+                    .padding(.vertical, 2)
+                    .background(
+                        Color.ruulSurface.opacity(0.6),
+                        in: Capsule()
+                    )
+                    .accessibilityLabel("Miembro pendiente de activación")
+            } else if row.member.isFounder {
                 Text("FUNDADOR")
                     .ruulTextStyle(RuulTypography.captionBold)
                     .foregroundStyle(Color.ruulAccent)
@@ -94,6 +105,9 @@ public struct MembersListView: View {
     }
 
     private func subtitleFor(_ row: MemberWithProfile) -> String {
+        if row.member.joinedVia == "placeholder" {
+            return "Agregado por admin · sin activar"
+        }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         formatter.locale = Locale(identifier: app.profile?.locale ?? "es-MX")
