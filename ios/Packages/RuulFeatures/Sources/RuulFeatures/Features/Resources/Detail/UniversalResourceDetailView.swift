@@ -108,6 +108,28 @@ public struct UniversalResourceDetailView: View {
                         refreshToken: fundRefreshToken
                     )
                 }
+                if context.resource.resourceType == .space {
+                    // Plans/Active/Space.md §22 — inline sections for the
+                    // space resource_type. Gated by capability flags per
+                    // §16. Mutations dispatch SpaceLifecycleRepository
+                    // RPCs (mig 00266); reads come from the canonical
+                    // projection views (mig 00267) via SpaceProjectionRepository.
+                    if context.enabledCapabilities.contains("capacity") {
+                        SpaceCapacitySection(space: context.resource)
+                    }
+                    if context.enabledCapabilities.contains("check_in") {
+                        SpaceOccupancySection(
+                            space: context.resource,
+                            onMetadataChanged: { await context.onResourceMutated() }
+                        )
+                    }
+                    if context.enabledCapabilities.contains("booking") {
+                        SpaceBookingsSection(
+                            space: context.resource,
+                            onMetadataChanged: { await context.onResourceMutated() }
+                        )
+                    }
+                }
                 if context.enabledCapabilities.contains("rsvp") {
                     RSVPSectionView(context: context)
                 }
