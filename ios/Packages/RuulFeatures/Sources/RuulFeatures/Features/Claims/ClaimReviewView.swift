@@ -94,7 +94,7 @@ public struct ClaimReviewView: View {
             Text(label).ruulTextStyle(RuulTypography.body)
             Spacer()
             Text("\(value)")
-                .ruulTextStyle(RuulTypography.bodyBold)
+                .ruulTextStyle(RuulTypography.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
     }
