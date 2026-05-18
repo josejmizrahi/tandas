@@ -24,10 +24,25 @@ public struct ResourceCreationSheet: View {
     @State private var coordinator: ResourceCreationCoordinator
     public var onCreated: ((UUID) -> Void)?
 
+    /// Permissions the viewer holds in `group`. Used to filter the
+    /// post-create intent grid. Caller is expected to resolve from
+    /// `group.effectiveRoles` + `member.rawRoles` (same source
+    /// `UniversalResourceDetailView.viewerPermissions()` reads).
+    /// Empty set is safe — intents that need permissions stay hidden.
+    public let viewerPermissions: Set<Permission>
+
+    /// Dispatcher for tapped intents on the post-create screen.
+    /// Defaults to `NoOpPostCreateIntentDispatcher` so the sheet
+    /// renders + tests work without a full wiring; Phase B injects
+    /// the real RuulFeatures-side dispatcher.
+    public let intentDispatcher: any PostCreateIntentDispatcher
+
     public init(
         group: RuulCore.Group,
         builders: ResourceBuilderRegistry,
         templateDefaultsByType: [String: [String]] = [:],
+        viewerPermissions: Set<Permission> = [],
+        intentDispatcher: any PostCreateIntentDispatcher = NoOpPostCreateIntentDispatcher(),
         onCreated: ((UUID) -> Void)? = nil
     ) {
         _coordinator = State(initialValue: ResourceCreationCoordinator(
@@ -35,6 +50,8 @@ public struct ResourceCreationSheet: View {
             builders: builders,
             templateDefaultsByType: templateDefaultsByType
         ))
+        self.viewerPermissions = viewerPermissions
+        self.intentDispatcher = intentDispatcher
         self.onCreated = onCreated
     }
 
@@ -67,13 +84,18 @@ public struct ResourceCreationSheet: View {
         case .creating:
             creatingView
                 .transition(stepTransition)
-        case .postCreate:
-            // Sprint 4 wires PostCreateIntentScreen here. For now the
-            // sheet stays mounted and the caller's onCreated handler
-            // decides what to present next — keeps Sprint 3 isolated
-            // from intent-dispatcher work.
-            successPlaceholder
-                .transition(stepTransition)
+        case .postCreate(let resourceId, let variant):
+            PostCreateIntentScreen(
+                resourceId: resourceId,
+                resourceType: variant.resourceType,
+                variant: variant,
+                group: coordinator.group,
+                attachedCapabilities: coordinator.attachedCapabilities,
+                viewerPermissions: viewerPermissions,
+                dispatcher: intentDispatcher,
+                onClose: { dismiss() }
+            )
+            .transition(stepTransition)
         case .failed:
             // Failure UI lives inline inside MinimalIdentityForm via
             // the .failed binding. The coordinator's backOneStep from
@@ -100,34 +122,6 @@ public struct ResourceCreationSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(RuulSpacing.xl)
-    }
-
-    /// Minimal "Listo" screen — Sprint 4 replaces with PostCreateIntent.
-    /// Kept so the user gets visual confirmation when the caller doesn't
-    /// dismiss in `onCreated`.
-    private var successPlaceholder: some View {
-        VStack(spacing: RuulSpacing.lg) {
-            Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48, weight: .semibold))
-                .foregroundStyle(Color.ruulAccent)
-            Text("Listo")
-                .ruulTextStyle(RuulTypography.title)
-                .foregroundStyle(Color.ruulTextPrimary)
-            Text(currentVariant?.postCreateHeadline ?? "")
-                .ruulTextStyle(RuulTypography.body)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .multilineTextAlignment(.center)
-            Spacer()
-            RuulButton(
-                "Cerrar",
-                style: .primary,
-                size: .large,
-                fillsWidth: true,
-                action: { dismiss() }
-            )
-        }
-        .padding(RuulSpacing.lg)
     }
 
     // MARK: - Toolbar
