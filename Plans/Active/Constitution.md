@@ -4,6 +4,7 @@
 **Source of truth de estrategia y posicionamiento:** `Plans/Active/Vision.md` (whitepaper canónico 2026-05-14). Vision.md fija qué es Ruul, qué no es, el modelo de negocio, GTM, compliance MX/US y AI policy. Este Constitution.md es la **capa técnica de enforcement** — los 12 artículos + filtro ontológico §13 + estado de cleanup §14 que materializan la doctrina en código y schema.
 **Reemplaza/consolida:** `Plans/Completed/Primitives.md` (la fórmula), `Plans/Completed/Taxonomy_Resources_and_Capabilities.md` (Resources × Capabilities), `Plans/Completed/L1_Audit_2026-05-10.md` (deuda L1). El companion `Plans/Active/AtomProjection.md` sigue activo con la guard coverage matrix.
 **Companion:** `Plans/Archive/Roadmap.md` (ejecución histórica, números pre-Constitution stale), `Plans/Completed/OpenPlatform_Phase0_2026-05-10.md` (phasing pre-Constitution), `Plans/Active/Beta1Consolidation.md` (vertical actual — closed 40/40 al 2026-05-14, ref para QA + demo).
+**Doctrina operacional (cómo pensar):** `Plans/Active/TalmudicGovernance.md` — el lente filosófico encima de los 12 artículos. Desarrolla el §18 "inspiración estructural" como doctrina aplicable a cada PR (8 principios cardinales + regla de oro + test de admisión).
 
 > **Ruul es un Human Coordination Operating System.**
 > No es una app de eventos, ni un calendario social, ni un splitwise, ni una colección de verticales. Es la infraestructura para que grupos humanos persistentes coordinen recursos, reglas, actos y memoria de manera auditable y extensible.
