@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-/// Read + write gateway for `public.resource_links` (mig 00198 + mig 00267).
+/// Read + write gateway for `public.resource_links` (mig 00198 + mig 00268).
 ///
 /// Wraps the polymorphic RPCs:
 ///   - `link_resources(p_from_resource_id, p_to_resource_id, p_link_kind)`

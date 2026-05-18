@@ -39,7 +39,7 @@ public struct CapabilityCatalog: Sendable {
     /// canonical Tier-0 contract referenced by builders + the backfill
     /// migration so any future addition is grep-able from one place.
     ///
-    /// `links` (mig 00268) joined Tier 0 with Fase 2 — every resource
+    /// `links` (mig 00269) joined Tier 0 with Fase 2 — every resource
     /// is a node of the graph and surfaces a "Vinculado con…" section.
     public static let tier0CapabilityIds: [String] = [
         "status", "description", "history", "rules", "voting", "links"
@@ -1195,7 +1195,7 @@ public struct HistoryCapability: CapabilityBlock {
     public var conflicts: [String] { [] }
 }
 
-// links — Fase 2 (mig 00267). Every resource is a node of the polymorphic
+// links — Fase 2 (mig 00268). Every resource is a node of the polymorphic
 // graph; this cap surfaces the "Vinculado con…" section that lists in/
 // out edges + the "+ Vincular" picker. Tier 0 per
 // `Plans/Active/CapabilityTiers.md §2` — universal across the 6 types.

@@ -3,9 +3,9 @@ import RuulCore
 import RuulUI
 
 /// Universal "Vinculado con…" section. Renders the in/out edges of any
-/// resource's polymorphic link graph (mig 00267 + Fase 2).
+/// resource's polymorphic link graph (mig 00268 + Fase 2).
 ///
-/// Gated by the `links` Tier 0 capability (mig 00268 backfill). Reads
+/// Gated by the `links` Tier 0 capability (mig 00269 backfill). Reads
 /// `resource_links_view` via `AppState.resourceLinkRepo.linksFor(resource:)`.
 ///
 /// Layout: two sub-sections (USA / USADO POR), each grouped by

@@ -24,7 +24,7 @@
 -- Idempotent. Re-running is a no-op (jsonb_agg distinct + ON CONFLICT
 -- semantics). The actual prod row already ran an earlier version of
 -- this mig that only touched founder; the admin gap is closed by
--- mig 00269.
+-- mig 00270.
 
 BEGIN;
 
@@ -124,7 +124,7 @@ begin
   select count(*) into v_admin_count
     from public.groups
    where roles->'admin'->'permissions' ? 'expenseSubmit';
-  raise notice 'mig 00263: founder.expenseSubmit=% admin.expenseSubmit=%',
+  raise notice 'mig 00264: founder.expenseSubmit=% admin.expenseSubmit=%',
     v_founder_count, v_admin_count;
 end;
 $$;
