@@ -158,7 +158,6 @@ extension MemberWithProfile {
             groupId: UUID(),
             userId: userId,
             displayNameOverride: displayName,
-            role: isFounder ? "admin" : "member",
             roles: isFounder ? [.founder, .member] : [.member],
             active: true,
             joinedAt: .now

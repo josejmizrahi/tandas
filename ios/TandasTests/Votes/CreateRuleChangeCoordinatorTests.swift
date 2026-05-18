@@ -27,7 +27,6 @@ struct CreateRuleChangeCoordinatorTests {
             groupId: groupId,
             userId: UUID(),
             displayNameOverride: nil,
-            role: "admin",
             roles: [.founder, .member],
             active: true,
             joinedAt: .now

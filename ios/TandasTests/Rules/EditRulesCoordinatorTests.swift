@@ -116,7 +116,6 @@ private extension Member {
             id: UUID(),
             groupId: groupId,
             userId: UUID(),
-            role: role == .founder ? "admin" : "member",
             roles: [role],
             joinedAt: .now
         )

@@ -111,7 +111,6 @@ public struct EventDetailBootstrap {
             id: UUID(),
             groupId: groupId,
             userId: userId,
-            role: "member",
             roles: [.member],
             active: false,
             joinedAt: .now

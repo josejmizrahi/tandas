@@ -33,7 +33,7 @@ final class VoidFineCoordinatorTests: XCTestCase {
         MemberWithProfile(
             member: Member(
                 id: UUID(), groupId: groupId, userId: userId,
-                role: "member", roles: [.member], joinedAt: .now
+                roles: [.member], joinedAt: .now
             ),
             profile: Profile(id: userId, displayName: displayName, avatarUrl: nil, phone: nil)
         )

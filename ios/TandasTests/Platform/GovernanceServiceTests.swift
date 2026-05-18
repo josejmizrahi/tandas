@@ -186,7 +186,6 @@ private extension Member {
             id: UUID(),
             groupId: groupId,
             userId: UUID(),
-            role: role == .founder ? "admin" : "member",
             roles: [role],
             rawRoles: [role.rawValue],
             joinedAt: .now
@@ -194,8 +193,9 @@ private extension Member {
     }
 
     /// Fixture with arbitrary `rawRoles` to drive the Phase 5 multi-role
-    /// hasPermission path. `role` is the legacy text fallback;
-    /// `rawRoles` is the canonical jsonb array consumed by the protocol.
+    /// hasPermission path. `rawRoles` is the canonical jsonb array
+    /// consumed by the protocol. V24.2 (mig 00303): legacy `role` text
+    /// param dropped.
     static func mock(
         role: MemberRole,
         roles rawRoles: [String],
@@ -205,7 +205,6 @@ private extension Member {
             id: UUID(),
             groupId: groupId,
             userId: UUID(),
-            role: role == .founder ? "admin" : "member",
             roles: rawRoles.compactMap(MemberRole.init(rawValue:)),
             rawRoles: rawRoles,
             joinedAt: .now

@@ -549,7 +549,6 @@ public actor MockGroupsRepository: GroupsRepository {
             groupId: m.groupId,
             userId: m.userId,
             displayNameOverride: m.displayNameOverride,
-            role: m.role,
             roles: roles.compactMap(MemberRole.init(rawValue:)),
             rawRoles: roles,
             active: m.active,
@@ -627,22 +626,30 @@ public actor LiveGroupsRepository: GroupsRepository {
             .value
         let userId = try await client.auth.session.user.id
         struct RoleRow: Decodable {
-            let role: String
             let roles: [String]?
         }
         let row: RoleRow? = try? await client
             .from("group_members")
-            .select("role, roles")
+            .select("roles")
             .eq("group_id", value: id.uuidString.lowercased())
             .eq("user_id", value: userId.uuidString.lowercased())
             .single()
             .execute()
             .value
+        // V24.2 (mig 00303): role text column dropped. Derive a primary
+        // role label from rawRoles for the legacy myRole field —
+        // priority order matches what the dropped text column used to
+        // carry (admin > founder > first known role > "member").
+        let rawRoles = row?.roles ?? []
+        let myRole: String =
+            rawRoles.contains("admin")    ? "admin"   :
+            rawRoles.contains("founder")  ? "founder" :
+            rawRoles.first ?? "member"
         return GroupDetail(
             group: group,
             memberCount: countRow.first?.count ?? 1,
-            myRole: row?.role ?? "member",
-            myRawRoles: row?.roles ?? []
+            myRole: myRole,
+            myRawRoles: rawRoles
         )
     }
 
@@ -711,9 +718,10 @@ public actor LiveGroupsRepository: GroupsRepository {
     }
 
     public func members(of groupId: UUID) async throws -> [Member] {
+        // V24.2 (mig 00303): role text column dropped — removed from SELECT.
         try await client
             .from("group_members")
-            .select("id, group_id, user_id, display_name_override, role, roles, active, joined_at, left_at, joined_via, joined_via_invite_code")
+            .select("id, group_id, user_id, display_name_override, roles, active, joined_at, left_at, joined_via, joined_via_invite_code")
             .eq("group_id", value: groupId.uuidString.lowercased())
             .eq("active", value: true)
             .execute()

@@ -27,6 +27,7 @@
 | **F.3** (V7) | Rule engine — new actorHasPermission condition + loadMemberPermissions sink + actor_permissions projection; mig 00300 helper. actorHasRole kept (label-only, documented) | DB + Deno + Swift | **APPLIED 2026-05-17** (mig 00300) |
 | **F.4** (V23) | is_group_admin → delegates to has_permission(modifyGovernance). Single-fn rewrite, ~50 RLS policies inherit the doctrinal fix transparently | DB | **APPLIED 2026-05-17** (mig 00301) |
 | **F.5** (V8) | 8 cron/emit edge functions route via record_system_events_batch RPC (mig 00302). Atom validation centralized; transactional semantics preserved | DB + Deno | **APPLIED 2026-05-17** (mig 00302) |
+| **F.6** (V24.2) | Physical drop of group_members.role text column. iOS Member.role field removed; get_member_summary + export_my_data derive role from roles[]; group_members_with_founder view recreated with jsonb is_founder | DB + Swift | **APPLIED 2026-05-17** (mig 00303) |
 | **F** | Cleanup tail — eliminar `group_members.role` text column physically (V24.2 once iOS rollout complete); Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23) | mixed | pendiente |
 
 Cada sprint se completa con su propio commit. Sprint B se cubre detalladamente abajo; los siguientes se especificarán cuando se inicien.

@@ -5,16 +5,6 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public let groupId: UUID
     public let userId: UUID
     public let displayNameOverride: String?
-    /// DEPRECATED (audit 2026-05-12 M.15). Maps to `group_members.role`
-    /// (text) which is itself deprecated post-mig 00106 — use
-    /// `group_members.roles` jsonb array instead. Legacy `"admin"` aliases
-    /// to `"founder"` server-side via `has_permission()`.
-    ///
-    /// Field is kept for the Phase D rewire window so existing
-    /// `GroupsRepository.myRole` and `group_members_with_founder` consumers
-    /// keep working. Phase D step 3 deletes this field; Step 4 drops the
-    /// SQL column. See Plans/Active/L1_Audit_2026-05-10.md.
-    public let role: String
     /// Multi-role array. Backfilled by migration 00019: admins get
     /// `[founder, member]`, others `[member]`. V1 active values: founder,
     /// member, host. V2: treasurer, arbiter, observer.
@@ -47,7 +37,6 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         case groupId             = "group_id"
         case userId              = "user_id"
         case displayNameOverride = "display_name_override"
-        case role
         case roles
         case active
         case joinedAt            = "joined_at"
@@ -61,7 +50,6 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         groupId: UUID,
         userId: UUID,
         displayNameOverride: String? = nil,
-        role: String = "member",
         roles: [MemberRole] = [.member],
         rawRoles: [String]? = nil,
         active: Bool = true,
@@ -74,7 +62,6 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         self.groupId = groupId
         self.userId = userId
         self.displayNameOverride = displayNameOverride
-        self.role = role
         self.roles = roles
         self.rawRoles = rawRoles ?? roles.map(\.rawValue)
         self.active = active
@@ -89,26 +76,19 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     /// even when they are not declared in the V1 `MemberRole` enum.
     /// The typed `roles: [MemberRole]` field then projects only the
     /// known cases for legacy call-sites that pattern-match on the enum.
+    ///
+    /// V24.2 (mig 00303): the legacy `group_members.role` text column was
+    /// dropped. Member no longer carries it; rawRoles is the only source.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id                  = try c.decode(UUID.self, forKey: .id)
         self.groupId             = try c.decode(UUID.self, forKey: .groupId)
         self.userId              = try c.decode(UUID.self, forKey: .userId)
         self.displayNameOverride = try c.decodeIfPresent(String.self, forKey: .displayNameOverride)
-        self.role                = (try? c.decode(String.self, forKey: .role)) ?? "member"
 
-        let decodedRaw: [String]
-        if let rawArray = try? c.decode([String].self, forKey: .roles), !rawArray.isEmpty {
-            decodedRaw = rawArray
-        } else {
-            // Legacy fallback for rows predating mig 00290 backfill where
-            // `roles` jsonb is null/empty but the deprecated `role` text
-            // column carries 'admin'. Post-mig-00262 admin is its own
-            // role (not an alias for founder), so backfill it explicitly.
-            decodedRaw = role == "admin" ? ["admin", "member"] : ["member"]
-        }
-        self.rawRoles = decodedRaw
-        self.roles = decodedRaw.compactMap(MemberRole.init(rawValue:))
+        let decodedRaw = (try? c.decode([String].self, forKey: .roles)) ?? []
+        self.rawRoles = decodedRaw.isEmpty ? ["member"] : decodedRaw
+        self.roles = self.rawRoles.compactMap(MemberRole.init(rawValue:))
 
         self.active   = (try? c.decode(Bool.self, forKey: .active)) ?? true
         self.joinedAt = try c.decode(Date.self, forKey: .joinedAt)
@@ -126,7 +106,6 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         try c.encode(groupId, forKey: .groupId)
         try c.encode(userId, forKey: .userId)
         try c.encodeIfPresent(displayNameOverride, forKey: .displayNameOverride)
-        try c.encode(role, forKey: .role)
         try c.encode(rawRoles, forKey: .roles)
         try c.encode(active, forKey: .active)
         try c.encode(joinedAt, forKey: .joinedAt)
@@ -143,11 +122,8 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
 
     /// Mig 00262 split admin (capability) from founder (identity);
     /// mig 00290 backfilled 'admin' into every founder's roles[];
-    /// mig 00299 made `is_group_admin` (server) read jsonb only.
-    /// Post-V24, the role text column is doctrinally dead (column
-    /// stays on disk for old-iOS-build compat; V24.2 drops it once
-    /// rollout completes). Swift `isAdmin` matches the new server
-    /// semantics — roles[] is authoritative.
+    /// mig 00299 made `is_group_admin` (server) read jsonb only;
+    /// mig 00303 dropped the role text column entirely.
     public var isAdmin: Bool {
         holdsRole("admin")
     }

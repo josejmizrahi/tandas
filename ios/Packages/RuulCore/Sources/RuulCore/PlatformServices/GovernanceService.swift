@@ -39,22 +39,13 @@ public extension GovernanceServiceProtocol {
         member: Member,
         in group: Group
     ) async throws -> Bool {
-        // Mirror of mig 00228 server semantics: aggregate the union of
-        // permissions across every role the member holds (jsonb array
-        // takes precedence; legacy `role` text is the fallback when
-        // the array is empty).
-        let catalog = group.effectiveRoles
-        let candidates: [String]
-        if !member.rawRoles.isEmpty {
-            candidates = member.rawRoles
-        } else if !member.role.isEmpty {
-            candidates = [member.role]
-        } else {
-            return false
-        }
+        // V24.2 (mig 00303): rawRoles is the only source — legacy `role`
+        // text fallback removed with the column drop.
         // Post-mig-00262 + 00290, 'admin' has its own catalog entry and
         // every founder is also explicitly an admin. No alias needed.
-        for rawRoleId in candidates {
+        guard !member.rawRoles.isEmpty else { return false }
+        let catalog = group.effectiveRoles
+        for rawRoleId in member.rawRoles {
             if let def = catalog[rawRoleId], def.grants(permission) {
                 return true
             }
@@ -165,11 +156,10 @@ public actor GovernanceService: GovernanceServiceProtocol {
         member: Member,
         in group: Group
     ) -> Bool {
+        // V24.2 (mig 00303): rawRoles is the only source.
+        guard !member.rawRoles.isEmpty else { return false }
         let catalog = group.effectiveRoles
-        let candidates: [String] =
-            !member.rawRoles.isEmpty ? member.rawRoles :
-            (!member.role.isEmpty ? [member.role] : [])
-        for rawRoleId in candidates {
+        for rawRoleId in member.rawRoles {
             if let def = catalog[rawRoleId], def.grants(permission) {
                 return true
             }
