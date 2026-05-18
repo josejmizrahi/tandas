@@ -125,7 +125,7 @@ private struct SimpleCapability: CapabilityBlock {
 // rsvp — confirmation of attendance
 public struct RsvpCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "rsvp" }
+    public var id: String { CapabilityID.rsvp }
     public var displayName: String { "RSVP" }
     public var summary: String { "Los miembros confirman si van a venir." }
     public var enabledResourceTypes: [ResourceType] { [.event] }
@@ -180,7 +180,7 @@ public struct RsvpCapability: CapabilityBlock {
 // check_in — physical presence registration
 public struct CheckInCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "check_in" }
+    public var id: String { CapabilityID.checkIn }
     public var displayName: String { "Check-in" }
     public var summary: String { "Registro de llegada al evento." }
     public var enabledResourceTypes: [ResourceType] { [.event] }
@@ -224,14 +224,14 @@ public struct CheckInCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "attendance_actual", displayName: "Llegaron", scope: .resource)]
     }
-    public var dependencies: [String] { ["rsvp"] }
+    public var dependencies: [String] { [CapabilityID.rsvp] }
     public var conflicts: [String] { [] }
 }
 
 // schedule — date/time/duration of a resource
 public struct ScheduleCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "schedule" }
+    public var id: String { CapabilityID.schedule }
     public var displayName: String { "Horario" }
     public var summary: String { "Fecha, hora y duración." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
@@ -257,7 +257,7 @@ public struct ScheduleCapability: CapabilityBlock {
 // recurrence — turns one-off into a series
 public struct RecurrenceCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "recurrence" }
+    public var id: String { CapabilityID.recurrence }
     public var displayName: String { "Repetir" }
     public var summary: String { "Genera ocurrencias automáticamente según un patrón." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
@@ -355,7 +355,7 @@ public struct RecurrenceCapability: CapabilityBlock {
     }
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] { [] }
-    public var dependencies: [String] { ["schedule"] }
+    public var dependencies: [String] { [CapabilityID.schedule] }
     public var conflicts: [String] { [] }
     // Tier 1 (2026-05-12) shipped:
     //   - Catalog full pattern: startDate, endCondition options,
@@ -371,7 +371,7 @@ public struct RecurrenceCapability: CapabilityBlock {
 // rotation — turns rotate among participants
 public struct RotationCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "rotation" }
+    public var id: String { CapabilityID.rotation }
     public var displayName: String { "Rotación" }
     public var summary: String { "Asigna un rol o turno rotativamente entre los miembros." }
     /// Founder decision 2026-05-13: rotation is a capability on
@@ -464,7 +464,7 @@ public struct RotationCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "rotation_state", displayName: "Turno actual", scope: .resource)]
     }
-    public var dependencies: [String] { ["participants"] }
+    public var dependencies: [String] { [CapabilityID.participants] }
     public var conflicts: [String] { [] }
     /// Tier 5 Beta closed end-to-end:
     ///   - mig 00132: next_host_for_series + series-level cap_config
@@ -485,7 +485,7 @@ public struct RotationCapability: CapabilityBlock {
 // assignment — discrete responsibility
 public struct AssignmentCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "assignment" }
+    public var id: String { CapabilityID.assignment }
     public var displayName: String { "Asignación" }
     public var summary: String { "Asigna una tarea a un miembro específico." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
@@ -524,7 +524,7 @@ public struct AssignmentCapability: CapabilityBlock {
 // participants — who's eligible / included
 public struct ParticipantsCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "participants" }
+    public var id: String { CapabilityID.participants }
     public var displayName: String { "Participantes" }
     public var summary: String { "Define quién está incluido por default." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
@@ -552,7 +552,7 @@ public struct ParticipantsCapability: CapabilityBlock {
 // attendance — derived from rsvp + check_in
 public struct AttendanceCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "attendance" }
+    public var id: String { CapabilityID.attendance }
     public var displayName: String { "Asistencia" }
     public var summary: String { "Registro de quién asistió de hecho." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
@@ -574,7 +574,7 @@ public struct AttendanceCapability: CapabilityBlock {
 // deadline — time-bounded action
 public struct DeadlineCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "deadline" }
+    public var id: String { CapabilityID.deadline }
     public var displayName: String { "Fecha límite" }
     public var summary: String { "Define una hora a la que algo debe estar resuelto." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
@@ -599,7 +599,7 @@ public struct DeadlineCapability: CapabilityBlock {
 // approval — explicit gate
 public struct ApprovalCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "approval" }
+    public var id: String { CapabilityID.approval }
     public var displayName: String { "Aprobación" }
     public var summary: String { "Requiere aprobación antes de tomar efecto." }
     public var enabledResourceTypes: [ResourceType] { [.slot, .right] }
@@ -630,7 +630,7 @@ public struct ApprovalCapability: CapabilityBlock {
 // money — semantic umbrella over expense/contribution/payout
 public struct MoneyCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "money" }
+    public var id: String { CapabilityID.money }
     public var displayName: String { "Dinero" }
     public var summary: String { "Gastos, aportaciones y multas asociadas a este recurso." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
@@ -647,7 +647,7 @@ public struct MoneyCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "balance", displayName: "Saldo", scope: .resource)]
     }
-    public var dependencies: [String] { ["ledger"] }
+    public var dependencies: [String] { [CapabilityID.ledger] }
     public var conflicts: [String] { [] }
     /// Tier 6 closed end-to-end (mig 00136 → 00145):
     ///   - balance projection views aggregate ledger_entries at read time
@@ -668,7 +668,7 @@ public struct MoneyCapability: CapabilityBlock {
 // ledger — append-only money atoms
 public struct LedgerCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "ledger" }
+    public var id: String { CapabilityID.ledger }
     public var displayName: String { "Ledger" }
     public var summary: String { "Asientos contables atómicos." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
@@ -696,7 +696,7 @@ public struct LedgerCapability: CapabilityBlock {
 // voting — collective decision
 public struct VotingCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "voting" }
+    public var id: String { CapabilityID.voting }
     public var displayName: String { "Votación" }
     public var summary: String { "Decisión colectiva con quórum y umbral." }
     /// Voting is a governance workflow that can subject ANY resource:
@@ -747,7 +747,7 @@ public struct VotingCapability: CapabilityBlock {
 // rules — configurable WHEN/IF/THEN
 public struct RulesCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "rules" }
+    public var id: String { CapabilityID.rules }
     public var displayName: String { "Reglas" }
     public var summary: String { "Define qué pasa automáticamente cuando algo sucede." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
@@ -769,7 +769,7 @@ public struct RulesCapability: CapabilityBlock {
 // consequence — what a rule produces (fine, warning, etc.)
 public struct ConsequenceCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "consequence" }
+    public var id: String { CapabilityID.consequence }
     public var displayName: String { "Consecuencias" }
     public var summary: String { "Las reglas pueden generar multas, advertencias o votos." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
@@ -780,7 +780,7 @@ public struct ConsequenceCapability: CapabilityBlock {
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] { [] }
-    public var dependencies: [String] { ["rules"] }
+    public var dependencies: [String] { [CapabilityID.rules] }
     public var conflicts: [String] { [] }
     /// Tier 0 audit 2026-05-12: empty fields = decorative toggle. The
     /// real consequence config lives inside each rule's `consequences`
@@ -795,7 +795,7 @@ public struct ConsequenceCapability: CapabilityBlock {
 // appeal — disputing a consequence
 public struct AppealCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "appeal" }
+    public var id: String { CapabilityID.appeal }
     public var displayName: String { "Apelación" }
     public var summary: String { "Permite disputar una multa o sanción." }
     public var enabledResourceTypes: [ResourceType] { [.event] }
@@ -810,14 +810,14 @@ public struct AppealCapability: CapabilityBlock {
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] { [] }
-    public var dependencies: [String] { ["voting", "consequence"] }
+    public var dependencies: [String] { [CapabilityID.voting, CapabilityID.consequence] }
     public var conflicts: [String] { [] }
 }
 
 // swap — slot swapping
 public struct SwapCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "swap" }
+    public var id: String { CapabilityID.swap }
     public var displayName: String { "Cambios" }
     public var summary: String { "Permite intercambiar slots o turnos entre miembros." }
     public var enabledResourceTypes: [ResourceType] { [.slot] }
@@ -850,7 +850,7 @@ public struct SwapCapability: CapabilityBlock {
 // capacity — cap on participant count
 public struct CapacityCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "capacity" }
+    public var id: String { CapabilityID.capacity }
     public var displayName: String { "Cupo" }
     public var summary: String { "Límite de cuántos miembros pueden ocupar el recurso." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .asset, .right] }
@@ -872,7 +872,7 @@ public struct CapacityCapability: CapabilityBlock {
 // guest_access — non-member can attend
 public struct GuestAccessCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "guest_access" }
+    public var id: String { CapabilityID.guestAccess }
     public var displayName: String { "Invitados" }
     public var summary: String { "Permite que los miembros traigan acompañantes externos al grupo." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .asset] }
@@ -905,7 +905,7 @@ public struct GuestAccessCapability: CapabilityBlock {
 // booking — claiming a slot/resource for a member
 public struct BookingCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "booking" }
+    public var id: String { CapabilityID.booking }
     public var displayName: String { "Reservas" }
     public var summary: String { "Los miembros reservan slots o recursos disponibles." }
     public var enabledResourceTypes: [ResourceType] { [.slot, .asset] }
@@ -923,7 +923,7 @@ public struct BookingCapability: CapabilityBlock {
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
     public var projections: [ProjectionDescriptor] { [] }
-    public var dependencies: [String] { ["schedule"] }
+    public var dependencies: [String] { [CapabilityID.schedule] }
     public var conflicts: [String] { [] }
     /// Tier 0 audit 2026-05-12: slot/asset resource_types are the only
     /// targets; slot raises in build_resource_from_draft. requiredFields
@@ -936,7 +936,7 @@ public struct BookingCapability: CapabilityBlock {
 // expiration — auto-close after a time window
 public struct ExpirationCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "expiration" }
+    public var id: String { CapabilityID.expiration }
     public var displayName: String { "Expira" }
     public var summary: String { "El recurso se libera o cierra automáticamente al pasar la fecha." }
     public var enabledResourceTypes: [ResourceType] { [.slot, .right] }
@@ -958,7 +958,7 @@ public struct ExpirationCapability: CapabilityBlock {
 // cancellation — explicit teardown lifecycle step
 public struct CancellationCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "cancellation" }
+    public var id: String { CapabilityID.cancellation }
     public var displayName: String { "Cancelación" }
     public var summary: String { "Define quién puede cancelar y con cuánta anticipación." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
@@ -989,7 +989,7 @@ public struct CancellationCapability: CapabilityBlock {
 // reminder — scheduled nudge to members
 public struct ReminderCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "reminder" }
+    public var id: String { CapabilityID.reminder }
     public var displayName: String { "Recordatorios" }
     public var summary: String { "Avisa a los miembros antes de la fecha límite o del evento." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
@@ -1016,7 +1016,7 @@ public struct ReminderCapability: CapabilityBlock {
 // status — lifecycle state machine on the resource
 public struct StatusCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "status" }
+    public var id: String { CapabilityID.status }
     public var displayName: String { "Estado" }
     public var summary: String { "Lifecycle del recurso (borrador, activo, completo, cancelado, expirado, …)." }
     /// All Resource types own a status field. The catalog still has to
@@ -1041,7 +1041,7 @@ public struct StatusCapability: CapabilityBlock {
 // description — free-text body shown as its own detail section
 public struct DescriptionCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "description" }
+    public var id: String { CapabilityID.description }
     public var displayName: String { "Descripción" }
     public var summary: String { "Texto libre que describe el recurso." }
     public var enabledResourceTypes: [ResourceType] {
@@ -1064,7 +1064,7 @@ public struct DescriptionCapability: CapabilityBlock {
 // Section gates internally on viewer role; capability is always enabled for events.
 public struct HostActionsCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "host_actions" }
+    public var id: String { CapabilityID.hostActions }
     public var displayName: String { "Acciones del host" }
     public var summary: String { "Panel de acciones disponibles solo para el host del recurso." }
     public var enabledResourceTypes: [ResourceType] { [.event] }
@@ -1082,7 +1082,7 @@ public struct HostActionsCapability: CapabilityBlock {
 // location — physical place where the resource happens (lat/lng + name)
 public struct LocationCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "location" }
+    public var id: String { CapabilityID.location }
     public var displayName: String { "Lugar" }
     public var summary: String { "Dirección o sitio físico donde sucede el recurso." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .asset] }
@@ -1106,7 +1106,7 @@ public struct LocationCapability: CapabilityBlock {
 // history — derived activity feed over system_events
 public struct HistoryCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "history" }
+    public var id: String { CapabilityID.history }
     public var displayName: String { "Historial" }
     public var summary: String { "Bitácora de cambios del recurso, derivada de system_events." }
     public var enabledResourceTypes: [ResourceType] {
@@ -1140,7 +1140,7 @@ public struct HistoryCapability: CapabilityBlock {
 // custody — who physically/operationally holds the asset
 public struct CustodyCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "custody" }
+    public var id: String { CapabilityID.custody }
     public var displayName: String { "Custodia" }
     public var summary: String { "Quién tiene físicamente el activo. Independiente de la propiedad." }
     public var enabledResourceTypes: [ResourceType] { [.asset] }
@@ -1167,7 +1167,7 @@ public struct CustodyCapability: CapabilityBlock {
 // maintenance — service / inspection / repair
 public struct MaintenanceCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "maintenance" }
+    public var id: String { CapabilityID.maintenance }
     public var displayName: String { "Mantenimiento" }
     public var summary: String { "Reportar daños, registrar reparaciones, recordar service." }
     public var enabledResourceTypes: [ResourceType] { [.asset, .space] }
@@ -1194,7 +1194,7 @@ public struct MaintenanceCapability: CapabilityBlock {
 // valuation — value-over-time append-only series
 public struct ValuationCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "valuation" }
+    public var id: String { CapabilityID.valuation }
     public var displayName: String { "Valuación" }
     public var summary: String { "Registrar el valor del activo en el tiempo." }
     public var enabledResourceTypes: [ResourceType] { [.asset, .fund, .right] }
@@ -1218,7 +1218,7 @@ public struct ValuationCapability: CapabilityBlock {
 // transfer — move ownership across members or to/from the group
 public struct TransferCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "transfer" }
+    public var id: String { CapabilityID.transfer }
     public var displayName: String { "Transferencia" }
     public var summary: String { "Mover ownership del activo a otro miembro o al grupo." }
     public var enabledResourceTypes: [ResourceType] { [.asset, .right] }
@@ -1240,7 +1240,7 @@ public struct TransferCapability: CapabilityBlock {
 // access — who can use the asset and under what terms
 public struct AccessCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "access" }
+    public var id: String { CapabilityID.access }
     public var displayName: String { "Acceso" }
     public var summary: String { "Quién puede usar el activo y bajo qué condiciones." }
     public var enabledResourceTypes: [ResourceType] { [.asset, .space, .right] }
@@ -1264,7 +1264,7 @@ public struct AccessCapability: CapabilityBlock {
 // delegation — temporary loan to a non-custodian
 public struct DelegationCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "delegation" }
+    public var id: String { CapabilityID.delegation }
     public var displayName: String { "Delegación" }
     public var summary: String { "Prestar el activo temporalmente a un no-custodio." }
     public var enabledResourceTypes: [ResourceType] { [.asset, .right] }
@@ -1282,7 +1282,7 @@ public struct DelegationCapability: CapabilityBlock {
     public var projections: [ProjectionDescriptor] {
         [ProjectionDescriptor(id: "current_holder", displayName: "Quién lo tiene", scope: .resource)]
     }
-    public var dependencies: [String] { ["custody"] }
+    public var dependencies: [String] { [CapabilityID.custody] }
     public var conflicts: [String] { [] }
     /// check_out_asset / check_in_asset RPCs ship in mig 00200 + the
     /// AssetLifecycleRepository. Marked stable; iOS surfaces the actions
@@ -1292,7 +1292,7 @@ public struct DelegationCapability: CapabilityBlock {
 // inventory — count units of the asset
 public struct InventoryCapability: CapabilityBlock {
     public init() {}
-    public var id: String { "inventory" }
+    public var id: String { CapabilityID.inventory }
     public var displayName: String { "Inventario" }
     public var summary: String { "Contar unidades del activo (stock, cupos, copias)." }
     public var enabledResourceTypes: [ResourceType] { [.asset] }
