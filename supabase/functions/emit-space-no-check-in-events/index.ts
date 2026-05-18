@@ -191,7 +191,8 @@ async function emitNoCheckIn(
     },
   );
 
-  const { error: insErr } = await supabase.from("system_events").insert(rows);
+  // V8 fix (mig 00302): route through record_system_events_batch RPC.
+  const { error: insErr } = await supabase.rpc("record_system_events_batch", { p_events: rows });
   if (insErr) {
     console.error("insert bookingNoCheckIn failed", insErr);
     return 0;

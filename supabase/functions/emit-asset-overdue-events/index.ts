@@ -161,7 +161,8 @@ async function emitCheckoutOverdue(supabase: any, now: Date, dedupCutoff: string
     };
   });
 
-  const { error: insErr } = await supabase.from("system_events").insert(rows);
+  // V8 fix (mig 00302): route through record_system_events_batch RPC.
+  const { error: insErr } = await supabase.rpc("record_system_events_batch", { p_events: rows });
   if (insErr) {
     console.error("insert assetCheckoutOverdue failed", insErr);
     return 0;
@@ -237,7 +238,8 @@ async function emitMaintenanceOverdue(supabase: any, now: Date, dedupCutoff: str
     };
   });
 
-  const { error: insErr } = await supabase.from("system_events").insert(rows);
+  // V8 fix (mig 00302): route through record_system_events_batch RPC.
+  const { error: insErr } = await supabase.rpc("record_system_events_batch", { p_events: rows });
   if (insErr) {
     console.error("insert assetMaintenanceOverdue failed", insErr);
     return 0;

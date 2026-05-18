@@ -102,19 +102,20 @@ serve(withSentry(async (_req) => {
 
     // Emit a system event so the timeline reflects the nudge. Push
     // delivery is the dispatcher cron's job (outbox-first path, pending).
-    const { error: evErr } = await supabase
-      .from("system_events")
-      .insert({
-        group_id:   fine.group_id,
-        event_type: "fineReminderSent",
-        member_id:  fine.user_id,
-        payload:    {
-          fine_id:       fine.id,
-          amount:        fine.amount,
-          day_threshold: applicableThreshold,
-          age_days:      ageDays,
-        },
-      });
+    // V8 fix: routed via record_system_event RPC for validation +
+    // consistency with other emit paths.
+    const { error: evErr } = await supabase.rpc("record_system_event", {
+      p_group_id:    fine.group_id,
+      p_event_type:  "fineReminderSent",
+      p_resource_id: null,
+      p_member_id:   fine.user_id,
+      p_payload:     {
+        fine_id:       fine.id,
+        amount:        fine.amount,
+        day_threshold: applicableThreshold,
+        age_days:      ageDays,
+      },
+    });
     if (evErr) {
       console.error(`emit fineReminderSent for ${fine.id} failed`, evErr);
     }

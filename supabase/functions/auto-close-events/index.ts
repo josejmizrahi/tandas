@@ -65,10 +65,11 @@ serve(withSentry(async (req) => {
   }
 
   // Emit eventClosed per event so process-system-events runs the rule
-  // engine on each one (mirrors close_event RPC behavior). Sent as a
-  // single batch insert to keep the round-trip count bounded; an
-  // individual failure here does NOT roll back the close, but is logged
-  // so an operator can backfill manually if needed.
+  // engine on each one (mirrors close_event RPC behavior). V8 fix
+  // (mig 00302): routed through record_system_events_batch RPC — one
+  // round-trip, same transactional semantics as the previous direct
+  // batch INSERT, but every atom is now validated via record_system_event
+  // (payload schemas, known event types, etc.).
   const systemEventRows = stale.map((e) => ({
     group_id:    e.group_id,
     event_type:  "eventClosed" as const,
@@ -86,8 +87,7 @@ serve(withSentry(async (req) => {
   }));
 
   const { error: emitErr } = await supabase
-    .from("system_events")
-    .insert(systemEventRows);
+    .rpc("record_system_events_batch", { p_events: systemEventRows });
 
   if (emitErr) {
     // Don't fail the whole job — the close itself succeeded. Log so the
