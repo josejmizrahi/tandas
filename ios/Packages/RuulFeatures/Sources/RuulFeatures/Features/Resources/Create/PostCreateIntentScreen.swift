@@ -108,6 +108,11 @@ public struct PostCreateIntentScreen: View {
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
         }
+        // Sheet presentation lives in `PostCreateIntentScreenContainer`
+        // (see `withActivator(…)` convenience init below). Callers that
+        // need to drive presentation from a non-Live dispatcher should
+        // wrap this view themselves and observe their dispatcher's
+        // output → present whatever sheet they want.
     }
 
     private var successHeader: some View {
@@ -248,5 +253,154 @@ public struct PostCreateIntentScreen: View {
                 dispatchError = error.ruulUserMessage
             }
         }
+    }
+}
+
+// MARK: - Phase B convenience init
+
+public extension PostCreateIntentScreen {
+    /// Convenience init that wires up the canonical Phase B path:
+    /// `LivePostCreateIntentDispatcher` running the supplied activator
+    /// + this screen's internal `@State` for sheet presentation.
+    /// Callers using their own dispatcher should keep using the
+    /// designated init.
+    ///
+    /// Note: we can't write to `@State` from outside the view, so the
+    /// convenience init is a static factory that returns a wrapper view
+    /// holding the state. The wrapper rebuilds the dispatcher each
+    /// render — cheap because it's a struct, and the activator actor
+    /// is the only stateful piece.
+    static func withActivator(
+        resourceId: UUID,
+        resourceType: ResourceType,
+        variant: ResourceVariant,
+        group: RuulCore.Group,
+        attachedCapabilities: Set<String>,
+        viewerPermissions: Set<Permission>,
+        activator: LazyCapabilityActivator,
+        intents: any ResourceIntentRegistry = DefaultResourceIntentRegistry.v1,
+        visibility: IntentVisibilityResolver = IntentVisibilityResolver(),
+        onClose: (() -> Void)? = nil
+    ) -> some View {
+        PostCreateIntentScreenContainer(
+            resourceId: resourceId,
+            resourceType: resourceType,
+            variant: variant,
+            group: group,
+            attachedCapabilities: attachedCapabilities,
+            viewerPermissions: viewerPermissions,
+            activator: activator,
+            intents: intents,
+            visibility: visibility,
+            onClose: onClose
+        )
+    }
+}
+
+/// Owner of the `presentedIntent` @State that the live dispatcher's
+/// callback writes into. Internal — callers use
+/// `PostCreateIntentScreen.withActivator(…)` which returns this.
+private struct PostCreateIntentScreenContainer: View {
+    let resourceId: UUID
+    let resourceType: ResourceType
+    let variant: ResourceVariant
+    let group: RuulCore.Group
+    let attachedCapabilities: Set<String>
+    let viewerPermissions: Set<Permission>
+    let activator: LazyCapabilityActivator
+    let intents: any ResourceIntentRegistry
+    let visibility: IntentVisibilityResolver
+    let onClose: (() -> Void)?
+
+    @State private var presentedIntent: PresentedIntent?
+
+    var body: some View {
+        // Dispatcher is constructed per-render. Cheap (actor closure),
+        // and pulls in the @State writer that owns the sheet binding.
+        let dispatcher = LivePostCreateIntentDispatcher(
+            activator: activator,
+            onActivated: { intent, _ in
+                presentedIntent = PresentedIntent(intent: intent)
+            }
+        )
+        return PostCreateIntentScreen(
+            resourceId: resourceId,
+            resourceType: resourceType,
+            variant: variant,
+            group: group,
+            attachedCapabilities: attachedCapabilities,
+            viewerPermissions: viewerPermissions,
+            dispatcher: dispatcher,
+            intents: intents,
+            visibility: visibility,
+            onClose: onClose
+        )
+        .sheet(item: $presentedIntent) { wrapped in
+            DestinationPresenter(
+                intent: wrapped.intent,
+                onClose: { presentedIntent = nil }
+            )
+        }
+    }
+}
+
+// MARK: - Sheet payload + destination renderer
+
+/// `.sheet(item:)` requires Identifiable. Wraps the tapped intent so
+/// the same intent dispatched twice still re-presents (id changes via
+/// UUID — SwiftUI keys the sheet's identity on this).
+struct PresentedIntent: Identifiable {
+    let id = UUID()
+    let intent: ResourceIntent
+}
+
+/// Renders the matching view for an intent's `Destination`. Phase B.1
+/// scope: a placeholder card per case with intent-specific copy +
+/// "Cerrar" CTA. Real per-destination view wiring (ContributeToFundSheet,
+/// LinkResourcePickerSheet, RecordValuationSheet, …) is deferred to
+/// per-surface PRs so each one can land with proper smoke testing.
+///
+/// Doctrine: every Destination case has a renderer here — never a
+/// `default: EmptyView()`. An unwired destination renders a "próximamente"
+/// card so the user knows the tap registered.
+private struct DestinationPresenter: View {
+    let intent: ResourceIntent
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: RuulSpacing.lg) {
+            Image(systemName: intent.icon)
+                .font(.system(size: 48, weight: .semibold))
+                .foregroundStyle(Color.ruulAccent)
+            Text(intent.humanLabel)
+                .ruulTextStyle(RuulTypography.title)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Text(placeholderCopy)
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, RuulSpacing.lg)
+            RuulButton(
+                "Cerrar",
+                style: .primary,
+                size: .large,
+                fillsWidth: true,
+                action: onClose
+            )
+        }
+        .padding(RuulSpacing.xl)
+        .presentationDetents([.medium])
+    }
+
+    /// Copy shown until the destination has a real renderer. Pulls
+    /// `firstRunCopy` when set — that's already founder-voiced;
+    /// otherwise falls back to a generic "próximamente". Phase B.2
+    /// replaces this whole struct with a real switch on
+    /// `intent.destination`.
+    private var placeholderCopy: String {
+        if !intent.firstRunCopy.isEmpty {
+            return "\(intent.firstRunCopy)\n\n(Esta pantalla llega en la siguiente iteración.)"
+        }
+        return "Esta acción llega en la siguiente iteración."
     }
 }
