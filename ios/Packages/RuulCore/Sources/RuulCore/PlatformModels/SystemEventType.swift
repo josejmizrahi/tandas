@@ -281,6 +281,15 @@ public enum SystemEventType: Codable, Sendable, Hashable {
     /// title, title_changed}`.
     case eventUpdated
 
+    // MARK: - Space rule overdue atoms (mig 00269 — Plans/Active/SpaceRules.md PR-2)
+    /// Emitted by the `emit-space-no-check-in-events` cron (mig 00270)
+    /// when an active booking on a space passes its `metadata.starts_at`
+    /// plus a grace window without a matching `checkInRecorded`. `member_id`
+    /// = the booker so rules can fine the right person without
+    /// re-resolving. Payload: `{booking_id, starts_at, minutes_overdue,
+    /// grace_minutes}`. Drives the `space_no_check_in_release` template.
+    case bookingNoCheckIn
+
     // MARK: - Asset rule overdue atoms (mig 00225 — Plans/Active/AssetRules.md §5)
     /// Emitted by the `emit-asset-overdue-events` cron when an asset's
     /// latest `assetCheckedOut` row has `expected_return_at` in the past

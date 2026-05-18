@@ -91,6 +91,7 @@ extension SystemEventType {
         .eventCancelled,
         .eventStarted,
         .eventUpdated,
+        .bookingNoCheckIn,
         .assetCheckoutOverdue,
         .assetMaintenanceOverdue,
         .roleAssigned,
@@ -184,6 +185,7 @@ extension SystemEventType {
         "eventCancelled",
         "eventStarted",
         "eventUpdated",
+        "bookingNoCheckIn",
         "assetCheckoutOverdue",
         "assetMaintenanceOverdue",
         "roleAssigned",
@@ -288,6 +290,7 @@ extension SystemEventType {
         case .eventCancelled: return "eventCancelled"
         case .eventStarted: return "eventStarted"
         case .eventUpdated: return "eventUpdated"
+        case .bookingNoCheckIn: return "bookingNoCheckIn"
         case .assetCheckoutOverdue: return "assetCheckoutOverdue"
         case .assetMaintenanceOverdue: return "assetMaintenanceOverdue"
         case .roleAssigned: return "roleAssigned"
@@ -384,6 +387,7 @@ extension SystemEventType {
         case "eventCancelled": return .eventCancelled
         case "eventStarted": return .eventStarted
         case "eventUpdated": return .eventUpdated
+        case "bookingNoCheckIn": return .bookingNoCheckIn
         case "assetCheckoutOverdue": return .assetCheckoutOverdue
         case "assetMaintenanceOverdue": return .assetMaintenanceOverdue
         case "roleAssigned": return .roleAssigned

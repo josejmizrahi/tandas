@@ -130,6 +130,9 @@ public extension SystemEventType {
         case .eventStarted:           return "Evento iniciado"
         case .eventUpdated:           return "Evento actualizado"
 
+        // Space rule overdue atoms (mig 00269 — Plans/Active/SpaceRules.md PR-2)
+        case .bookingNoCheckIn:        return "Nadie marcó llegada a la reserva"
+
         // Asset rule overdue atoms (mig 00225 — Plans/Active/AssetRules.md §5)
         case .assetCheckoutOverdue:    return "Devolución vencida"
         case .assetMaintenanceOverdue: return "Mantenimiento atrasado"
@@ -210,6 +213,7 @@ public extension SystemEventType {
              .capabilityToggled, .capabilityConfigUpdated, .memberCapabilityOverridden,
              .ledgerEntryCreated, .warningEmitted,
              .assetCheckoutOverdue, .assetMaintenanceOverdue,
+             .bookingNoCheckIn,
              .roleAssigned, .roleUnassigned:
             return false
         case .unknown:

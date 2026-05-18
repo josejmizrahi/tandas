@@ -56,6 +56,7 @@ public struct ActivityTab: View {
              .spaceCreated, .spaceBooked, .spaceReleased, .spaceCapacityReached,
              .spaceWaitlistJoined, .spaceWaitlistPromoted,
              .spaceAccessGranted, .spaceAccessRevoked,
+             .bookingNoCheckIn,
              .rightCreated,
              .rightTransferred, .rightDelegated, .rightRevoked, .rightExpired,
              .rightExercised, .rightSuspended, .rightRestored, .rightExpiringSoon,

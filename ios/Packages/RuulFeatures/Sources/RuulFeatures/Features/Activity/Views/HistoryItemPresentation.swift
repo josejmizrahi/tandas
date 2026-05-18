@@ -394,6 +394,11 @@ public struct HistoryItemPresentation {
             self.title = "Se revocó el acceso de \(actor) a un espacio"
             self.tone = .warning
 
+        case .bookingNoCheckIn:
+            self.icon = "clock.badge.xmark"
+            self.title = "Nadie marcó llegada a la reserva"
+            self.tone = .warning
+
         case .assetCheckoutOverdue:
             self.icon = "clock.badge.exclamationmark"
             self.title = "Un activo no fue devuelto a tiempo"
