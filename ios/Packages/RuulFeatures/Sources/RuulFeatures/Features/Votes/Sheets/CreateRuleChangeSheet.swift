@@ -86,7 +86,7 @@ public struct CreateRuleChangeSheet: View {
     }
 
     private func currentAmountLabel(for rule: GroupRule) -> String {
-        switch rule.fineShape {
+        switch FineConsequenceParser.shape(of: rule.consequences) {
         case .flat(let amount):
             return "$\(amount)"
         case .escalating(let base, let step, let stepMinutes):

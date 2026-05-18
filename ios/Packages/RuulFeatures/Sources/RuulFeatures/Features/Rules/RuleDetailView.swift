@@ -95,7 +95,7 @@ public struct RuleDetailView: View {
             Text(rule.name)
                 .ruulTextStyle(RuulTypography.titleLarge)
                 .foregroundStyle(Color.ruulTextPrimary)
-            if let amount = rule.amountMXN, amount > 0 {
+            if let amount = FineConsequenceParser.firstAmountMXN(in: rule.consequences), amount > 0 {
                 HStack {
                     Text("MULTA")
                         .ruulTextStyle(RuulTypography.sectionLabel)

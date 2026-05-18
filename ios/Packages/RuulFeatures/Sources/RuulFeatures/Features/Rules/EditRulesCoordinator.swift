@@ -194,10 +194,13 @@ public final class EditRulesCoordinator {
     }
 
     /// Persists a new flat fine amount. Caller must pre-validate via
-    /// `rule.fineShape == .flat`; the repo also rejects with `.notFlatFine`.
+    /// `FineConsequenceParser.shape(of: rule.consequences) == .flat(...)`;
+    /// the repo also rejects with `.notFlatFine`.
     public func setFlatFineAmount(rule: GroupRule, amount: Int) async {
         let currentAmount: Int = {
-            if case .flat(let value) = rule.fineShape { return value }
+            if case .flat(let value) = FineConsequenceParser.shape(of: rule.consequences) {
+                return value
+            }
             return 0
         }()
 

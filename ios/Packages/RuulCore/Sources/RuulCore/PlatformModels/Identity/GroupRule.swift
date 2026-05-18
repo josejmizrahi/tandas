@@ -139,22 +139,6 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         }
     }
 
-    /// Resolves the display amount (MXN) from the first `fine` consequence.
-    /// Returns nil if the rule isn't a fine.
-    ///
-    /// **Deprecated since 2026-05-18** — violates `RulesVsMoneyDoctrine.md`
-    /// Axioma 1 (Rule ≠ Fine) by treating money as a top-level property of
-    /// the universal rule model. Phase 2 of `RulesFinesRefactorPlan.md`
-    /// removes this property; callers migrate to a fine-aware helper
-    /// (`FineConsequenceParser.firstAmountMXN(in:)`) that takes the
-    /// consequences array explicitly.
-    public var amountMXN: Int? {
-        guard let cons = consequences.first(where: { $0.type == "fine" }) else { return nil }
-        if let flat = cons.config?.amount { return flat }
-        if let base = cons.config?.baseAmount { return base }
-        return nil
-    }
-
     /// True when the rule is active. Slice E.1 collapsed the previous
     /// `enabled && isActive` AND once both columns stayed in lockstep;
     /// E.2 dropped `enabled` entirely so `isActive` is the lone signal.

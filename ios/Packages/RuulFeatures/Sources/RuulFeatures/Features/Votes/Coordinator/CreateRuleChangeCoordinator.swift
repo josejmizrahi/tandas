@@ -96,10 +96,11 @@ public final class CreateRuleChangeCoordinator {
         }
     }
 
-    /// Read base amount from `fineShape`. `.flat` returns the amount,
-    /// `.escalating` returns the base. `.none` and `.unknown` return 0.
+    /// Read base amount from the rule's first fine consequence.
+    /// `.flat` returns the amount, `.escalating` returns the base.
+    /// `.none` and `.unknown` return 0.
     private func currentAmount(for rule: GroupRule) -> Int {
-        switch rule.fineShape {
+        switch FineConsequenceParser.shape(of: rule.consequences) {
         case .flat(let amount):           return amount
         case .escalating(let base, _, _): return base
         case .none, .unknown:             return 0
