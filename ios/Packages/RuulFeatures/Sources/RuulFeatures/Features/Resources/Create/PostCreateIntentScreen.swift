@@ -359,13 +359,49 @@ public struct PostCreateResourceActions: Sendable {
     /// Passing nil leaves the intent on the placeholder.
     public let onCreateChildResource: (@Sendable (ResourceType?) async -> Void)?
 
+    /// Called for destinations whose target is navigation rather than a
+    /// sheet (`rsvpManager` → event detail in RSVP mode, `historyTab` →
+    /// switch to the History tab, etc.). Caller's typical impl: dismiss
+    /// the post-create sheet, then route to the matching screen / tab.
+    ///
+    /// Passing nil leaves nav-shaped destinations on the placeholder.
+    /// One closure handles all nav cases (vs N closures) so a single
+    /// dismissal-+-routing helper covers every nav-target intent.
+    public let onNavigate: (@Sendable (PostCreateNavigation) async -> Void)?
+
     public init(
         onAssignCustody: (@Sendable (UUID) async throws -> Void)? = nil,
-        onCreateChildResource: (@Sendable (ResourceType?) async -> Void)? = nil
+        onCreateChildResource: (@Sendable (ResourceType?) async -> Void)? = nil,
+        onNavigate: (@Sendable (PostCreateNavigation) async -> Void)? = nil
     ) {
         self.onAssignCustody = onAssignCustody
         self.onCreateChildResource = onCreateChildResource
+        self.onNavigate = onNavigate
     }
+}
+
+/// Navigation targets for nav-shaped destinations. Each case carries
+/// the data the caller needs to perform the navigation (resource id,
+/// rule filter, etc.). Adding a new nav-shaped destination is one
+/// case here + one DestinationPresenter branch that calls
+/// `onNavigate(.matching_case)`.
+public enum PostCreateNavigation: Sendable, Hashable {
+    /// `rsvpManager` → resource detail, RSVP section in focus.
+    case resourceDetailRSVP(resourceId: UUID)
+    /// `checkInLauncher` → resource detail in check-in mode.
+    case resourceDetailCheckIn(resourceId: UUID)
+    /// `historyTab` → group's history surface.
+    case historyTab(groupId: UUID, resourceId: UUID?)
+    /// `moneyTab` → group's money surface (defaults to the just-created
+    /// resource if relevant — e.g. fund created → money tab focused on
+    /// that fund's balance).
+    case moneyTab(groupId: UUID, resourceId: UUID?)
+    /// `governanceRuleEditor` → group governance editor.
+    case governanceRuleEditor(groupId: UUID)
+    /// `ruleTemplatePicker` → universal templates picker filtered by
+    /// category. Caller decides presentation (sheet vs push).
+    case ruleTemplatePicker(category: Destination.RuleCategoryFilter?,
+                            resourceId: UUID)
 }
 
 /// Owner of the `presentedIntent` @State that the live dispatcher's
@@ -438,6 +474,7 @@ struct PresentedIntent: Identifiable {
 /// EmptyView()`. Taps must never dead-end silently.
 ///
 /// Currently wired (B.2 in progress):
+///   Sheet-presenting:
 ///   - `linkPicker` → `LinkResourcePickerSheet`
 ///   - `ledgerEntryForm(.credit)` → `ContributeToFundSheet`
 ///   - `ledgerEntryForm(.debit)` → `RecordExpenseFromFundSheet`
@@ -448,6 +485,15 @@ struct PresentedIntent: Identifiable {
 ///   - `childResourceWizard` → caller-driven (e.g. dismiss current
 ///     sheet + present a fresh `ResourceCreationSheet`) via
 ///     `PostCreateResourceActions.onCreateChildResource`
+///
+///   Navigation-targeting (call `onNavigate(.matching_case)` →
+///   caller dismisses sheet + routes):
+///   - `rsvpManager` → `.resourceDetailRSVP`
+///   - `checkInLauncher` → `.resourceDetailCheckIn`
+///   - `historyTab` → `.historyTab`
+///   - `moneyTab` → `.moneyTab`
+///   - `governanceRuleEditor` → `.governanceRuleEditor`
+///   - `ruleTemplatePicker(category)` → `.ruleTemplatePicker(category)`
 ///
 /// Wired destinations require `resourceContext`. When the context is
 /// nil (tests, previews, callers that opted out), they fall back to
@@ -528,7 +574,49 @@ private struct DestinationPresenter: View {
                 placeholder
             }
 
+        // Nav-shaped destinations — caller's `onNavigate` closure
+        // dismisses this sheet and routes to the matching surface.
+        // Each shows a brief loading flash so the tap registers
+        // visually before the parent surface takes over.
+        case .rsvpManager:
+            navLauncher(.resourceDetailRSVP(resourceId: resourceId))
+        case .checkInLauncher:
+            navLauncher(.resourceDetailCheckIn(resourceId: resourceId))
+        case .historyTab:
+            navLauncher(.historyTab(groupId: groupId, resourceId: resourceId))
+        case .moneyTab:
+            navLauncher(.moneyTab(groupId: groupId, resourceId: resourceId))
+        case .governanceRuleEditor:
+            navLauncher(.governanceRuleEditor(groupId: groupId))
+        case .ruleTemplatePicker(let category):
+            navLauncher(.ruleTemplatePicker(category: category, resourceId: resourceId))
+
         default:
+            placeholder
+        }
+    }
+
+    /// Brief loading flash → caller's `onNavigate` resolves the route.
+    /// Falls back to placeholder when `onNavigate` is nil so the user
+    /// still sees a card instead of an instant dismissal that hides
+    /// the tap.
+    @ViewBuilder
+    private func navLauncher(_ target: PostCreateNavigation) -> some View {
+        if let onNavigate = resourceContext?.actions.onNavigate {
+            VStack(spacing: RuulSpacing.lg) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("Abriendo…")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(RuulSpacing.xl)
+            .task {
+                await onNavigate(target)
+                onClose()
+            }
+        } else {
             placeholder
         }
     }
