@@ -94,27 +94,28 @@ serve(withSentry(async (req) => {
         .eq("user_id", fine.user_id)
         .maybeSingle();
 
-      // Emit the fine_officialized atom. The on_fine_atom_inserted trigger
-      // creates user_action 'finePending' + emits system_event 'fineOfficialized'.
-      const { error: atomErr } = await supabase
-        .from("ledger_entries")
-        .insert({
-          group_id:       fine.group_id,
-          resource_id:    fine.resource_id,
-          type:           "fine_officialized",
-          amount_cents:   Math.round(Number(fine.amount) * 100),
-          currency:       "MXN",
-          from_member_id: memberRow?.id ?? null,
-          to_member_id:   null,
-          metadata: {
-            fine_id: fine.id,
-            rule_id: fine.rule_id,
-            via:     "finalize-fine-reviews-cron",
-          },
-          occurred_at: startedAt.toISOString(),
-          recorded_at: startedAt.toISOString(),
-          recorded_by: null,
-        });
+      // Emit the fine_officialized atom via the canonical
+      // record_ledger_entry_system RPC (mig 00330). The RPC validates
+      // type allowlist + amount + resource-belongs-to-group + members-
+      // active-in-group before INSERT, integrity checks the old direct
+      // INSERT skipped. The on_fine_atom_inserted trigger fires on the
+      // INSERT and creates user_action 'finePending' + emits
+      // system_event 'fineOfficialized'.
+      const { error: atomErr } = await supabase.rpc("record_ledger_entry_system", {
+        p_group_id:       fine.group_id,
+        p_resource_id:    fine.resource_id,
+        p_type:           "fine_officialized",
+        p_amount_cents:   Math.round(Number(fine.amount) * 100),
+        p_currency:       "MXN",
+        p_from_member_id: memberRow?.id ?? null,
+        p_to_member_id:   null,
+        p_metadata: {
+          fine_id: fine.id,
+          rule_id: fine.rule_id,
+          via:     "finalize-fine-reviews-cron",
+        },
+        p_occurred_at: startedAt.toISOString(),
+      });
       if (atomErr) {
         errors.push({ resource_id: rp.resource_id, error: `atom insert: ${atomErr.message}` });
         continue;
