@@ -149,22 +149,52 @@ public struct ResourceWizardSheet: View {
     /// "Comenzar / Fin" pattern). Non-date fields fall through to the
     /// existing renderer one per row. Honors the same `dependsOn` gate
     /// the renderer applies so conditional fields stay hidden.
+    ///
+    /// Below the required block, renders `builder.optionalFields` under
+    /// a "Más detalles" header so users can fill location / description /
+    /// duration etc. without being blocked by the "Continuar" CTA.
     @ViewBuilder
     private func fieldStack(builder: any ResourceBuilder) -> some View {
-        let groups = groupedFields(builder.requiredFields)
+        let requiredGroups = groupedFields(builder.requiredFields)
+        let optionalGroups = groupedFields(builder.optionalFields)
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-            ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                switch group {
-                case .single(let field):
-                    BuilderFieldRenderer(
-                        field: field,
-                        values: basicFieldsBinding()
-                    )
-                case .timeline(let fields):
-                    timelineCard(fields: fields)
+            ForEach(Array(requiredGroups.enumerated()), id: \.offset) { _, group in
+                renderFieldGroup(group)
+            }
+            if !optionalGroups.isEmpty {
+                optionalFieldsHeader
+                ForEach(Array(optionalGroups.enumerated()), id: \.offset) { _, group in
+                    renderFieldGroup(group)
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func renderFieldGroup(_ group: FieldGroup) -> some View {
+        switch group {
+        case .single(let field):
+            BuilderFieldRenderer(field: field, values: basicFieldsBinding())
+        case .timeline(let fields):
+            timelineCard(fields: fields)
+        }
+    }
+
+    private var optionalFieldsHeader: some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Text("Más detalles")
+                .ruulTextStyle(RuulTypography.subheadSemibold)
+                .foregroundStyle(Color.ruulTextPrimary)
+            Text("Opcional")
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulTextSecondary)
+                .padding(.horizontal, RuulSpacing.sm)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule().fill(Color.ruulSurfaceElevated)
+                )
+        }
+        .padding(.top, RuulSpacing.md)
     }
 
     private func basicFieldsBinding() -> Binding<[String: JSONConfig]> {
@@ -650,12 +680,23 @@ public struct ResourceWizardSheet: View {
     }
 
     private func reviewFields(builder: any ResourceBuilder) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+        // Required first, then any optional fields the user actually
+        // filled. Empty optionals are skipped so the summary stays tight.
+        let filledOptionals = builder.optionalFields.filter { field in
+            guard let value = coordinator.basicFields[field.key] else { return false }
+            switch value {
+            case .string(let s): return !s.trimmingCharacters(in: .whitespaces).isEmpty
+            case .null: return false
+            case .int, .double, .bool, .object, .array: return true
+            }
+        }
+        let allFields = builder.requiredFields + filledOptionals
+        return VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("DETALLES")
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             VStack(spacing: 0) {
-                ForEach(Array(builder.requiredFields.enumerated()), id: \.offset) { idx, field in
+                ForEach(Array(allFields.enumerated()), id: \.offset) { idx, field in
                     HStack(alignment: .firstTextBaseline) {
                         Text(field.label)
                             .ruulTextStyle(RuulTypography.callout)
@@ -667,7 +708,7 @@ public struct ResourceWizardSheet: View {
                             .multilineTextAlignment(.trailing)
                     }
                     .padding(RuulSpacing.md)
-                    if idx < builder.requiredFields.count - 1 {
+                    if idx < allFields.count - 1 {
                         Divider().padding(.leading, RuulSpacing.md)
                     }
                 }

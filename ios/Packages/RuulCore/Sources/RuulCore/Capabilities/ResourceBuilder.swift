@@ -31,10 +31,22 @@ public protocol ResourceBuilder: Sendable {
     /// Required fields the wizard renders in step 2 (cannot be skipped).
     var requiredFields: [BuilderField] { get }
 
+    /// Extra fields the wizard renders below `requiredFields` in step 2,
+    /// labelled as optional. They do NOT block the "Continuar" CTA and
+    /// flow through `ResourceDraft.basicFields` like the required ones —
+    /// it's up to the type's `build_resource_from_draft` branch to read
+    /// whichever keys it knows about. Default `[]` so existing builders
+    /// keep working without change.
+    var optionalFields: [BuilderField] { get }
+
     /// Optional capability blocks the wizard surfaces in step 3.
     var optionalCapabilities: [String] { get }
 
     func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult
+}
+
+public extension ResourceBuilder {
+    var optionalFields: [BuilderField] { [] }
 }
 
 /// Payload describing the resource the user wants to create. Wizard fills

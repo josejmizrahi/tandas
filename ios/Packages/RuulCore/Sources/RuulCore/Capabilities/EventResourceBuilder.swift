@@ -20,6 +20,40 @@ public actor EventResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Fields the wizard renders below the required ones in step 2 as
+    /// optional. All three flow through `basicFields` and are picked up
+    /// by the `when 'event'` branch of `build_resource_from_draft`:
+    /// `location` → `p_location_name`, `description` → `p_description`,
+    /// `durationMinutes` → `p_duration_minutes` (defaults to 180 server-side).
+    public nonisolated var optionalFields: [BuilderField] {
+        [
+            BuilderField(
+                key: "location",
+                label: "Dirección o lugar",
+                kind: .text,
+                placeholder: "ej: Casa de Sandra, Polanco",
+                helpText: "Dónde será el evento.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "description",
+                label: "Notas",
+                kind: .multilineText,
+                placeholder: "Lleva postre, dress code casual…",
+                helpText: "Lo que el grupo necesita saber.",
+                isOptional: true
+            ),
+            BuilderField(
+                key: "durationMinutes",
+                label: "Duración (minutos)",
+                kind: .integer,
+                placeholder: "180",
+                helpText: "Cuánto dura. Por defecto 3 horas.",
+                isOptional: true
+            )
+        ]
+    }
+
     public nonisolated var optionalCapabilities: [String] {
         ["rsvp", "check_in", "rotation", "money", "rules", "voting", "recurrence"]
     }

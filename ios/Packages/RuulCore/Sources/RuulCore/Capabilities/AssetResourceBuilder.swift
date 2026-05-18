@@ -16,6 +16,22 @@ public actor AssetResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Surfaces `capacity` in step 2 as an optional field. The Asset RPC
+    /// `create_asset` already accepts `p_capacity`; before this the field
+    /// was unreachable from the wizard.
+    public nonisolated var optionalFields: [BuilderField] {
+        [
+            BuilderField(
+                key: "capacity",
+                label: "Aforo o capacidad",
+                kind: .integer,
+                placeholder: "ej: 10",
+                helpText: "Cuántas personas o unidades caben.",
+                isOptional: true
+            )
+        ]
+    }
+
     /// Spec §8: capabilities that ANY asset can wear. The wizard
     /// surfaces these (filtered by CapabilityStatus) in step 3.
     /// `slot` is intentionally NOT a capability — slots are a
