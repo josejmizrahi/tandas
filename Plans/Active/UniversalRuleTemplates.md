@@ -867,6 +867,59 @@ Nada. El usuario nunca conoció los template_ids. Sigue viendo "Multa por llegar
 | W+3 | Tests (fixtures por universal + smoke) |
 | W+4 | Founder demo + freeze de catálogo Beta 1 |
 
+### 14.6 Estado de implementación 2026-05-18
+
+Implementadas migs 00295/00296/00297/00320/00321 + Swift refactor de iOS (commits `d018966`, `63d3aa2`, `40f5be6`, `dc2ee4b`, `668b5ea`).
+
+**Gallery actual (6 universales beta1, todos categoría C — Obligation o D — Governance):**
+
+| template_id | trigger | consequence | uso |
+|---|---|---|---|
+| `deadline_enforcement` | `hoursBeforeEvent` | `emitWarning` | Aviso pre-deadline |
+| `missed_obligation_consequence` | `checkInRecorded` | `fine` | Multa por llegar tarde |
+| `no_show_consequence` | `eventClosed` | `fine` | Multa por no llegar |
+| `late_cancellation_consequence` | `rsvpChangedSameDay` | `fine` | Multa por cancelar tarde |
+| `no_rsvp_consequence` | `rsvpDeadlinePassed` | `fine` | Multa por no avisar |
+| `approval_required` | `ledgerEntryCreated` | `requireApproval` | Aprobar gasto |
+
+**Alias status (14 legacy templates):**
+
+| Alias correcto (trigger matches) | Alias mismatch (trigger NO matches) |
+|---|---|
+| `late_arrival_fine` → `missed_obligation_consequence` | `cancellation_fee` → `missed_obligation_consequence` (legacy: `eventCancelled`) |
+| `no_show_fine` → `no_show_consequence` | `host_no_menu_fine` → `missed_obligation_consequence` (legacy: `hoursBeforeEvent`) |
+| `same_day_cancel_fine` → `late_cancellation_consequence` | `not_returned_fine` → `missed_obligation_consequence` (legacy: `checkoutOverdue`) |
+| `no_rsvp_fine` → `no_rsvp_consequence` | `right_expiration_warning` → `deadline_enforcement` (legacy: `rightExpiringSoon`) |
+| `expense_threshold_vote` → `approval_required` (close) | `space_cancellation_late_fine` → `missed_obligation_consequence` (legacy: `bookingCancelled`) |
+|  | `damage_approval_required` → `approval_required` (legacy: `damageReported`) |
+|  | `space_long_booking_vote` → `approval_required` (legacy: `bookingCreated` + `startVote`) |
+|  | `transfer_large_vote` → `approval_required` (legacy: `assetTransferred` + `startVote`) |
+|  | `space_damage_temporary_closure_vote` → `approval_required` (legacy: `damageReported` + `startVote` + `lockBookings`) |
+
+> **Cómo verificar:** correr `select * from ...` join sobre `composition->>'trigger_shape_id'` (ver mig 00321 do-block para el query exacto). Hoy: 4 correctos, 9 mismatch.
+
+### 14.7 Wave-1 followup migs (no implementadas)
+
+Para cerrar los 9 mismatches restantes, el catálogo necesita 5-7 universales adicionales — cada uno con composición correcta y nombre limpio (no vertical). Propuesta:
+
+| Mig | Universal nuevo | Composición | Cubre legacy |
+|---|---|---|---|
+| 00322 | `cancellation_consequence` | `eventCancelled` + `alwaysTrue` + `fine` | `cancellation_fee` |
+| 00323 | `late_return_consequence` | `checkoutOverdue` + `alwaysTrue` + `fine` | `not_returned_fine` |
+| 00324 | `deadline_consequence` (variante con fine, no warning) | `hoursBeforeEvent` + condición + `fine` | `host_no_menu_fine` |
+| 00325 | `expiration_warning` (renombre `right_expiration_warning`) | `rightExpiringSoon` + `alwaysTrue` + `emitWarning` | `right_expiration_warning` |
+| 00326 | `booking_cancellation_consequence` | `bookingCancelled` + `alwaysTrue` + `cancellation_fee` | `space_cancellation_late_fine` |
+| 00327 | `damage_approval` | `damageReported` + `damageAmountAbove` + `requireApproval` | `damage_approval_required`, `space_damage_temporary_closure_vote` |
+| 00328 | `vote_required` (universal voto, sibling de approval_required) | trigger varios + `amountAbove` + `startVote` | `expense_threshold_vote`, `transfer_large_vote`, `space_long_booking_vote` |
+
+Cada mig requiere:
+- ≥5 ejemplos en verticales (test §2.1)
+- `what_it_is_not` (antitemplates)
+- `natural_language_preview_template_es` interpolable
+- Re-alias del legacy correspondiente con la composición correcta
+
+Sin estos, cualquier rule publicada via los aliases con mismatch genera comportamiento incorrecto (engine dispara con trigger universal, no el legacy). Hasta entonces, recomendación operativa: no publicar via aliased templates desde Gallery (no es problema hoy porque Gallery los oculta via `alias_of IS NULL` filter — pero un admin con permisos podría seleccionar uno por id si UI lo expusiera).
+
 ---
 
 ## 15. What NOT to build (explícito)
