@@ -131,10 +131,23 @@ public final class ResourceLedgerCoordinator {
         isLoading = true
         error = nil
         defer { isLoading = false }
+        // Load entries + members INDEPENDENTLY. A failure in one must not
+        // wipe the other — the prior do { try await entriesTask; try await
+        // membersTask } chain skipped the members assignment when entries
+        // threw, so the counterparty picker rendered as "No hay otros
+        // miembros" even in groups with 3 active peers. We still surface
+        // a banner if EITHER tail fails, but neither blocks the other.
+        async let entriesTask = ledgerRepo.listForResource(resourceId, limit: 200)
+        async let membersTask = groupsRepo.membersWithProfiles(of: groupId)
+
+        var failures: [String] = []
         do {
-            async let entriesTask = ledgerRepo.listForResource(resourceId, limit: 200)
-            async let membersTask = groupsRepo.membersWithProfiles(of: groupId)
             entries = try await entriesTask
+        } catch {
+            log.warning("load entries failed: \(error.localizedDescription)")
+            failures.append("movimientos")
+        }
+        do {
             members = try await membersTask.sorted { lhs, rhs in
                 if lhs.member.isFounder != rhs.member.isFounder {
                     return lhs.member.isFounder
@@ -142,8 +155,11 @@ public final class ResourceLedgerCoordinator {
                 return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
             }
         } catch {
-            log.warning("load failed: \(error.localizedDescription)")
-            self.error = "No pudimos cargar los movimientos."
+            log.warning("load members failed: \(error.localizedDescription)")
+            failures.append("miembros")
+        }
+        if !failures.isEmpty {
+            self.error = "No pudimos cargar los \(failures.joined(separator: " ni los "))."
         }
     }
 
@@ -284,47 +300,59 @@ public final class ResourceLedgerCoordinator {
         defer { isSubmitting = false }
 
         // Governance gate (Group Rule, expense.create — mig 00112).
-        // Default policy is `direct` (anyone can record), so this is a
-        // no-op for groups that haven't customized their money policy.
-        // Strict / admin-curated groups can lift it to `admin_only` via
-        // RulePresetsView once V2 ships per-question editing.
-        // amount_cents is included in the payload so V2's threshold-aware
-        // policies (condition_config.min_amount_cents) can evaluate the
-        // expense's size — the resolver ignores it today.
-        let decision: PolicyDecision
-        do {
-            decision = try await policyRepo.resolve(
-                groupId: groupId,
-                actorUserId: currentUserId,
-                action: .expenseCreate,
-                targetPayload: [
-                    "resource_id":   resourceId.uuidString.lowercased(),
-                    "amount_cents":  String(amountCents),
-                ]
-            )
-        } catch let resolveError {
-            log.warning("resolve(.expenseCreate) failed: \(resolveError.localizedDescription)")
-            // Fail-open: if the resolver itself can't be reached, fall back
-            // to the existing record_ledger_entry RLS for gating. Keeps the
-            // primary money flow working under network blips.
-            decision = .allowed
-        }
+        // ONLY applies when the form kind is `.expense`. Settlement /
+        // contribution / payout are different atoms under Constitution §11
+        // and have their own (currently absent) policies — running them
+        // through the expense gate would block bilateral debt-clearing in
+        // any group that scopes expense.create to `admin_only`.
+        //
+        // Default expense policy is `direct` (anyone can record), so the
+        // resolver is a no-op for groups that haven't customized money
+        // governance. Strict groups lift it to `admin_only` via
+        // RulePresetsView; v2 will add threshold-aware variants
+        // (condition_config.min_amount_cents) that read amount_cents.
+        if formKind == .expense {
+            let decision: PolicyDecision
+            do {
+                decision = try await policyRepo.resolve(
+                    groupId: groupId,
+                    actorUserId: currentUserId,
+                    action: .expenseCreate,
+                    targetPayload: [
+                        "resource_id":   resourceId.uuidString.lowercased(),
+                        "amount_cents":  String(amountCents),
+                    ]
+                )
+            } catch let resolveError {
+                log.warning("resolve(.expenseCreate) failed: \(resolveError.localizedDescription)")
+                // Fail-open: if the resolver itself can't be reached, fall back
+                // to the existing record_ledger_entry RLS for gating. Keeps the
+                // primary money flow working under network blips.
+                decision = .allowed
+            }
 
-        switch decision {
-        case .allowed:
-            break
-        case .adminOnly:
-            self.error = "Solo los fundadores pueden registrar gastos en este grupo."
-            return nil
-        case .voteRequired:
-            // V2: open a vote with the expense envelope + apply on pass.
-            // For now this is a soft block so the user knows the policy
-            // exists; nothing in V1 produces this decision via the seeder.
-            self.error = "Este grupo requiere aprobación por votación para gastos. La flow llega en una próxima versión."
-            return nil
-        case .denied(let reason):
-            self.error = "No se puede registrar este gasto: \(reason)."
-            return nil
+            // Combined resolution:
+            //   - keep my Fase 0 `if formKind == .expense {` wrapper
+            //     (commit 863f0d2 — scope the gate to expense kind so
+            //     settlement/contribution/payout pass through)
+            //   - take main's canonical copy "fundadores" (commit 2c86af6
+            //     fix(copy): unify role label to fundador everywhere)
+            switch decision {
+            case .allowed:
+                break
+            case .adminOnly:
+                self.error = "Solo los fundadores pueden registrar gastos en este grupo."
+                return nil
+            case .voteRequired:
+                // V2: open a vote with the expense envelope + apply on pass.
+                // For now this is a soft block so the user knows the policy
+                // exists; nothing in V1 produces this decision via the seeder.
+                self.error = "Este grupo requiere aprobación por votación para gastos. La flow llega en una próxima versión."
+                return nil
+            case .denied(let reason):
+                self.error = "No se puede registrar este gasto: \(reason)."
+                return nil
+            }
         }
 
         do {

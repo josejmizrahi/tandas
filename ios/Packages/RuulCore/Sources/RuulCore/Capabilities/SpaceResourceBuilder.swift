@@ -51,8 +51,10 @@ public actor SpaceResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Tier 0/0.5 (status/description/history/rules/voting/ledger/money)
+    /// are merged in by `withTierDefaults()` — they're not listed here.
     public nonisolated var optionalCapabilities: [String] {
-        ["booking", "schedule", "check_in", "capacity", "location", "guest_access", "voting", "rules"]
+        ["booking", "schedule", "check_in", "capacity", "location", "guest_access"]
     }
 
     private let draftRepo: any ResourceDraftRepository
@@ -62,13 +64,16 @@ public actor SpaceResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .space else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .space else {
             throw ResourceBuilderError.underlying("SpaceResourceBuilder cannot build this type")
         }
-        guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
+        guard case let .string(name)? = rawDraft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
+
+        // Tier 0 + Tier 0.5 caps merged in per CapabilityTiers.md §2-3.
+        let draft = rawDraft.withTierDefaults()
 
         do {
             let resourceId = try await draftRepo.build(draft)

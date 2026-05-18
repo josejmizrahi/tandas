@@ -16,15 +16,17 @@ public actor AssetResourceBuilder: ResourceBuilder {
         ]
     }
 
-    /// Spec §8: capabilities that ANY asset can wear. The wizard
-    /// surfaces these (filtered by CapabilityStatus) in step 3.
-    /// `slot` is intentionally NOT a capability — slots are a
-    /// separate resource_type per spec §18.
+    /// Spec §8: capabilities that ANY asset can wear AND that are opt-in.
+    /// Tier 0 + Tier 0.5 caps (status/description/history/rules/voting +
+    /// ledger/money/valuation) are NOT listed here — `withTierDefaults()`
+    /// merges them at build time, so the wizard would surface decorative
+    /// toggles that can't actually be turned off. The opt-in surface
+    /// stays focused on type-specific Tier 1 capabilities.
     public nonisolated var optionalCapabilities: [String] {
         [
-            "custody", "maintenance", "valuation", "transfer",
+            "custody", "maintenance", "transfer",
             "inventory", "booking", "capacity", "guest_access",
-            "delegation", "access", "voting", "rules", "history"
+            "delegation", "access"
         ]
     }
 
@@ -43,13 +45,18 @@ public actor AssetResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .asset else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .asset else {
             throw ResourceBuilderError.underlying("AssetResourceBuilder cannot build this type")
         }
-        guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
+        guard case let .string(name)? = rawDraft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
+
+        // Tier 0 + Tier 0.5 caps merged into the draft envelope so every
+        // new asset receives status/description/history/rules/voting/
+        // ledger/money by default — `Plans/Active/CapabilityTiers.md §2-3`.
+        let draft = rawDraft.withTierDefaults()
 
         // Atomic path via build_resource_from_draft RPC (mig 00101).
         // Same shape as EventResourceBuilder — one round-trip + RPC-side

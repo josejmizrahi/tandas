@@ -31,6 +31,62 @@ public struct CapabilityCatalog: Sendable {
         blocks.filter { $0.enabledResourceTypes.contains(resourceType) }
     }
 
+    // MARK: - Capability tiers (Plans/Active/CapabilityTiers.md)
+
+    /// Tier 0 — universals. Apply to ALL 6 resource types. See
+    /// `Plans/Active/CapabilityTiers.md §2`. `status`, `description`,
+    /// `history` are universal in catalog already; this list is the
+    /// canonical Tier-0 contract referenced by builders + the backfill
+    /// migration so any future addition is grep-able from one place.
+    ///
+    /// `links` (mig 00269) joined Tier 0 with Fase 2 — every resource
+    /// is a node of the graph and surfaces a "Vinculado con…" section.
+    public static let tier0CapabilityIds: [String] = [
+        "status", "description", "history", "rules", "voting", "links"
+    ]
+
+    /// Tier 0.5 — economic universals. Apply to every resource type that
+    /// can be the subject of money flows (event/fund/asset/space/slot).
+    /// `right` is excluded by doctrine — see `CapabilityTiers.md §3`.
+    public static let tier05CapabilityIds: [String] = [
+        "ledger", "money"
+    ]
+
+    /// Resource types that receive Tier 0.5 economic capabilities on
+    /// creation. Mirrors `LedgerCapability.enabledResourceTypes` and
+    /// `MoneyCapability.enabledResourceTypes` — kept in sync manually.
+    public static let tier05EligibleTypes: Set<ResourceType> = [
+        .event, .fund, .asset, .space, .slot
+    ]
+
+    /// Returns the canonical default set of capabilities a new resource of
+    /// this type should be created with: Tier 0 (always) ∪ Tier 0.5
+    /// (when eligible). Type-specific Tier 1 caps (rsvp, custody,
+    /// booking, etc.) remain opt-in via the wizard.
+    public static func tierDefaultCapabilities(for type: ResourceType) -> [String] {
+        var ids = tier0CapabilityIds
+        if tier05EligibleTypes.contains(type) {
+            ids.append(contentsOf: tier05CapabilityIds)
+        }
+        return ids
+    }
+
+    /// Merge an explicit capability list with the tier defaults for the
+    /// given type, preserving order and deduping. Builders use this when
+    /// persisting a draft so Tier 0/0.5 caps end up on the resource even
+    /// if the wizard didn't list them.
+    public static func mergeTierDefaults(
+        explicit: [String],
+        for type: ResourceType
+    ) -> [String] {
+        var seen: Set<String> = []
+        var merged: [String] = []
+        for id in explicit + tierDefaultCapabilities(for: type) {
+            if seen.insert(id).inserted { merged.append(id) }
+        }
+        return merged
+    }
+
     /// Resolves a transitive dependency closure for a block id, including
     /// the block itself. Detects cycles defensively (returns the
     /// already-discovered set if a cycle is hit).
@@ -82,6 +138,7 @@ public struct CapabilityCatalog: Sendable {
         ReminderCapability(),
         StatusCapability(),
         HistoryCapability(),
+        LinksCapability(),
         // Event-shape primitives. Hard-seeded on every event resource by
         // mig 00109 + 00110 (no module provides them — they're inherent
         // to the event shape). Declared here so the catalog resolves the
@@ -629,7 +686,11 @@ public struct MoneyCapability: CapabilityBlock {
     public var id: String { "money" }
     public var displayName: String { "Dinero" }
     public var summary: String { "Gastos, aportaciones y multas asociadas a este recurso." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
+    // Tier 0.5 per Plans/Active/CapabilityTiers.md §3. Every resource that
+    // can be the subject of money flows owns this surface. `right` is
+    // explicitly excluded — rights generate fees but the money lives in
+    // the underlying resource (the fund that pays, the asset they control).
+    public var enabledResourceTypes: [ResourceType] { [.event, .fund, .asset, .space, .slot] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -667,7 +728,12 @@ public struct LedgerCapability: CapabilityBlock {
     public var id: String { "ledger" }
     public var displayName: String { "Ledger" }
     public var summary: String { "Asientos contables atómicos." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
+    // Tier 0.5 per Plans/Active/CapabilityTiers.md §3. All economic
+    // resources get the polymorphic ledger surface (record_ledger_entry,
+    // record_settlement, type-specific writers where they exist).
+    // Excluded: `right` — see CapabilityTiers §3 for the ontological
+    // justification (rights are relations, not balance holders).
+    public var enabledResourceTypes: [ResourceType] { [.event, .fund, .asset, .space, .slot] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -746,7 +812,11 @@ public struct RulesCapability: CapabilityBlock {
     public var id: String { "rules" }
     public var displayName: String { "Reglas" }
     public var summary: String { "Define qué pasa automáticamente cuando algo sucede." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
+    // Tier 0 per Plans/Active/CapabilityTiers.md §2. Every resource is
+    // governable — rules tie WHEN/IF/THEN over any atom. Asset rules
+    // (insurance renewal), right rules (auto-expire), space rules
+    // (capacity caps) are first-class.
+    public var enabledResourceTypes: [ResourceType] { [.event, .fund, .asset, .space, .slot, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -768,7 +838,9 @@ public struct ConsequenceCapability: CapabilityBlock {
     public var id: String { "consequence" }
     public var displayName: String { "Consecuencias" }
     public var summary: String { "Las reglas pueden generar multas, advertencias o votos." }
-    public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
+    // Follows `rules` (Tier 0). A consequence is dead without a rule to
+    // produce it, so wherever rules apply consequences apply too.
+    public var enabledResourceTypes: [ResourceType] { [.event, .fund, .asset, .space, .slot, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }
@@ -1123,6 +1195,33 @@ public struct HistoryCapability: CapabilityBlock {
     public var conflicts: [String] { [] }
 }
 
+// links — Fase 2 (mig 00268). Every resource is a node of the polymorphic
+// graph; this cap surfaces the "Vinculado con…" section that lists in/
+// out edges + the "+ Vincular" picker. Tier 0 per
+// `Plans/Active/CapabilityTiers.md §2` — universal across the 6 types.
+public struct LinksCapability: CapabilityBlock {
+    public init() {}
+    public var id: String { "links" }
+    public var displayName: String { "Vinculaciones" }
+    public var summary: String { "Conexiones de este recurso con otros del grupo." }
+    public var enabledResourceTypes: [ResourceType] {
+        [.event, .fund, .asset, .space, .slot, .right]
+    }
+    public var requiredFields: [BuilderField] { [] }
+    public var optionalFields: [BuilderField] { [] }
+    public var suggestedRules: [RuleTemplate] { [] }
+    public var actions: [CapabilityAction] {
+        [CapabilityAction(id: "links.add", label: "Vincular", surface: .resourceDetail)]
+    }
+    public var routes: [CapabilityRoute] { [] }
+    public var permissions: [Permission] { [] }
+    public var projections: [ProjectionDescriptor] {
+        [ProjectionDescriptor(id: "resource_links_view", displayName: "Vinculaciones", scope: .resource)]
+    }
+    public var dependencies: [String] { [] }
+    public var conflicts: [String] { [] }
+}
+
 // MARK: - Asset universal blocks (mig 00199 — canonical asset spec §8)
 //
 // The 7 capability blocks that make `resource_type='asset'` mean
@@ -1193,7 +1292,13 @@ public struct ValuationCapability: CapabilityBlock {
     public var id: String { "valuation" }
     public var displayName: String { "Valuación" }
     public var summary: String { "Registrar el valor del activo en el tiempo." }
-    public var enabledResourceTypes: [ResourceType] { [.asset, .fund, .right] }
+    // Tier 0.5 per Plans/Active/CapabilityTiers.md §3. Only `asset` and
+    // `fund` have intrinsic "how much am I worth" as a canonical concept.
+    // `right` removed (was here from mig 00199): rights aren't valued
+    // themselves; whatever value they represent lives in the underlying
+    // resource they control. event/space/slot use budget/cost/price/
+    // capacity-economics — semantically distinct from valuation.
+    public var enabledResourceTypes: [ResourceType] { [.asset, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
     public var suggestedRules: [RuleTemplate] { [] }

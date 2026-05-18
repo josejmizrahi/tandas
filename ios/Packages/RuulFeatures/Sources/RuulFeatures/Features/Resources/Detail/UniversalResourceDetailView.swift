@@ -120,10 +120,14 @@ public struct UniversalResourceDetailView: View {
                 if context.enabledCapabilities.contains("rules") {
                     RulesSectionView(context: context)
                 }
-                if context.resource.resourceType == .event {
-                    // Plans/Active/EventResource.md §12 — "event uses
-                    // space/asset/fund/right". Hidden for non-event types.
-                    ResourcesUsedSectionView(context: context)
+                if context.enabledCapabilities.contains("links") {
+                    // Fase 2: polymorphic graph surface. Every resource
+                    // with the `links` cap (all 6 types per Tier 0) gets
+                    // the "VINCULADO CON" section showing in/out edges
+                    // across the 8 V1 relations (uses/funds/governs/
+                    // located_in/scheduled_in/reserves/grants_access_to/
+                    // owns). Plans/Active/ResourceLinks.md §6.
+                    ResourceLinksSectionView(context: context)
                 }
                 if context.enabledCapabilities.contains("activity") {
                     ActivitySectionView(context: context)

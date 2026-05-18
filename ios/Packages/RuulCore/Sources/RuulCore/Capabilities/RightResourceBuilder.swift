@@ -82,11 +82,12 @@ public actor RightResourceBuilder: ResourceBuilder {
         ]
     }
 
+    /// Tier 0 (rules/voting/status/description/history) merged in by
+    /// `withTierDefaults()`. Right is NOT eligible for Tier 0.5
+    /// (ledger/money) per CapabilityTiers.md §3. Only the type-specific
+    /// Tier 1 opt-ins remain here.
     public nonisolated var optionalCapabilities: [String] {
-        // Rights mostly govern OTHER resources' capabilities. Capacity +
-        // expiration + voting + rules are the ones that make sense as
-        // capability rows on the right itself (vs. on its target).
-        ["capacity", "expiration", "voting", "rules"]
+        ["capacity", "expiration"]
     }
 
     private let draftRepo: any ResourceDraftRepository
@@ -96,17 +97,21 @@ public actor RightResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft: ResourceDraft) async throws -> ResourceCreationResult {
-        guard draft.resourceType == .right else {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+        guard rawDraft.resourceType == .right else {
             throw ResourceBuilderError.underlying("RightResourceBuilder cannot build this type")
         }
 
-        guard case let .string(name)? = draft.basicFields["name"], !name.isEmpty else {
+        guard case let .string(name)? = rawDraft.basicFields["name"], !name.isEmpty else {
             throw ResourceBuilderError.missingRequiredField("name")
         }
         // holderMemberId is optional in the wizard's basic_fields (mig 00201):
         // when absent, create_right defaults to the caller's membership. The
         // Swift side mirrors that — submitting without a holder is valid.
+
+        // Tier 0 caps merged in (no Tier 0.5 for `right` per
+        // CapabilityTiers.md §3 — rights are relations, not balance holders).
+        let draft = rawDraft.withTierDefaults()
 
         do {
             let resourceId = try await draftRepo.build(draft)
