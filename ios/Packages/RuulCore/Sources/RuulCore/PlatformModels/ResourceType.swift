@@ -77,8 +77,9 @@ extension ResourceType {
     /// — the user shouldn't be able to disable RSVP or check-in on an
     /// event, those are foundational. The other 5 types are configured
     /// at creation and remain user-managed afterward.
-    /// Used by UniversalResourceDetailView to gate the
-    /// SettingsSectionView's onPresentEnableCapability callback.
+    /// Post-Pass-1 unreferenced — capability management moved to the
+    /// Governance tab (`GovernanceTabView`) which surfaces caps for every
+    /// resource type. Kept for future per-type gating decisions.
     public var capabilitiesAreUserManaged: Bool {
         switch self {
         case .event:        return false
