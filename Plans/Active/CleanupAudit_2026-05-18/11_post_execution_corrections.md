@@ -84,7 +84,7 @@ exist in the repo. The 3 orphans:
   Returns null for that field on every row; doesn't crash. Fix scoped as a
   follow-up.
 
-- **`evaluate-event-rules`** (v9, ACTIVE) — **DEAD on prod, NOT restored.**
+- **`evaluate-event-rules`** (v9, ACTIVE) — **DEAD on prod, restored as a 410 stub.**
   Reads the `events` and `event_attendance` tables, both DROPPED in mig 00159.
   Per `Plans/Completed/Phase1.md` and `Plans/Active/Constitution.md` §5c-iii.C,
   this function was the V1 on-demand rule evaluator path, superseded by the
@@ -92,7 +92,12 @@ exist in the repo. The 3 orphans:
   would 500 on every invocation now (no `events` table to SELECT from).
   Zero active callers in code or migrations (only doc/spec mentions of the
   pre-Phase-2 RPC of the same name).
-  **Action needed**: undeploy from Supabase dashboard. Tracked as task #20.
+  **Action taken**: source restored as a tiny 410 Gone stub
+  (`supabase/functions/evaluate-event-rules/index.ts`) so any rogue caller
+  learns fast and the function appears in version control with a clear
+  DEPRECATED marker + retrieval breadcrumb to the original 200-LOC body
+  via `mcp__supabase__get_edge_function`. Dashboard undeploy still
+  pending (task #20).
 
 ### 6. The "cron missing for process-system-events" worry was false alarm
 **Audit said:** "no DB cron schedule found for `process-system-events` in
