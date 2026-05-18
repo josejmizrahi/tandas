@@ -11,6 +11,15 @@ import Foundation
 /// fines `resourceId == eventId` (resources mirror events 1:1 post-00040).
 /// Phase 2 fines for non-event resources (slot decline, fund non-contribution)
 /// fill `resourceId` while leaving `eventId` NULL.
+///
+/// **Mutable storage columns `paid`, `paidAt`, `waived`, `waivedAt`,
+/// `waivedReason` are transitional debt** per Constitution §14 Step 3c and
+/// `RulesVsMoneyDoctrine.md` Axioma 2 (Fine ≠ Ledger). Truth lives in
+/// `ledger_entries` (`fine_paid` / `fine_voided` atoms); the `fines_view`
+/// projection (mig 00149) derives these fields from atoms. Readers MUST
+/// consume `fines_view`, not raw `fines` storage. Phase 4 of
+/// `RulesFinesRefactorPlan.md` drops the storage columns and re-creates
+/// the view without fallback.
 public struct Fine: Identifiable, Sendable, Hashable, Codable {
     public let id: UUID
     public let groupId: UUID

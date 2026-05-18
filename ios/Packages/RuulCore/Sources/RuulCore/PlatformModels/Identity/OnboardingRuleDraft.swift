@@ -45,6 +45,13 @@ public struct OnboardingRuleDraft: Identifiable, Codable, Sendable, Hashable {
     /// Reads the flat `amount` first, falls back to escalating `baseAmount`.
     /// Setter writes back to whichever key already exists; if neither is
     /// present (no fine consequence), the setter is a no-op.
+    ///
+    /// **Deprecated since 2026-05-18** — violates `RulesVsMoneyDoctrine.md`
+    /// Axioma 1 (Rule ≠ Fine) and silently no-ops when the draft has no
+    /// fine consequence. Phase 2 of `RulesFinesRefactorPlan.md` replaces
+    /// this with an explicit `setFineConsequenceAmount(_:)` mutator and a
+    /// read-only `fineConsequenceAmount: Int?` getter so callers can't
+    /// assume a fine is always present.
     public var amountMXN: Int {
         get {
             guard

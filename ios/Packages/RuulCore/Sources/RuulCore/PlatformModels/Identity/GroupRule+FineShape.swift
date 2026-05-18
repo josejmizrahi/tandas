@@ -16,6 +16,13 @@ public extension GroupRule {
     /// Parses `consequences[0].config` into a typed shape. Only the first
     /// consequence is inspected — V1 rules carry exactly one. Non-fine first
     /// consequences and empty consequence arrays both yield `.none`.
+    ///
+    /// **Deprecated since 2026-05-18** — violates `RulesVsMoneyDoctrine.md`
+    /// Axioma 1 by exposing fine-only branching as a property of the
+    /// universal `GroupRule`. Phase 2 of `RulesFinesRefactorPlan.md` moves
+    /// this to `FineConsequenceParser.shape(of:)` so the fine awareness
+    /// stays in fine-coupled UI surfaces (composer, params editor) instead
+    /// of leaking into the core model.
     var fineShape: FineShape {
         guard let first = consequences.first, first.type == "fine" else {
             return .none

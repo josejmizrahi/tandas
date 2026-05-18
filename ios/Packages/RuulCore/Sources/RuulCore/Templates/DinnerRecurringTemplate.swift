@@ -10,6 +10,19 @@ import Foundation
 /// Sprint 1b wires this from the founder onboarding coordinator: after the
 /// group is created, the iOS app calls `seed_dinner_template_rules` RPC
 /// which inserts these rules atomically.
+///
+/// **Deprecated since 2026-05-18** — this Swift-hardcoded template
+/// duplicates the universal templates seeded by migs 00296 / 00320 / 00321
+/// / 00325 per `UniversalRuleTemplates.md` §14. Each `RuleSlug` value
+/// already aliases to a universal (`missed_obligation_consequence`,
+/// `no_show_consequence`, `late_cancellation_consequence`, etc.). The
+/// rule names and descriptions here also embed money-specific copy
+/// ("$200 base + $50 por cada 30 min después") that violates
+/// `RulesVsMoneyDoctrine.md` §3 Regla 3 (templates don't name
+/// instruments). Phase 2 of `RulesFinesRefactorPlan.md` deletes this
+/// file and migrates onboarding to call `seed_template_rules` RPC, which
+/// reads from the universal catalog and lets the group override
+/// per-instance labels and amounts without baking them into Swift.
 public enum DinnerRecurringTemplate {
 
     /// Canonical stable slugs for the 5 dinner_recurring rules.
