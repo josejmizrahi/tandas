@@ -187,7 +187,7 @@ public struct RuleShapeRegistry: Sendable, Hashable {
             labelES: "Cuando alguien llega tarde",
             summaryES: "Se dispara cuando un miembro hace check-in después de la hora de inicio.",
             icon: "clock.badge.exclamationmark",
-            validScopes: ["resource", "series"],
+            validScopes: [RuleScope.resource, RuleScope.series],
             validResourceTypes: ["event"],
             sortOrder: 10
         ),
@@ -197,7 +197,7 @@ public struct RuleShapeRegistry: Sendable, Hashable {
             labelES: "Cuando alguien cancela el mismo día",
             summaryES: "Se dispara cuando un miembro cambia su RSVP a 'no voy' el día del evento.",
             icon: "person.crop.circle.badge.xmark",
-            validScopes: ["resource", "series"],
+            validScopes: [RuleScope.resource, RuleScope.series],
             validResourceTypes: ["event"],
             sortOrder: 20
         ),
@@ -207,7 +207,7 @@ public struct RuleShapeRegistry: Sendable, Hashable {
             labelES: "Al cerrar el evento",
             summaryES: "Se dispara cuando el host cierra el evento.",
             icon: "checkmark.seal",
-            validScopes: ["resource", "series", "group"],
+            validScopes: [RuleScope.resource, RuleScope.series, RuleScope.group],
             validResourceTypes: ["event"],
             sortOrder: 30
         ),

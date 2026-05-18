@@ -218,7 +218,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "checkInRecorded",
                 conditionShapeIds: ["checkInMinutesLate"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "series"
+                scopeHint: RuleScope.series
             ),
             sortOrder: 10
         ),
@@ -234,7 +234,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "eventClosed",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "series"
+                scopeHint: RuleScope.series
             ),
             sortOrder: 20
         ),
@@ -250,7 +250,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "rsvpChangedSameDay",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "series"
+                scopeHint: RuleScope.series
             ),
             sortOrder: 30
         ),
@@ -266,7 +266,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "rsvpDeadlinePassed",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "series"
+                scopeHint: RuleScope.series
             ),
             sortOrder: 40
         ),
@@ -282,7 +282,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "hoursBeforeEvent",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "series"
+                scopeHint: RuleScope.series
             ),
             sortOrder: 50
         ),
@@ -298,7 +298,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "ledgerEntryCreated",
                 conditionShapeIds: ["amountAbove"],
                 consequenceShapeIds: ["emitWarning"],
-                scopeHint: "group"
+                scopeHint: RuleScope.group
             ),
             sortOrder: 60
         ),
@@ -319,7 +319,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "ledgerEntryCreated",
                 conditionShapeIds: ["amountAbove"],
                 consequenceShapeIds: ["startVote"],
-                scopeHint: "group"
+                scopeHint: RuleScope.group
             ),
             sortOrder: 70
         ),
@@ -338,7 +338,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "damageReported",
                 conditionShapeIds: ["damageAmountAbove"],
                 consequenceShapeIds: ["requireApproval"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 80
         ),
@@ -357,7 +357,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "checkoutOverdue",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 90
         ),
@@ -373,7 +373,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "maintenanceOverdue",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["lockBookings"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 100
         ),
@@ -394,7 +394,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "assetTransferred",
                 conditionShapeIds: ["transferAmountAbove"],
                 consequenceShapeIds: ["startVote"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 110
         ),
@@ -410,7 +410,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "damageReported",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["emitWarning"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 120
         ),
@@ -429,7 +429,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "spaceCapacityReached",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["emitWarning"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 200
         ),
@@ -448,7 +448,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "bookingCancelled",
                 conditionShapeIds: ["cancelledWithinHours"],
                 consequenceShapeIds: ["fine"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 210
         ),
@@ -464,7 +464,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "bookingNoCheckIn",
                 conditionShapeIds: ["alwaysTrue"],
                 consequenceShapeIds: ["releaseBooking"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 220
         ),
@@ -484,7 +484,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "bookingCreated",
                 conditionShapeIds: ["outsideAllowedHours"],
                 consequenceShapeIds: ["denyAction"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 230
         ),
@@ -503,7 +503,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "spaceWaitlistJoined",
                 conditionShapeIds: ["actorHasRole"],
                 consequenceShapeIds: ["bumpPriority"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 240
         ),
@@ -524,7 +524,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "bookingCreated",
                 conditionShapeIds: ["bookingDurationAbove"],
                 consequenceShapeIds: ["startVote"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 250
         ),
@@ -545,7 +545,7 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 triggerShapeId: "damageReported",
                 conditionShapeIds: ["damageSeverityAbove"],
                 consequenceShapeIds: ["startVote"],
-                scopeHint: "resource"
+                scopeHint: RuleScope.resource
             ),
             sortOrder: 260
         )

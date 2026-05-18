@@ -221,15 +221,15 @@ public enum RuleTemplateScope: Sendable, Hashable {
     fileprivate func asJSON() -> JSONConfig {
         switch self {
         case .group:
-            return .object(["type": .string("group")])
+            return .object(["type": .string(RuleScope.group)])
         case .resource(let id):
             return .object([
-                "type": .string("resource"),
+                "type": .string(RuleScope.resource),
                 "id":   .string(id.uuidString.lowercased())
             ])
         case .series(let id):
             return .object([
-                "type": .string("series"),
+                "type": .string(RuleScope.series),
                 "id":   .string(id.uuidString.lowercased())
             ])
         }

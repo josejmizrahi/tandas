@@ -152,7 +152,7 @@ public struct GroupPolicy: Identifiable, Sendable, Hashable {
     public let groupId: UUID
     public var policyType: PolicyType
     public var targetAction: TargetAction
-    public var targetScope: String       // "group" | "resource_type" | "resource"
+    public var targetScope: String       // RuleScope.group | .resourceType | .resource
     public var targetResourceType: String?
     public var targetResourceId: UUID?
     public var approvalConfig: ApprovalConfig?
@@ -164,7 +164,7 @@ public struct GroupPolicy: Identifiable, Sendable, Hashable {
         groupId: UUID,
         policyType: PolicyType,
         targetAction: TargetAction,
-        targetScope: String = "group",
+        targetScope: String = RuleScope.group,
         targetResourceType: String? = nil,
         targetResourceId: UUID? = nil,
         approvalConfig: ApprovalConfig? = nil,
