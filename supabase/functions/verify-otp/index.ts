@@ -164,7 +164,44 @@ async function verifyAndPromote(params: {
     return jsonError(500, "promote_failed", msg || "promotion failed");
   }
 
-  // 7. Caller's existing JWT now points to a phone-authenticated user with
+  // 7. Sprint D — V25 fix: emit identityPromoted atom (mig 00292 added
+  //    to whitelist). Records the anon→phone upgrade in the audit trail.
+  //    `record_system_event` requires a group_id; identity events are
+  //    cross-group, so we use the first group the user belongs to (if
+  //    any). For users who haven't joined a group yet (founder-onboarding
+  //    pre-create), the atom is skipped — there's no group context to
+  //    attach it to. Best-effort: failures are logged but don't block
+  //    the promotion response.
+  try {
+    const { data: anyMembership } = await admin
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", callerUserId)
+      .eq("active", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (anyMembership?.group_id) {
+      const { error: atomErr } = await admin.rpc("record_system_event", {
+        p_group_id:    anyMembership.group_id,
+        p_event_type:  "identityPromoted",
+        p_resource_id: null,
+        p_member_id:   null,
+        p_payload: {
+          user_id:        callerUserId,
+          phone_e164:     phone,
+          promotion_kind: "anon_to_phone",
+          channel:        "whatsapp",
+          promoted_at:    new Date().toISOString(),
+        },
+      });
+      if (atomErr) console.error("identityPromoted atom failed (non-fatal)", atomErr);
+    }
+  } catch (e) {
+    console.error("identityPromoted atom failed (non-fatal)", e);
+  }
+
+  // 8. Caller's existing JWT now points to a phone-authenticated user with
   //    the same UID. Client should call refreshSession() to pick up the
   //    fresh claims (is_anonymous becomes false).
   return jsonResponse({ ok: true, user_id: callerUserId, promoted: true });

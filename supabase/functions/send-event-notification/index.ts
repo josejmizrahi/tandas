@@ -1,6 +1,13 @@
 // send-event-notification: write event-lifecycle push intentions to the
 // outbox.
 //
+// **V3 (Sprint D / mig RolesRemediation 2026-05-17).** Closes V5 HERESY
+// from the RolesAudit: previous version accepted ANY HTTP request
+// (service_role context) with arbitrary {event_id, kind, target_user_ids}
+// and silently spammed pushes to the group. This version requires the
+// caller's JWT, verifies membership in event.group_id, and gates each
+// kind on the appropriate permission.
+//
 // **V2 (outbox-first)**. Composes target list + payload + deep_link for
 // an event lifecycle kind (created / host_reminder / deadline_warning /
 // cancelled), then inserts one row per recipient into
@@ -19,6 +26,15 @@
 //   - Consistente con start_vote, finalize_vote, finalize-fine-reviews
 //     que ya escriben directo al outbox.
 //
+// Authorization (Sprint D, 2026-05-17):
+//   - Authorization Bearer <JWT> required (401 otherwise).
+//   - Caller must be active member of event.group_id (403).
+//   - cancelled: requires has_permission(manageEvents) OR caller is
+//     event creator OR host (403 otherwise).
+//   - created / host_reminder / deadline_warning: any active member.
+//     These kinds correspond to legitimate flows where any participant
+//     might want to nudge the group (e.g. iOS coordinator re-trigger).
+//
 // Request: { event_id, kind, target_user_ids? }
 //   kind ∈ "created" | "host_reminder" | "deadline_warning" | "cancelled"
 //   target_user_ids: optional override; defaults derived from kind.
@@ -35,10 +51,26 @@ type Kind = "created" | "host_reminder" | "deadline_warning" | "cancelled";
 
 interface OutboxRowId { id: string }
 
+interface JWTPayload {
+  sub?: string;
+  // other fields ignored
+}
+
 serve(withSentry(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*" } });
   }
+
+  // Sprint D — V5 HERESY fix: require caller JWT.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return jsonError(401, "Authorization Bearer JWT required");
+  }
+  const callerInfo = decodeJWT(authHeader.slice(7));
+  if (!callerInfo?.sub) {
+    return jsonError(401, "could not decode JWT");
+  }
+  const callerUserId = callerInfo.sub;
 
   let event_id: string, kind: Kind, target_user_ids: string[] | undefined;
   try {
@@ -63,6 +95,37 @@ serve(withSentry(async (req) => {
     .single();
   if (eventErr || !event) return jsonError(404, "event not found");
 
+  // Sprint D — V5 HERESY fix: caller must be active member of the event's group.
+  const groupId = event.group_id as string;
+  const { data: callerRow, error: callerErr } = await supabase
+    .from("group_members")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("user_id", callerUserId)
+    .eq("active", true)
+    .maybeSingle();
+  if (callerErr) return jsonError(500, `caller membership lookup failed: ${callerErr.message}`);
+  if (!callerRow) return jsonError(403, "caller is not an active member of this group");
+
+  // Sprint D — V5 HERESY fix: cancelled requires manageEvents permission
+  // (or caller is the event creator / host). The other kinds are
+  // legitimate any-member nudges so we don't gate them further.
+  if (kind === "cancelled") {
+    const callerIsCreator = (event.created_by as string | null) === callerUserId;
+    const callerIsHost = (event.host_id as string | null) === callerUserId;
+    if (!callerIsCreator && !callerIsHost) {
+      const { data: permData, error: permErr } = await supabase.rpc("has_permission", {
+        p_group_id: groupId,
+        p_user_id: callerUserId,
+        p_permission: "manageEvents",
+      });
+      if (permErr) return jsonError(500, `permission lookup failed: ${permErr.message}`);
+      if (permData !== true) {
+        return jsonError(403, "cancelled requires manageEvents permission or creator/host");
+      }
+    }
+  }
+
   // Resolve targets (user_ids) per kind.
   let targetUserIds: string[] = target_user_ids ?? [];
   if (targetUserIds.length === 0) {
@@ -78,7 +141,7 @@ serve(withSentry(async (req) => {
   const { data: members, error: memberErr } = await supabase
     .from("group_members")
     .select("id, user_id")
-    .eq("group_id", event.group_id)
+    .eq("group_id", groupId)
     .in("user_id", targetUserIds);
 
   if (memberErr) return jsonError(500, `member lookup failed: ${memberErr.message}`);
@@ -95,7 +158,7 @@ serve(withSentry(async (req) => {
   // dispatch_status='pending', looks up notification_tokens, sends APNs,
   // and marks status sent / failed / skipped.
   const rows = memberIds.map((member_id) => ({
-    group_id: event.group_id,
+    group_id: groupId,
     recipient_member_id: member_id,
     notification_type: kind,
     payload,
@@ -175,6 +238,18 @@ function buildPayload(event: Record<string, unknown>, kind: Kind): Record<string
 
 function capitalize(s: string): string {
   return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function decodeJWT(token: string): JWTPayload | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
 }
 
 function ok(body: Record<string, unknown>): Response {
