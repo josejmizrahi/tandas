@@ -111,13 +111,6 @@ public final class AppState {
     /// path entirely (and this flag with it).
     public var useNewShell: Bool = true
 
-    /// Detail-redesign A/B flag. Flipped to `true` at D-V2 Task 15
-    /// cutover — the new `UniversalResourceDetailView` (cover hero +
-    /// sticky CTA + nav-bar chrome) is now the default. Legacy view
-    /// (`UniversalResourceDetailViewLegacy`) still present but
-    /// unreached; D-V2 Task 16 deletes it.
-    public var useNewDetail: Bool = true
-
     /// Resolves runtime capabilities for the active group based on its
     /// template + activeModules. Computed so it always reflects the latest
     /// `moduleRegistry`; refreshing the registry post-boot automatically

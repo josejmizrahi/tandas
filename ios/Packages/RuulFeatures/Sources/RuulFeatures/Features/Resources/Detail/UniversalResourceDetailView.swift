@@ -329,20 +329,13 @@ public struct UniversalResourceDetailView: View {
         }
     }
 
-    /// Per-type sub-line under the title. Falls through to the type label
-    /// when no domain-specific subtitle applies (e.g. "Activo · activo").
+    /// Per-type sub-line under the title. Reads `humanLabel` from the
+    /// ResourceType enum (single source of truth for type display copy).
+    /// Falls through with status when the resource isn't in its default
+    /// "active" state.
     private var heroSubtitle: String? {
-        let typeLabel: String
-        switch context.resource.resourceType {
-        case .event: typeLabel = "Evento"
-        case .fund:  typeLabel = "Fondo"
-        case .asset: typeLabel = "Activo"
-        case .space: typeLabel = "Espacio"
-        case .slot:  typeLabel = "Cupo"
-        case .right: typeLabel = "Derecho"
-        case .unknown: return nil
-        }
-        // Status only worth surfacing when it's not the boring default.
+        if case .unknown = context.resource.resourceType { return nil }
+        let typeLabel = context.resource.resourceType.humanLabel
         if context.resource.status.lowercased() != "active",
            !context.resource.status.isEmpty {
             return "\(typeLabel) · \(context.resource.status.capitalized)"
@@ -653,42 +646,43 @@ public struct UniversalResourceDetailView: View {
         context.resource.resourceType != .event
     }
 
-    /// Renders every capability that owns a stub section (Sections/Stubs/).
-    /// Each `if context.enabledCapabilities.contains(...)` only fires when
-    /// the capability is actually enabled on this resource, so a vanilla
-    /// event with no extras still renders zero extra cards. Sections that
-    /// have a bespoke renderer above (rsvp, check_in, money, rules,
-    /// rotation, schedule, location, description, activity) are NOT
-    /// duplicated here.
+    /// Stub capability sections sourced from `CapabilitySectionCatalog`.
+    /// Each section file declares `static let definition = CapabilitySection(
+    /// id, priority, isEnabledFor, render)` and registers itself once at
+    /// catalog boot. Filter to the stubs by id-set so we don't re-render
+    /// canonical sections (rsvp, check_in, money, rules, …) that already
+    /// have a bespoke inline call above.
+    ///
+    /// Asset still skips `booking` + `valuation` here because asset has
+    /// dedicated `AssetBookingsSection` / `AssetOwnershipSection` rendered
+    /// inline. Fase 2: migrate those bespoke sections into the catalog
+    /// with type-aware predicates and drop the skip rule entirely.
     @ViewBuilder
     private var stubCapabilitySections: some View {
-        let caps = context.enabledCapabilities
         let isAsset = context.resource.resourceType == .asset
-        if caps.contains("status") { StatusSectionView(context: context) }
-        if caps.contains("recurrence") { RecurrenceSectionView(context: context) }
-        if caps.contains("deadline") { DeadlineSectionView(context: context) }
-        if caps.contains("expiration") { ExpirationSectionView(context: context) }
-        if caps.contains("participants") { ParticipantsSectionView(context: context) }
-        if caps.contains("attendance") { AttendanceSectionView(context: context) }
-        if caps.contains("guest_access") { GuestAccessSectionView(context: context) }
-        if caps.contains("assignment") { AssignmentSectionView(context: context) }
-        // Asset already gets a bespoke AssetBookingsSection / AssetOwnershipSection
-        // upstream when these caps are enabled, so we skip the stub to avoid a
-        // duplicate card on asset detail pages.
-        if caps.contains("booking") && !isAsset { BookingSectionView(context: context) }
-        if caps.contains("valuation") && !isAsset { ValuationSectionView(context: context) }
-        if caps.contains("inventory") { InventorySectionView(context: context) }
-        if caps.contains("access") { AccessSectionView(context: context) }
-        if caps.contains("delegation") { DelegationSectionView(context: context) }
-        if caps.contains("voting") { VotingSectionView(context: context) }
-        if caps.contains("approval") { ApprovalSectionView(context: context) }
-        if caps.contains("appeal") { AppealSectionView(context: context) }
-        if caps.contains("consequence") { ConsequenceSectionView(context: context) }
-        if caps.contains("swap") { SwapSectionView(context: context) }
-        if caps.contains("cancellation") { CancellationSectionView(context: context) }
-        if caps.contains("reminder") { ReminderSectionView(context: context) }
-        if caps.contains("history") { HistorySectionView(context: context) }
+        let sections = CapabilitySectionCatalog.shared
+            .sectionsFor(enabledCapabilities: context.enabledCapabilities)
+            .filter { Self.stubSectionIds.contains($0.id) }
+            .filter { section in
+                !(isAsset && (section.id == "booking" || section.id == "valuation"))
+            }
+        ForEach(sections, id: \.id) { section in
+            section.render(context)
+        }
     }
+
+    /// Ids of catalog sections rendered here. The complement (canonical
+    /// ids like `rsvp`, `check_in`, `money`, `rules`, `schedule`,
+    /// `location`, `description`, `activity`, `host_actions`,
+    /// `rotation`, `capacity_progress`) is rendered inline above and
+    /// must NOT appear in this set or the page renders twice.
+    private static let stubSectionIds: Set<String> = [
+        "status", "recurrence", "deadline", "expiration",
+        "participants", "attendance", "guest_access", "assignment",
+        "booking", "valuation", "inventory", "access",
+        "delegation", "voting", "approval", "appeal",
+        "consequence", "swap", "cancellation", "reminder", "history",
+    ]
 
     /// Reads `metadata.holder_member_id` off the polymorphic resource row.
     /// Used by `RightActionSheet` to filter the transfer recipient picker
