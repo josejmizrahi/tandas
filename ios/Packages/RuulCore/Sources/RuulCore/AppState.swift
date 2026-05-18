@@ -652,9 +652,13 @@ public final class AppState {
             let token = url.lastPathComponent
             return token.isEmpty ? nil : token
         }
-        // Universal link: https://ruul.app/claim/<token>
+        // Universal link: https://ruul.mx/claim/<token> (primary, post
+        // dominio compra 2026-05-18). Also accepts the legacy ruul.app
+        // variants in case the WhatsApp body cached or hand-typed an old
+        // URL — both resolve to the same backend.
         if url.scheme == "https",
-           let host = url.host, host == "ruul.app" || host == "www.ruul.app",
+           let host = url.host,
+           ["ruul.mx", "www.ruul.mx", "ruul.app", "www.ruul.app"].contains(host),
            url.pathComponents.count >= 3, url.pathComponents[1] == "claim" {
             let token = url.pathComponents[2]
             return token.isEmpty ? nil : token

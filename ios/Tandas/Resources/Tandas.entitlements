@@ -11,6 +11,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:ruul.app</string>
+		<string>applinks:ruul.mx</string>
 	</array>
 </dict>
 </plist>

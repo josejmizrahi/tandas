@@ -66,8 +66,8 @@ serve(withSentry(async (req) => {
   const finalMessage =
     message ??
     (claim_token
-      ? `Hola! Te agregaron al grupo *${group_name}* en ruul. Tu lugar ya está reservado. Activa tu cuenta: https://ruul.app/claim/${claim_token}`
-      : `Te invito a ${group_name} en ruul. Aquí coordinamos todo: turnos, RSVP, reglas. Únete: https://ruul.app/invite/${invite_code}`);
+      ? `Hola! Te agregaron al grupo *${group_name}* en ruul. Tu lugar ya está reservado. Activa tu cuenta: https://ruul.mx/claim/${claim_token}`
+      : `Te invito a ${group_name} en ruul. Aquí coordinamos todo: turnos, RSVP, reglas. Únete: https://ruul.mx/invite/${invite_code}`);
 
   if (!WASSENGER_API_KEY || !WASSENGER_DEVICE_ID) {
     return jsonResponse({ sent: false, reason: "wassenger not configured" });
