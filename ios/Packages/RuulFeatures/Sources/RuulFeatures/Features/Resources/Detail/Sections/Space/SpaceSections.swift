@@ -447,3 +447,31 @@ enum SpaceDateFormatter {
         return f.string(from: date)
     }
 }
+
+// MARK: - INFORMACIÓN rows
+
+/// Space-specific INFORMACIÓN rows. Extracted from
+/// `UniversalResourceDetailView.typeSpecificRows` per ontology
+/// constitution Rule 6. Registered with `ResourceInfoRegistry` at boot.
+@MainActor
+public enum SpaceInfoProvider {
+    public static func register() {
+        ResourceInfoRegistry.shared.register(type: .space, provider: rows)
+    }
+
+    public static func rows(for ctx: ResourceDetailContext) -> [ResourceInfoRow] {
+        var out: [ResourceInfoRow] = []
+        // `create_space` (mig 00207) writes `metadata.location_name`.
+        // Earlier code read the wrong key (`address`); fallback to
+        // `locationName` for any future codepath using camelCase.
+        let address = ctx.resource.metadata["location_name"]?.stringValue
+            ?? ctx.resource.metadata["locationName"]?.stringValue
+        if let address, !address.isEmpty {
+            out.append(ResourceInfoRow(label: "Dirección", value: address))
+        }
+        if let cap = ctx.resource.metadata["capacity"]?.intValue {
+            out.append(ResourceInfoRow(label: "Capacidad", value: "\(cap)"))
+        }
+        return out
+    }
+}

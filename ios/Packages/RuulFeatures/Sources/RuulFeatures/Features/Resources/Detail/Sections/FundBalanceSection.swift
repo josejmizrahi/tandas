@@ -189,3 +189,59 @@ public struct FundBalanceSection: View {
         count == 1 ? singular : plural
     }
 }
+
+/// Fund-specific INFORMACIÓN rows. Extracted from
+/// `UniversalResourceDetailView.typeSpecificRows` per ontology
+/// constitution Rule 6. Registered with `ResourceInfoRegistry` at boot.
+@MainActor
+public enum FundInfoProvider {
+    public static func register() {
+        ResourceInfoRegistry.shared.register(type: .fund, provider: rows)
+    }
+
+    public static func rows(for ctx: ResourceDetailContext) -> [ResourceInfoRow] {
+        var out: [ResourceInfoRow] = []
+        if let currency = ctx.resource.metadata["currency"]?.stringValue {
+            out.append(ResourceInfoRow(label: "Moneda", value: currency))
+        }
+        if let goalCents = targetAmountCents(ctx) {
+            out.append(ResourceInfoRow(
+                label: "Meta",
+                value: formatCurrencyCents(goalCents, currency: ctx.resource.metadata["currency"]?.stringValue ?? "MXN")
+            ))
+        }
+        // Lock state — fund_lock writes locked_at/locked_by/locked_reason
+        // into metadata + emits fundLocked. Surface it so admins know
+        // whether the fund is locked without querying the DB.
+        if let lockedAt = ctx.resource.metadata["locked_at"]?.stringValue, !lockedAt.isEmpty {
+            let reason = ctx.resource.metadata["locked_reason"]?.stringValue
+            let suffix = (reason?.isEmpty == false) ? " (\(reason!))" : ""
+            out.append(ResourceInfoRow(label: "Estado", value: "Bloqueado\(suffix)"))
+        }
+        return out
+    }
+
+    /// `create_fund` (mig 00139) stores target as `target_amount_cents`.
+    /// Falls back to legacy `goal_amount` (pesos) for any pre-mig rows.
+    private static func targetAmountCents(_ ctx: ResourceDetailContext) -> Int64? {
+        if case .int(let i)? = ctx.resource.metadata["target_amount_cents"] {
+            return Int64(i)
+        }
+        if case .double(let d)? = ctx.resource.metadata["goal_amount"] {
+            return Int64(d * 100)
+        }
+        if case .int(let i)? = ctx.resource.metadata["goal_amount"] {
+            return Int64(i) * 100
+        }
+        return nil
+    }
+
+    private static func formatCurrencyCents(_ cents: Int64, currency: String) -> String {
+        let pesos = Double(cents) / 100.0
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = currency
+        nf.maximumFractionDigits = pesos.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
+        return nf.string(from: NSNumber(value: pesos)) ?? "\(pesos)"
+    }
+}

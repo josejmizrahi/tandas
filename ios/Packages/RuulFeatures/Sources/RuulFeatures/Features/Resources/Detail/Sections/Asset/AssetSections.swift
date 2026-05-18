@@ -596,3 +596,51 @@ public struct AssetBookingsSection: View {
         }
     }
 }
+
+// MARK: - INFORMACIÓN rows
+
+/// Asset-specific INFORMACIÓN rows. Extracted from
+/// `UniversalResourceDetailView.typeSpecificRows` per ontology
+/// constitution Rule 6. Registered with `ResourceInfoRegistry` at boot.
+@MainActor
+public enum AssetInfoProvider {
+    public static func register() {
+        ResourceInfoRegistry.shared.register(type: .asset, provider: rows)
+    }
+
+    public static func rows(for ctx: ResourceDetailContext) -> [ResourceInfoRow] {
+        var out: [ResourceInfoRow] = []
+        if let custodianId = uuidFromMeta(ctx, "custodian_id"),
+           let m = memberByMemberId(ctx, id: custodianId) {
+            out.append(ResourceInfoRow(label: "Custodio", value: m.displayName))
+        }
+        if let ownerId = uuidFromMeta(ctx, "owner_id"),
+           let m = memberByMemberId(ctx, id: ownerId) {
+            out.append(ResourceInfoRow(label: "Dueño", value: m.displayName))
+        }
+        if let holderId = uuidFromMeta(ctx, "checked_out_to"),
+           let m = memberByMemberId(ctx, id: holderId) {
+            out.append(ResourceInfoRow(label: "Prestado a", value: m.displayName))
+        }
+        if let cap = ctx.resource.metadata["capacity"]?.intValue {
+            out.append(ResourceInfoRow(label: "Capacidad", value: "\(cap)"))
+        }
+        if let unit = ctx.resource.metadata["unit_label"]?.stringValue {
+            let count = ctx.resource.metadata["currentCount"]?.intValue
+            out.append(ResourceInfoRow(label: "Inventario", value: count.map { "\($0) \(unit)" } ?? unit))
+        }
+        return out
+    }
+
+    private static func uuidFromMeta(_ ctx: ResourceDetailContext, _ key: String) -> UUID? {
+        guard let raw = ctx.resource.metadata[key]?.stringValue, !raw.isEmpty else { return nil }
+        return UUID(uuidString: raw)
+    }
+
+    /// Asset metadata stores group_members.id (NOT user id), so a direct
+    /// memberDirectory subscript misses. memberDirectory is keyed by
+    /// userId for events; iterate values to find by member.id.
+    private static func memberByMemberId(_ ctx: ResourceDetailContext, id: UUID) -> MemberWithProfile? {
+        ctx.memberDirectory.values.first { $0.member.id == id }
+    }
+}

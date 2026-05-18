@@ -348,131 +348,13 @@ public struct UniversalResourceDetailView: View {
     }
 
     /// Per-type facts that don't fit the generic date/host/created
-    /// shape. Polled before the universal "Creado" tail row so it lands
-    /// in a stable spot in the card.
+    /// shape. Sourced from `ResourceInfoRegistry` — each type registers
+    /// its own provider in its section file. Per ontology constitution
+    /// Rule 6 ("UI siempre capability-driven; cero switch resource_type
+    /// en routing"). Returns empty for types without a registered
+    /// provider (event, slot, unknown today).
     private var typeSpecificRows: [(label: String, value: String)] {
-        switch context.resource.resourceType {
-        case .fund:
-            var out: [(String, String)] = []
-            if let currency = context.resource.metadata["currency"]?.stringValue {
-                out.append(("Moneda", currency))
-            }
-            if let goalCents = fundTargetAmountCents {
-                out.append(("Meta", formatCurrencyCents(goalCents)))
-            }
-            // Surface lock state — fund_lock writes locked_at/locked_by/
-            // locked_reason into metadata + emits fundLocked. Pre-fix
-            // this was invisible to the UI even though the SQL state
-            // existed, so admins couldn't tell whether a fund was locked
-            // without querying the DB.
-            if let lockedAt = context.resource.metadata["locked_at"]?.stringValue,
-               !lockedAt.isEmpty {
-                let reason = context.resource.metadata["locked_reason"]?.stringValue
-                let suffix = (reason?.isEmpty == false) ? " (\(reason!))" : ""
-                out.append(("Estado", "Bloqueado\(suffix)"))
-            }
-            return out
-        case .asset:
-            var out: [(String, String)] = []
-            if let custodianId = uuidFromMeta("custodian_id"),
-               let m = memberByMemberId(custodianId) {
-                out.append(("Custodio", m.displayName))
-            }
-            if let ownerId = uuidFromMeta("owner_id"),
-               let m = memberByMemberId(ownerId) {
-                out.append(("Dueño", m.displayName))
-            }
-            if let holderId = uuidFromMeta("checked_out_to"),
-               let m = memberByMemberId(holderId) {
-                out.append(("Prestado a", m.displayName))
-            }
-            if let cap = context.resource.metadata["capacity"]?.intValue {
-                out.append(("Capacidad", "\(cap)"))
-            }
-            if let unit = context.resource.metadata["unit_label"]?.stringValue {
-                let count = context.resource.metadata["currentCount"]?.intValue
-                out.append(("Inventario", count.map { "\($0) \(unit)" } ?? unit))
-            }
-            return out
-        case .space:
-            var out: [(String, String)] = []
-            // `create_space` writes `metadata.location_name` (mig 00207).
-            // Pre-fix this row read the wrong key (`address`), so wizard-
-            // created spaces never surfaced their dirección. Fallback to
-            // `locationName` for any future codepath that uses camelCase
-            // (LocationSectionView already accepts both shapes).
-            let address = context.resource.metadata["location_name"]?.stringValue
-                ?? context.resource.metadata["locationName"]?.stringValue
-            if let address, !address.isEmpty {
-                out.append(("Dirección", address))
-            }
-            if let cap = context.resource.metadata["capacity"]?.intValue {
-                out.append(("Capacidad", "\(cap)"))
-            }
-            return out
-        case .right:
-            // Slice 11 restored: cover hero was deleted in the universal
-            // frame refactor (commit b01f8fb) so the holder/status/
-            // priority/expires info from the old quickFacts pills has
-            // no home now. Surface them as INFORMACIÓN rows instead.
-            // Affirmative-only — default values (priority 0, exclusive
-            // false, etc.) are hidden so the card stays scannable.
-            var out: [(String, String)] = []
-
-            // Titular: read holder_user_id (auth.users.id, populated by
-            // create_right alongside holder_member_id). The directory is
-            // keyed by userId for events; works the same here.
-            if let holderUid = uuidFromMeta("holder_user_id"),
-               let holder = context.memberDirectory[holderUid] {
-                out.append(("Titular", holder.displayName))
-            }
-            // Delegado: when set, signal who can exercise today.
-            if let delegateUid = uuidFromMeta("delegate_user_id"),
-               let delegate = context.memberDirectory[delegateUid] {
-                out.append(("Delegado", delegate.displayName))
-            }
-            // Estado: only render non-default states. `active` is
-            // implicit (no row needed); `expired` / `revoked` are
-            // material to the holder.
-            switch context.resource.status {
-            case "expired": out.append(("Estado", "Vencido"))
-            case "revoked": out.append(("Estado", "Revocado"))
-            default: break
-            }
-            // Suspended: separate from status (suspension keeps status
-            // active but blocks exercise). Pull `suspended_until` when
-            // set; else just signal the suspended state.
-            if let until = parseISOMeta("suspended_until") {
-                out.append(("Suspendido hasta", until.ruulShortDate))
-            } else if context.resource.metadata["suspended_at"]?.stringValue != nil {
-                out.append(("Estado", "Suspendido"))
-            }
-            // Priority: only when explicitly > 0 (default rendered as
-            // no row to avoid noise).
-            if let priority = context.resource.metadata["priority"]?.intValue,
-               priority > 0 {
-                out.append(("Prioridad", "\(priority)"))
-            }
-            // Affirmative flags: only render when true.
-            if context.resource.metadata["exclusive"]?.boolValue == true {
-                out.append(("Alcance", "Exclusivo"))
-            }
-            if context.resource.metadata["transferable"]?.boolValue == true {
-                out.append(("Transferible", "Sí"))
-            }
-            if context.resource.metadata["delegable"]?.boolValue == true {
-                out.append(("Delegable", "Sí"))
-            }
-            // Expiration: forward-looking only. The expire_due_rights
-            // cron flips status to `expired` once the date lapses, so
-            // a future date is the meaningful signal here.
-            if let expires = parseISOMeta("expires_at"), expires > Date.now {
-                out.append(("Vence", expires.ruulShortDate))
-            }
-            return out
-        case .event, .slot, .unknown:
-            return []
-        }
+        ResourceInfoRegistry.shared.rows(for: context).map { ($0.label, $0.value) }
     }
 
     private var hostRow: MemberWithProfile? {
@@ -490,48 +372,6 @@ public struct UniversalResourceDetailView: View {
         guard let raw = context.resource.metadata[key]?.stringValue,
               !raw.isEmpty else { return nil }
         return UUID(uuidString: raw)
-    }
-
-    /// Looks up a member by their `group_members.id` — asset metadata
-    /// (custodian_id / owner_id / checked_out_to) stores the member-row
-    /// id, NOT the user id. `context.memberDirectory` is keyed by
-    /// `member.userId` (host lookup), so a direct subscript misses on
-    /// asset rows. Iterates values — fine for typical group sizes.
-    private func memberByMemberId(_ id: UUID) -> MemberWithProfile? {
-        context.memberDirectory.values.first { $0.member.id == id }
-    }
-
-    /// `create_fund` (mig 00139) stores the target as `target_amount_cents`
-    /// (bigint cents). Previously this read `goal_amount` (which mig
-    /// 00139 never writes) — the "Meta" row was silently empty even when
-    /// the founder set a target. Reads both keys for backwards compat
-    /// with any rows written under the old metadata shape, then converts
-    /// from cents.
-    private var fundTargetAmountCents: Int64? {
-        if case .int(let i)? = context.resource.metadata["target_amount_cents"] {
-            return Int64(i)
-        }
-        // Backwards-compat: pre-mig 00139 hand-written rows could have
-        // stored `goal_amount` in pesos. Treat as pesos → cents conversion.
-        if case .double(let d)? = context.resource.metadata["goal_amount"] {
-            return Int64(d * 100)
-        }
-        if case .int(let i)? = context.resource.metadata["goal_amount"] {
-            return Int64(i) * 100
-        }
-        return nil
-    }
-
-    /// Renders a cents value as a localized currency string. Centavos →
-    /// pesos divide by 100. Reads the resource's `currency` from
-    /// metadata, falling back to MXN.
-    private func formatCurrencyCents(_ cents: Int64) -> String {
-        let pesos = Double(cents) / 100.0
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.currencyCode = context.resource.metadata["currency"]?.stringValue ?? "MXN"
-        nf.maximumFractionDigits = pesos.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
-        return nf.string(from: NSNumber(value: pesos)) ?? "\(pesos)"
     }
 
     // MARK: - Date parsing helpers
@@ -567,17 +407,6 @@ public struct UniversalResourceDetailView: View {
         return isoPlain.date(from: iso)
     }
 
-    /// Reads `metadata.<key>` as an ISO-8601 string and parses it.
-    /// Right's metadata uses ISO timestamps for `expires_at` /
-    /// `suspended_until` / `delegate_until` (slice 11 INFORMACIÓN rows
-    /// consume this). Returns nil when the key is absent, empty, or
-    /// doesn't parse — caller decides whether to render the row.
-    private func parseISOMeta(_ key: String) -> Date? {
-        guard let raw = context.resource.metadata[key]?.stringValue,
-              !raw.isEmpty else { return nil }
-        return Self.parseISO(raw)
-    }
-
     private nonisolated(unsafe) static let isoFrac: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -601,9 +430,11 @@ public struct UniversalResourceDetailView: View {
     }
 
     private var shouldShowEnableCapability: Bool {
-        // "Activar capability" dead-route for events (capability set
-        // hard-seeded by the platform). Surface only for non-event types.
-        context.resource.resourceType != .event
+        // Reads the resource-type-level knowledge from the enum extension
+        // (ResourceType.capabilitiesAreUserManaged) so the view no longer
+        // hardcodes the event-special-case. Per ontology constitution
+        // Rule 6 (capability knowledge belongs in the model, not the view).
+        context.resource.resourceType.capabilitiesAreUserManaged
     }
 
     /// Stub capability sections sourced from `CapabilitySectionCatalog`.

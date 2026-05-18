@@ -70,4 +70,20 @@ extension ResourceType {
         case .unknown(let raw): return raw
         }
     }
+
+    /// Whether the user can toggle capabilities on/off for this resource
+    /// type via the "Activar capability" surface in Settings. Events have
+    /// their capability set hard-seeded by the platform (mig 00109 + 00221)
+    /// — the user shouldn't be able to disable RSVP or check-in on an
+    /// event, those are foundational. The other 5 types are configured
+    /// at creation and remain user-managed afterward.
+    /// Used by UniversalResourceDetailView to gate the
+    /// SettingsSectionView's onPresentEnableCapability callback.
+    public var capabilitiesAreUserManaged: Bool {
+        switch self {
+        case .event:        return false
+        case .fund, .asset, .space, .slot, .right: return true
+        case .unknown:      return false
+        }
+    }
 }
