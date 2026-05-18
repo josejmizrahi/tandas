@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["G3TMTFSG7S.com.josejmizrahi.ruul"],
+        "components": [
+          {
+            "/": "/claim/*",
+            "comment": "Placeholder member magic link — opens ClaimReviewView in the Ruul iOS app."
+          },
+          {
+            "/": "/invite/*",
+            "comment": "Regular group invite code — opens the invited onboarding flow."
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["G3TMTFSG7S.com.josejmizrahi.ruul"]
+  }
+}
