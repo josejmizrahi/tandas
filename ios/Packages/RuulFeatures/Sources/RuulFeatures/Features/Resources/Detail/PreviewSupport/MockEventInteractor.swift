@@ -78,6 +78,10 @@ public final class MockEventInteractor: EventInteractor {
         log.append("closeEvent(autoGenerateEnabled:\(autoGenerateEnabled))")
     }
 
+    public func reopenEvent() async {
+        log.append("reopenEvent")
+    }
+
     public func toggleAutoGenerate(_ enabled: Bool) async {
         log.append("toggleAutoGenerate(\(enabled))")
     }

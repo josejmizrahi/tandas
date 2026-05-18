@@ -44,6 +44,10 @@ public protocol EventInteractor: AnyObject, Observable {
     func sendHostReminders() async -> Int
     func cancelEvent(reason: String?) async
     func closeEvent(autoGenerateEnabled: Bool) async
+    /// Reverses close/cancel. UI exposes this only when status is
+    /// `.closed` or `.cancelled`. Server enforces host-or-manageEvents
+    /// permission via mig 00295's `reopen_event` RPC.
+    func reopenEvent() async
     func toggleAutoGenerate(_ enabled: Bool) async
     func promoteFromWaitlist() async
     func generateWalletPass() async -> URL?

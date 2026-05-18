@@ -27,6 +27,7 @@ public extension CapabilityResolver {
         switch resource.resourceType {
         case .event:
             return eventSecondaryActions(
+                eventStatus: resource.status,
                 viewerPermissions: viewerPermissions,
                 viewerIsEventHost: viewerIsEventHost,
                 viewerCanIssueManualFine: viewerCanIssueManualFine,
@@ -144,6 +145,7 @@ public extension CapabilityResolver {
     // MARK: - Per-type builders
 
     private func eventSecondaryActions(
+        eventStatus: String,
         viewerPermissions: Set<Permission>,
         viewerIsEventHost: Bool,
         viewerCanIssueManualFine: Bool,
@@ -188,25 +190,38 @@ public extension CapabilityResolver {
 
         // --- Host section: host management actions ---
         if isHost {
-            items.append(SecondaryAction(
-                label: "Recordar a invitados",
-                symbol: "bell.badge",
-                section: .host,
-                kind: .remindAttendees
-            ))
-            items.append(SecondaryAction(
-                label: "Cerrar evento",
-                symbol: "checkmark.seal",
-                section: .host,
-                kind: .closeEvent
-            ))
-            items.append(SecondaryAction(
-                label: "Cancelar evento",
-                symbol: "xmark.octagon",
-                section: .host,
-                kind: .cancelEvent,
-                isDestructive: true
-            ))
+            let isClosedOrCancelled = (eventStatus == "completed" || eventStatus == "cancelled")
+            if !isClosedOrCancelled {
+                items.append(SecondaryAction(
+                    label: "Recordar a invitados",
+                    symbol: "bell.badge",
+                    section: .host,
+                    kind: .remindAttendees
+                ))
+                items.append(SecondaryAction(
+                    label: "Cerrar evento",
+                    symbol: "checkmark.seal",
+                    section: .host,
+                    kind: .closeEvent
+                ))
+                items.append(SecondaryAction(
+                    label: "Cancelar evento",
+                    symbol: "xmark.octagon",
+                    section: .host,
+                    kind: .cancelEvent,
+                    isDestructive: true
+                ))
+            } else {
+                // Mig 00295: host or manageEvents can reverse close/cancel
+                // (server enforces permission). Replace close/cancel with
+                // reopen for closed/cancelled events.
+                items.append(SecondaryAction(
+                    label: "Reabrir evento",
+                    symbol: "arrow.uturn.backward.circle",
+                    section: .host,
+                    kind: .reopenEvent
+                ))
+            }
         }
 
         // --- Money section: ledger and fines ---

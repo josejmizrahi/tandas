@@ -5,6 +5,7 @@ public enum EventError: LocalizedError, Equatable {
     case updateFailed(String)
     case cancelFailed(String)
     case closeFailed(String)
+    case reopenFailed(String)
     case fetchFailed(String)
     case rsvpFailed(String)
     case checkInFailed(String)
@@ -19,6 +20,7 @@ public enum EventError: LocalizedError, Equatable {
         case .updateFailed:    return "No se pudieron guardar los cambios."
         case .cancelFailed:    return "No se pudo cancelar el evento."
         case .closeFailed:     return "No se pudo cerrar el evento."
+        case .reopenFailed:    return "No se pudo reabrir el evento."
         case .fetchFailed:     return "No se pudo cargar la información."
         case .rsvpFailed:      return "No se pudo guardar tu RSVP."
         case .checkInFailed:   return "No se pudo registrar la llegada."

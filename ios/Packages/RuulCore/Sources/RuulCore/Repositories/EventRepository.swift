@@ -47,6 +47,10 @@ public protocol EventRepository: Actor {
     func updateEvent(_ id: UUID, patch: EventPatch) async throws -> Event
     func cancelEvent(_ id: UUID, reason: String?) async throws -> Event
     func closeEvent(_ id: UUID) async throws -> Event
+    /// Reverses close/cancel. Permitted only when status ∈ {.closed, .cancelled};
+    /// idempotent on already-open events (returns current row). Permission:
+    /// host or manageEvents (server-enforced via `reopen_event` RPC, mig 00295).
+    func reopenEvent(_ id: UUID) async throws -> Event
     func setAutoGenerate(groupId: UUID, enabled: Bool) async throws
     /// Decodes a batch of resource rows whose `resource_type == .event`
     /// into typed `Event` values. Rows with mismatched type are skipped.
@@ -196,6 +200,27 @@ public actor MockEventRepository: EventRepository {
             cancellationReason: e.cancellationReason, isRecurringGenerated: e.isRecurringGenerated,
             parentEventId: e.parentEventId, cycleNumber: e.cycleNumber,
             rsvpDeadline: e.rsvpDeadline, closedAt: .now,
+            createdBy: e.createdBy, createdAt: e.createdAt
+        )
+        events[idx] = updated
+        return updated
+    }
+
+    public func reopenEvent(_ id: UUID) async throws -> Event {
+        guard let idx = events.firstIndex(where: { $0.id == id }) else { throw EventError.notFound }
+        let e = events[idx]
+        // Mock matches server contract: idempotent on already-open events.
+        guard e.status == .closed || e.status == .cancelled else { return e }
+        let updated = Event(
+            id: e.id, groupId: e.groupId, title: e.title,
+            coverImageName: e.coverImageName, coverImageURL: e.coverImageURL,
+            description: e.description, startsAt: e.startsAt, endsAt: e.endsAt,
+            durationMinutes: e.durationMinutes, locationName: e.locationName,
+            locationLat: e.locationLat, locationLng: e.locationLng,
+            hostId: e.hostId, applyRules: e.applyRules, status: .upcoming,
+            cancellationReason: nil, isRecurringGenerated: e.isRecurringGenerated,
+            parentEventId: e.parentEventId, cycleNumber: e.cycleNumber,
+            rsvpDeadline: e.rsvpDeadline, closedAt: nil,
             createdBy: e.createdBy, createdAt: e.createdAt
         )
         events[idx] = updated
@@ -416,6 +441,18 @@ public actor LiveEventRepository: EventRepository {
                 .value
         } catch {
             throw EventError.closeFailed(error.localizedDescription)
+        }
+    }
+
+    public func reopenEvent(_ id: UUID) async throws -> Event {
+        struct Params: Encodable { let p_event_id: String }
+        do {
+            return try await client
+                .rpc("reopen_event", params: Params(p_event_id: id.uuidString.lowercased()))
+                .execute()
+                .value
+        } catch {
+            throw EventError.reopenFailed(error.localizedDescription)
         }
     }
 

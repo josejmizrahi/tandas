@@ -21,6 +21,12 @@ public struct SecondaryAction: Sendable, Hashable, Identifiable {
         case remindAttendees
         case closeEvent
         case cancelEvent
+        /// Reverses close/cancel. Exposed by `CapabilityResolver` only when
+        /// event.status ∈ {.closed, .cancelled} AND viewer is host (or has
+        /// manageEvents — server-enforced). UI dispatches straight to
+        /// `EventInteractor.reopenEvent()` (no confirmation sheet needed
+        /// since the action is reversible by closing again).
+        case reopenEvent
         case openLedger
         case issueManualFine
         case openRules

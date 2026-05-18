@@ -63,38 +63,14 @@ public struct UniversalResourceDetailView: View {
                 }
                 hero
                 informationSection
-                if hasDescription {
-                    DescriptionSectionView(context: context)
-                }
-                if context.enabledCapabilities.contains("location") {
-                    LocationSectionView(context: context)
-                }
-                // Bespoke type-aware sections rendered BEFORE rsvp
-                // (catalog priorities 160-166): asset.* + space.*. Each
-                // declares its own type predicate via isVisibleFor in
-                // its `static let definition`, so the view no longer
-                // needs to switch on resource_type here. Per ontology
-                // constitution Rule 6 ("UI siempre capability-driven").
-                catalogSections(idIn: Self.bespokePreRSVPSectionIds)
-                if context.enabledCapabilities.contains("rsvp") {
-                    RSVPSectionView(context: context)
-                }
-                if context.enabledCapabilities.contains("check_in"), eventInteractor != nil {
-                    CheckInSectionView(context: context)
-                }
-                if context.enabledCapabilities.contains("ledger") {
-                    MoneySectionView(context: context)
-                }
-                if context.enabledCapabilities.contains("rules") {
-                    RulesSectionView(context: context)
-                }
-                // Catalog sections that render AFTER rules and BEFORE
-                // activity: resource_links today, future post-rules
-                // bespoke. Activity stays inline at 900; stubs come last.
-                catalogSections(idIn: Self.bespokePostRulesSectionIds)
-                if context.enabledCapabilities.contains("activity") {
-                    ActivitySectionView(context: context)
-                }
+                // All dynamic sections (canonical + bespoke + resource_links)
+                // sourced from the CapabilitySectionCatalog and rendered in
+                // priority order. Each section gates its own empty state —
+                // CheckIn returns empty when no eventInteractor, Description
+                // returns empty when no metadata text, etc. Per ontology
+                // constitution Rule 6 (the view is a renderer; section
+                // visibility lives in the section's own definition).
+                catalogSections(idIn: Self.dynamicSectionIds)
                 stubCapabilitySections
                 SettingsSectionView(
                     onPresentEnableCapability: shouldShowEnableCapability
@@ -403,14 +379,6 @@ public struct UniversalResourceDetailView: View {
 
     // MARK: - Capability gating
 
-    private var hasDescription: Bool {
-        guard context.enabledCapabilities.contains("description") else { return false }
-        if case .string(let s)? = context.resource.metadata["description"], !s.isEmpty {
-            return true
-        }
-        return false
-    }
-
     private var shouldShowEnableCapability: Bool {
         // Reads the resource-type-level knowledge from the enum extension
         // (ResourceType.capabilitiesAreUserManaged) so the view no longer
@@ -423,13 +391,15 @@ public struct UniversalResourceDetailView: View {
     /// Each section file declares `static let definition = CapabilitySection(
     /// id, priority, isEnabledFor, render)` and registers itself once at
     /// catalog boot. Filter to the stubs by id-set so we don't re-render
-    /// canonical sections (rsvp, check_in, money, rules, …) that already
-    /// have a bespoke inline call above.
+    /// dynamic sections (rsvp, check_in, money, rules, …) that already
+    /// rendered via `dynamicSectionIds` above.
     ///
-    /// Asset still skips `booking` + `valuation` here because asset has
-    /// dedicated `AssetBookingsSection` / `AssetOwnershipSection` rendered
-    /// inline. Fase 2: migrate those bespoke sections into the catalog
-    /// with type-aware predicates and drop the skip rule entirely.
+    /// Asset/space still skip the universal `booking` + `valuation` stubs
+    /// because the bespoke `asset.bookings` / `asset.ownership` /
+    /// `space.bookings` sections cover the same caps with type-aware
+    /// renderers. Once stub rendering is rebalanced (some stubs deserve
+    /// to render near their semantic priority instead of at the bottom),
+    /// this whole helper collapses into the main catalog call.
     @ViewBuilder
     private var stubCapabilitySections: some View {
         let isAsset = context.resource.resourceType == .asset
@@ -451,15 +421,12 @@ public struct UniversalResourceDetailView: View {
         }
     }
 
-    /// Sections from the catalog whose id is in `ids`. Used by the view
-    /// to insert specific bespoke-but-catalog-driven sections at fixed
-    /// zones of the body without forcing every section through a single
-    /// ForEach. Canonical sections (rsvp, check_in, money, rules,
-    /// schedule, location, description, activity, host_actions,
-    /// rotation, capacity_progress) still inline because of per-view-
-    /// instance state coupling (e.g. CheckInSectionView needs
-    /// @Environment(eventInteractor)). Fase 3 collapses these helpers
-    /// once all sections register cleanly.
+    /// Sections from the catalog whose id is in `ids`. Filtered by both
+    /// `isEnabledFor(caps)` and `isVisibleFor(context)` predicates, then
+    /// sorted by priority. SwiftUI @Environment values (eventInteractor,
+    /// eventDetailPresenter) propagate through the ForEach body, so
+    /// sections that read them internally (RSVP, CheckIn, HostActions)
+    /// work transparently.
     @ViewBuilder
     private func catalogSections(idIn ids: Set<String>) -> some View {
         let sections = CapabilitySectionCatalog.shared
@@ -470,19 +437,20 @@ public struct UniversalResourceDetailView: View {
         }
     }
 
-    /// Bespoke sections rendered BEFORE the rsvp inline section.
-    /// Type-aware (asset.* + space.* + fund.balance) per their
-    /// `isVisibleFor` predicates.
-    private static let bespokePreRSVPSectionIds: Set<String> = [
+    /// All dynamic catalog sections rendered between the hero/info card
+    /// and the stub overflow. Priority-sorted so the natural top-to-bottom
+    /// order is: description (150) → asset.*/space.*/fund.balance (160-167)
+    /// → rsvp (200) → check_in (250) → money (400) → rules (800) →
+    /// resource_links (850) → activity (900). Each section gates its own
+    /// empty/missing-data state and contributes nothing when not applicable.
+    private static let dynamicSectionIds: Set<String> = [
+        "description", "location",
         "asset.custody", "asset.ownership", "asset.maintenance", "asset.bookings",
         "space.capacity", "space.occupancy", "space.bookings",
         "fund.balance",
-    ]
-
-    /// Bespoke sections rendered AFTER the rules inline section.
-    /// Currently just `resource_links` (event-only).
-    private static let bespokePostRulesSectionIds: Set<String> = [
+        "rsvp", "check_in", "money", "rules",
         "resource_links",
+        "activity",
     ]
 
     /// Ids of catalog sections rendered here. The complement (canonical
@@ -619,6 +587,12 @@ public struct UniversalResourceDetailView: View {
             presenter?.onPresentCloseEventSheet()
         case .cancelEvent:
             presenter?.onPresentCancelEventSheet()
+        case .reopenEvent:
+            // Mig 00295: idempotent server-side; no confirmation sheet
+            // (the action is itself reversible by closing again).
+            if let eventInteractor {
+                Task { await eventInteractor.reopenEvent() }
+            }
         case .openLedger:
             context.onPresentLedger()
         case .issueManualFine:

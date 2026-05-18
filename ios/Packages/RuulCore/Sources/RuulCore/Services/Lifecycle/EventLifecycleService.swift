@@ -24,6 +24,13 @@ public final class EventLifecycleService {
         try await eventRepo.closeEvent(event.id)
     }
 
+    /// Reverses close/cancel. Permission gate (host or manageEvents) is
+    /// server-enforced via `reopen_event` RPC (mig 00295). Idempotent on
+    /// already-open events.
+    public func reopenEvent(_ event: Event, in group: Group) async throws -> Event {
+        try await eventRepo.reopenEvent(event.id)
+    }
+
     /// Phase 2 placeholder — generating siblings will move to a
     /// ResourceSeries-aware service. For now this is a no-op so legacy
     /// coordinators compile during the rewrite.

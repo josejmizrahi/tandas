@@ -73,6 +73,52 @@ struct CapabilityResolverSecondaryActionsTests {
         #expect(kinds.contains(.editDetails))
     }
 
+    // MARK: - Test 2.b: event host + closed/cancelled → reopen replaces close/cancel
+    //                  Mig 00295 + SecondaryAction.Kind.reopenEvent.
+
+    @Test("event + host + status=completed → reopenEvent shown; close/cancel hidden")
+    func eventHostViewerClosedShowsReopen() {
+        let actions = resolver.secondaryActions(
+            for: makeResource(type: .event, status: "completed"),
+            viewerRole: .host,
+            viewerCanIssueManualFine: false,
+            enabledCapabilities: []
+        )
+        let kinds = Set(actions.map(\.kind))
+
+        #expect(kinds.contains(.reopenEvent))
+        #expect(!kinds.contains(.closeEvent))
+        #expect(!kinds.contains(.cancelEvent))
+        #expect(!kinds.contains(.remindAttendees))
+    }
+
+    @Test("event + host + status=cancelled → reopenEvent shown")
+    func eventHostViewerCancelledShowsReopen() {
+        let actions = resolver.secondaryActions(
+            for: makeResource(type: .event, status: "cancelled"),
+            viewerRole: .host,
+            viewerCanIssueManualFine: false,
+            enabledCapabilities: []
+        )
+        let kinds = Set(actions.map(\.kind))
+
+        #expect(kinds.contains(.reopenEvent))
+        #expect(!kinds.contains(.closeEvent))
+    }
+
+    @Test("event + member + status=completed → reopenEvent NOT shown (host-only gate)")
+    func eventMemberViewerClosedNoReopen() {
+        let actions = resolver.secondaryActions(
+            for: makeResource(type: .event, status: "completed"),
+            viewerRole: .member,
+            viewerCanIssueManualFine: false,
+            enabledCapabilities: []
+        )
+        let kinds = Set(actions.map(\.kind))
+
+        #expect(!kinds.contains(.reopenEvent))
+    }
+
     // MARK: - Test 3: event admin (founder) viewer → archive shown
 
     @Test("event + founder viewer → archive action present")

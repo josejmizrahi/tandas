@@ -271,6 +271,22 @@ public final class EventDetailCoordinator {
         }
     }
 
+    public func reopenEvent() async {
+        // Server enforces permission (host or manageEvents) via mig 00295.
+        // Client-side gate kept loose so a member with manageEvents but
+        // not host can still trigger; the server will reject if neither.
+        guard event.status == .closed || event.status == .cancelled else { return }
+        isMutating = true
+        defer { isMutating = false }
+        do {
+            event = try await lifecycle.reopenEvent(event, in: group)
+            // eventReopened SystemEvent is emitted server-side by the RPC
+            // (mig 00295). No client emit needed here.
+        } catch {
+            self.error = CoordinatorError.from(error, fallback: "No pudimos reabrir el evento")
+        }
+    }
+
     public func sendHostReminders() async -> Int {
         guard viewerRole == .host else { return 0 }
         let pendingCount = rsvps.filter { $0.status == .pending }.count
