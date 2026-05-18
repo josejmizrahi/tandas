@@ -16,6 +16,24 @@
 - **0 nuevas violations** desde mig 00273. Las restantes son legacy.
 - **Cumplimiento total estimado: ~92%** doctrina post-Refactor Phase 1.
 
+### Status snapshot 2026-05-18 (post Phases 1, 2.A; Phase 3 pre-shipped)
+
+| Finding | Status |
+|---|---|
+| RF1 `GroupRule.amountMXN` | ✅ Closed — Phase 2.A (commit `8afa502`). Migrated to `FineConsequenceParser.firstAmountMXN(in:)`. |
+| RF2 `GroupRule.fineShape` | ✅ Closed — Phase 2.A. Migrated to `FineConsequenceParser.shape(of:)`. `FineShape` enum relocated. |
+| RF3 `OnboardingRuleDraft.amountMXN` | ✅ Closed — Phase 2.A. Deleted (0 active callsites). |
+| RF4 `.money` tab missing | ✅ Closed — pre-shipped on `origin/main` ahead of this branch via the V2 Human-Layer 6-tab refactor (`ProductCompression.md` §H.2). `MoneySectionView` + `FundBalanceSection` declare `tabId: "money"`; new tabs `.people` / `.money` / `.connections` are content-gated, hidden when empty. Phase 3 commit on this branch dropped during rebase as redundant. |
+| RF5 mutable `fines` columns | ⏳ Open — Phase 4 (Constitution §14 Step 3c). Schema drop pending edge-fn migration to `fines_view` first. |
+| RF6 Swift templates hardcoded | ⏳ Open — Phase 2.B deferred. Deletion needs onboarding flow rework (callers: `V1Modules.providedRules`, `RuleRepository.createInitialRules`). Deprecation comment stays as Phase 1 marker. |
+| RF7 universal template description copy | ✅ Closed — Phase 1 (mig 00327). 7 active universals rewritten consequence-agnostic. |
+| RF8 `setBookingsLocked` direct mutation | ✅ Closed — mig 00284 (Sprint 4.12, predates this branch). `lock_asset_bookings` RPC + `asset_booking_lock_view` projection shipped; edge fn calls RPC instead of `resources.metadata` UPDATE. |
+| RF9 `fines_view` stored-column fallback | ⏳ Open — Phase 4. Re-create view without fallback after Step 3c. |
+| RF10-RF17 acceptable boundary | ✅ Reference only — no action needed. |
+
+**Compliance now: ~96%** (RF1-4, RF7, RF8 closed; RF5/RF6/RF9 documented and sequenced).
+**Compliance post-Phase-4: ~99.9%**.
+
 ---
 
 ## 1. Findings table — classified

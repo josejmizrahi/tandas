@@ -16,51 +16,56 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 0 — Pre-flight (NOW, in-flight in docs only)      │
-│   Doctrine docs canónicos + audit publicado             │
-│   Effort: 0 days (este commit)                          │
+│ Phase 0 — Pre-flight                              [DONE]│
+│   commit 83783c8 (post-rebase)                          │
 └─────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 1 — Copy refactor (1-2 days)                      │
-│   Templates description money-agnostic                   │
-│   Doc comments deprecation en money-coupled APIs        │
-│   No breaking change                                     │
+│ Phase 1 — Copy refactor                           [DONE]│
+│   commit a07e7cd — mig 00327 + 5 Swift doc-comments     │
 └─────────────────────────────────────────────────────────┘
                               │
-                              ▼ blocked by ConsistencyAudit close
+                              ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 2 — API decoupling (3-5 days)                     │
-│   Renombrar amountMXN / fineShape                        │
-│   Mover lógica a fine-aware coordinators                 │
-│   Borrar Swift templates files (use mig 00296 seeds)    │
-│   F8 fix (lock_asset_bookings RPC)                      │
+│ Phase 2.A — Swift API decoupling                  [DONE]│
+│   commit 8afa502 — FineConsequenceParser; RF1-3 closed  │
+├─────────────────────────────────────────────────────────┤
+│ Phase 2.B — Delete DinnerRecurringTemplate    [DEFERRED]│
+│   Larger than scoped — touches V1Modules, onboarding    │
+│   step 4 UX, createInitialRules. Needs focused PR with  │
+│   product decision on draft-vs-RPC edit flow.           │
+├─────────────────────────────────────────────────────────┤
+│ Phase 2.C — F8 lock_asset_bookings RPC      [PRE-SHIPPED]│
+│   mig 00284 already shipped this in Sprint 4.12 ahead   │
+│   of this branch. No action needed.                     │
 └─────────────────────────────────────────────────────────┘
                               │
-                              ▼ blocked by Phase 2 callsites green
+                              ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 3 — UI separation (2-3 days)                      │
-│   Tab .money en ResourceDetailTab                       │
-│   Tab .rules purificado (cero balance display)          │
-│   Copy reorientado per RulesVsMoneyDoctrine §3 Regla 5  │
+│ Phase 3 — UI tab separation              [PRE-SHIPPED]  │
+│   origin/main shipped a 6-tab V2 Human-Layer layout     │
+│   (General · Gente · Dinero · Reglas · Actividad ·      │
+│   Relacionado) per ProductCompression.md §H.2. Money    │
+│   sections already declare tabId="money". My Phase 3    │
+│   commit was redundant and dropped during rebase.       │
 └─────────────────────────────────────────────────────────┘
                               │
-                              ▼ blocked by Phase 3 stable
+                              ▼ blocked by Phase 4 prep (see §4)
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 4 — Constitution §14 Step 3c (1-2 days)           │
-│   DROP COLUMNS fines.paid/waived/...                    │
-│   Re-create fines_view sin fallback                     │
-│   Fine struct lee solo de fines_view                    │
+│ Phase 4 — Constitution §14 Step 3c             [PENDING]│
+│   PREP first: migrate edge fn reads (process-system-    │
+│     events, send-fine-reminders, consistency_money)     │
+│     from `from('fines')` to `from('fines_view')`        │
+│   Then DROP COLUMNS fines.paid/waived/...               │
+│   Then re-create fines_view sin fallback                │
 └─────────────────────────────────────────────────────────┘
                               │
                               ▼ shippable independently
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 5 — Obligations projections (Wave 1-2, futuro)    │
-│   outstanding_fines_view                                 │
-│   member_obligations_view                               │
+│ Phase 5 — Obligations projections (Wave 1-2)    [FUTURO]│
+│   outstanding_fines_view / member_obligations_view      │
 │   Tab .obligations en ResourceDetailTab                  │
-│   Capacities for Wave 2 templates                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -382,6 +387,23 @@ En `EmptyTab` messages:
 ## Phase 4 — Constitution §14 Step 3c (1-2 days)
 
 **Goal:** Drop mutable columns de `fines`, re-create `fines_view` sin fallback, Fine struct read-only desde view.
+
+### 4.0 — Prep work (DO THIS FIRST, separate PR)
+
+Grep 2026-05-18 surfaced raw `from('fines')` reads in:
+
+- `supabase/functions/process-system-events/index.ts:190` (SELECT user_id — safe, doesn't read projected columns)
+- `supabase/functions/process-system-events/index.ts:258` (INSERT — safe, write path)
+- `supabase/functions/send-fine-reminders/index.ts:95`
+- `supabase/functions/_tests/db/consistency_money.test.ts:35,99,166`
+
+Audit each:
+
+1. If the read uses `status`, `paid`, `paid_at`, `waived`, `waived_at`, `waived_reason`, `appeal_vote_id` — migrate to `from('fines_view')` (same columns, atom-derived).
+2. If the read uses only base columns (`id`, `group_id`, `user_id`, `rule_id`, `event_id`, `resource_id`, `reason`, `amount`, `auto_generated`, `issued_by`, `details`, `created_at`, `updated_at`, `rule_snapshot`) — no change needed.
+3. INSERTs into `fines` are unaffected (proposeFine sink writes only base columns; the deprecated fields default to NULL).
+
+Acceptance: zero non-write reads of `from('fines')` outside tests.
 
 ### 4.A — Migration
 
