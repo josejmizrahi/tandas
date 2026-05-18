@@ -115,7 +115,20 @@ serve(withSentry(async (req) => {
   }
 
   // 2. Create the anonymous placeholder auth.users row.
+  //
+  // Supabase auth.admin.createUser requires either an email or a phone.
+  // Phone would collide with the real owner when they later sign up via
+  // OTP, so we mint a synthetic email under our reserved sub-domain
+  // `placeholders.ruul.mx`. No MX records → no inbound email → the
+  // address is unreachable on purpose. email_confirm: true marks the row
+  // as confirmed so Supabase doesn't try to send a verification mail
+  // (which would silently bounce).
+  const placeholderEmail =
+    `placeholder-${crypto.randomUUID()}@placeholders.ruul.mx`;
+
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email: placeholderEmail,
+    email_confirm: true,
     user_metadata: {
       placeholder: true,
       display_name,
@@ -127,7 +140,13 @@ serve(withSentry(async (req) => {
   }
   const placeholderUid = created.user.id;
 
-  // 3. Atomic finalize.
+  // 3. Some envs have an on_auth_user_created trigger that auto-inserts a
+  //    profiles row from auth.users defaults. The atomic finalize RPC
+  //    expects a clean slate (so it can set is_placeholder + phone). Wipe
+  //    the auto-row if present; idempotent if it doesn't exist.
+  await admin.from("profiles").delete().eq("id", placeholderUid);
+
+  // 4. Atomic finalize.
   const { data: finalize, error: rpcErr } = await admin.rpc("finalize_placeholder_member", {
     p_placeholder_user_id: placeholderUid,
     p_group_id: group_id,
