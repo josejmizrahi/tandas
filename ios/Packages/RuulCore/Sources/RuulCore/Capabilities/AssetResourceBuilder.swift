@@ -45,7 +45,7 @@ public actor AssetResourceBuilder: ResourceBuilder {
         self.draftRepo = draftRepo
     }
 
-    public func build(_ draft rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
+    public func build(_ rawDraft: ResourceDraft) async throws -> ResourceCreationResult {
         guard rawDraft.resourceType == .asset else {
             throw ResourceBuilderError.underlying("AssetResourceBuilder cannot build this type")
         }
