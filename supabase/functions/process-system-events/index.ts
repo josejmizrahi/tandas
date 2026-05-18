@@ -89,8 +89,12 @@ serve(withSentry(async (req) => {
       totalResults += results.length;
       totalErrors += results.filter((r) => !r.success).length;
 
-      // 5. Mark processed
-      await markProcessed(supabase, event.id, now, results);
+      // 5. Mark processed. Per mig 00162 atom guard, ONLY processed_at may
+      // transition (null → ts) — payload/group_id/etc. must stay frozen.
+      // Per-rule audit lives in rule_evaluations (engine writes pre-dispatch
+      // per Plans/Active/RuleEngineDoctrine.md §4); telemetry lives in
+      // totalResults/totalErrors above. Nothing to merge back into the atom.
+      await markProcessed(supabase, event.id, now);
     } catch (e) {
       console.error("[process-system-events] event failed", event.id, e);
       totalErrors += 1;
@@ -112,13 +116,17 @@ async function markProcessed(
   supabase: ReturnType<typeof createClient>,
   eventId: string,
   now: Date,
-  results?: unknown[],
 ) {
-  const update: Record<string, unknown> = { processed_at: now.toISOString() };
-  if (results) {
-    update.payload = { results };
+  const { error } = await supabase
+    .from("system_events")
+    .update({ processed_at: now.toISOString() })
+    .eq("id", eventId);
+  if (error) {
+    // Atom guard (mig 00162) rejects anything except the null→ts transition.
+    // If this throws it means the cron is racing itself or the guard
+    // contract drifted — surface, don't swallow.
+    throw new Error(`markProcessed failed for ${eventId}: ${error.message}`);
   }
-  await supabase.from("system_events").update(update).eq("id", eventId);
 }
 
 async function buildContext(
