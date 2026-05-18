@@ -370,6 +370,8 @@ public struct RootShellSheets: ViewModifier {
                     openScanner(for: detail)
                 }
             )
+            .environment(app)
+            .environment(router)
         )
     }
 

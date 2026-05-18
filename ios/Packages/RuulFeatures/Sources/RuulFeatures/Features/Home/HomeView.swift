@@ -115,7 +115,8 @@ public struct HomeView: View {
         }
         .fullScreenCover(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
-
+                .environment(app)
+                .environment(router)
         }
     }
 
