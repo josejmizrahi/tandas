@@ -22,7 +22,8 @@
 | **D** | Edge functions — fix HERESY V5 (send-event-notification auth) + V25 (verify-otp atom) + V6 (process-system-events approver pool via list_members_with_permission helper). V8 deferred (8 files, perf concerns) | Deno + DB | **APPLIED 2026-05-17** (V5+V25+V6 shipped via mig 00298; V8 deferred) |
 | **E** | Swift `GovernanceService.hasPermission` llama RPC server + cache; refactor `CapabilityResolver+SecondaryActions` (cierra V15, V16, V17, V18, V19, V20) | Swift | **APPLIED 2026-05-17** (commits 30e0ce0 V17 + 65802e9 V18/V19/V20 + Sprint E.3 V15/V16) |
 | **F.0** (out-of-order, urgent) | DB infra — migrar `is_known_system_event_type` whitelist a tabla `known_event_types` (eliminada vulnerabilidad a parallel-write that perdió `groupRolesChanged` 2 veces) | DB SQL | **APPLIED 2026-05-17** (mig 00293) |
-| **F** | Cleanup tail — eliminar `group_members.role` text + sync trigger; Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23, V24) | mixed | pendiente |
+| **F.1** (V24) | is_group_admin reads jsonb + drop sync_role_text + role_validation triggers + iOS Member.isAdmin = holdsRole("admin") only | DB + Swift | **APPLIED 2026-05-17** (mig 00299) |
+| **F** | Cleanup tail — eliminar `group_members.role` text column physically (V24.2 once iOS rollout complete); Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23) | mixed | pendiente |
 
 Cada sprint se completa con su propio commit. Sprint B se cubre detalladamente abajo; los siguientes se especificarán cuando se inicien.
 

@@ -142,14 +142,14 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public var isHost:    Bool { holdsRole("host")    }
 
     /// Mig 00262 split admin (capability) from founder (identity);
-    /// mig 00290 backfilled 'admin' into every founder's roles[] so
-    /// `holdsRole("admin")` is now authoritative without aliasing.
-    /// The legacy `role == "admin"` fallback is kept for rows that
-    /// predate the backfill (`roles` jsonb null/empty + role='admin'
-    /// text) — Sprint F cleanup will remove it once the role text
-    /// column is dropped.
+    /// mig 00290 backfilled 'admin' into every founder's roles[];
+    /// mig 00299 made `is_group_admin` (server) read jsonb only.
+    /// Post-V24, the role text column is doctrinally dead (column
+    /// stays on disk for old-iOS-build compat; V24.2 drops it once
+    /// rollout completes). Swift `isAdmin` matches the new server
+    /// semantics — roles[] is authoritative.
     public var isAdmin: Bool {
-        holdsRole("admin") || role == "admin"
+        holdsRole("admin")
     }
 
     /// Stable membership check that works for both typed `MemberRole`
