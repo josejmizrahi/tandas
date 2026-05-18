@@ -72,16 +72,4 @@ extension ResourceType {
     }
 
     /// Whether the user can toggle capabilities on/off for this resource
-    /// Historical knob: pre-doctrine, the asset/fund/space/slot/right
-    /// types let the user toggle their capability set in Settings. Today
-    /// caps are auto-on at creation and never user-visible (no Governance
-    /// tab). Kept as a stub for future per-type gating decisions; today
-    /// it returns the same shape but is not consulted by any UI.
-    public var capabilitiesAreUserManaged: Bool {
-        switch self {
-        case .event:        return false
-        case .fund, .asset, .space, .slot, .right: return true
-        case .unknown:      return false
-        }
-    }
 }

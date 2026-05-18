@@ -16,7 +16,7 @@ import RuulUI
 /// will be wired during Pass-1 Task 9.
 @MainActor
 public struct RootShellSheets: ViewModifier {
-    @Environment(AppState.self) private var app
+    @Environment(AppState.self) var app  // internal — extension files in this target need read access
     let router: RootRouter
 
     public func body(content: Content) -> some View {
@@ -307,476 +307,6 @@ public struct RootShellSheets: ViewModifier {
             // branches above.
     }
 
-    // MARK: - Screen builders
-
-    @MainActor
-    private func ruleEditSheet(_ ctx: RuleEditRouteContext) -> some View {
-        let userId = app.session?.user.id ?? UUID()
-        let memberDirectory = router.state.memberDirectory
-        let currentMember = memberDirectory[userId]?.member
-            ?? fallbackMember(userId: userId, groupId: ctx.group.id)
-        let editCoord = EditRulesCoordinator(
-            group: ctx.group,
-            currentMember: currentMember,
-            actorUserId: userId,
-            governance: app.governance,
-            policyRepo: app.policyRepo,
-            ruleRepo: app.ruleRepo,
-            voteRepo: app.voteRepo,
-            userActionRepo: app.userActionRepo
-        )
-        return NavigationStack {
-            EditRuleSheet(
-                rule: ctx.rule,
-                pending: nil,
-                prefilledAmount: ctx.proposedAmount,
-                pendingActionId: ctx.pendingActionId,
-                coordinator: editCoord,
-                onDismiss: {
-                    while router.state.activeRoutes.contains(where: { if case .ruleEdit = $0 { return true }; return false }) {
-                        router.state.dismissTop()
-                    }
-                }
-            )
-        }
-    }
-
-    @MainActor
-    private func eventDetailScreen(_ event: Event) -> some View {
-        guard let group = app.groups.first(where: { $0.id == event.groupId }) else {
-            return AnyView(EmptyView())
-        }
-        let userId = app.session?.user.id ?? UUID()
-        let memberDirectory = router.state.memberDirectory
-        let calendarService = router.state.calendarService
-        return AnyView(
-            EventDetailHost(
-                event: event,
-                group: group,
-                currentUserId: userId,
-                memberDirectory: memberDirectory,
-                calendarService: calendarService,
-                onClose: {
-                    router.state.activeEvent = nil
-                    while router.state.activeRoutes.contains(where: { if case .eventDetail = $0 { return true }; return false }) {
-                        router.state.dismissTop()
-                    }
-                },
-                onEditEvent: { editEvent in
-                    router.state.activeEditEvent = editEvent
-                    router.present(.editEvent)
-                },
-                onScannerOpen: { detail in
-                    openScanner(for: detail)
-                }
-            )
-            .environment(app)
-            .environment(router)
-        )
-    }
-
-    @MainActor @ViewBuilder
-    private func eventEditScreen(_ event: Event) -> some View {
-        if let group = app.groups.first(where: { $0.id == event.groupId }) {
-            let editCoord = ResourceEditCoordinator(
-                event: event,
-                group: group,
-                eventRepo: app.eventRepo,
-                analytics: EventAnalytics(analytics: app.analytics)
-            )
-            EditEventView(coordinator: editCoord)
-                .onChange(of: editCoord.updatedEvent) { _, newValue in
-                    guard newValue != nil else { return }
-                    Task {
-                        await router.state.homeCoordinator?.refresh(force: true)
-                        if let updated = newValue {
-                            router.state.activeEvent = updated
-                        }
-                    }
-                }
-        }
-    }
-
-    @MainActor
-    private func fineDetailScreen(_ fine: Fine) -> some View {
-        let userId = app.session?.user.id ?? UUID()
-        let coordinator = FineDetailCoordinator(
-            fine: fine,
-            userId: userId,
-            fineRepo: app.fineRepo,
-            appealRepo: app.appealRepo,
-            analytics: app.analytics,
-            changeFeed: app.multiDeviceChangeFeed
-        )
-        let groupId = fine.groupId
-        let memberDirectory = router.state.memberDirectory
-        return NavigationStack {
-            FineDetailView(
-                coordinator: coordinator,
-                onAppeal: nil,
-                onViewAppeal: { appeal in
-                    router.openVoteOnAppeal(AppealRouteContext(appeal: appeal, fine: fine))
-                },
-                computeCanVoidFine: { [app] in
-                    guard let group = app.groups.first(where: { $0.id == groupId }),
-                          let member = memberDirectory[userId]?.member,
-                          let decision = try? await app.governance.canPerform(
-                              .voidFine, member: member, in: group, context: nil
-                          )
-                    else { return false }
-                    if case .allowed = decision { return true }
-                    return false
-                },
-                makeVoidFineCoordinator: { [app, router] in
-                    VoidFineCoordinator(
-                        fine: fine,
-                        fineRepo: app.fineRepo,
-                        groupsRepo: app.groupsRepo,
-                        onSubmitted: { @MainActor in
-                            await router.state.refreshInboxes()
-                            await router.state.myFinesCoordinator?.refresh()
-                        }
-                    )
-                },
-                currentUserId: userId
-            )
-            .ruulSheetToolbar("Multa", onClose: {
-                router.state.activeFine = nil
-                while router.state.activeRoutes.contains(where: {
-                    if case .fineDetail = $0 { return true }
-                    return false
-                }) {
-                    router.state.dismissTop()
-                }
-            })
-        }
-        .environment(app)
-    }
-
-    @MainActor @ViewBuilder
-    private var myFinesScreen: some View {
-        if let coord = router.state.myFinesCoordinator {
-            MyFinesScreenHost(
-                coordinator: coord,
-                onClose: {
-                    while router.state.contains(.sanciones) {
-                        router.state.dismissTop()
-                    }
-                }
-            )
-            .environment(app)
-        }
-    }
-
-    @MainActor @ViewBuilder
-    private var pastEventsScreen: some View {
-        if let group = app.activeGroup, let userId = app.session?.user.id {
-            NavigationStack {
-                PastResourcesView(
-                    group: group,
-                    userId: userId,
-                    eventRepo: app.eventRepo
-                ) { event in
-                    router.openEvent(event)
-                }
-                .ruulSheetToolbar("Eventos pasados", onClose: {
-                    while router.state.contains(.past) {
-                        router.state.dismissTop()
-                    }
-                })
-            }
-            .environment(app)
-        }
-    }
-
-    @MainActor @ViewBuilder
-    private func voteDetailScreen(_ ctx: VoteDetailRouteContext) -> some View {
-        let userId = app.session?.user.id ?? UUID()
-        let memberDirectory = router.state.memberDirectory
-        let group = app.groups.first(where: { $0.id == ctx.vote.groupId })
-        let userMemberId = memberDirectory[userId]?.member.id ?? UUID()
-        NavigationStack {
-            if let group {
-                VoteDetailView(coordinator: VoteDetailCoordinator(
-                    vote: ctx.vote,
-                    group: group,
-                    userMemberId: userMemberId,
-                    voteRepo: app.voteRepo,
-                    castRepo: app.voteCastRepo,
-                    analytics: app.analytics,
-                    changeFeed: app.multiDeviceChangeFeed
-                ))
-                .ruulSheetToolbar("Votación", onClose: {
-                    while router.state.activeRoutes.contains(where: {
-                        if case .voteDetail = $0 { return true }
-                        return false
-                    }) {
-                        router.state.dismissTop()
-                    }
-                })
-            } else {
-                Text("Grupo no encontrado")
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .padding()
-            }
-        }
-        .environment(app)
-    }
-
-    @MainActor @ViewBuilder
-    private func voteOnAppealSheet(_ ctx: AppealRouteContext) -> some View {
-        let memberDirectory = router.state.memberDirectory
-        let appellantName: String = {
-            if let entry = memberDirectory.values.first(where: { $0.member.id == ctx.appeal.appellantMemberId }) {
-                return entry.displayName
-            }
-            return "Un miembro"
-        }()
-        VoteOnAppealSheet(
-            isPresented: appealPresentedBinding,
-            fine: ctx.fine,
-            appeal: ctx.appeal,
-            appellantName: appellantName,
-            voteCounts: nil
-        ) { choice in
-            Task {
-                try? await app.appealRepo.castVote(appealId: ctx.appeal.id, choice: choice)
-                await router.state.refreshInboxes()
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func openScanner(for detail: EventDetailCoordinator) {
-        let confirmed = detail.rsvps.filter { $0.status == .going }
-        let alreadyChecked = confirmed.filter { $0.isCheckedIn }.count
-        let scanner = QRScannerService()
-        let coord = CheckInScannerCoordinator(
-            event: detail.event,
-            totalConfirmed: confirmed.count,
-            alreadyCheckedCount: alreadyChecked,
-            scanner: scanner,
-            checkInRepo: app.checkInRepo,
-            analytics: EventAnalytics(analytics: app.analytics),
-            memberLookup: { [memberDirectory = router.state.memberDirectory] id in
-                memberDirectory[id]?.displayName ?? "Miembro"
-            }
-        )
-        router.state.activeScannerCoordinator = coord
-        router.present(.scanner(detail.event.id))
-    }
-
-    private func currentGroupMember(in group: RuulCore.Group) -> Member? {
-        guard let userId = app.session?.user.id else { return nil }
-        return router.state.memberDirectory[userId]?.member
-    }
-
-    private func fallbackMember(userId: UUID, groupId: UUID) -> Member {
-        Member(
-            id: UUID(),
-            groupId: groupId,
-            userId: userId,
-            roles: [.member],
-            active: false,
-            joinedAt: .now
-        )
-    }
-
-    private func nextDefaultDate(for group: RuulCore.Group) -> Date {
-        let calendar = Calendar.current
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now) ?? .now
-        return calendar.date(
-            bySettingHour: 20, minute: 30, second: 0, of: tomorrow
-        ) ?? tomorrow
-    }
-
-    // MARK: - Binding helpers
-
-    private func boolBinding(for route: RootRoute) -> Binding<Bool> {
-        Binding(
-            get: { router.state.contains(route) },
-            set: { wantsPresent in
-                if wantsPresent {
-                    if !router.state.contains(route) { router.present(route) }
-                } else {
-                    while router.state.contains(route) { router.state.dismissTop() }
-                }
-            }
-        )
-    }
-
-    private func itemBinding<Payload: Hashable>(
-        extract: @escaping (RootRoute) -> Payload?,
-        matches: @escaping (RootRoute) -> Bool
-    ) -> Binding<Payload?> {
-        Binding(
-            get: { router.state.activeRoutes.compactMap(extract).last },
-            set: { newValue in
-                if newValue == nil {
-                    while router.state.activeRoutes.contains(where: matches) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
-
-    // MARK: - Per-case item bindings
-
-    private var ruleEditItem: Binding<RuleEditRouteContext?> {
-        itemBinding(
-            extract: { route in
-                if case .ruleEdit(let ctx) = route { return ctx } else { return nil }
-            },
-            matches: { route in
-                if case .ruleEdit = route { return true } else { return false }
-            }
-        )
-    }
-
-    private var appealItem: Binding<AppealRouteContext?> {
-        itemBinding(
-            extract: { route in
-                if case .voteOnAppeal(let ctx) = route { return ctx } else { return nil }
-            },
-            matches: { route in
-                if case .voteOnAppeal = route { return true } else { return false }
-            }
-        )
-    }
-
-    /// Binding that drives the event detail cover via `state.activeEvent`.
-    /// Using an `IdentifiableEventWrapper` so `fullScreenCover(item:)` can
-    /// detect identity changes when a different event is opened.
-    private var activeEventItem: Binding<IdentifiableEventWrapper?> {
-        Binding(
-            get: {
-                guard router.state.activeRoutes.contains(where: { if case .eventDetail = $0 { return true }; return false }),
-                      let event = router.state.activeEvent else { return nil }
-                return IdentifiableEventWrapper(event: event)
-            },
-            set: { newValue in
-                if newValue == nil {
-                    router.state.activeEvent = nil
-                    while router.state.activeRoutes.contains(where: { if case .eventDetail = $0 { return true }; return false }) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
-
-    private var activeEditEventItem: Binding<IdentifiableEventWrapper?> {
-        Binding(
-            get: {
-                guard router.state.contains(.editEvent),
-                      let event = router.state.activeEditEvent else { return nil }
-                return IdentifiableEventWrapper(event: event)
-            },
-            set: { newValue in
-                if newValue == nil {
-                    router.state.activeEditEvent = nil
-                    while router.state.contains(.editEvent) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
-
-    private var activeScannerItem: Binding<IdentifiableScannerWrapper?> {
-        Binding(
-            get: {
-                guard router.state.activeRoutes.contains(where: { if case .scanner = $0 { return true }; return false }),
-                      let coord = router.state.activeScannerCoordinator else { return nil }
-                return IdentifiableScannerWrapper(coordinator: coord)
-            },
-            set: { newValue in
-                if newValue == nil {
-                    router.state.activeScannerCoordinator = nil
-                    while router.state.activeRoutes.contains(where: { if case .scanner = $0 { return true }; return false }) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
-
-    /// Binding for the fine detail cover, driven by `state.activeFine`
-    /// (parallels `activeEventItem`). Returns nil when no `.fineDetail`
-    /// route is active or `activeFine` isn't populated, which keeps the
-    /// pure-id push path (`router.openFineDetail(id:)`, currently unused
-    /// outside deep links) a no-op until callers also set the model.
-    private var activeFineItem: Binding<IdentifiableFineWrapper?> {
-        Binding(
-            get: {
-                guard router.state.activeRoutes.contains(where: {
-                    if case .fineDetail = $0 { return true }
-                    return false
-                }), let fine = router.state.activeFine else { return nil }
-                return IdentifiableFineWrapper(fine: fine)
-            },
-            set: { newValue in
-                if newValue == nil {
-                    router.state.activeFine = nil
-                    while router.state.activeRoutes.contains(where: {
-                        if case .fineDetail = $0 { return true }
-                        return false
-                    }) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
-
-    private var voteDetailItem: Binding<VoteDetailRouteContext?> {
-        itemBinding(
-            extract: { route in
-                if case .voteDetail(let ctx) = route { return ctx } else { return nil }
-            },
-            matches: { route in
-                if case .voteDetail = route { return true } else { return false }
-            }
-        )
-    }
-
-    /// Binding for the appeal presented state (used by `VoteOnAppealSheet`
-    /// which takes a `Binding<Bool>` rather than `item:`).
-    private var appealPresentedBinding: Binding<Bool> {
-        Binding(
-            get: { router.state.activeRoutes.contains(where: { if case .voteOnAppeal = $0 { return true }; return false }) },
-            set: { isPresented in
-                if !isPresented {
-                    while router.state.activeRoutes.contains(where: { if case .voteOnAppeal = $0 { return true }; return false }) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
-
-    /// Item binding for `.createRuleChange(GroupRule?)`. Wraps the optional
-    /// rule in an `IdentifiableRuleChangeWrapper` so `sheet(item:)` works.
-    private var createRuleChangeItem: Binding<IdentifiableRuleChangeWrapper?> {
-        Binding(
-            get: {
-                guard let match = router.state.activeRoutes.last(where: { if case .createRuleChange = $0 { return true }; return false }) else { return nil }
-                if case .createRuleChange(let rule) = match {
-                    return IdentifiableRuleChangeWrapper(rule: rule)
-                }
-                return nil
-            },
-            set: { newValue in
-                if newValue == nil {
-                    while router.state.activeRoutes.contains(where: { if case .createRuleChange = $0 { return true }; return false }) {
-                        router.state.dismissTop()
-                    }
-                }
-            }
-        )
-    }
 }
 
 // MARK: - GroupHomeSheetContent
@@ -967,7 +497,7 @@ private struct GroupHomeSheetContent: View {
 
 /// Wraps `Event` in an `Identifiable` struct so `fullScreenCover(item:)`
 /// can track it. Identity is the event's UUID.
-private struct IdentifiableEventWrapper: Identifiable, Hashable {
+internal struct IdentifiableEventWrapper: Identifiable, Hashable {
     let event: Event
     var id: UUID { event.id }
 }
@@ -976,7 +506,7 @@ private struct IdentifiableEventWrapper: Identifiable, Hashable {
 /// can drive the fine-detail cover via the shared `state.activeFine`
 /// payload. Identity is the fine's UUID — re-presenting with the same
 /// fine reuses the cover; a different fine triggers a fresh build.
-private struct IdentifiableFineWrapper: Identifiable, Hashable {
+internal struct IdentifiableFineWrapper: Identifiable, Hashable {
     let fine: Fine
     var id: UUID { fine.id }
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
@@ -985,7 +515,7 @@ private struct IdentifiableFineWrapper: Identifiable, Hashable {
 
 /// Wraps `CheckInScannerCoordinator` (which is a class) in a struct that is
 /// both `Identifiable` and `Hashable`. Identity is the event UUID.
-private struct IdentifiableScannerWrapper: Identifiable, Hashable {
+internal struct IdentifiableScannerWrapper: Identifiable, Hashable {
     let coordinator: CheckInScannerCoordinator
     var id: UUID { coordinator.event.id }
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
@@ -995,7 +525,7 @@ private struct IdentifiableScannerWrapper: Identifiable, Hashable {
 /// Wraps the optional `GroupRule?` payload of `.createRuleChange` so
 /// `sheet(item:)` has an `Identifiable` handle. Uses a stable UUID so
 /// SwiftUI treats each presentation as a distinct sheet.
-private struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
+internal struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
     let rule: GroupRule?
     let id: UUID = UUID()
     static func == (lhs: Self, rhs: Self) -> Bool {
@@ -1013,8 +543,11 @@ private struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
 // going back through the router — that keeps the "open mis multas →
 // tap a fine → tap close" flow inside one cover, with the standard
 // nav-back affordance.
+// Promoted from `private` to file-internal so the new
+// RootShellSheets+ScreenBuilders extension (sibling file) can
+// reference it. Same module; no API surface change.
 @MainActor
-private struct MyFinesScreenHost: View {
+struct MyFinesScreenHost: View {
     @Environment(AppState.self) private var app
     @Bindable var coordinator: MyFinesCoordinator
     let onClose: () -> Void

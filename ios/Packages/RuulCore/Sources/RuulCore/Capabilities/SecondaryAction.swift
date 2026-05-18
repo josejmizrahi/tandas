@@ -30,7 +30,6 @@ public struct SecondaryAction: Sendable, Hashable, Identifiable {
         case openLedger
         case issueManualFine
         case openRules
-        case enableCapability
         case archive
         // Right resource_type lifecycle. UI surface added in slice 6.
         // The detail view dispatches each to a dedicated sheet that
