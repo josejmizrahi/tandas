@@ -31,9 +31,9 @@ public struct MoneySectionView: View {
             // lights up without a rename migration.
             caps.contains(CapabilityID.ledger) ||
             caps.contains(CapabilityID.money) ||
-            caps.contains("expenses") ||
-            caps.contains("contributions") ||
-            caps.contains("payouts")
+            caps.contains(CapabilityID.expenses) ||
+            caps.contains(CapabilityID.contributions) ||
+            caps.contains(CapabilityID.payouts)
         },
         render: { ctx in AnyView(MoneySectionView(context: ctx)) }
     )
@@ -236,9 +236,9 @@ public struct MoneySectionView: View {
 
     private var subtitle: String {
         var parts: [String] = []
-        if context.enabledCapabilities.contains("expenses")      { parts.append("Gastos") }
-        if context.enabledCapabilities.contains("contributions") { parts.append("Aportaciones") }
-        if context.enabledCapabilities.contains("payouts")       { parts.append("Payouts") }
+        if context.enabledCapabilities.contains(CapabilityID.expenses)      { parts.append("Gastos") }
+        if context.enabledCapabilities.contains(CapabilityID.contributions) { parts.append("Aportaciones") }
+        if context.enabledCapabilities.contains(CapabilityID.payouts)       { parts.append("Payouts") }
         if parts.isEmpty { parts.append("Pagos y balances") }
         return parts.joined(separator: " · ")
     }

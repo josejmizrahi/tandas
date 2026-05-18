@@ -42,6 +42,15 @@ public enum CapabilityID {
     public static let approval       = "approval"
     public static let appeal         = "appeal"
 
+    // MARK: - Money flow shapes (forward-compat synonyms — narrower than `money`)
+    // Used by MoneySectionView's enable check so it lights up for groups
+    // that ship a dedicated expenses/contributions/payouts capability block
+    // in the future, without a rename migration. No catalogue block today;
+    // present here so consumer call sites are typed.
+    public static let expenses       = "expenses"
+    public static let contributions  = "contributions"
+    public static let payouts        = "payouts"
+
     // MARK: - Rotation / assignment
     public static let rotation       = "rotation"
     public static let assignment     = "assignment"
@@ -73,6 +82,7 @@ public enum CapabilityID {
         rsvp, checkIn, schedule, recurrence, attendance, deadline, reminder,
         description, hostActions, location, cancellation,
         money, ledger, consequence, rules, voting, approval, appeal,
+        expenses, contributions, payouts,
         rotation, assignment, participants, swap,
         custody, maintenance, valuation, transfer, access, delegation, inventory,
         capacity, guestAccess, booking, expiration,
