@@ -18,9 +18,34 @@ import RuulCore
 public struct EditRuleParamsSheet: View {
     @Bindable var coordinator: EditRuleParamsCoordinator
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var app
 
     public init(coordinator: EditRuleParamsCoordinator) {
         self._coordinator = Bindable(wrappedValue: coordinator)
+    }
+
+    /// Resolves the per-key `RuleShapeField` metadata by walking the
+    /// template's composition (trigger + condition + consequence shape ids)
+    /// and indexing every shape's `configFields` by key. Lets the
+    /// EditParamField use catalog-backed min/max/defaults instead of the
+    /// hardcoded switch — declarative-first per founder principle
+    /// 2026-05-10 (runtime catalog wins for numeric metadata; curated
+    /// Spanish labels in the switch stay as the copy source until the
+    /// shape catalog's label_es is upgraded to match).
+    private var fieldsByKey: [String: RuleShapeField] {
+        var out: [String: RuleShapeField] = [:]
+        let registry = app.ruleShapeRegistry
+        let composition = coordinator.template.composition
+        var shapeIds: [String] = [composition.triggerShapeId]
+        shapeIds.append(contentsOf: composition.conditionShapeIds)
+        shapeIds.append(contentsOf: composition.consequenceShapeIds)
+        for sid in shapeIds {
+            guard let shape = registry.shape(id: sid) else { continue }
+            for field in shape.configFields {
+                out[field.key] = field
+            }
+        }
+        return out
     }
 
     public var body: some View {
@@ -42,11 +67,13 @@ public struct EditRuleParamsSheet: View {
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     } else {
+                        let resolved = fieldsByKey
                         VStack(spacing: RuulSpacing.sm) {
                             ForEach(coordinator.sortedParamKeys, id: \.self) { key in
                                 EditParamField(
                                     key: key,
                                     value: coordinator.paramInt(key) ?? 0,
+                                    field: resolved[key],
                                     onChange: { newVal in coordinator.setParam(key, intValue: newVal) }
                                 )
                             }
@@ -89,19 +116,30 @@ public struct EditRuleParamsSheet: View {
 
 // MARK: - EditParamField
 
-/// Stepper-based param editor. Mirrors `ParamField` from `RuleBuilderView`
-/// (private there, lifted here so `EditRuleParamsSheet` can reuse the same
-/// UX without touching the builder files).
+/// Stepper-based param editor. Hybrid declarative/curated per
+/// UniversalRuleTemplates.md §9.1 — numeric metadata (min, max) comes
+/// from the rule_shapes catalog when present so future shape additions
+/// inherit correct ranges automatically; Spanish labels + units +
+/// formatting stay curated per universal key (catalog copy is less
+/// polished today, doctrine §15 forbids hardcoded *vertical* logic,
+/// not curated *per-key* copy).
 private struct EditParamField: View {
     let key: String
     let value: Int
+    let field: RuleShapeField?
     let onChange: (Int) -> Void
 
     @State private var local: Int
 
-    init(key: String, value: Int, onChange: @escaping (Int) -> Void) {
+    init(
+        key: String,
+        value: Int,
+        field: RuleShapeField? = nil,
+        onChange: @escaping (Int) -> Void
+    ) {
         self.key = key
         self.value = value
+        self.field = field
         self.onChange = onChange
         _local = State(initialValue: value)
     }
@@ -128,6 +166,10 @@ private struct EditParamField: View {
         .glassEffect(in: .rect(cornerRadius: 14))
     }
 
+    /// Curated per-key label (more refined than the catalog's `label_es`
+    /// today, e.g. "Tolerancia" vs catalog's "Minutos de tolerancia").
+    /// When a future migration upgrades catalog copy, drop the switch
+    /// and read `field?.labelES` directly.
     private var label: String {
         switch key {
         case "amount":            return "Monto de la multa"
@@ -137,7 +179,12 @@ private struct EditParamField: View {
         case "duration_hours":    return "Duración del voto"
         case "quorum_percent":    return "Quórum mínimo"
         case "threshold_percent": return "Umbral para pasar"
-        default:                  return key.capitalized.replacingOccurrences(of: "_", with: " ")
+        default:
+            // Last resort: the catalog's label_es if present, else
+            // a humanized key. Keeps the form usable when a shape
+            // adds a new param the curated switch doesn't know yet.
+            if let f = field { return f.labelES }
+            return key.capitalized.replacingOccurrences(of: "_", with: " ")
         }
     }
 
@@ -150,11 +197,18 @@ private struct EditParamField: View {
         case "duration_hours":    return "horas que el voto sigue abierto"
         case "quorum_percent":    return "% de miembros que deben votar para que cuente"
         case "threshold_percent": return "% de votos a favor (vs total) para que pase"
-        default:                  return ""
+        default:                  return field?.placeholder ?? ""
         }
     }
 
+    /// Catalog-first range. When the shape declares min/max in
+    /// config_fields (new shapes added server-side automatically inherit
+    /// correct bounds), use that; otherwise fall back to the curated
+    /// per-key range below.
     private var range: ClosedRange<Int> {
+        if let f = field, let min = f.min, let max = f.max, min <= max {
+            return min...max
+        }
         switch key {
         case "amount":            return 50...10_000
         case "minutes":           return 0...120
@@ -167,6 +221,8 @@ private struct EditParamField: View {
         }
     }
 
+    /// Catalog doesn't declare step today; keep curated per-key step
+    /// since steppers below 5%/$50 are noisy on touch.
     private var step: Int {
         switch key {
         case "amount":            return 50

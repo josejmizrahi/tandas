@@ -4,9 +4,11 @@ import OSLog
 import RuulUI
 import RuulCore
 
-/// Coordinator for editing an existing event. Mirrors ResourceCreationCoordinator
-/// but seeds the draft from the current event and submits via
-/// `EventRepository.updateEvent(_:patch:)` rather than create.
+/// Coordinator for editing an existing event. Seeds the draft from the
+/// current event and submits via `EventRepository.updateEvent(_:patch:)`.
+/// The create-side counterpart is `ResourceWizardCoordinator` +
+/// `EventResourceBuilder` (polymorphic; replaced the dead-code
+/// `ResourceCreationCoordinator` removed 2026-05-17).
 ///
 /// Builds an `EventPatch` containing only the fields that actually changed
 /// vs. the original — minimizes payload + avoids triggering unnecessary

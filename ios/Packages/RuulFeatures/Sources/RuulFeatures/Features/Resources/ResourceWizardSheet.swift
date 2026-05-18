@@ -441,6 +441,7 @@ public struct ResourceWizardSheet: View {
     private var rulesContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                universalsSection
                 // Beta 1 W2-C1: "capacidades" → "lo que activaste arriba" (drops the leaked model term).
                 // UXJourney P1: agrega explicación de la fuente. Antes el
                 // usuario veía "Acuerdos sugeridos" sin saber de dónde
@@ -470,6 +471,76 @@ public struct ResourceWizardSheet: View {
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
         }
+    }
+
+    /// Universal Rule Templates section — sits ABOVE the legacy
+    /// per-capability "Acuerdos sugeridos". Per UniversalRuleTemplates.md
+    /// §14 Fase 2, the wizard surfaces universals so users see the
+    /// canonical patterns during create-resource (not only via the
+    /// post-create Gallery). Each pick is published as a separate
+    /// rule_version scoped to the new resource after submit.
+    /// Renders nothing when no universals are compatible with this
+    /// resource type (e.g. early Pass-2 types whose trigger shapes
+    /// haven't been registered yet).
+    @ViewBuilder
+    private var universalsSection: some View {
+        let compatible = coordinator.compatibleUniversalTemplates(shapeRegistry: app.ruleShapeRegistry)
+        if !compatible.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                Text("PATRONES UNIVERSALES")
+                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                Text("Patrones de coordinación que sirven en muchos grupos. Elige los que apliquen — se activan en este \(coordinator.selectedBuilder?.displayName.lowercased() ?? "recurso") cuando lo crees.")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: RuulSpacing.xs) {
+                    ForEach(compatible, id: \.id) { template in
+                        universalRow(template: template)
+                    }
+                }
+            }
+        }
+    }
+
+    private func universalRow(template: RuleBuilderTemplate) -> some View {
+        let isOn = coordinator.isUniversalSelected(template.id)
+        return HStack(alignment: .top, spacing: RuulSpacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                if template.doctrinalCategory != "uncategorized" {
+                    Text(template.doctrinalCategory)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.ruulTextTertiary)
+                }
+                Text(template.displayNameES)
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextPrimary)
+                if template.naturalLanguagePreviewTemplate != nil {
+                    Text(RuleSentenceFormatter.preview(forTemplate: template))
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .multilineTextAlignment(.leading)
+                } else {
+                    Text(template.descriptionES)
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            Spacer()
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { _ in coordinator.toggleUniversal(template.id) }
+            ))
+            .labelsHidden()
+            .tint(Color.ruulAccent)
+        }
+        .padding(RuulSpacing.md)
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.medium)
+                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+        )
     }
 
     @ViewBuilder
@@ -715,9 +786,9 @@ public struct ResourceWizardSheet: View {
     }
 
     private var optionsAdvanceLabel: String {
-        // When no enabled capability has suggested rules, step 4 is
-        // skipped — the CTA goes straight to review.
-        coordinator.hasAnySuggestedRules ? "Continuar a acuerdos" : "Revisar"
+        // When step 4 has nothing to show (no legacy capability rules AND
+        // no universal templates apply), skip it — CTA goes to Revisar.
+        coordinator.hasAnyRulesStepContent ? "Continuar a acuerdos" : "Revisar"
     }
 
     private var rulesAdvanceLabel: String {
@@ -741,6 +812,12 @@ public struct ResourceWizardSheet: View {
         let ok = await coordinator.submit()
         if ok {
             let id = coordinator.createdResourceId
+            // Post-create: publish each selected universal template
+            // scoped to the new resource. Failures don't block the
+            // resource creation — caller already sees the resource;
+            // we just don't dismiss until the publish loop completes
+            // so the user knows their picks were processed.
+            if let id { _ = await publishSelectedUniversals(resourceId: id) }
             await MainActor.run {
                 if let id { onCreated?(id) }
                 dismiss()
@@ -764,9 +841,43 @@ public struct ResourceWizardSheet: View {
         let real = ResourceWizardCoordinator(
             group: coordinator.group,
             registry: app.resourceBuilders,
-            defaultCapabilitiesByType: defaults
+            defaultCapabilitiesByType: defaults,
+            // Universal Beta-1 templates surfaced in step 4 above the
+            // legacy capability-suggested rules. The coordinator filters
+            // these by resource_type via compatibleUniversalTemplates(...).
+            universalTemplates: app.ruleTemplatesForGallery
         )
         coordinator = real
+    }
+
+    /// Publishes each selected universal template scoped to the
+    /// freshly-created resource. Called from `submit()` after
+    /// `coordinator.submit()` succeeds. Individual failures bubble up
+    /// as a warning string — the resource itself is still created.
+    /// Per UniversalRuleTemplates.md §14 Fase 2 — runs alongside the
+    /// legacy createInitialRules path until pipelines converge.
+    private func publishSelectedUniversals(resourceId: UUID) async -> [String] {
+        guard let repo = app.ruleTemplateRepo else { return [] }
+        let selected = coordinator.selectedUniversalTemplateIds
+        if selected.isEmpty { return [] }
+        let byId = Dictionary(uniqueKeysWithValues: coordinator.universalTemplates.map { ($0.id, $0) })
+        var failures: [String] = []
+        for templateId in selected {
+            guard let template = byId[templateId] else { continue }
+            do {
+                _ = try await repo.publishRuleVersion(
+                    groupId: coordinator.group.id,
+                    templateId: templateId,
+                    shapeParams: template.defaultParams,
+                    scope: .resource(resourceId),
+                    title: template.displayNameES,
+                    changeReason: "Activado al crear el recurso"
+                )
+            } catch {
+                failures.append(template.displayNameES)
+            }
+        }
+        return failures
     }
 }
 

@@ -45,6 +45,23 @@ public final class ResourceWizardCoordinator {
     /// composite "blockId.slug" so the same rule slug declared by two
     /// different capabilities can coexist independently.
     public var selectedSuggestedRules: Set<String> = []
+
+    /// Universal Rule Templates (`public.rule_templates`, Beta-1 catalog)
+    /// shown ABOVE the legacy capability-suggested rules in step 4.
+    /// Filtered at coordinator construction by `triggerShape.validResourceTypes
+    /// contains selectedBuilder.resourceType`. Empty when the caller
+    /// didn't pass `app.ruleTemplatesForGallery` or when none are
+    /// compatible with the chosen resource type.
+    /// Per UniversalRuleTemplates.md §14 Fase 2 — bridges the wizard
+    /// surface to the universal catalog without rewiring the legacy
+    /// `createInitialRules` pipeline yet.
+    public let universalTemplates: [RuleBuilderTemplate]
+
+    /// User's universal-template picks. The sheet publishes each one
+    /// scoped to the freshly-created resource AFTER the resource itself
+    /// lands (via `ruleTemplateRepo.publishRuleVersion`). Failures are
+    /// surfaced as warnings — the resource is still created.
+    public var selectedUniversalTemplateIds: Set<String> = []
     /// Per-capability config values, keyed by `block.id` then field key.
     /// Recurrence's frequency / dayOfWeek / time / etc. live here.
     /// Replaces the four dedicated recurrence* properties this struct
@@ -64,13 +81,43 @@ public final class ResourceWizardCoordinator {
         registry: ResourceBuilderRegistry,
         catalog: CapabilityCatalog = .v1,
         resolver: CapabilityResolver = CapabilityResolver(),
-        defaultCapabilitiesByType: [String: [String]] = [:]
+        defaultCapabilitiesByType: [String: [String]] = [:],
+        universalTemplates: [RuleBuilderTemplate] = []
     ) {
         self.group = group
         self.registry = registry
         self.catalog = catalog
         self.resolver = resolver
         self.defaultCapabilitiesByType = defaultCapabilitiesByType
+        self.universalTemplates = universalTemplates
+    }
+
+    /// Universal templates whose trigger shape supports the currently
+    /// selected builder's resource type. Falls back to all universals
+    /// when no resource type is set (typePicker step).
+    public func compatibleUniversalTemplates(shapeRegistry: RuleShapeRegistry) -> [RuleBuilderTemplate] {
+        guard let resourceType = selectedBuilder?.resourceType.rawString else {
+            return universalTemplates
+        }
+        return universalTemplates.filter { template in
+            guard let shape = shapeRegistry.shape(id: template.composition.triggerShapeId) else {
+                return false
+            }
+            if shape.validResourceTypes.isEmpty { return true }
+            return shape.validResourceTypes.contains(resourceType)
+        }
+    }
+
+    public func isUniversalSelected(_ id: String) -> Bool {
+        selectedUniversalTemplateIds.contains(id)
+    }
+
+    public func toggleUniversal(_ id: String) {
+        if selectedUniversalTemplateIds.contains(id) {
+            selectedUniversalTemplateIds.remove(id)
+        } else {
+            selectedUniversalTemplateIds.insert(id)
+        }
     }
 
     // MARK: - Step navigation
@@ -130,7 +177,7 @@ public final class ResourceWizardCoordinator {
         case .fields:     step = .typePicker; selectedBuilder = nil
         case .options:    step = .fields
         case .rules:      step = .options
-        case .review:     step = hasAnySuggestedRules ? .rules : .options
+        case .review:     step = hasAnyRulesStepContent ? .rules : .options
         }
     }
 
@@ -140,10 +187,10 @@ public final class ResourceWizardCoordinator {
     }
 
     public func advanceFromOptions() {
-        // Skip step 4 when no enabled capability advertises any
-        // suggested rules — there's nothing to pick. Drops the user
-        // straight to review.
-        step = hasAnySuggestedRules ? .rules : .review
+        // Skip step 4 only when neither legacy capability rules NOR
+        // universal templates apply — otherwise the user needs to see
+        // the universals section before reviewing.
+        step = hasAnyRulesStepContent ? .rules : .review
     }
 
     public func advanceFromRules() {
@@ -234,6 +281,18 @@ public final class ResourceWizardCoordinator {
 
     public var hasAnySuggestedRules: Bool {
         !availableSuggestedRules.isEmpty
+    }
+
+    /// True iff step 4 has content to show — either legacy
+    /// capability-suggested rules OR universal templates compatible
+    /// with the current resource type. Used to gate the skip behavior
+    /// (`advanceFromOptions` / `goBack`) so universals alone keep the
+    /// step visible. When `universalTemplates` is non-empty we keep the
+    /// step regardless of resource-type compatibility — the universal
+    /// section's own render-time filter handles the "no compatible"
+    /// case by collapsing to nothing.
+    public var hasAnyRulesStepContent: Bool {
+        hasAnySuggestedRules || !universalTemplates.isEmpty
     }
 
     public func suggestedRuleKey(blockId: String, slug: String) -> String {
