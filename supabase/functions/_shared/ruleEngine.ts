@@ -387,6 +387,35 @@ export interface ConsequenceSink {
     priority_delta: number;
     source_atom_id: UUID;
   }): Promise<UUID>;
+
+  /**
+   * v1.1 pre-dispatch dedup contract per Plans/Active/RuleEngineDoctrine.md
+   * §4 + §10 + Plans/Active/ConsistencyAudit_2026-05-17.md §6.A R5/Sprint 4.10.
+   *
+   * Called by `runRulesForEvent` BEFORE each consequence dispatch. The impl
+   * INSERTs a rule_evaluations row keyed on `idempotency_key` = sha1-ish of
+   * (rule_version_id, trigger_event_id, target_member_id, consequence_index)
+   * using ON CONFLICT (idempotency_key) DO NOTHING. Returns true if the
+   * row was actually inserted (= this is the first attempt); false if the
+   * UNIQUE constraint short-circuited (= already executed in a prior run).
+   *
+   * Engine semantics: when false is returned, the engine SKIPS the
+   * consequence dispatch — the prior run already produced its side
+   * effects. This makes rule_evaluations the canonical retry-dedup source,
+   * superseding the per-sink ad-hoc checks (which remain as
+   * defense-in-depth for non-engine entry points).
+   *
+   * When the sink can't resolve a rule_version (legacy rule pre-publish),
+   * the impl should return true (proceed) so the consequence still runs.
+   * The audit row is simply absent in that edge case.
+   */
+  tryRecordEvaluation(args: {
+    rule_id: UUID;
+    group_id: UUID;
+    trigger_event_id: UUID;
+    actor_id: UUID | null;
+    consequence_index: number;
+  }): Promise<boolean>;
 }
 
 // =============================================================================
@@ -762,7 +791,11 @@ export async function runRulesForEvent(
       // consequence. mig 00249 / §22.3: each consequence may carry a
       // `target` selector that re-routes / multiplexes execution to
       // members different from the trigger's original target.
-      for (const cons of rule.consequences) {
+      // v1.1: index the consequence position so tryRecordEvaluation can
+      // build a stable idempotency_key per (rule_version, event, target,
+      // consequence_index).
+      for (let consIdx = 0; consIdx < rule.consequences.length; consIdx++) {
+        const cons = rule.consequences[consIdx];
         const consFn = CONSEQUENCES[cons.type];
         if (!consFn) {
           logNotImplemented({
@@ -790,6 +823,22 @@ export async function runRulesForEvent(
           continue;
         }
         for (const resolved of resolvedTargets) {
+          // v1.1 pre-dispatch dedup: write the rule_evaluations audit row
+          // FIRST. If the UNIQUE constraint on idempotency_key short-
+          // circuits, this consequence already ran in a prior cron tick —
+          // skip the dispatch. Per Plans/Active/RuleEngineDoctrine.md §4.
+          const shouldDispatch = await context.sink.tryRecordEvaluation({
+            rule_id: rule.id,
+            group_id: rule.group_id,
+            trigger_event_id: event.id,
+            actor_id: resolved.member_id,
+            consequence_index: consIdx,
+          });
+          if (!shouldDispatch) {
+            // Already executed in a prior run. Skip silently — the audit
+            // row exists, the consequence's side effects already landed.
+            continue;
+          }
           try {
             results.push(await consFn(cons, resolved, rule, context));
           } catch (e) {

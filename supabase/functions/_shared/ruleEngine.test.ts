@@ -78,6 +78,17 @@ function captureSink(): {
     createUserAction: async (args) => `user-action-${args.rule_id}`,
     setBookingsLocked: async (args) => args.resource_id,
     latestAssetValuationCents: async () => null,
+    // PR-3 SpaceRules.md stubs — not exercised by the dinner-recurring
+    // fixtures in this file but required by the ConsequenceSink contract.
+    loadBookingMetadata: async () => null,
+    loadMemberRoles: async () => [],
+    expireBooking: async (args) => args.booking_id,
+    bumpWaitlistPriority: async (args) => `bump-${args.source_atom_id}`,
+    // v1.1 RuleEngineDoctrine §4 pre-dispatch dedup. Default to true
+    // (always permit dispatch) so existing test scenarios behave
+    // identically to pre-v1.1 — tests that exercise the dedup contract
+    // override this via extras.sink.
+    tryRecordEvaluation: async () => true,
   };
   return { sink, captured, warnings, votes, transfers, revokes, suspends };
 }

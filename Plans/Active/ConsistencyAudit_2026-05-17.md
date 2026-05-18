@@ -451,7 +451,9 @@ Sin esos 5, el "cache" es deuda doctrinal disfrazada.
 **HERESY (closed):**
 - F1 pay_fine broken — **CLOSED Sprint 1.1 (mig 00273)** ledger-driven; void_fine also rebuilt
 
-**Sprint 4.11 note (consequence sink dedup):** Per-sink dedup checks (`proposeFine` → fines_view, `createUserAction` → user_actions, `bumpWaitlistPriority` → system_events filter) **retained as defense-in-depth**. They protect against duplicates across rule runs that the rule_evaluations dedup (post-run write) would miss. Engine-level pre-dispatch dedup via `tryRecordEvaluation` sink remains as v1.1 follow-up (requires ruleEngine.ts core refactor; safer to do after rule_evaluations write has burn-in time in production).
+**Sprint 4.11 note (consequence sink dedup):** Per-sink dedup checks (`proposeFine` → fines_view, `createUserAction` → user_actions, `bumpWaitlistPriority` → system_events filter) **retained as defense-in-depth**. They protect against duplicates across rule runs that the rule_evaluations dedup (post-run write) would miss.
+
+**v1.1 ENGINE PRE-DISPATCH DEDUP — DELIVERED 2026-05-18.** ruleEngine.ts now exposes `tryRecordEvaluation` on `ConsequenceSink`. `runRulesForEvent` indexes consequences with `consIdx` and calls the sink BEFORE every dispatch. The sink INSERTs into `rule_evaluations` with idempotency_key = `${rule_version_id}|${trigger_event_id}|${target_member_id}|${consequence_index}` using ON CONFLICT (idempotency_key) DO NOTHING; returns true on insert, false on conflict. Conflict = consequence already executed in prior cron run → engine skips dispatch entirely (no double-fire, no double-audit). Post-run `recordRuleEvaluations` removed (now redundant; pre-dispatch IS the audit). 47/47 engine unit tests still pass. Edge function redeployed to production.
 
 ---
 
