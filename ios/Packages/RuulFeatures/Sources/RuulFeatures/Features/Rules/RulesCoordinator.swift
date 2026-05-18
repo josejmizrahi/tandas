@@ -14,6 +14,10 @@ public final class RulesCoordinator {
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
     public private(set) var canEditRules: Bool = false
+    /// True después de que `refresh()` completó al menos una vez. Permite
+    /// distinguir "primera carga" de "loaded empty" cuando `rules == []`.
+    /// Consumido por `LoadPhase.fromCollection` en la computed `phase`.
+    public private(set) var hasLoaded: Bool = false
     /// Number of votes with `status='open'` for `group`. Refreshed alongside
     /// the rule list so `RulesView` can surface a "Votos abiertos" section
     /// proactively (vs Inbox which only fires when the user has a
@@ -45,10 +49,25 @@ public final class RulesCoordinator {
         self.voteRepo = voteRepo
     }
 
+    /// Adapter para `AsyncContentView`. Deriva el `LoadPhase` desde los
+    /// campos `@Observable` que ya mantenemos — el coordinator no necesita
+    /// reescribir su lógica.
+    public var phase: LoadPhase<[GroupRule]> {
+        LoadPhase.fromCollection(
+            value: rules,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
 
         do {
             let decision = try await governance.canPerform(

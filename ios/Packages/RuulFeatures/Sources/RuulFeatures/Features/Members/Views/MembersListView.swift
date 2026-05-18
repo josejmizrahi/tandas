@@ -15,16 +15,21 @@ public struct MembersListView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.members.isEmpty {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(RuulSpacing.lg)
-                } else if coordinator.isLoading && coordinator.members.isEmpty {
-                    RuulLoadingState()
-                } else {
+            AsyncContentView(
+                phase: coordinator.activePhase,
+                onRetry: { await coordinator.refresh() },
+                empty: {
+                    EmptyStateView(
+                        systemImage: "person.2",
+                        title: "Sin miembros activos",
+                        message: "Cuando alguien se una al grupo, aparecerá aquí."
+                    )
+                    .padding(RuulSpacing.lg)
+                },
+                loaded: { rows in
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(coordinator.activeMembers) { row in
+                            ForEach(rows) { row in
                                 NavigationLink {
                                     MemberDetailView(
                                         memberWithProfile: row,
@@ -39,7 +44,7 @@ public struct MembersListView: View {
                                     memberRow(row)
                                 }
                                 .buttonStyle(.plain)
-                                if row.id != coordinator.activeMembers.last?.id {
+                                if row.id != rows.last?.id {
                                     Divider().background(Color.ruulSeparator).padding(.leading, 76)
                                 }
                             }
@@ -49,7 +54,7 @@ public struct MembersListView: View {
                     }
                     .refreshable { await coordinator.refresh() }
                 }
-            }
+            )
         }
         .ruulSheetToolbar("Miembros (\(coordinator.activeMembers.count))")
         .task { await coordinator.refresh() }

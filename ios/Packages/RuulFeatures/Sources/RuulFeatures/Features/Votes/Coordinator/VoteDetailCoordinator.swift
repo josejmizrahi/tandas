@@ -29,6 +29,17 @@ public final class VoteDetailCoordinator {
     public var alreadyVoted: Bool { (myCast?.choice ?? .pending) != .pending }
     public var voteIsClosed: Bool { vote.status != .open }
 
+    /// Adapter para `AsyncContentView`. Detail screen — el `.empty` case
+    /// no aplica (siempre hay un Vote), así que el factory escalar nunca
+    /// emite `.empty`. Las vistas usan el init scalar de AsyncContentView.
+    public var phase: LoadPhase<VoteCounts> {
+        LoadPhase.from(
+            value: counts,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
     // MARK: - Admin / creator action visibility
 
     /// True when the caller is a founder/admin — may manually finalize.

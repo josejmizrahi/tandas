@@ -60,51 +60,58 @@ public struct MembersAdminView: View {
 
     @ViewBuilder
     private var content: some View {
-        if coordinator.isLoading && coordinator.members.isEmpty {
-            RuulLoadingState()
-        } else if let err = coordinator.error, coordinator.members.isEmpty {
-            ErrorStateView(error: err, retry: { Task { await coordinator.refresh() } })
+        AsyncContentView(
+            phase: coordinator.activePhase,
+            onRetry: { await coordinator.refresh() },
+            empty: {
+                EmptyStateView(
+                    systemImage: "person.2",
+                    title: "Sin miembros activos",
+                    message: "Invita miembros con el botón “+” para empezar."
+                )
                 .padding(RuulSpacing.lg)
-        } else {
-            List {
-                ForEach(coordinator.activeMembers) { row in
-                    NavigationLink {
-                        MemberDetailView(
-                            memberWithProfile: row,
-                            group: coordinator.group,
-                            isCurrentUser: row.member.userId == coordinator.actorUserId,
-                            canManageRoles: coordinator.canManageRoles,
-                            founderCount: coordinator.founderCount,
-                            adminCount: coordinator.adminCount,
-                            onMemberChanged: { await coordinator.refresh() }
-                        )
-                    } label: {
-                        adminRow(row)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        if row.member.userId != coordinator.actorUserId {
-                            if coordinator.canRemoveMembers {
-                                Button(role: .destructive) {
-                                    memberToKick = row
-                                } label: {
-                                    Label("Echar", systemImage: "trash")
+            },
+            loaded: { rows in
+                List {
+                    ForEach(rows) { row in
+                        NavigationLink {
+                            MemberDetailView(
+                                memberWithProfile: row,
+                                group: coordinator.group,
+                                isCurrentUser: row.member.userId == coordinator.actorUserId,
+                                canManageRoles: coordinator.canManageRoles,
+                                founderCount: coordinator.founderCount,
+                                adminCount: coordinator.adminCount,
+                                onMemberChanged: { await coordinator.refresh() }
+                            )
+                        } label: {
+                            adminRow(row)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            if row.member.userId != coordinator.actorUserId {
+                                if coordinator.canRemoveMembers {
+                                    Button(role: .destructive) {
+                                        memberToKick = row
+                                    } label: {
+                                        Label("Echar", systemImage: "trash")
+                                    }
                                 }
+                                Button {
+                                    proposeRemovalFor = row
+                                } label: {
+                                    Label("Proponer voto", systemImage: "checkmark.bubble")
+                                }
+                                .tint(Color.ruulWarning)
                             }
-                            Button {
-                                proposeRemovalFor = row
-                            } label: {
-                                Label("Proponer voto", systemImage: "checkmark.bubble")
-                            }
-                            .tint(Color.ruulWarning)
                         }
                     }
+                    .onMove(perform: moveMembers)
                 }
-                .onMove(perform: moveMembers)
+                .listStyle(.plain)
+                .environment(\.editMode, .constant(.active))
+                .refreshable { await coordinator.refresh() }
             }
-            .listStyle(.plain)
-            .environment(\.editMode, .constant(.active))
-            .refreshable { await coordinator.refresh() }
-        }
+        )
     }
 
     @ViewBuilder

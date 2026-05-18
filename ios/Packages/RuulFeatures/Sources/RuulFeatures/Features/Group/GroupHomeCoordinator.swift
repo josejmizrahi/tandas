@@ -23,6 +23,23 @@ public final class GroupHomeCoordinator {
     public var activeModules: [GroupModule] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
+    /// True después de que `refresh()` completó al menos una vez. Permite
+    /// distinguir "primera carga" de "loaded" cuando `group != nil` por
+    /// otra razón. Consumido por `phase` para construir el `LoadPhase`.
+    public private(set) var hasLoaded: Bool = false
+
+    /// Adapter para `AsyncContentView`. Deriva el `LoadPhase` desde los
+    /// campos `@Observable` que ya mantenemos. Escalar (single Group),
+    /// así que usamos `LoadPhase.from` con `isEmpty = { _ in false }`
+    /// (un grupo cargado nunca es "empty" — la pantalla siempre tiene
+    /// algo que mostrar una vez que `group != nil`).
+    public var phase: LoadPhase<Group> {
+        LoadPhase.from(
+            value: group,
+            isLoading: isLoading,
+            error: error
+        )
+    }
 
     /// Aggregated group stats — nil until the first successful refresh.
     public var summary: GroupSummary?
@@ -74,7 +91,10 @@ public final class GroupHomeCoordinator {
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             async let detailTask = groupsRepo.get(groupId)
             async let summaryTask: Void = loadSummary()

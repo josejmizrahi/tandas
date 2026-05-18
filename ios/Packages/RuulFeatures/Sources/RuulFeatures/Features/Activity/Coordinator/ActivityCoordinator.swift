@@ -27,6 +27,12 @@ public final class ActivityCoordinator {
     public var isLoading: Bool = false
     public var hasMore: Bool = true
     public var error: CoordinatorError?
+    /// True once `refresh()`/`loadMore()` ha terminado al menos una vez.
+    /// Permite distinguir "primera carga" de "loaded empty" en
+    /// `LoadPhase.fromCollection` — antes `events == []` durante la
+    /// primera carga colapsaba a `.empty` y mostraba el empty hero
+    /// debajo del spinner.
+    public private(set) var hasLoaded: Bool = false
     /// Active group members keyed by `group_members.id`. Populated by
     /// `loadMembers()`; consumed by `ActivityView` via
     /// `actorName(for:)`. Empty during initial render — the feed
@@ -50,9 +56,25 @@ public final class ActivityCoordinator {
         hasMore = true
         error = nil
         // Members + events in parallel — neither depends on the other.
+        // Members es best-effort (no influye al phase); el primary signal
+        // del coordinator es events, así que `hasLoaded` se marca al final
+        // independiente de membersTask.
         async let membersTask: Void = loadMembers()
         async let eventsTask: Void = loadMore()
         _ = await (membersTask, eventsTask)
+        hasLoaded = true
+    }
+
+    /// Adapter para `AsyncContentView`. El primary data son `events`;
+    /// `memberDirectoryByMemberId` es best-effort (failures se loguean
+    /// y la lista renderiza "Alguien" como actor).
+    public var phase: LoadPhase<[SystemEvent]> {
+        LoadPhase.fromCollection(
+            value: events,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
     }
 
     /// One-shot members load. Failures degrade silently (feed still
@@ -89,7 +111,10 @@ public final class ActivityCoordinator {
     public func loadMore() async {
         guard !isLoading, hasMore else { return }
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             let page = try await repo.query(filter: filter, limit: Self.pageSize, offset: events.count)
             events.append(contentsOf: page)

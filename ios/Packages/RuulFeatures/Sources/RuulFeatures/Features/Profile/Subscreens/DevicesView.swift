@@ -11,52 +11,91 @@ public struct DevicesView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var currentDeviceToken: String?
+    /// True después de que `load()` corrió al menos una vez. Permite
+    /// distinguir primera carga (sin devices todavía) de "loaded
+    /// empty" (cuenta sin push tokens registrados).
+    @State private var hasLoaded = false
 
     public init() {}
 
+    /// `LoadPhase` adapter inline. Errores de revoke siguen como
+    /// banner inline below la lista; sólo errores del load inicial
+    /// llegarían al phase (no se setean en el load actual, así que
+    /// pasamos nil — paralelo a NotificationPreferencesView).
+    private var phase: LoadPhase<[NotificationDevice]> {
+        return LoadPhase.fromCollection(
+            value: devices,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: nil
+        )
+    }
+
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.xl) {
-                    if isLoading {
-                        ProgressView().padding(RuulSpacing.lg)
-                    } else if devices.isEmpty {
-                        Text("Aún no hay dispositivos registrados.")
-                            .ruulTextStyle(RuulTypography.body)
-                            .foregroundStyle(Color.ruulTextTertiary)
-                            .padding(RuulSpacing.lg)
-                    } else {
-                        if let current = currentDevice {
-                            deviceSection(title: "ESTA SESIÓN") { row(current, isCurrent: true) }
-                        }
-                        let others = devices.filter { $0.id != currentDevice?.id }
-                        if !others.isEmpty {
-                            deviceSection(title: "OTRAS SESIONES") {
-                                VStack(spacing: 0) {
-                                    ForEach(others) { device in
-                                        row(device, isCurrent: false)
-                                        if device.id != others.last?.id {
-                                            Divider()
-                                                .background(Color.ruulSeparator)
-                                                .padding(.leading, 56)
-                                        }
-                                    }
+            AsyncContentView(
+                phase: phase,
+                onRetry: { await load() },
+                empty: { emptyScroll },
+                loaded: { _ in loadedScroll }
+            )
+            .background(Color.ruulBackground.ignoresSafeArea())
+            .ruulSheetToolbar("Dispositivos")
+            .task { await load() }
+        }
+    }
+
+    /// Loaded path: secciones "esta sesión" + "otras sesiones".
+    /// Errores de revoke se renderean inline below el listado.
+    private var loadedScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                if let current = currentDevice {
+                    deviceSection(title: "ESTA SESIÓN") { row(current, isCurrent: true) }
+                }
+                let others = devices.filter { $0.id != currentDevice?.id }
+                if !others.isEmpty {
+                    deviceSection(title: "OTRAS SESIONES") {
+                        VStack(spacing: 0) {
+                            ForEach(others) { device in
+                                row(device, isCurrent: false)
+                                if device.id != others.last?.id {
+                                    Divider()
+                                        .background(Color.ruulSeparator)
+                                        .padding(.leading, 56)
                                 }
                             }
                         }
                     }
-                    if let msg = errorMessage {
-                        Text(msg)
-                            .ruulTextStyle(RuulTypography.footnote)
-                            .foregroundStyle(Color.ruulNegative)
-                            .padding(.horizontal, RuulSpacing.lg)
-                    }
                 }
-                .padding(RuulSpacing.lg)
+                if let msg = errorMessage {
+                    Text(msg)
+                        .ruulTextStyle(RuulTypography.footnote)
+                        .foregroundStyle(Color.ruulNegative)
+                        .padding(.horizontal, RuulSpacing.lg)
+                }
             }
-            .background(Color.ruulBackground.ignoresSafeArea())
-            .ruulSheetToolbar("Dispositivos")
-            .task { await load() }
+            .padding(RuulSpacing.lg)
+        }
+    }
+
+    /// Empty path: el mensaje original como scroll auto-refrescable.
+    private var emptyScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                Text("Aún no hay dispositivos registrados.")
+                    .ruulTextStyle(RuulTypography.body)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .padding(RuulSpacing.lg)
+                if let msg = errorMessage {
+                    Text(msg)
+                        .ruulTextStyle(RuulTypography.footnote)
+                        .foregroundStyle(Color.ruulNegative)
+                        .padding(.horizontal, RuulSpacing.lg)
+                }
+            }
+            .padding(RuulSpacing.lg)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -122,7 +161,10 @@ public struct DevicesView: View {
     private func load() async {
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             devices = try await app.notificationTokenRepo.listMyDevices()
             currentDeviceToken = UserDefaults.standard.string(forKey: "ruul.apns.current_token")

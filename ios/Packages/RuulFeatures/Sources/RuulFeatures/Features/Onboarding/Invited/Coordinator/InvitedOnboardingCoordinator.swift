@@ -15,6 +15,29 @@ public final class InvitedOnboardingCoordinator {
     public private(set) var error: OnboardingError?
     public private(set) var isLoading: Bool = false
 
+    /// `LoadPhase` derived from the invite preview lifecycle. Scalar
+    /// (single `InvitePreview`), surfaced to `InviteWelcomeView` so it
+    /// can render the standard loading/error/loaded primitives instead
+    /// of an ad-hoc if/else chain. Onboarding-specific errors that need
+    /// custom copy (e.g. `.inviteCodeInvalid`) translate into a
+    /// `CoordinatorError` with the right title so the user still gets
+    /// the "invitación ya no válida" message rather than a generic
+    /// "algo salió mal".
+    public var previewPhase: LoadPhase<InvitePreview> {
+        if let err = error {
+            let mapped = CoordinatorError(
+                title: err.errorDescription ?? "Algo salió mal",
+                message: nil,
+                isRetryable: err.isRecoverable
+            )
+            return .failed(mapped, previous: preview)
+        }
+        if let preview {
+            return isLoading ? .refreshing(preview) : .loaded(preview)
+        }
+        return isLoading ? .loading : .idle
+    }
+
     public let inviteCode: String
     private let groupRepo: any GroupsRepository
     private let inviteRepo: any InviteRepository

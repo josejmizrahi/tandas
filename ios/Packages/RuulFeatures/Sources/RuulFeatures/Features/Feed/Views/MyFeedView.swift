@@ -26,27 +26,47 @@ public struct MyFeedView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                    if let err = coordinator.loadError {
-                        errorBanner(err)
-                    }
-                    if coordinator.events.isEmpty && !coordinator.isLoading {
-                        emptyState
-                    } else {
-                        contentSections
-                    }
-                }
-                .padding(.horizontal, RuulSpacing.lg)
-                .padding(.top, RuulSpacing.xs)
-                .padding(.bottom, RuulSpacing.s12)
-            }
-            .scrollIndicators(.hidden)
-            .refreshable { await coordinator.refresh() }
+            AsyncContentView(
+                phase: coordinator.phase,
+                onRetry: { await coordinator.refresh() },
+                empty: { emptyScroll },
+                loaded: { _ in loadedScroll }
+            )
         }
         .navigationTitle("Mis eventos")
         .navigationBarTitleDisplayMode(.large)
         .task { await coordinator.refresh() }
+    }
+
+    /// Loaded path: el ScrollView con secciones temporales. AsyncContentView
+    /// se encarga del refresh inline progress + stale-on-error banner.
+    private var loadedScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                contentSections
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
+    }
+
+    /// Empty path: scroll vacío con el empty hero — el contenedor
+    /// scrollable mantiene el `.refreshable` para que el usuario pueda
+    /// hacer pull-to-refresh sin contenido.
+    private var emptyScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                emptyState
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
     }
 
     // MARK: - Sections
@@ -141,24 +161,8 @@ public struct MyFeedView: View {
         .padding(.top, RuulSpacing.s8)
     }
 
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: RuulSpacing.xs) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.ruulNegative)
-            Text(message)
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .lineLimit(2)
-        }
-        .padding(RuulSpacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulNegative.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulNegative.opacity(0.3), lineWidth: 0.5)
-        )
-    }
+    // Nota: la antigua `errorBanner(_:)` local quedó obsoleta — el
+    // `AsyncContentView` ya muestra el `ErrorBanner` DS automáticamente
+    // sobre la fase `.failed(_, previous:)`, preservando el tono
+    // conversacional pero sin re-implementar el chrome.
 }

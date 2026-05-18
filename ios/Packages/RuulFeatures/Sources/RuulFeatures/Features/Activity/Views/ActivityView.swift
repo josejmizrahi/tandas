@@ -154,24 +154,23 @@ public struct ActivityView: View {
 
     @ViewBuilder
     private var content: some View {
-        SwiftUI.Group {
-            if let error = coordinator.error, coordinator.events.isEmpty {
-                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                    .transition(.opacity)
-            } else if coordinator.events.isEmpty && coordinator.isLoading {
-                RuulLoadingState()
-                    .transition(.opacity)
-            } else if visibleEvents.isEmpty {
-                emptyState
-                    .transition(.opacity)
-            } else {
-                timelineList
-                    .transition(.opacity)
+        // AsyncContentView maneja loading/error/refresh/stale-on-error/empty
+        // por la fase upstream (events del server). El chip filter es puro
+        // cliente — si `coordinator.events` no está vacío pero el chip
+        // recorta todo, mostramos el empty inline dentro del builder
+        // `loaded` en vez de reportarlo a la fase.
+        AsyncContentView(
+            phase: coordinator.phase,
+            onRetry: { await coordinator.refresh() },
+            empty: { emptyState },
+            loaded: { _ in
+                if visibleEvents.isEmpty {
+                    emptyState
+                } else {
+                    timelineList
+                }
             }
-        }
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-        .animation(.linear(duration: RuulDuration.fast), value: visibleEvents.isEmpty)
+        )
     }
 
     private var timelineList: some View {

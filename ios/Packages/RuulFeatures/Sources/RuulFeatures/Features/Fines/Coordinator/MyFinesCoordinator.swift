@@ -9,6 +9,7 @@ public final class MyFinesCoordinator {
     public private(set) var groupsById: [UUID: Group] = [:]
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
+    public private(set) var hasLoaded: Bool = false
 
     private let userId: UUID
     private let fineRepo: any FineRepository
@@ -46,10 +47,24 @@ public final class MyFinesCoordinator {
 
     deinit { changeFeedTask?.cancel() }
 
+    /// `LoadPhase` derivado para `AsyncContentView`. Distingue "primera
+    /// carga vacía" (`.loading`) de "cargado sin multas" (`.empty`).
+    public var phase: LoadPhase<[Fine]> {
+        LoadPhase.fromCollection(
+            value: fines,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             async let finesTask = fineRepo.myFines(userId: userId)
             async let groupsTask: [Group] = {

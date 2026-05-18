@@ -25,6 +25,26 @@ public struct SpaceAvailabilityRow: Projection, Hashable {
     public let notes: String?
     public let bookedAt: Date
 
+    public init(
+        bookingId: UUID,
+        spaceId: UUID,
+        groupId: UUID,
+        memberId: UUID,
+        startsAt: Date?,
+        endsAt: Date?,
+        notes: String?,
+        bookedAt: Date
+    ) {
+        self.bookingId = bookingId
+        self.spaceId = spaceId
+        self.groupId = groupId
+        self.memberId = memberId
+        self.startsAt = startsAt
+        self.endsAt = endsAt
+        self.notes = notes
+        self.bookedAt = bookedAt
+    }
+
     public enum CodingKeys: String, CodingKey {
         case notes
         case bookingId  = "booking_id"
@@ -50,6 +70,22 @@ public struct SpaceCapacityRow: Projection, Hashable {
     public let activeBookings: Int
     public let waitlistCount: Int
     public let isFull: Bool
+
+    public init(
+        spaceId: UUID,
+        groupId: UUID,
+        capacity: Int?,
+        activeBookings: Int,
+        waitlistCount: Int,
+        isFull: Bool
+    ) {
+        self.spaceId = spaceId
+        self.groupId = groupId
+        self.capacity = capacity
+        self.activeBookings = activeBookings
+        self.waitlistCount = waitlistCount
+        self.isFull = isFull
+    }
 
     public var remaining: Int? {
         guard let capacity else { return nil }
@@ -83,6 +119,24 @@ public struct SpaceOccupancyRow: Projection, Hashable {
     public let notes: String?
     public let groupId: UUID
 
+    public init(
+        spaceId: UUID,
+        memberId: UUID,
+        lastCheckInActionId: UUID,
+        checkedInAt: Date,
+        bookingId: UUID?,
+        notes: String?,
+        groupId: UUID
+    ) {
+        self.spaceId = spaceId
+        self.memberId = memberId
+        self.lastCheckInActionId = lastCheckInActionId
+        self.checkedInAt = checkedInAt
+        self.bookingId = bookingId
+        self.notes = notes
+        self.groupId = groupId
+    }
+
     public enum CodingKeys: String, CodingKey {
         case notes
         case spaceId             = "space_id"
@@ -108,6 +162,24 @@ public struct SpaceHistoryRow: Projection, Hashable {
     public let memberId: UUID?
     public let payload: JSONConfig
     public let occurredAt: Date
+
+    public init(
+        eventId: UUID,
+        spaceId: UUID,
+        groupId: UUID,
+        eventType: SystemEventType,
+        memberId: UUID?,
+        payload: JSONConfig,
+        occurredAt: Date
+    ) {
+        self.eventId = eventId
+        self.spaceId = spaceId
+        self.groupId = groupId
+        self.eventType = eventType
+        self.memberId = memberId
+        self.payload = payload
+        self.occurredAt = occurredAt
+    }
 
     public enum CodingKeys: String, CodingKey {
         case payload

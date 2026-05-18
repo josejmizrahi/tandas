@@ -24,22 +24,14 @@ public struct ActionInboxView: View {
 
     @ViewBuilder
     private var contentLayer: some View {
-        SwiftUI.Group {
-            if let error = coordinator.error, coordinator.actions.isEmpty {
-                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.lg)
-                    .transition(.opacity)
-            } else if coordinator.actions.isEmpty && coordinator.isLoading {
-                RuulLoadingState()
-                    .transition(.opacity)
-            } else if coordinator.actions.isEmpty {
-                emptyState
-                    .transition(.opacity)
-            } else {
+        AsyncContentView(
+            phase: coordinator.phase,
+            onRetry: { await coordinator.refresh() },
+            empty: { emptyState },
+            loaded: { actions in
                 ScrollView {
                     VStack(alignment: .leading, spacing: RuulSpacing.xl) {
-                        ForEach(prioritizedBuckets(coordinator.actions), id: \.label) { bucket in
+                        ForEach(prioritizedBuckets(actions), id: \.label) { bucket in
                             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                                 RuulListSectionHeader(bucket.label.uppercased(), count: bucket.actions.count)
                                 RuulSeparatedRows(items: bucket.actions) { action in
@@ -56,12 +48,8 @@ public struct ActionInboxView: View {
                 .contentMargins(RuulSpacing.md, for: .scrollIndicators)
                 .scrollEdgeEffectStyle(.soft, for: .vertical)
                 .refreshable { await coordinator.refresh() }
-                .transition(.opacity)
             }
-        }
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.actions.isEmpty)
+        )
     }
 
     private var emptyState: some View {

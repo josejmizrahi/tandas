@@ -40,39 +40,46 @@ public struct MyFinesView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.fines.isEmpty {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.lg)
-                        .transition(.opacity)
-                } else if coordinator.fines.isEmpty && coordinator.isLoading {
-                    RuulLoadingState()
-                        .transition(.opacity)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                            header
-                            scopeChips
-                            pendingSection
-                            resolvedSection
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.xs)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
-                    .transition(.opacity)
-                }
-            }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.fines.isEmpty)
+            AsyncContentView(
+                phase: coordinator.phase,
+                onRetry: { await coordinator.refresh() },
+                empty: { emptyHero },
+                loaded: { _ in loadedScrollContainer }
+            )
         }
         .task { await coordinator.refresh() }
         .navigationTitle("Mis multas")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    /// Empty hero — usuario nunca ha tenido multas. Distinto del
+    /// "todo al corriente" celebratorio que aparece cuando hubo
+    /// multas y todas se pagaron (en `header`).
+    private var emptyHero: some View {
+        EmptyStateView(
+            systemImage: "checkmark.circle.fill",
+            title: "Sin multas",
+            message: "No tienes multas en este momento. Sigue así."
+        )
+        .padding(.horizontal, RuulSpacing.lg)
+        .frame(maxHeight: .infinity)
+        .refreshable { await coordinator.refresh() }
+    }
+
+    private var loadedScrollContainer: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                header
+                scopeChips
+                pendingSection
+                resolvedSection
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
     }
 
     /// Hero del header. Cuando `totalOutstanding == 0` la vista bascula a
@@ -181,16 +188,11 @@ public struct MyFinesView: View {
                     }
                 }
             }
-        } else if !coordinator.isLoading && coordinator.fines.isEmpty {
-            EmptyStateView(
-                systemImage: "checkmark.circle.fill",
-                title: "Sin multas",
-                message: "No tienes multas en este momento. Sigue así."
-            )
-            .padding(.top, RuulSpacing.lg)
-        } else if !coordinator.isLoading && filteredPending.isEmpty && scope != .all {
-            // Filtered to empty subset: distinct from "sin multas
-            // totales". Mantiene scopeChips visible para volver.
+        } else if filteredPending.isEmpty && scope != .all {
+            // Filtered subset vacío con multas existentes en otra ventana —
+            // distinto del empty global (que renderiza AsyncContentView).
+            // Mantenemos scopeChips visible para que el usuario pueda
+            // volver a "Todo".
             Text("Sin multas en este periodo.")
                 .ruulTextStyle(RuulTypography.callout)
                 .foregroundStyle(Color.ruulTextTertiary)

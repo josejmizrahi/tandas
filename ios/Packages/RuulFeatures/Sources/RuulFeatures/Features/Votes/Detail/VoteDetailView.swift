@@ -27,22 +27,17 @@ public struct VoteDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 VoteHeader(vote: coordinator.vote)
-                SwiftUI.Group {
-                    if let error = coordinator.error, coordinator.counts == nil {
-                        ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                            .transition(.opacity)
-                    } else if coordinator.isLoading && coordinator.counts == nil {
-                        RuulLoadingState()
-                            .frame(minHeight: 200)
-                            .transition(.opacity)
-                    } else {
-                        bodyForType
-                        VoteCastSection(coordinator: coordinator)
-                        adminActionsSection
+                AsyncContentView(
+                    phase: coordinator.phase,
+                    onRetry: { await coordinator.refresh() },
+                    loaded: { _ in
+                        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                            bodyForType
+                            VoteCastSection(coordinator: coordinator)
+                            adminActionsSection
+                        }
                     }
-                }
-                .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-                .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
+                )
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)

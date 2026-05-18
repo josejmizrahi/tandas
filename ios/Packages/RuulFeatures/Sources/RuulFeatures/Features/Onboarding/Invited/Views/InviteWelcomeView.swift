@@ -33,19 +33,16 @@ public struct InviteWelcomeView: View {
 
     @ViewBuilder
     private var content: some View {
-        if coord.isLoading {
-            RuulLoadingState()
-        } else if coord.error == .inviteCodeInvalid {
-            ErrorStateView(
-                systemImage: "link.badge.plus",
-                title: "Esta invitación ya no es válida",
-                message: "Pídele a tu amigo que te mande una nueva.",
-                retryAction: nil
-            )
-            .padding(RuulSpacing.lg)
-        } else if let preview = coord.preview {
-            previewLayout(for: preview)
-        }
+        // `previewPhase` collapses `isLoading` + `preview` + `error` into
+        // a single `LoadPhase`. AsyncContentView renders the standard
+        // loading/error/loaded primitives — the only welcome-specific
+        // wrinkle was the `.inviteCodeInvalid` copy, which now flows
+        // through the `CoordinatorError.title` in `previewPhase`.
+        AsyncContentView(
+            phase: coord.previewPhase,
+            onRetry: nil,
+            loaded: { preview in previewLayout(for: preview) }
+        )
     }
 
     /// Tripsy-style invite layout: avatar stack → headline → poster card

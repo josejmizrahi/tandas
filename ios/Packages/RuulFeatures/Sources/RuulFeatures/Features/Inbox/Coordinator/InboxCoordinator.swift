@@ -10,6 +10,10 @@ public final class InboxCoordinator {
     public private(set) var groupsById: [UUID: Group] = [:]
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
+    /// True después de que `refresh()` completó al menos una vez. Permite
+    /// distinguir "primera carga" de "loaded empty" cuando `actions == []`.
+    /// Consumido por `LoadPhase.fromCollection` en la computed `phase`.
+    public private(set) var hasLoaded: Bool = false
 
     private let userId: UUID
     /// When nil (default in 14.2), the inbox is cross-group: every pending
@@ -61,10 +65,24 @@ public final class InboxCoordinator {
 
     deinit { changeFeedTask?.cancel() }
 
+    /// Adapter para `AsyncContentView`. Deriva el `LoadPhase` desde los
+    /// campos `@Observable` que ya mantenemos.
+    public var phase: LoadPhase<[UserAction]> {
+        LoadPhase.fromCollection(
+            value: actions,
+            hasLoaded: hasLoaded,
+            isLoading: isLoading,
+            error: error
+        )
+    }
+
     public func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
         do {
             async let actionsTask = userActionRepo.pending(userId: userId, groupId: groupId)
             async let groupsTask: [Group] = {

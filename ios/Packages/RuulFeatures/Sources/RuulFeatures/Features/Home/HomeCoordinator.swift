@@ -6,6 +6,17 @@ import RuulCore
 
 @Observable @MainActor
 public final class HomeCoordinator {
+    /// Aggregate visible state que consume `AsyncContentView` vía `phase`.
+    /// El home mezcla events + non-event resources en un mismo feed; el
+    /// `phase` se evalúa vacío sólo cuando ambos collections lo están.
+    /// Es `Equatable` porque `Event` y `ResourceRow` también lo son
+    /// (requerido por `LoadPhase.Equatable` para animar transiciones).
+    public struct HomeFeed: Equatable, Sendable {
+        public var events: [Event]
+        public var resources: [ResourceRow]
+        public var isEmpty: Bool { events.isEmpty && resources.isEmpty }
+    }
+
     public private(set) var nextEvent: Event?
     public private(set) var upcomingEvents: [Event] = []
     public private(set) var upcomingResources: [ResourceRow] = []
@@ -23,6 +34,35 @@ public final class HomeCoordinator {
     public private(set) var isLoading: Bool = false
     public private(set) var error: CoordinatorError?
     public private(set) var lastRefreshedAt: Date?
+
+    /// Adapter para `AsyncContentView`. Se evalúa loaded cuando hay
+    /// **cualquier** feed item (event o resource) y empty cuando ambos
+    /// están vacíos. `hasLoaded` deriva del snapshot cache — si la
+    /// rehidratación del cache pinta `lastRefreshedAt`, ya somos
+    /// "loaded once" para este grupo y evitamos el spinner flash.
+    ///
+    /// Usamos `LoadPhase.from(value:isLoading:error:isEmpty:)` (no la
+    /// variante `fromCollection`) porque `HomeFeed` es un aggregate
+    /// custom — no conforma a `Collection`. Pasamos el `value`
+    /// envolviéndolo en optional sólo cuando `hasLoaded == true` para
+    /// que la primera carga colapse correctamente a `.loading` en vez
+    /// de `.empty`.
+    public var phase: LoadPhase<HomeFeed> {
+        let feed = HomeFeed(events: upcomingEvents, resources: upcomingResources)
+        return LoadPhase.from(
+            value: hasLoaded ? feed : nil,
+            isLoading: isLoading,
+            error: error,
+            isEmpty: { $0.isEmpty }
+        )
+    }
+
+    /// True si el grupo activo tiene un snapshot hidratado (sea por
+    /// fresh fetch o cache hit). Cuando `setActiveGroup` cold-pathea
+    /// un grupo sin snapshot, se setea `lastRefreshedAt = nil` y este
+    /// flag colapsa a false — el primer fetch verá `.loading` en vez
+    /// de un `.empty` falso.
+    public var hasLoaded: Bool { lastRefreshedAt != nil }
 
     /// Active group whose feed is currently displayed. Mutable so the
     /// coordinator can outlive a group switch (see `setActiveGroup`) and

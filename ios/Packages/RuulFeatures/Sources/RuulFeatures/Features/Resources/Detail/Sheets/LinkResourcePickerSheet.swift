@@ -20,8 +20,13 @@ public struct LinkResourcePickerSheet: View {
     public let alreadyLinkedIds: Set<UUID>
     public let onLinked: (UUID) -> Void
 
-    @State private var candidates: [ResourceRow] = []
-    @State private var hasLoaded: Bool = false
+    /// LoadPhase-driven state replaces the legacy `hasLoaded + silent error
+    /// folded into errorText`. Previously a failed `resourceRepo.list` set
+    /// `errorText` to a generic string but the user couldn't retry without
+    /// dismissing the sheet; now `.failed` surfaces a proper retry button.
+    /// `loadError` stays separate from `errorText` (link failures still
+    /// flow through `errorText` since the sheet body is loaded).
+    @State private var loadPhase: LoadPhase<[ResourceRow]> = .idle
     @State private var submittingId: UUID?
     @State private var errorText: String?
 
@@ -41,29 +46,12 @@ public struct LinkResourcePickerSheet: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                    headerCopy
-                    if hasLoaded && pickable.isEmpty {
-                        emptyState
-                    } else {
-                        VStack(spacing: RuulSpacing.xs) {
-                            ForEach(pickable) { row in
-                                resourceRow(row)
-                            }
-                        }
-                    }
-                    if let errorText {
-                        Text(errorText)
-                            .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulNegative)
-                            .padding(.horizontal, RuulSpacing.xxs)
-                    }
-                }
-                .padding(.horizontal, RuulSpacing.lg)
-                .padding(.top, RuulSpacing.md)
-                .padding(.bottom, RuulSpacing.xxl)
-            }
+            AsyncContentView(
+                phase: loadPhase,
+                onRetry: { await loadCandidates(force: true) },
+                empty: { emptyScrollContainer },
+                loaded: { rows in loadedScrollContainer(rows) }
+            )
             .ruulAmbientScreen(palette: nil)
             .task { await loadCandidates() }
             .ruulSheetToolbar("Vincular recurso")
@@ -72,10 +60,65 @@ public struct LinkResourcePickerSheet: View {
 
     // MARK: - Candidate filtering
 
-    private var pickable: [ResourceRow] {
-        candidates
+    private func pickable(from rows: [ResourceRow]) -> [ResourceRow] {
+        rows
             .filter { !alreadyLinkedIds.contains($0.id) }
             .sorted { displayName($0).localizedCaseInsensitiveCompare(displayName($1)) == .orderedAscending }
+    }
+
+    /// Shared scroll container so empty + loaded share the same chrome
+    /// (header copy + padding). Keeps the user oriented when the picker
+    /// flips between "no candidates" and "1 candidate" mid-session.
+    private var emptyScrollContainer: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                headerCopy
+                emptyState
+                inlineSubmitError
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.xxl)
+        }
+    }
+
+    private func loadedScrollContainer(_ rows: [ResourceRow]) -> some View {
+        let visible = pickable(from: rows)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                headerCopy
+                if visible.isEmpty {
+                    // Server returned rows but every one of them is already
+                    // linked to this event — still an "empty" UX (nothing
+                    // to do), but the AsyncContentView didn't trigger
+                    // `.empty` because the raw list isn't empty.
+                    emptyState
+                } else {
+                    VStack(spacing: RuulSpacing.xs) {
+                        ForEach(visible) { row in
+                            resourceRow(row)
+                        }
+                    }
+                }
+                inlineSubmitError
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.xxl)
+        }
+    }
+
+    /// Inline error for `link()` failures — distinct from the full-screen
+    /// `ErrorStateView` that `AsyncContentView` shows when the initial
+    /// candidate fetch fails.
+    @ViewBuilder
+    private var inlineSubmitError: some View {
+        if let errorText {
+            Text(errorText)
+                .ruulTextStyle(RuulTypography.caption)
+                .foregroundStyle(Color.ruulNegative)
+                .padding(.horizontal, RuulSpacing.xxs)
+        }
     }
 
     // MARK: - Subviews
@@ -161,8 +204,12 @@ public struct LinkResourcePickerSheet: View {
 
     // MARK: - Actions
 
-    private func loadCandidates() async {
-        guard !hasLoaded else { return }
+    private func loadCandidates(force: Bool = false) async {
+        // Avoid re-running the request when the sheet body re-evaluates
+        // unless the caller explicitly forces a retry from the error UI.
+        if !force, case .loaded = loadPhase { return }
+        if !force, case .refreshing = loadPhase { return }
+        await MainActor.run { self.loadPhase = .loading }
         do {
             let rows = try await app.resourceRepo.list(
                 in: groupId,
@@ -171,13 +218,14 @@ public struct LinkResourcePickerSheet: View {
                 limit: 200
             )
             await MainActor.run {
-                self.candidates = rows
-                self.hasLoaded = true
+                self.loadPhase = rows.isEmpty ? .empty : .loaded(rows)
             }
         } catch {
             await MainActor.run {
-                self.errorText = "No pudimos cargar los recursos del grupo."
-                self.hasLoaded = true
+                self.loadPhase = .failed(
+                    CoordinatorError.from(error, fallback: "No pudimos cargar los recursos del grupo"),
+                    previous: nil
+                )
             }
         }
     }

@@ -126,52 +126,12 @@ public struct RulesView: View {
     }
 
     public var body: some View {
-        SwiftUI.Group {
-            if let error = coordinator.error, coordinator.rules.isEmpty {
-                ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.lg)
-                    .transition(.opacity)
-            } else if coordinator.isLoading && coordinator.rules.isEmpty {
-                RuulLoadingState()
-                    .transition(.opacity)
-            } else if coordinator.rules.isEmpty {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                        header
-                        emptyStateBody
-                    }
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.md)
-                    .padding(.bottom, RuulSpacing.s12)
-                }
-                .scrollIndicators(.hidden)
-                .refreshable { await coordinator.refresh() }
-                .transition(.opacity)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                        header
-                        // "Votos abiertos" link removed — votes have their
-                            // own sub-tab post-Plan1 cleanup. RulesView stays
-                            // focused on rule list + governance.
-                        RuulSeparatedRows(items: coordinator.rules) { rule in
-                            ruleCard(rule)
-                        }
-                        footnote
-                    }
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.md)
-                    .padding(.bottom, RuulSpacing.s12)
-                }
-                .scrollIndicators(.hidden)
-                .refreshable { await coordinator.refresh() }
-                .transition(.opacity)
-            }
-        }
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.rules.isEmpty)
+        AsyncContentView(
+            phase: coordinator.phase,
+            onRetry: { await coordinator.refresh() },
+            empty: { emptyScrollContainer },
+            loaded: { rules in loadedScrollContainer(rules) }
+        )
         .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .fullScreenCover(item: $composerCoord) { coord in
@@ -261,6 +221,40 @@ public struct RulesView: View {
 
     private var activeCount: Int {
         coordinator.rules.filter(\.isLive).count
+    }
+
+    /// Empty/loaded shells reusan el mismo scroll + header para que la
+    /// transición entre estados sea continua (sin que el header
+    /// desaparezca/reaparezca).
+    private var emptyScrollContainer: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                header
+                emptyStateBody
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
+    }
+
+    private func loadedScrollContainer(_ rules: [GroupRule]) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                header
+                RuulSeparatedRows(items: rules) { rule in
+                    ruleCard(rule)
+                }
+                footnote
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
     }
 
     /// Empty-state body rendered below the header when the group has zero

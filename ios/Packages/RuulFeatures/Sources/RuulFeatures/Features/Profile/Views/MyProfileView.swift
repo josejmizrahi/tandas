@@ -88,40 +88,15 @@ public struct MyProfileView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackground.ignoresSafeArea()
-            SwiftUI.Group {
-                if let error = coordinator.error, coordinator.profile == nil {
-                    ErrorStateView(error: error, retry: { Task { await coordinator.refresh() } })
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.lg)
-                        .transition(.opacity)
-                } else if coordinator.profile == nil && coordinator.isLoading {
-                    RuulLoadingState().transition(.opacity)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                            hero
-                            myGroupsSection
-                            identitySection
-                            preferencesSection
-                            notificationsSection
-                            activitySection
-                            settingsSection
-                            appearanceSection
-                            dataAndAccountSection
-                            signOutButton
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.xs)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
-                    .transition(.opacity)
-                }
-            }
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.error)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-            .animation(.linear(duration: RuulDuration.fast), value: coordinator.profile?.id)
+            // Profile es scalar — no aplica `.empty`. AsyncContentView
+            // sin el builder `empty:` colapsa a `EmptyView` cuando el
+            // factory `LoadPhase.from` nunca dispara `.empty` (es el
+            // caso aquí: la API siempre devuelve un Profile o un error).
+            AsyncContentView(
+                phase: coordinator.phase,
+                onRetry: { await coordinator.refresh() },
+                loaded: { _ in loadedScroll }
+            )
         }
         .ruulAppToolbar(showsGroupAvatar: false)
         .task { await coordinator.refresh() }
@@ -135,6 +110,30 @@ public struct MyProfileView: View {
         } message: {
             Text("Tus grupos, multas e historia siguen guardados. Vuelves a entrar con el mismo teléfono o Apple ID.")
         }
+    }
+
+    /// Scroll contenedor del Profile cargado. Extraído para que el
+    /// `loaded` builder de `AsyncContentView` quede declarativo.
+    private var loadedScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                hero
+                myGroupsSection
+                identitySection
+                preferencesSection
+                notificationsSection
+                activitySection
+                settingsSection
+                appearanceSection
+                dataAndAccountSection
+                signOutButton
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
     }
 
     // MARK: Hero (avatar + name + cross-group meta)

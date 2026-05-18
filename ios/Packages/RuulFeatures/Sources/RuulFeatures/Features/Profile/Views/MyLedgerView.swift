@@ -29,47 +29,43 @@ public struct MyLedgerView: View {
     }
 
     public var body: some View {
-        SwiftUI.Group {
-                if let err = coordinator.error {
-                    ErrorStateView(
-                        error: CoordinatorError(
-                            title: "Sin acceso",
-                            message: err,
-                            isRetryable: true
-                        ),
-                        retry: { Task { await coordinator.refresh() } }
-                    )
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.lg)
-                    .transition(.opacity)
-                } else if coordinator.isLoading && coordinator.ledgers.isEmpty {
-                    RuulLoadingState().transition(.opacity)
-                } else if !coordinator.hasAnyActivity {
+        AsyncContentView(
+            phase: coordinator.phase,
+            onRetry: { await coordinator.refresh() },
+            empty: { emptyState },
+            loaded: { _ in
+                // Branch interno: si los ledgers cargaron pero nadie
+                // movió plata, mostramos el mismo emptyState (mirror del
+                // patrón `hasAnyActivity` original). Si hay totales,
+                // renderizamos el contenido real con su scroll +
+                // refreshable.
+                if !coordinator.hasAnyActivity {
                     emptyState
-                        .transition(.opacity)
                 } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                            heroPair
-                            netRow
-                            perGroupSection
-                            recentSection
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.xs)
-                        .padding(.bottom, RuulSpacing.s12)
-                    }
-                    .scrollIndicators(.hidden)
-                    .refreshable { await coordinator.refresh() }
-                    .transition(.opacity)
+                    loadedScroll
                 }
             }
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.isLoading)
-        .animation(.linear(duration: RuulDuration.fast), value: coordinator.hasAnyActivity)
+        )
         .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .navigationTitle("Mis movimientos")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var loadedScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                heroPair
+                netRow
+                perGroupSection
+                recentSection
+            }
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.xs)
+            .padding(.bottom, RuulSpacing.s12)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable { await coordinator.refresh() }
     }
 
     // MARK: - Hero pair
