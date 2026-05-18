@@ -89,7 +89,11 @@ public struct RulesView: View {
             repo: repo,
             scope: .group,
             resourceType: nil,
-            starterTemplates: ruleTemplates
+            // Filter to canonical Beta-1 templates only — universals,
+            // no aliases, no post_beta. UniversalRuleTemplates.md §14.2.
+            starterTemplates: ruleTemplates.filter {
+                $0.aliasOf == nil && $0.status == "active" && $0.betaStatus == "beta1"
+            }
         )
     }
 

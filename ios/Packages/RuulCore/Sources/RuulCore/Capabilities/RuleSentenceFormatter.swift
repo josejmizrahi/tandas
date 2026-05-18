@@ -15,6 +15,86 @@ import Foundation
 /// version of the raw `eventType.rawString` / `consequenceType.rawString`.
 public enum RuleSentenceFormatter {
 
+    /// Templated preview for a `RuleBuilderTemplate` Gallery card —
+    /// interpolates `naturalLanguagePreviewTemplate` (mig 00295) with
+    /// the template's `defaultParams`, returning a sentence the user
+    /// sees BEFORE picking the template ("Si un miembro llega más de
+    /// 15 minutos tarde a este evento, se le cobra $200.").
+    ///
+    /// Falls back to `descriptionES` when the template was seeded before
+    /// mig 00295 and has no preview template set. UniversalRuleTemplates.md
+    /// §8.5 and §9.2 — "the sentence is source-of-truth UX".
+    ///
+    /// Pass `paramsOverride` when the caller has already collected user
+    /// input (e.g. inside the param form); else `defaultParams` are used
+    /// so the Gallery card shows the same sentence the user will see
+    /// post-pick with no changes.
+    public static func preview(
+        forTemplate template: RuleBuilderTemplate,
+        paramsOverride: [String: JSONConfig]? = nil
+    ) -> String {
+        guard let templateString = template.naturalLanguagePreviewTemplate else {
+            return template.descriptionES
+        }
+        let params = paramsOverride ?? defaultParamsDict(template.defaultParams)
+        return interpolate(templateString, params: params)
+    }
+
+    /// Substitutes `{{key}}` placeholders in a templated sentence with
+    /// values from `params`. Unknown placeholders are left intact so the
+    /// gap is visible (helps surface forgotten params in QA).
+    ///
+    /// `{{resource.name}}` is special-cased: when the caller can't supply
+    /// a real resource reference (e.g. Gallery preview), it renders as a
+    /// neutral "este recurso" so the sentence still reads.
+    static func interpolate(_ template: String, params: [String: JSONConfig]) -> String {
+        var result = template
+        for (key, value) in params {
+            let placeholder = "{{\(key)}}"
+            result = result.replacingOccurrences(of: placeholder, with: stringValue(value))
+        }
+        // Common references the Gallery preview can't resolve from
+        // params alone — softened defaults keep the sentence readable.
+        result = result.replacingOccurrences(of: "{{resource.name}}",  with: "este recurso")
+        result = result.replacingOccurrences(of: "{{threshold}}",      with: thresholdString(params: params))
+        return result
+    }
+
+    private static func defaultParamsDict(_ params: JSONConfig) -> [String: JSONConfig] {
+        if case .object(let dict) = params { return dict }
+        return [:]
+    }
+
+    private static func stringValue(_ config: JSONConfig) -> String {
+        switch config {
+        case .int(let i):    return String(i)
+        case .string(let s): return s
+        case .bool(let b):   return b ? "sí" : "no"
+        case .double(let d): return String(d)
+        case .object, .array, .null: return ""
+        }
+    }
+
+    /// `threshold_cents` (cents) → "$2,000" presentation. Falls back to
+    /// the raw `threshold` int if it's already in display units.
+    private static func thresholdString(params: [String: JSONConfig]) -> String {
+        if case .int(let cents) = params["threshold_cents"] {
+            return formatMxn(cents / 100)
+        }
+        if case .int(let amount) = params["threshold"] {
+            return formatMxn(amount)
+        }
+        return "{{threshold}}"
+    }
+
+    private static func formatMxn(_ value: Int) -> String {
+        let nf = NumberFormatter()
+        nf.numberStyle = .decimal
+        nf.groupingSeparator = ","
+        nf.locale = Locale(identifier: "es_MX")
+        return nf.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
     /// Compact "Si X → Y" sentence for a persisted rule. Used in rule
     /// list rows and per-event Rules sections.
     public static func sentence(

@@ -23,6 +23,54 @@ public struct RuleBuilderTemplate: Identifiable, Codable, Sendable, Hashable {
     public let status: String
     public let sortOrder: Int
 
+    // Universal-contract fields — mig 00295 (Plans/Active/UniversalRuleTemplates.md §6).
+    // All optional/default-bearing so existing mock and live call sites still
+    // compile. Catalog rows seeded pre-mig-00295 decode with the column-level
+    // defaults (`uncategorized`, empty arrays, `post_beta`).
+
+    /// Universal category from `Plans/Active/UniversalRuleTemplates.md §3`
+    /// (e.g. "C — Obligation", "D — Governance"). Rendered as a badge chip
+    /// in the Gallery card. Defaults to `"uncategorized"` for legacy rows.
+    public let doctrinalCategory: String
+
+    /// Antitemplate hints rendered as the "Esto NO" line on the Gallery
+    /// card. Distinguishes neighbouring templates (e.g. `deadline_enforcement`
+    /// is NOT `capacity_limit`).
+    public let whatItIsNot: [String]
+
+    /// Coordination patterns this template applies to. The §2.1 universality
+    /// test requires ≥5 entries before a template enters the catalog.
+    public let examplesAcrossVerticals: [TemplateVerticalExample]
+
+    /// es-MX templated string with `{{param_key}}` placeholders. The
+    /// declarative sentence formatter interpolates current form params
+    /// into this template. `nil` = fall back to the legacy hardcoded
+    /// formatter for templates seeded before mig 00295.
+    public let naturalLanguagePreviewTemplate: String?
+
+    /// Template-specific conflict signatures `publish_rule_composition`
+    /// runs at publish-time.
+    public let conflictsToDetect: [String]
+
+    /// Lifecycle marker. Gallery filters on `beta1`; admin views can list
+    /// `post_beta` to see the backlog.
+    public let betaStatus: String
+
+    /// Scope levels this template supports when published (subset of
+    /// `{occurrence, resource, series, resource_type, capability, group,
+    /// global_default}`). Empty = inherits from trigger shape.
+    public let supportedScopes: [String]
+
+    /// Fixture ids that must exist before this template can be published.
+    /// CI lint blocks templates with < 5 fixtures.
+    public let testsRequired: [String]
+
+    /// When non-nil: this template is an alias of a more universal one
+    /// (e.g. `late_arrival_fine` → `missed_obligation_consequence`). The
+    /// Gallery filters aliased templates out; the engine resolves them
+    /// just fine because rule_versions FK by template_id.
+    public let aliasOf: String?
+
     public struct Composition: Codable, Sendable, Hashable {
         public let triggerShapeId: String
         public let conditionShapeIds: [String]
@@ -51,12 +99,21 @@ public struct RuleBuilderTemplate: Identifiable, Codable, Sendable, Hashable {
 
     public enum CodingKeys: String, CodingKey {
         case id, category, composition, status
-        case displayNameES        = "display_name_es"
-        case descriptionES        = "description_es"
-        case templateKind         = "template_kind"
-        case requiredCapabilities = "required_capabilities"
-        case defaultParams        = "default_params"
-        case sortOrder            = "sort_order"
+        case displayNameES                  = "display_name_es"
+        case descriptionES                  = "description_es"
+        case templateKind                   = "template_kind"
+        case requiredCapabilities           = "required_capabilities"
+        case defaultParams                  = "default_params"
+        case sortOrder                      = "sort_order"
+        case doctrinalCategory              = "doctrinal_category"
+        case whatItIsNot                    = "what_it_is_not"
+        case examplesAcrossVerticals        = "examples_across_verticals"
+        case naturalLanguagePreviewTemplate = "natural_language_preview_template_es"
+        case conflictsToDetect              = "conflicts_to_detect"
+        case betaStatus                     = "beta_status"
+        case supportedScopes                = "supported_scopes"
+        case testsRequired                  = "tests_required"
+        case aliasOf                        = "alias_of"
     }
 
     public init(
@@ -69,18 +126,87 @@ public struct RuleBuilderTemplate: Identifiable, Codable, Sendable, Hashable {
         defaultParams: JSONConfig = .object([:]),
         composition: Composition,
         status: String = "active",
-        sortOrder: Int = 100
+        sortOrder: Int = 100,
+        doctrinalCategory: String = "uncategorized",
+        whatItIsNot: [String] = [],
+        examplesAcrossVerticals: [TemplateVerticalExample] = [],
+        naturalLanguagePreviewTemplate: String? = nil,
+        conflictsToDetect: [String] = [],
+        betaStatus: String = "post_beta",
+        supportedScopes: [String] = [],
+        testsRequired: [String] = [],
+        aliasOf: String? = nil
     ) {
-        self.id                   = id
-        self.displayNameES        = displayNameES
-        self.descriptionES        = descriptionES
-        self.category             = category
-        self.templateKind         = templateKind
-        self.requiredCapabilities = requiredCapabilities
-        self.defaultParams        = defaultParams
-        self.composition          = composition
-        self.status               = status
-        self.sortOrder            = sortOrder
+        self.id                             = id
+        self.displayNameES                  = displayNameES
+        self.descriptionES                  = descriptionES
+        self.category                       = category
+        self.templateKind                   = templateKind
+        self.requiredCapabilities           = requiredCapabilities
+        self.defaultParams                  = defaultParams
+        self.composition                    = composition
+        self.status                         = status
+        self.sortOrder                      = sortOrder
+        self.doctrinalCategory              = doctrinalCategory
+        self.whatItIsNot                    = whatItIsNot
+        self.examplesAcrossVerticals        = examplesAcrossVerticals
+        self.naturalLanguagePreviewTemplate = naturalLanguagePreviewTemplate
+        self.conflictsToDetect              = conflictsToDetect
+        self.betaStatus                     = betaStatus
+        self.supportedScopes                = supportedScopes
+        self.testsRequired                  = testsRequired
+        self.aliasOf                        = aliasOf
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id                   = try c.decode(String.self, forKey: .id)
+        self.displayNameES        = try c.decode(String.self, forKey: .displayNameES)
+        self.descriptionES        = try c.decode(String.self, forKey: .descriptionES)
+        self.category             = try c.decode(String.self, forKey: .category)
+        self.templateKind         = try c.decode(String.self, forKey: .templateKind)
+        self.requiredCapabilities = (try? c.decode([String].self, forKey: .requiredCapabilities)) ?? []
+        self.defaultParams        = (try? c.decode(JSONConfig.self, forKey: .defaultParams)) ?? .object([:])
+        self.composition          = try c.decode(Composition.self, forKey: .composition)
+        self.status               = (try? c.decode(String.self, forKey: .status)) ?? "active"
+        self.sortOrder            = (try? c.decode(Int.self, forKey: .sortOrder)) ?? 100
+        self.doctrinalCategory    = (try? c.decode(String.self, forKey: .doctrinalCategory)) ?? "uncategorized"
+        self.whatItIsNot          = (try? c.decode([String].self, forKey: .whatItIsNot)) ?? []
+        self.examplesAcrossVerticals = (try? c.decode([TemplateVerticalExample].self, forKey: .examplesAcrossVerticals)) ?? []
+        self.naturalLanguagePreviewTemplate = try c.decodeIfPresent(String.self, forKey: .naturalLanguagePreviewTemplate)
+        self.conflictsToDetect    = (try? c.decode([String].self, forKey: .conflictsToDetect)) ?? []
+        self.betaStatus           = (try? c.decode(String.self, forKey: .betaStatus)) ?? "post_beta"
+        self.supportedScopes      = (try? c.decode([String].self, forKey: .supportedScopes)) ?? []
+        self.testsRequired        = (try? c.decode([String].self, forKey: .testsRequired)) ?? []
+        self.aliasOf              = try c.decodeIfPresent(String.self, forKey: .aliasOf)
+    }
+}
+
+/// One coordination example declared by a template's `examples_across_verticals`
+/// array. Used in §2.1 universality validation and rendered as a chip on the
+/// Gallery card.
+public struct TemplateVerticalExample: Codable, Sendable, Hashable {
+    public let vertical: String
+    public let labelGrupo: String
+    public let params: JSONConfig
+
+    public enum CodingKeys: String, CodingKey {
+        case vertical
+        case labelGrupo = "label_grupo"
+        case params
+    }
+
+    public init(vertical: String, labelGrupo: String, params: JSONConfig = .object([:])) {
+        self.vertical   = vertical
+        self.labelGrupo = labelGrupo
+        self.params     = params
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.vertical   = try c.decode(String.self, forKey: .vertical)
+        self.labelGrupo = try c.decode(String.self, forKey: .labelGrupo)
+        self.params     = (try? c.decode(JSONConfig.self, forKey: .params)) ?? .object([:])
     }
 }
 

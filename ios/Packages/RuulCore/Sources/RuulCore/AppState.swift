@@ -80,10 +80,27 @@ public final class AppState {
 
     /// Catalog of curated rule templates for the Beta 1 Rule Builder.
     /// Boots cold from `MockRuleTemplateRepository.defaultBetaCatalog`
-    /// (5 attendance-fine variants from mig 00182) and is refreshed by
-    /// `loadRuleTemplates()` after `list_rule_templates` returns. Drives
-    /// the Template Gallery + Param Form UI. Per Governance.md §0.5.
+    /// and is refreshed by `loadRuleTemplates()` after
+    /// `list_rule_templates` returns. Includes aliased + post_beta rows
+    /// so `RuleDetailView` can look up the template referenced by an
+    /// existing `rule_versions.template_id` even if the catalog has
+    /// since reclassified it. Per Governance.md §0.5 + UniversalRuleTemplates.md §14.
     public var ruleTemplates: [RuleBuilderTemplate] = MockRuleTemplateRepository.defaultBetaCatalog
+
+    /// Subset of `ruleTemplates` shown in the Gallery / Starter picker.
+    /// Filters out:
+    /// - aliased templates (collapsed under their universal — §14.2)
+    /// - non-beta1 lifecycle rows (post_beta / never — §4 of the doctrine)
+    /// - inactive rows
+    /// The Gallery surface is the user-facing canonical catalog; admin
+    /// views can still walk `ruleTemplates` directly to see everything.
+    public var ruleTemplatesForGallery: [RuleBuilderTemplate] {
+        ruleTemplates.filter { template in
+            template.aliasOf == nil
+                && template.status == "active"
+                && template.betaStatus == "beta1"
+        }
+    }
 
     /// Pass 1 frontend remodel: A/B flag between legacy `MainTabView`
     /// (Features/Events) and new `RootShell` (Features/Shell). Flipped

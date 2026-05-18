@@ -226,6 +226,13 @@ struct ResourceRulesSheet: View {
         let resourceType = coordinator.context.resourceType
         let registry = coordinator.shapeRegistry
         let compatible = app.ruleTemplates.filter { template in
+            // Universal-templates filter (UniversalRuleTemplates.md §14.2):
+            // only Beta-1 canonical templates surface in the Gallery; aliases
+            // and post_beta rows are hidden but stay resolvable by the engine.
+            guard template.aliasOf == nil,
+                  template.status == "active",
+                  template.betaStatus == "beta1"
+            else { return false }
             guard let shape = registry.shape(id: template.composition.triggerShapeId) else { return true }
             if shape.validResourceTypes.isEmpty { return true }
             return shape.validResourceTypes.contains(resourceType)
