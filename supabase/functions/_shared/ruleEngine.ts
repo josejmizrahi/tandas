@@ -356,6 +356,18 @@ export interface ConsequenceSink {
   loadMemberRoles(memberId: UUID): Promise<string[]>;
 
   /**
+   * Returns the UNION of permission strings across all roles the member
+   * holds. Mirrors has_permission semantics: a permission appears in
+   * the result iff at least one of the member's roles in the group
+   * catalog grants it. Powered by `list_member_permissions(member_id)`
+   * RPC (mig 00300). Used by `actorHasPermission` condition (V7) —
+   * permission-based alternative to actorHasRole that respects the
+   * role/permission separation. Empty array when the member has no
+   * roles, doesn't exist, or no role grants any permission.
+   */
+  loadMemberPermissions(memberId: UUID): Promise<string[]>;
+
+  /**
    * Invokes `expire_booking(booking_id, reason)` for the `releaseBooking`
    * consequence (Plans/Active/SpaceRules.md PR-3). Emits `bookingExpired`
    * + (when target is a space) `spaceReleased`. Idempotent server-side:

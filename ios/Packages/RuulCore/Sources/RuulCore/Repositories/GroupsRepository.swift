@@ -701,14 +701,13 @@ public actor LiveGroupsRepository: GroupsRepository {
         }
     }
 
+    /// Sprint F V26 fix: delegate to the canonical `leave_group` RPC
+    /// (mig 00115) instead of the legacy direct UPDATE. The RPC emits
+    /// the `memberLeft` atom server-side; the direct UPDATE silently
+    /// skipped it. Kept as a thin wrapper for the existing protocol
+    /// + callers (RootShellSheets, LeaveGroupConfirmationSheet).
     public func leave(_ id: UUID) async throws {
-        let userId = try await client.auth.session.user.id
-        try await client
-            .from("group_members")
-            .update(["active": false])
-            .eq("group_id", value: id.uuidString.lowercased())
-            .eq("user_id", value: userId.uuidString.lowercased())
-            .execute()
+        try await leaveGroup(groupId: id)
     }
 
     public func members(of groupId: UUID) async throws -> [Member] {

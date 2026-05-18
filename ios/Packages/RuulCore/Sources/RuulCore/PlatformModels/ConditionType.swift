@@ -112,7 +112,20 @@ public enum ConditionType: Codable, Sendable, Hashable {
     /// `group_members.roles` jsonb. Drives the
     /// `space_founder_priority_bump` template.
     /// Config: `{ "role": "founder" }`.
+    ///
+    /// V7 doctrine: label-only check — does NOT consult the permission
+    /// catalog. Prefer `actorHasPermission` for capability-based gates.
+    /// `actorHasRole` stays for rules that care about role identity
+    /// rather than capability.
     case actorHasRole
+
+    /// True when the actor (target.member_id) holds at least one role
+    /// granting the configured permission. Reads
+    /// `target.context.actor_permissions` projected by the trigger via
+    /// `list_member_permissions(member_id)` (mig 00300). Doctrinal
+    /// counterpart to `actorHasRole` — respects role/permission
+    /// separation. Config: `{ "permission": "modifyGovernance" }`.
+    case actorHasPermission
 
     /// True when the booking's `ends_at - starts_at` exceeds the
     /// configured minutes. Reads `target.context.booking_duration_minutes`.

@@ -82,6 +82,7 @@ function captureSink(): {
     // fixtures in this file but required by the ConsequenceSink contract.
     loadBookingMetadata: async () => null,
     loadMemberRoles: async () => [],
+    loadMemberPermissions: async () => [],
     expireBooking: async (args) => args.booking_id,
     bumpWaitlistPriority: async (args) => `bump-${args.source_atom_id}`,
     // v1.1 RuleEngineDoctrine §4 pre-dispatch dedup. Default to true

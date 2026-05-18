@@ -183,12 +183,33 @@ export const CONDITIONS: Partial<Record<ConditionType, ConditionEvaluator>> = {
   // false when actor_roles isn't projected (defensive — shouldn't
   // happen with PR-3 triggers but keeps the condition usable for hand-
   // emitted atoms).
+  //
+  // V7 doctrine: this condition is label-only — it doesn't consult the
+  // permission catalog. Prefer `actorHasPermission` for new rules that
+  // gate on a specific capability (modifyGovernance, transferRight,
+  // etc.). `actorHasRole` stays for rules that care about role identity
+  // (e.g. "Founder gets priority bump in waitlist") rather than
+  // capability — those are still legitimate scenarios.
   actorHasRole: async (cond, target) => {
     const role = cond.config.role as string | undefined;
     if (!role) return false;
     const roles = target.context.actor_roles as string[] | null | undefined;
     if (!Array.isArray(roles)) return false;
     return roles.includes(role);
+  },
+
+  // (V7) True when the actor (target.member_id) holds a role that grants
+  // the configured permission. Reads target.context.actor_permissions
+  // projected from list_member_permissions(member_id) by the trigger.
+  // Doctrinal alternative to actorHasRole for capability-based gates
+  // — respects role/permission separation. Returns false when
+  // actor_permissions isn't projected.
+  actorHasPermission: async (cond, target) => {
+    const permission = cond.config.permission as string | undefined;
+    if (!permission) return false;
+    const perms = target.context.actor_permissions as string[] | null | undefined;
+    if (!Array.isArray(perms)) return false;
+    return perms.includes(permission);
   },
 
   // (PR-3) True when target.context.booking_duration_minutes >

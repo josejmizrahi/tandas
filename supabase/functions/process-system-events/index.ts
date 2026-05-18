@@ -554,6 +554,24 @@ async function buildContext(
       return raw.filter((r): r is string => typeof r === "string");
     },
 
+    // V7 — permission-based equivalent of loadMemberRoles. Resolves via
+    // list_member_permissions RPC (mig 00300) which walks the group's
+    // role catalog and unions the permissions across every role the
+    // member holds. Powers the actorHasPermission condition (the
+    // doctrinal alternative to actorHasRole).
+    loadMemberPermissions: async (memberId) => {
+      const { data, error } = await supabase.rpc(
+        "list_member_permissions",
+        { p_member_id: memberId },
+      );
+      if (error) {
+        console.warn(`loadMemberPermissions read failed: ${error.message}`);
+        return [];
+      }
+      if (!Array.isArray(data)) return [];
+      return (data as unknown[]).filter((p): p is string => typeof p === "string");
+    },
+
     // (mig 00268, SpaceRules.md PR-3) Invokes expire_booking RPC. Idempotent
     // server-side — short-circuits when a bookingCancelled/Expired atom
     // already exists. Reason is the cron-style identifier (`no_check_in`,

@@ -11,7 +11,7 @@ public extension ConditionType {
              // SpaceRules roadmap (engine update mig 00268 + edge
              // function process-system-events redeploy).
              .cancelledWithinHours, .outsideAllowedHours,
-             .actorHasRole, .bookingDurationAbove,
+             .actorHasRole, .actorHasPermission, .bookingDurationAbove,
              .damageSeverityAbove:
             return true
         case .minutesAfterScheduled, .hoursBeforeEvent,

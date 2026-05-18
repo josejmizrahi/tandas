@@ -29,6 +29,7 @@ extension ConditionType {
         .cancelledWithinHours,
         .outsideAllowedHours,
         .actorHasRole,
+        .actorHasPermission,
         .bookingDurationAbove,
         .damageSeverityAbove,
     ]
@@ -58,6 +59,7 @@ extension ConditionType {
         "cancelledWithinHours",
         "outsideAllowedHours",
         "actorHasRole",
+        "actorHasPermission",
         "bookingDurationAbove",
         "damageSeverityAbove",
     ]
@@ -98,6 +100,7 @@ extension ConditionType {
         case .cancelledWithinHours: return "cancelledWithinHours"
         case .outsideAllowedHours: return "outsideAllowedHours"
         case .actorHasRole: return "actorHasRole"
+        case .actorHasPermission: return "actorHasPermission"
         case .bookingDurationAbove: return "bookingDurationAbove"
         case .damageSeverityAbove: return "damageSeverityAbove"
         case .unknown(let s): return s
@@ -130,6 +133,7 @@ extension ConditionType {
         case "cancelledWithinHours": return .cancelledWithinHours
         case "outsideAllowedHours": return .outsideAllowedHours
         case "actorHasRole": return .actorHasRole
+        case "actorHasPermission": return .actorHasPermission
         case "bookingDurationAbove": return .bookingDurationAbove
         case "damageSeverityAbove": return .damageSeverityAbove
         default: return .unknown(raw)

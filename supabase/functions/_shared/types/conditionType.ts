@@ -26,6 +26,7 @@ export const conditionTypeValues = [
   "cancelledWithinHours",
   "outsideAllowedHours",
   "actorHasRole",
+  "actorHasPermission",
   "bookingDurationAbove",
   "damageSeverityAbove",
 ] as const;

@@ -595,20 +595,25 @@ export const TRIGGERS: Partial<Record<SystemEventType, TriggerEvaluator>> = {
   },
 
   // (PR-3) Emitted by join_waitlist. Single target = the joiner. Projects
-  // priority + actor_roles into target.context so actorHasRole +
-  // bumpPriority can read without re-fetching the member row. Drives
-  // `space_founder_priority_bump` template.
+  // priority + actor_roles + actor_permissions (V7) into target.context
+  // so actorHasRole / actorHasPermission / bumpPriority can read without
+  // re-fetching the member row. Drives `space_founder_priority_bump` +
+  // future permission-gated templates.
   spaceWaitlistJoined: async (event, _rule, context) => {
     if (!event.resource_id || !event.member_id) return [];
-    const actorRoles = await context.sink.loadMemberRoles(event.member_id);
+    const [actorRoles, actorPermissions] = await Promise.all([
+      context.sink.loadMemberRoles(event.member_id),
+      context.sink.loadMemberPermissions(event.member_id),
+    ]);
     return [{
       member_id: event.member_id,
       resource_id: event.resource_id,
       context: {
-        priority:       event.payload?.priority ?? 0,
-        joined_at:      event.payload?.joined_at ?? event.occurred_at,
-        actor_roles:    actorRoles,
-        source_atom_id: event.id,
+        priority:          event.payload?.priority ?? 0,
+        joined_at:         event.payload?.joined_at ?? event.occurred_at,
+        actor_roles:       actorRoles,
+        actor_permissions: actorPermissions,
+        source_atom_id:    event.id,
       },
     }];
   },
