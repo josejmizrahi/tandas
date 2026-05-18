@@ -413,6 +413,141 @@ public actor MockRuleTemplateRepository: RuleTemplateRepository {
                 scopeHint: "resource"
             ),
             sortOrder: 120
+        ),
+
+        // MARK: - Space rule templates (mig 00272 — Plans/Active/SpaceRules.md §1)
+
+        RuleBuilderTemplate(
+            id: "space_capacity_overflow_waitlist",
+            displayNameES: "Avisa cuando el espacio se llena",
+            descriptionES: "Cuando una reserva completa el aforo del espacio, emite un aviso visible en la actividad. La UI sugiere a los siguientes interesados unirse a la lista de espera.",
+            category: "spaces",
+            templateKind: "governance",
+            requiredCapabilities: ["capacity"],
+            defaultParams: .object([:]),
+            composition: .init(
+                triggerShapeId: "spaceCapacityReached",
+                conditionShapeIds: ["alwaysTrue"],
+                consequenceShapeIds: ["emitWarning"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 200
+        ),
+        RuleBuilderTemplate(
+            id: "space_cancellation_late_fine",
+            displayNameES: "Multa por cancelación tardía",
+            descriptionES: "Si alguien cancela una reserva con menos de X horas antes de su inicio, cobra una multa. Justo cuando ya no hay tiempo para que otro miembro use el espacio.",
+            category: "spaces",
+            templateKind: "penalty",
+            requiredCapabilities: ["booking", "consequence"],
+            defaultParams: .object([
+                "hours":  .int(24),
+                "amount": .int(200),
+            ]),
+            composition: .init(
+                triggerShapeId: "bookingCancelled",
+                conditionShapeIds: ["cancelledWithinHours"],
+                consequenceShapeIds: ["fine"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 210
+        ),
+        RuleBuilderTemplate(
+            id: "space_no_check_in_release",
+            displayNameES: "Libera la reserva si nadie marca llegada",
+            descriptionES: "Si pasa la hora de inicio y nadie ha hecho check-in en los siguientes X minutos, libera automáticamente la reserva para que otro miembro pueda ocupar el espacio.",
+            category: "spaces",
+            templateKind: "governance",
+            requiredCapabilities: ["booking", "check_in"],
+            defaultParams: .object(["grace_minutes": .int(30)]),
+            composition: .init(
+                triggerShapeId: "bookingNoCheckIn",
+                conditionShapeIds: ["alwaysTrue"],
+                consequenceShapeIds: ["releaseBooking"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 220
+        ),
+        RuleBuilderTemplate(
+            id: "space_outside_allowed_hours_deny",
+            displayNameES: "Rechaza reservas fuera del horario",
+            descriptionES: "Si alguien intenta reservar fuera del horario permitido (por ejemplo, fuera de 8am-10pm), el sistema lo marca como no permitido. La UI captura el rechazo y avisa al usuario.",
+            category: "spaces",
+            templateKind: "governance",
+            requiredCapabilities: ["booking", "schedule"],
+            defaultParams: .object([
+                "start_hour": .int(8),
+                "end_hour":   .int(22),
+                "message_es": .string("Reservas solo dentro del horario permitido del espacio"),
+            ]),
+            composition: .init(
+                triggerShapeId: "bookingCreated",
+                conditionShapeIds: ["outsideAllowedHours"],
+                consequenceShapeIds: ["denyAction"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 230
+        ),
+        RuleBuilderTemplate(
+            id: "space_founder_priority_bump",
+            displayNameES: "Fundadores tienen prioridad en lista de espera",
+            descriptionES: "Cuando un fundador entra a la lista de espera, su prioridad sube automáticamente para que pase delante de bookings posteriores. Para miembros con otro rol, configura el campo \"rol\".",
+            category: "spaces",
+            templateKind: "governance",
+            requiredCapabilities: ["waitlist"],
+            defaultParams: .object([
+                "role":           .string("founder"),
+                "priority_delta": .int(100),
+            ]),
+            composition: .init(
+                triggerShapeId: "spaceWaitlistJoined",
+                conditionShapeIds: ["actorHasRole"],
+                consequenceShapeIds: ["bumpPriority"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 240
+        ),
+        RuleBuilderTemplate(
+            id: "space_long_booking_vote",
+            displayNameES: "Reservas largas requieren voto",
+            descriptionES: "Si alguien reserva el espacio por más de X minutos en una sola sesión, abre automáticamente una votación al grupo. Útil para gates de uso intensivo (ej. canchas, palco).",
+            category: "spaces",
+            templateKind: "governance",
+            requiredCapabilities: ["booking", "voting"],
+            defaultParams: .object([
+                "minutes":           .int(120),
+                "duration_hours":    .int(24),
+                "quorum_percent":    .int(50),
+                "threshold_percent": .int(66),
+            ]),
+            composition: .init(
+                triggerShapeId: "bookingCreated",
+                conditionShapeIds: ["bookingDurationAbove"],
+                consequenceShapeIds: ["startVote"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 250
+        ),
+        RuleBuilderTemplate(
+            id: "space_damage_temporary_closure_vote",
+            displayNameES: "Daño grave: voto para cerrar temporalmente el espacio",
+            descriptionES: "Si alguien reporta un daño con severidad grave o total, abre automáticamente una votación al grupo para decidir si cerrar temporalmente el espacio mientras se repara.",
+            category: "spaces",
+            templateKind: "governance",
+            requiredCapabilities: ["maintenance", "voting"],
+            defaultParams: .object([
+                "level":             .string("major"),
+                "duration_hours":    .int(48),
+                "quorum_percent":    .int(50),
+                "threshold_percent": .int(66),
+            ]),
+            composition: .init(
+                triggerShapeId: "damageReported",
+                conditionShapeIds: ["damageSeverityAbove"],
+                consequenceShapeIds: ["startVote"],
+                scopeHint: "resource"
+            ),
+            sortOrder: 260
         )
     ]
 }
