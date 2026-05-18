@@ -283,6 +283,20 @@ public final class ResourceWizardCoordinator {
         !availableSuggestedRules.isEmpty
     }
 
+    /// Subset of `availableSuggestedRules` that does NOT have a
+    /// universal-template counterpart yet. These are the only ones
+    /// rendered in the wizard step 4 legacy section after pipeline
+    /// unification — mapped ones surface via the universals section
+    /// to avoid the same rule appearing twice with slightly different
+    /// names. UniversalRuleTemplates.md §14 Fase 2 (de-duplication).
+    public var nonUniversalSuggestedRules: [(block: any CapabilityBlock, template: CapabilityRuleOption)] {
+        availableSuggestedRules.filter { $0.template.universalTemplateId == nil }
+    }
+
+    public var hasNonUniversalSuggestedRules: Bool {
+        !nonUniversalSuggestedRules.isEmpty
+    }
+
     /// True iff step 4 has content to show — either legacy
     /// capability-suggested rules OR universal templates compatible
     /// with the current resource type. Used to gate the skip behavior

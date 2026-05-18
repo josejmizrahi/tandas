@@ -442,22 +442,7 @@ public struct ResourceWizardSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 universalsSection
-                // Beta 1 W2-C1: "capacidades" → "lo que activaste arriba" (drops the leaked model term).
-                // UXJourney P1: agrega explicación de la fuente. Antes el
-                // usuario veía "Acuerdos sugeridos" sin saber de dónde
-                // venían (template del grupo? módulo? hardcoded?). Ahora
-                // el copy indica que son template-defaults editables.
-                VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                    Text("Estos acuerdos van con lo que activaste arriba.")
-                        .ruulTextStyle(RuulTypography.footnote)
-                        .foregroundStyle(Color.ruulTextSecondary)
-                    Text("Vienen del template del grupo (\(coordinator.group.eventVocabulary)). Puedes apagar los que no apliquen — los activos crean acuerdos que el grupo podrá modificar después.")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.leading, RuulSpacing.xxs)
-                rulesByCapability
+                additionalOptionsSection
                 RuulButton(
                     rulesAdvanceLabel,
                     style: .primary,
@@ -470,6 +455,25 @@ public struct ResourceWizardSheet: View {
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
+        }
+    }
+
+    /// Legacy capability-suggested rules section, now reduced to options
+    /// that don't yet have a universal counterpart (notification reminders,
+    /// rotation auto-skip). Rendered as "Acciones adicionales" to signal
+    /// it's complementary to the canonical universals above.
+    /// Per UniversalRuleTemplates.md §14 Fase 2 (de-duplication).
+    @ViewBuilder
+    private var additionalOptionsSection: some View {
+        if coordinator.hasNonUniversalSuggestedRules {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Acciones adicionales para lo que activaste arriba — recordatorios y reglas específicas.")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.leading, RuulSpacing.xxs)
+            rulesByCapability
         }
     }
 
@@ -545,10 +549,10 @@ public struct ResourceWizardSheet: View {
 
     @ViewBuilder
     private var rulesByCapability: some View {
-        // Group templates by their owning block.id so the user sees a
-        // section per capability — "RSVP / Multas / etc." — with the
-        // toggleable rule rows nested under each header.
-        let grouped = Dictionary(grouping: coordinator.availableSuggestedRules, by: { $0.block.id })
+        // Filtered to options without a universal counterpart — universal-
+        // mapped options surface in the universalsSection above. Per
+        // UniversalRuleTemplates.md §14 Fase 2 (de-duplication).
+        let grouped = Dictionary(grouping: coordinator.nonUniversalSuggestedRules, by: { $0.block.id })
         // Preserve the catalog order (availableCapabilityBlocks) instead
         // of the dictionary's arbitrary order.
         let orderedBlocks = coordinator.availableCapabilityBlocks
@@ -706,21 +710,33 @@ public struct ResourceWizardSheet: View {
 
     @ViewBuilder
     private func reviewRules() -> some View {
-        let selected = coordinator.availableSuggestedRules.filter { pair in
-            coordinator.isSuggestedRuleSelected(blockId: pair.block.id, slug: pair.template.slug)
-        }
-        if !selected.isEmpty {
+        // Review pulls from THREE buckets: explicit universal picks,
+        // capability picks that map to a universal (also publish via
+        // canonical path), and remaining non-universal capability picks
+        // (legacy createInitialRules path). All three show as "ACUERDOS
+        // QUE APLICAN" so the user sees one consolidated list.
+        let universalById = Dictionary(uniqueKeysWithValues:
+            coordinator.universalTemplates.map { ($0.id, $0) })
+        let universalNames: [String] = coordinator.selectedUniversalTemplateIds
+            .compactMap { universalById[$0]?.displayNameES }
+        let capUniversalNames: [String] = coordinator.selectedCapabilityUniversalPublishes
+            .compactMap { universalById[$0.universalTemplateId]?.displayNameES }
+        let legacyNames: [String] = coordinator.nonUniversalSuggestedRules
+            .filter { coordinator.isSuggestedRuleSelected(blockId: $0.block.id, slug: $0.template.slug) }
+            .map(\.template.displayName)
+        let allNames = (universalNames + capUniversalNames + legacyNames).sorted()
+        if !allNames.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ACUERDOS QUE APLICAN")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
                 VStack(spacing: RuulSpacing.xs) {
-                    ForEach(selected, id: \.template.slug) { pair in
+                    ForEach(allNames, id: \.self) { name in
                         HStack(alignment: .top, spacing: RuulSpacing.sm) {
                             Image(systemName: "circle.dashed.inset.filled")
                                 .foregroundStyle(Color.ruulAccent)
                                 .padding(.top, 2)
-                            Text(pair.template.displayName)
+                            Text(name)
                                 .ruulTextStyle(RuulTypography.body)
                                 .foregroundStyle(Color.ruulTextPrimary)
                             Spacer()
