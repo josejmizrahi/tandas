@@ -23,7 +23,14 @@ public final class RootShellState {
     // MARK: - Coordinator handles (populated by RootShell.rebuildCoordinators)
     // Writable so RootShell can set them; RootShellSheets reads them.
 
+    /// Cross-group inbox feeding the `.inbox` tab + `MyFinesView`. Carries
+    /// pending UserActions across every group the viewer belongs to.
     public var inboxCoordinator: InboxCoordinator?
+    /// Per-group inbox feeding `HomeView.pendingsSection`. Same shape as
+    /// `inboxCoordinator` but scoped to `app.activeGroup.id` so home only
+    /// surfaces pendings for the group the user is currently looking at.
+    /// Rebuilt every time the active group changes.
+    public var homeInboxCoordinator: InboxCoordinator?
     public var rulesCoordinator: RulesCoordinator?
     public var profileCoordinator: ProfileCoordinator?
     public var homeCoordinator: HomeCoordinator?
@@ -73,6 +80,20 @@ public final class RootShellState {
 
     public func contains(_ route: RootRoute) -> Bool {
         activeRoutes.contains(route)
+    }
+
+    /// Refresh both inbox surfaces after a UserAction-mutating event.
+    /// Cross-group `inboxCoordinator` feeds the Inbox tab + MyFinesView;
+    /// per-group `homeInboxCoordinator` feeds HomeView.pendingsSection.
+    /// Returns `Void?` so existing call sites that wrote
+    /// `async let i: Void? = router.state.inboxCoordinator?.refresh()`
+    /// migrate to `async let i: Void? = router.state.refreshInboxes()`
+    /// without a type change.
+    public func refreshInboxes() async -> Void? {
+        async let cross: Void? = inboxCoordinator?.refresh()
+        async let home:  Void? = homeInboxCoordinator?.refresh()
+        _ = await (cross, home)
+        return ()
     }
 }
 

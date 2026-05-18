@@ -95,7 +95,7 @@ public struct RootShellSheets: ViewModifier {
 
             // MARK: Rule edit sheet (carries RuleEditRouteContext)
             .fullScreenCover(item: ruleEditItem, onDismiss: {
-                Task { await router.state.inboxCoordinator?.refresh() }
+                Task { await router.state.refreshInboxes() }
             }) { ctx in
                 ruleEditSheet(ctx)
 
@@ -124,7 +124,7 @@ public struct RootShellSheets: ViewModifier {
             .fullScreenCover(item: activeEventItem, onDismiss: {
                 Task {
                     async let h: Void = router.state.homeCoordinator?.refresh(force: true) ?? ()
-                    async let i: Void? = router.state.inboxCoordinator?.refresh()
+                    async let i: Void? = router.state.refreshInboxes()
                     _ = await (h, i)
                 }
             }) { wrappedEvent in
@@ -192,7 +192,7 @@ public struct RootShellSheets: ViewModifier {
             .fullScreenCover(isPresented: boolBinding(for: .createGeneralProposal), onDismiss: {
                 Task {
                     async let r: Void? = router.state.rulesCoordinator?.refresh()
-                    async let i: Void? = router.state.inboxCoordinator?.refresh()
+                    async let i: Void? = router.state.refreshInboxes()
                     _ = await (r, i)
                 }
             }) {
@@ -208,7 +208,7 @@ public struct RootShellSheets: ViewModifier {
                         onCreated: { _ in
                             Task {
                                 async let r: Void? = router.state.rulesCoordinator?.refresh()
-                                async let i: Void? = router.state.inboxCoordinator?.refresh()
+                                async let i: Void? = router.state.refreshInboxes()
                                 _ = await (r, i)
                             }
                         }
@@ -221,7 +221,7 @@ public struct RootShellSheets: ViewModifier {
             .fullScreenCover(item: createRuleChangeItem, onDismiss: {
                 Task {
                     async let r: Void? = router.state.rulesCoordinator?.refresh()
-                    async let i: Void? = router.state.inboxCoordinator?.refresh()
+                    async let i: Void? = router.state.refreshInboxes()
                     _ = await (r, i)
                 }
             }) { wrapper in
@@ -238,7 +238,7 @@ public struct RootShellSheets: ViewModifier {
                         onCreated: { _ in
                             Task {
                                 async let r: Void? = router.state.rulesCoordinator?.refresh()
-                                async let i: Void? = router.state.inboxCoordinator?.refresh()
+                                async let i: Void? = router.state.refreshInboxes()
                                 _ = await (r, i)
                             }
                         }
@@ -251,7 +251,7 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Create member-removal sheet
             .fullScreenCover(isPresented: boolBinding(for: .createMemberRemoval), onDismiss: {
                 Task {
-                    async let i: Void? = router.state.inboxCoordinator?.refresh()
+                    async let i: Void? = router.state.refreshInboxes()
                     _ = await i
                 }
             }) {
@@ -278,7 +278,7 @@ public struct RootShellSheets: ViewModifier {
             // the route reachable from every tab.
             .fullScreenCover(item: activeFineItem, onDismiss: {
                 Task {
-                    await router.state.inboxCoordinator?.refresh()
+                    await router.state.refreshInboxes()
                     await router.state.myFinesCoordinator?.refresh()
                 }
             }) { wrappedFine in
@@ -431,7 +431,7 @@ public struct RootShellSheets: ViewModifier {
                         fineRepo: app.fineRepo,
                         groupsRepo: app.groupsRepo,
                         onSubmitted: { @MainActor in
-                            await router.state.inboxCoordinator?.refresh()
+                            await router.state.refreshInboxes()
                             await router.state.myFinesCoordinator?.refresh()
                         }
                     )
@@ -539,7 +539,7 @@ public struct RootShellSheets: ViewModifier {
         ) { choice in
             Task {
                 try? await app.appealRepo.castVote(appealId: ctx.appeal.id, choice: choice)
-                await router.state.inboxCoordinator?.refresh()
+                await router.state.refreshInboxes()
             }
         }
     }

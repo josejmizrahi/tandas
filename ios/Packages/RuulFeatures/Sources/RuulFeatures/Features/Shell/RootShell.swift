@@ -18,6 +18,7 @@ public struct RootShell: View {
     // Coordinator state — built/rebuilt whenever the active group changes.
     @State private var homeCoordinator: HomeCoordinator?
     @State private var inboxCoordinator: InboxCoordinator?
+    @State private var homeInboxCoordinator: InboxCoordinator?
     @State private var rulesCoordinator: RulesCoordinator?
     @State private var profileCoordinator: ProfileCoordinator?
     @State private var myFinesCoordinator: MyFinesCoordinator?
@@ -40,7 +41,10 @@ public struct RootShell: View {
         TabView(selection: tabBinding) {
             HomeTab(
                 home: homeCoordinator,
-                inbox: inboxCoordinator
+                // Per-group inbox: HomeView.pendingsSection only shows
+                // pendings for the currently active group. Cross-group
+                // inbox feeds the Inbox tab below.
+                inbox: homeInboxCoordinator
             )
             .tabItem { Label("Inicio", systemImage: "house.fill") }
             .tag(RootTab.home)
@@ -151,13 +155,27 @@ public struct RootShell: View {
 
         inboxCoordinator = InboxCoordinator(
             userId: userId,
-            groupId: nil,                   // 14.2 — cross-group inbox
+            groupId: nil,                   // 14.2 — cross-group inbox (tab)
             userActionRepo: app.userActionRepo,
             groupsRepo: app.groupsRepo,
             changeFeed: app.multiDeviceChangeFeed,
             analytics: app.analytics
         )
         shellState.inboxCoordinator = inboxCoordinator
+
+        // Per-group inbox for HomeView.pendingsSection. Rebuilt fresh on
+        // every group switch (no rehydration) so its actions array only
+        // ever holds rows from the currently active group. Keeps the
+        // cross-group inbox above intact for the Pendientes tab + MyFines.
+        homeInboxCoordinator = InboxCoordinator(
+            userId: userId,
+            groupId: group.id,
+            userActionRepo: app.userActionRepo,
+            groupsRepo: app.groupsRepo,
+            changeFeed: app.multiDeviceChangeFeed,
+            analytics: app.analytics
+        )
+        shellState.homeInboxCoordinator = homeInboxCoordinator
 
         myFinesCoordinator = MyFinesCoordinator(
             userId: userId,
