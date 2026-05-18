@@ -169,6 +169,10 @@ public final class AppState {
     /// §28. Reads (availability/occupancy/capacity/history) flow through
     /// projection views shipped in mig 00267.
     public let spaceLifecycleRepo: any SpaceLifecycleRepository
+    /// Canonical space projections (mig 00267): availability / capacity /
+    /// occupancy / history. All views are security_invoker=on so RLS on
+    /// the base atoms applies. Plans/Active/Space.md §10.
+    public let spaceProjectionRepo: any SpaceProjectionRepository
     /// Slot resource_type (mig 00070 + 00204): typed reads of reservable
     /// asset windows. Writes go through `slotLifecycleRepo` (assign/book/swap)
     /// or `resourceDraftRepo` (wizard-driven create).
@@ -231,6 +235,7 @@ public final class AppState {
         rightRepo: any RightRepository,
         spaceRepo: any SpaceRepository,
         spaceLifecycleRepo: any SpaceLifecycleRepository,
+        spaceProjectionRepo: any SpaceProjectionRepository,
         slotRepo: any SlotRepository,
         bookingRepo: any BookingRepository,
         notifications: NotificationService? = nil,
@@ -273,6 +278,7 @@ public final class AppState {
         self.rightRepo = rightRepo
         self.spaceRepo = spaceRepo
         self.spaceLifecycleRepo = spaceLifecycleRepo
+        self.spaceProjectionRepo = spaceProjectionRepo
         self.slotRepo = slotRepo
         self.bookingRepo = bookingRepo
         let eventBuilder = EventResourceBuilder(
