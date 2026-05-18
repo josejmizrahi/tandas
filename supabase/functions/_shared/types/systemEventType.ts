@@ -88,6 +88,7 @@ export const systemEventTypeValues = [
   "eventCancelled",
   "eventStarted",
   "eventUpdated",
+  "eventReopened",
   "bookingNoCheckIn",
   "assetCheckoutOverdue",
   "assetMaintenanceOverdue",
