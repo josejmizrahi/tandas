@@ -27,7 +27,13 @@ public final class GroupHomeCoordinator {
     /// Aggregated group stats — nil until the first successful refresh.
     public var summary: GroupSummary?
 
-    public var isCurrentUserAdmin: Bool { myRole == "founder" }
+    /// True when the calling user holds the `admin` role (post-mig-00262
+    /// capability bundle). Founders are also admin via mig 00290 backfill.
+    /// Prefer `hasPermission(.modifyGovernance)` over this for new gating;
+    /// kept because several callers display admin-specific UI affordances.
+    public var isCurrentUserAdmin: Bool {
+        myRawRoles.contains("admin") || myRole == "admin" || myRole == "founder"
+    }
 
     /// True when the calling user has p_permission in this group,
     /// resolved against `group.effectiveRoles` and `myRawRoles`. Mirrors
@@ -36,14 +42,17 @@ public final class GroupHomeCoordinator {
     public func hasPermission(_ p: Permission) -> Bool {
         guard let group else { return false }
         let catalog = group.effectiveRoles
-        // Legacy admin alias: founder.
+        // Post-mig-00290: admin lives in roles[] directly. No alias needed.
         for raw in myRawRoles {
-            let key = raw == "admin" ? "founder" : raw
-            if let def = catalog[key], def.grants(p) { return true }
+            if let def = catalog[raw], def.grants(p) { return true }
         }
-        if myRawRoles.isEmpty, isCurrentUserAdmin,
-           let founder = catalog["founder"], founder.grants(p) {
-            return true
+        // Legacy fallback for sessions where myRawRoles wasn't populated
+        // (e.g. older GroupDetail without myRawRoles). Honors text-only
+        // 'admin'/'founder' rows that predate the backfill.
+        if myRawRoles.isEmpty {
+            for legacy in ["admin", "founder"] where myRole == legacy {
+                if let def = catalog[legacy], def.grants(p) { return true }
+            }
         }
         return false
     }

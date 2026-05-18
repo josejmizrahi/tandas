@@ -204,8 +204,10 @@ public struct Group: Identifiable, Codable, Sendable, Hashable {
     }
 
     public func roleDefinition(for roleId: String) -> RoleDefinition? {
-        let normalized = roleId == "admin" ? "founder" : roleId
-        return effectiveRoles[normalized]
+        // Post-mig-00262 'admin' has its own catalog entry. The historical
+        // admin → founder alias was load-bearing only while groups lacked
+        // the admin catalog entry; mig 00262 + 00290 close that gap.
+        effectiveRoles[roleId]
     }
 
     public var avatarURL: URL? {

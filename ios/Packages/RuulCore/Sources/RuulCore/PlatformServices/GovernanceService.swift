@@ -51,9 +51,10 @@ public extension GovernanceServiceProtocol {
         } else {
             return false
         }
+        // Post-mig-00262 + 00290, 'admin' has its own catalog entry and
+        // every founder is also explicitly an admin. No alias needed.
         for rawRoleId in candidates {
-            let normalized = rawRoleId == "admin" ? "founder" : rawRoleId
-            if let def = catalog[normalized], def.grants(permission) {
+            if let def = catalog[rawRoleId], def.grants(permission) {
                 return true
             }
         }

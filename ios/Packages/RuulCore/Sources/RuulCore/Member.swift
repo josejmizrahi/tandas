@@ -101,7 +101,11 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
         if let rawArray = try? c.decode([String].self, forKey: .roles), !rawArray.isEmpty {
             decodedRaw = rawArray
         } else {
-            decodedRaw = role == "admin" ? ["founder", "member"] : ["member"]
+            // Legacy fallback for rows predating mig 00290 backfill where
+            // `roles` jsonb is null/empty but the deprecated `role` text
+            // column carries 'admin'. Post-mig-00262 admin is its own
+            // role (not an alias for founder), so backfill it explicitly.
+            decodedRaw = role == "admin" ? ["admin", "member"] : ["member"]
         }
         self.rawRoles = decodedRaw
         self.roles = decodedRaw.compactMap(MemberRole.init(rawValue:))
@@ -137,21 +141,21 @@ public struct Member: Identifiable, Codable, Sendable, Hashable {
     public var isMember:  Bool { holdsRole("member")  }
     public var isHost:    Bool { holdsRole("host")    }
 
-    /// Mig 00262: admin se separó de founder. Admin es el rol con
-    /// permisos operativos (modifyGovernance/Rules/Members/...);
-    /// founder es solo identity badge. La mayoría de gating logic
-    /// debería usar `isAdmin` (o `has_permission(...)` server-side)
-    /// en vez de `isFounder`. Founders también son admin via backfill
-    /// — esta check incluye ambos casos hasta que el legacy role
-    /// "admin"-en-`role`-column (mig 00001) se complete deprecating.
+    /// Mig 00262 split admin (capability) from founder (identity);
+    /// mig 00290 backfilled 'admin' into every founder's roles[] so
+    /// `holdsRole("admin")` is now authoritative without aliasing.
+    /// The legacy `role == "admin"` fallback is kept for rows that
+    /// predate the backfill (`roles` jsonb null/empty + role='admin'
+    /// text) — Sprint F cleanup will remove it once the role text
+    /// column is dropped.
     public var isAdmin: Bool {
-        holdsRole("admin") || isFounder || role == "admin"
+        holdsRole("admin") || role == "admin"
     }
 
     /// Stable membership check that works for both typed `MemberRole`
     /// cases and custom role ids stored in `rawRoles`. Case-sensitive,
     /// matching jsonb semantics.
     public func holdsRole(_ id: String) -> Bool {
-        rawRoles.contains(id) || (id == "founder" && role == "admin")
+        rawRoles.contains(id)
     }
 }
