@@ -102,18 +102,14 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Resource creation cover (value-less; "+" tab intercept)
+            // Cutover gate (2026-05-18 doctrine "Create simple. Configure
+            // by intent. Capabilities stay invisible. Advanced stays
+            // available."). DEBUG builds default to the new flow;
+            // release defaults to legacy until founder smoke pass.
+            // Flip live via `ResourceCreationFeatureFlag.isEnabled = ...`.
             .fullScreenCover(isPresented: boolBinding(for: .createCover)) {
                 if let group = app.activeGroup {
-                    ResourceWizardSheet(
-                        group: group,
-                        suggestedDate: nextDefaultDate(for: group),
-                        onCreated: { _ in
-                            Task {
-                                await router.state.homeCoordinator?.refresh(force: true)
-                            }
-                        }
-                    )
-
+                    resourceCreationCover(group: group)
                 }
             }
 

@@ -31,18 +31,37 @@ public struct ResourceCreationSheet: View {
     /// Empty set is safe — intents that need permissions stay hidden.
     public let viewerPermissions: Set<Permission>
 
-    /// Dispatcher for tapped intents on the post-create screen.
-    /// Defaults to `NoOpPostCreateIntentDispatcher` so the sheet
-    /// renders + tests work without a full wiring; Phase B injects
-    /// the real RuulFeatures-side dispatcher.
-    public let intentDispatcher: any PostCreateIntentDispatcher
+    /// Activator used to bring missing capabilities online when the
+    /// user taps a post-create intent. When provided, the sheet wires
+    /// `PostCreateIntentScreen.withActivator(…)` (full container
+    /// pattern with sheet binding); when nil, falls back to the bare
+    /// `PostCreateIntentScreen(dispatcher: NoOp)` so previews + tests
+    /// without an activator still render.
+    public let activator: LazyCapabilityActivator?
+
+    /// Members directory — flows into the `PostCreateResourceContext`
+    /// the sheet builds at `.postCreate` time for destinations that
+    /// need a member picker (RecordExpenseFromFundSheet recipient,
+    /// CheckOutAssetSheet borrower, custody picker, etc.).
+    /// Empty → those destinations fall back to placeholder.
+    public let members: [MemberWithProfile]
+
+    /// Action callbacks for destinations that mutate state
+    /// (`assign_custody`, `create_child_resource`) or navigate
+    /// (`rsvp_manager`, `history_tab`, etc.). When the closure for a
+    /// given destination is nil, that destination falls back to the
+    /// placeholder card so the user still sees a card instead of
+    /// silent dismissal.
+    public let postCreateActions: PostCreateResourceActions
 
     public init(
         group: RuulCore.Group,
         builders: ResourceBuilderRegistry,
         templateDefaultsByType: [String: [String]] = [:],
         viewerPermissions: Set<Permission> = [],
-        intentDispatcher: any PostCreateIntentDispatcher = NoOpPostCreateIntentDispatcher(),
+        activator: LazyCapabilityActivator? = nil,
+        members: [MemberWithProfile] = [],
+        postCreateActions: PostCreateResourceActions = PostCreateResourceActions(),
         onCreated: ((UUID) -> Void)? = nil
     ) {
         _coordinator = State(initialValue: ResourceCreationCoordinator(
@@ -51,7 +70,9 @@ public struct ResourceCreationSheet: View {
             templateDefaultsByType: templateDefaultsByType
         ))
         self.viewerPermissions = viewerPermissions
-        self.intentDispatcher = intentDispatcher
+        self.activator = activator
+        self.members = members
+        self.postCreateActions = postCreateActions
         self.onCreated = onCreated
     }
 
@@ -85,17 +106,8 @@ public struct ResourceCreationSheet: View {
             creatingView
                 .transition(stepTransition)
         case .postCreate(let resourceId, let variant):
-            PostCreateIntentScreen(
-                resourceId: resourceId,
-                resourceType: variant.resourceType,
-                variant: variant,
-                group: coordinator.group,
-                attachedCapabilities: coordinator.attachedCapabilities,
-                viewerPermissions: viewerPermissions,
-                dispatcher: intentDispatcher,
-                onClose: { dismiss() }
-            )
-            .transition(stepTransition)
+            postCreateContent(resourceId: resourceId, variant: variant)
+                .transition(stepTransition)
         case .failed:
             // Failure UI lives inline inside MinimalIdentityForm via
             // the .failed binding. The coordinator's backOneStep from
@@ -107,6 +119,52 @@ public struct ResourceCreationSheet: View {
                 variant: lastVariant ?? EventVariants.socialGathering
             )
             .transition(stepTransition)
+        }
+    }
+
+    /// Post-create branch: prefer the `withActivator(…)` container path
+    /// when the caller supplied an activator (full sheet binding for
+    /// wired destinations). Falls back to the bare PostCreateIntentScreen
+    /// + NoOp dispatcher when no activator is wired — useful for tests
+    /// + previews that don't want to inject AppState.
+    @ViewBuilder
+    private func postCreateContent(resourceId: UUID, variant: ResourceVariant) -> some View {
+        if let activator {
+            // Build the context from coordinator state + caller-supplied
+            // members/actions. metadata pulls from the freshly-filled
+            // identity fields (title, currency, etc.) so destinations
+            // like ContributeToFundSheet can read fundName/currency
+            // without an extra fetch. resourceRow stays nil — sheets
+            // that need the full row (RecordValuationSheet) fall back
+            // to placeholder until a follow-up adds row loading.
+            let ctx = PostCreateResourceContext(
+                metadata: coordinator.identityFields,
+                members: members,
+                resourceRow: nil,
+                actions: postCreateActions
+            )
+            PostCreateIntentScreen.withActivator(
+                resourceId: resourceId,
+                resourceType: variant.resourceType,
+                variant: variant,
+                group: coordinator.group,
+                attachedCapabilities: coordinator.attachedCapabilities,
+                viewerPermissions: viewerPermissions,
+                activator: activator,
+                resourceContext: ctx,
+                onClose: { dismiss() }
+            )
+        } else {
+            PostCreateIntentScreen(
+                resourceId: resourceId,
+                resourceType: variant.resourceType,
+                variant: variant,
+                group: coordinator.group,
+                attachedCapabilities: coordinator.attachedCapabilities,
+                viewerPermissions: viewerPermissions,
+                dispatcher: NoOpPostCreateIntentDispatcher(),
+                onClose: { dismiss() }
+            )
         }
     }
 
