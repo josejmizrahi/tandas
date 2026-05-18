@@ -2,27 +2,27 @@ import SwiftUI
 import RuulCore
 import RuulUI
 
-/// Universal resource detail — same clean frame for every `ResourceType`.
+/// Universal resource detail — same shell for every `ResourceType`.
 ///
-/// Layout (single column, no per-type dispatch):
-///   1. Attention card     — `DetailAttentionView` when actions pending
-///   2. Icon hero          — chrome symbol + title + subtitle
-///   3. INFORMACIÓN section — type-aware key facts (status, date, money…)
-///   4. Description        — capability-gated prose
-///   5. Location           — capability-gated map card
-///   6. Asset sections     — Custody / Ownership / Maintenance / Bookings
-///                          (only when resourceType == .asset)
-///   7. RSVP / CheckIn / Money / Rules / ResourcesUsed / Activity
-///                         — existing capability section views
-///   8. Settings           — manage capabilities + archive accordion
-///   9. Sticky CTA         — `ResourcePrimaryCTA` over the scroll
-///  10. Toolbar            — close (xmark) + ⋯ secondary menu
+/// Layout (4-tab segmented, capability-driven section catalog):
+///   - Attention card       — `DetailAttentionView` when actions pending
+///   - Hero                 — `ResourceTypeChrome` symbol + title + subtitle
+///   - INFORMACIÓN card     — `ResourceInfoRegistry` providers per type
+///   - Tab bar (4)          — overview / activity / rules / connections
+///   - Tab content          — `CapabilitySectionCatalog.sectionsFor(context:)`
+///                            filtered by `isEnabledFor(caps)` and
+///                            `isVisibleFor(context)`, sorted by priority
+///   - Sticky CTA           — `ResourcePrimaryCTA` from `primaryAction`
+///   - Toolbar              — close (xmark) + ⋯ menu from `secondaryActions`
 ///
-/// The cover hero / ambient palette / rounded panel / quick-fact pills
-/// are intentionally gone — the user asked for "una página universal sin
-/// importar el resource type" matching the clean look that fund / space /
-/// right had as minimal scaffolds. Per-type detail views were deleted
-/// alongside this rewrite; everything renders through `body` below.
+/// Pass-1 cleanup (commits 4599a40 / 73c8f36 / b55b739 / bcfb763)
+/// deleted the per-type detail views, the Settings tab, the
+/// `Manage capabilities` sheet, and the dead `stubCapabilitySections`
+/// helpers. Sections are now declared by `CapabilitySectionView` types
+/// that register themselves with `CapabilitySectionCatalog.shared` and
+/// gate via `isEnabledFor(caps:)` / `isVisibleFor(context:)`. Adding a
+/// new section means writing a `SectionView` + registering — no edits
+/// here.
 @MainActor
 public struct UniversalResourceDetailView: View {
     @Environment(AppState.self) private var app

@@ -163,7 +163,6 @@ public final class AppState {
     /// Reads from `fund_balance_view`; writers wrap `record_ledger_entry`
     /// with fund-specific invariants. Fund detail views read here.
     public let fundRepo: any FundRepository
-    public let rsvpActionRepo: any RsvpActionRepository
     /// Atomic ResourceWizard submit — calls `build_resource_from_draft`
     /// RPC (mig 00101). Builders that route through this avoid the
     /// N-call orchestration that risked orphan rows on partial failure.
@@ -241,7 +240,6 @@ public final class AppState {
         ledgerRepo: any LedgerRepository,
         balanceRepo: any BalanceRepository,
         fundRepo: any FundRepository,
-        rsvpActionRepo: any RsvpActionRepository,
         resourceDraftRepo: any ResourceDraftRepository,
         rightRepo: any RightRepository,
         spaceRepo: any SpaceRepository,
@@ -284,7 +282,6 @@ public final class AppState {
         self.ledgerRepo = ledgerRepo
         self.balanceRepo = balanceRepo
         self.fundRepo = fundRepo
-        self.rsvpActionRepo = rsvpActionRepo
         self.resourceDraftRepo = resourceDraftRepo
         self.rightRepo = rightRepo
         self.spaceRepo = spaceRepo

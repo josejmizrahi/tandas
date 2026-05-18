@@ -48,7 +48,6 @@ struct TandasApp: App {
             let ledger = MockLedgerRepository()
             let balances = MockBalanceRepository()
             let funds = MockFundRepository()
-            let rsvpActions = MockRsvpActionRepository()
             let policies = MockGroupPolicyRepository()
             let draftRepo = MockResourceDraftRepository()
             let rights = MockRightRepository()
@@ -86,7 +85,6 @@ struct TandasApp: App {
                 ledgerRepo: ledger,
                 balanceRepo: balances,
                 fundRepo: funds,
-                rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
                 rightRepo: rights,
                 spaceRepo: spaces,
@@ -129,7 +127,6 @@ struct TandasApp: App {
             let ledger = LiveLedgerRepository(client: client)
             let balances = LiveBalanceRepository(client: client)
             let funds = LiveFundRepository(client: client)
-            let rsvpActions = LiveRsvpActionRepository(client: client)
             let policies = LiveGroupPolicyRepository(client: client)
             let draftRepo = LiveResourceDraftRepository(client: client)
             let rights = LiveRightRepository(client: client)
@@ -167,7 +164,6 @@ struct TandasApp: App {
                 ledgerRepo: ledger,
                 balanceRepo: balances,
                 fundRepo: funds,
-                rsvpActionRepo: rsvpActions,
                 resourceDraftRepo: draftRepo,
                 rightRepo: rights,
                 spaceRepo: spaces,
