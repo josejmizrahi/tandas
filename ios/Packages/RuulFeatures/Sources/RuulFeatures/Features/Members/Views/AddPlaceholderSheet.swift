@@ -17,16 +17,27 @@ public struct AddPlaceholderSheet: View {
     public let group: RuulCore.Group
     public let onCreated: (UUID) -> Void
 
-    @State private var displayName = ""
-    @State private var phone = ""
+    @State private var displayName: String
+    @State private var phone: String
     @State private var isWorking = false
     @State private var existingUser: (id: UUID, name: String?)?
     @State private var duplicatePlaceholder: UUID?
     @State private var errorMessage: String?
 
-    public init(group: RuulCore.Group, onCreated: @escaping (UUID) -> Void) {
+    /// `prefillName` and `prefillPhone` let upstream flows (the Contacts
+    /// picker, sharesheet drop, paste detection) seed the form so the
+    /// admin doesn't retype anything. Both are optional; either or both
+    /// can be nil for the manual entry path.
+    public init(
+        group: RuulCore.Group,
+        prefillName: String? = nil,
+        prefillPhone: String? = nil,
+        onCreated: @escaping (UUID) -> Void
+    ) {
         self.group = group
         self.onCreated = onCreated
+        self._displayName = State(initialValue: prefillName ?? "")
+        self._phone = State(initialValue: prefillPhone ?? "")
     }
 
     public var body: some View {

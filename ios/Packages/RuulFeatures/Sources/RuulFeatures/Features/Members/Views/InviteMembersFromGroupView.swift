@@ -1,4 +1,5 @@
 import SwiftUI
+import Contacts
 import RuulUI
 import RuulCore
 
@@ -14,6 +15,9 @@ public struct InviteMembersFromGroupView: View {
     @State private var sending = false
     @State private var error: String?
     @State private var showAddPlaceholder = false
+    @State private var showContactPicker = false
+    @State private var prefillName: String?
+    @State private var prefillPhone: String?
 
     public init(group: RuulCore.Group) { self.group = group }
 
@@ -35,10 +39,26 @@ public struct InviteMembersFromGroupView: View {
             .background(Color.ruulBackground.ignoresSafeArea())
             .ruulSheetToolbar("Invitar miembros")
             .task { await loadPending() }
-            .sheet(isPresented: $showAddPlaceholder) {
-                AddPlaceholderSheet(group: group) { _ in
+            .sheet(isPresented: $showAddPlaceholder, onDismiss: clearPrefill) {
+                AddPlaceholderSheet(
+                    group: group,
+                    prefillName: prefillName,
+                    prefillPhone: prefillPhone
+                ) { _ in
                     Task { await loadPending() }
                 }
+            }
+            .sheet(isPresented: $showContactPicker) {
+                PlaceholderContactPicker(
+                    onSelection: { contact, phoneNumber in
+                        showContactPicker = false
+                        applyContactSelection(contact: contact, phoneNumber: phoneNumber)
+                    },
+                    onCancel: {
+                        showContactPicker = false
+                    }
+                )
+                .ignoresSafeArea()  // CNContactPickerViewController owns chrome
             }
         }
     }
@@ -83,15 +103,54 @@ public struct InviteMembersFromGroupView: View {
             // create-placeholder-member). Solo visible cuando el repo está
             // wireado (live builds) — mocks/previews lo ocultan.
             if app.placeholderMemberRepo != nil {
-                Button {
-                    showAddPlaceholder = true
-                } label: {
-                    Label("Agregar pendiente (cuenta desde ya)", systemImage: "person.fill.badge.plus")
-                        .ruulTextStyle(RuulTypography.footnote)
+                HStack(spacing: RuulSpacing.sm) {
+                    // Native Apple Contacts picker — handles permission grant
+                    // prompt automatically. Best practice: don't rebuild the
+                    // picker, use the system one.
+                    Button {
+                        showContactPicker = true
+                    } label: {
+                        Label("De mis contactos", systemImage: "person.crop.circle.badge.plus")
+                            .ruulTextStyle(RuulTypography.footnote)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
+                        clearPrefill()
+                        showAddPlaceholder = true
+                    } label: {
+                        Label("Manual", systemImage: "square.and.pencil")
+                            .ruulTextStyle(RuulTypography.footnote)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
                 .padding(.top, RuulSpacing.xs)
+
+                Text("Las personas que agregues cuentan desde ya para turnos, RSVPs, fines y votos. Reciben WhatsApp para activar su cuenta.")
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
+                    .padding(.top, RuulSpacing.xxs)
             }
+        }
+    }
+
+    private func clearPrefill() {
+        prefillName = nil
+        prefillPhone = nil
+    }
+
+    private func applyContactSelection(contact: CNContact, phoneNumber: CNPhoneNumber) {
+        let name = ContactPickerExtraction.displayName(for: contact)
+        let rawPhone = phoneNumber.stringValue
+        let normalized = PhoneFormatter.smartE164(rawPhone) ?? rawPhone
+        prefillName = name.isEmpty ? nil : name
+        prefillPhone = normalized
+        // Defer the placeholder sheet present until the contact picker
+        // sheet has had a chance to fully dismiss. SwiftUI sheets don't
+        // chain reliably otherwise — iOS shows the dismiss animation
+        // ending right before the new sheet appears.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            showAddPlaceholder = true
         }
     }
 
