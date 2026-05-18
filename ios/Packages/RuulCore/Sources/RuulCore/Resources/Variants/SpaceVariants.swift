@@ -19,7 +19,7 @@ public enum SpaceVariants {
         examples: ["Palco", "Suite", "Cuarto", "Box"],
         icon: "lock.square",
         attachedCapabilities: [
-            "status", "history", "description", "maintenance"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description, CapabilityID.maintenance
         ],
         suggestedIntents: [
             "grant_access",
@@ -40,7 +40,7 @@ public enum SpaceVariants {
         examples: ["Cancha", "Salón", "Sala de juntas", "Estudio"],
         icon: "calendar.badge.checkmark",
         attachedCapabilities: [
-            "status", "history", "description", "maintenance"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description, CapabilityID.maintenance
         ],
         suggestedIntents: [
             "allow_reservations",
@@ -61,7 +61,7 @@ public enum SpaceVariants {
         examples: ["Estadio", "Foro", "Salón de eventos", "Casa"],
         icon: "building.columns",
         attachedCapabilities: [
-            "status", "history", "description", "maintenance"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description, CapabilityID.maintenance
         ],
         suggestedIntents: [
             "create_child_event",

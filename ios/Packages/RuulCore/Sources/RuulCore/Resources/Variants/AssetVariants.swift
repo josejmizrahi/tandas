@@ -18,8 +18,8 @@ public enum AssetVariants {
         examples: ["Casa de campo", "Nave", "Bodega", "Terreno"],
         icon: "building.2",
         attachedCapabilities: [
-            "status", "history", "description",
-            "custody", "valuation", "location", "maintenance"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description,
+            CapabilityID.custody, CapabilityID.valuation, CapabilityID.location, CapabilityID.maintenance
         ],
         suggestedIntents: [
             "link_resource",
@@ -40,8 +40,8 @@ public enum AssetVariants {
         examples: ["Coche", "Camioneta", "Lancha", "Bici"],
         icon: "car",
         attachedCapabilities: [
-            "status", "history", "description",
-            "custody", "valuation", "maintenance"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description,
+            CapabilityID.custody, CapabilityID.valuation, CapabilityID.maintenance
         ],
         suggestedIntents: [
             "assign_custody",
@@ -62,8 +62,8 @@ public enum AssetVariants {
         examples: ["Acciones", "Equity", "Instrumento financiero"],
         icon: "banknote",
         attachedCapabilities: [
-            "status", "history", "description",
-            "valuation"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description,
+            CapabilityID.valuation
         ],
         suggestedIntents: [
             "record_valuation",

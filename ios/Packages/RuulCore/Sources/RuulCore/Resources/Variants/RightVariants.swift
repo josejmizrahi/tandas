@@ -20,7 +20,7 @@ public enum RightVariants {
         examples: ["Acceso al palco", "Membresía", "Permiso de uso"],
         icon: "key",
         attachedCapabilities: [
-            "status", "history", "description"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "assign_holder",
@@ -40,8 +40,8 @@ public enum RightVariants {
         examples: ["50% del palco", "Equity de la nave", "Parte del coche"],
         icon: "chart.pie",
         attachedCapabilities: [
-            "status", "history", "description",
-            "valuation", "transfer", "delegation"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description,
+            CapabilityID.valuation, CapabilityID.transfer, CapabilityID.delegation
         ],
         suggestedIntents: [
             "change_control",
@@ -61,7 +61,7 @@ public enum RightVariants {
         examples: ["Voto del miembro", "Voto del consejo", "Voto del patrón"],
         icon: "checkmark.square",
         attachedCapabilities: [
-            "status", "history", "description"
+            CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "assign_holder",

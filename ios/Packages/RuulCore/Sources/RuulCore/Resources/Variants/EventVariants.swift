@@ -17,7 +17,7 @@ public enum EventVariants {
         examples: ["Cena", "Reunión", "Brindis", "Fiesta"],
         icon: "person.3.sequence",
         attachedCapabilities: [
-            "schedule", "rules", "status", "history", "description", "host_actions"
+            CapabilityID.schedule, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description, CapabilityID.hostActions
         ],
         suggestedIntents: [
             "invite_people",
@@ -42,8 +42,8 @@ public enum EventVariants {
         // a recurring event; users still pick day+hour but the wizard
         // surfaces them inline as identity, not as a capability toggle.
         attachedCapabilities: [
-            "schedule", "recurrence", "rules", "status", "history",
-            "description", "host_actions"
+            CapabilityID.schedule, CapabilityID.recurrence, CapabilityID.rules, CapabilityID.status, CapabilityID.history,
+            CapabilityID.description, CapabilityID.hostActions
         ],
         suggestedIntents: [
             "invite_people",
@@ -64,7 +64,7 @@ public enum EventVariants {
         examples: ["Partido", "Carrera", "Torneo", "Match"],
         icon: "sportscourt",
         attachedCapabilities: [
-            "schedule", "rules", "status", "history", "description", "host_actions"
+            CapabilityID.schedule, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description, CapabilityID.hostActions
         ],
         suggestedIntents: [
             "link_resource",

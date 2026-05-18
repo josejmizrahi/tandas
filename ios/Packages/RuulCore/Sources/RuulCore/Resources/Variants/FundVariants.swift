@@ -17,7 +17,7 @@ public enum FundVariants {
         examples: ["Cuentas del depa", "Gastos de la casa", "Servicios"],
         icon: "creditcard.and.123",
         attachedCapabilities: [
-            "ledger", "money", "rules", "status", "history", "description"
+            CapabilityID.ledger, CapabilityID.money, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "record_expense",
@@ -38,7 +38,7 @@ public enum FundVariants {
         examples: ["Viaje fin de año", "Mundial", "Boda en la playa"],
         icon: "airplane.departure",
         attachedCapabilities: [
-            "ledger", "money", "rules", "status", "history", "description"
+            CapabilityID.ledger, CapabilityID.money, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "record_contribution",
@@ -59,7 +59,7 @@ public enum FundVariants {
         examples: ["Capital del negocio", "Pool de la nave", "Equity común"],
         icon: "chart.line.uptrend.xyaxis",
         attachedCapabilities: [
-            "ledger", "money", "rules", "status", "history", "description"
+            CapabilityID.ledger, CapabilityID.money, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "link_resource",

@@ -18,7 +18,7 @@ public enum SlotVariants {
         examples: ["Asiento del palco", "Silla numerada", "Butaca"],
         icon: "chair.lounge",
         attachedCapabilities: [
-            "schedule", "rules", "status", "history", "description"
+            CapabilityID.schedule, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "assign_holder",
@@ -39,7 +39,7 @@ public enum SlotVariants {
         examples: ["Turno de guardia", "Slot horario", "Bloque de uso"],
         icon: "clock.arrow.2.circlepath",
         attachedCapabilities: [
-            "schedule", "rules", "status", "history", "description"
+            CapabilityID.schedule, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "assign_holder",
@@ -60,7 +60,7 @@ public enum SlotVariants {
         examples: ["Boleto del partido", "Pase de entrada", "Acceso al evento"],
         icon: "ticket",
         attachedCapabilities: [
-            "schedule", "rules", "status", "history", "description"
+            CapabilityID.schedule, CapabilityID.rules, CapabilityID.status, CapabilityID.history, CapabilityID.description
         ],
         suggestedIntents: [
             "assign_holder",
