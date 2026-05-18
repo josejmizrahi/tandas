@@ -172,3 +172,28 @@ double-checked the underlying assumption before deleting/modifying.
 | `acf7959` fix(ui) FUNDADOR label | §6 #12 | Confirmed | Label fixed. |
 | `d36cdbc` fix(codegen) SystemEventType | §11 myAtom + 9 cases | Mostly wrong | Did the genuine 1 + allowlisted the rest. |
 | `9f15d7e` refactor(core) folder move | §3 16 loose files | Confirmed | 14 moved (AppState + JSONCoding stay). |
+| `c8ce9ec` docs(audit) deliverable | — | New | 12-file audit + corrections committed. |
+| `2db41bd` chore(infra) restore edge fns | §6 finding | Drift discovered | finalize-appeal-votes + export-user-data restored to repo. |
+| `c36b4a5` refactor(core) CapabilityID Wave-1 | §5 #4 BLOCKER-soft | Confirmed | Namespace introduced + V1Modules migrated. |
+| `fdee2f4` refactor(core) CapabilityID Wave-2 | §5 #4 | — | CapabilityCatalog 35 declarations + 7 dependency arrays. |
+| `b82da76` feat(resources) Variants/Intents | §3 25% landed | Confirmed | 2138 LOC infra + 321 LOC tests committed. |
+| `fd96505` fix(slots) mark_slots_expired_batch | §6.4.1 BLOCKER-soft | Confirmed | Mig 00329 unifies atom + status flip transactionally. |
+| `6b3fea8` fix(ledger) record_ledger_entry_system | §6.4.2 | Confirmed (partial) | Mig 00330. Service-role variant; 10 other system inserts deferred. |
+| `6b78a1c` refactor(core) RuleScope | §5 §8 | Confirmed | RuleScope typed namespace + sweep. |
+| `3ae034b` refactor(core) RuleTemplateCatalog extract | §4 §3 | Confirmed | -369 LOC from RuleTemplateRepository. |
+| `0a426e7` refactor(core) RuleGovernanceCoordinator | §4 §3 | Confirmed | Service moved out of Repositories/. |
+| `b8f0b63` test(repos) ResourceLinkRepositoryTests | §8 §9.1 BLOCKER | Confirmed | 10 @Test cases passing. |
+| `8100fde` refactor(ui) drop Group+AmbientPalette | §1 §2.2 | Confirmed | UI no longer extends RuulCore.Group. |
+| `332f32a` chore(infra) evaluate-event-rules stub | §6 §5 | New (post-audit) | 3rd deployed-not-in-repo restored as 410 Gone stub. |
+| `7530671` refactor(core) CapabilityID Wave-3 | §5 #4 (cont.) | Confirmed | Variants + Intents migrated (post user unblock). |
+| `c9e66ef` refactor(core) CapabilityID Wave-4 | §5 #4 (cont.) | Confirmed | RuleTemplateCatalog requiredCapabilities. |
+| `576af81` refactor(features) CapabilityID Wave-5 (cherry) | §5 #4 (closure) | Confirmed | 19 Detail/Sections files migrated; sweep complete. |
+| `0722967` Merge feature/post-create-intent → main | — | Integration | Sprint 2+3 + Detail toolbar + Wave-5 land on main. |
+| `550aee2` Merge chore/atom-and-resource-integrity → main | — | Integration | Integrity chore on main. |
+
+**Migrations applied to prod (2026-05-18):** 00327, 00328, 00329, 00330.
+
+**Open items deferred to user:**
+- Task #20: undeploy `evaluate-event-rules` from Supabase dashboard (no MCP delete tool).
+- 10 system-side `ledger_entries` direct inserts inside plpgsql functions (mig 00148/00150/00155/00163/00196) — would benefit from migration to `record_ledger_entry_system` but each requires its own `CREATE OR REPLACE FUNCTION` migration; deferred.
+- 3 out-of-namespace cap-id literals (`"expenses"`, `"contributions"`, `"payouts"`) in MoneySectionView + ResourceSummaryView — either catalog or remove.
