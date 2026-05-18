@@ -7,12 +7,19 @@ public extension CapabilityResolver {
     /// separators between sections. Items within a section appear in the
     /// order returned here.
     ///
-    /// Permission gating (e.g. can THIS user issue a fine?) is passed in as
-    /// pre-computed flags (`viewerCanIssueManualFine`) so the resolver stays
-    /// synchronous and testable without async governance calls.
+    /// Sprint E (V15 fix): the canonical signature takes
+    /// `viewerPermissions: Set<Permission>` (the set the viewer's roles
+    /// grant, computed once at the call site against the catalog) plus
+    /// `viewerIsEventHost: Bool` (the contextual per-event flag — host
+    /// is NOT a permission, it's an assignment). Custom roles
+    /// (`seat_owner`, `treasurer_aux`, …) reach the gating logic via the
+    /// permissions they grant; nothing is collapsed into a single
+    /// `MemberRole` enum value anymore. The legacy `viewerRole:` overload
+    /// below preserves existing test fixtures.
     func secondaryActions(
         for resource: ResourceRow,
-        viewerRole: MemberRole,
+        viewerPermissions: Set<Permission>,
+        viewerIsEventHost: Bool = false,
         viewerCanIssueManualFine: Bool,
         enabledCapabilities: Set<String>,
         viewerUserId: UUID? = nil
@@ -20,23 +27,74 @@ public extension CapabilityResolver {
         switch resource.resourceType {
         case .event:
             return eventSecondaryActions(
-                viewerRole: viewerRole,
+                viewerPermissions: viewerPermissions,
+                viewerIsEventHost: viewerIsEventHost,
                 viewerCanIssueManualFine: viewerCanIssueManualFine,
                 enabledCapabilities: enabledCapabilities
             )
         case .right:
             return rightSecondaryActions(
                 resource: resource,
-                viewerRole: viewerRole,
+                viewerPermissions: viewerPermissions,
                 viewerUserId: viewerUserId
             )
         case .fund:
             return fundSecondaryActions(
                 resource: resource,
-                viewerRole: viewerRole
+                viewerPermissions: viewerPermissions
             )
         default:
-            return commonSecondaryActions(viewerRole: viewerRole)
+            return commonSecondaryActions(viewerPermissions: viewerPermissions)
+        }
+    }
+
+    /// LEGACY overload (Sprint E.3 transitional). Delegates to the
+    /// permissions-based canonical method. Kept so test fixtures that
+    /// pass `viewerRole: .founder | .host | .member` continue to work
+    /// without churn. New call sites must use the `viewerPermissions:`
+    /// overload above. Will be removed once tests migrate.
+    func secondaryActions(
+        for resource: ResourceRow,
+        viewerRole: MemberRole,
+        viewerCanIssueManualFine: Bool,
+        enabledCapabilities: Set<String>,
+        viewerUserId: UUID? = nil
+    ) -> [SecondaryAction] {
+        secondaryActions(
+            for: resource,
+            viewerPermissions: Self.legacyPermissions(for: viewerRole),
+            viewerIsEventHost: viewerRole == .host,
+            viewerCanIssueManualFine: viewerCanIssueManualFine,
+            enabledCapabilities: enabledCapabilities,
+            viewerUserId: viewerUserId
+        )
+    }
+
+    /// Static mapping from the legacy `MemberRole` enum to the permission
+    /// set founder/admin roles carry in the default catalog (mirrors
+    /// server defaults from mig 00262 + 00255). `.member`, `.host`,
+    /// `.observer`, `.arbiter` get an empty set — host bypass is
+    /// carried separately via `viewerIsEventHost`.
+    static func legacyPermissions(for role: MemberRole) -> Set<Permission> {
+        switch role {
+        case .founder, .admin:
+            return [
+                .modifyGovernance, .modifyRules, .modifyMembers,
+                .assignRoles, .removeMember,
+                .issueFine, .voidFine, .markFinePaid, .closeAppeal,
+                .createVotes, .castVote,
+                .manageEvents, .manageModules,
+                .transferRight, .delegateRight, .revokeRight,
+                .suspendRight, .exerciseRight,
+                .fundContribute, .fundWithdraw, .fundAudit,
+                .expenseSubmit, .expenseApprove
+            ]
+        case .treasurer:
+            return [.fundContribute, .fundWithdraw, .fundAudit,
+                    .expenseSubmit, .expenseApprove,
+                    .issueFine, .markFinePaid]
+        case .member, .host, .observer, .arbiter:
+            return [.createVotes, .castVote]
         }
     }
 
@@ -48,10 +106,9 @@ public extension CapabilityResolver {
     /// at the same lifecycle.
     private func fundSecondaryActions(
         resource: ResourceRow,
-        viewerRole: MemberRole
+        viewerPermissions: Set<Permission>
     ) -> [SecondaryAction] {
         var items: [SecondaryAction] = []
-        let isAdmin = viewerRole == .founder
 
         items.append(SecondaryAction(
             label: "Compartir",
@@ -60,13 +117,18 @@ public extension CapabilityResolver {
             kind: .share
         ))
 
-        if isAdmin {
+        // Sprint E (V15): permission-based gating instead of role-name
+        // compare. Registrar gasto → fundWithdraw. Archivar → modifyGovernance
+        // (matches server-side archive_resource gate after mig 00291).
+        if viewerPermissions.contains(.fundWithdraw) {
             items.append(SecondaryAction(
                 label: "Registrar gasto",
                 symbol: "arrow.up.circle",
                 section: .money,
                 kind: .recordExpenseFromFund
             ))
+        }
+        if viewerPermissions.contains(.modifyGovernance) {
             items.append(SecondaryAction(
                 label: "Archivar",
                 symbol: "archivebox",
@@ -82,14 +144,19 @@ public extension CapabilityResolver {
     // MARK: - Per-type builders
 
     private func eventSecondaryActions(
-        viewerRole: MemberRole,
+        viewerPermissions: Set<Permission>,
+        viewerIsEventHost: Bool,
         viewerCanIssueManualFine: Bool,
         enabledCapabilities: Set<String>
     ) -> [SecondaryAction] {
         var items: [SecondaryAction] = []
 
-        let isHost    = viewerRole == .host
-        let isAdmin   = viewerRole == .founder
+        // Sprint E (V15): permission-based gating. Host bypass kept via
+        // explicit viewerIsEventHost flag — host is a contextual assignment,
+        // not a permission. manageEvents covers "admin can edit/close/cancel
+        // any event"; host gets the same bypass for their own event.
+        let isHost    = viewerIsEventHost
+        let isAdmin   = viewerPermissions.contains(.manageEvents)
 
         // --- Primary section: universal actions ---
         if isHost || isAdmin {
@@ -172,7 +239,9 @@ public extension CapabilityResolver {
         }
 
         // --- Danger section: destructive admin actions ---
-        if isAdmin {
+        // Archive uses the same modifyGovernance gate as the server-side
+        // archive_resource RPC (mig 00291).
+        if viewerPermissions.contains(.modifyGovernance) {
             items.append(SecondaryAction(
                 label: "Archivar",
                 symbol: "archivebox",
@@ -198,13 +267,23 @@ public extension CapabilityResolver {
     /// actually do with THIS right today.
     private func rightSecondaryActions(
         resource: ResourceRow,
-        viewerRole: MemberRole,
+        viewerPermissions: Set<Permission>,
         viewerUserId: UUID?
     ) -> [SecondaryAction] {
         var items: [SecondaryAction] = []
         let metadata = resource.metadata
 
-        let isAdmin = viewerRole == .founder
+        // Sprint E (V15): per-action permission gates instead of "isAdmin"
+        // proxy. Each right action ships its own permission (mig 00255 +
+        // 00291): transferRight, delegateRight, revokeRight, suspendRight,
+        // exerciseRight. Edit details + archive use modifyGovernance.
+        let canEdit     = viewerPermissions.contains(.modifyGovernance)
+        let canTransfer = viewerPermissions.contains(.transferRight)
+        let canDelegate = viewerPermissions.contains(.delegateRight)
+        let canSuspend  = viewerPermissions.contains(.suspendRight)
+        let canRestore  = viewerPermissions.contains(.suspendRight)
+        let canRevoke   = viewerPermissions.contains(.revokeRight)
+
         let isActive = resource.status == "active"
         let isRevoked = resource.status == "revoked"
         let isSuspended = metadata["suspended_until"]?.stringValue != nil
@@ -234,7 +313,7 @@ public extension CapabilityResolver {
         // expires_at, source, scope, target_resource_id, target_capability.
         // Holder + delegate + status stay on dedicated lifecycle RPCs
         // (transfer/delegate/revoke/etc.) so atom emission is correct.
-        if isAdmin {
+        if canEdit {
             items.append(SecondaryAction(
                 label: "Editar detalles",
                 symbol: "pencil",
@@ -261,7 +340,7 @@ public extension CapabilityResolver {
         // member to call when transferable=true, but the UX intent is
         // holder-owns-the-decision).
         let isTransferable = metadata["transferable"]?.boolValue == true
-        if (isHolder || isAdmin) && isTransferable && isActive && !isSuspended {
+        if (isHolder || canTransfer) && isTransferable && isActive && !isSuspended {
             items.append(SecondaryAction(
                 label: "Transferir",
                 symbol: "arrow.left.arrow.right",
@@ -272,7 +351,7 @@ public extension CapabilityResolver {
 
         // Delegate: holder of a delegable + active right.
         let isDelegable = metadata["delegable"]?.boolValue == true
-        if (isHolder || isAdmin) && isDelegable && isActive && !isSuspended {
+        if (isHolder || canDelegate) && isDelegable && isActive && !isSuspended {
             items.append(SecondaryAction(
                 label: "Delegar",
                 symbol: "person.line.dotted.person",
@@ -281,8 +360,9 @@ public extension CapabilityResolver {
             ))
         }
 
-        // Governance section: admin-only suspend/restore/revoke.
-        if isAdmin && isActive && !isSuspended {
+        // Governance section: suspend/restore (suspendRight permission)
+        // and revoke (revokeRight permission).
+        if canSuspend && isActive && !isSuspended {
             items.append(SecondaryAction(
                 label: "Suspender",
                 symbol: "pause.circle",
@@ -290,7 +370,7 @@ public extension CapabilityResolver {
                 kind: .suspendRight
             ))
         }
-        if isAdmin && (isSuspended || isRevoked) {
+        if canRestore && (isSuspended || isRevoked) {
             items.append(SecondaryAction(
                 label: "Restaurar",
                 symbol: "arrow.counterclockwise.circle",
@@ -299,8 +379,8 @@ public extension CapabilityResolver {
             ))
         }
 
-        // Danger section: revoke (admin only, terminal-ish).
-        if isAdmin && !isRevoked {
+        // Danger section: revoke (revokeRight permission, terminal-ish).
+        if canRevoke && !isRevoked {
             items.append(SecondaryAction(
                 label: "Revocar",
                 symbol: "xmark.octagon",
@@ -313,7 +393,7 @@ public extension CapabilityResolver {
         return items
     }
 
-    private func commonSecondaryActions(viewerRole: MemberRole) -> [SecondaryAction] {
+    private func commonSecondaryActions(viewerPermissions: Set<Permission>) -> [SecondaryAction] {
         var items: [SecondaryAction] = []
 
         items.append(SecondaryAction(
@@ -323,14 +403,17 @@ public extension CapabilityResolver {
             kind: .share
         ))
 
-        let isAdmin = viewerRole == .founder
-        if isAdmin {
+        // Sprint E (V15): enableCapability + archive both require
+        // modifyGovernance (matches server-side after mig 00291).
+        if viewerPermissions.contains(.manageModules) {
             items.append(SecondaryAction(
                 label: "Activar capability",
                 symbol: "switch.2",
                 section: .governance,
                 kind: .enableCapability
             ))
+        }
+        if viewerPermissions.contains(.modifyGovernance) {
             items.append(SecondaryAction(
                 label: "Archivar",
                 symbol: "archivebox",

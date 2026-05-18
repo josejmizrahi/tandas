@@ -703,13 +703,13 @@ public struct UniversalResourceDetailView: View {
     // MARK: - Resolver-driven actions
 
     private var primaryAction: PrimaryAction {
-        let role = viewerRole()
         let rsvpStatus = eventInteractor?.myRSVP?.status
         let eventStatus = eventInteractor?.event.status
 
         return app.capabilityResolver.primaryAction(
             for: context.resource,
-            viewerRole: role,
+            viewerPermissions: viewerPermissions(),
+            viewerIsEventHost: viewerIsEventHost(),
             rsvpStatus: rsvpStatus,
             eventStatus: eventStatus,
             enabledCapabilities: context.enabledCapabilities,
@@ -723,23 +723,43 @@ public struct UniversalResourceDetailView: View {
     private var secondaryActions: [SecondaryAction] {
         app.capabilityResolver.secondaryActions(
             for: context.resource,
-            viewerRole: viewerRole(),
+            viewerPermissions: viewerPermissions(),
+            viewerIsEventHost: viewerIsEventHost(),
             viewerCanIssueManualFine: presenter?.canIssueManualFine ?? false,
             enabledCapabilities: context.enabledCapabilities,
             viewerUserId: context.currentUserId
         )
     }
 
-    private func viewerRole() -> MemberRole {
+    /// Sprint E (V16 fix): replaces the previous `viewerRole()` lossy
+    /// projection that collapsed N member.rawRoles into 1 MemberRole
+    /// enum (dropping `admin` + every custom role like `seat_owner`,
+    /// `treasurer_aux`). Now: walks the role catalog and returns the
+    /// UNION of permissions granted by all roles the viewer holds.
+    /// Local sync read (no I/O); server is still authoritative on
+    /// actions via the RPC gates.
+    private func viewerPermissions() -> Set<Permission> {
         guard let userId = context.currentUserId,
               let mwp = context.memberDirectory[userId] else {
-            return .member
+            return []
         }
-        let roles = mwp.member.roles
-        if roles.contains(.founder)  { return .founder }
-        if roles.contains(.host)     { return .host }
-        if roles.contains(.treasurer) { return .treasurer }
-        return .member
+        let catalog = context.group.effectiveRoles
+        var perms: Set<Permission> = []
+        for raw in mwp.member.rawRoles {
+            if let def = catalog[raw] {
+                for p in def.permissions { perms.insert(p) }
+            }
+        }
+        return perms
+    }
+
+    /// Per-event host check (contextual assignment, NOT a permission).
+    /// Read from the event interactor when present; resources that are
+    /// not events return false unconditionally.
+    private func viewerIsEventHost() -> Bool {
+        guard let interactor = eventInteractor,
+              let userId = context.currentUserId else { return false }
+        return interactor.event.hostId == userId
     }
 
     // MARK: - Dispatch

@@ -22,7 +22,8 @@ public extension CapabilityResolver {
     /// - space, slot, unknown                      → none
     func primaryAction(
         for resource: ResourceRow,
-        viewerRole: MemberRole,
+        viewerPermissions: Set<Permission>,
+        viewerIsEventHost: Bool = false,
         rsvpStatus: RSVPStatus?,
         eventStatus: EventStatus?,
         enabledCapabilities: Set<String>,
@@ -31,7 +32,8 @@ public extension CapabilityResolver {
         switch resource.resourceType {
         case .event:
             return eventPrimaryAction(
-                viewerRole: viewerRole,
+                viewerPermissions: viewerPermissions,
+                viewerIsEventHost: viewerIsEventHost,
                 rsvpStatus: rsvpStatus,
                 eventStatus: eventStatus,
                 enabledCapabilities: enabledCapabilities
@@ -60,6 +62,28 @@ public extension CapabilityResolver {
         case .asset, .space, .slot, .unknown:
             return .none
         }
+    }
+
+    /// LEGACY overload (Sprint E.3 transitional). Delegates to the
+    /// permissions-based canonical method. Kept so existing test fixtures
+    /// keep working; will be removed once tests migrate.
+    func primaryAction(
+        for resource: ResourceRow,
+        viewerRole: MemberRole,
+        rsvpStatus: RSVPStatus?,
+        eventStatus: EventStatus?,
+        enabledCapabilities: Set<String>,
+        viewerUserId: UUID? = nil
+    ) -> PrimaryAction {
+        primaryAction(
+            for: resource,
+            viewerPermissions: Self.legacyPermissions(for: viewerRole),
+            viewerIsEventHost: viewerRole == .host,
+            rsvpStatus: rsvpStatus,
+            eventStatus: eventStatus,
+            enabledCapabilities: enabledCapabilities,
+            viewerUserId: viewerUserId
+        )
     }
 
     /// Right's primary CTA is "Ejercer" when the viewer is the holder
@@ -97,7 +121,8 @@ public extension CapabilityResolver {
     // MARK: - Private helpers
 
     private func eventPrimaryAction(
-        viewerRole: MemberRole,
+        viewerPermissions: Set<Permission>,
+        viewerIsEventHost: Bool,
         rsvpStatus: RSVPStatus?,
         eventStatus: EventStatus?,
         enabledCapabilities: Set<String>
@@ -117,8 +142,10 @@ public extension CapabilityResolver {
             )
         }
 
-        // Open or in-progress + host → host actions sheet
-        if viewerRole == .host || viewerRole == .founder {
+        // Open or in-progress + (host OR manageEvents permission) → host actions sheet
+        // Sprint E (V15): permission-based — manageEvents covers "admin can run
+        // any event"; host gets the same bypass for their own event.
+        if viewerIsEventHost || viewerPermissions.contains(.manageEvents) {
             return PrimaryAction(
                 label: "Acciones de host",
                 symbol: "person.badge.shield.checkmark",
