@@ -166,7 +166,6 @@ public final class CapabilitySectionCatalog {
         register(AttendanceSectionView.definition)
         register(GuestAccessSectionView.definition)
         register(AssignmentSectionView.definition)
-        register(BookingSectionView.definition)
         register(ValuationSectionView.definition)
         register(InventorySectionView.definition)
         register(AccessSectionView.definition)
@@ -178,6 +177,5 @@ public final class CapabilitySectionCatalog {
         register(SwapSectionView.definition)
         register(CancellationSectionView.definition)
         register(ReminderSectionView.definition)
-        register(HistorySectionView.definition)
     }
 }

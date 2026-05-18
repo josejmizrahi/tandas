@@ -40,30 +40,6 @@ public struct AssignmentSectionView: View {
     }
 }
 
-// MARK: - booking
-
-public struct BookingSectionView: View {
-    public let context: ResourceDetailContext
-
-    public static let definition = CapabilitySection(
-        id: "booking",
-        priority: 380,
-        isEnabledFor: { caps in caps.contains(CapabilityID.booking) },
-        render: { ctx in AnyView(BookingSectionView(context: ctx)) }
-    )
-
-    public init(context: ResourceDetailContext) { self.context = context }
-
-    public var body: some View {
-        CapabilityStubCard(label: "RESERVAS") {
-            StubPlaceholderRow(
-                symbol: "calendar.badge.clock",
-                subtitle: "Para assets, las reservas viven en la sección CUPOS de abajo."
-            )
-        }
-    }
-}
-
 // MARK: - swap
 
 public struct SwapSectionView: View {
