@@ -64,7 +64,10 @@ serve(withSentry(async (req) => {
   const { data: canInvite, error: permErr } = await userClient.rpc("has_permission", {
     p_group_id: group_id,
     p_user_id: callerId,
-    p_permission: "members.invite",
+    // 'modifyMembers' is the canonical slug in groups.roles jsonb; granted
+    // to admin + founder by default. Earlier drafts used 'members.invite'
+    // which doesn't exist in the catalog — see mig 00323.
+    p_permission: "modifyMembers",
   });
   if (permErr) {
     return json({ error: `permission check failed: ${permErr.message}` }, 500);
