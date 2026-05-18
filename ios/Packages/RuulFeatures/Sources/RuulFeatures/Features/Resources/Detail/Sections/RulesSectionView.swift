@@ -2,10 +2,16 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Rules primitive renderer. Settings-style single-row entry that opens
-/// `ResourceRulesSheet` for the resource. The sheet handles add / edit /
-/// propose-change UX (governance plan from feat/group-governance-policies
-/// wires `resolve_governance` into the save path).
+/// Rules section rendered inline inside the resource detail's Reglas
+/// tab. Owns a `ResourceRulesCoordinator` (built on first appear from
+/// `AppState`'s `ruleRepo` + `ruleShapeRegistry`) and renders the same
+/// `ResourceRulesBody` the `ResourceRulesSheet` uses — so the user
+/// sees the rules list directly, no row-→-sheet bounce.
+///
+/// The catalog `render` closure returns this view, which then attaches
+/// to `@Environment(AppState.self)` from the SwiftUI graph. The outer
+/// `ResourceDetailSheet` already injects `app` + `router` on the
+/// fullScreenCover so the environment lookup succeeds.
 public struct RulesSectionView: View {
     public let context: ResourceDetailContext
 
@@ -18,44 +24,60 @@ public struct RulesSectionView: View {
     )
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("Acuerdos")
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-                .padding(.horizontal, RuulSpacing.xxs)
+        InlineRulesContent(context: context)
+    }
+}
 
-            Button(action: context.onPresentRules) {
-                HStack(spacing: RuulSpacing.md) {
-                    Image(systemName: "list.bullet.clipboard.fill")
-                        .ruulTextStyle(RuulTypography.subheadSemibold)
-                        .foregroundStyle(Color.ruulAccent)
-                        .frame(width: 28)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Acuerdos de este recurso")
-                            .ruulTextStyle(RuulTypography.body)
-                            .foregroundStyle(Color.ruulTextPrimary)
-                        Text("Lo que se cumple sin pensar.")
-                            .ruulTextStyle(RuulTypography.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .ruulTextStyle(RuulTypography.labelSmSemibold)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                        .accessibilityHidden(true)
-                }
-                .padding(.horizontal, RuulSpacing.md)
-                .padding(.vertical, RuulSpacing.md)
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                .contentShape(Rectangle())
+@MainActor
+private struct InlineRulesContent: View {
+    let context: ResourceDetailContext
+    @Environment(AppState.self) private var app
+    /// Lazy-built coordinator. Held as @State so it survives tab
+    /// switches inside the detail (Reglas tab → otra tab → Reglas
+    /// tab) — the loaded rules don't refetch on every visit.
+    @State private var coordinator: ResourceRulesCoordinator?
+
+    var body: some View {
+        Group {
+            if let coordinator {
+                ResourceRulesBody(coordinator: coordinator)
+            } else {
+                RuulLoadingState()
+                    .frame(maxWidth: .infinity, minHeight: 160)
             }
-            .buttonStyle(.plain)
-            .background(
-                .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-            )
-            .accessibilityLabel("Ver acuerdos del recurso")
         }
+        .onAppear {
+            if coordinator == nil {
+                coordinator = makeCoordinator()
+            }
+        }
+    }
+
+    private func makeCoordinator() -> ResourceRulesCoordinator {
+        let ctx = ResourceRuleContext(
+            groupId: context.group.id,
+            resourceId: context.resource.id,
+            resourceType: context.resource.resourceType.rawString,
+            displayName: context.displayName,
+            canCreate: canCreateRules
+        )
+        return ResourceRulesCoordinator(
+            context: ctx,
+            ruleRepo: app.ruleRepo,
+            shapeRegistry: app.ruleShapeRegistry
+        )
+    }
+
+    /// Mirrors `ResourceDetailSheet.canCreateRules`. Founders / admins
+    /// + any custom role with `.modifyRules` qualify; everyone else is
+    /// read-only. Server still gates the write at the RPC level.
+    private var canCreateRules: Bool {
+        guard let userId = context.currentUserId,
+              let me = context.memberDirectory[userId]?.member else { return false }
+        let catalog = context.group.effectiveRoles
+        for raw in me.rawRoles {
+            if let def = catalog[raw], def.grants(.modifyRules) { return true }
+        }
+        return false
     }
 }

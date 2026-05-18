@@ -207,10 +207,6 @@ public struct FundBalanceSection: View {
 /// constitution Rule 6. Registered with `ResourceInfoRegistry` at boot.
 @MainActor
 public enum FundInfoProvider {
-    public static func register() {
-        ResourceInfoRegistry.shared.register(type: .fund, provider: rows)
-    }
-
     public static func rows(for ctx: ResourceDetailContext) -> [ResourceInfoRow] {
         var out: [ResourceInfoRow] = []
         if let currency = ctx.resource.metadata["currency"]?.stringValue {

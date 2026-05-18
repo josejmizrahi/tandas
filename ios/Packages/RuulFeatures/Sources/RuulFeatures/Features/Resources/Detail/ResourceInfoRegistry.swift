@@ -29,14 +29,15 @@ public final class ResourceInfoRegistry {
     private var providers: [ResourceType: (ResourceDetailContext) -> [ResourceInfoRow]] = [:]
 
     private init() {
-        // Providers self-register from their type files via `register(...)`
-        // at boot. Section files import RuulCore where `ResourceType` is
-        // declared and call the static helpers here. See AssetSections,
-        // SpaceSections, FundBalanceSection, RightInfoProvider.
-        RightInfoProvider.register()
-        FundInfoProvider.register()
-        AssetInfoProvider.register()
-        SpaceInfoProvider.register()
+        // Wired here (instead of provider-side `register()` helpers) so the
+        // call chain doesn't re-enter `shared` while `shared` is still in
+        // its `dispatch_once` init — that re-entrancy traps with
+        // EXC_BREAKPOINT in `_dispatch_once_wait`. Each provider stays the
+        // owner of its `rows(for:)` logic; only the wiring lives here.
+        register(type: .right, provider: RightInfoProvider.rows)
+        register(type: .fund,  provider: FundInfoProvider.rows)
+        register(type: .asset, provider: AssetInfoProvider.rows)
+        register(type: .space, provider: SpaceInfoProvider.rows)
     }
 
     public func register(

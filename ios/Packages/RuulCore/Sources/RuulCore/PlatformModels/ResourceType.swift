@@ -72,14 +72,11 @@ extension ResourceType {
     }
 
     /// Whether the user can toggle capabilities on/off for this resource
-    /// type via the "Activar capability" surface in Settings. Events have
-    /// their capability set hard-seeded by the platform (mig 00109 + 00221)
-    /// — the user shouldn't be able to disable RSVP or check-in on an
-    /// event, those are foundational. The other 5 types are configured
-    /// at creation and remain user-managed afterward.
-    /// Post-Pass-1 unreferenced — capability management moved to the
-    /// Governance tab (`GovernanceTabView`) which surfaces caps for every
-    /// resource type. Kept for future per-type gating decisions.
+    /// Historical knob: pre-doctrine, the asset/fund/space/slot/right
+    /// types let the user toggle their capability set in Settings. Today
+    /// caps are auto-on at creation and never user-visible (no Governance
+    /// tab). Kept as a stub for future per-type gating decisions; today
+    /// it returns the same shape but is not consulted by any UI.
     public var capabilitiesAreUserManaged: Bool {
         switch self {
         case .event:        return false

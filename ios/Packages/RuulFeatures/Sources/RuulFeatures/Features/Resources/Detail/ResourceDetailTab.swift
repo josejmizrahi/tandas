@@ -1,31 +1,32 @@
 import Foundation
 
-/// The 5 universal tabs every resource detail screen shows in Pass 1.
-/// Per-type tabs (Pass 2) extend this by introducing a `ResourceTabRegistry`
-/// that returns ordered tabs per `ResourceType` — the universal 5 stay as
-/// the canonical baseline.
+/// The 4 universal tabs every resource detail screen shows. Per-type
+/// tabs extend this by introducing a `ResourceTabRegistry` that returns
+/// ordered tabs per `ResourceType` — the universal 4 stay as canonical.
 ///
 /// Mapped to sections via `CapabilitySection.tabId`. The string match is
 /// `tab.id == section.tabId`. Sections without an explicit tabId default
 /// to `.overview`.
+///
+/// Doctrine: there is no "Gobierno"/capabilities tab. Capabilities are
+/// auto-on at resource creation and never user-visible. Sections appear
+/// when the user takes an action that needs them.
 public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
     case overview
     case activity
     case rules
     case connections
-    case governance
 
     public var id: String { rawValue }
 
-    /// Spanish label for the segmented control. Kept short ("Gobierno"
-    /// not "Gobernanza") so 5 segments fit on iPhone SE width.
+    /// Spanish label for the segmented control. "Vínculos" instead of
+    /// "Conexiones" so the four segments fit a single line on iPhone SE.
     public var label: String {
         switch self {
         case .overview:    return "General"
         case .activity:    return "Actividad"
         case .rules:       return "Reglas"
-        case .connections: return "Conexiones"
-        case .governance:  return "Gobierno"
+        case .connections: return "Vínculos"
         }
     }
 
@@ -38,7 +39,6 @@ public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
         case .activity:    return "clock.arrow.circlepath"
         case .rules:       return "list.bullet.clipboard"
         case .connections: return "link"
-        case .governance:  return "shield"
         }
     }
 }

@@ -2,24 +2,35 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Rules surface for a single event. Per founder framing 2026-05-10
-/// rules cascade across 5 scope levels and the user looking at an event
-/// must see what applies, not just what was authored at the event level.
-/// This sheet renders three sections in specificity order:
+/// Rules surface for a single resource. Per founder framing 2026-05-10
+/// rules cascade across 5 scope levels and the viewer must see what
+/// applies, not just what was authored at the resource level. This
+/// surface renders three sections in specificity order:
 ///
-///   1. "De este evento"  — rules.resource_id = event.id
-///   2. "De la serie"     — rules.series_id   = event's series
-///   3. "Del grupo"       — group-scoped rules (includes platform defaults)
+///   1. "De este recurso"  — rules.resource_id = resource.id
+///   2. "De la serie"      — rules.series_id   = resource's series
+///   3. "Del grupo"        — group-scoped rules (includes platform defaults)
 ///
-/// Only "De este evento" rules are editable from here; the inherited
+/// Only "De este recurso" rules are editable from here; the inherited
 /// sections render with a "Heredada" chip and a softer visual treatment
-/// so the user understands they need to navigate to the source scope to
+/// so the viewer understands they need to navigate to the source scope to
 /// change them. Tap → navigation to source = future R4 work.
-// File name kept for git continuity; the type is the generic
-// `ResourceRulesSheet` that handles any Resource — event, asset, fund,
-// etc.
-struct ResourceRulesSheet: View {
-    @Binding var isPresented: Bool
+///
+/// File name kept for git continuity; the types are the generic
+/// `ResourceRulesBody` (inline content) + `ResourceRulesSheet`
+/// (modal-chrome wrapper) that handle any Resource — event, asset,
+/// fund, etc.
+
+// MARK: - Inline body
+
+/// Inline content for the Rules surface — the actual list + add CTA +
+/// sub-sheet wiring. Rendered both as the body of `ResourceRulesSheet`
+/// (when the viewer opens it from the ⋯ menu) and inline inside the
+/// resource detail's Reglas tab (`RulesSectionView`). Owns no
+/// presentation chrome; the caller is responsible for any wrapping
+/// container.
+@MainActor
+struct ResourceRulesBody: View {
     @Bindable var coordinator: ResourceRulesCoordinator
     @Environment(AppState.self) private var app
 
@@ -30,19 +41,8 @@ struct ResourceRulesSheet: View {
     /// rather than being the only path.
     @State private var composerCoord: RuleComposerCoordinator?
 
-    public init(
-        isPresented: Binding<Bool>,
-        coordinator: ResourceRulesCoordinator
-    ) {
-        self._isPresented = isPresented
-        self.coordinator = coordinator
-    }
-
     var body: some View {
-        ModalSheetTemplate(
-            title: "Acuerdos del evento",
-            dismissAction: { isPresented = false }
-        ) {
+        VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             if coordinator.isLoading && coordinator.rules.isEmpty {
                 RuulLoadingState()
                     .frame(maxWidth: .infinity, minHeight: 200)
@@ -51,15 +51,14 @@ struct ResourceRulesSheet: View {
                     systemImage: "list.bullet.clipboard",
                     title: "Sin acuerdos aplicables",
                     message: coordinator.canCreate
-                        ? "Agrega acuerdos que sólo apliquen a este evento. Los del grupo seguirán aplicando."
-                        // W2-C4: "host" → "anfitrión".
-                        : "Sólo el anfitrión o un fundador pueden crear acuerdos específicos para este evento."
+                        ? "Agrega acuerdos que sólo apliquen a este recurso. Los del grupo seguirán aplicando."
+                        : "Sólo el anfitrión o un fundador pueden crear acuerdos específicos para este recurso."
                 )
                 .padding(.vertical, RuulSpacing.md)
             } else {
                 scopeSection(
-                    title: "DE ESTE EVENTO",
-                    hint: "Específicas a esta cena. Sobrescriben las heredadas.",
+                    title: "DE ESTE RECURSO",
+                    hint: "Específicos a este recurso. Sobrescriben las heredadas.",
                     rules: coordinator.resourceRules,
                     scope: .resource
                 )
@@ -192,7 +191,7 @@ struct ResourceRulesSheet: View {
 
     private var addRuleCTA: some View {
         RuulButton(
-            "Agregar regla para este evento",
+            "Agregar acuerdo para este recurso",
             systemImage: "plus",
             style: .primary,
             size: .large,
@@ -252,7 +251,7 @@ struct ResourceRulesSheet: View {
     private func badgeText(for scope: GroupRule.Scope) -> String {
         switch scope {
         case .membership: return "Para ti"
-        case .resource:   return "Evento"
+        case .resource:   return "Recurso"
         case .series:     return "Heredada · serie"
         case .module:     return "Heredada · módulo"
         case .group:      return "Heredada · grupo"
@@ -265,5 +264,33 @@ struct ResourceRulesSheet: View {
     /// share this one path.
     private func sentencePreview(for rule: GroupRule) -> String {
         RuleSentenceFormatter.sentence(for: rule, registry: coordinator.shapeRegistry)
+    }
+}
+
+// MARK: - Modal sheet wrapper
+
+/// Modal-chrome wrapper around `ResourceRulesBody`. Today only the
+/// resource detail's ⋯ menu's "Reglas" path uses this — the Reglas tab
+/// renders the body inline via `RulesSectionView` so the user gets the
+/// list directly, no sub-sheet bounce.
+struct ResourceRulesSheet: View {
+    @Binding var isPresented: Bool
+    @Bindable var coordinator: ResourceRulesCoordinator
+
+    public init(
+        isPresented: Binding<Bool>,
+        coordinator: ResourceRulesCoordinator
+    ) {
+        self._isPresented = isPresented
+        self.coordinator = coordinator
+    }
+
+    var body: some View {
+        ModalSheetTemplate(
+            title: "Acuerdos",
+            dismissAction: { isPresented = false }
+        ) {
+            ResourceRulesBody(coordinator: coordinator)
+        }
     }
 }

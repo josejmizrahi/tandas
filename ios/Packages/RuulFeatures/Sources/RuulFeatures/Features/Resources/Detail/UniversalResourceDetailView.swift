@@ -55,6 +55,26 @@ public struct UniversalResourceDetailView: View {
     /// presentations (Pass 1 default; revisit in Pass 2 per founder feedback).
     @State private var selectedTab: ResourceDetailTab = .overview
 
+    // MARK: Intent-driven toolbar state (Phase 1: asset + fund)
+    //
+    // The toolbar `+` / ⚙️ for asset and fund resources is wired to
+    // `ResourceIntentRegistry`. Tapping an intent sets one of these
+    // states — the body's sheet / confirmationDialog modifiers render
+    // the matching surface and call the matching RPC on submit.
+    //
+    // TODO Phase 2: migrate event/right/slot/space from
+    // CapabilityResolver.secondaryActions to the registry path; this
+    // state set covers asset+fund destinations only.
+
+    /// Intent whose action requires a sheet (transfer picker, checkout,
+    /// valuation, log maintenance, …). Bound to `.sheet(item:)`.
+    @State private var pendingIntentSheet: IdentifiableIntent?
+    /// Intent whose action requires a destructive confirmation (release
+    /// custody, mark returned, return to group, unlock fund, archive).
+    @State private var pendingConfirmation: ConfirmationKind?
+    /// Last RPC error surfaced to the user via a transient banner.
+    @State private var intentError: String?
+
     public init(context: ResourceDetailContext) {
         self.context = context
     }
@@ -87,22 +107,69 @@ public struct UniversalResourceDetailView: View {
         }
         .ruulSheetToolbar(context.displayName, onClose: context.onDismiss)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if !secondaryActions.isEmpty {
+            // ToolbarItemGroup keeps the two trailing buttons rendered as
+            // a single block in NavigationStack. Two separate
+            // `ToolbarItem(placement: .topBarTrailing)` instances collide
+            // intermittently on iOS 26 (devicelogs from 2026-05-18:
+            // second item disappears under certain modal-cover stacking).
+            // The group form is the canonical recipe per Apple's
+            // Toolbars HIG sample code.
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                // `+` menu: everything the viewer can DO with this
+                // resource right now. Sourced from `ResourceIntentRegistry`
+                // for asset+fund (Phase 1); falls back to the legacy
+                // `CapabilityResolver.secondaryActions` for other types.
+                if !plusMenuIntents.isEmpty || !plusMenuLegacyActions.isEmpty {
                     Menu {
-                        ForEach(secondaryActions) { action in
-                            Button(role: action.isDestructive ? .destructive : nil) {
-                                dispatchSecondary(action)
-                            } label: {
-                                Label(action.label, systemImage: action.symbol)
-                            }
-                        }
+                        plusMenuContents
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "plus")
                             .ruulTextStyle(RuulTypography.subheadSemibold)
                             .foregroundStyle(Color.ruulTextPrimary)
+                            .accessibilityLabel("Acciones del recurso")
                     }
                 }
+                // ⚙️ menu: resource configuration (Editar detalles +
+                // Archivar). Intentionally minimal — further config goes
+                // into an "Avanzado" sub-sheet per doctrine 2026-05-18.
+                if !gearMenuIntents.isEmpty || !gearMenuLegacyActions.isEmpty {
+                    Menu {
+                        gearMenuContents
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .foregroundStyle(Color.ruulTextPrimary)
+                            .accessibilityLabel("Ajustes del recurso")
+                    }
+                }
+            }
+        }
+        // Intent-driven sheets (asset + fund Phase 1). One `.sheet(item:)`
+        // dispatches by `pendingIntentSheet.intent.destination`, so adding
+        // a new sheet destination is a single switch case below.
+        .sheet(item: $pendingIntentSheet) { wrapped in
+            sheetForIntent(wrapped.intent)
+                .environment(app)
+        }
+        // Intent-driven confirmations. Single `.confirmationDialog` keyed
+        // by `pendingConfirmation`. Each case maps to its own title +
+        // destructive CTA + async RPC call.
+        .confirmationDialog(
+            pendingConfirmation?.title ?? "",
+            isPresented: confirmationBinding,
+            titleVisibility: .visible
+        ) {
+            if let kind = pendingConfirmation {
+                Button(kind.confirmCTA, role: .destructive) {
+                    Task { await runConfirmedAction(kind) }
+                }
+                Button("Cancelar", role: .cancel) {
+                    pendingConfirmation = nil
+                }
+            }
+        } message: {
+            if let kind = pendingConfirmation {
+                Text(kind.message)
             }
         }
         .sheet(item: $activeRightAction) { action in
@@ -268,7 +335,12 @@ public struct UniversalResourceDetailView: View {
     @ViewBuilder
     private var informationSection: some View {
         let facts = infoRows
-        if !facts.isEmpty {
+        // "Creado" alone is noise — a section just for the create date
+        // adds chrome without earning it. Render the card only when at
+        // least one other fact is present; Creado then rides along as
+        // the tail row.
+        let hasMeaningfulFact = facts.contains { $0.label != "Creado" }
+        if hasMeaningfulFact {
             RuulInfoCard("INFORMACIÓN") {
                 ForEach(Array(facts.enumerated()), id: \.offset) { idx, fact in
                     RuulInfoRow(label: fact.label, value: fact.value)
@@ -393,7 +465,6 @@ public struct UniversalResourceDetailView: View {
         case .activity:    activityContent
         case .rules:       rulesContent
         case .connections: connectionsContent
-        case .governance:  governanceContent
         }
     }
 
@@ -455,11 +526,6 @@ public struct UniversalResourceDetailView: View {
                 section.render(context)
             }
         }
-    }
-
-    @ViewBuilder
-    private var governanceContent: some View {
-        GovernanceTabView(resource: context.resource, onArchive: nil)
     }
 
     @ViewBuilder
@@ -592,6 +658,21 @@ public struct UniversalResourceDetailView: View {
         )
     }
 
+    /// Toolbar split: actions ("+" button) vs configuration ("⚙️"
+    /// button). Today only editDetails + archive are configuration —
+    /// every other kind is something the user DOES with the resource.
+    private static let settingsKinds: Set<SecondaryAction.Kind> = [
+        .editDetails, .archive
+    ]
+
+    private var actionItems: [SecondaryAction] {
+        secondaryActions.filter { !Self.settingsKinds.contains($0.kind) }
+    }
+
+    private var settingsItems: [SecondaryAction] {
+        secondaryActions.filter { Self.settingsKinds.contains($0.kind) }
+    }
+
     /// Sprint E (V16 fix): replaces the previous `viewerRole()` lossy
     /// projection that collapsed N member.rawRoles into 1 MemberRole
     /// enum (dropping `admin` + every custom role like `seat_owner`,
@@ -716,6 +797,441 @@ public struct UniversalResourceDetailView: View {
         // fundLockRow (gated by viewerIsAdmin + resource.type=fund),
         // keeping every fund admin control grouped with the dinero card.
         case .recordExpenseFromFund: activeFundSheet = .recordExpense
+        }
+    }
+
+    // MARK: - Intent-driven toolbar (Phase 1: asset + fund)
+    //
+    // For asset + fund the toolbar reads from `ResourceIntentRegistry`.
+    // For other types we keep `secondaryActions` / `dispatchSecondary`
+    // wired above until Phase 2 migrates them.
+
+    /// True when this resource type's toolbar is intent-driven (Phase 1).
+    /// TODO Phase 2: extend to .right, .event, .slot, .space and remove
+    /// this branch.
+    private var usesIntentRegistry: Bool {
+        switch context.resource.resourceType {
+        case .asset, .fund: return true
+        default: return false
+        }
+    }
+
+    /// Context the registry needs to filter intents.
+    private var intentContext: ResourceIntentContext {
+        ResourceIntentContext(
+            resource: context.resource,
+            group: context.group,
+            viewerUserId: context.currentUserId,
+            viewerPermissions: viewerPermissions(),
+            enabledCapabilities: context.enabledCapabilities
+        )
+    }
+
+    /// All intents the registry says are valid right now for this
+    /// resource + viewer. Empty when `usesIntentRegistry == false`.
+    private var availableIntents: [ResourceIntent] {
+        guard usesIntentRegistry else { return [] }
+        return DefaultResourceIntentRegistry.v1.available(in: intentContext)
+    }
+
+    /// Intents for the `+` menu (everything that isn't a setting).
+    private var plusMenuIntents: [ResourceIntent] {
+        availableIntents.filter { !$0.isResourceSetting }
+    }
+
+    /// Intents for the ⚙️ menu (editDetails + archive today).
+    private var gearMenuIntents: [ResourceIntent] {
+        availableIntents.filter { $0.isResourceSetting }
+    }
+
+    /// Legacy `+` items for non-asset/non-fund types (Phase 2 work).
+    private var plusMenuLegacyActions: [SecondaryAction] {
+        usesIntentRegistry ? [] : actionItems
+    }
+
+    /// Legacy ⚙️ items for non-asset/non-fund types.
+    private var gearMenuLegacyActions: [SecondaryAction] {
+        usesIntentRegistry ? [] : settingsItems
+    }
+
+    /// Intents grouped + sorted for the `+` menu sectioning.
+    private var groupedPlusMenuIntents: [(IntentGroup, [ResourceIntent])] {
+        let buckets = Dictionary(grouping: plusMenuIntents) { $0.group }
+        return IntentGroup.allCases
+            .compactMap { group in
+                guard let items = buckets[group], !items.isEmpty else { return nil }
+                return (group, items)
+            }
+    }
+
+    // MARK: - Menu contents
+
+    /// Sections inside the `+` Menu. Intent-driven for asset+fund;
+    /// flat legacy list for other types.
+    @ViewBuilder
+    private var plusMenuContents: some View {
+        if usesIntentRegistry {
+            ForEach(groupedPlusMenuIntents, id: \.0) { group, items in
+                Section(group.label) {
+                    ForEach(items) { intent in
+                        Button(role: intent.isDestructive ? .destructive : nil) {
+                            dispatchIntent(intent)
+                        } label: {
+                            Label(intent.humanLabel, systemImage: intent.icon)
+                        }
+                    }
+                }
+            }
+        } else {
+            ForEach(plusMenuLegacyActions) { action in
+                Button(role: action.isDestructive ? .destructive : nil) {
+                    dispatchSecondary(action)
+                } label: {
+                    Label(action.label, systemImage: action.symbol)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var gearMenuContents: some View {
+        if usesIntentRegistry {
+            ForEach(gearMenuIntents) { intent in
+                Button(role: intent.isDestructive ? .destructive : nil) {
+                    dispatchIntent(intent)
+                } label: {
+                    Label(intent.humanLabel, systemImage: intent.icon)
+                }
+            }
+        } else {
+            ForEach(gearMenuLegacyActions) { action in
+                Button(role: action.isDestructive ? .destructive : nil) {
+                    dispatchSecondary(action)
+                } label: {
+                    Label(action.label, systemImage: action.symbol)
+                }
+            }
+        }
+    }
+
+    // MARK: - Intent dispatch
+
+    private func dispatchIntent(_ intent: ResourceIntent) {
+        switch intent.destination {
+        // --- Sheet destinations ---
+        case .transferAssetPicker,
+             .checkoutAssetSheet,
+             .recordValuationSheet,
+             .logMaintenanceSheet,
+             .reportDamageSheet,
+             .createSlotUnderAssetSheet,
+             .fundLockSheet,
+             .systemShareSheet,
+             .editResourceSheet,
+             .custodyAssignment,
+             .assignCustodyPicker,
+             .valuationForm:
+            pendingIntentSheet = IdentifiableIntent(intent: intent)
+
+        case .fundContributeSheet:
+            activeFundSheet = .contribute
+        case .fundRecordExpenseSheet:
+            activeFundSheet = .recordExpense
+
+        // --- Confirmation destinations ---
+        case .returnAssetToGroupConfirm:
+            pendingConfirmation = .returnAssetToGroup
+        case .releaseCustodyConfirm:
+            pendingConfirmation = .releaseCustody
+        case .markReturnedConfirm:
+            pendingConfirmation = .markReturned
+        case .fundUnlockConfirm:
+            pendingConfirmation = .fundUnlock
+        case .archiveResourceConfirm:
+            pendingConfirmation = .archiveResource
+
+        // --- Post-create navigation destinations (Phase 2 wiring) ---
+        case .ledgerEntryForm,
+             .reservationSetup,
+             .rightCreationFlow,
+             .ruleTemplatePicker,
+             .linkPicker,
+             .rsvpManager,
+             .checkInLauncher,
+             .slotAllocationForm,
+             .rightHolderForm,
+             .governanceRuleEditor,
+             .historyTab,
+             .moneyTab,
+             .childResourceWizard:
+            // TODO Phase 2: wire navigation destinations from toolbar.
+            // For now these only fire from the post-create screen; the
+            // toolbar's intent surface doesn't expose them.
+            break
+        }
+    }
+
+    // MARK: - Sheet renderer per destination
+
+    @ViewBuilder
+    private func sheetForIntent(_ intent: ResourceIntent) -> some View {
+        switch intent.destination {
+        case .transferAssetPicker:
+            NavigationStack {
+                MemberPickerSheet(
+                    members: transferableMembers,
+                    title: "Transferir a"
+                ) { memberId in
+                    Task { await transferAsset(to: memberId) }
+                }
+            }
+        case .custodyAssignment, .assignCustodyPicker:
+            NavigationStack {
+                MemberPickerSheet(
+                    members: assignableCustodians,
+                    title: "Asignar custodia"
+                ) { memberId in
+                    Task { await assignCustody(to: memberId) }
+                }
+            }
+        case .checkoutAssetSheet:
+            CheckOutAssetSheet(
+                asset: context.resource,
+                members: Array(context.memberDirectory.values)
+            ) {
+                pendingIntentSheet = nil
+                Task { await context.onResourceMutated() }
+            }
+        case .recordValuationSheet, .valuationForm:
+            RecordValuationSheet(asset: context.resource) {
+                pendingIntentSheet = nil
+                Task { await context.onResourceMutated() }
+            }
+        case .logMaintenanceSheet:
+            LogMaintenanceSheet(asset: context.resource) {
+                pendingIntentSheet = nil
+                Task { await context.onResourceMutated() }
+            }
+        case .reportDamageSheet:
+            ReportDamageSheet(asset: context.resource) {
+                pendingIntentSheet = nil
+                Task { await context.onResourceMutated() }
+            }
+        case .createSlotUnderAssetSheet:
+            CreateSlotSheet(asset: context.resource) {
+                pendingIntentSheet = nil
+                Task { await context.onResourceMutated() }
+            }
+        case .fundLockSheet:
+            LockFundSheet(asset: context.resource) {
+                pendingIntentSheet = nil
+                Task { await context.onResourceMutated() }
+            }
+        case .systemShareSheet:
+            // TODO Phase 2: wire a system UIActivityViewController bridge
+            // (or reuse ShareEventSheet when generalized). For now show a
+            // placeholder so the menu entry doesn't silently dead-end.
+            VStack(spacing: RuulSpacing.md) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 48))
+                    .foregroundStyle(Color.ruulTextSecondary)
+                Text("Compartir llega en la siguiente iteración.")
+                    .ruulTextStyle(RuulTypography.body)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, RuulSpacing.lg)
+                Button("Cerrar") { pendingIntentSheet = nil }
+                    .buttonStyle(.bordered)
+            }
+            .padding(RuulSpacing.xl)
+            .presentationDetents([.medium])
+        case .editResourceSheet:
+            // Per-type edit sheets: right → EditRightSheet (existing).
+            // Other types: Phase 2. For now the menu surfaces a
+            // "coming soon" so the entry doesn't disappear without a
+            // breadcrumb.
+            if context.resource.resourceType == .right {
+                EditRightSheet(
+                    rightId: context.resource.id,
+                    metadata: context.resource.metadata,
+                    onCompleted: {
+                        pendingIntentSheet = nil
+                        if let onDismiss = context.onDismiss { onDismiss() }
+                        else { dismiss() }
+                    }
+                )
+            } else {
+                VStack(spacing: RuulSpacing.md) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Color.ruulTextSecondary)
+                    Text("Editar este tipo de recurso llega en la siguiente iteración.")
+                        .ruulTextStyle(RuulTypography.body)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, RuulSpacing.lg)
+                    Button("Cerrar") { pendingIntentSheet = nil }
+                        .buttonStyle(.bordered)
+                }
+                .padding(RuulSpacing.xl)
+                .presentationDetents([.medium])
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    // MARK: - Confirmation dispatch
+
+    private var confirmationBinding: Binding<Bool> {
+        Binding(
+            get: { pendingConfirmation != nil },
+            set: { isPresented in
+                if !isPresented { pendingConfirmation = nil }
+            }
+        )
+    }
+
+    @MainActor
+    private func runConfirmedAction(_ kind: ConfirmationKind) async {
+        defer { pendingConfirmation = nil }
+        do {
+            switch kind {
+            case .releaseCustody:
+                try await app.assetLifecycleRepo.releaseCustody(
+                    asset: context.resource.id, notes: nil
+                )
+            case .markReturned:
+                try await app.assetLifecycleRepo.checkInAsset(
+                    asset: context.resource.id, conditionNotes: nil
+                )
+            case .returnAssetToGroup:
+                try await app.assetLifecycleRepo.transferAsset(
+                    asset: context.resource.id, to: nil, notes: nil
+                )
+            case .fundUnlock:
+                try await app.fundRepo.unlock(fundId: context.resource.id)
+            case .archiveResource:
+                // TODO Phase 2: wire `archive_resource` RPC (mig 00291).
+                // For now log + surface as error so the user knows it
+                // didn't go through silently.
+                intentError = "Archivar llega en la siguiente iteración."
+                return
+            }
+            await context.onResourceMutated()
+            intentError = nil
+        } catch {
+            intentError = error.localizedDescription
+        }
+    }
+
+    // MARK: - RPC handlers (sheet-completion callbacks)
+
+    @MainActor
+    private func transferAsset(to memberId: UUID) async {
+        pendingIntentSheet = nil
+        do {
+            try await app.assetLifecycleRepo.transferAsset(
+                asset: context.resource.id, to: memberId, notes: nil
+            )
+            await context.onResourceMutated()
+        } catch {
+            intentError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func assignCustody(to memberId: UUID) async {
+        pendingIntentSheet = nil
+        do {
+            try await app.assetLifecycleRepo.assignCustody(
+                asset: context.resource.id, to: memberId, notes: nil
+            )
+            await context.onResourceMutated()
+        } catch {
+            intentError = error.localizedDescription
+        }
+    }
+
+    // MARK: - Member-picker filtering for asset action sheets
+
+    /// Members eligible to receive the asset via transfer — everyone in
+    /// the group except the current owner.
+    private var transferableMembers: [MemberWithProfile] {
+        let all = Array(context.memberDirectory.values)
+        guard let raw = context.resource.metadata["owner_id"]?.stringValue,
+              let ownerMemberId = UUID(uuidString: raw) else {
+            return all
+        }
+        return all.filter { $0.member.id != ownerMemberId }
+    }
+
+    /// Members eligible to assume custody — everyone except the current
+    /// custodian (selecting the same person is a no-op server-side but
+    /// muddies the audit trail).
+    private var assignableCustodians: [MemberWithProfile] {
+        let all = Array(context.memberDirectory.values)
+        guard let raw = context.resource.metadata["custodian_id"]?.stringValue,
+              let custodianMemberId = UUID(uuidString: raw) else {
+            return all
+        }
+        return all.filter { $0.member.id != custodianMemberId }
+    }
+}
+
+// MARK: - Intent wrapper + confirmation kind
+
+/// `.sheet(item:)` requires Identifiable. Wrapping `ResourceIntent` so
+/// the destination can drive the sheet renderer without making the
+/// public `ResourceIntent` value itself Identifiable-by-self (intents
+/// can repeat per resource type — id alone isn't a sheet key).
+struct IdentifiableIntent: Identifiable {
+    let intent: ResourceIntent
+    var id: String { intent.id }
+}
+
+/// Direct-action confirmations driven by `.confirmationDialog`. Each
+/// case carries its own copy + destructive CTA so the dialog body
+/// reads naturally per action.
+enum ConfirmationKind: Identifiable, Hashable {
+    case releaseCustody
+    case markReturned
+    case returnAssetToGroup
+    case fundUnlock
+    case archiveResource
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .releaseCustody:     return "¿Liberar custodia?"
+        case .markReturned:       return "¿Marcar como devuelto?"
+        case .returnAssetToGroup: return "¿Devolver al grupo?"
+        case .fundUnlock:         return "¿Desbloquear el fondo?"
+        case .archiveResource:    return "¿Archivar este recurso?"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .releaseCustody:
+            return "El activo vuelve a custodia del grupo (sin custodio asignado)."
+        case .markReturned:
+            return "Marca que el activo volvió a la persona que lo tiene en custodia."
+        case .returnAssetToGroup:
+            return "Quita al dueño actual. El activo queda como propiedad del grupo."
+        case .fundUnlock:
+            return "El fondo vuelve a permitir aportaciones y gastos."
+        case .archiveResource:
+            return "El recurso sale del feed activo. Queda en historial."
+        }
+    }
+
+    var confirmCTA: String {
+        switch self {
+        case .releaseCustody:     return "Liberar"
+        case .markReturned:       return "Marcar devuelto"
+        case .returnAssetToGroup: return "Devolver"
+        case .fundUnlock:         return "Desbloquear"
+        case .archiveResource:    return "Archivar"
         }
     }
 }
