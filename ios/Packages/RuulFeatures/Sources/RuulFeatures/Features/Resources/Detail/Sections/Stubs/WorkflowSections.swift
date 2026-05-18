@@ -100,7 +100,7 @@ public struct ApprovalSectionView: View {
             } else {
                 StubPlaceholderRow(
                     symbol: "checkmark.shield",
-                    subtitle: "Flujo de aprobación todavía no wired al backend."
+                    subtitle: "Aún no hay nada pendiente de aprobación."
                 )
             }
         }
