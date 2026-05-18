@@ -145,7 +145,10 @@ final class VoidFineCoordinatorTests: XCTestCase {
 
         XCTAssertNil(result)
         XCTAssertNotNil(coord.error)
-        XCTAssertTrue(coord.error?.contains("admin") ?? false)
+        // VoidFineCoordinator.humanize translates "only admins" →
+        // "Solo fundadores pueden anular multas." Assertion checks the
+        // Spanish output (was checking English "admin" pre-humanize).
+        XCTAssertTrue(coord.error?.contains("fundadores") ?? false)
     }
 
     func test_submit_clearsErrorOnRetry() async {

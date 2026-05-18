@@ -101,8 +101,20 @@ struct CapabilityResolverPrimaryActionTests {
 
     // MARK: - Other resource type tests
 
-    @Test("fund → openContribute placeholder")
-    func fundGetsContribute() {
+    @Test("fund with ledger capability → openContribute")
+    func fundWithLedgerGetsContribute() {
+        let action = resolver.primaryAction(
+            for: makeResource(type: .fund, status: "active"),
+            viewerRole: .member,
+            rsvpStatus: nil,
+            eventStatus: nil,
+            enabledCapabilities: ["ledger"]
+        )
+        #expect(action.kind == .openContribute)
+    }
+
+    @Test("fund without ledger or money capability → none")
+    func fundWithoutLedgerGetsNone() {
         let action = resolver.primaryAction(
             for: makeResource(type: .fund, status: "active"),
             viewerRole: .member,
@@ -110,11 +122,16 @@ struct CapabilityResolverPrimaryActionTests {
             eventStatus: nil,
             enabledCapabilities: []
         )
-        #expect(action.kind == .openContribute)
+        #expect(action.kind == .none)
     }
 
-    @Test("asset → openBooking placeholder")
-    func assetGetsBooking() {
+    @Test("asset → none (booking section's inline '+ Nuevo' is canonical)")
+    func assetGetsNone() {
+        // Doctrine in CapabilityResolver+PrimaryAction.swift L17-20:
+        // asset never returns .openBooking from the primary CTA because
+        // the bookings section already exposes the add path inline; a
+        // bottom-sticky "Reservar" would either duplicate it or mislead
+        // when booking isn't enabled.
         let action = resolver.primaryAction(
             for: makeResource(type: .asset, status: "active"),
             viewerRole: .member,
@@ -122,6 +139,6 @@ struct CapabilityResolverPrimaryActionTests {
             eventStatus: nil,
             enabledCapabilities: []
         )
-        #expect(action.kind == .openBooking)
+        #expect(action.kind == .none)
     }
 }

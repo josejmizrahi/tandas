@@ -3,10 +3,13 @@ import Testing
 
 @Suite("ResourceDetailTab")
 struct ResourceDetailTabTests {
-    @Test("allCases is exactly the 5 universal tabs in canonical order")
+    @Test("allCases is exactly the 4 universal tabs in canonical order")
     func allCasesCanonicalOrder() {
+        // Per ResourceDetailTab.swift doctrine: no "Gobierno" tab —
+        // capabilities are auto-on and never user-visible. Governance
+        // sub-surfaces live behind Settings → Governance → Advanced.
         #expect(ResourceDetailTab.allCases.map(\.rawValue) == [
-            "overview", "activity", "rules", "connections", "governance",
+            "overview", "activity", "rules", "connections",
         ])
     }
 
@@ -15,8 +18,9 @@ struct ResourceDetailTabTests {
         #expect(ResourceDetailTab.overview.label == "General")
         #expect(ResourceDetailTab.activity.label == "Actividad")
         #expect(ResourceDetailTab.rules.label == "Reglas")
-        #expect(ResourceDetailTab.connections.label == "Conexiones")
-        #expect(ResourceDetailTab.governance.label == "Gobierno")
+        // "Vínculos" instead of "Conexiones" so the four segments fit on
+        // iPhone SE width (see ResourceDetailTab.label docstring).
+        #expect(ResourceDetailTab.connections.label == "Vínculos")
     }
 
     @Test("id mirrors rawValue")

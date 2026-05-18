@@ -215,23 +215,17 @@ struct ResourceInfoRegistryTests {
     func rightTitularRow() {
         let holderUid = UUID()
         let member = MemberWithProfile(
-            member: MemberSummary(
+            member: Member(
                 id: UUID(),
+                groupId: UUID(),
                 userId: holderUid,
-                joinedAt: .now,
-                rawRoles: [],
-                active: true,
-                isFounder: false,
-                turnOrder: 0
+                joinedAt: .now
             ),
             profile: Profile(
                 id: holderUid,
-                phone: nil,
-                fullName: "Isaac",
+                displayName: "Isaac",
                 avatarUrl: nil,
-                preferredLanguage: nil,
-                createdAt: .now,
-                updatedAt: nil
+                phone: nil
             )
         )
         let ctx = Fixtures.context(
