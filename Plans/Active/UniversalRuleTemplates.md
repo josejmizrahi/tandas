@@ -867,58 +867,97 @@ Nada. El usuario nunca conoció los template_ids. Sigue viendo "Multa por llegar
 | W+3 | Tests (fixtures por universal + smoke) |
 | W+4 | Founder demo + freeze de catálogo Beta 1 |
 
-### 14.6 Estado de implementación 2026-05-18
+### 14.6 Estado de implementación 2026-05-18 (refresh post-mig 00325 + pipeline unification)
 
-Implementadas migs 00295/00296/00297/00320/00321 + Swift refactor de iOS (commits `d018966`, `63d3aa2`, `40f5be6`, `dc2ee4b`, `668b5ea`).
+Implementadas migs 00295/00296/00297/00320/00321/00325 + Swift refactor + Wizard pipeline unification + step 4 dedupe. Commits relevantes: `d018966`, `63d3aa2`, `40f5be6`, `dc2ee4b`, `668b5ea`, `1ad50d1`, `a579c24`, `8c4a678`, `871d443`.
 
-**Gallery actual (6 universales beta1, todos categoría C — Obligation o D — Governance):**
+**Gallery actual: 16 universales beta1.**
 
-| template_id | trigger | consequence | uso |
-|---|---|---|---|
-| `deadline_enforcement` | `hoursBeforeEvent` | `emitWarning` | Aviso pre-deadline |
-| `missed_obligation_consequence` | `checkInRecorded` | `fine` | Multa por llegar tarde |
-| `no_show_consequence` | `eventClosed` | `fine` | Multa por no llegar |
-| `late_cancellation_consequence` | `rsvpChangedSameDay` | `fine` | Multa por cancelar tarde |
-| `no_rsvp_consequence` | `rsvpDeadlinePassed` | `fine` | Multa por no avisar |
-| `approval_required` | `ledgerEntryCreated` | `requireApproval` | Aprobar gasto |
+| # | template_id | doctrinal | trigger | consequence |
+|---|---|---|---|---|
+| 1 | `deadline_enforcement` | C — Obligation | `hoursBeforeEvent` | `emitWarning` |
+| 2 | `missed_obligation_consequence` | C — Obligation | `checkInRecorded` | `fine` |
+| 3 | `no_show_consequence` | C — Obligation | `eventClosed` | `fine` |
+| 4 | `late_cancellation_consequence` | C — Obligation | `rsvpChangedSameDay` | `fine` |
+| 5 | `no_rsvp_consequence` | C — Obligation | `rsvpDeadlinePassed` | `fine` |
+| 6 | `cancellation_consequence` | C — Obligation | `eventCancelled` | `fine` |
+| 7 | `deadline_consequence` | C — Obligation | `hoursBeforeEvent` | `fine` |
+| 8 | `booking_cancellation_consequence` | C — Obligation | `bookingCancelled` | `fine` |
+| 9 | `approval_required` | D — Governance | `ledgerEntryCreated` | `requireApproval` |
+| 10 | `damage_approval` | D — Governance | `damageReported` | `requireApproval` |
+| 11 | `damage_vote_required` | D — Governance | `damageReported` | `startVote` |
+| 12 | `vote_required` | D — Governance | `ledgerEntryCreated` | `startVote` |
+| 13 | `booking_vote_required` | D — Governance | `bookingCreated` | `startVote` |
+| 14 | `expiration_warning` | D — Governance | `rightExpiringSoon` | `emitWarning` |
+| 15 | `late_return_consequence` | F — Custody | `checkoutOverdue` | `fine` |
+| 16 | `transfer_vote_required` | G — Transfer | `assetTransferred` | `startVote` |
 
-**Alias status (14 legacy templates):**
+**Alias status (14 legacy templates): 14 correctos, 0 mismatches.**
 
-| Alias correcto (trigger matches) | Alias mismatch (trigger NO matches) |
+Verificación: `select count(*) from public.rule_templates legacy join public.rule_templates u on u.id = legacy.alias_of where legacy.alias_of is not null and legacy.composition->>'trigger_shape_id' <> u.composition->>'trigger_shape_id'` devuelve **0**.
+
+**iOS:**
+- `AppState.ruleTemplatesForGallery` filtra `aliasOf == nil && status == "active" && betaStatus == "beta1"` (16 rows hoy).
+- `UniversalTemplateGallerySheet` renderiza cards canónicas con badge doctrinal + preview interpolado + antitemplate + chips por vertical. Reachable desde `RulesView` empty-state CTA y desde `RuleComposerView` toolbar.
+- `ResourceWizardSheet` step 4 separa **PATRONES UNIVERSALES** (canónico, render desde catálogo) de **Acciones adicionales** (legacy `CapabilityRuleOption` sin universal counterpart — 2 opciones hoy).
+- `publishSelectedUniversals(resourceId:)` publica vía `ruleTemplateRepo.publishRuleVersion` para 2 sources: picks explícitos del universals section + picks de capabilities que mapean a universal (cf. `selectedCapabilityUniversalPublishes`).
+- Step 5 (review) consolida los 3 buckets en una sola lista ordenada — sin duplicados.
+
+### 14.7 ~~Wave-1 followup migs~~ — CERRADO
+
+Tabla original anticipaba migs 00322-00328. **Todo absorbido en mig 00325** (un solo mig que ship 10 universales + re-alias 9 legacies + valida 0 mismatches via do-block). Detalle de cobertura:
+
+| Universal shipped | Cierra alias mismatch del legacy |
 |---|---|
-| `late_arrival_fine` → `missed_obligation_consequence` | `cancellation_fee` → `missed_obligation_consequence` (legacy: `eventCancelled`) |
-| `no_show_fine` → `no_show_consequence` | `host_no_menu_fine` → `missed_obligation_consequence` (legacy: `hoursBeforeEvent`) |
-| `same_day_cancel_fine` → `late_cancellation_consequence` | `not_returned_fine` → `missed_obligation_consequence` (legacy: `checkoutOverdue`) |
-| `no_rsvp_fine` → `no_rsvp_consequence` | `right_expiration_warning` → `deadline_enforcement` (legacy: `rightExpiringSoon`) |
-| `expense_threshold_vote` → `approval_required` (close) | `space_cancellation_late_fine` → `missed_obligation_consequence` (legacy: `bookingCancelled`) |
-|  | `damage_approval_required` → `approval_required` (legacy: `damageReported`) |
-|  | `space_long_booking_vote` → `approval_required` (legacy: `bookingCreated` + `startVote`) |
-|  | `transfer_large_vote` → `approval_required` (legacy: `assetTransferred` + `startVote`) |
-|  | `space_damage_temporary_closure_vote` → `approval_required` (legacy: `damageReported` + `startVote` + `lockBookings`) |
+| `cancellation_consequence` | `cancellation_fee` |
+| `late_return_consequence` | `not_returned_fine` |
+| `deadline_consequence` | `host_no_menu_fine` |
+| `expiration_warning` | `right_expiration_warning` |
+| `booking_cancellation_consequence` | `space_cancellation_late_fine` |
+| `damage_approval` | `damage_approval_required` |
+| `damage_vote_required` | `space_damage_temporary_closure_vote` |
+| `vote_required` | `expense_threshold_vote` |
+| `transfer_vote_required` | `transfer_large_vote` |
+| `booking_vote_required` | `space_long_booking_vote` |
 
-> **Cómo verificar:** correr `select * from ...` join sobre `composition->>'trigger_shape_id'` (ver mig 00321 do-block para el query exacto). Hoy: 4 correctos, 9 mismatch.
+### 14.8 Wave-2 followup (pendiente — bloqueado por audit-close)
 
-### 14.7 Wave-1 followup migs (no implementadas)
+Quedan 2 universales sin cubrir porque requieren shape pieces que no existen en el catálogo:
 
-Para cerrar los 9 mismatches restantes, el catálogo necesita 5-7 universales adicionales — cada uno con composición correcta y nombre limpio (no vertical). Propuesta:
-
-| Mig | Universal nuevo | Composición | Cubre legacy |
+| Universal pendiente | Composición esperada | Shape piece nuevo necesario | Bloquea |
 |---|---|---|---|
-| 00322 | `cancellation_consequence` | `eventCancelled` + `alwaysTrue` + `fine` | `cancellation_fee` |
-| 00323 | `late_return_consequence` | `checkoutOverdue` + `alwaysTrue` + `fine` | `not_returned_fine` |
-| 00324 | `deadline_consequence` (variante con fine, no warning) | `hoursBeforeEvent` + condición + `fine` | `host_no_menu_fine` |
-| 00325 | `expiration_warning` (renombre `right_expiration_warning`) | `rightExpiringSoon` + `alwaysTrue` + `emitWarning` | `right_expiration_warning` |
-| 00326 | `booking_cancellation_consequence` | `bookingCancelled` + `alwaysTrue` + `cancellation_fee` | `space_cancellation_late_fine` |
-| 00327 | `damage_approval` | `damageReported` + `damageAmountAbove` + `requireApproval` | `damage_approval_required`, `space_damage_temporary_closure_vote` |
-| 00328 | `vote_required` (universal voto, sibling de approval_required) | trigger varios + `amountAbove` + `startVote` | `expense_threshold_vote`, `transfer_large_vote`, `space_long_booking_vote` |
+| `notification_reminder` | `rsvpDeadlinePassed` o `hoursBeforeEvent` + `sendNotification` | `sendNotification` consequence + evaluator en `ruleEngine.ts` | Cubrir `rsvp_no_response_reminder` legacy option |
+| `rotation_skip_consequence` | `rsvpChangedSameDay` (host) + `loseTurn` | `loseTurn` consequence + evaluator + atom type (`turnSkipped`?) | Cubrir `rotation_auto_skip_late_cancel` legacy option |
 
-Cada mig requiere:
-- ≥5 ejemplos en verticales (test §2.1)
-- `what_it_is_not` (antitemplates)
-- `natural_language_preview_template_es` interpolable
-- Re-alias del legacy correspondiente con la composición correcta
+Estos 2 universales no se pueden shippear durante el audit freeze porque introducen código de evaluator nuevo (= "new feature" del lente del freeze). Post audit-close:
 
-Sin estos, cualquier rule publicada via los aliases con mismatch genera comportamiento incorrecto (engine dispara con trigger universal, no el legacy). Hasta entonces, recomendación operativa: no publicar via aliased templates desde Gallery (no es problema hoy porque Gallery los oculta via `alias_of IS NULL` filter — pero un admin con permisos podría seleccionar uno por id si UI lo expusiera).
+1. Mig: añadir shape pieces `sendNotification` y `loseTurn` a `public.rule_shapes` (catalog rows + config_fields).
+2. Evaluators TS: implementar en `_shared/ruleEngine.ts`.
+3. Atoms: si `loseTurn` requiere atom propio (`turnSkipped`), añadirlo al `is_known_system_event_type` whitelist + emisor.
+4. Mig: seed `notification_reminder` y `rotation_skip_consequence` como templates universal beta1.
+5. Wizard: re-alias `rsvp_no_response_reminder` → `notification_reminder` y `rotation_auto_skip_late_cancel` → `rotation_skip_consequence`. Universal templates atrapan los 2 últimos casos legacy.
+6. Wizard step 4: `additionalOptionsSection` colapsa a vacío (nada que renderizar) → step potencialmente se skip si universals son los únicos.
+7. Cleanup: borrar `CapabilityRuleOption.suggestedRules` arrays vacíos en `CapabilityCatalog.swift`; potencialmente borrar struct entera si nada más la usa.
+
+Post-Wave-2: pipeline 100% unificada, legacy `createInitialRules` path eliminable.
+
+### 14.9 Wave-3 followup (post-Beta-1)
+
+Universales adicionales del catálogo §3 que requieren shape pieces nuevos (no existentes en `public.rule_shapes`):
+
+| Universal | Shape pieces nuevos requeridos |
+|---|---|
+| `priority_allocation` | `rank_by` condition + `assign_participant_role` consequence |
+| `rotating_responsibility` | `rotation_pick` + `pool_excluded` |
+| `waitlist_flow` | `add_to_waitlist` + `promote_waitlist` |
+| `quota_allocation` | `count_in_subgroup` |
+| `lottery_allocation` | `random_pick` |
+| `right_expiration` | `expire_right` cron consequence |
+| `contribution_requirement` | trigger `contribution_period_passed` |
+| `spending_lock` | `lock_capability` (parcialmente existe via `lockBookings`) |
+| `admin_override_with_audit` | trigger `override_invoked` |
+
+Cada uno = INSERT en `rule_shapes` + evaluator + fixtures + RLS + atom guard si emite a tabla nueva. Sin urgencia hasta que el grupo founder pida algo que requiera estos patrones.
 
 ---
 
