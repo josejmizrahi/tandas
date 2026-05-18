@@ -79,13 +79,14 @@ public final class AppState {
     public var ruleShapeRegistry: RuleShapeRegistry = .v1Fallback
 
     /// Catalog of curated rule templates for the Beta 1 Rule Builder.
-    /// Boots cold from `MockRuleTemplateRepository.defaultBetaCatalog`
-    /// and is refreshed by `loadRuleTemplates()` after
-    /// `list_rule_templates` returns. Includes aliased + post_beta rows
-    /// so `RuleDetailView` can look up the template referenced by an
-    /// existing `rule_versions.template_id` even if the catalog has
-    /// since reclassified it. Per Governance.md §0.5 + UniversalRuleTemplates.md §14.
-    public var ruleTemplates: [RuleBuilderTemplate] = MockRuleTemplateRepository.defaultBetaCatalog
+    /// Boots cold from `RuleTemplateCatalog.defaults` (extracted from
+    /// `MockRuleTemplateRepository.defaultBetaCatalog` 2026-05-18) and is
+    /// refreshed by `loadRuleTemplates()` after `list_rule_templates`
+    /// returns. Includes aliased + post_beta rows so `RuleDetailView`
+    /// can look up the template referenced by an existing
+    /// `rule_versions.template_id` even if the catalog has since
+    /// reclassified it. Per Governance.md §0.5 + UniversalRuleTemplates.md §14.
+    public var ruleTemplates: [RuleBuilderTemplate] = RuleTemplateCatalog.defaults
 
     /// Subset of `ruleTemplates` shown in the Gallery / Starter picker.
     /// Filters out:
@@ -369,7 +370,7 @@ public final class AppState {
 
     /// Optional server loader for `ruleTemplates`. Wired by `TandasApp`
     /// in live mode. Mocks/previews rely on the seed catalog in
-    /// `MockRuleTemplateRepository.defaultBetaCatalog`.
+    /// `RuleTemplateCatalog.defaults`.
     public var ruleTemplateRepo: (any RuleTemplateRepository)?
 
     /// `resource_links` gateway (mig 00198, Plans/Active/EventResource.md
