@@ -496,7 +496,7 @@ public struct ResourceWizardSheet: View {
         }
     }
 
-    private func suggestedRuleRow(block: any CapabilityBlock, template: RuleTemplate) -> some View {
+    private func suggestedRuleRow(block: any CapabilityBlock, template: CapabilityRuleOption) -> some View {
         let isOn = coordinator.isSuggestedRuleSelected(blockId: block.id, slug: template.slug)
         return HStack(alignment: .top, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: 2) {

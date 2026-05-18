@@ -81,7 +81,7 @@ public struct RuleComposerView: View {
                 }
             }
             .sheet(isPresented: $showStarterPicker) {
-                StarterTemplatePickerSheet(
+                UniversalTemplateGallerySheet(
                     templates: coord.starterTemplates,
                     onSelect: { template in
                         coord.loadStarterTemplate(template)
@@ -711,119 +711,6 @@ private struct FieldRow: View {
     }
 }
 
-// MARK: - Starter template picker
-
-/// Sheet that lists curated templates as starter patterns. Picking one
-/// seeds the composer's draft (replacing whatever was there). Templates
-/// are not mandatory — the user can compose from scratch by just
-/// closing this sheet without picking.
-private struct StarterTemplatePickerSheet: View {
-    let templates: [RuleBuilderTemplate]
-    var onSelect: (RuleBuilderTemplate) -> Void
-    var onCancel: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach(templates, id: \.id) { template in
-                        Button(action: { onSelect(template) }) {
-                            templateCard(template)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } header: {
-                    Text("Patrones universales de coordinación. Eliges uno, llenas los huecos y se activa.")
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                        .textCase(nil)
-                }
-            }
-            .navigationTitle("Empezar de un ejemplo")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar", action: onCancel)
-                }
-            }
-        }
-    }
-
-    /// Universal Beta-1 Gallery card. Renders, in order:
-    ///   - doctrinal category badge (e.g. "C — Obligation")
-    ///   - title (`displayNameES`)
-    ///   - one-line description
-    ///   - templated natural-language preview (interpolated from
-    ///     `naturalLanguagePreviewTemplate` if set — falls back to
-    ///     `descriptionES`)
-    ///   - "Esto NO" antitemplate hints
-    ///   - up to 3 vertical-example chips
-    /// Per Plans/Active/UniversalRuleTemplates.md §8.3.
-    @ViewBuilder
-    private func templateCard(_ template: RuleBuilderTemplate) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            if template.doctrinalCategory != "uncategorized" {
-                Text(template.doctrinalCategory)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule().fill(Color.ruulTextTertiary.opacity(0.12))
-                    )
-            }
-            Text(template.displayNameES)
-                .ruulTextStyle(RuulTypography.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
-            Text(template.descriptionES)
-                .ruulTextStyle(RuulTypography.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .lineLimit(3)
-            if template.naturalLanguagePreviewTemplate != nil {
-                Text(RuleSentenceFormatter.preview(forTemplate: template))
-                    .ruulTextStyle(RuulTypography.caption)
-                    .foregroundStyle(Color.ruulTextPrimary)
-                    .padding(RuulSpacing.xs)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.ruulTextTertiary.opacity(0.06))
-                    .cornerRadius(RuulSpacing.xs)
-            }
-            ForEach(template.whatItIsNot, id: \.self) { hint in
-                HStack(alignment: .top, spacing: 4) {
-                    Text("·")
-                        .foregroundStyle(Color.ruulTextTertiary)
-                    Text(hint)
-                        .ruulTextStyle(RuulTypography.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
-                }
-            }
-            if !template.examplesAcrossVerticals.isEmpty {
-                FlexibleChipRow(
-                    items: Array(template.examplesAcrossVerticals.prefix(3))
-                        .map(\.vertical)
-                )
-            }
-        }
-        .padding(.vertical, RuulSpacing.xs)
-    }
-}
-
-/// Tiny chip row used by the universal-template Gallery card to show
-/// which verticals a template applies to. Wraps using `Layout`.
-private struct FlexibleChipRow: View {
-    let items: [String]
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(items, id: \.self) { item in
-                Text(item)
-                    .font(.caption2)
-                    .foregroundStyle(Color.ruulTextSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule().fill(Color.ruulTextTertiary.opacity(0.08))
-                    )
-            }
-        }
-    }
-}
+// Gallery sheet implementation lives in UniversalTemplateGallerySheet.swift —
+// shared between RulesView (empty-state Gallery-first CTA) and the composer's
+// "Ejemplo" toolbar action above.

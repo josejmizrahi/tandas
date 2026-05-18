@@ -37,7 +37,7 @@ public protocol CapabilityBlock: Sendable {
 
     /// Suggested rules the user can pick from when configuring this block.
     /// Empty when the capability doesn't bundle rules (e.g. recurrence).
-    var suggestedRules: [RuleTemplate] { get }
+    var suggestedRules: [CapabilityRuleOption] { get }
 
     /// Actions this capability exposes for the user (e.g. money → "registrar gasto").
     var actions: [CapabilityAction] { get }
@@ -272,10 +272,20 @@ public struct ProjectionDescriptor: Sendable, Hashable {
     }
 }
 
-/// A pre-fab rule the user can pick from when configuring a capability
-/// block. The wizard renders these as toggleable options. Picking one
-/// creates a rule row scoped to the resource (or its series/module).
-public struct RuleTemplate: Sendable, Hashable {
+/// A pre-fab rule option declared by a `CapabilityBlock`. The
+/// ResourceWizard's "Acuerdos sugeridos" step (step 4) renders these as
+/// toggleable rows under their owning capability. Picking one creates a
+/// `rules` row scoped to the new resource.
+///
+/// NOT to be confused with `RuleBuilderTemplate` (Plans/Active/
+/// UniversalRuleTemplates.md) — that's the curated catalog of universal
+/// templates surfaced by the Gallery and stored in `public.rule_templates`.
+/// This type is the in-code, per-capability declaration that pre-dates
+/// the universal pipeline. Renamed from `RuleTemplate` 2026-05-17 to
+/// eliminate the name collision. The two pipelines are scheduled to
+/// converge post audit-close — see UniversalRuleTemplates.md §14 (Fase 2,
+/// "Unificar pipelines").
+public struct CapabilityRuleOption: Sendable, Hashable {
     public let slug: String
     public let displayName: String
     public let summary: String

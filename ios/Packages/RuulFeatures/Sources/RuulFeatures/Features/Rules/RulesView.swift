@@ -50,6 +50,12 @@ public struct RulesView: View {
     /// the only entry point.
     @State private var composerCoord: RuleComposerCoordinator?
 
+    /// Gallery-first sheet, presented from the empty-state CTA. Per
+    /// UniversalRuleTemplates.md §8.2 — when the group has no rules,
+    /// "Elige un patrón" is the canonical entry, not the per-piece
+    /// composer (which stays behind the header "+" for admin/dev).
+    @State private var showGallery: Bool = false
+
     public init(
         coordinator: RulesCoordinator,
         voteRepo: any VoteRepository,
@@ -78,6 +84,15 @@ public struct RulesView: View {
         coordinator.canEditRules && ruleTemplateRepo != nil
     }
 
+    /// Canonical Beta-1 template subset for the Gallery + starter picker.
+    /// Filtered per UniversalRuleTemplates.md §14.2 — no aliases, no
+    /// post_beta, only active rows.
+    private var galleryTemplates: [RuleBuilderTemplate] {
+        ruleTemplates.filter {
+            $0.aliasOf == nil && $0.status == "active" && $0.betaStatus == "beta1"
+        }
+    }
+
     private func openBuilder() {
         guard let repo = ruleTemplateRepo else { return }
         // Group-level composer: no resource_type filter; all curated
@@ -89,11 +104,24 @@ public struct RulesView: View {
             repo: repo,
             scope: .group,
             resourceType: nil,
-            // Filter to canonical Beta-1 templates only — universals,
-            // no aliases, no post_beta. UniversalRuleTemplates.md §14.2.
-            starterTemplates: ruleTemplates.filter {
-                $0.aliasOf == nil && $0.status == "active" && $0.betaStatus == "beta1"
-            }
+            starterTemplates: galleryTemplates
+        )
+    }
+
+    /// Opens the composer pre-seeded from a Gallery-picked template.
+    /// Used by the empty-state Gallery-first flow: user picks a
+    /// universal pattern → composer opens with the draft already
+    /// populated → user just fills the params + publishes.
+    private func openSeededComposer(template: RuleBuilderTemplate) {
+        guard let repo = ruleTemplateRepo else { return }
+        let draft = RuleDraft.from(template: template, scope: .group)
+        composerCoord = RuleComposerCoordinator(
+            group: coordinator.group,
+            shapeRegistry: app.ruleShapeRegistry,
+            repo: repo,
+            draft: draft,
+            resourceType: nil,
+            starterTemplates: galleryTemplates
         )
     }
 
@@ -154,6 +182,19 @@ public struct RulesView: View {
                     Task { await coordinator.refresh() }
                 },
                 onCancel: { composerCoord = nil }
+            )
+        }
+        // Gallery-first sheet — opens from the empty-state CTA.
+        // On pick: dismisses + opens composer pre-seeded.
+        // On cancel: dismisses, user stays on empty state.
+        .fullScreenCover(isPresented: $showGallery) {
+            UniversalTemplateGallerySheet(
+                templates: galleryTemplates,
+                onSelect: { template in
+                    showGallery = false
+                    openSeededComposer(template: template)
+                },
+                onCancel: { showGallery = false }
             )
         }
     }
@@ -236,14 +277,18 @@ public struct RulesView: View {
             Text("Sin acuerdos")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Este grupo aún no tiene acuerdos configurados. Empieza componiendo uno desde cero o cargando un ejemplo.")
+            Text("Este grupo aún no tiene acuerdos configurados. Elige un patrón y se activa con dos taps.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
             if canShowBuilder {
-                Button(action: openBuilder) {
-                    Label("Crear primer acuerdo", systemImage: "plus.circle.fill")
+                // Gallery-first per UniversalRuleTemplates.md §8.2 —
+                // empty state is the canonical moment for "elige un
+                // patrón", not the per-piece composer (which stays on
+                // the header "+" for free composition).
+                Button(action: { showGallery = true }) {
+                    Label("Elegir un patrón", systemImage: "square.grid.2x2.fill")
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulAccent)
                         .padding(.vertical, RuulSpacing.sm)
@@ -254,6 +299,9 @@ public struct RulesView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.top, RuulSpacing.sm)
+                Button("o componer desde cero", action: openBuilder)
+                    .ruulTextStyle(RuulTypography.caption)
+                    .foregroundStyle(Color.ruulTextTertiary)
             }
         }
         .frame(maxWidth: .infinity)

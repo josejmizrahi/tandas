@@ -224,7 +224,7 @@ public final class ResourceWizardCoordinator {
     /// Suggested rules from every enabled capability. Used by step 4 to
     /// render the toggle list and by submit to materialize the user's
     /// picks into `OnboardingRuleDraft` rows.
-    public var availableSuggestedRules: [(block: any CapabilityBlock, template: RuleTemplate)] {
+    public var availableSuggestedRules: [(block: any CapabilityBlock, template: CapabilityRuleOption)] {
         availableCapabilityBlocks
             .filter { enabledCapabilities.contains($0.id) }
             .flatMap { block in
@@ -542,7 +542,7 @@ public final class ResourceWizardCoordinator {
     /// `triggerEventType` (founder framing 2026-05-11 — never infer
     /// from slug). Trigger config jsonb is filled from
     /// `defaultConfig` keys that are NOT the consequence's `amount`.
-    private func defaultTrigger(for template: RuleTemplate) -> RuleTrigger {
+    private func defaultTrigger(for template: CapabilityRuleOption) -> RuleTrigger {
         var configMap: [String: JSONConfig] = [:]
         for (k, v) in template.defaultConfig where k != "amount" {
             if let i = Int(v) { configMap[k] = .int(i) } else { configMap[k] = .string(v) }
@@ -554,7 +554,7 @@ public final class ResourceWizardCoordinator {
     /// `consequenceType` + `defaultConfig.amount` (for fine
     /// consequences). Non-fine consequences (sendNotification,
     /// loseTurn, …) receive an empty config object.
-    private func defaultConsequences(for template: RuleTemplate) -> [RuleConsequence] {
+    private func defaultConsequences(for template: CapabilityRuleOption) -> [RuleConsequence] {
         var configMap: [String: JSONConfig] = [:]
         if template.consequenceType == .fine,
            let raw = template.defaultConfig["amount"],

@@ -113,7 +113,7 @@ private struct SimpleCapability: CapabilityBlock {
     let enabledResourceTypes: [ResourceType]
     let requiredFields: [BuilderField]
     let optionalFields: [BuilderField]
-    let suggestedRules: [RuleTemplate]
+    let suggestedRules: [CapabilityRuleOption]
     let actions: [CapabilityAction]
     let routes: [CapabilityRoute]
     let permissions: [Permission]
@@ -137,13 +137,13 @@ public struct RsvpCapability: CapabilityBlock {
             BuilderField(key: "allowMaybe", label: "Permitir 'tal vez'", kind: .boolean)
         ]
     }
-    public var suggestedRules: [RuleTemplate] {
+    public var suggestedRules: [CapabilityRuleOption] {
         // Each template declares its own trigger + consequence
         // explicitly per founder framing 2026-05-11. Reminder
         // template defaults ON; monetary fine template defaults OFF
         // so first-time users don't see a punitive default.
         [
-            RuleTemplate(
+            CapabilityRuleOption(
                 slug: "rsvp_no_response_reminder",
                 displayName: "Recordatorio a quien no respondió",
                 summary: "Cuando vence la fecha límite, manda un recordatorio a los pendientes.",
@@ -151,7 +151,7 @@ public struct RsvpCapability: CapabilityBlock {
                 consequenceType: .sendNotification,
                 defaultEnabled: true
             ),
-            RuleTemplate(
+            CapabilityRuleOption(
                 slug: "rsvp_late_cancel_fine",
                 displayName: "Multa por cancelar el mismo día",
                 summary: "Si alguien cambia a 'no voy' el día del evento, paga $150.",
@@ -187,13 +187,13 @@ public struct CheckInCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "lateThresholdMinutes", label: "Tarde después de (min)", kind: .integer)]
     }
-    public var suggestedRules: [RuleTemplate] {
+    public var suggestedRules: [CapabilityRuleOption] {
         // Late-arrival monetary fine + no-show monetary fine. Both
         // OFF by default — the user explicitly opts into punitive
         // rules. Their reminder counterparts (when seeded) would
         // default to ON.
         [
-            RuleTemplate(
+            CapabilityRuleOption(
                 slug: "check_in_late_arrival_fine",
                 displayName: "Multa por llegar tarde",
                 summary: "Si alguien hace check-in pasada la hora, paga $100.",
@@ -202,7 +202,7 @@ public struct CheckInCapability: CapabilityBlock {
                 defaultConfig: ["amount": "100"],
                 defaultEnabled: false
             ),
-            RuleTemplate(
+            CapabilityRuleOption(
                 slug: "event_closed_no_show_fine",
                 displayName: "Multa por no llegar",
                 summary: "Cuando el host cierra el evento, los que no llegaron pagan $250.",
@@ -242,7 +242,7 @@ public struct ScheduleCapability: CapabilityBlock {
             BuilderField(key: "allDay", label: "Todo el día", kind: .boolean)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -345,7 +345,7 @@ public struct RecurrenceCapability: CapabilityBlock {
             BuilderField(key: "interval", label: "Cada cuántas (avanzado)", kind: .integer)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] {
         [CapabilityRoute(id: "recurrence.series", label: "Próximas", icon: "calendar")]
@@ -426,12 +426,12 @@ public struct RotationCapability: CapabilityBlock {
             )
         ]
     }
-    public var suggestedRules: [RuleTemplate] {
+    public var suggestedRules: [CapabilityRuleOption] {
         // Auto-skip is a structural rule (not monetary) — defaults ON
         // so rotation works smoothly out of the box. The optional
         // monetary fine for same-day cancellation defaults OFF.
         [
-            RuleTemplate(
+            CapabilityRuleOption(
                 slug: "rotation_auto_skip_late_cancel",
                 displayName: "Si el host no puede, pasa al siguiente",
                 summary: "Cuando el host cancela el mismo día, el turno se reasigna automáticamente.",
@@ -439,7 +439,7 @@ public struct RotationCapability: CapabilityBlock {
                 consequenceType: .loseTurn,
                 defaultEnabled: true
             ),
-            RuleTemplate(
+            CapabilityRuleOption(
                 slug: "rotation_late_cancel_fine",
                 displayName: "Multa al host por cancelar el día",
                 summary: "Además de perder turno, paga $200 si cancela el día.",
@@ -497,7 +497,7 @@ public struct AssignmentCapability: CapabilityBlock {
             BuilderField(key: "requiresAcceptance", label: "Requiere aceptación", kind: .boolean)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [
             CapabilityAction(id: "assignment.accept", label: "Aceptar", surface: .resourceDetail),
@@ -531,7 +531,7 @@ public struct ParticipantsCapability: CapabilityBlock {
             BuilderField(key: "explicitMembers", label: "Miembros específicos", kind: .multiPicker)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -554,7 +554,7 @@ public struct AttendanceCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event, .slot] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] {
         [CapabilityRoute(id: "attendance.list", label: "Asistencia", icon: "checkmark.circle")]
@@ -583,7 +583,7 @@ public struct DeadlineCapability: CapabilityBlock {
             BuilderField(key: "deadlineAction", label: "Qué pasa después", kind: .picker)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -606,7 +606,7 @@ public struct ApprovalCapability: CapabilityBlock {
             BuilderField(key: "autoApprovePolicy", label: "Auto-aprobar si", kind: .picker)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "approval.approve", label: "Aprobar", surface: .resourceDetail)]
     }
@@ -632,7 +632,7 @@ public struct MoneyCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "money.expense.add", label: "Registrar gasto", surface: .resourceDetail)]
     }
@@ -670,7 +670,7 @@ public struct LedgerCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -712,7 +712,7 @@ public struct VotingCapability: CapabilityBlock {
         ]
     }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "voting.cast", label: "Votar", surface: .resourceDetail)]
     }
@@ -749,7 +749,7 @@ public struct RulesCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "rules.add", label: "Agregar regla", surface: .resourceDetail)]
     }
@@ -771,7 +771,7 @@ public struct ConsequenceCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -799,7 +799,7 @@ public struct AppealCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "deadlineHours", label: "Ventana (horas)", kind: .integer)]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "appeal.start", label: "Apelar", surface: .resourceDetail)]
     }
@@ -824,7 +824,7 @@ public struct SwapCapability: CapabilityBlock {
             BuilderField(key: "directSwap",        label: "Intercambio directo", kind: .boolean)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "swap.request", label: "Pedir cambio", surface: .resourceDetail)]
     }
@@ -856,7 +856,7 @@ public struct CapacityCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "waitlistEnabled", label: "Lista de espera", kind: .boolean)]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -879,7 +879,7 @@ public struct GuestAccessCapability: CapabilityBlock {
             BuilderField(key: "approvalRequired", label: "Requiere aprobación", kind: .boolean)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "guest_access.invite", label: "Agregar invitado", surface: .resourceDetail)]
     }
@@ -912,7 +912,7 @@ public struct BookingCapability: CapabilityBlock {
             BuilderField(key: "cancellationDeadlineHours", label: "Cancelar hasta (h antes)", kind: .integer)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "booking.request", label: "Reservar", surface: .resourceDetail)]
     }
@@ -942,7 +942,7 @@ public struct ExpirationCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "autoRelease", label: "Liberar al expirar", kind: .boolean)]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -965,7 +965,7 @@ public struct CancellationCapability: CapabilityBlock {
             BuilderField(key: "deadlineHours", label: "Mínimo (h antes)", kind: .integer)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "cancellation.cancel", label: "Cancelar", surface: .resourceDetail)]
     }
@@ -993,7 +993,7 @@ public struct ReminderCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "hoursBefore", label: "Horas antes", kind: .integer)]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -1023,7 +1023,7 @@ public struct StatusCapability: CapabilityBlock {
     }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -1047,7 +1047,7 @@ public struct DescriptionCapability: CapabilityBlock {
     public var optionalFields: [BuilderField] {
         [BuilderField(key: "description", label: "Descripción", kind: .multilineText)]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -1066,7 +1066,7 @@ public struct HostActionsCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.event] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -1090,7 +1090,7 @@ public struct LocationCapability: CapabilityBlock {
             BuilderField(key: "location_lng", label: "Longitud", kind: .decimal)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -1110,7 +1110,7 @@ public struct HistoryCapability: CapabilityBlock {
     }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] {
         [CapabilityRoute(id: "history.feed", label: "Historial", icon: "clock.arrow.circlepath")]
@@ -1142,7 +1142,7 @@ public struct CustodyCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.asset] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [
             CapabilityAction(id: "custody.assign",  label: "Asignar custodio",  surface: .resourceDetail),
@@ -1169,7 +1169,7 @@ public struct MaintenanceCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.asset, .space] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [
             CapabilityAction(id: "maintenance.log",    label: "Registrar mantenimiento", surface: .resourceDetail),
@@ -1196,7 +1196,7 @@ public struct ValuationCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.asset, .fund, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "valuation.record", label: "Registrar valor", surface: .resourceDetail)]
     }
@@ -1220,7 +1220,7 @@ public struct TransferCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.asset, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "transfer.execute", label: "Transferir", surface: .resourceDetail)]
     }
@@ -1242,7 +1242,7 @@ public struct AccessCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.asset, .space, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] { [] }
     public var routes: [CapabilityRoute] { [] }
     public var permissions: [Permission] { [] }
@@ -1266,7 +1266,7 @@ public struct DelegationCapability: CapabilityBlock {
     public var enabledResourceTypes: [ResourceType] { [.asset, .right] }
     public var requiredFields: [BuilderField] { [] }
     public var optionalFields: [BuilderField] { [] }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [
             CapabilityAction(id: "delegation.checkOut", label: "Prestar",   surface: .resourceDetail),
@@ -1301,7 +1301,7 @@ public struct InventoryCapability: CapabilityBlock {
             BuilderField(key: "lowStockThreshold", label: "Umbral mínimo", kind: .integer)
         ]
     }
-    public var suggestedRules: [RuleTemplate] { [] }
+    public var suggestedRules: [CapabilityRuleOption] { [] }
     public var actions: [CapabilityAction] {
         [CapabilityAction(id: "inventory.recordUsage", label: "Registrar uso", surface: .resourceDetail)]
     }
