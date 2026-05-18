@@ -5,7 +5,10 @@
 // Authorization: caller must be authenticated AND admin of the group. The
 // edge function checks the JWT, then verifies via RLS-bound RPC.
 //
-// Request: { invite_id: uuid, phone: "+5215555551234", group_name, invite_code, message? }
+// Request: { invite_id: uuid, phone: "+5215555551234", group_name, invite_code, message?, claim_token? }
+//   When claim_token is provided (placeholder flow), the message uses the
+//   claim magic link (https://ruul.app/claim/<token>) instead of the regular
+//   /invite/<code> link.
 // Response: { sent: true } | { sent: false, reason }
 //
 // Falls back to no-op if Wassenger isn't configured (no env keys set).
@@ -35,6 +38,7 @@ serve(withSentry(async (req) => {
   });
 
   let invite_id: string, phone: string, group_name: string, invite_code: string, message: string | undefined;
+  let claim_token: string | undefined;
   try {
     const body = await req.json();
     invite_id = body.invite_id;
@@ -42,6 +46,7 @@ serve(withSentry(async (req) => {
     group_name = body.group_name;
     invite_code = body.invite_code;
     message = body.message;
+    claim_token = body.claim_token;  // optional — placeholder claim flow
     if (!invite_id || !phone || !group_name || !invite_code) {
       return jsonError(400, "invite_id, phone, group_name, invite_code required");
     }
@@ -60,8 +65,9 @@ serve(withSentry(async (req) => {
 
   const finalMessage =
     message ??
-    `Te invito a ${group_name} en ruul. Aquí coordinamos todo: turnos, RSVP, reglas. Únete: ` +
-      `https://ruul.app/invite/${invite_code}`;
+    (claim_token
+      ? `Hola! Te agregaron al grupo *${group_name}* en ruul. Tu lugar ya está reservado. Activa tu cuenta: https://ruul.app/claim/${claim_token}`
+      : `Te invito a ${group_name} en ruul. Aquí coordinamos todo: turnos, RSVP, reglas. Únete: https://ruul.app/invite/${invite_code}`);
 
   if (!WASSENGER_API_KEY || !WASSENGER_DEVICE_ID) {
     return jsonResponse({ sent: false, reason: "wassenger not configured" });
