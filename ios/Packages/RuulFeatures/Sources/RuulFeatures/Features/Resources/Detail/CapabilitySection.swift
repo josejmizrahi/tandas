@@ -17,14 +17,18 @@ public struct CapabilitySection: Identifiable {
     public let id: String
 
     /// Lower priority renders higher on the page. Convention:
-    ///   100 schedule / hero meta
+    ///   100-150 schedule / capacity / location / description (canonical, inline)
+    ///   160-166 type-specific bespoke (asset.custody, space.capacity, ...)
     ///   200 rsvp
+    ///   250 check_in
     ///   300 participants / guests / members
+    ///   350 host_actions
     ///   400 money
     ///   500 slots / bookings / assignments
     ///   600 rotation
     ///   700 voting
     ///   800 rules
+    ///   850 resource_links / event-uses-resources
     ///   900 activity
     /// Activity / Rules anchor the bottom of the dynamic stack; the
     /// outer ResourceDetailView still keeps Settings as the very last
@@ -38,6 +42,16 @@ public struct CapabilitySection: Identifiable {
     /// enabled set so renderers stay declarative.
     public let isEnabledFor: (Set<String>) -> Bool
 
+    /// Optional second predicate that runs AFTER `isEnabledFor` passes.
+    /// Receives the full `ResourceDetailContext` so sections can gate on
+    /// non-capability signals — resource type (asset-only sections),
+    /// metadata presence (description with empty body), member directory
+    /// completeness, etc. `nil` means "always visible if isEnabledFor
+    /// passes". Per UniversalRuleTemplates §14 doctrine-alignment: move
+    /// type checks OUT of the view's body and INTO the section's own
+    /// definition where the type-knowledge belongs.
+    public let isVisibleFor: ((ResourceDetailContext) -> Bool)?
+
     /// Body. Caller passes the assembled context. Returning AnyView is
     /// idiomatic for a runtime-composed registry — each renderer is
     /// trivially small (most ~30-100 LoC) so type-erasure cost is nil.
@@ -47,11 +61,13 @@ public struct CapabilitySection: Identifiable {
         id: String,
         priority: Int,
         isEnabledFor: @escaping (Set<String>) -> Bool,
+        isVisibleFor: ((ResourceDetailContext) -> Bool)? = nil,
         render: @escaping (ResourceDetailContext) -> AnyView
     ) {
         self.id = id
         self.priority = priority
         self.isEnabledFor = isEnabledFor
+        self.isVisibleFor = isVisibleFor
         self.render = render
     }
 }
@@ -78,10 +94,25 @@ public final class CapabilitySectionCatalog {
 
     /// All sections whose `isEnabledFor` predicate matches the supplied
     /// capability set, sorted by priority ascending (so smaller priority
-    /// renders first / on top).
+    /// renders first / on top). Capability-only filter — sections that
+    /// also need context-aware gating (resource type, metadata presence)
+    /// should call the `sectionsFor(context:)` variant below.
     public func sectionsFor(enabledCapabilities: Set<String>) -> [CapabilitySection] {
         sections.values
             .filter { $0.isEnabledFor(enabledCapabilities) }
+            .sorted { $0.priority < $1.priority }
+    }
+
+    /// Same as above but ALSO runs each section's `isVisibleFor` predicate
+    /// (when present) against the full context. Sections with `isVisibleFor
+    /// == nil` are treated as universally visible (subject only to caps).
+    /// This is the canonical entry point now that bespoke type-aware
+    /// sections live in the catalog — the view should call this variant
+    /// when it has a context available.
+    public func sectionsFor(context: ResourceDetailContext) -> [CapabilitySection] {
+        sections.values
+            .filter { $0.isEnabledFor(context.enabledCapabilities) }
+            .filter { $0.isVisibleFor?(context) ?? true }
             .sorted { $0.priority < $1.priority }
     }
 
@@ -101,6 +132,18 @@ public final class CapabilitySectionCatalog {
         register(RotationSectionView.definition)
         register(RulesSectionView.definition)
         register(ActivitySectionView.definition)
+
+        // Bespoke type-aware sections (priority 150-156). Each gates on
+        // resource type via `isVisibleFor`. Consumed by the view's
+        // bespoke-catalog ForEach above the canonical inline sections.
+        register(AssetCustodySection.definition)
+        register(AssetOwnershipSection.definition)
+        register(AssetMaintenanceSection.definition)
+        register(AssetBookingsSection.definition)
+        register(SpaceCapacitySection.definition)
+        register(SpaceOccupancySection.definition)
+        register(SpaceBookingsSection.definition)
+        register(ResourcesUsedSectionView.definition)
 
         // Stub sections (Sections/Stubs/). Backend wiring lands per
         // capability; until then they render minimal cards (real data

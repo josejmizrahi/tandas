@@ -32,6 +32,16 @@ public struct SpaceCapacitySection: View {
         self.space = space
     }
 
+    /// Catalog registration — space-only via isVisibleFor, gated on the
+    /// `capacity` capability. Per Plans/Active/Space.md §16 + §22.
+    public static let definition = CapabilitySection(
+        id: "space.capacity",
+        priority: 164,
+        isEnabledFor: { caps in caps.contains("capacity") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .space },
+        render: { ctx in AnyView(SpaceCapacitySection(space: ctx.resource)) }
+    )
+
     public var body: some View {
         RuulInfoCard("AFORO") {
             if let snapshot {
@@ -101,6 +111,22 @@ public struct SpaceOccupancySection: View {
         self.space = space
         self.onMetadataChanged = onMetadataChanged
     }
+
+    /// Catalog registration — space-only via isVisibleFor, gated on the
+    /// `check_in` capability. Per Plans/Active/Space.md §16. The canonical
+    /// `CheckInSectionView` (id "check_in") still runs for events via the
+    /// inline path because it depends on @Environment(eventInteractor)
+    /// not available in the catalog render closure today.
+    public static let definition = CapabilitySection(
+        id: "space.occupancy",
+        priority: 165,
+        isEnabledFor: { caps in caps.contains("check_in") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .space },
+        render: { ctx in AnyView(SpaceOccupancySection(
+            space: ctx.resource,
+            onMetadataChanged: { await ctx.onResourceMutated() }
+        )) }
+    )
 
     public var body: some View {
         RuulInfoCard("AHORA") {
@@ -189,6 +215,22 @@ public struct SpaceBookingsSection: View {
         self.space = space
         self.onMetadataChanged = onMetadataChanged
     }
+
+    /// Catalog registration — space-only via isVisibleFor, gated on the
+    /// `booking` capability. Per Plans/Active/Space.md §16. The asset
+    /// counterpart (id "asset.bookings") gates the same `booking` cap
+    /// with `resourceType == .asset`; the universal stub `booking`
+    /// section is filtered out by the view for both asset and space.
+    public static let definition = CapabilitySection(
+        id: "space.bookings",
+        priority: 166,
+        isEnabledFor: { caps in caps.contains("booking") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .space },
+        render: { ctx in AnyView(SpaceBookingsSection(
+            space: ctx.resource,
+            onMetadataChanged: { await ctx.onResourceMutated() }
+        )) }
+    )
 
     public var body: some View {
         RuulInfoCard("RESERVAS") {

@@ -36,6 +36,20 @@ public struct AssetCustodySection: View {
         self.onMetadataChanged = onMetadataChanged
     }
 
+    /// Catalog registration — asset-only via isVisibleFor, gated on the
+    /// `custody` capability. Per UniversalRuleTemplates §14 catalog
+    /// migration (fase 2).
+    public static let definition = CapabilitySection(
+        id: "asset.custody",
+        priority: 160,
+        isEnabledFor: { caps in caps.contains("custody") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
+        render: { ctx in AnyView(AssetCustodySection(
+            asset: ctx.resource,
+            onMetadataChanged: { await ctx.onResourceMutated() }
+        )) }
+    )
+
     public var body: some View {
         RuulInfoCard("CUSTODIA") {
             if let custodian = currentCustodian {
@@ -196,6 +210,20 @@ public struct AssetOwnershipSection: View {
         self.onMetadataChanged = onMetadataChanged
     }
 
+    /// Catalog registration — asset-only, enabled when either `transfer`
+    /// OR `valuation` is on (mirrors the inline OR gate that was in the
+    /// view's body pre-mig).
+    public static let definition = CapabilitySection(
+        id: "asset.ownership",
+        priority: 161,
+        isEnabledFor: { caps in caps.contains("transfer") || caps.contains("valuation") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
+        render: { ctx in AnyView(AssetOwnershipSection(
+            asset: ctx.resource,
+            onMetadataChanged: { await ctx.onResourceMutated() }
+        )) }
+    )
+
     public var body: some View {
         RuulInfoCard("PROPIEDAD") {
             if let owner = currentOwner {
@@ -322,6 +350,18 @@ public struct AssetMaintenanceSection: View {
 
     public init(asset: ResourceRow) { self.asset = asset }
 
+    /// Catalog registration — asset-only via isVisibleFor, gated on the
+    /// `maintenance` capability. Maintenance writes system_events (not
+    /// resources.metadata), so it doesn't need an onMetadataChanged
+    /// callback — the section's internal reload handles freshness.
+    public static let definition = CapabilitySection(
+        id: "asset.maintenance",
+        priority: 162,
+        isEnabledFor: { caps in caps.contains("maintenance") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
+        render: { ctx in AnyView(AssetMaintenanceSection(asset: ctx.resource)) }
+    )
+
     public var body: some View {
         RuulInfoCard("MANTENIMIENTO") {
             RuulInfoActionRow(label: "Registrar mantenimiento", symbol: "wrench.and.screwdriver") {
@@ -441,6 +481,19 @@ public struct AssetBookingsSection: View {
     @State private var error: String?
 
     public init(asset: ResourceRow) { self.asset = asset }
+
+    /// Catalog registration — asset-only via isVisibleFor, gated on the
+    /// `booking` capability. The stub `booking` section (Sections/Stubs/)
+    /// also gates on `booking`; the asset-specific renderer wins for
+    /// asset resources via the type predicate, and the stub is filtered
+    /// out for assets in the view's stub-render filter.
+    public static let definition = CapabilitySection(
+        id: "asset.bookings",
+        priority: 163,
+        isEnabledFor: { caps in caps.contains("booking") },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
+        render: { ctx in AnyView(AssetBookingsSection(asset: ctx.resource)) }
+    )
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {

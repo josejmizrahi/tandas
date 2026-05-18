@@ -73,62 +73,23 @@ public struct UniversalResourceDetailView: View {
                 if context.enabledCapabilities.contains("location") {
                     LocationSectionView(context: context)
                 }
-                if context.resource.resourceType == .asset {
-                    if context.enabledCapabilities.contains("custody") {
-                        AssetCustodySection(
-                            asset: context.resource,
-                            onMetadataChanged: { await context.onResourceMutated() }
-                        )
-                    }
-                    if context.enabledCapabilities.contains("transfer")
-                        || context.enabledCapabilities.contains("valuation") {
-                        AssetOwnershipSection(
-                            asset: context.resource,
-                            onMetadataChanged: { await context.onResourceMutated() }
-                        )
-                    }
-                    if context.enabledCapabilities.contains("maintenance") {
-                        // Maintenance writes system_events (not resources.metadata),
-                        // so the section's internal reload handles freshness — no
-                        // need to bubble `onResourceMutated`.
-                        AssetMaintenanceSection(asset: context.resource)
-                    }
-                    if context.enabledCapabilities.contains("booking") {
-                        AssetBookingsSection(asset: context.resource)
-                    }
-                }
+                // Bespoke type-aware sections rendered BEFORE rsvp
+                // (catalog priorities 160-166): asset.* + space.*. Each
+                // declares its own type predicate via isVisibleFor in
+                // its `static let definition`, so the view no longer
+                // needs to switch on resource_type here. Per ontology
+                // constitution Rule 6 ("UI siempre capability-driven").
+                catalogSections(idIn: Self.bespokePreRSVPSectionIds)
                 if context.resource.resourceType == .fund {
-                    // Fund-specific projection card: current balance,
-                    // target progress, contribution/expense counts, lock
-                    // indicator. Reads from `fund_balance_view` (mig 00202)
-                    // via `fundRepo.get`. Refreshes whenever
-                    // `fundRefreshToken` bumps after a successful action.
+                    // Fund-specific projection card. Stays inline because
+                    // FundBalanceSection takes a `refreshToken: Int` that
+                    // the catalog render closure can't capture. Fase 3:
+                    // refactor section to take context-only and use an
+                    // observable refresh signal.
                     FundBalanceSection(
                         fundId: context.resource.id,
                         refreshToken: fundRefreshToken
                     )
-                }
-                if context.resource.resourceType == .space {
-                    // Plans/Active/Space.md §22 — inline sections for the
-                    // space resource_type. Gated by capability flags per
-                    // §16. Mutations dispatch SpaceLifecycleRepository
-                    // RPCs (mig 00266); reads come from the canonical
-                    // projection views (mig 00267) via SpaceProjectionRepository.
-                    if context.enabledCapabilities.contains("capacity") {
-                        SpaceCapacitySection(space: context.resource)
-                    }
-                    if context.enabledCapabilities.contains("check_in") {
-                        SpaceOccupancySection(
-                            space: context.resource,
-                            onMetadataChanged: { await context.onResourceMutated() }
-                        )
-                    }
-                    if context.enabledCapabilities.contains("booking") {
-                        SpaceBookingsSection(
-                            space: context.resource,
-                            onMetadataChanged: { await context.onResourceMutated() }
-                        )
-                    }
                 }
                 if context.enabledCapabilities.contains("rsvp") {
                     RSVPSectionView(context: context)
@@ -142,11 +103,10 @@ public struct UniversalResourceDetailView: View {
                 if context.enabledCapabilities.contains("rules") {
                     RulesSectionView(context: context)
                 }
-                if context.resource.resourceType == .event {
-                    // Plans/Active/EventResource.md §12 — "event uses
-                    // space/asset/fund/right". Hidden for non-event types.
-                    ResourcesUsedSectionView(context: context)
-                }
+                // Catalog sections that render AFTER rules and BEFORE
+                // activity: resource_links today, future post-rules
+                // bespoke. Activity stays inline at 900; stubs come last.
+                catalogSections(idIn: Self.bespokePostRulesSectionIds)
                 if context.enabledCapabilities.contains("activity") {
                     ActivitySectionView(context: context)
                 }
@@ -660,16 +620,55 @@ public struct UniversalResourceDetailView: View {
     @ViewBuilder
     private var stubCapabilitySections: some View {
         let isAsset = context.resource.resourceType == .asset
+        let isSpace = context.resource.resourceType == .space
         let sections = CapabilitySectionCatalog.shared
-            .sectionsFor(enabledCapabilities: context.enabledCapabilities)
+            .sectionsFor(context: context)
             .filter { Self.stubSectionIds.contains($0.id) }
             .filter { section in
-                !(isAsset && (section.id == "booking" || section.id == "valuation"))
+                // Universal `booking` + `valuation` stubs are duplicated
+                // by the bespoke `asset.bookings`/`asset.ownership` /
+                // `space.bookings` sections. Skip the stub when a bespoke
+                // already handles this resource.
+                if section.id == "booking", isAsset || isSpace { return false }
+                if section.id == "valuation", isAsset { return false }
+                return true
             }
         ForEach(sections, id: \.id) { section in
             section.render(context)
         }
     }
+
+    /// Sections from the catalog whose id is in `ids`. Used by the view
+    /// to insert specific bespoke-but-catalog-driven sections at fixed
+    /// zones of the body without forcing every section through a single
+    /// ForEach. Canonical sections (rsvp, check_in, money, rules,
+    /// schedule, location, description, activity, host_actions,
+    /// rotation, capacity_progress) still inline because of per-view-
+    /// instance state coupling (e.g. CheckInSectionView needs
+    /// @Environment(eventInteractor)). Fase 3 collapses these helpers
+    /// once all sections register cleanly.
+    @ViewBuilder
+    private func catalogSections(idIn ids: Set<String>) -> some View {
+        let sections = CapabilitySectionCatalog.shared
+            .sectionsFor(context: context)
+            .filter { ids.contains($0.id) }
+        ForEach(sections, id: \.id) { section in
+            section.render(context)
+        }
+    }
+
+    /// Bespoke sections rendered BEFORE the rsvp inline section.
+    /// Type-aware (asset.* + space.*) per their `isVisibleFor` predicates.
+    private static let bespokePreRSVPSectionIds: Set<String> = [
+        "asset.custody", "asset.ownership", "asset.maintenance", "asset.bookings",
+        "space.capacity", "space.occupancy", "space.bookings",
+    ]
+
+    /// Bespoke sections rendered AFTER the rules inline section.
+    /// Currently just `resource_links` (event-only).
+    private static let bespokePostRulesSectionIds: Set<String> = [
+        "resource_links",
+    ]
 
     /// Ids of catalog sections rendered here. The complement (canonical
     /// ids like `rsvp`, `check_in`, `money`, `rules`, `schedule`,

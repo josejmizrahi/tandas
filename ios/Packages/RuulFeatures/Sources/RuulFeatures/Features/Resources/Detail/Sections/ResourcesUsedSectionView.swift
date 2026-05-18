@@ -31,6 +31,21 @@ public struct ResourcesUsedSectionView: View {
         self.context = context
     }
 
+    /// Catalog registration — event-only via isVisibleFor. No server-side
+    /// capability flag exists for resource_links yet (mig 00202 ships the
+    /// table + RPCs but no `resource_capabilities` row), so isEnabledFor
+    /// returns true unconditionally and isVisibleFor does the actual
+    /// gating. When a future mig declares a `resource_links` capability
+    /// and seeds it for events, flip isEnabledFor to caps.contains and
+    /// remove the type predicate. Plans/Active/EventResource.md §12.
+    public static let definition = CapabilitySection(
+        id: "resource_links",
+        priority: 850,
+        isEnabledFor: { _ in true },
+        isVisibleFor: { ctx in ctx.resource.resourceType == .event },
+        render: { ctx in AnyView(ResourcesUsedSectionView(context: ctx)) }
+    )
+
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             header
