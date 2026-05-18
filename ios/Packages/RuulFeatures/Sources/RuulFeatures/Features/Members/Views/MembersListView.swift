@@ -32,7 +32,8 @@ public struct MembersListView: View {
                                         isCurrentUser: row.member.userId == coordinator.actorUserId,
                                         canManageRoles: coordinator.canManageRoles,
                                         founderCount: coordinator.founderCount,
-                                        adminCount: coordinator.adminCount
+                                        adminCount: coordinator.adminCount,
+                                        onMemberChanged: { await coordinator.refresh() }
                                     )
                                 } label: {
                                     memberRow(row)

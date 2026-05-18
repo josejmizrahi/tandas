@@ -36,7 +36,10 @@ public struct MemberRolesPicker: View {
     /// último admin — server lo rechazaría también; lo gateamos en UI
     /// para clarity.
     public let adminCount: Int
-    public var onChange: (() async -> Void)?
+    /// Async callback invoked after a successful assign/unassign with
+    /// the freshly-returned Member. Parent can read `updated.rawRoles`
+    /// to hydrate its own state without a refetch.
+    public var onChange: ((Member) async -> Void)?
 
     @State private var roles: [String]
     @State private var inFlight: Set<String> = []
@@ -49,7 +52,7 @@ public struct MemberRolesPicker: View {
         target: MemberWithProfile,
         founderCount: Int,
         adminCount: Int = 1,
-        onChange: (() async -> Void)? = nil
+        onChange: ((Member) async -> Void)? = nil
     ) {
         self.group = group
         self.target = target
@@ -226,7 +229,7 @@ public struct MemberRolesPicker: View {
             // canonical rawRoles).
             roles = updated.rawRoles
             error = nil
-            if let onChange { await onChange() }
+            if let onChange { await onChange(updated) }
         } catch {
             // Rollback the optimistic mutation so the toggle reverts.
             if on {
