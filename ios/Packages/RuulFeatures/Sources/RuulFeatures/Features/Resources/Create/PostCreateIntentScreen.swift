@@ -318,14 +318,53 @@ public struct PostCreateResourceContext: Sendable {
     /// because some callers only have id + metadata at hand; those
     /// destinations fall back to placeholder when row is absent.
     public let resourceRow: ResourceRow?
+    /// Caller-supplied callbacks the wired destinations invoke when
+    /// they need to mutate state (assign custody, present a child
+    /// wizard, …). Each closure is optional — when nil the matching
+    /// destination falls back to the placeholder so the screen still
+    /// renders coherently.
+    ///
+    /// Why callbacks instead of injecting AppState here: keeps the
+    /// presenter free of repo deps and gives callers a single seam
+    /// to substitute mock impls in tests/previews. Callers wire
+    /// `app.assetLifecycleRepo.assignCustody(asset:to:notes:)` etc.
+    public let actions: PostCreateResourceActions
+
     public init(
         metadata: [String: JSONConfig],
         members: [MemberWithProfile],
-        resourceRow: ResourceRow? = nil
+        resourceRow: ResourceRow? = nil,
+        actions: PostCreateResourceActions = PostCreateResourceActions()
     ) {
         self.metadata = metadata
         self.members = members
         self.resourceRow = resourceRow
+        self.actions = actions
+    }
+}
+
+/// Async action callbacks the destinations may invoke. Caller wires
+/// these from `AppState` repos (or mocks for tests). Each is optional;
+/// missing closures collapse the matching destination to the
+/// placeholder card.
+public struct PostCreateResourceActions: Sendable {
+    /// Called when `custodyAssignment` / `assignCustodyPicker`
+    /// finalizes member selection. Caller forwards to
+    /// `app.assetLifecycleRepo.assignCustody(asset: resourceId, to: memberId, notes: nil)`.
+    public let onAssignCustody: (@Sendable (UUID) async throws -> Void)?
+
+    /// Called when `childResourceWizard` is tapped. Caller's typical
+    /// impl: dismiss the current post-create sheet and present a new
+    /// ResourceCreationSheet (optionally pre-selecting `prefilledType`).
+    /// Passing nil leaves the intent on the placeholder.
+    public let onCreateChildResource: (@Sendable (ResourceType?) async -> Void)?
+
+    public init(
+        onAssignCustody: (@Sendable (UUID) async throws -> Void)? = nil,
+        onCreateChildResource: (@Sendable (ResourceType?) async -> Void)? = nil
+    ) {
+        self.onAssignCustody = onAssignCustody
+        self.onCreateChildResource = onCreateChildResource
     }
 }
 
@@ -403,6 +442,12 @@ struct PresentedIntent: Identifiable {
 ///   - `ledgerEntryForm(.credit)` → `ContributeToFundSheet`
 ///   - `ledgerEntryForm(.debit)` → `RecordExpenseFromFundSheet`
 ///   - `valuationForm` / `recordValuationSheet` → `RecordValuationSheet`
+///   - `custodyAssignment` / `assignCustodyPicker` → `MemberPickerSheet`
+///     (caller wires the assign callback via
+///     `PostCreateResourceActions.onAssignCustody`)
+///   - `childResourceWizard` → caller-driven (e.g. dismiss current
+///     sheet + present a fresh `ResourceCreationSheet`) via
+///     `PostCreateResourceActions.onCreateChildResource`
 ///
 /// Wired destinations require `resourceContext`. When the context is
 /// nil (tests, previews, callers that opted out), they fall back to
@@ -445,8 +490,70 @@ private struct DestinationPresenter: View {
                 placeholder
             }
 
+        case .custodyAssignment, .assignCustodyPicker:
+            // Member picker → caller's onAssignCustody callback runs
+            // the RPC. Same shape the UniversalResourceDetailView
+            // toolbar uses. Members list comes from
+            // resourceContext.members so the picker reflects the
+            // group's directory state, not stale data.
+            if let ctx = resourceContext,
+               let onAssign = ctx.actions.onAssignCustody {
+                NavigationStack {
+                    MemberPickerSheet(
+                        members: ctx.members,
+                        title: "Asignar custodia"
+                    ) { memberId in
+                        Task {
+                            do { try await onAssign(memberId) }
+                            catch { /* caller surfaces via mutation hook */ }
+                            onClose()
+                        }
+                    }
+                }
+            } else {
+                placeholder
+            }
+
+        case .childResourceWizard(let prefilledType):
+            // Caller decides what to do (typically: dismiss this sheet,
+            // present a new ResourceCreationSheet starting at the
+            // prefilled type). DestinationPresenter doesn't try to
+            // construct a recursive sheet itself because the builders
+            // + activator + template defaults aren't threaded through
+            // this struct — keeping them out avoids dragging app-wide
+            // deps into the presenter.
+            if let onCreate = resourceContext?.actions.onCreateChildResource {
+                childWizardLauncher(prefilledType: prefilledType, onCreate: onCreate)
+            } else {
+                placeholder
+            }
+
         default:
             placeholder
+        }
+    }
+
+    /// One-shot launcher card for `childResourceWizard`. Shown briefly
+    /// while we invoke the caller's `onCreateChildResource`; the caller
+    /// typically dismisses this sheet immediately and presents the
+    /// child wizard, so the user only ever sees a flash.
+    @ViewBuilder
+    private func childWizardLauncher(
+        prefilledType: ResourceType?,
+        onCreate: @escaping @Sendable (ResourceType?) async -> Void
+    ) -> some View {
+        VStack(spacing: RuulSpacing.lg) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Abriendo…")
+                .ruulTextStyle(RuulTypography.body)
+                .foregroundStyle(Color.ruulTextSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(RuulSpacing.xl)
+        .task {
+            await onCreate(prefilledType)
+            onClose()
         }
     }
 
