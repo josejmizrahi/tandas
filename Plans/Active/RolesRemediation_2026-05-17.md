@@ -18,7 +18,7 @@
 |---|---|---|---|
 | **B** (this) | Server SQL — guards + atoms sobre `groups.roles` y `group_members.roles` (cierra V1, V2, V14) | DB-only | **APPLIED 2026-05-17** (structural ok; Deno suite pending local) |
 | **A** | iOS — `MemberRole.admin` case + eliminar alias hardcoded `'admin' ↔ 'founder'` en 5 archivos (cierra V21, V22) + mig 00290 backfill + mig 00289 fix latent updated_at bug | mixed | **APPLIED 2026-05-17** (commit 32e7657) |
-| **C** | RPCs — eliminar `is_group_admin` callsites; fix HERESY V3 (transfer_right/delegate_right) + V10/V11/V12/V9/V13 | DB SQL | pendiente |
+| **C** | RPCs — eliminar `is_group_admin` callsites; fix HERESY V3 + V9/V10/V11/V12 (V13 deferred — needs finalize_vote whole-function re-ship) | DB SQL | **APPLIED 2026-05-17** (mig 00291; 11 RPCs migrated) |
 | **D** | Edge functions — fix HERESY V5 (send-event-notification auth) + V8 (crons → record_system_event) + V25 (verify-otp atom) | Deno | pendiente |
 | **E** | Swift `GovernanceService.hasPermission` llama RPC server + cache; refactor `CapabilityResolver+SecondaryActions` (cierra V15, V16, V17, V18, V19, V20) | Swift | pendiente |
 | **F** | Cleanup tail — eliminar `group_members.role` text + sync trigger; Phase 5 RLS rewire; formalizar `public.permissions` (cierra V4, V23, V24) | mixed | pendiente |
