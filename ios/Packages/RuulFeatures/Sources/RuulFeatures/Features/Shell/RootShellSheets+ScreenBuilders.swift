@@ -1,0 +1,254 @@
+import SwiftUI
+import RuulCore
+import RuulUI
+
+/// Screen-builder helpers for `RootShellSheets`. Each method instantiates
+/// a coordinator and returns the SwiftUI view that the corresponding
+/// sheet/cover modifier presents.
+///
+/// Extracted from `RootShellSheets.swift` 2026-05-18 per
+/// Plans/Active/CleanupAudit_2026-05-18/01_architecture.md §3
+/// "Shell/RootShellSheets.swift (1108 LOC) — SPLIT". Members are
+/// `internal` (no modifier) instead of `private` since Swift extensions
+/// across files can't share `private` scope; the visibility loosens
+/// from file-private to module-internal, still inaccessible to
+/// downstream packages.
+extension RootShellSheets {
+
+    @MainActor
+    func ruleEditSheet(_ ctx: RuleEditRouteContext) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let memberDirectory = router.state.memberDirectory
+        let currentMember = memberDirectory[userId]?.member
+            ?? fallbackMember(userId: userId, groupId: ctx.group.id)
+        let editCoord = EditRulesCoordinator(
+            group: ctx.group,
+            currentMember: currentMember,
+            actorUserId: userId,
+            governance: app.governance,
+            policyRepo: app.policyRepo,
+            ruleRepo: app.ruleRepo,
+            voteRepo: app.voteRepo,
+            userActionRepo: app.userActionRepo
+        )
+        return NavigationStack {
+            EditRuleSheet(
+                rule: ctx.rule,
+                pending: nil,
+                prefilledAmount: ctx.proposedAmount,
+                pendingActionId: ctx.pendingActionId,
+                coordinator: editCoord,
+                onDismiss: {
+                    while router.state.activeRoutes.contains(where: { if case .ruleEdit = $0 { return true }; return false }) {
+                        router.state.dismissTop()
+                    }
+                }
+            )
+        }
+    }
+
+    @MainActor
+    func eventDetailScreen(_ event: Event) -> some View {
+        guard let group = app.groups.first(where: { $0.id == event.groupId }) else {
+            return AnyView(EmptyView())
+        }
+        let userId = app.session?.user.id ?? UUID()
+        let memberDirectory = router.state.memberDirectory
+        let calendarService = router.state.calendarService
+        return AnyView(
+            EventDetailHost(
+                event: event,
+                group: group,
+                currentUserId: userId,
+                memberDirectory: memberDirectory,
+                calendarService: calendarService,
+                onClose: {
+                    router.state.activeEvent = nil
+                    while router.state.activeRoutes.contains(where: { if case .eventDetail = $0 { return true }; return false }) {
+                        router.state.dismissTop()
+                    }
+                },
+                onEditEvent: { editEvent in
+                    router.state.activeEditEvent = editEvent
+                    router.present(.editEvent)
+                },
+                onScannerOpen: { detail in
+                    openScanner(for: detail)
+                }
+            )
+            .environment(app)
+            .environment(router)
+        )
+    }
+
+    @MainActor @ViewBuilder
+    func eventEditScreen(_ event: Event) -> some View {
+        if let group = app.groups.first(where: { $0.id == event.groupId }) {
+            let editCoord = ResourceEditCoordinator(
+                event: event,
+                group: group,
+                eventRepo: app.eventRepo,
+                analytics: EventAnalytics(analytics: app.analytics)
+            )
+            EditEventView(coordinator: editCoord)
+                .onChange(of: editCoord.updatedEvent) { _, newValue in
+                    guard newValue != nil else { return }
+                    Task {
+                        await router.state.homeCoordinator?.refresh(force: true)
+                        if let updated = newValue {
+                            router.state.activeEvent = updated
+                        }
+                    }
+                }
+        }
+    }
+
+    @MainActor
+    func fineDetailScreen(_ fine: Fine) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let coordinator = FineDetailCoordinator(
+            fine: fine,
+            userId: userId,
+            fineRepo: app.fineRepo,
+            appealRepo: app.appealRepo,
+            analytics: app.analytics,
+            changeFeed: app.multiDeviceChangeFeed
+        )
+        let groupId = fine.groupId
+        let memberDirectory = router.state.memberDirectory
+        return NavigationStack {
+            FineDetailView(
+                coordinator: coordinator,
+                onAppeal: nil,
+                onViewAppeal: { appeal in
+                    router.openVoteOnAppeal(AppealRouteContext(appeal: appeal, fine: fine))
+                },
+                computeCanVoidFine: { [app] in
+                    guard let group = app.groups.first(where: { $0.id == groupId }),
+                          let member = memberDirectory[userId]?.member,
+                          let decision = try? await app.governance.canPerform(
+                              .voidFine, member: member, in: group, context: nil
+                          )
+                    else { return false }
+                    if case .allowed = decision { return true }
+                    return false
+                },
+                makeVoidFineCoordinator: { [app, router] in
+                    VoidFineCoordinator(
+                        fine: fine,
+                        fineRepo: app.fineRepo,
+                        groupsRepo: app.groupsRepo,
+                        onSubmitted: { @MainActor in
+                            await router.state.refreshInboxes()
+                            await router.state.myFinesCoordinator?.refresh()
+                        }
+                    )
+                },
+                currentUserId: userId
+            )
+            .ruulSheetToolbar("Multa", onClose: {
+                router.state.activeFine = nil
+                while router.state.activeRoutes.contains(where: {
+                    if case .fineDetail = $0 { return true }
+                    return false
+                }) {
+                    router.state.dismissTop()
+                }
+            })
+        }
+        .environment(app)
+    }
+
+    @MainActor @ViewBuilder
+    var myFinesScreen: some View {
+        if let coord = router.state.myFinesCoordinator {
+            MyFinesScreenHost(
+                coordinator: coord,
+                onClose: {
+                    while router.state.contains(.sanciones) {
+                        router.state.dismissTop()
+                    }
+                }
+            )
+            .environment(app)
+        }
+    }
+
+    @MainActor @ViewBuilder
+    var pastEventsScreen: some View {
+        if let group = app.activeGroup, let userId = app.session?.user.id {
+            NavigationStack {
+                PastResourcesView(
+                    group: group,
+                    userId: userId,
+                    eventRepo: app.eventRepo
+                ) { event in
+                    router.openEvent(event)
+                }
+                .ruulSheetToolbar("Eventos pasados", onClose: {
+                    while router.state.contains(.past) {
+                        router.state.dismissTop()
+                    }
+                })
+            }
+            .environment(app)
+        }
+    }
+
+    @MainActor @ViewBuilder
+    func voteDetailScreen(_ ctx: VoteDetailRouteContext) -> some View {
+        let userId = app.session?.user.id ?? UUID()
+        let memberDirectory = router.state.memberDirectory
+        let group = app.groups.first(where: { $0.id == ctx.vote.groupId })
+        let userMemberId = memberDirectory[userId]?.member.id ?? UUID()
+        NavigationStack {
+            if let group {
+                VoteDetailView(coordinator: VoteDetailCoordinator(
+                    vote: ctx.vote,
+                    group: group,
+                    userMemberId: userMemberId,
+                    voteRepo: app.voteRepo,
+                    castRepo: app.voteCastRepo,
+                    analytics: app.analytics,
+                    changeFeed: app.multiDeviceChangeFeed
+                ))
+                .ruulSheetToolbar("Votación", onClose: {
+                    while router.state.activeRoutes.contains(where: {
+                        if case .voteDetail = $0 { return true }
+                        return false
+                    }) {
+                        router.state.dismissTop()
+                    }
+                })
+            } else {
+                Text("Grupo no encontrado")
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .padding()
+            }
+        }
+        .environment(app)
+    }
+
+    @MainActor @ViewBuilder
+    func voteOnAppealSheet(_ ctx: AppealRouteContext) -> some View {
+        let memberDirectory = router.state.memberDirectory
+        let appellantName: String = {
+            if let entry = memberDirectory.values.first(where: { $0.member.id == ctx.appeal.appellantMemberId }) {
+                return entry.displayName
+            }
+            return "Un miembro"
+        }()
+        VoteOnAppealSheet(
+            isPresented: appealPresentedBinding,
+            fine: ctx.fine,
+            appeal: ctx.appeal,
+            appellantName: appellantName,
+            voteCounts: nil
+        ) { choice in
+            Task {
+                try? await app.appealRepo.castVote(appealId: ctx.appeal.id, choice: choice)
+                await router.state.refreshInboxes()
+            }
+        }
+    }
+}
