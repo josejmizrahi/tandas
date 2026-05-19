@@ -349,9 +349,14 @@ public struct PostCreateResourceContext: Sendable {
 /// placeholder card.
 public struct PostCreateResourceActions: Sendable {
     /// Called when `custodyAssignment` / `assignCustodyPicker`
-    /// finalizes member selection. Caller forwards to
-    /// `app.assetLifecycleRepo.assignCustody(asset: resourceId, to: memberId, notes: nil)`.
-    public let onAssignCustody: (@Sendable (UUID) async throws -> Void)?
+    /// finalizes member selection. First arg is the just-created
+    /// resource id (the asset being assigned), second is the member.
+    /// Caller forwards to `app.assetLifecycleRepo.assignCustody(asset:
+    /// resourceId, to: memberId, notes: nil)`. Pre-PR-resourceId
+    /// the callback only carried memberId and callers had to capture
+    /// the resourceId externally — the cutover helper captured
+    /// `group.id` as a placeholder, which was wrong.
+    public let onAssignCustody: (@Sendable (UUID, UUID) async throws -> Void)?
 
     /// Called when `childResourceWizard` is tapped. Caller's typical
     /// impl: dismiss the current post-create sheet and present a new
@@ -370,7 +375,7 @@ public struct PostCreateResourceActions: Sendable {
     public let onNavigate: (@Sendable (PostCreateNavigation) async -> Void)?
 
     public init(
-        onAssignCustody: (@Sendable (UUID) async throws -> Void)? = nil,
+        onAssignCustody: (@Sendable (UUID, UUID) async throws -> Void)? = nil,
         onCreateChildResource: (@Sendable (ResourceType?) async -> Void)? = nil,
         onNavigate: (@Sendable (PostCreateNavigation) async -> Void)? = nil
     ) {
@@ -553,9 +558,12 @@ private struct DestinationPresenter: View {
                     MemberPickerSheet(
                         members: ctx.members,
                         title: "Asignar custodia"
-                    ) { memberId in
+                    ) { [resourceId = resourceId] memberId in
                         Task {
-                            do { try await onAssign(memberId) }
+                            // Pass both resource + member ids so the
+                            // caller's `assignCustody(asset:to:notes:)`
+                            // RPC targets the right resource.
+                            do { try await onAssign(resourceId, memberId) }
                             catch { /* caller surfaces via mutation hook */ }
                             onClose()
                         }

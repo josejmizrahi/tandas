@@ -17,7 +17,7 @@ struct ResourceVariantPicker: View {
     let type: ResourceType
 
     private var variants: [ResourceVariant] {
-        coordinator.variants.variants(for: type)
+        coordinator.variants.pickableVariants(for: type)
     }
 
     var body: some View {

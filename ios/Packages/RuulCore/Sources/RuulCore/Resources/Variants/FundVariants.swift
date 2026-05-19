@@ -30,6 +30,10 @@ public enum FundVariants {
         postCreateHeadline: "El fondo está abierto. ¿Qué quieres registrar?"
     )
 
+    /// V2 Slice 3A: hidden from the picker — travel_fund is essentially
+    /// shared_expenses with a deadline, and the deadline already comes
+    /// from the existing capability set. Stays registered for id-lookup;
+    /// future pass surfaces it as a recipe chip inside shared_expenses.
     public static let travelFund = ResourceVariant(
         id: "fund.travel_fund",
         resourceType: .fund,
@@ -48,7 +52,8 @@ public enum FundVariants {
             "add_rules",
             "change_control"
         ],
-        postCreateHeadline: "Listo para empezar a juntar."
+        postCreateHeadline: "Listo para empezar a juntar.",
+        isVisibleInPicker: false
     )
 
     public static let investmentFund = ResourceVariant(

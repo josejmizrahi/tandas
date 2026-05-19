@@ -53,6 +53,10 @@ public enum SpaceVariants {
         postCreateHeadline: "¿Cómo se aparta este lugar?"
     )
 
+    /// V2 Slice 3A: hidden from the picker — venue = reservable_space +
+    /// create_child_event, both of which already work on reservable_space
+    /// directly. Stays registered for id-lookup; future pass surfaces it
+    /// as a recipe chip inside reservable_space.
     public static let venue = ResourceVariant(
         id: "space.venue",
         resourceType: .space,
@@ -71,7 +75,8 @@ public enum SpaceVariants {
             "add_rules",
             "view_history"
         ],
-        postCreateHeadline: "¿Qué quieres organizar aquí?"
+        postCreateHeadline: "¿Qué quieres organizar aquí?",
+        isVisibleInPicker: false
     )
 
     // post-Beta variants:
