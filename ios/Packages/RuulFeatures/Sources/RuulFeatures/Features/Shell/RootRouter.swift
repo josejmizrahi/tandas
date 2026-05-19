@@ -194,10 +194,6 @@ public final class RootRouter {
         state.push(.inviteShare)
     }
 
-    public func openEditProfile() {
-        state.push(.editProfile)
-    }
-
     public func openMembersList() {
         state.push(.membersList)
     }

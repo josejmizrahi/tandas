@@ -158,15 +158,9 @@ public struct RootShellSheets: ViewModifier {
                 voteOnAppealSheet(ctx)
             }
 
-            // MARK: Edit profile sheet
-            .fullScreenCover(isPresented: boolBinding(for: .editProfile), onDismiss: {
-                Task { await router.state.profileCoordinator?.refresh() }
-            }) {
-                if let pCoord = router.state.profileCoordinator {
-                    EditProfileSheet(coordinator: pCoord)
-
-                }
-            }
+            // V2 Slice 4A: .editProfile cover removed. EditProfileSheet
+            // now presents from ProfileTab's local @State (one entry per
+            // destination per V2 Plan §B.1).
 
             // MARK: Members list cover (read-only, everyone)
             .fullScreenCover(isPresented: boolBinding(for: .membersList)) {
