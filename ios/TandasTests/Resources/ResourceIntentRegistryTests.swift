@@ -109,4 +109,39 @@ struct ResourceIntentRegistryTests {
         let missing = postCreateIds.subtracting(registered)
         #expect(missing.isEmpty, "missing post-create intents: \(missing)")
     }
+
+    @Test("Quiet-bar intents are registered and cover all 6 resource types")
+    func quietBarIntents() {
+        // V2 Slice 3B (Plans/Active/ProductCompression.md §C.1): the
+        // universal quiet bar surfaces 6 verbs at the bottom of every
+        // Resource Detail Overview. Each must resolve in the registry,
+        // and 4 of the 6 (view_history, add_rules, share_resource,
+        // edit_resource, archive_resource) must cover all 6 resource
+        // types so the bar reads identically across the app.
+        //
+        // track_money is universal for the 5 non-right types (no money
+        // on a pure right). link_resource is intentionally absent until
+        // the picker generalizes beyond events.
+        let quietBarUniversal: Set<String> = [
+            "view_history", "add_rules",
+            "share_resource", "edit_resource", "archive_resource"
+        ]
+        let allTypes = Set(ResourceType.allCases)
+        for id in quietBarUniversal {
+            guard let intent = registry.intent(id: id) else {
+                Issue.record("quiet-bar intent \(id) not in registry")
+                continue
+            }
+            #expect(intent.resourceTypes == allTypes,
+                    "quiet-bar intent \(id) must declare all 6 resource types, got \(intent.resourceTypes)")
+        }
+
+        // track_money exists on 5 of 6 (skip .right).
+        guard let trackMoney = registry.intent(id: "track_money") else {
+            Issue.record("track_money intent missing")
+            return
+        }
+        #expect(trackMoney.resourceTypes == allTypes.subtracting([.right]),
+                "track_money should cover all types except .right, got \(trackMoney.resourceTypes)")
+    }
 }
