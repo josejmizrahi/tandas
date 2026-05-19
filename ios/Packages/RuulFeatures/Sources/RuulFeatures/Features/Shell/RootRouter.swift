@@ -170,9 +170,9 @@ public final class RootRouter {
         state.push(.groupHistory)
     }
 
-    public func openAcuerdos() {
-        state.push(.acuerdos)
-    }
+    // V2 Slice 4C: openAcuerdos() removed. Acuerdos now lives as a
+    // Group sheet NavigationStack push (GroupNav.acuerdos), the
+    // canonical entry the original Pass-1 plan called for.
 
     public func openSanciones() {
         state.push(.sanciones)

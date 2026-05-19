@@ -69,29 +69,10 @@ public struct RootShellSheets: ViewModifier {
                 }
             }
 
-            // MARK: Acuerdos / Rule list sheet (Beta 1 Rule Builder entry).
-            // RootRoute.acuerdos was originally designed as a nav push in the
-            // Pass-1 plan but no destination was wired in any tab. We render
-            // it as a sheet here so the Beta 1 "+ Nueva regla" surface is
-            // reachable; if the team later wires the navigation push, this
-            // branch can be deleted without breaking the route.
-            .fullScreenCover(isPresented: boolBinding(for: .acuerdos)) {
-                if let coord = router.state.rulesCoordinator {
-                    NavigationStack {
-                        RulesView(
-                            coordinator: coord,
-                            voteRepo: app.voteRepo,
-                            policyRepo: app.policyRepo,
-                            actorUserId: app.session?.user.id ?? UUID(),
-                            userActionRepo: app.userActionRepo,
-                            ruleTemplates: app.ruleTemplates,
-                            ruleTemplateRepo: app.ruleTemplateRepo
-                        )
-                    }
-                    .environment(app)
-
-                }
-            }
+            // V2 Slice 4C: .acuerdos root cover removed. RulesView now
+            // lives as a Group-sheet NavigationStack push (GroupNav.acuerdos
+            // below) — the canonical entry the original Pass-1 plan called
+            // for. Per V2 Plan §B.1: "one entry per destination".
 
             // MARK: Rule edit sheet (carries RuleEditRouteContext)
             .fullScreenCover(item: ruleEditItem, onDismiss: {
@@ -320,7 +301,7 @@ private struct GroupHomeSheetContent: View {
 
     private enum GroupNav: Hashable {
         case modules, currency, timezone, governance, rulePresets,
-             membersList, membersAdmin, roles
+             membersList, membersAdmin, roles, acuerdos
     }
 
     var body: some View {
@@ -361,7 +342,7 @@ private struct GroupHomeSheetContent: View {
                     router.openOpenVotes(OpenVotesRouteContext(id: group.id))
                 },
                 onOpenInbox: { router.selectTab(.inbox) },
-                onOpenAcuerdos: { router.openAcuerdos() }
+                onOpenAcuerdos: { path.append(GroupNav.acuerdos) }
             )
             .navigationDestination(for: GroupNav.self) { dest in
                 switch dest {
@@ -404,6 +385,27 @@ private struct GroupHomeSheetContent: View {
                 case .roles:
                     GroupRolesSheet(groupId: group.id)
                         .environment(app)
+                case .acuerdos:
+                    // V2 Slice 4C: Acuerdos used to live behind a global
+                    // `.acuerdos` root cover. Promoted here as a Group-
+                    // sheet nav push — one entry per destination per V2
+                    // Plan §B.1. RulesCoordinator is set up at group-
+                    // selection time so it's already available on the
+                    // RootRouter state.
+                    if let coord = router.state.rulesCoordinator {
+                        RulesView(
+                            coordinator: coord,
+                            voteRepo: app.voteRepo,
+                            policyRepo: app.policyRepo,
+                            actorUserId: app.session?.user.id ?? UUID(),
+                            userActionRepo: app.userActionRepo,
+                            ruleTemplates: app.ruleTemplates,
+                            ruleTemplateRepo: app.ruleTemplateRepo
+                        )
+                        .environment(app)
+                    } else {
+                        ProgressView()
+                    }
                 }
             }
             .fullScreenCover(isPresented: $showMembersAdminInvite) {

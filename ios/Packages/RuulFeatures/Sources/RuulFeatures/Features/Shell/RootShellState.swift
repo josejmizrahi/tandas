@@ -139,7 +139,8 @@ public enum RootRoute: Sendable, Hashable {
     case past
     case feed
     case groupHistory
-    case acuerdos
+    // .acuerdos removed in V2 Slice 4C — now a Group sheet nav push
+    // (GroupNav.acuerdos) instead of a root cover.
     case sanciones
     case createVotePicker
     case createGeneralProposal
