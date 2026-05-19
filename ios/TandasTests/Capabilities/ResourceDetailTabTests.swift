@@ -26,10 +26,10 @@ struct ResourceDetailTabTests {
         #expect(ResourceDetailTab.money.label == "Dinero")
         #expect(ResourceDetailTab.activity.label == "Actividad")
         #expect(ResourceDetailTab.rules.label == "Reglas")
-        // "Vínculos" instead of "Conexiones" so the segments fit on
-        // iPhone SE width (see ResourceDetailTab.label docstring).
-        // Slice 2C revisits this naming.
-        #expect(ResourceDetailTab.connections.label == "Vínculos")
+        // Slice 2C renamed "Vínculos" → "Relacionado". "Vínculo" was on
+        // the forbidden-vocab list (Plans/Active/HumanLayerSimplification.md
+        // §D) because it exposes the resource_links graph model.
+        #expect(ResourceDetailTab.connections.label == "Relacionado")
     }
 
     @Test("id mirrors rawValue")

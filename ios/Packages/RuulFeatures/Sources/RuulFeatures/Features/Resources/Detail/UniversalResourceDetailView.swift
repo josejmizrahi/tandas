@@ -465,16 +465,18 @@ public struct UniversalResourceDetailView: View {
             .filter { $0.tabId == tab.id }
     }
 
-    /// Tabs to render in the segmented control. `.people` (Slice 2A) and
-    /// `.money` (Slice 2B) are content-gated — they only appear when at
-    /// least one section routes to them. Other tabs keep their current
-    /// always-visible behavior so each slice introduces only one
-    /// cognitive change. Slice 2C revisits Connections.
+    /// Tabs to render in the segmented control. The three "domain" tabs
+    /// (.people Slice 2A, .money Slice 2B, .connections Slice 2C) are
+    /// content-gated — they only appear when at least one section routes
+    /// to them. Overview / activity / rules keep their always-visible
+    /// behavior; they anchor the structure even when momentarily empty
+    /// (a brand-new resource still shows General + Actividad + Reglas
+    /// so the user sees the universal shell from the first frame).
     private var visibleTabs: [ResourceDetailTab] {
         ResourceDetailTab.allCases.filter { tab in
             switch tab {
-            case .people, .money: return !sectionsForTab(tab).isEmpty
-            default:              return true
+            case .people, .money, .connections: return !sectionsForTab(tab).isEmpty
+            default:                            return true
             }
         }
     }
@@ -573,11 +575,14 @@ public struct UniversalResourceDetailView: View {
 
     @ViewBuilder
     private var connectionsContent: some View {
+        // Tab is content-gated via visibleTabs (Slice 2C), so an empty
+        // state shouldn't be reachable in production — but render one
+        // defensively in case section routing changes mid-session.
         let sections = sectionsForTab(.connections)
         if sections.isEmpty {
             emptyTab(
                 symbol: ResourceDetailTab.connections.symbol,
-                message: "Aún no hay recursos vinculados. Las conexiones aparecerán aquí cuando se agreguen."
+                message: "Aún no hay nada relacionado. Cuando conectes este recurso con otro, aparecerá aquí."
             )
         } else {
             ForEach(sections, id: \.id) { section in
