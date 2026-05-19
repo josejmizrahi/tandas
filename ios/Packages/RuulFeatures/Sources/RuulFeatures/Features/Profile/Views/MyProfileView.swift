@@ -125,6 +125,9 @@ public struct MyProfileView: View {
                 activitySection
                 settingsSection
                 appearanceSection
+                #if DEBUG
+                debugSection
+                #endif
                 dataAndAccountSection
                 signOutButton
             }
@@ -307,6 +310,41 @@ public struct MyProfileView: View {
             navRow(icon: "pencil", label: "Editar perfil", trailing: { EmptyView() }, action: onEditProfile)
         }
     }
+
+    #if DEBUG
+    /// Debug-only feature flag panel. Lets internal builds flip the new
+    /// resource-creation flow on/off at runtime without rebuilding.
+    /// Stripped from release builds entirely via `#if DEBUG`. Replace
+    /// with a remote-config surface when the flag graduates from
+    /// internal-only to runtime production rollout.
+    private var debugSection: some View {
+        sectionContainer(title: "DEBUG") {
+            HStack(spacing: RuulSpacing.sm) {
+                Image(systemName: "plus.app")
+                    .ruulTextStyle(RuulTypography.subheadMedium)
+                    .foregroundStyle(Color.ruulTextSecondary)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Flow nuevo de crear recurso")
+                        .ruulTextStyle(RuulTypography.body)
+                        .foregroundStyle(Color.ruulTextPrimary)
+                    Text("Type → Variant → Identity → Create → Intents. Apagado vuelve al wizard de 5 pasos.")
+                        .ruulTextStyle(RuulTypography.caption)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { ResourceCreationFeatureFlag.isEnabled },
+                    set: { ResourceCreationFeatureFlag.isEnabled = $0 }
+                ))
+                .labelsHidden()
+            }
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
+        }
+    }
+    #endif
 
     /// LFPDPPP/CCPA right-to-portability + right-to-erasure surface. Solo
     /// se renderiza si el caller provee ambos callbacks (no tiene sentido
