@@ -2982,6 +2982,30 @@ xcodebuild test -project ios/Tandas.xcodeproj -scheme Tandas \
 
 If E1–E4 surface a regression that blocks shipping, the legacy view is still in git history. Revert the single commit from C6 ("rewrite UniversalResourceDetailView") and the prior tabbed view is back, fully functional. Phases A, B, D models all stay green — they're additive. This is the rollback path.
 
+### E.5 Founder WIP integration (RotationSectionView + LocationSectionView)
+
+Before Phase C ran, `git stash push -u -m "founder-wip-pre-detail-v2"` parked a parallel rotation/host-assigned effort containing 30+ modified files. The founder asked that the substantive changes in `RotationSectionView.swift` and `LocationSectionView.swift` survive the rewrite. Phase D EventBlockBuilder MUST honor:
+
+**Rotation block (capability `rotation`):**
+- **Mig 00336 `cycle_offset`**: next-host index is `((cycle - 1 - cycle_offset) % count + count) % count`, NOT `(cycle - 1) % count`. The cycle_offset comes from `resource_series.metadata.capability_configs.rotation.cycle_offset` (defaults to 0 for pre-mig configs).
+- **Two states**:
+  - Configured → `summaryFacts` layout with rows for next host + queue; footer verb `Editar anfitriones`; `openDestinationId = "rotation.participants"`.
+  - Unconfigured (`rotation.participants` empty / nil) → `emptyPrompt` layout with copy "Configura quién rota como anfitrión"; footer verb `Configurar anfitriones`; same `openDestinationId`.
+- **Display names lazy-bound**: builder emits user_ids; the renderer resolves names via the passed-in memberDirectory at draw time. Avoids stale-name bug from the WIP era.
+- **"Editar/Configurar" affordance always reachable** regardless of viewer permissions — server enforces via RLS. Don't gate the block's verb on `viewerPermissions`.
+
+**Location block (event resources only — NOT gated by capability):**
+- Always include for `EventBlockBuilder`. Per WIP doctrine, the `location` capability flag is unreliable for events created before mig 00340. The builder decides.
+- **Two states**:
+  - Has location (`metadata.location_name` present) → `summaryFacts` layout with one row (location name); footer verb `Abrir en Mapas`; `openDestinationId = "location.editor"`.
+  - Empty → `emptyPrompt` layout with copy "Añadir ubicación"; same `openDestinationId`.
+
+**Deep management sheets to preserve in Phase E host wiring:**
+- `RotationParticipantsSheet` — untracked in stash@{0} at `ios/Packages/RuulFeatures/Sources/RuulFeatures/Features/Resources/Detail/Sections/RotationParticipantsSheet.swift`. Host routes `"rotation.participants"` to it.
+- `LocationEditorSheet` — untracked in stash@{0} (path TBC during Phase E). Host routes `"location.editor"` to it.
+
+Both sheets need to be restored from stash@{0} as part of Phase E (selectively, via `git checkout stash@{0} -- <path>`).
+
 ### E. `.bak` stash alternative
 
 Task C6 step 1 stashes the legacy view as a dotfile. If `xcodegen` picks it up despite the dot prefix, just delete it instead:
