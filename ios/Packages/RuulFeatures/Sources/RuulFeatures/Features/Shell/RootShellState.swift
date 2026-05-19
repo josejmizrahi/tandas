@@ -145,8 +145,8 @@ public enum RootRoute: Sendable, Hashable {
     case createGeneralProposal
     case createRuleChange(GroupRule?)
     case createMemberRemoval    // CreateMemberRemovalSheet
-    // .editProfile removed in V2 Slice 4A — now a ProfileTab-local sheet,
-    // not a global root cover (V2 Plan §B.1: "one entry per destination").
-    case membersList            // MembersListView (read-only, everyone)
-    case membersAdmin           // MembersAdminView (admin actions)
+    // .editProfile removed in V2 Slice 4A — now a ProfileTab-local sheet.
+    // .membersList + .membersAdmin removed in V2 Slice 4B — orphaned
+    // root covers, replaced by the Group sheet's NavigationStack push
+    // (GroupNav.membersList / .membersAdmin). Both per V2 Plan §B.1.
 }

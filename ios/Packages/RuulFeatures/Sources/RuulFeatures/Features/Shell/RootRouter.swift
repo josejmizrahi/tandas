@@ -194,13 +194,9 @@ public final class RootRouter {
         state.push(.inviteShare)
     }
 
-    public func openMembersList() {
-        state.push(.membersList)
-    }
-
-    public func openMembersAdmin() {
-        state.push(.membersAdmin)
-    }
+    // V2 Slice 4B: openMembersList / openMembersAdmin removed. Both
+    // root routes were orphaned — the canonical entry is the Group
+    // sheet NavigationStack push (GroupNav.membersList / .membersAdmin).
 
     public func openOpenVotes(_ ctx: OpenVotesRouteContext) {
         state.push(.openVotes(ctx))

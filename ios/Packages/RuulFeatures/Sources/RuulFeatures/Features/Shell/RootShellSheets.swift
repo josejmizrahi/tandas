@@ -162,26 +162,11 @@ public struct RootShellSheets: ViewModifier {
             // now presents from ProfileTab's local @State (one entry per
             // destination per V2 Plan §B.1).
 
-            // MARK: Members list cover (read-only, everyone)
-            .fullScreenCover(isPresented: boolBinding(for: .membersList)) {
-                if let activeGroup = app.activeGroup, let uid = app.session?.user.id {
-                    NavigationStack {
-                        MembersListView(coordinator: MembersCoordinator(
-                            group: activeGroup,
-                            actorUserId: uid,
-                            groupsRepo: app.groupsRepo
-                        ))
-                        .environment(app)
-                    }
-                }
-            }
-
-            // MARK: Members admin cover (admin actions)
-            .fullScreenCover(isPresented: boolBinding(for: .membersAdmin)) {
-                if let activeGroup = app.activeGroup, let uid = app.session?.user.id {
-                    MembersAdminViewWrapper(group: activeGroup, uid: uid, app: app)
-                }
-            }
+            // V2 Slice 4B: .membersList + .membersAdmin root covers
+            // removed. Both were orphaned (zero external callers); the
+            // canonical entry is the Group sheet NavigationStack push
+            // (GroupNav.membersList / .membersAdmin) still wired below.
+            // Per V2 Plan §B.1: "one entry per destination".
 
             // MARK: Create-vote picker sheet
             .fullScreenCover(isPresented: boolBinding(for: .createVotePicker)) {
