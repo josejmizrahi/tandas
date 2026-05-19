@@ -41,6 +41,7 @@ public struct FundBalanceSection: View {
     public static let definition = CapabilitySection(
         id: "fund.balance",
         priority: 167,
+        tabId: "money",
         isEnabledFor: { _ in true },
         isVisibleFor: { ctx in ctx.resource.resourceType == .fund },
         render: { ctx in AnyView(FundBalanceSection(fund: ctx.resource)) }

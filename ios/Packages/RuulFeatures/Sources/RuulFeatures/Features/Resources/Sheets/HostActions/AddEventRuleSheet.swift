@@ -54,7 +54,7 @@ struct AddResourceRuleSheet: View {
                 .ruulTextStyle(RuulTypography.sectionLabel)
                 .foregroundStyle(Color.ruulTextTertiary)
             if coordinator.availableTriggers.isEmpty {
-                emptyShapeMessage("No hay disparadores disponibles todavía.")
+                emptyShapeMessage("No hay momentos disponibles todavía.")
             } else {
                 RuulSeparatedRows(items: coordinator.availableTriggers) { shape in
                     shapeRow(
@@ -104,7 +104,7 @@ struct AddResourceRuleSheet: View {
                 }
             }
         } else {
-            emptyShapeMessage("No hay consecuencias disponibles todavía.")
+            emptyShapeMessage("No hay acciones disponibles todavía.")
         }
     }
 

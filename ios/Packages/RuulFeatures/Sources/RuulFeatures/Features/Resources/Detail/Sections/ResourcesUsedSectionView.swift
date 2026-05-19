@@ -80,12 +80,12 @@ public struct ResourcesUsedSectionView: View {
             Button {
                 pickerPresented = true
             } label: {
-                Label("Vincular", systemImage: "plus")
+                Label("Conectar", systemImage: "plus")
                     .ruulTextStyle(RuulTypography.labelSmSemibold)
                     .foregroundStyle(Color.ruulAccent)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Vincular un recurso al evento")
+            .accessibilityLabel("Conectar un recurso al evento")
         }
         .padding(.horizontal, RuulSpacing.xxs)
     }
@@ -116,10 +116,10 @@ public struct ResourcesUsedSectionView: View {
             HStack(spacing: RuulSpacing.sm) {
                 iconBadge(systemName: "link")
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Sin recursos vinculados")
+                    Text("Sin recursos relacionados")
                         .ruulTextStyle(RuulTypography.body)
                         .foregroundStyle(Color.ruulTextPrimary)
-                    Text("Vincula un espacio, asset o fondo que use este evento.")
+                    Text("Conecta un espacio, activo o fondo que use este evento.")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
@@ -198,7 +198,7 @@ public struct ResourcesUsedSectionView: View {
         } catch {
             await MainActor.run {
                 self.errorMessage = (error as? LocalizedError)?.errorDescription
-                    ?? "No se pudieron cargar los recursos vinculados."
+                    ?? "No se pudieron cargar los recursos relacionados."
                 self.hasLoaded = true
             }
         }
@@ -216,7 +216,7 @@ public struct ResourcesUsedSectionView: View {
         } catch {
             await MainActor.run {
                 self.errorMessage = (error as? LocalizedError)?.errorDescription
-                    ?? "No se pudo desvincular el recurso."
+                    ?? "No se pudo desconectar el recurso."
             }
         }
     }

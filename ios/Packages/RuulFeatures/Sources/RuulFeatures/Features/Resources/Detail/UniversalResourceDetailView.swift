@@ -89,9 +89,16 @@ public struct UniversalResourceDetailView: View {
                 hero
                 informationSection
 
+                // Icon-only segmented control. With 6 universal tabs the
+                // labels (General · Gente · Dinero · Actividad · Reglas ·
+                // Vínculos) crowd on iPhone width; SF Symbols stay legible
+                // and the .accessibilityLabel keeps VoiceOver fluent.
+                // tab.symbol is the per-case SF Symbol defined in
+                // ResourceDetailTab.symbol.
                 RuulSegmentedControl(
                     selection: $selectedTab,
-                    segments: ResourceDetailTab.allCases.map { ($0, $0.label) }
+                    segments: visibleTabs.map { (value: $0, label: $0.label, icon: $0.symbol) },
+                    displayMode: .icon
                 )
                 .padding(.top, RuulSpacing.xs)
 
@@ -458,10 +465,28 @@ public struct UniversalResourceDetailView: View {
             .filter { $0.tabId == tab.id }
     }
 
+    /// Tabs to render in the segmented control. The three "domain" tabs
+    /// (.people Slice 2A, .money Slice 2B, .connections Slice 2C) are
+    /// content-gated — they only appear when at least one section routes
+    /// to them. Overview / activity / rules keep their always-visible
+    /// behavior; they anchor the structure even when momentarily empty
+    /// (a brand-new resource still shows General + Actividad + Reglas
+    /// so the user sees the universal shell from the first frame).
+    private var visibleTabs: [ResourceDetailTab] {
+        ResourceDetailTab.allCases.filter { tab in
+            switch tab {
+            case .people, .money, .connections: return !sectionsForTab(tab).isEmpty
+            default:                            return true
+            }
+        }
+    }
+
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
         case .overview:    overviewContent
+        case .people:      peopleContent
+        case .money:       moneyContent
         case .activity:    activityContent
         case .rules:       rulesContent
         case .connections: connectionsContent
@@ -475,6 +500,41 @@ public struct UniversalResourceDetailView: View {
             emptyTab(
                 symbol: ResourceDetailTab.overview.symbol,
                 message: "No hay información para mostrar todavía."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var peopleContent: some View {
+        // Tab is content-gated via visibleTabs, so an empty state shouldn't
+        // be reachable in production — but render one defensively in case
+        // section routing changes mid-session.
+        let sections = sectionsForTab(.people)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.people.symbol,
+                message: "Aún no hay nadie agregado. Cuando invites o asignes a alguien, aparecerá aquí."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var moneyContent: some View {
+        // Same content-gated pattern as people. Defensive empty state in
+        // case section routing changes mid-session.
+        let sections = sectionsForTab(.money)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.money.symbol,
+                message: "Aún no hay movimientos de dinero. Cuando alguien aporte, gaste o se aplique una multa, aparecerá aquí."
             )
         } else {
             ForEach(sections, id: \.id) { section in
@@ -515,11 +575,14 @@ public struct UniversalResourceDetailView: View {
 
     @ViewBuilder
     private var connectionsContent: some View {
+        // Tab is content-gated via visibleTabs (Slice 2C), so an empty
+        // state shouldn't be reachable in production — but render one
+        // defensively in case section routing changes mid-session.
         let sections = sectionsForTab(.connections)
         if sections.isEmpty {
             emptyTab(
                 symbol: ResourceDetailTab.connections.symbol,
-                message: "Aún no hay recursos vinculados. Las conexiones aparecerán aquí cuando se agreguen."
+                message: "Aún no hay nada relacionado. Cuando conectes este recurso con otro, aparecerá aquí."
             )
         } else {
             ForEach(sections, id: \.id) { section in

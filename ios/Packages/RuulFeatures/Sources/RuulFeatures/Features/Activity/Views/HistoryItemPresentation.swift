@@ -337,11 +337,11 @@ public struct HistoryItemPresentation {
         // Resource links (mig 00202_event_resource_links)
         case .resourceLinked:
             self.icon = "link"
-            self.title = "\(actor) vinculó un recurso al evento"
+            self.title = "\(actor) conectó un recurso al evento"
             self.tone = .info
         case .resourceUnlinked:
             self.icon = "link.badge.plus"
-            self.title = "\(actor) desvinculó un recurso del evento"
+            self.title = "\(actor) desconectó un recurso del evento"
             self.tone = .neutral
 
         // Event lifecycle — eventCancelled (mig 00203_event_cancelled_atom)

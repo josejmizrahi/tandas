@@ -10,6 +10,7 @@ public struct AssignmentSectionView: View {
     public static let definition = CapabilitySection(
         id: "assignment",
         priority: 350,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.assignment) },
         render: { ctx in AnyView(AssignmentSectionView(context: ctx)) }
     )

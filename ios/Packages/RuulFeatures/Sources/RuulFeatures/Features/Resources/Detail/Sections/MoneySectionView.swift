@@ -22,6 +22,7 @@ public struct MoneySectionView: View {
     public static let definition = CapabilitySection(
         id: "money",
         priority: 400,
+        tabId: "money",
         isEnabledFor: { caps in
             // `ledger` is the canonical block name basic_fines (V1) and
             // the FundResourceBuilder (mig 00139) auto-enable. The
