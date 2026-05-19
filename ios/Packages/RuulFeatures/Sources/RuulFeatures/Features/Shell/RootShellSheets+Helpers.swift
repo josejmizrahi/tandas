@@ -91,20 +91,16 @@ extension RootShellSheets {
         )
         let members = Array(router.state.memberDirectory.values)
         let actions = PostCreateResourceActions(
-            onAssignCustody: { [assetLifecycleRepo = app.assetLifecycleRepo,
-                                resourceId = group.id] memberId in
-                // assetLifecycleRepo.assignCustody runs the RPC. Closure
-                // captures the asset id from the just-created resource —
-                // wired through onClose callback context once the
-                // coordinator exposes the created id at action time.
-                // Today this captures the group id as a placeholder; the
-                // real asset id is plumbed via PostCreateResourceContext
-                // in the sheet body. Acceptable because custodyAssignment
-                // intent only fires after asset creation; the resource
-                // id matches what the sheet's DestinationPresenter passes.
-                _ = (assetLifecycleRepo, resourceId, memberId)
-                // Real impl wires via the sheet's resourceId — see
-                // PostCreateIntentScreenContainer onActivated callback.
+            onAssignCustody: { [assetLifecycleRepo = app.assetLifecycleRepo] resourceId, memberId in
+                // Now wired end-to-end: DestinationPresenter passes the
+                // real resource id captured from
+                // PostCreateIntentScreenContainer (resourceId from the
+                // .postCreate phase), so the RPC targets the just-
+                // created asset correctly. Pre-fix this closure
+                // captured group.id as a placeholder which was wrong.
+                try await assetLifecycleRepo.assignCustody(
+                    asset: resourceId, to: memberId, notes: nil
+                )
             },
             onCreateChildResource: { [router = router] _ in
                 // The DestinationPresenter's child wizard launcher
