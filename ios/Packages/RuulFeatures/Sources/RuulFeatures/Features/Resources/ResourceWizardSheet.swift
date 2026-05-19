@@ -368,7 +368,7 @@ public struct ResourceWizardSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
     }
 
-    private func capabilityRow(for block: any CapabilityBlock) -> some View {
+    private func capabilityRow(for block: any CapabilityDefinition) -> some View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -571,7 +571,7 @@ public struct ResourceWizardSheet: View {
         }
     }
 
-    private func suggestedRuleRow(block: any CapabilityBlock, template: CapabilityRuleOption) -> some View {
+    private func suggestedRuleRow(block: any CapabilityDefinition, template: CapabilityRuleOption) -> some View {
         let isOn = coordinator.isSuggestedRuleSelected(blockId: block.id, slug: template.slug)
         return HStack(alignment: .top, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: 2) {

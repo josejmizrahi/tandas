@@ -3,7 +3,7 @@ import Foundation
 /// A composable capability that can be attached to a Resource per the
 /// OpenPlatform Taxonomy §2.
 ///
-/// A `CapabilityBlock` declares its contract: which resource types accept
+/// A `CapabilityDefinition` declares its contract: which resource types accept
 /// it, what config it needs, what actions/routes/permissions it exposes,
 /// what projections it produces, and how it relates to other blocks via
 /// dependencies and conflicts.
@@ -15,7 +15,10 @@ import Foundation
 /// Catalog lives in code (`CapabilityCatalog`) for now. Phase 2+ may
 /// promote to a `public.capability_blocks` table if the registry needs
 /// to evolve without redeploys.
-public protocol CapabilityBlock: Sendable {
+///
+/// Renamed from `CapabilityBlock` (2026-05-18) to free up `CapabilityBlock`
+/// as the universal detail-block value type in Resources/Detail/.
+public protocol CapabilityDefinition: Sendable {
     /// Stable, unique id matching the `capability_block_id` strings on the
     /// server (modules.provided_capability_blocks, resource_capabilities).
     var id: String { get }
@@ -87,7 +90,7 @@ public protocol CapabilityBlock: Sendable {
 /// Blocks that are half-built override this explicitly with
 /// `.incomplete(reason: …)` — the explicit string is the contract for
 /// why the audit flagged it.
-public extension CapabilityBlock {
+public extension CapabilityDefinition {
     var status: CapabilityStatus { .stable }
 }
 
@@ -272,7 +275,7 @@ public struct ProjectionDescriptor: Sendable, Hashable {
     }
 }
 
-/// A pre-fab rule option declared by a `CapabilityBlock`. The
+/// A pre-fab rule option declared by a `CapabilityDefinition`. The
 /// ResourceWizard's "Acuerdos sugeridos" step (step 4) renders these as
 /// toggleable rows under their owning capability. Picking one creates a
 /// `rules` row scoped to the new resource.
