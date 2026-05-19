@@ -1,8 +1,10 @@
 import Foundation
 
 /// Single primary CTA for a resource detail screen, decided by
-/// `CapabilityResolver.primaryAction(...)`. Drives the sticky footer
-/// in `UniversalResourceDetailView`.
+/// `CapabilityResolver.primaryAction(...)`. Rendered inline inside the
+/// State hero block of `UniversalResourceDetailView` — never as a
+/// floating or sticky footer (doctrine: action belongs WITH the state
+/// that motivates it, not detached at the screen edge).
 public struct PrimaryAction: Sendable, Hashable {
     public enum Style: Sendable, Hashable {
         case standard       // accent fill
