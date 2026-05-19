@@ -24,15 +24,15 @@
 | RF2 `GroupRule.fineShape` | ✅ Closed — Phase 2.A. Migrated to `FineConsequenceParser.shape(of:)`. `FineShape` enum relocated. |
 | RF3 `OnboardingRuleDraft.amountMXN` | ✅ Closed — Phase 2.A. Deleted (0 active callsites). |
 | RF4 `.money` tab missing | ✅ Closed — pre-shipped on `origin/main` ahead of this branch via the V2 Human-Layer 6-tab refactor (`ProductCompression.md` §H.2). `MoneySectionView` + `FundBalanceSection` declare `tabId: "money"`; new tabs `.people` / `.money` / `.connections` are content-gated, hidden when empty. Phase 3 commit on this branch dropped during rebase as redundant. |
-| RF5 mutable `fines` columns | ⏳ Open — Phase 4 (Constitution §14 Step 3c). Schema drop pending edge-fn migration to `fines_view` first. |
+| RF5 mutable `fines` columns | ✅ Closed — mig 00151 (Step 3c, predates this branch) dropped `status`, `paid`, `paid_at`, `paid_to_fund`, `waived`, `waived_at`, `waived_reason`, `appeal_vote_id`. Schema verified 2026-05-18: `public.fines` carries only the 13 base + audit columns. |
 | RF6 Swift templates hardcoded | ⏳ Open — Phase 2.B deferred. Deletion needs onboarding flow rework (callers: `V1Modules.providedRules`, `RuleRepository.createInitialRules`). Deprecation comment stays as Phase 1 marker. |
 | RF7 universal template description copy | ✅ Closed — Phase 1 (mig 00327). 7 active universals rewritten consequence-agnostic. |
 | RF8 `setBookingsLocked` direct mutation | ✅ Closed — mig 00284 (Sprint 4.12, predates this branch). `lock_asset_bookings` RPC + `asset_booking_lock_view` projection shipped; edge fn calls RPC instead of `resources.metadata` UPDATE. |
-| RF9 `fines_view` stored-column fallback | ⏳ Open — Phase 4. Re-create view without fallback after Step 3c. |
+| RF9 `fines_view` stored-column fallback | ✅ Closed — view re-created without fallback. Current definition (verified 2026-05-18) derives `status`/`paid`/`paid_at`/`waived`/`waived_at`/`waived_reason` exclusively from `ledger_entries` atoms + open `votes(vote_type='fine_appeal')`. |
 | RF10-RF17 acceptable boundary | ✅ Reference only — no action needed. |
 
-**Compliance now: ~96%** (RF1-4, RF7, RF8 closed; RF5/RF6/RF9 documented and sequenced).
-**Compliance post-Phase-4: ~99.9%**.
+**Compliance now: ~99%** (RF1-5, RF7, RF8, RF9 closed; only RF6 deferred).
+**Compliance post-RF6 onboarding refactor: ~99.9%**.
 
 ---
 

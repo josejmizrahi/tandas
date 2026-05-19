@@ -1,25 +1,25 @@
 import Foundation
 
 /// A monetary fine — the only ConsequenceType implemented in V1.
-/// Lives in the legacy `public.fines` table (see migration 00001 + 00016).
-/// Sprint 1a's edge-fn rule engine inserts these with status=.proposed; the
-/// 24h grace period (managed by `fine_review_periods`) auto-officializes
-/// via `finalize-fine-reviews` cron unless the host calls `officialize_fine`
+/// Lives in `public.fines` (mig 00001 + 00016). The rule engine inserts
+/// auto-generated fines via `proposeFine`; the 24h grace period
+/// (managed by `fine_review_periods`) auto-officializes via
+/// `finalize-fine-reviews` cron unless the host calls `officialize_fine`
 /// or `void_fine` first.
 ///
-/// `resourceId` (00041) is the polymorphic FK to `resources.id`. For V1
-/// fines `resourceId == eventId` (resources mirror events 1:1 post-00040).
-/// Phase 2 fines for non-event resources (slot decline, fund non-contribution)
-/// fill `resourceId` while leaving `eventId` NULL.
+/// `resourceId` (mig 00041) is the polymorphic FK to `resources.id`.
+/// Phase 2 fines for non-event resources (slot decline, fund
+/// non-contribution) fill `resourceId` directly.
 ///
-/// **Mutable storage columns `paid`, `paidAt`, `waived`, `waivedAt`,
-/// `waivedReason` are transitional debt** per Constitution §14 Step 3c and
-/// `RulesVsMoneyDoctrine.md` Axioma 2 (Fine ≠ Ledger). Truth lives in
-/// `ledger_entries` (`fine_paid` / `fine_voided` atoms); the `fines_view`
-/// projection (mig 00149) derives these fields from atoms. Readers MUST
-/// consume `fines_view`, not raw `fines` storage. Phase 4 of
-/// `RulesFinesRefactorPlan.md` drops the storage columns and re-creates
-/// the view without fallback.
+/// Decoding source is `public.fines_view` (mig 00149), NOT raw
+/// `public.fines`. The view projects `status`, `paid`, `paidAt`,
+/// `waived`, `waivedAt`, `waivedReason` from `ledger_entries` atoms
+/// (`fine_paid` / `fine_voided`) + open `votes` of type
+/// `fine_appeal`. The stored mutable columns those fields used to
+/// live in were dropped in mig 00151 per Constitution §14 Step 3c —
+/// reading raw `fines` no longer returns them. `RulesVsMoneyDoctrine.md`
+/// Axioma 2 (Fine ≠ Ledger) is satisfied: this struct's economic state
+/// is fully atom-derived.
 public struct Fine: Identifiable, Sendable, Hashable, Codable {
     public let id: UUID
     public let groupId: UUID

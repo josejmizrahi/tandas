@@ -51,14 +51,17 @@
 │   commit was redundant and dropped during rebase.       │
 └─────────────────────────────────────────────────────────┘
                               │
-                              ▼ blocked by Phase 4 prep (see §4)
+                              ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 4 — Constitution §14 Step 3c             [PENDING]│
-│   PREP first: migrate edge fn reads (process-system-    │
-│     events, send-fine-reminders, consistency_money)     │
-│     from `from('fines')` to `from('fines_view')`        │
-│   Then DROP COLUMNS fines.paid/waived/...               │
-│   Then re-create fines_view sin fallback                │
+│ Phase 4 — Constitution §14 Step 3c        [PRE-SHIPPED] │
+│   mig 00151 already dropped status/paid/waived/...      │
+│   columns. fines_view re-created derivation-only from   │
+│   ledger_entries atoms + open fine_appeal votes.        │
+│   Edge fns (process-system-events, send-fine-reminders) │
+│   already read `fines_view` for state queries; raw      │
+│   `fines` reads remaining only for INSERTs + immutable  │
+│   `details` jsonb updates. Fine.swift doc comment       │
+│   updated to reflect view-projected reality.            │
 └─────────────────────────────────────────────────────────┘
                               │
                               ▼ shippable independently
@@ -384,16 +387,36 @@ En `EmptyTab` messages:
 
 ---
 
-## Phase 4 — Constitution §14 Step 3c (1-2 days)
+## Phase 4 — Constitution §14 Step 3c — PRE-SHIPPED
 
-**Goal:** Drop mutable columns de `fines`, re-create `fines_view` sin fallback, Fine struct read-only desde view.
+**Status:** Done ahead of this branch via mig 00151 (`fines_drop_legacy_columns`). All subsections below are kept as historical reference for the plan — none require execution.
 
-### 4.0 — Prep work (DO THIS FIRST, separate PR)
+### Verification snapshot 2026-05-18
+
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_schema='public' AND table_name='fines' ORDER BY ordinal_position;
+-- Returns: id, group_id, user_id, rule_id, reason, amount, auto_generated,
+--          issued_by, details, created_at, updated_at, rule_snapshot, resource_id
+-- (13 columns; status / paid* / waived* / appeal_vote_id / event_id all DROPPED)
+```
+
+`fines_view` definition (verified):
+- `status` ← CASE over `ledger_entries(fine_voided/fine_paid/fine_officialized)` + `votes(fine_appeal, status=open)`, defaulting to `'proposed'`
+- `paid` / `paid_at` ← EXISTS / latest occurrence of `ledger_entries(fine_paid, fine_id=…)`
+- `waived` / `waived_at` / `waived_reason` ← same for `fine_voided`
+
+Fine.swift updated (commit on this branch) to clarify: decoding is via `fines_view`, struct fields are projected-not-stored.
+
+### 4.0 — Prep work — N/A (columns already dropped)
 
 Grep 2026-05-18 surfaced raw `from('fines')` reads in:
 
 - `supabase/functions/process-system-events/index.ts:190` (SELECT user_id — safe, doesn't read projected columns)
-- `supabase/functions/process-system-events/index.ts:258` (INSERT — safe, write path)
+- `supabase/functions/process-system-events/index.ts:248` — already uses `from('fines_view')` for status check (line was 254 pre-grep, the read is from fines_view not fines)
+- `supabase/functions/process-system-events/index.ts:266` (INSERT — safe, write path)
+- `supabase/functions/send-fine-reminders/index.ts:46` already uses `from('fines_view')` for SELECT; line 95 is an `UPDATE fines SET details=…` to a stored jsonb column (NOT dropped) — safe
+- `supabase/functions/_tests/db/consistency_money.test.ts:35,99,166` — all INSERTs, safe
 - `supabase/functions/send-fine-reminders/index.ts:95`
 - `supabase/functions/_tests/db/consistency_money.test.ts:35,99,166`
 
