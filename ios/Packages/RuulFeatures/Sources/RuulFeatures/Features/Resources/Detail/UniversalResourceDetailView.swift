@@ -510,6 +510,15 @@ public struct UniversalResourceDetailView: View {
                 section.render(context)
             }
         }
+        // V2 Slice 3B: universal quiet bar at the bottom of every
+        // Overview. Renders 6 ambient verbs (view_history, add_rules,
+        // track_money, share_resource, edit_resource, archive_resource)
+        // filtered by the intent registry's `available(in:)` predicate
+        // — capability / permission / type gates apply, so a verb that
+        // doesn't match the current resource silently disappears. The
+        // bar is a quiet ambient surface; primary actions still live in
+        // the toolbar `+` menu and the sticky CTA.
+        quietActionBar
     }
 
     @ViewBuilder
@@ -788,6 +797,57 @@ public struct UniversalResourceDetailView: View {
         return DefaultResourceIntentRegistry.v1.available(in: intentContext)
     }
 
+    // MARK: - Universal quiet bar (V2 Slice 3B)
+
+    /// Verbs the quiet bar surfaces below the Overview sections, in
+    /// display order. Each id must resolve in `DefaultResourceIntentRegistry`;
+    /// any that the registry's `available(in:)` predicate filters out
+    /// for the current resource / viewer / capability state disappears
+    /// from the bar silently (no greyed-out chrome).
+    ///
+    /// `link_resource` is intentionally absent until the link sheet is
+    /// generalized to non-event resources (today `LinkResourcePickerSheet`
+    /// requires an `eventId`). V2 §B.6 captures the follow-up.
+    private static let quietBarIntentIDs: [String] = [
+        "view_history",
+        "add_rules",
+        "track_money",
+        "share_resource",
+        "edit_resource",
+        "archive_resource"
+    ]
+
+    /// Quiet bar actions filtered by the registry's universal predicate.
+    /// Unlike the `+` / ⚙️ menus, this bypasses `usesIntentRegistry` —
+    /// the quiet bar is universal across all 6 resource types, not
+    /// Phase-1 (asset+fund) only.
+    private var quietActions: [RuulQuietActionBar.Action] {
+        let availableIDs = Set(
+            DefaultResourceIntentRegistry.v1
+                .available(in: intentContext)
+                .map(\.id)
+        )
+        return Self.quietBarIntentIDs.compactMap { id in
+            guard availableIDs.contains(id),
+                  let intent = DefaultResourceIntentRegistry.v1.intent(id: id)
+            else { return nil }
+            return RuulQuietActionBar.Action(
+                id: intent.id,
+                label: intent.humanLabel,
+                symbol: intent.icon,
+                isDestructive: intent.isDestructive,
+                perform: { dispatchIntent(intent) }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var quietActionBar: some View {
+        if !quietActions.isEmpty {
+            RuulQuietActionBar(actions: quietActions)
+        }
+    }
+
     /// Intents for the `+` menu (everything that isn't a setting).
     private var plusMenuIntents: [ResourceIntent] {
         availableIntents.filter { !$0.isResourceSetting }
@@ -904,23 +964,35 @@ public struct UniversalResourceDetailView: View {
         case .archiveResourceConfirm:
             pendingConfirmation = .archiveResource
 
+        // --- Universal quiet-bar tab switches (V2 Slice 3B) ---
+        case .historyTab:
+            selectedTab = .activity
+        case .moneyTab:
+            selectedTab = .money
+        case .ruleTemplatePicker:
+            // Add Rules from the quiet bar lands on the .rules tab, same
+            // entry point as PR #51 (fix(creation): route add_rules to
+            // resource detail). The user picks a template / opens the
+            // composer from there.
+            selectedTab = .rules
+
         // --- Post-create navigation destinations (Phase 2 wiring) ---
         case .ledgerEntryForm,
              .reservationSetup,
              .rightCreationFlow,
-             .ruleTemplatePicker,
              .linkPicker,
              .rsvpManager,
              .checkInLauncher,
              .slotAllocationForm,
              .rightHolderForm,
              .governanceRuleEditor,
-             .historyTab,
-             .moneyTab,
              .childResourceWizard:
             // TODO Phase 2: wire navigation destinations from toolbar.
             // For now these only fire from the post-create screen; the
-            // toolbar's intent surface doesn't expose them.
+            // toolbar's intent surface doesn't expose them. `.linkPicker`
+            // specifically waits on a non-event link sheet (the existing
+            // LinkResourcePickerSheet is event-only — see V2 Slice 3B
+            // commit).
             break
         }
     }
