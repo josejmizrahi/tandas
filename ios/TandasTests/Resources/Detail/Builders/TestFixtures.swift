@@ -1,5 +1,6 @@
 import Foundation
 import RuulCore
+@testable import RuulFeatures
 
 // MARK: - TestFixtures
 // Uses REAL entity types (EventDetailSnapshot, Fine, Vote, ResourceRow)
@@ -48,11 +49,11 @@ enum TestFixtures {
             id: UUID(),
             groupId: groupId,
             title: "Cena de los miércoles",
+            startsAt: now.addingTimeInterval(86_400),
             locationName: locationName,
             hostId: hostId,
             status: .upcoming,
-            createdAt: now.addingTimeInterval(-86_400),
-            startsAt: now.addingTimeInterval(86_400)
+            createdAt: now.addingTimeInterval(-86_400)
         )
         return EventDetailSnapshot(
             event: event,
@@ -70,10 +71,10 @@ enum TestFixtures {
             id: UUID(),
             groupId: groupId,
             title: "Cena pasada",
+            startsAt: now.addingTimeInterval(-86_400),
             hostId: hostUserId,
             status: .closed,
-            createdAt: now.addingTimeInterval(-172_800),
-            startsAt: now.addingTimeInterval(-86_400)
+            createdAt: now.addingTimeInterval(-172_800)
         )
         return EventDetailSnapshot(
             event: event,

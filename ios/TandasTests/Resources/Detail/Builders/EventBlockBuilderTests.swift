@@ -104,10 +104,10 @@ struct EventBlockBuilderTests {
             id: UUID(),
             groupId: TestFixtures.groupId,
             title: "Test",
+            startsAt: TestFixtures.now.addingTimeInterval(86_400),
             hostId: TestFixtures.hostUserId,
             status: .upcoming,
-            createdAt: TestFixtures.now,
-            startsAt: TestFixtures.now.addingTimeInterval(86_400)
+            createdAt: TestFixtures.now
         )
         let snapshot = EventDetailSnapshot(
             event: event,
