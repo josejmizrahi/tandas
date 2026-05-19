@@ -120,6 +120,17 @@ public final class RootRouter {
         state.push(.eventDetail(event.id))
     }
 
+    /// Opens a polymorphic resource (fund/asset/space/slot/right) in
+    /// the universal detail cover. Sets `state.activeResource` so the
+    /// `RootShellSheets` handler can build `ResourceDetailSheet`
+    /// synchronously. Events use `openEvent(_:)` instead — EventDetailHost
+    /// needs the full `Event` for RSVP / check-in adapters which a
+    /// bare `ResourceRow` can't satisfy.
+    public func openResource(_ row: ResourceRow) {
+        state.activeResource = row
+        state.push(.resourceDetail(row.id))
+    }
+
     public func openEditEvent(_ event: Event) {
         state.activeEditEvent = event
         state.push(.editEvent)

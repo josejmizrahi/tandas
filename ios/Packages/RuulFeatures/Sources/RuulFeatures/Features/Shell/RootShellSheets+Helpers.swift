@@ -112,6 +112,7 @@ extension RootShellSheets {
                 // now the placeholder + dismiss is the honest response.
             },
             onNavigate: { [eventRepo = app.eventRepo,
+                           resourceRepo = app.resourceRepo,
                            homeCoord = router.state.homeCoordinator,
                            router = router] target in
                 // Maps `PostCreateNavigation` cases to real navigation.
@@ -127,21 +128,31 @@ extension RootShellSheets {
                 // dismissed the sheet without doing anything visible —
                 // matching the founder bug report ("solo me deja
                 // conectar con otra cosa").
+                // Two-tier load: try Event first (RSVP / check-in
+                // adapters work end-to-end via EventDetailHost), fall
+                // back to polymorphic `ResourceRow` (fund / asset /
+                // space / slot / right route via ResourceDetailSheet
+                // + UniversalResourceDetailView). Both lookups are
+                // best-effort — failed fetches refresh home.
+                @MainActor
+                func openOrFallback(_ id: UUID) async {
+                    if let event = try? await eventRepo.event(id) {
+                        router.openEvent(event)
+                        return
+                    }
+                    if let row = try? await resourceRepo.resource(id) {
+                        router.openResource(row)
+                        return
+                    }
+                    await homeCoord?.refresh(force: true)
+                }
                 switch target {
                 case .resourceDetailRSVP(let id),
                      .resourceDetailCheckIn(let id):
-                    if let event = try? await eventRepo.event(id) {
-                        await MainActor.run { router.openEvent(event) }
-                    } else {
-                        await homeCoord?.refresh(force: true)
-                    }
+                    await openOrFallback(id)
                 case .historyTab(_, let id), .moneyTab(_, let id):
-                    if let resourceId = id,
-                       let event = try? await eventRepo.event(resourceId) {
-                        await MainActor.run { router.openEvent(event) }
-                    } else {
-                        await homeCoord?.refresh(force: true)
-                    }
+                    if let id { await openOrFallback(id) }
+                    else { await homeCoord?.refresh(force: true) }
                 case .governanceRuleEditor, .ruleTemplatePicker:
                     // Phase 6 follow-up: present governance editor /
                     // rule template picker sheet. Until those surfaces
