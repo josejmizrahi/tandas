@@ -45,6 +45,7 @@ public struct ResourceDetailSheet: View {
             content
         }
         .task { await load() }
+        .task { await redirectIfEvent() }
         .ruulSheet(isPresented: $ledgerSheetPresented) {
             if let ledgerCoordinator {
                 ResourceLedgerSheet(
@@ -200,16 +201,19 @@ public struct ResourceDetailSheet: View {
 
     /// Builds blocks synchronously from the current resource row + group.
     /// Called after load and after resource mutation.
+    ///
+    /// Events do NOT build blocks here — the body short-circuits to a
+    /// router redirect (see `redirectIfEvent`). Reaching this method with
+    /// an event row means the redirect path didn't fire; we fall back to
+    /// an identity-only placeholder rather than mis-rendering the event
+    /// through a non-event builder.
     private func buildBlocks(for group: RuulCore.Group) {
         let live = liveResource ?? resource
         let viewerCtx = viewerContext(group: group)
         let built: ResourceBlocks
         switch live.resourceType {
         case .event:
-            // Event rows through this sheet are defensive — the primary
-            // flow uses EventDetailHost. Show a minimal read-only view
-            // with no primary action wired.
-            built = FundBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
+            built = neutralEventPlaceholderBlocks(for: live)
         case .fund:
             built = FundBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
         case .right:
@@ -220,6 +224,48 @@ public struct ResourceDetailSheet: View {
             built = AssetBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
         }
         blocks = built
+    }
+
+    /// Identity-only placeholder for events that somehow reach this
+    /// generic sheet instead of `EventDetailHost`. The state hero tells
+    /// the user we're routing to the right surface; `redirectIfEvent`
+    /// does the actual dismiss + push.
+    private func neutralEventPlaceholderBlocks(for live: ResourceRow) -> ResourceBlocks {
+        let title = live.metadata["title"]?.stringValue ?? "Evento"
+        return ResourceBlocks(
+            identity: IdentityRibbon(
+                icon: "calendar", tint: .events,
+                title: title, subtitleSegments: ["Evento"]
+            ),
+            state: StateHeadline(
+                headline: "Abriendo el evento…",
+                supportingFacts: [],
+                primaryAction: nil,
+                urgency: .ambient
+            ),
+            properties: PropertiesBlock(rows: []),
+            capabilities: [],
+            relations: [],
+            activityHead: [],
+            hasMoreActivity: false
+        )
+    }
+
+    /// Fires once on appear when the resource is an event: fetches the
+    /// full Event and hands off to `router.openEvent`, dismissing this
+    /// generic sheet. The placeholder blocks above keep the screen
+    /// neutral while the fetch resolves.
+    @MainActor
+    private func redirectIfEvent() async {
+        guard resource.resourceType == .event else { return }
+        guard let event = try? await app.eventRepo.event(resource.id) else {
+            // No event row found — leave the placeholder in place and
+            // let the user dismiss. Silently swallowing the error here
+            // mirrors the legacy behaviour for missing event rows.
+            return
+        }
+        router.openEvent(event)
+        dismiss()
     }
 
     private func viewerContext(group: RuulCore.Group) -> BlockViewerContext {

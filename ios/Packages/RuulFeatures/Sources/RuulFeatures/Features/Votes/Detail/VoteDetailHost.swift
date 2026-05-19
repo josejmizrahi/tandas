@@ -3,20 +3,36 @@ import RuulCore
 import RuulUI
 
 /// Phase E host for vote detail. Wraps `VoteDetailCoordinator` and renders
-/// the vote via `UniversalResourceDetailView` + `VoteBlockBuilder`. The
-/// `VoteCastSection` is embedded as an overlay beneath the block scroll
-/// so the three voting buttons remain accessible while the block tree
-/// provides identity, state, and tally context above.
+/// the vote via `UniversalResourceDetailView` + `VoteBlockBuilder`.
+///
+/// Doctrine §0 (universal detail v2):
+///   - Primary action lives INLINE in StateHero. No sticky footer, no
+///     overlay bar. The View's onPrimaryAction opens a dedicated cast
+///     sheet that hosts the legacy three-choice picker.
+///   - Admin/creator finalize+cancel are routed through the overflow
+///     `.edit` semantic ("manage this vote") into an admin actions
+///     sheet, gated by the coordinator's `shouldShowFinalize` /
+///     `shouldShowCancel`.
 ///
 /// Call site:
 ///   - `RootShellSheets+ScreenBuilders.voteDetailScreen` (full cover).
 @MainActor
 public struct VoteDetailHost: View {
+    @Environment(AppState.self) private var app
     @Bindable var coordinator: VoteDetailCoordinator
 
     @State private var blocks: ResourceBlocks?
-    @State private var showFinalizeConfirm = false
-    @State private var showCancelConfirm = false
+
+    /// Cast picker sheet — opens from the StateHero primary action.
+    @State private var showCastSheet: Bool = false
+
+    /// Admin actions sheet — opens from overflow `.edit` when the viewer
+    /// has at least one admin/creator action available.
+    @State private var showAdminSheet: Bool = false
+
+    /// Confirmation dialogs preserved from the legacy host.
+    @State private var showFinalizeConfirm: Bool = false
+    @State private var showCancelConfirm: Bool = false
 
     public init(coordinator: VoteDetailCoordinator) {
         self.coordinator = coordinator
@@ -25,28 +41,14 @@ public struct VoteDetailHost: View {
     public var body: some View {
         Group {
             if let blocks {
-                ZStack(alignment: .bottom) {
-                    UniversalResourceDetailView(
-                        blocks: blocks,
-                        onPrimaryAction: { /* cast section handles voting */ },
-                        onOpenBlock: { _ in },
-                        onTapRelation: { _ in },
-                        onSeeMoreActivity: { },
-                        onOverflowAction: { handleOverflow($0) }
-                    )
-                    // Preserve vote-cast UX below the block tree
-                    VStack(spacing: 0) {
-                        Spacer()
-                        VStack(spacing: RuulSpacing.sm) {
-                            VoteCastSection(coordinator: coordinator)
-                            adminActionsSection
-                        }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.vertical, RuulSpacing.sm)
-                        .ruulGlass(Rectangle(), material: .regular)
-                    }
-                    .allowsHitTesting(footerHasContent)
-                }
+                UniversalResourceDetailView(
+                    blocks: blocks,
+                    onPrimaryAction: { handlePrimaryAction() },
+                    onOpenBlock: { _ in },
+                    onTapRelation: { _ in },
+                    onSeeMoreActivity: { },
+                    onOverflowAction: { handleOverflow($0) }
+                )
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -61,6 +63,17 @@ public struct VoteDetailHost: View {
         .onChange(of: coordinator.counts) { _, _ in rebuildBlocks() }
         .onChange(of: coordinator.myCast) { _, _ in rebuildBlocks() }
         .refreshable { await coordinator.refresh() }
+        // Cast picker — opens from the StateHero primary action when the
+        // builder emits `castVote`. The legacy VoteCastSection handles the
+        // three-choice ballot inside.
+        .ruulSheet(isPresented: $showCastSheet) {
+            voteCastPickerSheet
+        }
+        // Admin actions — opens from overflow `.edit` when finalize/cancel
+        // is available. Closes after a successful action.
+        .ruulSheet(isPresented: $showAdminSheet) {
+            voteAdminSheet
+        }
         .alert("Finalizar votación", isPresented: $showFinalizeConfirm) {
             Button("Finalizar", role: .destructive) {
                 Task { await coordinator.finalizeManually() }
@@ -83,8 +96,8 @@ public struct VoteDetailHost: View {
 
     private func rebuildBlocks() {
         let viewerCtx = BlockViewerContext(
-            userId: nil,
-            permissions: [],
+            userId: app.session?.user.id,    // Doctrine §F fix: real viewer id
+            permissions: [],                  // VoteBlockBuilder gates on viewerHasVoted, not permissions
             activeModules: [],
             memberId: coordinator.vote.createdByMemberId
         )
@@ -92,47 +105,120 @@ public struct VoteDetailHost: View {
         blocks = builder.build(source: coordinator.vote, viewer: viewerCtx, now: Date())
     }
 
-    // MARK: - Admin section
+    // MARK: - Primary action dispatch
 
-    @ViewBuilder
-    private var adminActionsSection: some View {
-        if coordinator.shouldShowFinalize {
-            Button {
-                showFinalizeConfirm = true
-            } label: {
-                HStack {
-                    if coordinator.isFinalizingManually {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(.white)
-                    }
-                    Text("Finalizar votación")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.ruulAccent)
-            .disabled(coordinator.isFinalizingManually)
+    /// Routes the StateHero primary action. When the builder emits
+    /// `castVote`, opens the cast picker sheet; other kinds are not
+    /// applicable to votes today.
+    private func handlePrimaryAction() {
+        guard let kind = blocks?.state.primaryAction?.kind else { return }
+        switch kind {
+        case .castVote:
+            showCastSheet = true
+        case .none,
+             .rsvpConfirm, .rsvpCancel, .viewHostActions,
+             .openContribute, .openBooking, .viewClosed,
+             .exerciseRight, .payFine:
+            break  // not applicable to votes
         }
-        if coordinator.shouldShowCancel {
-            Button(role: .destructive) {
-                showCancelConfirm = true
-            } label: {
-                Text("Cancelar votación")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .disabled(coordinator.isCancellingVote)
-        }
-    }
-
-    private var footerHasContent: Bool {
-        !coordinator.voteIsClosed || coordinator.shouldShowFinalize || coordinator.shouldShowCancel
     }
 
     // MARK: - Overflow
 
+    /// Overflow menu items. `.edit` opens the admin actions sheet only
+    /// when at least one admin action (finalize/cancel) is available;
+    /// otherwise the tap is a no-op. Other items are not surfaced in the
+    /// new view because the universal overflow is hardcoded — filtering
+    /// would require host-level pruning that the doctrine doesn't expose
+    /// yet (TODO: per-host overflow predicate so unsupported items
+    /// disappear from the menu instead of failing silently).
     private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction) {
-        // Votes don't surface overflow actions in Phase E
+        switch action {
+        case .edit:
+            if coordinator.shouldShowFinalize || coordinator.shouldShowCancel {
+                showAdminSheet = true
+            }
+        case .share, .addToCalendar, .walletPass, .archive, .delete, .report:
+            break  // not applicable to votes
+        }
+    }
+
+    // MARK: - Sheets
+
+    /// Cast picker — wraps the legacy `VoteCastSection` in a sheet so the
+    /// three-choice ballot remains intact while honoring the doctrinal
+    /// "primary action lives inline + opens a dedicated picker" pattern.
+    @ViewBuilder
+    private var voteCastPickerSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: RuulSpacing.lg) {
+                VoteCastSection(coordinator: coordinator)
+                    .padding(.horizontal, RuulSpacing.lg)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, RuulSpacing.lg)
+            .navigationTitle("Tu voto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { showCastSheet = false }
+                }
+            }
+        }
+        .onChange(of: coordinator.alreadyVoted) { _, alreadyVoted in
+            // Auto-dismiss once the cast goes through.
+            if alreadyVoted { showCastSheet = false }
+        }
+        .presentationDetents([.medium])
+    }
+
+    /// Admin actions sheet — replaces the legacy bottom-bar admin row.
+    /// Visible buttons are gated by the coordinator's existing predicates.
+    @ViewBuilder
+    private var voteAdminSheet: some View {
+        NavigationStack {
+            VStack(spacing: RuulSpacing.md) {
+                if coordinator.shouldShowFinalize {
+                    Button {
+                        showAdminSheet = false
+                        showFinalizeConfirm = true
+                    } label: {
+                        HStack {
+                            if coordinator.isFinalizingManually {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                            }
+                            Text("Finalizar votación")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.ruulAccent)
+                    .disabled(coordinator.isFinalizingManually)
+                }
+                if coordinator.shouldShowCancel {
+                    Button(role: .destructive) {
+                        showAdminSheet = false
+                        showCancelConfirm = true
+                    } label: {
+                        Text("Cancelar votación")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(coordinator.isCancellingVote)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(RuulSpacing.lg)
+            .navigationTitle("Administrar voto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { showAdminSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
