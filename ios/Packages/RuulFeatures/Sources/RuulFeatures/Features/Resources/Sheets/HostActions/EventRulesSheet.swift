@@ -137,7 +137,7 @@ struct ResourceRulesBody: View {
 
     private func ruleRow(_ rule: GroupRule, isInherited: Bool) -> some View {
         let triggerLabel = sentencePreview(for: rule)
-        let fineAmount = rule.amountMXN
+        let fineAmount = FineConsequenceParser.firstAmountMXN(in: rule.consequences)
         return VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: RuulSpacing.sm) {
                 ZStack {

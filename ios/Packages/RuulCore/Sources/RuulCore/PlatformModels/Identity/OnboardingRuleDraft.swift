@@ -41,35 +41,6 @@ public struct OnboardingRuleDraft: Identifiable, Codable, Sendable, Hashable {
         self.consequences = consequences
     }
 
-    /// Convenience read/write over the first `fine` consequence's amount.
-    /// Reads the flat `amount` first, falls back to escalating `baseAmount`.
-    /// Setter writes back to whichever key already exists; if neither is
-    /// present (no fine consequence), the setter is a no-op.
-    public var amountMXN: Int {
-        get {
-            guard
-                let cfg = consequences.first(where: { $0.type == .fine })?.config,
-                case .object(let dict) = cfg
-            else { return 0 }
-            if let v = dict["amount"]?.intValue { return v }
-            if let v = dict["baseAmount"]?.intValue { return v }
-            return 0
-        }
-        set {
-            guard
-                let idx = consequences.firstIndex(where: { $0.type == .fine }),
-                case .object(var dict) = consequences[idx].config
-            else { return }
-            if dict["amount"] != nil {
-                dict["amount"] = .int(newValue)
-            } else if dict["baseAmount"] != nil {
-                dict["baseAmount"] = .int(newValue)
-            } else {
-                dict["amount"] = .int(newValue)
-            }
-            consequences[idx] = RuleConsequence(type: .fine, config: .object(dict))
-        }
-    }
 }
 
 /// Default 5 rules for the founder onboarding step 4. 4 active + 1 off.

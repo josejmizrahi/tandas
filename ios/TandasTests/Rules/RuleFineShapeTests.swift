@@ -4,6 +4,9 @@ import RuulUI
 import RuulCore
 @testable import Tandas
 
+/// Tests for `FineConsequenceParser.shape(of:)` — the fine-aware parser
+/// that replaced the deprecated `GroupRule.fineShape` extension property
+/// per `RulesVsMoneyDoctrine.md` Axioma 1 (Rule ≠ Fine).
 final class RuleFineShapeTests: XCTestCase {
 
     private func rule(
@@ -38,20 +41,24 @@ final class RuleFineShapeTests: XCTestCase {
         )
     }
 
+    private func shape(of r: GroupRule) -> FineConsequenceParser.FineShape {
+        FineConsequenceParser.shape(of: r.consequences)
+    }
+
     func testFlat() {
         let r = rule(consequences: [fine(amount: 200)])
-        XCTAssertEqual(r.fineShape, .flat(amount: 200))
+        XCTAssertEqual(shape(of: r), .flat(amount: 200))
     }
 
     func testEscalating() {
         let r = rule(consequences: [
             fine(baseAmount: 200, stepAmount: 50, stepMinutes: 30)
         ])
-        XCTAssertEqual(r.fineShape, .escalating(base: 200, step: 50, stepMinutes: 30))
+        XCTAssertEqual(shape(of: r), .escalating(base: 200, step: 50, stepMinutes: 30))
     }
 
     func testEmpty() {
-        XCTAssertEqual(rule(consequences: []).fineShape, .none)
+        XCTAssertEqual(shape(of: rule(consequences: [])), .none)
     }
 
     func testUnknown() {
@@ -67,7 +74,7 @@ final class RuleFineShapeTests: XCTestCase {
                 )
             )
         ])
-        if case .unknown = r.fineShape { /* ok */ } else {
+        if case .unknown = shape(of: r) { /* ok */ } else {
             XCTFail("expected .unknown for non-flat non-escalating fine config")
         }
     }
@@ -78,7 +85,7 @@ final class RuleFineShapeTests: XCTestCase {
             // a non-fine consequence after the fine — should be ignored
             GroupRule.ConsequenceEnvelope(type: "sendNotification", config: nil),
         ])
-        XCTAssertEqual(r.fineShape, .flat(amount: 100))
+        XCTAssertEqual(shape(of: r), .flat(amount: 100))
     }
 
     func testConfigWithExtraFieldsStillFlat() {
@@ -86,6 +93,25 @@ final class RuleFineShapeTests: XCTestCase {
         let r = rule(consequences: [
             fine(amount: 300, baseAmount: 999, stepAmount: 999, stepMinutes: 999)
         ])
-        XCTAssertEqual(r.fineShape, .flat(amount: 300))
+        XCTAssertEqual(shape(of: r), .flat(amount: 300))
+    }
+
+    func testFirstAmountMXNFlat() {
+        let r = rule(consequences: [fine(amount: 250)])
+        XCTAssertEqual(FineConsequenceParser.firstAmountMXN(in: r.consequences), 250)
+    }
+
+    func testFirstAmountMXNEscalatingFallsBackToBase() {
+        let r = rule(consequences: [
+            fine(baseAmount: 100, stepAmount: 50, stepMinutes: 15)
+        ])
+        XCTAssertEqual(FineConsequenceParser.firstAmountMXN(in: r.consequences), 100)
+    }
+
+    func testFirstAmountMXNNonFineReturnsNil() {
+        let r = rule(consequences: [
+            GroupRule.ConsequenceEnvelope(type: "sendNotification", config: nil)
+        ])
+        XCTAssertNil(FineConsequenceParser.firstAmountMXN(in: r.consequences))
     }
 }

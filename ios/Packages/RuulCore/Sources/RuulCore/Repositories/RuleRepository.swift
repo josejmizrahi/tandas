@@ -104,8 +104,9 @@ public protocol RuleRepository: Actor {
     func setIsActive(ruleId: UUID, isActive: Bool) async throws
 
     /// Updates the flat fine amount. Caller must pre-validate via
-    /// `rule.fineShape == .flat`. Throws `.notFlatFine` if the rule is
-    /// escalating or unknown shape. Postgres trigger emits ruleAmountChanged.
+    /// `FineConsequenceParser.shape(of: rule.consequences) == .flat(...)`.
+    /// Throws `.notFlatFine` if the rule is escalating or unknown shape.
+    /// Postgres trigger emits ruleAmountChanged.
     func setFlatFineAmount(rule: GroupRule, amount: Int) async throws
 
     /// Returns the open rule_repeal vote for a rule, if any.
@@ -236,7 +237,9 @@ public actor MockRuleRepository: RuleRepository {
     }
 
     public func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
-        guard case .flat = rule.fineShape else { throw RulesRepositoryError.notFlatFine }
+        guard case .flat = FineConsequenceParser.shape(of: rule.consequences) else {
+            throw RulesRepositoryError.notFlatFine
+        }
         lastSetAmount = (rule.id, amount)
     }
 
@@ -402,7 +405,9 @@ public actor LiveRuleRepository: RuleRepository {
     }
 
     public func setFlatFineAmount(rule: GroupRule, amount: Int) async throws {
-        guard case .flat = rule.fineShape else { throw RulesRepositoryError.notFlatFine }
+        guard case .flat = FineConsequenceParser.shape(of: rule.consequences) else {
+            throw RulesRepositoryError.notFlatFine
+        }
 
         struct ConsequenceBody: Encodable {
             let type: String

@@ -405,7 +405,7 @@ public struct RulesView: View {
 
     @ViewBuilder
     private func amountBadge(_ rule: GroupRule) -> some View {
-        if let amount = rule.amountMXN {
+        if let amount = FineConsequenceParser.firstAmountMXN(in: rule.consequences) {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(format(amount: amount))
                     .ruulTextStyle(RuulTypography.title)

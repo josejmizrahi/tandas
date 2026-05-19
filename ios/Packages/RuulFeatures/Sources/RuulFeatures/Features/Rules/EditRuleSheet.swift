@@ -20,7 +20,8 @@ public struct EditRuleSheet: View {
     /// Phase G3: when the sheet is opened from a deep link (push tap or
     /// inbox `ruleChangeApplyPending`), seed the draft amount with the
     /// vote-approved value so Save is one tap away. Defaults to nil for
-    /// the existing pencil → tap rule flow which seeds from `rule.fineShape`.
+    /// the existing pencil → tap rule flow which seeds from
+    /// `FineConsequenceParser.shape(of: rule.consequences)`.
     public let prefilledAmount: Int?
     /// Phase G3: when the sheet is opened from an inbox row, this is the
     /// `UserAction.id` that surfaced it. After a successful save the
@@ -127,7 +128,7 @@ public struct EditRuleSheet: View {
 
     @ViewBuilder
     private var fineSection: some View {
-        switch rule.fineShape {
+        switch FineConsequenceParser.shape(of: rule.consequences) {
         case .flat:
             HStack {
                 Text("Monto")
@@ -151,7 +152,7 @@ public struct EditRuleSheet: View {
     }
 
     private var currentFlatAmount: Int? {
-        if case .flat(let a) = rule.fineShape { return a }
+        if case .flat(let a) = FineConsequenceParser.shape(of: rule.consequences) { return a }
         return nil
     }
 

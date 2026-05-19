@@ -139,15 +139,6 @@ public struct GroupRule: Identifiable, Codable, Sendable, Hashable {
         }
     }
 
-    /// Resolves the display amount (MXN) from the first `fine` consequence.
-    /// Returns nil if the rule isn't a fine.
-    public var amountMXN: Int? {
-        guard let cons = consequences.first(where: { $0.type == "fine" }) else { return nil }
-        if let flat = cons.config?.amount { return flat }
-        if let base = cons.config?.baseAmount { return base }
-        return nil
-    }
-
     /// True when the rule is active. Slice E.1 collapsed the previous
     /// `enabled && isActive` AND once both columns stayed in lockstep;
     /// E.2 dropped `enabled` entirely so `isActive` is the lone signal.

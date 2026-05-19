@@ -182,7 +182,7 @@ public struct EditRulesView: View {
 
     @ViewBuilder
     private func fineDisplay(_ rule: GroupRule) -> some View {
-        switch rule.fineShape {
+        switch FineConsequenceParser.shape(of: rule.consequences) {
         case .flat(let amount):
             Text("Multa: \(formatMXN(amount))")
                 .ruulTextStyle(RuulTypography.caption)
