@@ -153,11 +153,20 @@ extension RootShellSheets {
                 case .historyTab(_, let id), .moneyTab(_, let id):
                     if let id { await openOrFallback(id) }
                     else { await homeCoord?.refresh(force: true) }
-                case .governanceRuleEditor, .ruleTemplatePicker:
-                    // Phase 6 follow-up: present governance editor /
-                    // rule template picker sheet. Until those surfaces
-                    // accept a "present from outside detail" entry,
-                    // refresh home so the sheet still dismisses cleanly.
+                case .ruleTemplatePicker(_, let id):
+                    // Route to the resource detail where the user can
+                    // tap the Rules section's "+" to launch the
+                    // UniversalTemplateGallerySheet bound to this
+                    // resource. Direct gallery presentation from the
+                    // post-create surface would need a new sheet route
+                    // + publish pipeline — using the existing detail
+                    // entry keeps this PR focused and consistent with
+                    // the rsvp/check_in/history/money pattern.
+                    await openOrFallback(id)
+                case .governanceRuleEditor:
+                    // Phase 6 follow-up: present governance editor.
+                    // Until that surface accepts a "present from outside
+                    // detail" entry, refresh home cleanly.
                     await homeCoord?.refresh(force: true)
                 }
             }
