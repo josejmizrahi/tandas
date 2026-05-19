@@ -61,6 +61,7 @@ public struct ConsequenceSectionView: View {
     public static let definition = CapabilitySection(
         id: "consequence",
         priority: 740,
+        tabId: "money",
         isEnabledFor: { caps in caps.contains(CapabilityID.consequence) },
         render: { ctx in AnyView(ConsequenceSectionView(context: ctx)) }
     )

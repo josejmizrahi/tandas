@@ -10,6 +10,7 @@ public struct ValuationSectionView: View {
     public static let definition = CapabilitySection(
         id: "valuation",
         priority: 500,
+        tabId: "money",
         isEnabledFor: { caps in caps.contains(CapabilityID.valuation) },
         render: { ctx in AnyView(ValuationSectionView(context: ctx)) }
     )

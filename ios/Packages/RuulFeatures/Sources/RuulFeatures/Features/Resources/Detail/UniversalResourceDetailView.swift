@@ -458,16 +458,16 @@ public struct UniversalResourceDetailView: View {
             .filter { $0.tabId == tab.id }
     }
 
-    /// Tabs to render in the segmented control. `.people` (Slice 2A) is
-    /// content-gated — it only appears when at least one section routes
-    /// to it. Other tabs keep their current always-visible behavior so
-    /// this slice introduces only one cognitive change. Slices 2B / 2C
-    /// extend the same gating to Money + revisit Connections.
+    /// Tabs to render in the segmented control. `.people` (Slice 2A) and
+    /// `.money` (Slice 2B) are content-gated — they only appear when at
+    /// least one section routes to them. Other tabs keep their current
+    /// always-visible behavior so each slice introduces only one
+    /// cognitive change. Slice 2C revisits Connections.
     private var visibleTabs: [ResourceDetailTab] {
         ResourceDetailTab.allCases.filter { tab in
             switch tab {
-            case .people: return !sectionsForTab(tab).isEmpty
-            default:      return true
+            case .people, .money: return !sectionsForTab(tab).isEmpty
+            default:              return true
             }
         }
     }
@@ -477,6 +477,7 @@ public struct UniversalResourceDetailView: View {
         switch selectedTab {
         case .overview:    overviewContent
         case .people:      peopleContent
+        case .money:       moneyContent
         case .activity:    activityContent
         case .rules:       rulesContent
         case .connections: connectionsContent
@@ -508,6 +509,23 @@ public struct UniversalResourceDetailView: View {
             emptyTab(
                 symbol: ResourceDetailTab.people.symbol,
                 message: "Aún no hay nadie agregado. Cuando invites o asignes a alguien, aparecerá aquí."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var moneyContent: some View {
+        // Same content-gated pattern as people. Defensive empty state in
+        // case section routing changes mid-session.
+        let sections = sectionsForTab(.money)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.money.symbol,
+                message: "Aún no hay movimientos de dinero. Cuando alguien aporte, gaste o se aplique una multa, aparecerá aquí."
             )
         } else {
             ForEach(sections, id: \.id) { section in

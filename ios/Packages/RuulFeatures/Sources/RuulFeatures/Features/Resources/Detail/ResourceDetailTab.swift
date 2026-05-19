@@ -10,16 +10,19 @@ import Foundation
 ///
 /// Doctrine (Plans/Active/HumanLayerSimplification.md §A.1, §C.1):
 /// canonical 5 user-facing concepts are Things / People / Money / Rules /
-/// Activity. `.people` lands in Slice 2A. `.money` follows in Slice 2B.
+/// Activity. `.people` landed in Slice 2A; `.money` lands in Slice 2B.
 /// `.connections` (Vínculos) is on the rename/fold queue for Slice 2C —
 /// keeping it now so existing routing continues working untouched.
 ///
-/// `.people` is content-gated: the view hides the segment when no
-/// section routes here (see UniversalResourceDetailView.visibleTabs).
+/// Content-gated tabs (hidden when no section routes here):
+///   - `.people` (Slice 2A)
+///   - `.money`  (Slice 2B)
 /// Other tabs preserve their current always-visible behavior.
+/// See UniversalResourceDetailView.visibleTabs for the predicate.
 public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
     case overview
     case people
+    case money
     case activity
     case rules
     case connections
@@ -32,6 +35,7 @@ public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .overview:    return "General"
         case .people:      return "Gente"
+        case .money:       return "Dinero"
         case .activity:    return "Actividad"
         case .rules:       return "Reglas"
         case .connections: return "Vínculos"
@@ -45,6 +49,7 @@ public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .overview:    return "doc.text"
         case .people:      return "person.2"
+        case .money:       return "banknote"
         case .activity:    return "clock.arrow.circlepath"
         case .rules:       return "list.bullet.clipboard"
         case .connections: return "link"

@@ -102,10 +102,37 @@ struct CapabilitySectionTabIdTests {
         #expect(DelegationSectionView.definition.tabId == "people")
     }
 
-    // Verify a money-domain section did NOT move to .people in 2A
-    // (Slice 2B moves these). Guards against accidental over-routing.
-    @Test("MoneySectionView stays on overview until Slice 2B")
-    func moneySectionStaysOverview() {
-        #expect(MoneySectionView.definition.tabId == "overview")
+    // MARK: - Slice 2B (Plans/Active/HumanLayerSimplification.md §F)
+    // Money-domain sections now route to the .money tab. Same content-
+    // gated visibility pattern as .people. AssetOwnershipSection stays
+    // in overview — it mixes owner (people) + valuation (money) and
+    // would need a section split rather than a simple route move.
+
+    @Test("MoneySectionView.definition.tabId == money")
+    func moneySectionTab() {
+        #expect(MoneySectionView.definition.tabId == "money")
+    }
+
+    @Test("FundBalanceSection.definition.tabId == money")
+    func fundBalanceSectionTab() {
+        #expect(FundBalanceSection.definition.tabId == "money")
+    }
+
+    @Test("ValuationSectionView.definition.tabId == money")
+    func valuationSectionTab() {
+        #expect(ValuationSectionView.definition.tabId == "money")
+    }
+
+    @Test("ConsequenceSectionView.definition.tabId == money")
+    func consequenceSectionTab() {
+        // Fines / "MULTAS APLICADAS" → money-domain per
+        // HumanLayerSimplification.md §A.1 ("fines" listed under Money).
+        #expect(ConsequenceSectionView.definition.tabId == "money")
+    }
+
+    // Guard: AssetOwnershipSection deferred — still on overview.
+    @Test("AssetOwnershipSection stays on overview (deferred)")
+    func assetOwnershipStaysOverview() {
+        #expect(AssetOwnershipSection.definition.tabId == "overview")
     }
 }
