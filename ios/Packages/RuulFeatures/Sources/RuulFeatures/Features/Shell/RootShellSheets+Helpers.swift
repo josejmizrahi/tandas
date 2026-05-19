@@ -179,7 +179,13 @@ extension RootShellSheets {
         ResourceCreationSheet(
             group: group,
             builders: app.resourceBuilders,
-            templateDefaultsByType: [:],   // TODO: load from template registry async
+            // Static init value left empty — the real defaults flow
+            // through `templateDefaultsLoader` below which runs right
+            // before create() so the registry's async lookup doesn't
+            // block sheet construction. When no template id is set on
+            // the group, loader returns `[:]` and silent-attach falls
+            // back to the variant's declared set alone.
+            templateDefaultsByType: [:],
             viewerPermissions: viewerPermissions(in: group),
             activator: activator,
             // Same repo the activator uses internally. Coordinator
@@ -192,6 +198,18 @@ extension RootShellSheets {
             // RecordValuationSheet et al. (accept asset: ResourceRow)
             // stop falling back to placeholder.
             resourceRepo: app.resourceRepo,
+            // Async loader invoked right before create() so the group's
+            // template config drives silent-attach. Cenas template
+            // (or any future template) declaring defaultCapabilities
+            // for `event` now actually auto-enables those caps on
+            // every event created from the new flow.
+            templateDefaultsLoader: { [templateRegistry = app.templateRegistry] group in
+                guard let templateId = group.baseTemplate,
+                      let template = await templateRegistry.template(id: templateId),
+                      let declared = template.config.defaultCapabilities
+                else { return [:] }
+                return declared
+            },
             members: members,
             postCreateActions: actions,
             onCreated: { _ in

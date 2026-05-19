@@ -44,7 +44,14 @@ public final class ResourceCreationCoordinator {
     /// Per-type silent-cap defaults coming from `templates.config.
     /// defaultCapabilities`. Union'd with `variant.attachedCapabilities`
     /// at submit time. Empty map = variant alone drives the silent set.
-    public let templateDefaultsByType: [String: [String]]
+    ///
+    /// Mutable so the coordinator can replace it with a freshly-loaded
+    /// snapshot from `templateDefaultsLoader` right before `create()`
+    /// runs. Pre-loader the cutover helper passed `[:]` because
+    /// `TemplateRegistry.template(id:)` is async — closing that gap
+    /// means template-driven auto-on caps (e.g. cenas template enables
+    /// `rsvp` + `check_in` on every event) now actually surface.
+    public private(set) var templateDefaultsByType: [String: [String]]
 
     // MARK: - Mutable state
 
@@ -94,6 +101,13 @@ public final class ResourceCreationCoordinator {
     /// just an id + metadata) and were falling back to placeholders.
     public let resourceRepo: (any ResourceRepository)?
 
+    /// Optional async loader invoked once before `create()` runs to
+    /// refresh `templateDefaultsByType` with the group's template
+    /// config. When nil, the init-time `templateDefaultsByType` value
+    /// is used as-is. Caller wires from `app.templateRegistry` —
+    /// keeps the network-shaped fetch out of the sync init.
+    public let templateDefaultsLoader: (@Sendable (Group) async -> [String: [String]])?
+
     public init(
         group: Group,
         builders: ResourceBuilderRegistry,
@@ -102,7 +116,8 @@ public final class ResourceCreationCoordinator {
         resolver: CapabilityResolver = CapabilityResolver(),
         templateDefaultsByType: [String: [String]] = [:],
         capabilityRepo: (any ResourceCapabilityRepository)? = nil,
-        resourceRepo: (any ResourceRepository)? = nil
+        resourceRepo: (any ResourceRepository)? = nil,
+        templateDefaultsLoader: (@Sendable (Group) async -> [String: [String]])? = nil
     ) {
         self.group = group
         self.builders = builders
@@ -112,6 +127,7 @@ public final class ResourceCreationCoordinator {
         self.templateDefaultsByType = templateDefaultsByType
         self.capabilityRepo = capabilityRepo
         self.resourceRepo = resourceRepo
+        self.templateDefaultsLoader = templateDefaultsLoader
     }
 
     // MARK: - Phase transitions
@@ -226,6 +242,14 @@ public final class ResourceCreationCoordinator {
         // Snapshot so backOneStep from .failed can restore identity.
         lastIdentitySnapshot = .init(type: type, variant: variant)
         phase = .creating
+
+        // Refresh template defaults from the loader before computing
+        // silent caps. Cheap (one TemplateRegistry lookup, usually
+        // cached). When no loader is supplied — tests, previews — the
+        // init-time `templateDefaultsByType` value is used as-is.
+        if let loader = templateDefaultsLoader {
+            templateDefaultsByType = await loader(group)
+        }
 
         let silentCaps = resolveSilentCapabilities(for: variant)
         let draft = ResourceDraft(
