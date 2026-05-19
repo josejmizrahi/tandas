@@ -1,8 +1,10 @@
 import Foundation
 
 /// Single primary CTA for a resource detail screen, decided by
-/// `CapabilityResolver.primaryAction(...)`. Drives the sticky footer
-/// in `UniversalResourceDetailView`.
+/// `CapabilityResolver.primaryAction(...)`. Rendered inline inside the
+/// State hero block of `UniversalResourceDetailView` — never as a
+/// floating or sticky footer (doctrine: action belongs WITH the state
+/// that motivates it, not detached at the screen edge).
 public struct PrimaryAction: Sendable, Hashable {
     public enum Style: Sendable, Hashable {
         case standard       // accent fill
@@ -24,6 +26,12 @@ public struct PrimaryAction: Sendable, Hashable {
         /// status='active' AND not suspended. Tapping opens the
         /// `RightActionSheet.exercise` variant. Slice 14.
         case exerciseRight
+        /// Fine + viewer is debtor + status=unpaid. Routes to existing
+        /// `FineRepository.payFine` → `rpc('pay_fine')`.
+        case payFine
+        /// Vote + status=open + viewer hasn't cast a ballot. Routes to
+        /// existing `VoteRepository.castVote` → `rpc('cast_vote')`.
+        case castVote
         case none               // no CTA — caller hides the footer
     }
 

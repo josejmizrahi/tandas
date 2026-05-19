@@ -46,8 +46,9 @@ public enum SystemEventType: Codable, Sendable, Hashable {
 
     // MARK: - Fund (Fase posterior)
     /// Emitted by `create_fund` (mig 00137) when a new fund resource
-    /// lands. Lets ActivitySectionView surface "X creó el fondo Y" the
-    /// same way assetCreated does for shared assets.
+    /// lands. Surfaces "X creó el fondo Y" in the universal detail
+    /// activity feed (via ActivityFeedLoader) the same way assetCreated
+    /// does for shared assets.
     case fundCreated
     case fundDeposit
     case fundThresholdReached

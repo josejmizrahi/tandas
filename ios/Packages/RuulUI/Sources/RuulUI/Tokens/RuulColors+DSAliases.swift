@@ -6,6 +6,10 @@ public extension Color {
     static var ruulBackground: Color        { ruulBackgroundCanvas }
     static var ruulSurface: Color           { ruulBackgroundElevated }
     static var ruulSurfaceElevated: Color   { ruulBackgroundElevated }
+    /// Slightly recessed surface — used for card backgrounds in the
+    /// block-tree detail renderer. Maps to the backgroundRecessed token
+    /// (one step darker than the elevated surface).
+    static var ruulSurfaceSecondary: Color  { ruulBackgroundRecessed }
 
     static var ruulPositive: Color          { ruulSemanticSuccess }
     static var ruulNegative: Color          { ruulSemanticError }

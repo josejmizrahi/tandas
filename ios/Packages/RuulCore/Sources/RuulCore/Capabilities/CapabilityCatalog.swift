@@ -16,18 +16,18 @@ import Foundation
 /// Lookup is `O(1)` via the `byId` dict. The catalog is immutable at
 /// runtime — adding a new block means a code change + ship.
 public struct CapabilityCatalog: Sendable {
-    public let blocks: [any CapabilityBlock]
-    public let byId: [String: any CapabilityBlock]
+    public let blocks: [any CapabilityDefinition]
+    public let byId: [String: any CapabilityDefinition]
 
-    public init(blocks: [any CapabilityBlock]) {
+    public init(blocks: [any CapabilityDefinition]) {
         self.blocks = blocks
         self.byId = Dictionary(uniqueKeysWithValues: blocks.map { ($0.id, $0) })
     }
 
-    public subscript(id: String) -> (any CapabilityBlock)? { byId[id] }
+    public subscript(id: String) -> (any CapabilityDefinition)? { byId[id] }
 
     /// Returns blocks compatible with the given resource type.
-    public func blocks(for resourceType: ResourceType) -> [any CapabilityBlock] {
+    public func blocks(for resourceType: ResourceType) -> [any CapabilityDefinition] {
         blocks.filter { $0.enabledResourceTypes.contains(resourceType) }
     }
 
@@ -106,7 +106,7 @@ public struct CapabilityCatalog: Sendable {
 /// Generic skeleton struct used by simple blocks that don't need custom
 /// init logic. Real Phase 2+ blocks may declare their own structs with
 /// per-instance state.
-private struct SimpleCapability: CapabilityBlock {
+private struct SimpleCapability: CapabilityDefinition {
     let id: String
     let displayName: String
     let summary: String
@@ -123,7 +123,7 @@ private struct SimpleCapability: CapabilityBlock {
 }
 
 // rsvp — confirmation of attendance
-public struct RsvpCapability: CapabilityBlock {
+public struct RsvpCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.rsvp }
     public var displayName: String { "RSVP" }
@@ -178,7 +178,7 @@ public struct RsvpCapability: CapabilityBlock {
 }
 
 // check_in — physical presence registration
-public struct CheckInCapability: CapabilityBlock {
+public struct CheckInCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.checkIn }
     public var displayName: String { "Check-in" }
@@ -229,7 +229,7 @@ public struct CheckInCapability: CapabilityBlock {
 }
 
 // schedule — date/time/duration of a resource
-public struct ScheduleCapability: CapabilityBlock {
+public struct ScheduleCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.schedule }
     public var displayName: String { "Horario" }
@@ -255,7 +255,7 @@ public struct ScheduleCapability: CapabilityBlock {
 }
 
 // recurrence — turns one-off into a series
-public struct RecurrenceCapability: CapabilityBlock {
+public struct RecurrenceCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.recurrence }
     public var displayName: String { "Repetir" }
@@ -369,7 +369,7 @@ public struct RecurrenceCapability: CapabilityBlock {
 }
 
 // rotation — turns rotate among participants
-public struct RotationCapability: CapabilityBlock {
+public struct RotationCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.rotation }
     public var displayName: String { "Rotación" }
@@ -471,10 +471,11 @@ public struct RotationCapability: CapabilityBlock {
     ///   - auto-generate-events v7: forwards resolved host_id to create_event_v2
     ///   - mig 00133: trigger inserts user_action(hostAssigned) when host_id ≠ created_by
     ///   - MemberMultiPickerField: real member-aware multi-picker with ordered output
-    ///   - RotationSectionView: read-only Resource Detail surface (next host,
-    ///     upcoming, rotation order, policy summary)
-    ///   - ActivitySectionView.labelForEventCreated: surfaces host name in
-    ///     the activity feed for rotation-resolved occurrences
+    ///   - EventBlockBuilder rotation block: read-only Resource Detail
+    ///     surface (next host, upcoming queue, policy summary), opens
+    ///     RotationParticipantsSheet on tap
+    ///   - ActivityFeedLoader: surfaces host name in the activity feed
+    ///     entries for rotation-resolved occurrences
     /// Future work (out of Beta scope, won't reopen .stable):
     ///   - host_skipped / host_reassigned signals (no schema field today)
     ///   - swap requests, marketplace, voting on swaps
@@ -483,7 +484,7 @@ public struct RotationCapability: CapabilityBlock {
 }
 
 // assignment — discrete responsibility
-public struct AssignmentCapability: CapabilityBlock {
+public struct AssignmentCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.assignment }
     public var displayName: String { "Asignación" }
@@ -522,7 +523,7 @@ public struct AssignmentCapability: CapabilityBlock {
 }
 
 // participants — who's eligible / included
-public struct ParticipantsCapability: CapabilityBlock {
+public struct ParticipantsCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.participants }
     public var displayName: String { "Participantes" }
@@ -550,7 +551,7 @@ public struct ParticipantsCapability: CapabilityBlock {
 }
 
 // attendance — derived from rsvp + check_in
-public struct AttendanceCapability: CapabilityBlock {
+public struct AttendanceCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.attendance }
     public var displayName: String { "Asistencia" }
@@ -572,7 +573,7 @@ public struct AttendanceCapability: CapabilityBlock {
 }
 
 // deadline — time-bounded action
-public struct DeadlineCapability: CapabilityBlock {
+public struct DeadlineCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.deadline }
     public var displayName: String { "Fecha límite" }
@@ -597,7 +598,7 @@ public struct DeadlineCapability: CapabilityBlock {
 }
 
 // approval — explicit gate
-public struct ApprovalCapability: CapabilityBlock {
+public struct ApprovalCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.approval }
     public var displayName: String { "Aprobación" }
@@ -628,7 +629,7 @@ public struct ApprovalCapability: CapabilityBlock {
 }
 
 // money — semantic umbrella over expense/contribution/payout
-public struct MoneyCapability: CapabilityBlock {
+public struct MoneyCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.money }
     public var displayName: String { "Dinero" }
@@ -651,7 +652,7 @@ public struct MoneyCapability: CapabilityBlock {
     public var conflicts: [String] { [] }
     /// Tier 6 closed end-to-end (mig 00136 → 00145):
     ///   - balance projection views aggregate ledger_entries at read time
-    ///   - MoneySectionView renders top 3 non-zero balances inline
+    ///   - FundBlockBuilder renders the balance block on fund detail
     ///   - `fund` resource_type creatable via create_fund + wizard branch
     ///   - fundDeposit emits on every contribution to a fund
     ///   - fundThresholdReached emits once when cumulative deposits cross
@@ -666,7 +667,7 @@ public struct MoneyCapability: CapabilityBlock {
 }
 
 // ledger — append-only money atoms
-public struct LedgerCapability: CapabilityBlock {
+public struct LedgerCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.ledger }
     public var displayName: String { "Ledger" }
@@ -684,17 +685,18 @@ public struct LedgerCapability: CapabilityBlock {
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
     /// Tier 6 closed (mig 00136 → 00145): ledger atoms feed
-    /// balance projection views, MoneySectionView renders inline
-    /// balances, record_settlement + SettlementSheet wire the bilateral
-    /// payment loop. A dedicated group-wide ledger surface (separate
-    /// from MoneySection's resource-scoped roll-up) is intentionally
+    /// balance projection views, the universal detail surfaces render
+    /// inline balances (FundBlockBuilder balance block, ResourceLedger
+    /// sheet for per-resource roll-ups), record_settlement +
+    /// SettlementSheet wire the bilateral payment loop. A dedicated
+    /// group-wide ledger surface (separate from per-resource roll-ups) is intentionally
     /// out-of-scope for Beta — per-resource visibility covers the
     /// canonical use cases without adding a tab/surface duplication.
     public var status: CapabilityStatus { .stable }
 }
 
 // voting — collective decision
-public struct VotingCapability: CapabilityBlock {
+public struct VotingCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.voting }
     public var displayName: String { "Votación" }
@@ -745,7 +747,7 @@ public struct VotingCapability: CapabilityBlock {
 }
 
 // rules — configurable WHEN/IF/THEN
-public struct RulesCapability: CapabilityBlock {
+public struct RulesCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.rules }
     public var displayName: String { "Reglas" }
@@ -767,7 +769,7 @@ public struct RulesCapability: CapabilityBlock {
 }
 
 // consequence — what a rule produces (fine, warning, etc.)
-public struct ConsequenceCapability: CapabilityBlock {
+public struct ConsequenceCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.consequence }
     public var displayName: String { "Consecuencias" }
@@ -793,7 +795,7 @@ public struct ConsequenceCapability: CapabilityBlock {
 }
 
 // appeal — disputing a consequence
-public struct AppealCapability: CapabilityBlock {
+public struct AppealCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.appeal }
     public var displayName: String { "Apelación" }
@@ -815,7 +817,7 @@ public struct AppealCapability: CapabilityBlock {
 }
 
 // swap — slot swapping
-public struct SwapCapability: CapabilityBlock {
+public struct SwapCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.swap }
     public var displayName: String { "Cambios" }
@@ -848,7 +850,7 @@ public struct SwapCapability: CapabilityBlock {
 // MARK: - Phase 2 prerequisites (audit M.10)
 
 // capacity — cap on participant count
-public struct CapacityCapability: CapabilityBlock {
+public struct CapacityCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.capacity }
     public var displayName: String { "Cupo" }
@@ -870,7 +872,7 @@ public struct CapacityCapability: CapabilityBlock {
 }
 
 // guest_access — non-member can attend
-public struct GuestAccessCapability: CapabilityBlock {
+public struct GuestAccessCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.guestAccess }
     public var displayName: String { "Invitados" }
@@ -903,7 +905,7 @@ public struct GuestAccessCapability: CapabilityBlock {
 }
 
 // booking — claiming a slot/resource for a member
-public struct BookingCapability: CapabilityBlock {
+public struct BookingCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.booking }
     public var displayName: String { "Reservas" }
@@ -934,7 +936,7 @@ public struct BookingCapability: CapabilityBlock {
 }
 
 // expiration — auto-close after a time window
-public struct ExpirationCapability: CapabilityBlock {
+public struct ExpirationCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.expiration }
     public var displayName: String { "Expira" }
@@ -956,7 +958,7 @@ public struct ExpirationCapability: CapabilityBlock {
 }
 
 // cancellation — explicit teardown lifecycle step
-public struct CancellationCapability: CapabilityBlock {
+public struct CancellationCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.cancellation }
     public var displayName: String { "Cancelación" }
@@ -987,7 +989,7 @@ public struct CancellationCapability: CapabilityBlock {
 }
 
 // reminder — scheduled nudge to members
-public struct ReminderCapability: CapabilityBlock {
+public struct ReminderCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.reminder }
     public var displayName: String { "Recordatorios" }
@@ -1014,7 +1016,7 @@ public struct ReminderCapability: CapabilityBlock {
 }
 
 // status — lifecycle state machine on the resource
-public struct StatusCapability: CapabilityBlock {
+public struct StatusCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.status }
     public var displayName: String { "Estado" }
@@ -1039,7 +1041,7 @@ public struct StatusCapability: CapabilityBlock {
 }
 
 // description — free-text body shown as its own detail section
-public struct DescriptionCapability: CapabilityBlock {
+public struct DescriptionCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.description }
     public var displayName: String { "Descripción" }
@@ -1062,7 +1064,7 @@ public struct DescriptionCapability: CapabilityBlock {
 
 // host_actions — host-only action panel (reminders, edit, cancel, close, …).
 // Section gates internally on viewer role; capability is always enabled for events.
-public struct HostActionsCapability: CapabilityBlock {
+public struct HostActionsCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.hostActions }
     public var displayName: String { "Acciones del host" }
@@ -1080,7 +1082,7 @@ public struct HostActionsCapability: CapabilityBlock {
 }
 
 // location — physical place where the resource happens (lat/lng + name)
-public struct LocationCapability: CapabilityBlock {
+public struct LocationCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.location }
     public var displayName: String { "Lugar" }
@@ -1104,7 +1106,7 @@ public struct LocationCapability: CapabilityBlock {
 }
 
 // history — derived activity feed over system_events
-public struct HistoryCapability: CapabilityBlock {
+public struct HistoryCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.history }
     public var displayName: String { "Historial" }
@@ -1138,7 +1140,7 @@ public struct HistoryCapability: CapabilityBlock {
 // asset_usage_history_view).
 
 // custody — who physically/operationally holds the asset
-public struct CustodyCapability: CapabilityBlock {
+public struct CustodyCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.custody }
     public var displayName: String { "Custodia" }
@@ -1165,7 +1167,7 @@ public struct CustodyCapability: CapabilityBlock {
 }
 
 // maintenance — service / inspection / repair
-public struct MaintenanceCapability: CapabilityBlock {
+public struct MaintenanceCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.maintenance }
     public var displayName: String { "Mantenimiento" }
@@ -1192,7 +1194,7 @@ public struct MaintenanceCapability: CapabilityBlock {
 }
 
 // valuation — value-over-time append-only series
-public struct ValuationCapability: CapabilityBlock {
+public struct ValuationCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.valuation }
     public var displayName: String { "Valuación" }
@@ -1216,7 +1218,7 @@ public struct ValuationCapability: CapabilityBlock {
 }
 
 // transfer — move ownership across members or to/from the group
-public struct TransferCapability: CapabilityBlock {
+public struct TransferCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.transfer }
     public var displayName: String { "Transferencia" }
@@ -1238,7 +1240,7 @@ public struct TransferCapability: CapabilityBlock {
 }
 
 // access — who can use the asset and under what terms
-public struct AccessCapability: CapabilityBlock {
+public struct AccessCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.access }
     public var displayName: String { "Acceso" }
@@ -1262,7 +1264,7 @@ public struct AccessCapability: CapabilityBlock {
 }
 
 // delegation — temporary loan to a non-custodian
-public struct DelegationCapability: CapabilityBlock {
+public struct DelegationCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.delegation }
     public var displayName: String { "Delegación" }
@@ -1290,7 +1292,7 @@ public struct DelegationCapability: CapabilityBlock {
 }
 
 // inventory — count units of the asset
-public struct InventoryCapability: CapabilityBlock {
+public struct InventoryCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.inventory }
     public var displayName: String { "Inventario" }

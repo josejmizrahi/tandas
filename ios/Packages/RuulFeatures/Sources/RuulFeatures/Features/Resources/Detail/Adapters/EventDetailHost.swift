@@ -2,6 +2,8 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
+// MARK: - Phase E: EventDetailHost rewired to UniversalResourceDetailView
+
 /// Shell view that owns every piece of event-specific state needed to
 /// render the polymorphic `UniversalResourceDetailView` for an event:
 ///
@@ -78,6 +80,14 @@ public struct EventDetailHost: View {
     @State private var rulesCoordinator: ResourceRulesCoordinator?
     @State private var manualFineCoordinator: AddManualFineCoordinator?
 
+    // Phase E: block-tree state updated whenever the underlying entities mutate
+    @State private var blocks: ResourceBlocks?
+    @State private var rotationConfig: RotationSnapshotInput?
+
+    // Phase E: deep management sheets driven by openDestinationId routes
+    @State private var showRotationParticipants: Bool = false
+    @State private var showLocationEditor: Bool = false
+
     // One @State enum so individual bools don't pollute the storage map.
     @State private var sheet: Sheet?
 
@@ -142,52 +152,215 @@ public struct EventDetailHost: View {
 
     @ViewBuilder
     private func hosted(coordinator: EventDetailCoordinator) -> some View {
-        UniversalResourceDetailView(context: detailContext(coordinator: coordinator))
-            .environment(\.eventInteractor, coordinator)
-            .environment(\.eventDetailPresenter, presenter)
-            .task { await coordinator.refresh() }
-            .task { await coordinator.startRealtime() }
-            .onDisappear { coordinator.stopRealtime() }
-            .eventDetailSheets(EventDetailSheets.Bindings(
-                coordinator: coordinator,
-                group: group,
-                currentUserId: currentUserId,
-                memberDirectory: memberDirectory,
-                calendarService: calendarService,
-                sheet: $sheet,
-                attendeeRoute: $attendeeRoute,
-                manualFineCoordinator: manualFineCoordinator,
-                ledgerCoordinator: ledgerCoordinator,
-                rulesCoordinator: rulesCoordinator
-            ))
-            .onChange(of: sheet) { _, newValue in
-                Task { await prepareCoordinator(for: newValue) }
+        Group {
+            if let blocks {
+                UniversalResourceDetailView(
+                    blocks: blocks,
+                    supportedOverflowActions: Self.supportedOverflowActions,
+                    navigationTitle: coordinator.event.title,
+                    onClose: onClose,
+                    onPrimaryAction: { Task { await dispatchPrimary(blocks: blocks, coordinator: coordinator) } },
+                    onOpenBlock: { id in openDestination(id, coordinator: coordinator) },
+                    onTapRelation: { card in openRelation(card) },
+                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
+                    onOverflowAction: { action in handleOverflow(action, coordinator: coordinator) }
+                )
+            } else {
+                bootView
             }
-    }
-
-    // MARK: - Context wiring
-
-    private func detailContext(coordinator: EventDetailCoordinator) -> ResourceDetailContext {
-        ResourceDetailContext(
-            resource: ResourceRow.fromEvent(coordinator.event),
+        }
+        .environment(\.eventInteractor, coordinator)
+        .environment(\.eventDetailPresenter, presenter)
+        .task { await coordinator.refresh() }
+        .task { await coordinator.startRealtime() }
+        .task { await rebuildBlocks(coordinator: coordinator) }
+        .onDisappear { coordinator.stopRealtime() }
+        .onChange(of: coordinator.event) { _, _ in Task { await rebuildBlocks(coordinator: coordinator) } }
+        .onChange(of: coordinator.myRSVP) { _, _ in Task { await rebuildBlocks(coordinator: coordinator) } }
+        .eventDetailSheets(EventDetailSheets.Bindings(
+            coordinator: coordinator,
             group: group,
             currentUserId: currentUserId,
-            enabledCapabilities: enabledCapabilities,
             memberDirectory: memberDirectory,
-            displayName: coordinator.event.title,
-            attentionActions: attentionActions,
-            onPresentLedger: { sheet = .ledger },
-            onPresentRules: { sheet = .rules },
-            onPresentEditResource: { onEditEvent(coordinator.event) },
-            onOpenInboxAction: { action in
-                await openInboxAction(action, coordinator: coordinator)
-            },
-            onSelectMember: { userId in
-                if let mwp = memberDirectory[userId] { attendeeRoute = mwp }
-            },
-            onDismiss: onClose
+            calendarService: calendarService,
+            sheet: $sheet,
+            attendeeRoute: $attendeeRoute,
+            manualFineCoordinator: manualFineCoordinator,
+            ledgerCoordinator: ledgerCoordinator,
+            rulesCoordinator: rulesCoordinator
+        ))
+        .onChange(of: sheet) { _, newValue in
+            Task { await prepareCoordinator(for: newValue) }
+        }
+        // Phase E deep management sheets routed via openDestinationId.
+        // onSaved → `refreshAndRebuild` (refetch event row before
+        // rebuilding blocks) so post-save data lands in the View even
+        // when the mutation touched the underlying event row directly
+        // (location → resources.metadata.location_*; the coordinator's
+        // local Event snapshot is otherwise stale until next .refresh).
+        .sheet(isPresented: $showRotationParticipants) {
+            RotationParticipantsSheet(eventId: coordinator.event.id) {
+                Task { await refreshAndRebuild(coordinator: coordinator) }
+            }
+            .environment(app)
+        }
+        .sheet(isPresented: $showLocationEditor) {
+            LocationEditorSheet(
+                eventId: coordinator.event.id,
+                initialLocationName: coordinator.event.locationName,
+                viewerIsEventHost: coordinator.viewerIsHost,
+                onSaved: { Task { await refreshAndRebuild(coordinator: coordinator) } }
+            )
+            .environment(app)
+        }
+    }
+
+    // MARK: - Phase E: Block building
+
+    /// Refetches the coordinator (event row + RSVPs) and rebuilds the
+    /// block tree. Use this after any mutation that touches the event
+    /// itself (location, edit, host change) so the View reflects the
+    /// new server state instead of a stale local snapshot.
+    @MainActor
+    private func refreshAndRebuild(coordinator: EventDetailCoordinator) async {
+        await coordinator.refresh()
+        await rebuildBlocks(coordinator: coordinator)
+    }
+
+    /// Assembles an EventDetailSnapshot from the current coordinator state
+    /// and runs EventBlockBuilder to produce fresh ResourceBlocks.
+    @MainActor
+    private func rebuildBlocks(coordinator: EventDetailCoordinator) async {
+        // Load rotation config if the event belongs to a series
+        if let seriesId = coordinator.event.seriesId {
+            if let series = try? await app.resourceSeriesRepo.fetchById(seriesId) {
+                rotationConfig = RotationSnapshotInput.from(series: series)
+            }
+        } else {
+            rotationConfig = nil
+        }
+
+        let snapshot = EventDetailSnapshot(
+            event: coordinator.event,
+            myRSVP: coordinator.myRSVP,
+            rotationConfig: rotationConfig,
+            cycleNumber: coordinator.event.cycleNumber,
+            memberDirectory: memberDirectory,
+            viewerIsHost: coordinator.viewerIsHost
+        )
+
+        let viewerCtx = BlockViewerContext(
+            userId: currentUserId,
+            permissions: viewerPermissions,
+            activeModules: Set(group.effectiveActiveModules),
+            memberId: memberDirectory[currentUserId]?.member.id
+        )
+
+        let built = EventBlockBuilder().build(
+            source: snapshot,
+            viewer: viewerCtx,
+            now: Date()
+        )
+
+        // Phase E activity feed wiring (post-build augmentation) — uses
+        // the shared ActivityFeedLoader so every host renders the same
+        // shape and the limit+1 trick reports `hasMoreActivity` honestly.
+        let feed = await ActivityFeedLoader.load(
+            app: app,
+            groupId: group.id,
+            resourceId: coordinator.event.id
+        )
+        blocks = ResourceBlocks(
+            identity: built.identity,
+            state: built.state,
+            properties: built.properties,
+            capabilities: built.capabilities,
+            relations: built.relations,
+            activityHead: feed.entries,
+            hasMoreActivity: feed.hasMore
         )
     }
+
+    /// Permissions the viewer holds in this group (for BlockViewerContext).
+    private var viewerPermissions: Set<Permission> {
+        guard let me = memberDirectory[currentUserId]?.member else { return [] }
+        let catalog = group.effectiveRoles
+        var perms = Set<Permission>()
+        for raw in me.rawRoles {
+            if let def = catalog[raw] {
+                for p in def.permissions { perms.insert(p) }
+            }
+        }
+        return perms
+    }
+
+    // MARK: - Phase E: Primary action dispatch
+
+    @MainActor
+    private func dispatchPrimary(blocks: ResourceBlocks, coordinator: EventDetailCoordinator) async {
+        guard let kind = blocks.state.primaryAction?.kind else { return }
+        switch kind {
+        case .rsvpConfirm:
+            await coordinator.setRSVP(.going, plusOnes: 0, reason: nil)
+        case .rsvpCancel:
+            sheet = .cancelAttendance
+        case .viewHostActions:
+            // Reserved for a future host-actions menu (recordar / cerrar
+            // / cancelar / reabrir). EventBlockBuilder doesn't emit this
+            // kind today — when it does, replace this with a real menu
+            // sheet instead of routing to .closeEvent (which is only one
+            // of those actions and was misleading).
+            break
+        case .none,
+             .exerciseRight, .openContribute, .openBooking,
+             .viewClosed, .payFine, .castVote:
+            break  // not applicable for events
+        }
+    }
+
+    // MARK: - Phase E: Block open-destination routing
+
+    private func openDestination(_ id: String, coordinator: EventDetailCoordinator) {
+        switch id {
+        case "rotation.participants":
+            showRotationParticipants = true
+        case "location.editor":
+            showLocationEditor = true
+        case "rsvp.manager":
+            sheet = .attendees
+        case "event.activity":
+            sheet = .attendees  // route to attendees/activity list
+        default:
+            break
+        }
+    }
+
+    private func openRelation(_ card: RelationCard) {
+        // Phase 2: resource_links deep navigation
+    }
+
+    // MARK: - Phase E: Overflow action routing
+
+    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction, coordinator: EventDetailCoordinator) {
+        switch action {
+        case .share:
+            sheet = .share
+        case .edit:
+            onEditEvent(coordinator.event)
+        case .addToCalendar:
+            addToCalendarViaPresenter()
+        case .walletPass:
+            Task { _ = await coordinator.generateWalletPass() }
+        case .archive:
+            // TODO: archive_resource RPC — post-Beta-1
+            break
+        case .delete, .report:
+            // Not exposed in Phase E — post-Beta-1
+            break
+        }
+    }
+
+    // MARK: - Legacy Context wiring (kept for eventDetailSheets modifier compatibility)
 
     private var presenter: EventDetailPresenter {
         EventDetailPresenter(
@@ -214,10 +387,13 @@ public struct EventDetailHost: View {
     /// ShareEventSheet). EventKit solicita authorization la primera vez
     /// dentro de addToCalendar — best-effort fail-soft.
     private func addToCalendarViaPresenter() {
-        guard let service = calendarService, let event = coordinator?.event ?? Optional(event) else { return }
+        guard let service = calendarService else { return }
+        // Coordinator's live event wins; fall back to the initial prop
+        // for the brief window before bootstrap finishes.
+        let resolvedEvent = coordinator?.event ?? event
         let vocabulary = group.eventVocabulary
         Task {
-            _ = try? await service.addToCalendar(event, vocabulary: vocabulary)
+            _ = try? await service.addToCalendar(resolvedEvent, vocabulary: vocabulary)
         }
     }
 
@@ -310,4 +486,12 @@ public struct EventDetailHost: View {
         }
     }
 
+    // MARK: - Overflow declaration
+
+    /// Events support sharing, editing, calendar export, and wallet pass.
+    /// Archive/delete/report are not surfaced — archive lands in a post-
+    /// Beta-1 follow-up that wires the existing archive_resource RPC.
+    private static let supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> = [
+        .share, .edit, .addToCalendar, .walletPass
+    ]
 }

@@ -9,7 +9,7 @@ import RuulCore
 /// server errors. View is dumb: only renders this state and dispatches
 /// `submit(...)`.
 ///
-/// V1 entry: `HostActionsSectionView` action card; eventId always non-nil.
+/// V1 entry: event detail's overflow → "Multa manual"; eventId always non-nil.
 @Observable @MainActor
 public final class AddManualFineCoordinator {
     public let groupId: UUID

@@ -22,6 +22,12 @@ public protocol ProfileRepository: Actor {
     /// ledger_entries + notification_preferences. iOS típicamente lo
     /// guarda a Files o lo comparte via UIActivityViewController.
     func exportMyData() async throws -> Data
+
+    /// Mig 00340: the caller's default location when assigned as event
+    /// host. New events with the caller as host_id will have
+    /// `metadata.location_name/lat/lng` prefilled from this. Pass nil
+    /// name to clear. Calls `public.set_host_default_location` RPC.
+    func setHostDefaultLocation(name: String?, lat: Double?, lng: Double?) async throws
 }
 
 public actor MockProfileRepository: ProfileRepository {
@@ -76,6 +82,11 @@ public actor MockProfileRepository: ProfileRepository {
             "notification_preferences": []
         ]
         return try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    public func setHostDefaultLocation(name: String?, lat: Double?, lng: Double?) async throws {
+        // Mock keeps no state — caller passes through and we no-op.
+        _ = name; _ = lat; _ = lng
     }
 }
 
@@ -170,6 +181,21 @@ public actor LiveProfileRepository: ProfileRepository {
         // share/save.
         let raw = try await client.rpc("export_my_data").execute().data
         return raw
+    }
+
+    public func setHostDefaultLocation(name: String?, lat: Double?, lng: Double?) async throws {
+        struct Params: Encodable {
+            let p_name: String?
+            let p_lat: Double?
+            let p_lng: Double?
+        }
+        _ = try await client
+            .rpc("set_host_default_location", params: Params(
+                p_name: name,
+                p_lat:  lat,
+                p_lng:  lng
+            ))
+            .execute()
     }
 
     private static func fileExtension(for contentType: String) -> String {

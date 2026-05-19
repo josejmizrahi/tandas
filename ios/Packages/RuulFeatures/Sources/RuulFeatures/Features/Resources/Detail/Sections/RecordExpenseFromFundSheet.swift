@@ -26,6 +26,11 @@ public struct RecordExpenseFromFundSheet: View {
     public let fundName: String
     public let currency: String
     public let members: [MemberWithProfile]
+    /// When set, the entry is attributed to a specific event (mig 00344
+    /// p_source_event_id) so the event's money tab can scope its
+    /// projection without duplicating the fund per event.
+    public let sourceEventId: UUID?
+    public let sourceEventName: String?
     /// Called after a successful expense record so the caller can refresh
     /// the balance card.
     public let onDidRecord: () -> Void
@@ -41,12 +46,16 @@ public struct RecordExpenseFromFundSheet: View {
         fundName: String,
         currency: String,
         members: [MemberWithProfile],
+        sourceEventId: UUID? = nil,
+        sourceEventName: String? = nil,
         onDidRecord: @escaping () -> Void
     ) {
         self.fundId = fundId
         self.fundName = fundName
         self.currency = currency
         self.members = members
+        self.sourceEventId = sourceEventId
+        self.sourceEventName = sourceEventName
         self.onDidRecord = onDidRecord
     }
 
@@ -57,8 +66,15 @@ public struct RecordExpenseFromFundSheet: View {
                     Text(fundName)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
+                    if let sourceEventName {
+                        Label("Gasto de \(sourceEventName)", systemImage: "calendar")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                    }
                 } footer: {
-                    Text("El gasto sale del fondo y se acredita al destinatario. Para registrar un gasto a un proveedor externo, usa el ledger general.")
+                    Text(sourceEventName != nil
+                         ? "El gasto sale del fondo y queda asociado a este evento. El destinatario recibe el cobro."
+                         : "El gasto sale del fondo y se acredita al destinatario.")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
@@ -127,7 +143,8 @@ public struct RecordExpenseFromFundSheet: View {
                 amountCents: cents,
                 toMemberId: toId,
                 currency: currency,
-                note: trimmedNote.isEmpty ? nil : trimmedNote
+                note: trimmedNote.isEmpty ? nil : trimmedNote,
+                sourceEventId: sourceEventId
             )
             onDidRecord()
             dismiss()

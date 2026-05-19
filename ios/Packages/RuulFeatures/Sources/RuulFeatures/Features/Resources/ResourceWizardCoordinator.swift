@@ -208,7 +208,7 @@ public final class ResourceWizardCoordinator {
     ///     Incomplete blocks are hidden until UI config + backend save +
     ///     runtime support are all real. Founder framing: "no toggles
     ///     decorativos." See CapabilityStatus on each block for reason.
-    public var availableCapabilityBlocks: [any CapabilityBlock] {
+    public var availableCapabilityBlocks: [any CapabilityDefinition] {
         guard let builder = selectedBuilder else { return [] }
         let groupAvailable = Set(resolver.availableCapabilities(
             for: builder.resourceType, in: group, catalog: catalog
@@ -271,7 +271,7 @@ public final class ResourceWizardCoordinator {
     /// Suggested rules from every enabled capability. Used by step 4 to
     /// render the toggle list and by submit to materialize the user's
     /// picks into `OnboardingRuleDraft` rows.
-    public var availableSuggestedRules: [(block: any CapabilityBlock, template: CapabilityRuleOption)] {
+    public var availableSuggestedRules: [(block: any CapabilityDefinition, template: CapabilityRuleOption)] {
         availableCapabilityBlocks
             .filter { enabledCapabilities.contains($0.id) }
             .flatMap { block in
@@ -289,7 +289,7 @@ public final class ResourceWizardCoordinator {
     /// unification — mapped ones surface via the universals section
     /// to avoid the same rule appearing twice with slightly different
     /// names. UniversalRuleTemplates.md §14 Fase 2 (de-duplication).
-    public var nonUniversalSuggestedRules: [(block: any CapabilityBlock, template: CapabilityRuleOption)] {
+    public var nonUniversalSuggestedRules: [(block: any CapabilityDefinition, template: CapabilityRuleOption)] {
         availableSuggestedRules.filter { $0.template.universalTemplateId == nil }
     }
 
@@ -557,7 +557,7 @@ public final class ResourceWizardCoordinator {
     /// time fields default to a sensible weekly cadence (Thursday 20:00
     /// for events). Idempotent — won't overwrite values the user
     /// already touched.
-    private func seedCapabilityConfigDefaults(for block: any CapabilityBlock) {
+    private func seedCapabilityConfigDefaults(for block: any CapabilityDefinition) {
         var current = capabilityConfigs[block.id] ?? [:]
         for field in block.requiredFields {
             if current[field.key] != nil { continue }

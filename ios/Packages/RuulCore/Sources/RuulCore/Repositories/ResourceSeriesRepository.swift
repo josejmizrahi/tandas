@@ -30,6 +30,31 @@ public protocol ResourceSeriesRepository: Actor {
     /// Toggles a series's `active` flag. Inactive series stop generating
     /// occurrences but keep their history.
     func setActive(seriesId: UUID, active: Bool) async throws
+
+    /// Writes (or replaces) the rotation block inside the series's
+    /// `metadata.capability_configs.rotation` jsonb. Server-side cron
+    /// (`auto-generate-events` + `next_host_for_series`, mig 00132)
+    /// reads this exact path to resolve the next host for each
+    /// upcoming occurrence — so the in-memory shape here must match
+    /// the SQL contract.
+    ///
+    /// Other capability_configs already present (rsvp, check_in, …) are
+    /// preserved; only the `rotation` key is overwritten.
+    ///
+    /// `cycleOffset` (mig 00336) — set to the current event's cycle
+    /// number when saving so the math `((next_cycle - 1 - offset) %
+    /// count + count) % count` lands at participants[0] for the
+    /// upcoming occurrence. This is what makes "el primero de mi lista
+    /// será el próximo anfitrión" actually true after a reorder.
+    /// Pass nil to keep the previous offset (or 0 for fresh configs).
+    func setRotationConfig(
+        seriesId: UUID,
+        participants: [UUID],
+        order: String,
+        replacementPolicy: String,
+        purpose: String,
+        cycleOffset: Int?
+    ) async throws
 }
 
 // MARK: - Mock
@@ -81,6 +106,57 @@ public actor MockResourceSeriesRepository: ResourceSeriesRepository {
             pattern: r.pattern,
             metadata: r.metadata,
             active: active,
+            createdBy: r.createdBy,
+            createdAt: r.createdAt,
+            updatedAt: .now
+        )
+    }
+
+    public func setRotationConfig(
+        seriesId: UUID,
+        participants: [UUID],
+        order: String,
+        replacementPolicy: String,
+        purpose: String,
+        cycleOffset: Int?
+    ) async throws {
+        guard let idx = rows.firstIndex(where: { $0.id == seriesId }) else {
+            throw ResourceSeriesError.notFound
+        }
+        let r = rows[idx]
+        var capConfigs: [String: JSONConfig]
+        if case .object(let meta) = r.metadata,
+           case .object(let existing)? = meta["capability_configs"] {
+            capConfigs = existing
+        } else {
+            capConfigs = [:]
+        }
+        var rotation: [String: JSONConfig] = [
+            "purpose":           .string(purpose),
+            "participants":      .array(participants.map { .string($0.uuidString.lowercased()) }),
+            "order":             .string(order),
+            "replacementPolicy": .string(replacementPolicy),
+            "frequency":         .string("every_event")
+        ]
+        if let cycleOffset {
+            rotation["cycle_offset"] = .int(cycleOffset)
+        } else if case .object(let prev)? = capConfigs["rotation"],
+                  let existing = prev["cycle_offset"] {
+            rotation["cycle_offset"] = existing
+        }
+        capConfigs["rotation"] = .object(rotation)
+
+        var meta: [String: JSONConfig]
+        if case .object(let existing) = r.metadata { meta = existing } else { meta = [:] }
+        meta["capability_configs"] = .object(capConfigs)
+
+        rows[idx] = ResourceSeries(
+            id: r.id,
+            groupId: r.groupId,
+            resourceType: r.resourceType,
+            pattern: r.pattern,
+            metadata: .object(meta),
+            active: r.active,
             createdBy: r.createdBy,
             createdAt: r.createdAt,
             updatedAt: .now
@@ -179,6 +255,62 @@ public actor LiveResourceSeriesRepository: ResourceSeriesRepository {
             _ = try await client
                 .from("resource_series")
                 .update(Patch(active: active))
+                .eq("id", value: seriesId.uuidString.lowercased())
+                .execute()
+        } catch {
+            throw ResourceSeriesError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func setRotationConfig(
+        seriesId: UUID,
+        participants: [UUID],
+        order: String,
+        replacementPolicy: String,
+        purpose: String,
+        cycleOffset: Int?
+    ) async throws {
+        // Read-modify-write the metadata jsonb so unrelated capability
+        // configs (rsvp deadline, check_in window, …) stay intact. This
+        // races with concurrent edits, but the founder's rotation
+        // configuration is single-author in practice and the RPC for
+        // atomic jsonb patching isn't shipped yet — last-write-wins is
+        // acceptable for Beta 1.
+        guard let current = try await fetchById(seriesId) else {
+            throw ResourceSeriesError.notFound
+        }
+
+        var capConfigs: [String: JSONConfig]
+        if case .object(let meta) = current.metadata,
+           case .object(let existing)? = meta["capability_configs"] {
+            capConfigs = existing
+        } else {
+            capConfigs = [:]
+        }
+        var rotation: [String: JSONConfig] = [
+            "purpose":           .string(purpose),
+            "participants":      .array(participants.map { .string($0.uuidString.lowercased()) }),
+            "order":             .string(order),
+            "replacementPolicy": .string(replacementPolicy),
+            "frequency":         .string("every_event")
+        ]
+        if let cycleOffset {
+            rotation["cycle_offset"] = .int(cycleOffset)
+        } else if case .object(let prev)? = capConfigs["rotation"],
+                  let existing = prev["cycle_offset"] {
+            rotation["cycle_offset"] = existing
+        }
+        capConfigs["rotation"] = .object(rotation)
+
+        var meta: [String: JSONConfig]
+        if case .object(let existing) = current.metadata { meta = existing } else { meta = [:] }
+        meta["capability_configs"] = .object(capConfigs)
+
+        struct Patch: Encodable { let metadata: JSONConfig }
+        do {
+            _ = try await client
+                .from("resource_series")
+                .update(Patch(metadata: .object(meta)))
                 .eq("id", value: seriesId.uuidString.lowercased())
                 .execute()
         } catch {
