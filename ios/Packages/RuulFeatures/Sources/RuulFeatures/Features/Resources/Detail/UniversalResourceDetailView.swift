@@ -9,6 +9,7 @@ import RuulUI
 @MainActor
 public struct UniversalResourceDetailView: View {
     public let blocks: ResourceBlocks
+    public let supportedOverflowActions: Set<OverflowAction>
     public let onPrimaryAction: () -> Void
     public let onOpenBlock: (String) -> Void
     public let onTapRelation: (RelationCard) -> Void
@@ -17,6 +18,7 @@ public struct UniversalResourceDetailView: View {
 
     public init(
         blocks: ResourceBlocks,
+        supportedOverflowActions: Set<OverflowAction> = Set(OverflowAction.allCases),
         onPrimaryAction: @escaping () -> Void,
         onOpenBlock: @escaping (String) -> Void,
         onTapRelation: @escaping (RelationCard) -> Void,
@@ -24,6 +26,7 @@ public struct UniversalResourceDetailView: View {
         onOverflowAction: @escaping (OverflowAction) -> Void
     ) {
         self.blocks = blocks
+        self.supportedOverflowActions = supportedOverflowActions
         self.onPrimaryAction = onPrimaryAction
         self.onOpenBlock = onOpenBlock
         self.onTapRelation = onTapRelation
@@ -31,7 +34,10 @@ public struct UniversalResourceDetailView: View {
         self.onOverflowAction = onOverflowAction
     }
 
-    public enum OverflowAction: Hashable {
+    /// Universal overflow actions. Hosts declare which subset they
+    /// support via `supportedOverflowActions`; unsupported items are
+    /// hidden so tapping never produces a silent no-op.
+    public enum OverflowAction: String, Hashable, CaseIterable {
         case share, edit, archive, delete
         case addToCalendar, walletPass, report
     }
@@ -70,20 +76,64 @@ public struct UniversalResourceDetailView: View {
         .scrollIndicators(.hidden)
         .background(Color.ruulBackground.ignoresSafeArea())
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button("Compartir", systemImage: "square.and.arrow.up") { onOverflowAction(.share) }
-                    Button("Editar",    systemImage: "pencil")               { onOverflowAction(.edit) }
-                    Button("Agregar al calendario", systemImage: "calendar.badge.plus") { onOverflowAction(.addToCalendar) }
-                    Button("Pase de Wallet", systemImage: "wallet.pass")     { onOverflowAction(.walletPass) }
-                    Divider()
-                    Button("Archivar",  systemImage: "archivebox")           { onOverflowAction(.archive) }
-                    Button("Eliminar",  systemImage: "trash", role: .destructive) { onOverflowAction(.delete) }
-                    Button("Reportar",  systemImage: "flag")                 { onOverflowAction(.report) }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+            if !supportedOverflowActions.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        overflowMenuContents
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
                 }
             }
         }
+    }
+
+    /// Renders only the overflow items the host opted in to, so tapping
+    /// never produces a silent no-op. Per doctrine §0: the overflow is
+    /// for meta-actions only — capabilities live in their own blocks.
+    @ViewBuilder
+    private var overflowMenuContents: some View {
+        if supportedOverflowActions.contains(.share) {
+            Button("Compartir", systemImage: "square.and.arrow.up") { onOverflowAction(.share) }
+        }
+        if supportedOverflowActions.contains(.edit) {
+            Button("Editar", systemImage: "pencil") { onOverflowAction(.edit) }
+        }
+        if supportedOverflowActions.contains(.addToCalendar) {
+            Button("Agregar al calendario", systemImage: "calendar.badge.plus") {
+                onOverflowAction(.addToCalendar)
+            }
+        }
+        if supportedOverflowActions.contains(.walletPass) {
+            Button("Pase de Wallet", systemImage: "wallet.pass") { onOverflowAction(.walletPass) }
+        }
+        // Divider only between the "viewing/editing" cluster and the
+        // destructive cluster, and only when both clusters have at least
+        // one supported action.
+        if hasNondestructiveSupported && hasDestructiveSupported {
+            Divider()
+        }
+        if supportedOverflowActions.contains(.archive) {
+            Button("Archivar", systemImage: "archivebox") { onOverflowAction(.archive) }
+        }
+        if supportedOverflowActions.contains(.delete) {
+            Button("Eliminar", systemImage: "trash", role: .destructive) { onOverflowAction(.delete) }
+        }
+        if supportedOverflowActions.contains(.report) {
+            Button("Reportar", systemImage: "flag") { onOverflowAction(.report) }
+        }
+    }
+
+    private var hasNondestructiveSupported: Bool {
+        supportedOverflowActions.contains(.share)
+            || supportedOverflowActions.contains(.edit)
+            || supportedOverflowActions.contains(.addToCalendar)
+            || supportedOverflowActions.contains(.walletPass)
+    }
+
+    private var hasDestructiveSupported: Bool {
+        supportedOverflowActions.contains(.archive)
+            || supportedOverflowActions.contains(.delete)
+            || supportedOverflowActions.contains(.report)
     }
 }

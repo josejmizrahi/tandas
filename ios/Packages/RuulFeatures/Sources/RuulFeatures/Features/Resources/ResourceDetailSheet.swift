@@ -93,7 +93,7 @@ public struct ResourceDetailSheet: View {
             liveResource = fresh
             // Phase E: rebuild block tree with the fresh row
             if let group = parentGroup {
-                buildBlocks(for: group)
+                await buildBlocks(for: group)
             }
         }
     }
@@ -178,10 +178,11 @@ public struct ResourceDetailSheet: View {
             if let blocks {
                 UniversalResourceDetailView(
                     blocks: blocks,
+                    supportedOverflowActions: supportedOverflowActions(for: blocks),
                     onPrimaryAction: { Task { await dispatchPrimary(group: group) } },
                     onOpenBlock: { id in openBlockDestination(id, group: group) },
                     onTapRelation: { _ in },
-                    onSeeMoreActivity: { ledgerSheetPresented = true },
+                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
                     onOverflowAction: { handleOverflow($0) }
                 )
             } else {
@@ -189,7 +190,7 @@ public struct ResourceDetailSheet: View {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
                     RuulLoadingState()
                 }
-                .task { buildBlocks(for: group) }
+                .task { await buildBlocks(for: group) }
             }
         } else {
             ZStack {
@@ -199,15 +200,31 @@ public struct ResourceDetailSheet: View {
         }
     }
 
-    /// Builds blocks synchronously from the current resource row + group.
-    /// Called after load and after resource mutation.
+    /// Per-resource-type overflow allowlist. Today every non-event row
+    /// reachable through this sheet supports just Share (the universal
+    /// action that every resource family carries). Type-specific
+    /// surfaces — fund settlement, asset transfer, right revoke — live
+    /// in their dedicated sheets, not the universal overflow.
+    private func supportedOverflowActions(
+        for blocks: ResourceBlocks
+    ) -> Set<UniversalResourceDetailView.OverflowAction> {
+        // Events that somehow reach this generic sheet trigger the
+        // redirect-to-EventDetailHost task; while the redirect is in
+        // flight, show no overflow.
+        if (liveResource ?? resource).resourceType == .event { return [] }
+        return [.share]
+    }
+
+    /// Builds blocks from the current resource row + group, then augments
+    /// the result with the live activity feed.
     ///
     /// Events do NOT build blocks here — the body short-circuits to a
     /// router redirect (see `redirectIfEvent`). Reaching this method with
     /// an event row means the redirect path didn't fire; we fall back to
     /// an identity-only placeholder rather than mis-rendering the event
     /// through a non-event builder.
-    private func buildBlocks(for group: RuulCore.Group) {
+    @MainActor
+    private func buildBlocks(for group: RuulCore.Group) async {
         let live = liveResource ?? resource
         let viewerCtx = viewerContext(group: group)
         let built: ResourceBlocks
@@ -223,7 +240,28 @@ public struct ResourceDetailSheet: View {
         case .unknown:
             built = AssetBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
         }
-        blocks = built
+
+        // Post-build augmentation: load system_events for this resource
+        // so the activity layer reflects creation/mutation/lifecycle
+        // events. Events skip the feed since they redirect anyway.
+        if live.resourceType == .event {
+            blocks = built
+        } else {
+            let feed = await ActivityFeedLoader.load(
+                app: app,
+                groupId: live.groupId,
+                resourceId: live.id
+            )
+            blocks = ResourceBlocks(
+                identity: built.identity,
+                state: built.state,
+                properties: built.properties,
+                capabilities: built.capabilities,
+                relations: built.relations,
+                activityHead: feed.entries,
+                hasMoreActivity: feed.hasMore
+            )
+        }
     }
 
     /// Identity-only placeholder for events that somehow reach this
@@ -437,7 +475,7 @@ public struct ResourceDetailSheet: View {
 
         // Phase E: build the initial block tree now that we have member directory.
         if let group = parentGroup {
-            buildBlocks(for: group)
+            await buildBlocks(for: group)
         }
     }
 

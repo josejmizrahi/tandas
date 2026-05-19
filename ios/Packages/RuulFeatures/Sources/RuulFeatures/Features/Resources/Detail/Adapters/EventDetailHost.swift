@@ -156,10 +156,11 @@ public struct EventDetailHost: View {
             if let blocks {
                 UniversalResourceDetailView(
                     blocks: blocks,
+                    supportedOverflowActions: Self.supportedOverflowActions,
                     onPrimaryAction: { Task { await dispatchPrimary(blocks: blocks, coordinator: coordinator) } },
                     onOpenBlock: { id in openDestination(id, coordinator: coordinator) },
                     onTapRelation: { card in openRelation(card) },
-                    onSeeMoreActivity: { sheet = .attendees },
+                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
                     onOverflowAction: { action in handleOverflow(action, coordinator: coordinator) }
                 )
             } else {
@@ -244,8 +245,11 @@ public struct EventDetailHost: View {
             now: Date()
         )
 
-        // Phase E activity feed wiring (post-build augmentation)
-        let activityEntries = await loadActivityFeed(
+        // Phase E activity feed wiring (post-build augmentation) — uses
+        // the shared ActivityFeedLoader so every host renders the same
+        // shape and the limit+1 trick reports `hasMoreActivity` honestly.
+        let feed = await ActivityFeedLoader.load(
+            app: app,
             groupId: group.id,
             resourceId: coordinator.event.id
         )
@@ -255,30 +259,9 @@ public struct EventDetailHost: View {
             properties: built.properties,
             capabilities: built.capabilities,
             relations: built.relations,
-            activityHead: activityEntries,
-            hasMoreActivity: activityEntries.count >= 5
+            activityHead: feed.entries,
+            hasMoreActivity: feed.hasMore
         )
-    }
-
-    /// Fetches the last 5 system_events for this resource and humanizes them.
-    /// Returns empty array on any failure (activity feed is best-effort).
-    @MainActor
-    private func loadActivityFeed(groupId: UUID, resourceId: UUID) async -> [ActivityEntry] {
-        let filter = SystemEventFilter(
-            groupId: groupId,
-            resourceId: resourceId
-        )
-        let events = (try? await app.systemEventRepo.query(
-            filter: filter, limit: 5, offset: 0
-        )) ?? []
-        return events.map { ev in
-            ActivityEntry(
-                id: ev.id,
-                sentence: ev.eventType.humanLabel,
-                relativeTime: Self.relativeTime(from: ev.occurredAt),
-                icon: nil  // Phase F: add per-type SF symbols
-            )
-        }
     }
 
     /// Permissions the viewer holds in this group (for BlockViewerContext).
@@ -478,16 +461,12 @@ public struct EventDetailHost: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Overflow declaration
 
-    private static func relativeTime(from date: Date) -> String {
-        let delta = Date.now.timeIntervalSince(date)
-        if delta < 3600 { return "hace \(Int(delta / 60)) min" }
-        if delta < 86400 { return "hace \(Int(delta / 3600))h" }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.dateFormat = "d MMM"
-        return f.string(from: date)
-    }
-
+    /// Events support sharing, editing, calendar export, and wallet pass.
+    /// Archive/delete/report are not surfaced — archive lands in a post-
+    /// Beta-1 follow-up that wires the existing archive_resource RPC.
+    private static let supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> = [
+        .share, .edit, .addToCalendar, .walletPass
+    ]
 }

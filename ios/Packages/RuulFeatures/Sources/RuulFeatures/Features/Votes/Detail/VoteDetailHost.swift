@@ -43,10 +43,11 @@ public struct VoteDetailHost: View {
             if let blocks {
                 UniversalResourceDetailView(
                     blocks: blocks,
+                    supportedOverflowActions: supportedOverflowActions,
                     onPrimaryAction: { handlePrimaryAction() },
                     onOpenBlock: { _ in },
                     onTapRelation: { _ in },
-                    onSeeMoreActivity: { },
+                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
                     onOverflowAction: { handleOverflow($0) }
                 )
             } else {
@@ -58,10 +59,10 @@ public struct VoteDetailHost: View {
         }
         .task {
             await coordinator.refresh()
-            rebuildBlocks()
+            await rebuildBlocks()
         }
-        .onChange(of: coordinator.counts) { _, _ in rebuildBlocks() }
-        .onChange(of: coordinator.myCast) { _, _ in rebuildBlocks() }
+        .onChange(of: coordinator.counts) { _, _ in Task { await rebuildBlocks() } }
+        .onChange(of: coordinator.myCast) { _, _ in Task { await rebuildBlocks() } }
         .refreshable { await coordinator.refresh() }
         // Cast picker — opens from the StateHero primary action when the
         // builder emits `castVote`. The legacy VoteCastSection handles the
@@ -94,7 +95,8 @@ public struct VoteDetailHost: View {
 
     // MARK: - Block building
 
-    private func rebuildBlocks() {
+    @MainActor
+    private func rebuildBlocks() async {
         let viewerCtx = BlockViewerContext(
             userId: app.session?.user.id,    // Doctrine §F fix: real viewer id
             permissions: [],                  // VoteBlockBuilder gates on viewerHasVoted, not permissions
@@ -102,7 +104,41 @@ public struct VoteDetailHost: View {
             memberId: coordinator.vote.createdByMemberId
         )
         let builder = VoteBlockBuilder(viewerHasVoted: coordinator.alreadyVoted)
-        blocks = builder.build(source: coordinator.vote, viewer: viewerCtx, now: Date())
+        let built = builder.build(source: coordinator.vote, viewer: viewerCtx, now: Date())
+
+        // Post-build augmentation: load system_events for this vote so
+        // the activity layer reflects vote_proposed / vote_cast /
+        // vote_finalized / vote_cancelled events.
+        let feed = await ActivityFeedLoader.load(
+            app: app,
+            groupId: coordinator.vote.groupId,
+            resourceId: coordinator.vote.id
+        )
+
+        blocks = ResourceBlocks(
+            identity: built.identity,
+            state: built.state,
+            properties: built.properties,
+            capabilities: built.capabilities,
+            relations: built.relations,
+            activityHead: feed.entries,
+            hasMoreActivity: feed.hasMore
+        )
+    }
+
+    // MARK: - Overflow declaration
+
+    /// Votes surface only `.edit` (gated to open the admin actions sheet
+    /// when the viewer has finalize/cancel privileges). Everything else
+    /// — share/calendar/wallet/archive/delete/report — doesn't apply to
+    /// a governance vote and is filtered out so taps never produce a
+    /// silent no-op.
+    private var supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> {
+        var set: Set<UniversalResourceDetailView.OverflowAction> = []
+        if coordinator.shouldShowFinalize || coordinator.shouldShowCancel {
+            set.insert(.edit)
+        }
+        return set
     }
 
     // MARK: - Primary action dispatch
