@@ -61,6 +61,7 @@ public struct ResourceCreationSheet: View {
         viewerPermissions: Set<Permission> = [],
         activator: LazyCapabilityActivator? = nil,
         capabilityRepo: (any ResourceCapabilityRepository)? = nil,
+        resourceRepo: (any ResourceRepository)? = nil,
         members: [MemberWithProfile] = [],
         postCreateActions: PostCreateResourceActions = PostCreateResourceActions(),
         onCreated: ((UUID) -> Void)? = nil
@@ -69,11 +70,12 @@ public struct ResourceCreationSheet: View {
             group: group,
             builders: builders,
             templateDefaultsByType: templateDefaultsByType,
-            // Threaded through so attachedCapabilities reflects backend
-            // trigger-seeded caps post-create — closes the visibility
-            // gap for money/custody/valuation/etc. documented by the
-            // founder cases smoke test.
-            capabilityRepo: capabilityRepo
+            capabilityRepo: capabilityRepo,
+            // Hydrates the full row post-build so wired destinations
+            // (RecordValuationSheet, CheckOutAssetSheet, LogMaintenance,
+            // ReportDamage, CreateSlot, LockFund) stop falling back to
+            // their placeholder card.
+            resourceRepo: resourceRepo
         ))
         self.viewerPermissions = viewerPermissions
         self.activator = activator
@@ -146,7 +148,7 @@ public struct ResourceCreationSheet: View {
             let ctx = PostCreateResourceContext(
                 metadata: coordinator.identityFields,
                 members: members,
-                resourceRow: nil,
+                resourceRow: coordinator.attachedResource,
                 actions: postCreateActions
             )
             PostCreateIntentScreen.withActivator(

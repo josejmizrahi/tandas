@@ -61,6 +61,16 @@ public final class ResourceCreationCoordinator {
     /// whose requiredCapabilities are now satisfied.
     public private(set) var attachedCapabilities: Set<String> = []
 
+    /// Hydrated `ResourceRow` for the just-created resource. Populated
+    /// from `resourceRepo.resource(id)` after a successful build when
+    /// `resourceRepo` is injected. Nil otherwise.
+    ///
+    /// Surfaced for destinations whose sheets accept the full row
+    /// directly (RecordValuationSheet, CheckOutAssetSheet, …) — without
+    /// this they fall back to their placeholder card even when the
+    /// caller has the row available downstream.
+    public private(set) var attachedResource: ResourceRow?
+
     // MARK: - Init
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.creation")
@@ -78,6 +88,12 @@ public final class ResourceCreationCoordinator {
     /// + previews opt out of the network call this way.
     public let capabilityRepo: (any ResourceCapabilityRepository)?
 
+    /// Optional resource repo used to hydrate `attachedResource` from
+    /// the backend after a successful create. Closes the gap where
+    /// destinations like RecordValuationSheet need the full row (not
+    /// just an id + metadata) and were falling back to placeholders.
+    public let resourceRepo: (any ResourceRepository)?
+
     public init(
         group: Group,
         builders: ResourceBuilderRegistry,
@@ -85,7 +101,8 @@ public final class ResourceCreationCoordinator {
         catalog: CapabilityCatalog = .v1,
         resolver: CapabilityResolver = CapabilityResolver(),
         templateDefaultsByType: [String: [String]] = [:],
-        capabilityRepo: (any ResourceCapabilityRepository)? = nil
+        capabilityRepo: (any ResourceCapabilityRepository)? = nil,
+        resourceRepo: (any ResourceRepository)? = nil
     ) {
         self.group = group
         self.builders = builders
@@ -94,6 +111,7 @@ public final class ResourceCreationCoordinator {
         self.resolver = resolver
         self.templateDefaultsByType = templateDefaultsByType
         self.capabilityRepo = capabilityRepo
+        self.resourceRepo = resourceRepo
     }
 
     // MARK: - Phase transitions
@@ -161,6 +179,7 @@ public final class ResourceCreationCoordinator {
         phase = .typePicker
         identityFields = [:]
         attachedCapabilities = []
+        attachedResource = nil
         lastIdentitySnapshot = nil
     }
 
@@ -247,6 +266,21 @@ public final class ResourceCreationCoordinator {
                 }
             } else {
                 attachedCapabilities = Set(result.enabledCapabilityIds)
+            }
+            // Hydrate the full row so wired destinations that accept
+            // `asset: ResourceRow` (RecordValuationSheet, CheckOutAssetSheet,
+            // LogMaintenanceSheet, ReportDamageSheet, CreateSlotSheet,
+            // LockFundSheet) stop falling back to the placeholder card.
+            // Best-effort: a failed fetch leaves `attachedResource = nil`
+            // and those destinations show the placeholder as before — no
+            // regression vs the previous behavior.
+            if let repo = resourceRepo {
+                do {
+                    attachedResource = try await repo.resource(result.resourceId)
+                } catch {
+                    log.warning("post-create resource hydration failed: \(error.localizedDescription); destinations needing the row will fall back to placeholder")
+                    attachedResource = nil
+                }
             }
             phase = .postCreate(resourceId: result.resourceId, variant: variant)
             return result.resourceId
