@@ -123,7 +123,7 @@ public struct RuleDetailView: View {
     private var consequencesSection: some View {
         sectionContainer(title: "QUÉ HACE") {
             if rule.consequences.isEmpty {
-                Text("Sin consecuencias configuradas.")
+                Text("Sin acciones configuradas.")
                     .ruulTextStyle(RuulTypography.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             } else {

@@ -54,7 +54,7 @@ public struct LinkResourcePickerSheet: View {
             )
             .ruulAmbientScreen(palette: nil)
             .task { await loadCandidates() }
-            .ruulSheetToolbar("Vincular recurso")
+            .ruulSheetToolbar("Conectar recurso")
         }
     }
 
@@ -128,7 +128,7 @@ public struct LinkResourcePickerSheet: View {
             Text("¿Qué usa este evento?")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Vincula un espacio, asset, fondo o derecho que se coordine durante este evento.")
+            Text("Conecta un espacio, activo, fondo o derecho que se coordine durante este evento.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
@@ -190,10 +190,10 @@ public struct LinkResourcePickerSheet: View {
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(spacing: RuulSpacing.xs) {
-                Text("Nada que vincular aún")
+                Text("Nada que conectar aún")
                     .ruulTextStyle(RuulTypography.titleLarge)
                     .foregroundStyle(Color.ruulTextPrimary)
-                Text("Crea un espacio, asset o fondo en el grupo y vuelve para vincularlo a este evento.")
+                Text("Crea un espacio, activo o fondo en el grupo y vuelve para conectarlo a este evento.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
@@ -243,7 +243,7 @@ public struct LinkResourcePickerSheet: View {
             dismiss()
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription
-                ?? "No pudimos vincular \(displayName(row))."
+                ?? "No pudimos conectar \(displayName(row))."
         }
         submittingId = nil
     }

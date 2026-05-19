@@ -471,13 +471,13 @@ public final class RuleComposerCoordinator: Identifiable {
             return "El nombre debe tener al menos 2 caracteres."
         }
         if raw.contains("at least one consequence") {
-            return "Agrega al menos una consecuencia."
+            return "Agrega al menos una acción."
         }
         if raw.contains("does not support scope") {
-            return "El disparador elegido no aplica a este nivel (grupo / serie / instancia)."
+            return "El momento elegido no aplica a este nivel (grupo / serie / instancia)."
         }
         if raw.contains("does not support resource_type") {
-            return "El disparador elegido no aplica a este tipo de recurso."
+            return "El momento elegido no aplica a este tipo de recurso."
         }
         if raw.contains("not found") {
             return "Una pieza de la regla ya no está disponible en el catálogo."

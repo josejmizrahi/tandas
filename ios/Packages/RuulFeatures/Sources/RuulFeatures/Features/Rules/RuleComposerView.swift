@@ -113,9 +113,9 @@ public struct RuleComposerView: View {
         let conditionDone = !coord.draft.conditions.isEmpty
         let consequenceDone = !coord.draft.consequences.isEmpty
         return HStack(spacing: RuulSpacing.sm) {
-            progressChip(label: "Disparador", done: triggerDone, required: true)
+            progressChip(label: "Cuándo", done: triggerDone, required: true)
             progressChip(label: "Condiciones", done: conditionDone, required: false)
-            progressChip(label: "Consecuencia", done: consequenceDone, required: true)
+            progressChip(label: "Acción", done: consequenceDone, required: true)
             Spacer(minLength: 0)
         }
         .padding(.bottom, RuulSpacing.xs)
@@ -428,8 +428,8 @@ public struct RuleComposerView: View {
 
     private var consequencesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            sectionLabel("Consecuencias")
-            sectionHint("Qué pasa cuando el acuerdo aplica: cobrar multa, emitir warning, etc.")
+            sectionLabel("Acciones")
+            sectionHint("Qué pasa cuando el acuerdo aplica: cobrar multa, mandar aviso, etc.")
             ForEach(coord.draft.consequences) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -452,7 +452,7 @@ public struct RuleComposerView: View {
                     }
                 }
             } label: {
-                pickerLabel(text: "Agregar consecuencia", systemImage: "plus.circle")
+                pickerLabel(text: "Agregar acción", systemImage: "plus.circle")
             }
         }
     }

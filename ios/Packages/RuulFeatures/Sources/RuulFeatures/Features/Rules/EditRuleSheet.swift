@@ -78,7 +78,7 @@ public struct EditRuleSheet: View {
                                     .foregroundStyle(.tertiary)
                             }
                         }
-                        Text("Disparador, condiciones y consecuencias. Crea una nueva versión preservando el historial.")
+                        Text("Cuándo, condiciones y acciones. Crea una nueva versión preservando el historial.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

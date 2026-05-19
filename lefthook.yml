@@ -1,7 +1,11 @@
-# Lefthook config — runs the codegen on commit so generated files stay
-# in sync with hand-written sources. Glob is intentionally wildcard;
-# the codegen filters by the @codegen:enum marker, so it's safe to
-# re-run on unrelated Swift edits (a no-op).
+# Lefthook config:
+#   - gen-types  — keeps Swift↔TS generated models in sync on commit.
+#   - vocab-lint — enforces the Human-Layer vocabulary discipline
+#                  (Plans/Active/HumanLayerSimplification.md §D + §F).
+#                  Fails the commit when ontology / engine jargon
+#                  (disparador / consecuencia / vincul*) leaks into
+#                  user-facing strings under RuulFeatures. Comments
+#                  are exempt; opt-out via `// allow-vocab` per line.
 
 pre-commit:
   parallel: true
@@ -11,3 +15,6 @@ pre-commit:
       run: |
         deno run -A scripts/codegen/gen-types.ts
         git add ios/Tandas/Platform/Models/Generated supabase/functions/_shared/types
+    vocab-lint:
+      glob: "ios/Packages/RuulFeatures/Sources/**/*.swift"
+      run: scripts/lint/vocab-lint.sh
