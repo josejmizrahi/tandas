@@ -70,6 +70,19 @@ public struct ResourceVariant: Sendable, Hashable, Identifiable {
     /// ahora?" beats "Resource created successfully."
     public let postCreateHeadline: String
 
+    /// Whether the variant picker shows this variant as a top-level card.
+    /// Variants whose only differentiator is `humanName` (recipes) set
+    /// this to `false` so the picker stays calm; they still resolve
+    /// through `variant(id:)` for already-created resources, and a future
+    /// pass can surface them as recipe chips inside the parent variant's
+    /// identity form (V2 plan §D.3).
+    ///
+    /// Per V2 Product Compression doctrine (Plans/Active/ProductCompression.md
+    /// §D.2), hiding a variant from the picker is the freeze-compatible
+    /// way to compress the cognitive load — the catalog stays full, only
+    /// visibility narrows.
+    public let isVisibleInPicker: Bool
+
     public init(
         id: String,
         resourceType: ResourceType,
@@ -80,7 +93,8 @@ public struct ResourceVariant: Sendable, Hashable, Identifiable {
         identityFields: [BuilderField] = [],
         attachedCapabilities: Set<String> = [],
         suggestedIntents: [String] = [],
-        postCreateHeadline: String
+        postCreateHeadline: String,
+        isVisibleInPicker: Bool = true
     ) {
         self.id = id
         self.resourceType = resourceType
@@ -92,5 +106,6 @@ public struct ResourceVariant: Sendable, Hashable, Identifiable {
         self.attachedCapabilities = attachedCapabilities
         self.suggestedIntents = suggestedIntents
         self.postCreateHeadline = postCreateHeadline
+        self.isVisibleInPicker = isVisibleInPicker
     }
 }

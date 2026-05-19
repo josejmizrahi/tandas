@@ -52,6 +52,10 @@ public enum SlotVariants {
         postCreateHeadline: "¿A quién le toca este turno?"
     )
 
+    /// V2 Slice 3A: hidden from the picker — ticket shares assign_holder
+    /// + link_resource with seat and surfaces only 4/6 intents (no
+    /// allow_reservations or define_priority). Stays registered for
+    /// id-lookup; future pass surfaces it as a recipe chip inside seat.
     public static let ticket = ResourceVariant(
         id: "slot.ticket",
         resourceType: .slot,
@@ -68,7 +72,8 @@ public enum SlotVariants {
             "add_rules",
             "view_history"
         ],
-        postCreateHeadline: "¿Quién usa este boleto?"
+        postCreateHeadline: "¿Quién usa este boleto?",
+        isVisibleInPicker: false
     )
 
     // post-Beta variants:

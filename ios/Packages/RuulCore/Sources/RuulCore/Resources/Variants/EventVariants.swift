@@ -56,6 +56,11 @@ public enum EventVariants {
         postCreateHeadline: "Tu serie está activa. ¿Qué quieres hacer?"
     )
 
+    /// V2 Slice 3A (Plans/Active/ProductCompression.md §D.2): hidden from
+    /// the picker because it shares 5/6 intents with social_gathering and
+    /// adds zero new silent capabilities. Stays registered for id-lookup
+    /// on already-created resources; will resurface as a recipe chip
+    /// inside the social_gathering identity form in a future pass.
     public static let sportsMatch = ResourceVariant(
         id: "event.sports_match",
         resourceType: .event,
@@ -74,7 +79,8 @@ public enum EventVariants {
             "track_money",
             "view_history"
         ],
-        postCreateHeadline: "¿Cómo organizamos este partido?"
+        postCreateHeadline: "¿Cómo organizamos este partido?",
+        isVisibleInPicker: false
     )
 
     // post-Beta variants (uncomment + append to `all` when ready):
