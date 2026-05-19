@@ -2982,6 +2982,81 @@ xcodebuild test -project ios/Tandas.xcodeproj -scheme Tandas \
 
 If E1–E4 surface a regression that blocks shipping, the legacy view is still in git history. Revert the single commit from C6 ("rewrite UniversalResourceDetailView") and the prior tabbed view is back, fully functional. Phases A, B, D models all stay green — they're additive. This is the rollback path.
 
+### F. Backend wiring doctrine (founder instruction 2026-05-18)
+
+The founder asserted mid-execution: **"asegura que todo se conecta con backend y supabase"**. The plan must NOT produce a beautiful shell decoupled from real data. Concrete consequences:
+
+**Builders consume real repository entity types — NOT synthetic mock structs.**
+
+Phase D originally drafted synthetic `EventSource`/`FundSource`/`FineSource`/`VoteSource` types. Those become TEST FIXTURES only — they live in the Tests target. The production `BlockBuilder.Source` associated type per builder MUST be:
+
+| Builder | Source type | Repository / loader |
+|---|---|---|
+| `EventBlockBuilder` | `EventDetailSnapshot` (assembled at host using EventInteractor.event + myRSVP + rotation config) | `EventInteractor` + `ResourceSeriesRepository` |
+| `FundBlockBuilder` | `ResourceRow` (fund rows live in `public.resources` with `type='fund'`) | `LiveResourceRepository` + `FundRepository` for balance |
+| `FineBlockBuilder` | `Fine` (the existing model in `RuulCore.Fines`) | `FineRepository` |
+| `VoteBlockBuilder` | `Vote` (the existing model in `RuulCore.Votes`) | `VoteRepository` |
+| `RightBlockBuilder` | `ResourceRow` | `LiveResourceRepository` |
+| `AssetBlockBuilder` | `ResourceRow` | `LiveResourceRepository` + `AssetLifecycleRepository` |
+
+The test-fixture structs MUST construct real `Fine`/`Vote`/`ResourceRow` instances via the existing model initializers — not invent parallel types.
+
+**Mutations dispatched from the new view MUST hit existing Supabase RPCs.**
+
+- `rsvp.confirm` → `EventInteractor.setRSVP(.going)` → `rpc('set_rsvp')`
+- `vote.cast` → `VoteRepository.castVote` → `rpc('cast_vote')`
+- `fine.pay` → `FineRepository.payFine` → `rpc('pay_fine')`
+- `fund.contribute` → `FundRepository.contribute` → `rpc('fund_contribute')` (mig 00202)
+- `rotation.participants` → `RotationParticipantsSheet` → `rpc('set_rotation_config')`
+- `location.editor` → `LocationEditorSheet` → `rpc('update_event_metadata')`
+- `archive_resource` → `rpc('archive_resource')` (mig 00291)
+
+The view is a renderer + dispatch layer; it does NOT talk to Supabase directly. Repositories stay the only Supabase touchpoints. Builders are pure transformations.
+
+**Activity feed (Layer 7) MUST query `system_events`.**
+
+Host fetches recent rows via `SystemEventsRepository` (or `from('system_events').select(...).eq('resource_id', id)`), humanizes via the existing projection layer (`SystemEventHumanizer` — already used by legacy `ActivitySectionView`), and passes `[ActivityEntry]` through the builder. View renders first 5; "Ver más" opens existing activity-history sheet.
+
+**Relations rail (Layer 6) MUST query the resource graph.**
+
+Hosts fetch from `resource_links` (mig 00255 onward) keyed on this resource's id via `ResourceLinkRepository.linksFor(resource:)`. If the link repo lookup method doesn't exist yet, ship Beta-1 with empty relations AND log a TODO comment naming the missing dependency. Do NOT silently swallow the gap.
+
+**Realtime / live updates remain wired.**
+
+Legacy view subscribes to RSVP changes via `RSVPRealtimeService`. The new view must NOT silently kill realtime. Phase E hosts keep their subscription; when the underlying entity mutates, the host re-runs the builder and passes fresh `ResourceBlocks` via `@State var blocks: ResourceBlocks` + `.onChange(of: liveEntity)`.
+
+**Capability blocks read real Supabase-backed data.**
+
+| Block | Backend source |
+|---|---|
+| Rotation | `resource_series.metadata.capability_configs.rotation.{participants, order, replacementPolicy, cycle_offset}` (mig 00336) |
+| RSVP | `event_rsvps` table + `EventInteractor.myRSVP` |
+| Ledger / Money | `account_movements` filtered by resource_id (via `LedgerRepository`) |
+| Balance (fund) | `funds.balance_cents` (mig 00139) or computed ledger sum |
+| Check-in | `event_attendees.checked_in_at` |
+| Custodianship (asset) | `resources.metadata.{custodian_id, owner_id, holder_id}` |
+| Eligibility | `rules` table filtered by capability/resource scope |
+| Quota | `resources.metadata.{quota_used, quota_limit}` (per-resource convention) |
+| Recurrence | `resource_series.{recurrence_rule, next_occurrence_at}` |
+
+**Phase G validation MUST include end-to-end smoke against real Supabase.**
+
+Add to Task G3:
+- [ ] Real-auth simulator session: open an event you RSVP'd to. State headline reflects the LIVE `event_rsvps` row (not a default).
+- [ ] Tap "Confirmar asistencia" on a non-RSVP'd event. Verify Supabase `event_rsvps` receives the insert via `mcp__supabase__execute_sql`. State headline crossfades.
+- [ ] Open a fund with `funds.balance_cents > 0`. Balance block shows the live value.
+- [ ] Open an `open` vote. Cast vote. Verify `vote_casts` insert and State updates.
+- [ ] Open a fine you owe (`fines.debtor_user_id = self`, `status='unpaid'`). State shows real `amount_cents`.
+- [ ] Force-quit, reopen, re-navigate to the same resource: identical blocks (data persisted).
+
+**Phase F cleanup MUST NOT delete repositories or RPC handlers.**
+
+Repositories (`LiveResourceRepository`, `EventInteractor`, `RSVPRealtimeService`, `SystemEventsRepository`, `FundRepository`, `FineRepository`, `VoteRepository`, `LedgerRepository`, `AssetLifecycleRepository`, `ResourceSeriesRepository`, `GroupsRepository`, `ResourceLinkRepository`) — all stay. Only DELETE view-layer wrappers (SectionViews) that produced UI from those calls, the legacy tab/segment dispatch, and the parallel intent registry's detail-view consumption (the registry itself stays for post-create).
+
+Phase F1 MUST include a guard step: after each repository-adjacent deletion, grep for the repository name across the codebase and confirm at least one consumer remains. If grep returns zero references to `FundRepository`, that's a failure — abort the delete.
+
+---
+
 ### E.5 Founder WIP integration (RotationSectionView + LocationSectionView)
 
 Before Phase C ran, `git stash push -u -m "founder-wip-pre-detail-v2"` parked a parallel rotation/host-assigned effort containing 30+ modified files. The founder asked that the substantive changes in `RotationSectionView.swift` and `LocationSectionView.swift` survive the rewrite. Phase D EventBlockBuilder MUST honor:
