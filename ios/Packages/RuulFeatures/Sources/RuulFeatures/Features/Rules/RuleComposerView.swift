@@ -177,8 +177,8 @@ public struct RuleComposerView: View {
 
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            sectionLabel("Cuándo se dispara")
-            sectionHint("El evento que hace que el acuerdo corra. Sin disparador, nunca se activa.")
+            sectionLabel("Cuándo sucede")
+            sectionHint("El momento que hace que el acuerdo corra. Sin elegir cuándo, nunca se activa.")
             if let trigger = coord.draft.trigger, let shape = coord.shape(id: trigger.shapeId) {
                 ShapeInstanceRow(
                     shape: shape,
@@ -196,12 +196,12 @@ public struct RuleComposerView: View {
                     }
                 }
                 if coord.availableTriggers.isEmpty {
-                    Text("Sin disparadores compatibles con este recurso")
+                    Text("No hay momentos compatibles con este recurso")
                         .ruulTextStyle(RuulTypography.caption)
                 }
             } label: {
                 pickerLabel(
-                    text: coord.draft.trigger == nil ? "Elegir disparador" : "Cambiar disparador",
+                    text: coord.draft.trigger == nil ? "Elegir cuándo" : "Cambiar cuándo",
                     systemImage: coord.draft.trigger == nil ? "plus.circle" : "arrow.triangle.2.circlepath"
                 )
             }
@@ -212,14 +212,14 @@ public struct RuleComposerView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(alignment: .firstTextBaseline) {
                 sectionLabel(coord.isAdvancedMode
-                             ? "Condiciones (Y / O / NO)"
+                             ? "Condiciones (todas / cualquiera / ninguna)"
                              : "Condiciones (todas se cumplen)")
                 Spacer(minLength: 0)
                 advancedToggle
             }
             sectionHint(coord.isAdvancedMode
-                        ? "Combina con O y marca NO desde el menú ⋯ de cada condición. Sin agrupar, todo se combina con Y."
-                        : "Filtros adicionales. Sin condiciones, el acuerdo aplica siempre que se dispare.")
+                        ? "Agrupa condiciones con 'cualquiera' o márcalas como 'ninguna' desde el menú ⋯. Sin agrupar, todas se combinan con 'todas'."
+                        : "Filtros adicionales. Sin condiciones, el acuerdo aplica siempre que suceda.")
             if coord.isAdvancedMode, let tree = coord.draft.conditionsTree {
                 conditionTreeView(tree, depth: 0)
             } else {
@@ -257,7 +257,7 @@ public struct RuleComposerView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Hay agrupaciones O / NO. Aplanar las quita y deja solo la lista plana de condiciones.")
+            Text("Hay agrupaciones de 'cualquiera' / 'ninguna'. Aplanar las quita y deja solo la lista plana de condiciones.")
         }
     }
 
@@ -318,7 +318,7 @@ public struct RuleComposerView: View {
             return AnyView(
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     HStack(spacing: RuulSpacing.xs) {
-                        Text(isOr ? "Cualquiera de estas (O):" : "Todas estas (Y):")
+                        Text(isOr ? "Cualquiera de estas:" : "Todas estas:")
                             .ruulTextStyle(RuulTypography.captionBold)
                             .foregroundStyle(isOr ? Color.ruulAccent : Color.ruulTextSecondary)
                         Spacer(minLength: 0)
@@ -334,7 +334,7 @@ public struct RuleComposerView: View {
             return AnyView(
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     HStack(spacing: RuulSpacing.xs) {
-                        Text("NO se cumple:")
+                        Text("Ninguna se cumple:")
                             .ruulTextStyle(RuulTypography.captionBold)
                             .foregroundStyle(Color.ruulWarning)
                         Spacer(minLength: 0)
@@ -356,12 +356,12 @@ public struct RuleComposerView: View {
             Button {
                 coord.wrapWithNextAsOR(id: leafId)
             } label: {
-                Label("Combinar con siguiente como O", systemImage: "rectangle.connected.to.line.below")
+                Label("Combinar con siguiente (cualquiera)", systemImage: "rectangle.connected.to.line.below")
             }
             Button {
                 coord.wrapAsNOT(id: leafId)
             } label: {
-                Label("Marcar como NO (negar)", systemImage: "exclamationmark.octagon")
+                Label("Marcar como 'ninguna' (negar)", systemImage: "exclamationmark.octagon")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -382,7 +382,7 @@ public struct RuleComposerView: View {
                 Button {
                     coord.toggleAndOr(id: opId)
                 } label: {
-                    Label("Cambiar Y ⇄ O", systemImage: "arrow.left.arrow.right")
+                    Label("Cambiar: todas ↔ cualquiera", systemImage: "arrow.left.arrow.right")
                 }
             }
             Button(role: .destructive) {
@@ -400,8 +400,8 @@ public struct RuleComposerView: View {
 
     private var exceptionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            sectionLabel("Excepto si (cualquiera bloquea la consecuencia)")
-            sectionHint("Casos donde el acuerdo NO debe aplicar aunque se cumplan condiciones.")
+            sectionLabel("Excepto cuando…")
+            sectionHint("Casos en los que el acuerdo no debe aplicar aunque las condiciones se cumplan.")
             ForEach(coord.draft.exceptions) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     ShapeInstanceRow(

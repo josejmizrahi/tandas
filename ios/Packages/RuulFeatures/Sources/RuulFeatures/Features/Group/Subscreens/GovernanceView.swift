@@ -230,13 +230,18 @@ public struct GovernanceView: View {
         }
     }
 
+    // Labels shown inside a segmented Picker — short forms required to
+    // avoid truncation. The card subtitle above each picker carries the
+    // longer explanation. Per Plans/Active/HumanLayerSimplification.md §C.4
+    // we friendlier-up "Founder" / "Votación" / "Votación 2/3" / "Host"
+    // (English + jargon leaks) without losing precision.
     private func label(for level: PermissionLevel) -> String {
         switch level {
-        case .founder:           return "Founder"
+        case .founder:           return "Fundador"
         case .anyMember:         return "Cualquiera"
-        case .majorityVote:      return "Votación"
-        case .supermajorityVote: return "Votación 2/3"
-        case .host:              return "Host"
+        case .majorityVote:      return "Mayoría"
+        case .supermajorityVote: return "Dos tercios"
+        case .host:              return "Anfitrión"
         case .treasurer:         return "Tesorero"
         case .unknown(let s):    return s
         }
