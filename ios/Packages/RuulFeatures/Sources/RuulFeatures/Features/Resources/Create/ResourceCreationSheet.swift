@@ -62,6 +62,7 @@ public struct ResourceCreationSheet: View {
         activator: LazyCapabilityActivator? = nil,
         capabilityRepo: (any ResourceCapabilityRepository)? = nil,
         resourceRepo: (any ResourceRepository)? = nil,
+        templateDefaultsLoader: (@Sendable (RuulCore.Group) async -> [String: [String]])? = nil,
         members: [MemberWithProfile] = [],
         postCreateActions: PostCreateResourceActions = PostCreateResourceActions(),
         onCreated: ((UUID) -> Void)? = nil
@@ -75,7 +76,12 @@ public struct ResourceCreationSheet: View {
             // (RecordValuationSheet, CheckOutAssetSheet, LogMaintenance,
             // ReportDamage, CreateSlot, LockFund) stop falling back to
             // their placeholder card.
-            resourceRepo: resourceRepo
+            resourceRepo: resourceRepo,
+            // Loaded right before create() so template-driven auto-on
+            // caps (e.g. cenas template enables rsvp + check_in on
+            // every event) surface in silent-attach instead of being
+            // dropped by the static `[:]` placeholder.
+            templateDefaultsLoader: templateDefaultsLoader
         ))
         self.viewerPermissions = viewerPermissions
         self.activator = activator
