@@ -29,6 +29,20 @@ public struct EventDetailHost: View {
     public let onEditEvent: (Event) -> Void
     public let onScannerOpen: (EventDetailCoordinator) -> Void
 
+    /// Optional sheet to auto-present once the coordinator finishes
+    /// bootstrap. Used by post-create intents that want to land the
+    /// user directly on an actionable surface (e.g. "Invitar gente"
+    /// → .share to share the join link). Consumed exactly once on
+    /// first appear so navigating back + forward doesn't re-trigger.
+    public let initialSheet: Sheet?
+
+    /// When true, auto-launches the QR scanner once the coordinator
+    /// finishes bootstrap. Scanner needs the live coordinator (passed
+    /// via onScannerOpen) and lives on its own RootShellState slot —
+    /// can't be driven by the generic `Sheet` enum. Consumed exactly
+    /// once like `initialSheet`.
+    public let autoOpenScanner: Bool
+
     public init(
         event: Event,
         group: RuulCore.Group,
@@ -37,7 +51,9 @@ public struct EventDetailHost: View {
         calendarService: CalendarExportService?,
         onClose: @escaping () -> Void,
         onEditEvent: @escaping (Event) -> Void,
-        onScannerOpen: @escaping (EventDetailCoordinator) -> Void
+        onScannerOpen: @escaping (EventDetailCoordinator) -> Void,
+        initialSheet: Sheet? = nil,
+        autoOpenScanner: Bool = false
     ) {
         self.event = event
         self.group = group
@@ -47,6 +63,8 @@ public struct EventDetailHost: View {
         self.onClose = onClose
         self.onEditEvent = onEditEvent
         self.onScannerOpen = onScannerOpen
+        self.initialSheet = initialSheet
+        self.autoOpenScanner = autoOpenScanner
     }
 
     // MARK: - State
@@ -62,6 +80,11 @@ public struct EventDetailHost: View {
 
     // One @State enum so individual bools don't pollute the storage map.
     @State private var sheet: Sheet?
+
+    /// Guard so `initialSheet` only fires once per Host lifecycle —
+    /// otherwise re-renders after the user dismisses the sheet would
+    /// re-trigger it.
+    @State private var didFireInitialSheet: Bool = false
 
     public enum Sheet: Identifiable, Hashable {
         case share, qr, cancelEvent, cancelAttendance, remindAttendees, closeEvent, manualFine, ledger, rules, attendees
@@ -92,6 +115,21 @@ public struct EventDetailHost: View {
             enabledCapabilities = result.enabledCapabilities
             attentionActions = result.attentionActions
             canIssueManualFine = result.canIssueManualFine
+
+            // Fire the requested initial presentation once the
+            // coordinator is ready. For the scanner we use the
+            // dedicated onScannerOpen callback (the scanner has its
+            // own state path on RootShellState — it can't be driven
+            // by the generic Sheet enum). For everything else the
+            // Sheet enum drives the local sheet binding.
+            if !didFireInitialSheet {
+                didFireInitialSheet = true
+                if autoOpenScanner, let coordinator {
+                    onScannerOpen(coordinator)
+                } else if let pending = initialSheet {
+                    sheet = pending
+                }
+            }
         }
     }
 
