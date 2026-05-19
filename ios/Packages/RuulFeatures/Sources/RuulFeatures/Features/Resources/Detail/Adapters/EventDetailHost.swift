@@ -157,6 +157,8 @@ public struct EventDetailHost: View {
                 UniversalResourceDetailView(
                     blocks: blocks,
                     supportedOverflowActions: Self.supportedOverflowActions,
+                    navigationTitle: coordinator.event.title,
+                    onClose: onClose,
                     onPrimaryAction: { Task { await dispatchPrimary(blocks: blocks, coordinator: coordinator) } },
                     onOpenBlock: { id in openDestination(id, coordinator: coordinator) },
                     onTapRelation: { card in openRelation(card) },
@@ -190,10 +192,15 @@ public struct EventDetailHost: View {
         .onChange(of: sheet) { _, newValue in
             Task { await prepareCoordinator(for: newValue) }
         }
-        // Phase E deep management sheets routed via openDestinationId
+        // Phase E deep management sheets routed via openDestinationId.
+        // onSaved → `refreshAndRebuild` (refetch event row before
+        // rebuilding blocks) so post-save data lands in the View even
+        // when the mutation touched the underlying event row directly
+        // (location → resources.metadata.location_*; the coordinator's
+        // local Event snapshot is otherwise stale until next .refresh).
         .sheet(isPresented: $showRotationParticipants) {
             RotationParticipantsSheet(eventId: coordinator.event.id) {
-                Task { await rebuildBlocks(coordinator: coordinator) }
+                Task { await refreshAndRebuild(coordinator: coordinator) }
             }
             .environment(app)
         }
@@ -202,13 +209,23 @@ public struct EventDetailHost: View {
                 eventId: coordinator.event.id,
                 initialLocationName: coordinator.event.locationName,
                 viewerIsEventHost: coordinator.viewerIsHost,
-                onSaved: { Task { await rebuildBlocks(coordinator: coordinator) } }
+                onSaved: { Task { await refreshAndRebuild(coordinator: coordinator) } }
             )
             .environment(app)
         }
     }
 
     // MARK: - Phase E: Block building
+
+    /// Refetches the coordinator (event row + RSVPs) and rebuilds the
+    /// block tree. Use this after any mutation that touches the event
+    /// itself (location, edit, host change) so the View reflects the
+    /// new server state instead of a stale local snapshot.
+    @MainActor
+    private func refreshAndRebuild(coordinator: EventDetailCoordinator) async {
+        await coordinator.refresh()
+        await rebuildBlocks(coordinator: coordinator)
+    }
 
     /// Assembles an EventDetailSnapshot from the current coordinator state
     /// and runs EventBlockBuilder to produce fresh ResourceBlocks.

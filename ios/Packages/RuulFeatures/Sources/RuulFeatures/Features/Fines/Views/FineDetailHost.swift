@@ -43,6 +43,7 @@ public struct FineDetailHost: View {
                 UniversalResourceDetailView(
                     blocks: blocks,
                     supportedOverflowActions: supportedOverflowActions,
+                    navigationTitle: coordinator.fine.reason,
                     onPrimaryAction: { Task { await dispatchPrimary() } },
                     onOpenBlock: { id in openDestination(id) },
                     onTapRelation: { _ in },

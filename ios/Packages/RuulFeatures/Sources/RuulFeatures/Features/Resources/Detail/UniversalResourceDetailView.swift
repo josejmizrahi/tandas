@@ -10,6 +10,15 @@ import RuulUI
 public struct UniversalResourceDetailView: View {
     public let blocks: ResourceBlocks
     public let supportedOverflowActions: Set<OverflowAction>
+    /// Title surfaced in the navigation bar — used by `.ruulSheetToolbar`
+    /// so every host inherits the canonical xmark close + centered
+    /// title without duplicating chrome. Defaults to the identity title
+    /// so callers don't have to thread it again.
+    public let navigationTitle: String?
+    /// Optional teardown hook for hosts that need to clear router state
+    /// before SwiftUI's `\.dismiss` fires. nil → the standard dismiss
+    /// behaviour is used.
+    public let onClose: (() -> Void)?
     public let onPrimaryAction: () -> Void
     public let onOpenBlock: (String) -> Void
     public let onTapRelation: (RelationCard) -> Void
@@ -19,6 +28,8 @@ public struct UniversalResourceDetailView: View {
     public init(
         blocks: ResourceBlocks,
         supportedOverflowActions: Set<OverflowAction> = Set(OverflowAction.allCases),
+        navigationTitle: String? = nil,
+        onClose: (() -> Void)? = nil,
         onPrimaryAction: @escaping () -> Void,
         onOpenBlock: @escaping (String) -> Void,
         onTapRelation: @escaping (RelationCard) -> Void,
@@ -27,6 +38,8 @@ public struct UniversalResourceDetailView: View {
     ) {
         self.blocks = blocks
         self.supportedOverflowActions = supportedOverflowActions
+        self.navigationTitle = navigationTitle
+        self.onClose = onClose
         self.onPrimaryAction = onPrimaryAction
         self.onOpenBlock = onOpenBlock
         self.onTapRelation = onTapRelation
@@ -75,6 +88,12 @@ public struct UniversalResourceDetailView: View {
         }
         .scrollIndicators(.hidden)
         .background(Color.ruulBackground.ignoresSafeArea())
+        // Canonical sheet chrome: xmark close on leading, title centered.
+        // Reuses the same .ruulSheetToolbar every other modal in the app
+        // uses, so the dismiss affordance is consistent. Hosts that need
+        // a custom dismiss path pass `onClose`; the default is SwiftUI's
+        // `\.dismiss` from the environment.
+        .ruulSheetToolbar(navigationTitle ?? blocks.identity.title, onClose: onClose)
         .toolbar {
             if !supportedOverflowActions.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {

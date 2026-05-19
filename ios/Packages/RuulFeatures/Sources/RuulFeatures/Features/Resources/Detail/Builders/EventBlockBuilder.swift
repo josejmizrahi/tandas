@@ -160,9 +160,9 @@ public struct EventBlockBuilder: BlockBuilder {
         let viewerNotRSVPd = source.myRSVP == nil
         let rsvpLabel: String
         if viewerNotRSVPd {
-            rsvpLabel = "Sin tu respuesta aún"
+            rsvpLabel = "Sin tu respuesta aún · Toca para invitar gente"
         } else {
-            rsvpLabel = "Tu respuesta: \(source.myRSVP!.status.displayName)"
+            rsvpLabel = "Tu respuesta: \(source.myRSVP!.status.displayName) · Toca para invitar gente"
         }
         return CapabilityBlock(
             id: "rsvp",
@@ -176,7 +176,11 @@ public struct EventBlockBuilder: BlockBuilder {
                     label: rsvpLabel
                 )
             ),
-            footerVerb: "Ver asistencia",
+            // Verb is intentionally "Invitar gente" not "Ver asistencia" —
+            // the founder reported users couldn't find the invite affordance.
+            // Tapping opens the attendees sheet which exposes the share-
+            // join-link surface alongside the RSVP roll.
+            footerVerb: "Invitar gente",
             openDestinationId: "rsvp.manager",
             isViewerObligation: viewerNotRSVPd
         )

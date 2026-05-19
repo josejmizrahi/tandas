@@ -44,6 +44,7 @@ public struct VoteDetailHost: View {
                 UniversalResourceDetailView(
                     blocks: blocks,
                     supportedOverflowActions: supportedOverflowActions,
+                    navigationTitle: coordinator.vote.title,
                     onPrimaryAction: { handlePrimaryAction() },
                     onOpenBlock: { _ in },
                     onTapRelation: { _ in },

@@ -179,6 +179,8 @@ public struct ResourceDetailSheet: View {
                 UniversalResourceDetailView(
                     blocks: blocks,
                     supportedOverflowActions: supportedOverflowActions(for: blocks),
+                    navigationTitle: displayName,
+                    onClose: { dismiss() },
                     onPrimaryAction: { Task { await dispatchPrimary(group: group) } },
                     onOpenBlock: { id in openBlockDestination(id, group: group) },
                     onTapRelation: { _ in },
