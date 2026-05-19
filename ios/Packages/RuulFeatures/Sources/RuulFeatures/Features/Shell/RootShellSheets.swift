@@ -256,10 +256,11 @@ public struct RootShellSheets: ViewModifier {
                 fineDetailScreen(wrappedFine.fine)
             }
 
-            // MARK: Mis multas cover (Profile → "Mis multas")
-            .fullScreenCover(isPresented: boolBinding(for: .sanciones)) {
-                myFinesScreen
-            }
+            // V2 Slice 4D: .sanciones cover removed. MyFinesScreenHost
+            // now presents from ProfileTab's local @State. Cross-tab
+            // entries (Group sheet's "Mis multas") go through
+            // `router.requestOpenMyFines()` which switches to Profile
+            // and raises `pendingOpenMyFines`. Per V2 Plan §B.1.
 
             // MARK: Past events cover (Home → "Ver historial")
             .fullScreenCover(isPresented: boolBinding(for: .past)) {
@@ -337,7 +338,14 @@ private struct GroupHomeSheetContent: View {
                 onOpenRoles: { path.append(GroupNav.roles) },
                 onArchiveGroup: { showArchiveConfirm = true },
                 onOpenMyLedger: nil,
-                onOpenMyFines: { router.openSanciones() },
+                onOpenMyFines: {
+                    // V2 Slice 4D: dismiss the Group sheet first so the
+                    // cross-tab deep link doesn't stack on top of it.
+                    // requestOpenMyFines switches to .profile and raises
+                    // the flag ProfileTab observes.
+                    while router.state.contains(.groupHome) { router.state.dismissTop() }
+                    router.requestOpenMyFines()
+                },
                 onOpenVotes: {
                     router.openOpenVotes(OpenVotesRouteContext(id: group.id))
                 },
@@ -537,16 +545,16 @@ internal struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
 
 // MARK: - MyFinesScreenHost
 //
-// Owns its own NavigationStack so the .sanciones cover can navigate to a
-// per-fine detail screen without colliding with the .fineDetail cover
+// Owns its own NavigationStack so the host cover (ProfileTab's local
+// `.fullScreenCover` post-V2-Slice-4D) can navigate to a per-fine
+// detail screen without colliding with the `.fineDetail` cover
 // presenter at the shell level. The fine detail is pushed via the
 // navigationDestination(for: Fine.self) inside this stack rather than
 // going back through the router — that keeps the "open mis multas →
 // tap a fine → tap close" flow inside one cover, with the standard
 // nav-back affordance.
-// Promoted from `private` to file-internal so the new
-// RootShellSheets+ScreenBuilders extension (sibling file) can
-// reference it. Same module; no API surface change.
+// File-internal so both ProfileTab (which presents it locally) and
+// any legacy callers can reference it. Same module; no API change.
 @MainActor
 struct MyFinesScreenHost: View {
     @Environment(AppState.self) private var app

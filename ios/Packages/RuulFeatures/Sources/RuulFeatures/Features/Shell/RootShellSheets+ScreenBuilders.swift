@@ -159,20 +159,10 @@ extension RootShellSheets {
         .environment(app)
     }
 
-    @MainActor @ViewBuilder
-    var myFinesScreen: some View {
-        if let coord = router.state.myFinesCoordinator {
-            MyFinesScreenHost(
-                coordinator: coord,
-                onClose: {
-                    while router.state.contains(.sanciones) {
-                        router.state.dismissTop()
-                    }
-                }
-            )
-            .environment(app)
-        }
-    }
+    // V2 Slice 4D: myFinesScreen builder removed. MyFinesScreenHost now
+    // lives in ProfileTab's local .fullScreenCover; cross-tab entries
+    // go through `router.requestOpenMyFines()` → ProfileTab observes
+    // the `pendingOpenMyFines` flag and presents.
 
     @MainActor @ViewBuilder
     var pastEventsScreen: some View {

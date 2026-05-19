@@ -174,8 +174,14 @@ public final class RootRouter {
     // Group sheet NavigationStack push (GroupNav.acuerdos), the
     // canonical entry the original Pass-1 plan called for.
 
-    public func openSanciones() {
-        state.push(.sanciones)
+    /// V2 Slice 4D: cross-tab deep link into Profile's local Mis multas
+    /// cover. Switches to the `.profile` tab and raises a flag that
+    /// `ProfileTab` observes to present its local `MyFinesScreenHost`.
+    /// Replaces the prior `openSanciones()` which presented a root cover
+    /// (modal depth 3 from Group sheet); the new flow caps depth at 2.
+    public func requestOpenMyFines() {
+        selectTab(.profile)
+        state.pendingOpenMyFines = true
     }
 
     public func openGroupRulesSettings() {

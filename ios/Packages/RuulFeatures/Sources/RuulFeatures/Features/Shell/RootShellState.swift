@@ -37,6 +37,15 @@ public final class RootShellState {
     public var myFinesCoordinator: MyFinesCoordinator?
     public var activityCoordinator: ActivityCoordinator?
 
+    // MARK: - Cross-tab sheet signals (V2 Slice 4D)
+
+    /// Set by `RootRouter.requestOpenMyFines()` after selecting the
+    /// `.profile` tab. `ProfileTab` observes this and presents its local
+    /// `MyFinesScreenHost` cover when it flips true, then clears the
+    /// flag on dismiss. Used by the Group sheet's "Mis multas" entry to
+    /// deep-link into Profile rather than presenting a third-level cover.
+    public var pendingOpenMyFines: Bool = false
+
     // MARK: - Object payloads for fullScreenCover(item:) presentations
     // These parallel the route-stack signal for presentations that need a
     // full model object (not just a UUID) as the SwiftUI `item` binding.
@@ -141,7 +150,9 @@ public enum RootRoute: Sendable, Hashable {
     case groupHistory
     // .acuerdos removed in V2 Slice 4C — now a Group sheet nav push
     // (GroupNav.acuerdos) instead of a root cover.
-    case sanciones
+    // .sanciones removed in V2 Slice 4D — now a ProfileTab-local cover
+    // triggered by `RootShellState.pendingOpenMyFines` for cross-tab
+    // entries from the Group sheet. Per V2 Plan §B.1.
     case createVotePicker
     case createGeneralProposal
     case createRuleChange(GroupRule?)

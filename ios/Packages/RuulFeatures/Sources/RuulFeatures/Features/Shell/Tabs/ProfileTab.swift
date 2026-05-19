@@ -27,6 +27,11 @@ public struct ProfileTab: View {
     /// inline since ProfileTab is the only entry point and the global
     /// route added no value (V2 Plan §B.1: "one entry per destination").
     @State private var showEditProfile = false
+    /// V2 Slice 4D: Mis multas cover also lives local to ProfileTab.
+    /// Triggered (a) directly by ProfileTab's "Mis multas" row, and
+    /// (b) by cross-tab deep link from Group sheet via the router's
+    /// `requestOpenMyFines()` which sets `state.pendingOpenMyFines`.
+    @State private var showMyFines = false
 
     private enum ProfileNav: Hashable { case language, timezone }
 
@@ -47,7 +52,7 @@ public struct ProfileTab: View {
             if let coord = profileCoordinator {
                 MyProfileView(
                     coordinator: coord,
-                    onOpenMyFines: { router.openSanciones() },
+                    onOpenMyFines: { showMyFines = true },
                     onOpenHistory: { router.selectTab(.home) },
                     onEditProfile: { showEditProfile = true },
                     onSignOut: { Task { try? await app.signOut() } },
@@ -74,6 +79,25 @@ public struct ProfileTab: View {
                 }) {
                     if let coord = profileCoordinator {
                         EditProfileSheet(coordinator: coord)
+                    }
+                }
+                .fullScreenCover(isPresented: $showMyFines) {
+                    if let coord = myFinesCoordinator {
+                        MyFinesScreenHost(coordinator: coord) {
+                            showMyFines = false
+                        }
+                        .environment(app)
+                    }
+                }
+                .onChange(of: router.state.pendingOpenMyFines) { _, newValue in
+                    // V2 Slice 4D cross-tab signal: Group sheet (or any
+                    // future caller) raised the flag via
+                    // `router.requestOpenMyFines()`; present the local
+                    // cover and clear the flag so a subsequent open
+                    // re-triggers the listener.
+                    if newValue {
+                        showMyFines = true
+                        router.state.pendingOpenMyFines = false
                     }
                 }
                 .fullScreenCover(isPresented: $showChangePhone) { ChangePhoneFlow() }
