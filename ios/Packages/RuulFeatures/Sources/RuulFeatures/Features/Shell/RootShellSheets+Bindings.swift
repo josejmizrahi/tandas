@@ -86,6 +86,27 @@ extension RootShellSheets {
         )
     }
 
+    /// Binding for the polymorphic resource detail cover. Mirrors
+    /// `activeEventItem` but for `ResourceRow` (fund/asset/space/
+    /// slot/right) routed via `RootRoute.resourceDetail`.
+    var activeResourceItem: Binding<IdentifiableResourceWrapper?> {
+        Binding(
+            get: {
+                guard router.state.activeRoutes.contains(where: { if case .resourceDetail = $0 { return true }; return false }),
+                      let row = router.state.activeResource else { return nil }
+                return IdentifiableResourceWrapper(resource: row)
+            },
+            set: { newValue in
+                if newValue == nil {
+                    router.state.activeResource = nil
+                    while router.state.activeRoutes.contains(where: { if case .resourceDetail = $0 { return true }; return false }) {
+                        router.state.dismissTop()
+                    }
+                }
+            }
+        )
+    }
+
     var activeEditEventItem: Binding<IdentifiableEventWrapper?> {
         Binding(
             get: {

@@ -45,6 +45,14 @@ public final class RootShellState {
     /// `.eventDetail` so the cover has the full `Event`.
     public var activeEvent: Event?
 
+    /// Active polymorphic resource shown in the detail cover. Set
+    /// before pushing `.resourceDetail`. Used for fund/asset/space/
+    /// slot/right whose detail UX is `ResourceDetailSheet` (which
+    /// wraps `UniversalResourceDetailView`). Events keep using
+    /// `activeEvent` + `.eventDetail` because the EventDetailHost
+    /// adapter needs the full `Event` for RSVP / check-in surfaces.
+    public var activeResource: ResourceRow?
+
     /// Event being edited in the edit cover. Set before pushing `.editEvent`.
     public var activeEditEvent: Event?
 
@@ -120,6 +128,7 @@ public enum RootRoute: Sendable, Hashable {
     case groupRulesSettings
     case createCover            // ResourceWizard cover
     case eventDetail(UUID)      // event.id — full Event in state.activeEvent; Pass 2 may polymorphize
+    case resourceDetail(UUID)   // resource.id — full ResourceRow in state.activeResource (fund/asset/space/slot/right)
     case editEvent              // full Event in state.activeEditEvent
     case fineDetail(UUID)       // fine.id
     case ruleEdit(RuleEditRouteContext)

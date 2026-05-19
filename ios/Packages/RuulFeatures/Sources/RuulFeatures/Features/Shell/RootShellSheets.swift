@@ -128,6 +128,21 @@ public struct RootShellSheets: ViewModifier {
 
             }
 
+            // MARK: Polymorphic resource detail (fund/asset/space/slot/right)
+            // Routed via `RootRoute.resourceDetail` + `state.activeResource`.
+            // Renders ResourceDetailSheet which wraps UniversalResourceDetailView
+            // for non-event resource types. Events keep their own dedicated
+            // cover above because EventDetailHost needs the full Event.
+            .fullScreenCover(item: activeResourceItem, onDismiss: {
+                Task {
+                    await router.state.homeCoordinator?.refresh(force: true)
+                }
+            }) { wrappedResource in
+                ResourceDetailSheet(resource: wrappedResource.resource)
+                    .environment(app)
+                    .environment(router)
+            }
+
             // MARK: Event edit cover (item: state.activeEditEvent)
             .fullScreenCover(item: activeEditEventItem) { wrappedEvent in
                 eventEditScreen(wrappedEvent.event)
@@ -496,6 +511,15 @@ private struct GroupHomeSheetContent: View {
 internal struct IdentifiableEventWrapper: Identifiable, Hashable {
     let event: Event
     var id: UUID { event.id }
+}
+
+/// Wraps `ResourceRow` for the polymorphic resource detail cover.
+/// Mirrors `IdentifiableEventWrapper` shape — identity is the row's UUID.
+internal struct IdentifiableResourceWrapper: Identifiable, Hashable {
+    let resource: ResourceRow
+    var id: UUID { resource.id }
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 /// Wraps `Fine` in an `Identifiable` struct so `fullScreenCover(item:)`
