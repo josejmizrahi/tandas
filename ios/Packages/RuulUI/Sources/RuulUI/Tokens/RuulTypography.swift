@@ -108,6 +108,17 @@ public enum RuulTypography {
 
     /// 4pt regular — tiny bullet-dot icons used as list bullets alongside caption text.
     public static let bulletDot      = RuulTextStyle(font: interFont(size: 4,  weight: .regular,  design: .default), tracking: 0,    lineHeight: 1.0)
+
+    // MARK: - Block-tree renderer aliases (Phase C, 2026-05-18)
+
+    /// 16pt regular — canonical "subhead" for block body text. Alias for
+    /// readability in the new block-tree detail renderer (Phase C).
+    public static let subhead        = RuulTextStyle(font: interFont(size: 16, weight: .regular,  design: .default), tracking: -0.10, lineHeight: 1.35)
+
+    /// 12pt semibold — emphasis at caption scale. Sits between `.caption`
+    /// (medium) and `.captionBold` (bold). Used for avatar initials and
+    /// status badges in the block-tree renderer.
+    public static let captionSemibold = RuulTextStyle(font: interFont(size: 12, weight: .semibold, design: .default), tracking: 0.12, lineHeight: 1.35)
 }
 
 // MARK: - RuulTextStyle
