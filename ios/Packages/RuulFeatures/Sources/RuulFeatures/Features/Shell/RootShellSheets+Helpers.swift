@@ -169,10 +169,14 @@ extension RootShellSheets {
                     // the rsvp/check_in/history/money pattern.
                     await openOrFallback(id)
                 case .governanceRuleEditor:
-                    // Phase 6 follow-up: present governance editor.
-                    // Until that surface accepts a "present from outside
-                    // detail" entry, refresh home cleanly.
-                    await homeCoord?.refresh(force: true)
+                    // Push the existing group rules settings cover (the
+                    // GovernanceView surface). The cover is presented
+                    // ON TOP of the post-create sheet because
+                    // .groupRulesSettings is its own fullScreenCover
+                    // slot in RootShellSheets — SwiftUI stacks them
+                    // cleanly, and the user backs out of governance →
+                    // returns to the post-create intent grid.
+                    await MainActor.run { router.openGroupRulesSettings() }
                 }
             }
         )
