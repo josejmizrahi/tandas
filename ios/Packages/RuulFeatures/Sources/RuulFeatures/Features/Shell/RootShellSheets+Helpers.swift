@@ -103,80 +103,90 @@ extension RootShellSheets {
                 )
             },
             onCreateChildResource: { [router = router] _ in
-                // The DestinationPresenter's child wizard launcher
-                // dismisses the post-create sheet immediately after
-                // this callback returns. Schedule the re-present after
-                // the dismiss animation so the new createCover doesn't
-                // fight the dismissing parent. prefilledType ignored
-                // for now — user picks type again on the fresh sheet.
-                // (Adding prefilledType support means a new state
-                // holder on RootShellState that newResourceCreationSheet
-                // reads to call coord.pickType(_:) post-init —
-                // deferred to keep this PR focused.)
-                try? await Task.sleep(for: .milliseconds(500))
-                await MainActor.run { router.present(.createCover) }
+                // Detach + pop-first ordering: parent createCover must
+                // leave activeRoutes before we re-push, otherwise
+                // router.present(.createCover) no-ops (contains check)
+                // and the subsequent onClose-driven dismissTop loop
+                // strips the just-pushed cover. Same shape as
+                // onNavigate above — detached Task survives the parent
+                // sheet's teardown cancelling the launcher's .task.
+                // prefilledType ignored for now — user picks type again
+                // on the fresh sheet.
+                Task { @MainActor in
+                    while router.state.contains(.createCover) {
+                        router.state.dismissTop()
+                    }
+                    try? await Task.sleep(for: .milliseconds(500))
+                    router.present(.createCover)
+                }
             },
             onNavigate: { [eventRepo = app.eventRepo,
                            resourceRepo = app.resourceRepo,
                            homeCoord = router.state.homeCoordinator,
                            router = router] target in
-                // Maps `PostCreateNavigation` cases to real navigation.
-                // For nav targets carrying a resourceId we try to load
-                // the resource as an Event and push the canonical event
-                // detail (UniversalResourceDetailView handles the
-                // polymorphic render). Non-event resources fall back to
-                // a home refresh — pending full polymorphic detail
-                // routing in a follow-up.
+                // CRITICAL ordering: createCover MUST be popped from
+                // activeRoutes BEFORE the destination is pushed, and
+                // the actual push MUST run in a detached Task so it
+                // survives the sheet teardown cancelling navLauncher's
+                // .task.
                 //
-                // Without this wiring, post-create taps on `rsvp_manager`
-                // / `check_in_attendees` / `history_tab` / `money_tab`
-                // dismissed the sheet without doing anything visible —
-                // matching the founder bug report ("solo me deja
-                // conectar con otra cosa").
-                // Two-tier load: try Event first (RSVP / check-in
-                // adapters work end-to-end via EventDetailHost), fall
-                // back to polymorphic `ResourceRow` (fund / asset /
-                // space / slot / right route via ResourceDetailSheet
-                // + UniversalResourceDetailView). Both lookups are
-                // best-effort — failed fetches refresh home.
-                @MainActor
-                func openOrFallback(_ id: UUID) async {
-                    if let event = try? await eventRepo.event(id) {
-                        router.openEvent(event)
-                        return
+                // Why: boolBinding(.createCover).set(false) iterates
+                // `while contains(.createCover) { dismissTop() }` —
+                // dismissTop removes the LAST element, not the named
+                // one. If we push .eventDetail first, activeRoutes is
+                // [.createCover, .eventDetail], and the loop's first
+                // pop removes .eventDetail (top of stack), then pops
+                // .createCover. Both vanish; nothing presents.
+                // Pop createCover first → activeRoutes = []; sleep so
+                // SwiftUI animates the dismiss; then push the target,
+                // which presents cleanly against the now-empty cover
+                // slot.
+                Task { @MainActor in
+                    while router.state.contains(.createCover) {
+                        router.state.dismissTop()
                     }
-                    if let row = try? await resourceRepo.resource(id) {
-                        router.openResource(row)
-                        return
+                    try? await Task.sleep(for: .milliseconds(400))
+
+                    @MainActor
+                    func openOrFallback(_ id: UUID, initialAction: PendingEventInitialAction? = nil) async {
+                        if let event = try? await eventRepo.event(id) {
+                            if let initialAction {
+                                router.openEvent(event, initialAction: initialAction)
+                            } else {
+                                router.openEvent(event)
+                            }
+                            return
+                        }
+                        if let row = try? await resourceRepo.resource(id) {
+                            router.openResource(row)
+                            return
+                        }
+                        await homeCoord?.refresh(force: true)
                     }
-                    await homeCoord?.refresh(force: true)
-                }
-                switch target {
-                case .resourceDetailRSVP(let id),
-                     .resourceDetailCheckIn(let id):
-                    await openOrFallback(id)
-                case .historyTab(_, let id), .moneyTab(_, let id):
-                    if let id { await openOrFallback(id) }
-                    else { await homeCoord?.refresh(force: true) }
-                case .ruleTemplatePicker(_, let id):
-                    // Route to the resource detail where the user can
-                    // tap the Rules section's "+" to launch the
-                    // UniversalTemplateGallerySheet bound to this
-                    // resource. Direct gallery presentation from the
-                    // post-create surface would need a new sheet route
-                    // + publish pipeline — using the existing detail
-                    // entry keeps this PR focused and consistent with
-                    // the rsvp/check_in/history/money pattern.
-                    await openOrFallback(id)
-                case .governanceRuleEditor:
-                    // Push the existing group rules settings cover (the
-                    // GovernanceView surface). The cover is presented
-                    // ON TOP of the post-create sheet because
-                    // .groupRulesSettings is its own fullScreenCover
-                    // slot in RootShellSheets — SwiftUI stacks them
-                    // cleanly, and the user backs out of governance →
-                    // returns to the post-create intent grid.
-                    await MainActor.run { router.openGroupRulesSettings() }
+
+                    switch target {
+                    case .resourceDetailRSVP(let id):
+                        // "Invitar gente" → auto-open the share sheet so
+                        // the user immediately gets the invite link to
+                        // send to friends, instead of landing on the
+                        // event Overview with no obvious next step.
+                        await openOrFallback(id, initialAction: .share)
+                    case .resourceDetailCheckIn(let id):
+                        // "Pasar lista" → auto-launch the QR scanner.
+                        // The scanner lives on its own RootShellState
+                        // slot (CheckInScannerCoordinator); EventDetailHost
+                        // routes the auto-open via its onScannerOpen
+                        // callback once the coordinator finishes
+                        // bootstrap.
+                        await openOrFallback(id, initialAction: .scanner)
+                    case .historyTab(_, let id), .moneyTab(_, let id):
+                        if let id { await openOrFallback(id) }
+                        else { await homeCoord?.refresh(force: true) }
+                    case .ruleTemplatePicker(_, let id):
+                        await openOrFallback(id)
+                    case .governanceRuleEditor:
+                        router.openGroupRulesSettings()
+                    }
                 }
             }
         )

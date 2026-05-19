@@ -120,6 +120,17 @@ public final class RootRouter {
         state.push(.eventDetail(event.id))
     }
 
+    /// Same as `openEvent(_:)` but also stashes an initial-action hint
+    /// so the EventDetailHost auto-presents a follow-up surface as soon
+    /// as bootstrap finishes. Used by the post-create intent screen to
+    /// land the user directly on an actionable surface (share for
+    /// "Invitar gente", scanner for "Pasar lista") instead of dumping
+    /// them on the default Overview tab.
+    public func openEvent(_ event: Event, initialAction: PendingEventInitialAction) {
+        state.pendingEventInitialAction = initialAction
+        openEvent(event)
+    }
+
     /// Opens a polymorphic resource (fund/asset/space/slot/right) in
     /// the universal detail cover. Sets `state.activeResource` so the
     /// `RootShellSheets` handler can build `ResourceDetailSheet`

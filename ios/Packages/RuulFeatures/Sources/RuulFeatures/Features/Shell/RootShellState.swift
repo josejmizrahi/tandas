@@ -54,6 +54,16 @@ public final class RootShellState {
     /// `.eventDetail` so the cover has the full `Event`.
     public var activeEvent: Event?
 
+    /// Optional "land directly here" hint consumed by `eventDetailScreen`
+    /// when building the EventDetailHost. Set by `RootRouter.openEvent`
+    /// when a caller wants the user to land on an actionable surface
+    /// (e.g. share sheet for "Invitar gente", scanner for "Pasar
+    /// lista"). Cleared by the screen builder right after read so a
+    /// back-then-reopen doesn't re-trigger the auto-presentation.
+    /// Type lives in this module (RuulFeatures); enum cases mirror
+    /// the post-create intents that need a direct-action landing.
+    public var pendingEventInitialAction: PendingEventInitialAction?
+
     /// Active polymorphic resource shown in the detail cover. Set
     /// before pushing `.resourceDetail`. Used for fund/asset/space/
     /// slot/right whose detail UX is `ResourceDetailSheet` (which
@@ -112,6 +122,16 @@ public final class RootShellState {
         _ = await (cross, home)
         return ()
     }
+}
+
+/// Initial-action hint for `eventDetailScreen`. Routed via
+/// `RootShellState.pendingEventInitialAction` and consumed once.
+/// Cases map to what the post-create intent screen needs after
+/// navigation — `.share` for "Invitar gente" (open the share-link
+/// sheet), `.scanner` for "Pasar lista" (auto-launch QR scanner).
+public enum PendingEventInitialAction: Sendable, Hashable {
+    case share
+    case scanner
 }
 
 /// Tab inventory matching `AppShell.md` canonical 5-tab layout.

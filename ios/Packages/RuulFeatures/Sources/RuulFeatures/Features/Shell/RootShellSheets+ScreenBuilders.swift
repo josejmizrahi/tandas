@@ -55,6 +55,13 @@ extension RootShellSheets {
         let userId = app.session?.user.id ?? UUID()
         let memberDirectory = router.state.memberDirectory
         let calendarService = router.state.calendarService
+        // Consume + clear the initial-action hint set by openEvent(_:initialAction:).
+        // Reading once and clearing guarantees back-then-reopen lands on
+        // Overview (the default) instead of re-firing the share/scanner.
+        let pending = router.state.pendingEventInitialAction
+        router.state.pendingEventInitialAction = nil
+        let initialSheet: EventDetailHost.Sheet? = (pending == .share) ? .share : nil
+        let autoScanner = (pending == .scanner)
         return AnyView(
             EventDetailHost(
                 event: event,
@@ -74,7 +81,9 @@ extension RootShellSheets {
                 },
                 onScannerOpen: { detail in
                     openScanner(for: detail)
-                }
+                },
+                initialSheet: initialSheet,
+                autoOpenScanner: autoScanner
             )
             .environment(app)
             .environment(router)
