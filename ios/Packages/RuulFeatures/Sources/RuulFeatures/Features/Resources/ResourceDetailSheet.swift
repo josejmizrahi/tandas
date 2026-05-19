@@ -90,6 +90,10 @@ public struct ResourceDetailSheet: View {
     private func refreshResource() async {
         if let fresh = try? await app.resourceRepo.resource(resource.id) {
             liveResource = fresh
+            // Phase E: rebuild block tree with the fresh row
+            if let group = parentGroup {
+                buildBlocks(for: group)
+            }
         }
     }
 
@@ -162,10 +166,30 @@ public struct ResourceDetailSheet: View {
         }
     }
 
+    // MARK: - Phase E: block-tree rendering
+
+    /// Block-tree state — recomputed after load and after any resource mutation.
+    @State private var blocks: ResourceBlocks?
+
     @ViewBuilder
     private var content: some View {
         if let group = parentGroup {
-            UniversalResourceDetailView(context: context(for: group))
+            if let blocks {
+                UniversalResourceDetailView(
+                    blocks: blocks,
+                    onPrimaryAction: { Task { await dispatchPrimary(group: group) } },
+                    onOpenBlock: { id in openBlockDestination(id, group: group) },
+                    onTapRelation: { _ in },
+                    onSeeMoreActivity: { ledgerSheetPresented = true },
+                    onOverflowAction: { handleOverflow($0) }
+                )
+            } else {
+                ZStack {
+                    Color.ruulBackgroundCanvas.ignoresSafeArea()
+                    RuulLoadingState()
+                }
+                .task { buildBlocks(for: group) }
+            }
         } else {
             ZStack {
                 Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -174,39 +198,104 @@ public struct ResourceDetailSheet: View {
         }
     }
 
+    /// Builds blocks synchronously from the current resource row + group.
+    /// Called after load and after resource mutation.
+    private func buildBlocks(for group: RuulCore.Group) {
+        let live = liveResource ?? resource
+        let viewerCtx = viewerContext(group: group)
+        let built: ResourceBlocks
+        switch live.resourceType {
+        case .event:
+            // Event rows through this sheet are defensive — the primary
+            // flow uses EventDetailHost. Show a minimal read-only view
+            // with no primary action wired.
+            built = FundBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
+        case .fund:
+            built = FundBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
+        case .right:
+            built = RightBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
+        case .asset, .space, .slot:
+            built = AssetBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
+        case .unknown:
+            built = AssetBlockBuilder().build(source: live, viewer: viewerCtx, now: Date())
+        }
+        blocks = built
+    }
+
+    private func viewerContext(group: RuulCore.Group) -> BlockViewerContext {
+        let userId = app.session?.user.id
+        let me = userId.flatMap { memberDirectory[$0] }?.member
+        let catalog = group.effectiveRoles
+        var perms = Set<Permission>()
+        if let me {
+            for raw in me.rawRoles {
+                if let def = catalog[raw] {
+                    for p in def.permissions { perms.insert(p) }
+                }
+            }
+        }
+        return BlockViewerContext(
+            userId: userId,
+            permissions: perms,
+            activeModules: Set(group.effectiveActiveModules),
+            memberId: me?.id
+        )
+    }
+
+    @MainActor
+    private func dispatchPrimary(group: RuulCore.Group) async {
+        guard let kind = blocks?.state.primaryAction?.kind else { return }
+        switch kind {
+        case .openContribute:
+            ledgerSheetPresented = true  // route to ledger for fund contribute
+        case .openBooking:
+            break  // slot/space booking — post-Beta-1
+        case .exerciseRight:
+            break  // right exercise — post-Beta-1
+        case .rsvpConfirm, .rsvpCancel, .viewHostActions,
+             .viewClosed, .payFine, .castVote:
+            break  // not applicable for non-event resources in this path
+        case .none:
+            break  // PrimaryAction.Kind.none — no CTA
+        }
+    }
+
+    private func openBlockDestination(_ id: String, group: RuulCore.Group) {
+        switch id {
+        case "fund.ledger":
+            ledgerSheetPresented = true
+        case "fund.contribute":
+            ledgerSheetPresented = true  // routes to ledger where contributions are shown
+        case "rules":
+            rulesSheetPresented = true
+        default:
+            break
+        }
+    }
+
+    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction) {
+        switch action {
+        case .share:
+            break  // post-Beta-1
+        case .edit:
+            break  // no editor for fund/asset in this path yet
+        case .addToCalendar, .walletPass:
+            break  // not applicable
+        case .archive:
+            break  // post-Beta-1
+        case .delete, .report:
+            break
+        }
+    }
+
     private var parentGroup: RuulCore.Group? {
         app.groups.first(where: { $0.id == resource.groupId })
     }
 
-    private func context(for group: RuulCore.Group) -> ResourceDetailContext {
-        ResourceDetailContext(
-            resource: liveResource ?? resource,
-            group: group,
-            currentUserId: app.session?.user.id,
-            enabledCapabilities: enabledCapabilitySet,
-            memberDirectory: memberDirectory,
-            displayName: displayName,
-            attentionActions: resourceActions,
-            onPresentLedger: { ledgerSheetPresented = true },
-            onPresentRules:  { rulesSheetPresented = true },
-            // Non-event resources don't surface the "Editar detalles" menu
-            // item — commonSecondaryActions in CapabilityResolver doesn't
-            // include `.editDetails` for fund / asset / slot / space, so
-            // this closure is never invoked from the current entry points.
-            // Events route through EventDetailHost which wires its own
-            // edit path. Keep as no-op rather than crashing if a future
-            // resource type opts back in before its editor exists.
-            onPresentEditResource:     { },
-            onOpenInboxAction: { action in
-                await handleInboxAction(action)
-            },
-            onResourceMutated: { await refreshResource() }
-        )
-    }
-
-    private var enabledCapabilitySet: Set<String> {
-        Set(capabilities.filter { $0.enabled }.map { $0.capabilityBlockId })
-    }
+    // Phase E: context(for:) and enabledCapabilitySet removed —
+    // ResourceDetailSheet now builds ResourceBlocks directly via builders.
+    // The capabilities set is retained for ledger/rules coordinator creation
+    // but no longer drives section gating inside the View.
 
     // MARK: - Sub-coordinators
 
@@ -298,6 +387,11 @@ public struct ResourceDetailSheet: View {
             resourceActions = allActions.filter { $0.referenceId == resource.id }
         } else {
             resourceActions = []
+        }
+
+        // Phase E: build the initial block tree now that we have member directory.
+        if let group = parentGroup {
+            buildBlocks(for: group)
         }
     }
 

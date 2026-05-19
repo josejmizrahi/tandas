@@ -578,7 +578,7 @@ struct MyFinesScreenHost: View {
     @ViewBuilder
     private func fineDetailDestination(for fine: Fine) -> some View {
         let userId = app.session?.user.id ?? UUID()
-        let coordinator = FineDetailCoordinator(
+        let fineCoord = FineDetailCoordinator(
             fine: fine,
             userId: userId,
             fineRepo: app.fineRepo,
@@ -586,34 +586,7 @@ struct MyFinesScreenHost: View {
             analytics: app.analytics,
             changeFeed: app.multiDeviceChangeFeed
         )
-        FineDetailView(
-            coordinator: coordinator,
-            onAppeal: nil,
-            onViewAppeal: nil,
-            computeCanVoidFine: { [app] in
-                guard let group = app.groups.first(where: { $0.id == fine.groupId }),
-                      let session = app.session,
-                      let rows = try? await app.groupsRepo.membersWithProfiles(of: fine.groupId),
-                      let member = rows.first(where: { $0.member.userId == session.user.id })?.member,
-                      let decision = try? await app.governance.canPerform(
-                          .voidFine, member: member, in: group, context: nil
-                      )
-                else { return false }
-                if case .allowed = decision { return true }
-                return false
-            },
-            makeVoidFineCoordinator: { [app] in
-                VoidFineCoordinator(
-                    fine: fine,
-                    fineRepo: app.fineRepo,
-                    groupsRepo: app.groupsRepo,
-                    onSubmitted: { @MainActor in
-                        await coordinator.refresh()
-                    }
-                )
-            },
-            currentUserId: userId
-        )
+        FineDetailHost(coordinator: fineCoord, onViewAppeal: nil)
     }
 }
 
