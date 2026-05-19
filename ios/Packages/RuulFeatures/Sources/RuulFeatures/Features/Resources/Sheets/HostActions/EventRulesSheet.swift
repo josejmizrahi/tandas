@@ -49,10 +49,10 @@ struct ResourceRulesBody: View {
             } else if coordinator.rules.isEmpty {
                 EmptyStateView(
                     systemImage: "list.bullet.clipboard",
-                    title: "Sin acuerdos aplicables",
+                    title: "Sin reglas aplicables",
                     message: coordinator.canCreate
-                        ? "Agrega acuerdos que sólo apliquen a este recurso. Los del grupo seguirán aplicando."
-                        : "Sólo el anfitrión o un fundador pueden crear acuerdos específicos para este recurso."
+                        ? "Agrega reglas que sólo apliquen a este recurso. Las del grupo seguirán aplicando."
+                        : "Sólo el anfitrión o un fundador pueden crear reglas específicas para este recurso."
                 )
                 .padding(.vertical, RuulSpacing.md)
             } else {
@@ -191,7 +191,7 @@ struct ResourceRulesBody: View {
 
     private var addRuleCTA: some View {
         RuulButton(
-            "Agregar acuerdo para este recurso",
+            "Agregar regla para este recurso",
             systemImage: "plus",
             style: .primary,
             size: .large,
@@ -287,7 +287,7 @@ struct ResourceRulesSheet: View {
 
     var body: some View {
         ModalSheetTemplate(
-            title: "Acuerdos",
+            title: "Reglas",
             dismissAction: { isPresented = false }
         ) {
             ResourceRulesBody(coordinator: coordinator)

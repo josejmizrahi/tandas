@@ -282,7 +282,7 @@ struct LockFundSheet: View {
                     TextField("ej: pausa antes del cierre de mes", text: $reason, axis: .vertical)
                 }
                 Section {
-                    Text("Bloquear el fondo es una marca de política suave: no impide aportar o gastar por sí solo, pero los acuerdos activos pueden reaccionar (bloquear, requerir aprobación, etc.).")
+                    Text("Bloquear el fondo es una marca de política suave: no impide aportar o gastar por sí solo, pero las reglas activas pueden reaccionar (bloquear, requerir aprobación, etc.).")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }

@@ -58,7 +58,7 @@ public struct GroupTourOverlay: View {
     private var bulletList: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             bullet(icon: "calendar", text: nextEventCopy)
-            bullet(icon: "list.bullet.clipboard", text: "Los acuerdos del grupo viven aquí. Léelos cuando puedas.")
+            bullet(icon: "list.bullet.clipboard", text: "Las reglas del grupo viven aquí. Léelas cuando puedas.")
             bullet(icon: "shield.checkered", text: "Tienes período de gracia: las primeras 3 reuniones no aplican multas.")
         }
     }

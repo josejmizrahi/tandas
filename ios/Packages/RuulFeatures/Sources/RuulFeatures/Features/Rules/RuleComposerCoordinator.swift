@@ -465,7 +465,7 @@ public final class RuleComposerCoordinator: Identifiable {
     private func humanize(error: Error) -> String {
         let raw = (error as NSError).localizedDescription.lowercased()
         if raw.contains("modifyrules") {
-            return "No tienes permisos para crear acuerdos en este grupo."
+            return "No tienes permisos para crear reglas en este grupo."
         }
         if raw.contains("at least 2 characters") {
             return "El nombre debe tener al menos 2 caracteres."
@@ -486,7 +486,7 @@ public final class RuleComposerCoordinator: Identifiable {
             return "Esta regla está desactivada y no puede editarse desde aquí."
         }
         if raw.contains("already exists in this group") {
-            return "Ya existe un acuerdo con ese identificador en el grupo. Usa otro."
+            return "Ya existe una regla con ese identificador en el grupo. Usa otro."
         }
         return "No pudimos guardar la regla. Intenta de nuevo."
     }

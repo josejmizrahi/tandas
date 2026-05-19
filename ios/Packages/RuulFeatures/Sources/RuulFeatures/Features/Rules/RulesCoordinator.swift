@@ -95,7 +95,7 @@ public final class RulesCoordinator {
             rules = platform.isEmpty ? all : platform
         } catch {
             log.warning("rules load failed: \(error.localizedDescription)")
-            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar los acuerdos")
+            self.error = CoordinatorError.from(error, fallback: "No pudimos cargar las reglas")
         }
 
         // Best-effort fetch for the "Votos abiertos" surface. Don't surface

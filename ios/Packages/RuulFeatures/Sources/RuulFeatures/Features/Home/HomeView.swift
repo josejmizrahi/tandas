@@ -553,7 +553,7 @@ public struct HomeView: View {
                     if groupMemory.resolvedVotesCount > 0 {
                         memoryStatCard(
                             value: memoryCountLabel(groupMemory.resolvedVotesCount, cap: 200),
-                            caption: "acuerdos alcanzados",
+                            caption: "reglas alcanzadas",
                             icon: "checkmark.seal",
                             action: onOpenGroupHistory
                         )

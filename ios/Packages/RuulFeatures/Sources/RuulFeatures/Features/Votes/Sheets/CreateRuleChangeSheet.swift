@@ -21,8 +21,8 @@ public struct CreateRuleChangeSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Acuerdo a modificar") {
-                    Picker("Selecciona acuerdo", selection: Binding(
+                Section("Regla a modificar") {
+                    Picker("Selecciona regla", selection: Binding(
                         get: { coordinator.selectedRule?.id },
                         set: { newId in
                             coordinator.selectedRule = coordinator.availableRules.first { $0.id == newId }
@@ -67,7 +67,7 @@ public struct CreateRuleChangeSheet: View {
                     }
                 }
             }
-            .ruulSheetToolbar("Cambio de acuerdo")
+            .ruulSheetToolbar("Cambio de regla")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Abrir voto") {

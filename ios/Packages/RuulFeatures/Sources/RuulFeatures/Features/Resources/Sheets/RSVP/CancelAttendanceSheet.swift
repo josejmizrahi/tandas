@@ -28,7 +28,7 @@ public struct CancelAttendanceSheet: View {
                     HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(Color.ruulWarning)
-                        Text("Esto puede generar multa según los acuerdos del grupo.")
+                        Text("Esto puede generar multa según las reglas del grupo.")
                             .ruulTextStyle(RuulTypography.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }

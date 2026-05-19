@@ -36,16 +36,16 @@ public struct RulePresetsView: View {
 
                 section(title: "Permisos", subtitle: "Quién puede hacer qué.") {
                     liveList([
-                        ("¿Quién puede cambiar los acuerdos del grupo?",
+                        ("¿Quién puede cambiar las reglas del grupo?",
                             coordinator.humanAnswer(for: .ruleUpdateAmount),
                             /*isLive*/ true),
-                        ("¿Quién puede agregar acuerdos nuevos?",
+                        ("¿Quién puede agregar reglas nuevas?",
                             coordinator.humanAnswer(for: .ruleCreate),
                             true),
-                        ("¿Quién puede borrar acuerdos?",
+                        ("¿Quién puede borrar reglas?",
                             coordinator.humanAnswer(for: .ruleDelete),
                             true),
-                        ("¿Quién puede activar/desactivar acuerdos?",
+                        ("¿Quién puede activar/desactivar reglas?",
                             coordinator.humanAnswer(for: .ruleToggle),
                             true),
                         // Beta 1 W2-C1: "capabilities" → "funciones nuevas".
@@ -93,7 +93,7 @@ public struct RulePresetsView: View {
             Text("Cómo decide este grupo")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Esto define quién puede cambiar las cosas y cómo se vota. Los acuerdos concretos (multas, llegadas, RSVP) viven en Acuerdos.")
+            Text("Esto define quién puede cambiar las cosas y cómo se vota. Las reglas concretas (multas, llegadas, RSVP) viven en Reglas.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)

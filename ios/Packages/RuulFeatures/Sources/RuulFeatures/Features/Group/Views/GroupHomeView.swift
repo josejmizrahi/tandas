@@ -254,7 +254,7 @@ public struct GroupHomeView: View {
                 divider
                 navRow(
                     icon: "scroll",
-                    label: "Acuerdos vigentes",
+                    label: "Reglas vigentes",
                     action: onOpenAcuerdos
                 )
             }

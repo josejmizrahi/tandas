@@ -62,7 +62,7 @@ public struct CreateGroupSheet: View {
             Text("¿Cómo se llama tu grupo?")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Usaremos plantilla de cena recurrente con los 5 acuerdos por defecto. Podrás editarlos después.")
+            Text("Usaremos plantilla de cena recurrente con las 5 reglas por defecto. Podrás editarlas después.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
         }

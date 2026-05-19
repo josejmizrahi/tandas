@@ -777,7 +777,7 @@ public struct ResourceWizardSheet: View {
         case .typePicker: return "¿Qué quieres crear?"
         case .fields:     return coordinator.selectedBuilder?.displayName ?? "Nuevo"
         case .options:    return "Opciones"
-        case .rules:      return "Acuerdos sugeridos"
+        case .rules:      return "Reglas sugeridas"
         case .review:     return "Revisa y crea"
         }
     }
@@ -804,13 +804,13 @@ public struct ResourceWizardSheet: View {
     private var optionsAdvanceLabel: String {
         // When step 4 has nothing to show (no legacy capability rules AND
         // no universal templates apply), skip it — CTA goes to Revisar.
-        coordinator.hasAnyRulesStepContent ? "Continuar a acuerdos" : "Revisar"
+        coordinator.hasAnyRulesStepContent ? "Continuar a reglas" : "Revisar"
     }
 
     private var rulesAdvanceLabel: String {
         let count = coordinator.selectedSuggestedRules.count
-        if count == 0 { return "Revisar (sin acuerdos)" }
-        return "Revisar con \(count) acuerdo\(count == 1 ? "" : "s")"
+        if count == 0 { return "Revisar (sin reglas)" }
+        return "Revisar con \(count) regla\(count == 1 ? "" : "s")"
     }
 
     private var submitLabel: String {
@@ -819,7 +819,7 @@ public struct ResourceWizardSheet: View {
         }
         let rules = coordinator.selectedSuggestedRules.count
         if rules > 0 {
-            return "Crear con \(coordinator.enabledCapabilities.count) opciones · \(rules) acuerdos"
+            return "Crear con \(coordinator.enabledCapabilities.count) opciones · \(rules) reglas"
         }
         return "Crear con \(coordinator.enabledCapabilities.count) opciones"
     }

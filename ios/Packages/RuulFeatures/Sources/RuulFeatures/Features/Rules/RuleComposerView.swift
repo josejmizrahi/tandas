@@ -53,7 +53,7 @@ public struct RuleComposerView: View {
                 .padding(.bottom, RuulSpacing.s12)
             }
             .scrollIndicators(.hidden)
-            .navigationTitle(coord.editingRuleId == nil ? "Componer acuerdo" : "Editar acuerdo")
+            .navigationTitle(coord.editingRuleId == nil ? "Componer regla" : "Editar regla")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -163,7 +163,7 @@ public struct RuleComposerView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.top, 2)
-                .accessibilityLabel("Identificador estable del acuerdo: \(preview)")
+                .accessibilityLabel("Identificador estable de la regla: \(preview)")
             }
         }
     }
@@ -178,7 +178,7 @@ public struct RuleComposerView: View {
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Cuándo sucede")
-            sectionHint("El momento que hace que el acuerdo corra. Sin elegir cuándo, nunca se activa.")
+            sectionHint("El momento que hace que la regla corra. Sin elegir cuándo, nunca se activa.")
             if let trigger = coord.draft.trigger, let shape = coord.shape(id: trigger.shapeId) {
                 ShapeInstanceRow(
                     shape: shape,
@@ -219,7 +219,7 @@ public struct RuleComposerView: View {
             }
             sectionHint(coord.isAdvancedMode
                         ? "Agrupa condiciones con 'cualquiera' o márcalas como 'ninguna' desde el menú ⋯. Sin agrupar, todas se combinan con 'todas'."
-                        : "Filtros adicionales. Sin condiciones, el acuerdo aplica siempre que suceda.")
+                        : "Filtros adicionales. Sin condiciones, la regla aplica siempre que suceda.")
             if coord.isAdvancedMode, let tree = coord.draft.conditionsTree {
                 conditionTreeView(tree, depth: 0)
             } else {
@@ -401,7 +401,7 @@ public struct RuleComposerView: View {
     private var exceptionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Excepto cuando…")
-            sectionHint("Casos en los que el acuerdo no debe aplicar aunque las condiciones se cumplan.")
+            sectionHint("Casos en los que la regla no debe aplicar aunque las condiciones se cumplan.")
             ForEach(coord.draft.exceptions) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     ShapeInstanceRow(
@@ -429,7 +429,7 @@ public struct RuleComposerView: View {
     private var consequencesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Consecuencias")
-            sectionHint("Qué pasa cuando el acuerdo aplica: cobrar multa, emitir warning, etc.")
+            sectionHint("Qué pasa cuando la regla aplica: cobrar multa, emitir aviso, etc.")
             ForEach(coord.draft.consequences) { instance in
                 if let shape = coord.shape(id: instance.shapeId) {
                     VStack(alignment: .leading, spacing: 0) {

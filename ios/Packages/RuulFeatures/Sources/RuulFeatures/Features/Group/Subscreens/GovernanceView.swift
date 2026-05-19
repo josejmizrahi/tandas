@@ -67,8 +67,8 @@ public struct GovernanceView: View {
 
     private var modifyRulesCard: some View {
         permissionCard(
-            title: "¿Quién modifica los acuerdos?",
-            subtitle: "Cambiar montos, agregar acuerdos, desactivarlos.",
+            title: "¿Quién modifica las reglas?",
+            subtitle: "Cambiar montos, agregar reglas, desactivarlas.",
             selection: $rules.whoCanModifyRules,
             options: [.founder, .anyMember, .majorityVote]
         )

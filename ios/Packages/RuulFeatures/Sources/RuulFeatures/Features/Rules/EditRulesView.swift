@@ -16,7 +16,7 @@ public struct EditRulesView: View {
             content
         }
         .task { await coordinator.refresh() }
-        .navigationTitle("Editar acuerdos")
+        .navigationTitle("Editar reglas")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(item: $sheetRule) { rule in
             NavigationStack {
@@ -101,7 +101,7 @@ public struct EditRulesView: View {
                 Image(systemName: "lock")
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
-                Text("Tu rol no puede editar acuerdos en este grupo.")
+                Text("Tu rol no puede editar reglas en este grupo.")
                     .ruulTextStyle(RuulTypography.body)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
@@ -121,7 +121,7 @@ public struct EditRulesView: View {
             Text(coordinator.group.name)
                 .ruulTextStyle(RuulTypography.sectionLabelLg)
                 .foregroundStyle(Color.ruulTextSecondary)
-            Text("Acuerdos predeterminados")
+            Text("Reglas predeterminadas")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
@@ -129,7 +129,7 @@ public struct EditRulesView: View {
     }
 
     private var footer: some View {
-        Text("Los acuerdos personalizados estarán disponibles en una próxima versión.")
+        Text("Las reglas personalizadas estarán disponibles en una próxima versión.")
             .ruulTextStyle(RuulTypography.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .frame(maxWidth: .infinity)
@@ -140,8 +140,8 @@ public struct EditRulesView: View {
     private var emptyState: some View {
         EmptyStateView(
             systemImage: "list.bullet.clipboard",
-            title: "Sin acuerdos",
-            message: "Este grupo no tiene acuerdos configurados."
+            title: "Sin reglas",
+            message: "Este grupo no tiene reglas configuradas."
         )
     }
 

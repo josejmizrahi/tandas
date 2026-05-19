@@ -182,7 +182,7 @@ public struct RulesView: View {
                 Text(coordinator.group.name)
                     .ruulTextStyle(RuulTypography.sectionLabelLg)
                     .foregroundStyle(Color.ruulTextSecondary)
-                Text("\(activeCount) acuerdos activos")
+                Text("\(activeCount) reglas activas")
                     .ruulTextStyle(RuulTypography.title)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
@@ -213,7 +213,7 @@ public struct RulesView: View {
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Editar acuerdos")
+                .accessibilityLabel("Editar reglas")
             }
         }
         .padding(.top, RuulSpacing.xs)
@@ -268,10 +268,10 @@ public struct RulesView: View {
                 .font(.system(size: 44, weight: .regular))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, RuulSpacing.xl)
-            Text("Sin acuerdos")
+            Text("Sin reglas")
                 .ruulTextStyle(RuulTypography.title)
                 .foregroundStyle(Color.ruulTextPrimary)
-            Text("Este grupo aún no tiene acuerdos configurados. Elige un patrón y se activa con dos taps.")
+            Text("Este grupo aún no tiene reglas configuradas. Elige un patrón y se activa con dos taps.")
                 .ruulTextStyle(RuulTypography.body)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
@@ -426,7 +426,7 @@ public struct RulesView: View {
     }
 
     private var footnote: some View {
-        Text("Los acuerdos se aplican automáticamente cuando ocurre el evento que los dispara. Pronto vas a poder editarlos y agregar más.")
+        Text("Las reglas se aplican automáticamente cuando ocurre el evento que las dispara. Pronto vas a poder editarlas y agregar más.")
             .ruulTextStyle(RuulTypography.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .padding(.top, RuulSpacing.sm)

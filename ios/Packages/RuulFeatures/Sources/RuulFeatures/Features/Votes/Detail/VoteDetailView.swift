@@ -247,8 +247,8 @@ private struct VoteHeader: View {
         switch vote.voteType {
         case .fineAppeal:       return "Apelación de multa"
         case .generalProposal:  return "Propuesta"
-        case .ruleChange:       return "Cambio de acuerdo"
-        case .ruleRepeal:       return "Archivar acuerdo"
+        case .ruleChange:       return "Cambio de regla"
+        case .ruleRepeal:       return "Archivar regla"
         case .memberRemoval:    return "Remover miembro"
         case .fundWithdrawal:   return "Retirar fondos"
         case .roleAssignment:   return "Asignar rol"

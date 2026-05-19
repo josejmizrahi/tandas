@@ -72,7 +72,7 @@ public struct RuleDetailView: View {
         }
         .scrollIndicators(.hidden)
         .ruulAmbientScreen(palette: nil)
-        .navigationTitle("Acuerdo")
+        .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(item: $paramsCoordinator) { coord in
             EditRuleParamsSheet(coordinator: coord)

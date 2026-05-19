@@ -25,8 +25,8 @@ public struct ConsentRulesView: View {
             mesh: .cool,
             progress: FounderStep.consent.progressFraction,
             stepCount: FounderStep.visibleSteps.count,
-            title: "Acuerdos sugeridos",
-            subtitle: "Estos son los acuerdos que la gente suele usar. Por ahora están en modo sugerencia — no se activan hasta que tu grupo decida.",
+            title: "Reglas sugeridas",
+            subtitle: "Estas son las reglas que la gente suele usar. Por ahora están en modo sugerencia — no se activan hasta que tu grupo decida.",
             primaryCTA: ("Continuar", false, { Task { await coord.advanceFromConsent() } }),
             canContinue: true
         ) {
@@ -71,7 +71,7 @@ public struct ConsentRulesView: View {
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
-            Text("Podrás revisar y activar cada acuerdo desde la sección Acuerdos cuando estén todos listos.")
+            Text("Podrás revisar y activar cada regla desde la sección Reglas cuando estén todos listos.")
                 .ruulTextStyle(RuulTypography.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer(minLength: 0)
