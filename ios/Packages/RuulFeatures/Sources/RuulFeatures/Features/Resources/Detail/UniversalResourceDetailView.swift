@@ -89,9 +89,16 @@ public struct UniversalResourceDetailView: View {
                 hero
                 informationSection
 
+                // Icon-only segmented control. With 6 universal tabs the
+                // labels (General · Gente · Dinero · Actividad · Reglas ·
+                // Vínculos) crowd on iPhone width; SF Symbols stay legible
+                // and the .accessibilityLabel keeps VoiceOver fluent.
+                // tab.symbol is the per-case SF Symbol defined in
+                // ResourceDetailTab.symbol.
                 RuulSegmentedControl(
                     selection: $selectedTab,
-                    segments: visibleTabs.map { ($0, $0.label) }
+                    segments: visibleTabs.map { (value: $0, label: $0.label, icon: $0.symbol) },
+                    displayMode: .icon
                 )
                 .padding(.top, RuulSpacing.xs)
 
