@@ -111,12 +111,44 @@ extension RootShellSheets {
                 // ResourceCreationSheet with the prefilled type. For
                 // now the placeholder + dismiss is the honest response.
             },
-            onNavigate: { target in
-                // Phase 5 follow-up: full router integration to push
-                // resource detail / switch tab / present rule template
-                // picker. Today: refresh home as a best-effort.
-                _ = target
-                await router.state.homeCoordinator?.refresh(force: true)
+            onNavigate: { [eventRepo = app.eventRepo,
+                           homeCoord = router.state.homeCoordinator,
+                           router = router] target in
+                // Maps `PostCreateNavigation` cases to real navigation.
+                // For nav targets carrying a resourceId we try to load
+                // the resource as an Event and push the canonical event
+                // detail (UniversalResourceDetailView handles the
+                // polymorphic render). Non-event resources fall back to
+                // a home refresh — pending full polymorphic detail
+                // routing in a follow-up.
+                //
+                // Without this wiring, post-create taps on `rsvp_manager`
+                // / `check_in_attendees` / `history_tab` / `money_tab`
+                // dismissed the sheet without doing anything visible —
+                // matching the founder bug report ("solo me deja
+                // conectar con otra cosa").
+                switch target {
+                case .resourceDetailRSVP(let id),
+                     .resourceDetailCheckIn(let id):
+                    if let event = try? await eventRepo.event(id) {
+                        await MainActor.run { router.openEvent(event) }
+                    } else {
+                        await homeCoord?.refresh(force: true)
+                    }
+                case .historyTab(_, let id), .moneyTab(_, let id):
+                    if let resourceId = id,
+                       let event = try? await eventRepo.event(resourceId) {
+                        await MainActor.run { router.openEvent(event) }
+                    } else {
+                        await homeCoord?.refresh(force: true)
+                    }
+                case .governanceRuleEditor, .ruleTemplatePicker:
+                    // Phase 6 follow-up: present governance editor /
+                    // rule template picker sheet. Until those surfaces
+                    // accept a "present from outside detail" entry,
+                    // refresh home so the sheet still dismisses cleanly.
+                    await homeCoord?.refresh(force: true)
+                }
             }
         )
         ResourceCreationSheet(
