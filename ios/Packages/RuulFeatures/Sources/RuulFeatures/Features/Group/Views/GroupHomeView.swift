@@ -4,26 +4,52 @@ import RuulCore
 
 /// Nivel 1 home — the group as a persistent social domain.
 ///
-/// Layout (Apple Settings pattern, post-refactor 2026-05-17):
-///   Hero (avatar + name + member count, slim)
-///   RESUMEN (4 stat tiles)
-///   IDENTIDAD (nombre/foto + invite code share)
-///   PERSONAS (miembros + invitar + roles personalizados)
-///   ACUERDOS Y GOBERNANZA (módulos + acuerdos vigentes + gobernanza + estilo)
-///   DINERO Y ZONA (moneda + timezone)
-///   PENDIENTES (votos abiertos + acciones, solo si hay 1+)
-///   AVANZADO (rotar código + archivar + salir, destructives)
+/// Layout (V2 Slice 4F — Group sheet partition):
+///   Always visible:
+///     Hero (avatar + name + member count, slim)
+///     RESUMEN (stat tiles)
+///     PENDIENTES (votos abiertos + acciones, solo si hay 1+)
+///     Segmented control: Personas · Cómo decidimos
+///   Tab "Personas" (default):
+///     IDENTIDAD (nombre/foto + invite code share)
+///     PERSONAS (miembros + invitar + roles personalizados)
+///     AVANZADO (rotar código + archivar + salir, destructives)
+///   Tab "Cómo decidimos":
+///     ACUERDOS Y GOBERNANZA (módulos + reglas vigentes + gobernanza + estilo)
+///     DINERO Y ZONA (moneda + timezone)
 ///
-/// Antes había una sección CONFIGURACIÓN monolítica con 7 items
-/// mezclados (identidad, moneda, timezone, módulos, reglas, presets,
-/// roles) + COMUNIDAD con miembros+invitar+votos+actions dispares.
-/// El usuario perdía cosas porque el orden no reflejaba ningún
-/// modelo mental coherente.
+/// Pre-V2-Slice-4F the Group sheet exposed 8 sections in one scroll.
+/// V2 Plan §B.2 partitions them into two cognitively-coherent sub-tabs
+/// so the user sees half the items at a time. Hero/summary/pendings
+/// stay above the segmented control because they're high-signal and
+/// shouldn't hide behind a tab selection.
+///
+/// Pre-V2-Slice-4F (2026-05-17 refactor) had already split the original
+/// monolithic CONFIGURACIÓN + COMUNIDAD sections into 5 thematic
+/// buckets — this slice preserves those buckets but groups them under
+/// 2 sub-tabs so a typical user only scrolls through ~3 sections at
+/// once instead of 5-6.
 @MainActor
 public struct GroupHomeView: View {
     @State var coordinator: GroupHomeCoordinator
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
+
+    /// V2 Slice 4F — Group sheet sub-tab. Defaults to `.personas` so
+    /// the user sees identity / members / advanced first; switching to
+    /// `.comoDecidimos` reveals rules / modules / governance / settings.
+    public enum SubTab: Hashable, CaseIterable, Sendable {
+        case personas
+        case comoDecidimos
+
+        public var label: String {
+            switch self {
+            case .personas:      return "Personas"
+            case .comoDecidimos: return "Cómo decidimos"
+            }
+        }
+    }
+    @State private var subTab: SubTab = .personas
 
     public var onOpenMembersList: (() -> Void)?
     public var onOpenMembersAdmin: (() -> Void)?
@@ -121,12 +147,24 @@ public struct GroupHomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 hero
                 summarySection
-                identitySection
-                peopleSection
-                rulesAndModulesSection
-                moneyAndZoneSection
                 pendingsSection
-                advancedSection
+                // V2 Slice 4F sub-tab chrome. Two segments only — labels
+                // fit comfortably on iPhone SE width. Hero/summary/pendings
+                // sit above so the high-signal stuff isn't hidden behind a
+                // tab selection.
+                RuulSegmentedControl(
+                    selection: $subTab,
+                    segments: SubTab.allCases.map { ($0, $0.label) }
+                )
+                switch subTab {
+                case .personas:
+                    identitySection
+                    peopleSection
+                    advancedSection
+                case .comoDecidimos:
+                    rulesAndModulesSection
+                    moneyAndZoneSection
+                }
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)
