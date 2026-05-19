@@ -123,47 +123,23 @@ extension RootShellSheets {
             analytics: app.analytics,
             changeFeed: app.multiDeviceChangeFeed
         )
-        let groupId = fine.groupId
-        let memberDirectory = router.state.memberDirectory
+        let onClose = {
+            router.state.activeFine = nil
+            while router.state.activeRoutes.contains(where: {
+                if case .fineDetail = $0 { return true }
+                return false
+            }) {
+                router.state.dismissTop()
+            }
+        }
         return NavigationStack {
-            FineDetailView(
+            FineDetailHost(
                 coordinator: coordinator,
-                onAppeal: nil,
                 onViewAppeal: { appeal in
                     router.openVoteOnAppeal(AppealRouteContext(appeal: appeal, fine: fine))
-                },
-                computeCanVoidFine: { [app] in
-                    guard let group = app.groups.first(where: { $0.id == groupId }),
-                          let member = memberDirectory[userId]?.member,
-                          let decision = try? await app.governance.canPerform(
-                              .voidFine, member: member, in: group, context: nil
-                          )
-                    else { return false }
-                    if case .allowed = decision { return true }
-                    return false
-                },
-                makeVoidFineCoordinator: { [app, router] in
-                    VoidFineCoordinator(
-                        fine: fine,
-                        fineRepo: app.fineRepo,
-                        groupsRepo: app.groupsRepo,
-                        onSubmitted: { @MainActor in
-                            await router.state.refreshInboxes()
-                            await router.state.myFinesCoordinator?.refresh()
-                        }
-                    )
-                },
-                currentUserId: userId
-            )
-            .ruulSheetToolbar("Multa", onClose: {
-                router.state.activeFine = nil
-                while router.state.activeRoutes.contains(where: {
-                    if case .fineDetail = $0 { return true }
-                    return false
-                }) {
-                    router.state.dismissTop()
                 }
-            })
+            )
+            .ruulSheetToolbar("Multa", onClose: onClose)
         }
         .environment(app)
     }
@@ -202,7 +178,7 @@ extension RootShellSheets {
         let userMemberId = memberDirectory[userId]?.member.id ?? UUID()
         NavigationStack {
             if let group {
-                VoteDetailView(coordinator: VoteDetailCoordinator(
+                VoteDetailHost(coordinator: VoteDetailCoordinator(
                     vote: ctx.vote,
                     group: group,
                     userMemberId: userMemberId,
