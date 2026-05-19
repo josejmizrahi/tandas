@@ -25,6 +25,7 @@ public struct CheckInSectionView: View {
     public static let definition = CapabilitySection(
         id: "check_in",
         priority: 250,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.checkIn) },
         render: { ctx in AnyView(CheckInSectionView(context: ctx)) }
     )
