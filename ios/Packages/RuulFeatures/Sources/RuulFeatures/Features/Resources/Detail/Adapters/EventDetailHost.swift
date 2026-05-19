@@ -2,6 +2,8 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
+// MARK: - Phase E: EventDetailHost rewired to UniversalResourceDetailView
+
 /// Shell view that owns every piece of event-specific state needed to
 /// render the polymorphic `UniversalResourceDetailView` for an event:
 ///
@@ -78,6 +80,14 @@ public struct EventDetailHost: View {
     @State private var rulesCoordinator: ResourceRulesCoordinator?
     @State private var manualFineCoordinator: AddManualFineCoordinator?
 
+    // Phase E: block-tree state updated whenever the underlying entities mutate
+    @State private var blocks: ResourceBlocks?
+    @State private var rotationConfig: RotationSnapshotInput?
+
+    // Phase E: deep management sheets driven by openDestinationId routes
+    @State private var showRotationParticipants: Bool = false
+    @State private var showLocationEditor: Bool = false
+
     // One @State enum so individual bools don't pollute the storage map.
     @State private var sheet: Sheet?
 
@@ -142,52 +152,210 @@ public struct EventDetailHost: View {
 
     @ViewBuilder
     private func hosted(coordinator: EventDetailCoordinator) -> some View {
-        UniversalResourceDetailView(context: detailContext(coordinator: coordinator))
-            .environment(\.eventInteractor, coordinator)
-            .environment(\.eventDetailPresenter, presenter)
-            .task { await coordinator.refresh() }
-            .task { await coordinator.startRealtime() }
-            .onDisappear { coordinator.stopRealtime() }
-            .eventDetailSheets(EventDetailSheets.Bindings(
-                coordinator: coordinator,
-                group: group,
-                currentUserId: currentUserId,
-                memberDirectory: memberDirectory,
-                calendarService: calendarService,
-                sheet: $sheet,
-                attendeeRoute: $attendeeRoute,
-                manualFineCoordinator: manualFineCoordinator,
-                ledgerCoordinator: ledgerCoordinator,
-                rulesCoordinator: rulesCoordinator
-            ))
-            .onChange(of: sheet) { _, newValue in
-                Task { await prepareCoordinator(for: newValue) }
+        Group {
+            if let blocks {
+                UniversalResourceDetailView(
+                    blocks: blocks,
+                    onPrimaryAction: { Task { await dispatchPrimary(blocks: blocks, coordinator: coordinator) } },
+                    onOpenBlock: { id in openDestination(id, coordinator: coordinator) },
+                    onTapRelation: { card in openRelation(card) },
+                    onSeeMoreActivity: { sheet = .attendees },
+                    onOverflowAction: { action in handleOverflow(action, coordinator: coordinator) }
+                )
+            } else {
+                bootView
             }
-    }
-
-    // MARK: - Context wiring
-
-    private func detailContext(coordinator: EventDetailCoordinator) -> ResourceDetailContext {
-        ResourceDetailContext(
-            resource: ResourceRow.fromEvent(coordinator.event),
+        }
+        .environment(\.eventInteractor, coordinator)
+        .environment(\.eventDetailPresenter, presenter)
+        .task { await coordinator.refresh() }
+        .task { await coordinator.startRealtime() }
+        .task { await rebuildBlocks(coordinator: coordinator) }
+        .onDisappear { coordinator.stopRealtime() }
+        .onChange(of: coordinator.event) { _, _ in Task { await rebuildBlocks(coordinator: coordinator) } }
+        .onChange(of: coordinator.myRSVP) { _, _ in Task { await rebuildBlocks(coordinator: coordinator) } }
+        .eventDetailSheets(EventDetailSheets.Bindings(
+            coordinator: coordinator,
             group: group,
             currentUserId: currentUserId,
-            enabledCapabilities: enabledCapabilities,
             memberDirectory: memberDirectory,
-            displayName: coordinator.event.title,
-            attentionActions: attentionActions,
-            onPresentLedger: { sheet = .ledger },
-            onPresentRules: { sheet = .rules },
-            onPresentEditResource: { onEditEvent(coordinator.event) },
-            onOpenInboxAction: { action in
-                await openInboxAction(action, coordinator: coordinator)
-            },
-            onSelectMember: { userId in
-                if let mwp = memberDirectory[userId] { attendeeRoute = mwp }
-            },
-            onDismiss: onClose
+            calendarService: calendarService,
+            sheet: $sheet,
+            attendeeRoute: $attendeeRoute,
+            manualFineCoordinator: manualFineCoordinator,
+            ledgerCoordinator: ledgerCoordinator,
+            rulesCoordinator: rulesCoordinator
+        ))
+        .onChange(of: sheet) { _, newValue in
+            Task { await prepareCoordinator(for: newValue) }
+        }
+        // Phase E deep management sheets routed via openDestinationId
+        .sheet(isPresented: $showRotationParticipants) {
+            RotationParticipantsSheet(eventId: coordinator.event.id) {
+                Task { await rebuildBlocks(coordinator: coordinator) }
+            }
+            .environment(app)
+        }
+        .sheet(isPresented: $showLocationEditor) {
+            LocationEditorSheet(
+                eventId: coordinator.event.id,
+                initialLocationName: coordinator.event.locationName,
+                viewerIsEventHost: coordinator.viewerIsHost,
+                onSaved: { Task { await rebuildBlocks(coordinator: coordinator) } }
+            )
+            .environment(app)
+        }
+    }
+
+    // MARK: - Phase E: Block building
+
+    /// Assembles an EventDetailSnapshot from the current coordinator state
+    /// and runs EventBlockBuilder to produce fresh ResourceBlocks.
+    @MainActor
+    private func rebuildBlocks(coordinator: EventDetailCoordinator) async {
+        // Load rotation config if the event belongs to a series
+        if let seriesId = coordinator.event.seriesId {
+            if let series = try? await app.resourceSeriesRepo.fetchById(seriesId) {
+                rotationConfig = RotationSnapshotInput.from(series: series)
+            }
+        } else {
+            rotationConfig = nil
+        }
+
+        let snapshot = EventDetailSnapshot(
+            event: coordinator.event,
+            myRSVP: coordinator.myRSVP,
+            rotationConfig: rotationConfig,
+            cycleNumber: coordinator.event.cycleNumber,
+            memberDirectory: memberDirectory,
+            viewerIsHost: coordinator.viewerIsHost
+        )
+
+        let viewerCtx = BlockViewerContext(
+            userId: currentUserId,
+            permissions: viewerPermissions,
+            activeModules: Set(group.effectiveActiveModules),
+            memberId: memberDirectory[currentUserId]?.member.id
+        )
+
+        let built = EventBlockBuilder().build(
+            source: snapshot,
+            viewer: viewerCtx,
+            now: Date()
+        )
+
+        // Phase E activity feed wiring (post-build augmentation)
+        let activityEntries = await loadActivityFeed(
+            groupId: group.id,
+            resourceId: coordinator.event.id
+        )
+        blocks = ResourceBlocks(
+            identity: built.identity,
+            state: built.state,
+            properties: built.properties,
+            capabilities: built.capabilities,
+            relations: built.relations,
+            activityHead: activityEntries,
+            hasMoreActivity: activityEntries.count >= 5
         )
     }
+
+    /// Fetches the last 5 system_events for this resource and humanizes them.
+    /// Returns empty array on any failure (activity feed is best-effort).
+    @MainActor
+    private func loadActivityFeed(groupId: UUID, resourceId: UUID) async -> [ActivityEntry] {
+        let filter = SystemEventFilter(
+            groupId: groupId,
+            resourceId: resourceId
+        )
+        let events = (try? await app.systemEventRepo.query(
+            filter: filter, limit: 5, offset: 0
+        )) ?? []
+        return events.map { ev in
+            ActivityEntry(
+                id: ev.id,
+                sentence: ev.eventType.humanLabel,
+                relativeTime: Self.relativeTime(from: ev.occurredAt),
+                icon: nil  // Phase F: add per-type SF symbols
+            )
+        }
+    }
+
+    /// Permissions the viewer holds in this group (for BlockViewerContext).
+    private var viewerPermissions: Set<Permission> {
+        guard let me = memberDirectory[currentUserId]?.member else { return [] }
+        let catalog = group.effectiveRoles
+        var perms = Set<Permission>()
+        for raw in me.rawRoles {
+            if let def = catalog[raw] {
+                for p in def.permissions { perms.insert(p) }
+            }
+        }
+        return perms
+    }
+
+    // MARK: - Phase E: Primary action dispatch
+
+    @MainActor
+    private func dispatchPrimary(blocks: ResourceBlocks, coordinator: EventDetailCoordinator) async {
+        guard let kind = blocks.state.primaryAction?.kind else { return }
+        switch kind {
+        case .rsvpConfirm:
+            await coordinator.setRSVP(.going, plusOnes: 0, reason: nil)
+        case .rsvpCancel:
+            sheet = .cancelAttendance
+        case .viewHostActions:
+            sheet = .closeEvent
+        case .none,
+             .exerciseRight, .openContribute, .openBooking,
+             .viewClosed, .payFine, .castVote:
+            break  // not applicable for events
+        }
+    }
+
+    // MARK: - Phase E: Block open-destination routing
+
+    private func openDestination(_ id: String, coordinator: EventDetailCoordinator) {
+        switch id {
+        case "rotation.participants":
+            showRotationParticipants = true
+        case "location.editor":
+            showLocationEditor = true
+        case "rsvp.manager":
+            sheet = .attendees
+        case "event.activity":
+            sheet = .attendees  // route to attendees/activity list
+        default:
+            break
+        }
+    }
+
+    private func openRelation(_ card: RelationCard) {
+        // Phase 2: resource_links deep navigation
+    }
+
+    // MARK: - Phase E: Overflow action routing
+
+    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction, coordinator: EventDetailCoordinator) {
+        switch action {
+        case .share:
+            sheet = .share
+        case .edit:
+            onEditEvent(coordinator.event)
+        case .addToCalendar:
+            addToCalendarViaPresenter()
+        case .walletPass:
+            Task { _ = await coordinator.generateWalletPass() }
+        case .archive:
+            // TODO: archive_resource RPC — post-Beta-1
+            break
+        case .delete, .report:
+            // Not exposed in Phase E — post-Beta-1
+            break
+        }
+    }
+
+    // MARK: - Legacy Context wiring (kept for eventDetailSheets modifier compatibility)
 
     private var presenter: EventDetailPresenter {
         EventDetailPresenter(
@@ -308,6 +476,18 @@ public struct EventDetailHost: View {
         default:
             break
         }
+    }
+
+    // MARK: - Helpers
+
+    private static func relativeTime(from date: Date) -> String {
+        let delta = Date.now.timeIntervalSince(date)
+        if delta < 3600 { return "hace \(Int(delta / 60)) min" }
+        if delta < 86400 { return "hace \(Int(delta / 3600))h" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.dateFormat = "d MMM"
+        return f.string(from: date)
     }
 
 }

@@ -33,6 +33,35 @@ public struct RotationSnapshotInput: Sendable, Hashable {
         self.replacementPolicy = replacementPolicy
         self.cycleOffset = cycleOffset
     }
+
+    /// Decodes the rotation config from a `ResourceSeries.metadata` jsonb.
+    /// Returns nil when no rotation cap_config is present or participants
+    /// list is empty — the builder will show the "unconfigured" emptyPrompt.
+    public static func from(series: ResourceSeries) -> RotationSnapshotInput? {
+        guard case .object(let root) = series.metadata,
+              case .object(let caps)? = root["capability_configs"],
+              case .object(let rotation)? = caps["rotation"] else {
+            return nil
+        }
+        var participants: [UUID] = []
+        if case .array(let items)? = rotation["participants"] {
+            for item in items {
+                if case .string(let s) = item, let uid = UUID(uuidString: s) {
+                    participants.append(uid)
+                }
+            }
+        }
+        guard !participants.isEmpty else { return nil }
+        let order = rotation["order"]?.stringValue ?? "sequential"
+        let replacementPolicy = rotation["replacementPolicy"]?.stringValue ?? "skip_to_next"
+        let cycleOffset = rotation["cycle_offset"]?.intValue ?? 0
+        return RotationSnapshotInput(
+            participants: participants,
+            order: order,
+            replacementPolicy: replacementPolicy,
+            cycleOffset: cycleOffset
+        )
+    }
 }
 
 // MARK: - EventDetailSnapshot
