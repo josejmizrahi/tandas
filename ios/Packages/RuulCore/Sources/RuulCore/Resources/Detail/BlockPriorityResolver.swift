@@ -8,6 +8,12 @@ import Foundation
 ///   1. Viewer obligations (isViewerObligation == true)
 ///   2. Active (non-empty) blocks
 ///   3. Empty prompts (layoutKind == .emptyPrompt)
+///
+/// `isViewerObligation` takes precedence over `.emptyPrompt`: a block
+/// that is BOTH an obligation AND an empty prompt lands in bucket 1.
+/// Rationale — an unmet obligation that has no data yet (e.g. "you
+/// haven't RSVP'd, the response list is empty") still needs to be
+/// surfaced prominently, not sunk to the bottom.
 public enum BlockPriorityResolver {
     public static func order(_ blocks: [CapabilityBlock]) -> [CapabilityBlock] {
         var obligations: [CapabilityBlock] = []

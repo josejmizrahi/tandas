@@ -39,4 +39,21 @@ struct StateHeadlineResolverTests {
         let resolved = StateHeadlineResolver.normalize(raw, fallback: "x")
         #expect(resolved.supportingFacts == ["20:00", "Casa de Ana"])
     }
+
+    @Test("passes primaryAction and urgency through unchanged")
+    func passthrough() {
+        let action = PrimaryAction(
+            label: "Pagar", symbol: "creditcard",
+            style: .standard, kind: .openContribute
+        )
+        let raw = StateHeadline(
+            headline: "$200 por pagar",
+            supportingFacts: ["Vence en 2 días"],
+            primaryAction: action,
+            urgency: .urgent
+        )
+        let resolved = StateHeadlineResolver.normalize(raw, fallback: "x")
+        #expect(resolved.primaryAction == action)
+        #expect(resolved.urgency == .urgent)
+    }
 }
