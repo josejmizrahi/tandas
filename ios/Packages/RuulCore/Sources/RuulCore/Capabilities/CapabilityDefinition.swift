@@ -94,7 +94,7 @@ public extension CapabilityDefinition {
     var status: CapabilityStatus { .stable }
 }
 
-/// Whether a `CapabilityBlock` is ready to surface in Create Resource.
+/// Whether a `CapabilityDefinition` is ready to surface in Create Resource.
 ///
 /// `.stable` blocks render normally in step 3. `.incomplete` blocks are
 /// hidden by the wizard until they ship config UI, save path, and
