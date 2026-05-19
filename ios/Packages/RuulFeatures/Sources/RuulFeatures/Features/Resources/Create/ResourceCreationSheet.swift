@@ -60,6 +60,7 @@ public struct ResourceCreationSheet: View {
         templateDefaultsByType: [String: [String]] = [:],
         viewerPermissions: Set<Permission> = [],
         activator: LazyCapabilityActivator? = nil,
+        capabilityRepo: (any ResourceCapabilityRepository)? = nil,
         members: [MemberWithProfile] = [],
         postCreateActions: PostCreateResourceActions = PostCreateResourceActions(),
         onCreated: ((UUID) -> Void)? = nil
@@ -67,7 +68,12 @@ public struct ResourceCreationSheet: View {
         _coordinator = State(initialValue: ResourceCreationCoordinator(
             group: group,
             builders: builders,
-            templateDefaultsByType: templateDefaultsByType
+            templateDefaultsByType: templateDefaultsByType,
+            // Threaded through so attachedCapabilities reflects backend
+            // trigger-seeded caps post-create — closes the visibility
+            // gap for money/custody/valuation/etc. documented by the
+            // founder cases smoke test.
+            capabilityRepo: capabilityRepo
         ))
         self.viewerPermissions = viewerPermissions
         self.activator = activator

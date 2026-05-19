@@ -125,6 +125,12 @@ extension RootShellSheets {
             templateDefaultsByType: [:],   // TODO: load from template registry async
             viewerPermissions: viewerPermissions(in: group),
             activator: activator,
+            // Same repo the activator uses internally. Coordinator
+            // re-reads `resource_capabilities` after build returns so
+            // backend trigger-seeded caps (money, custody, valuation,
+            // schedule, etc.) surface in the post-create intent
+            // visibility instead of waiting for the next manual refresh.
+            capabilityRepo: app.resourceCapabilityRepo,
             members: members,
             postCreateActions: actions,
             onCreated: { _ in
