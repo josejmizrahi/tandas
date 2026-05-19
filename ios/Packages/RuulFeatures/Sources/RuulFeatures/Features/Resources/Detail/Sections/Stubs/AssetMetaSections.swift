@@ -10,6 +10,7 @@ public struct ValuationSectionView: View {
     public static let definition = CapabilitySection(
         id: "valuation",
         priority: 500,
+        tabId: "money",
         isEnabledFor: { caps in caps.contains(CapabilityID.valuation) },
         render: { ctx in AnyView(ValuationSectionView(context: ctx)) }
     )
@@ -88,6 +89,7 @@ public struct AccessSectionView: View {
     public static let definition = CapabilitySection(
         id: "access",
         priority: 530,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.access) },
         render: { ctx in AnyView(AccessSectionView(context: ctx)) }
     )
@@ -128,6 +130,7 @@ public struct DelegationSectionView: View {
     public static let definition = CapabilitySection(
         id: "delegation",
         priority: 540,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.delegation) },
         render: { ctx in AnyView(DelegationSectionView(context: ctx)) }
     )

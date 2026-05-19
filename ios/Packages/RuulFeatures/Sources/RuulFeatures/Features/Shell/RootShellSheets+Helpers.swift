@@ -106,10 +106,19 @@ extension RootShellSheets {
                 // Real impl wires via the sheet's resourceId — see
                 // PostCreateIntentScreenContainer onActivated callback.
             },
-            onCreateChildResource: { _ in
-                // Phase 5 follow-up: present a recursive
-                // ResourceCreationSheet with the prefilled type. For
-                // now the placeholder + dismiss is the honest response.
+            onCreateChildResource: { [router = router] _ in
+                // The DestinationPresenter's child wizard launcher
+                // dismisses the post-create sheet immediately after
+                // this callback returns. Schedule the re-present after
+                // the dismiss animation so the new createCover doesn't
+                // fight the dismissing parent. prefilledType ignored
+                // for now — user picks type again on the fresh sheet.
+                // (Adding prefilledType support means a new state
+                // holder on RootShellState that newResourceCreationSheet
+                // reads to call coord.pickType(_:) post-init —
+                // deferred to keep this PR focused.)
+                try? await Task.sleep(for: .milliseconds(500))
+                await MainActor.run { router.present(.createCover) }
             },
             onNavigate: { [eventRepo = app.eventRepo,
                            resourceRepo = app.resourceRepo,

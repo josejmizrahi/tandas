@@ -1,8 +1,14 @@
 import Foundation
 
-/// The 4 universal tabs every resource detail screen shows. Per-type
-/// tabs extend this by introducing a `ResourceTabRegistry` that returns
-/// ordered tabs per `ResourceType` — the universal 4 stay as canonical.
+/// The 6 universal tabs every resource detail screen can show. Per the
+/// V2 Human-Layer doctrine (Plans/Active/ProductCompression.md §H.2):
+///
+///   General · Gente · Dinero · Reglas · Actividad · Relacionado
+///
+/// General, Reglas, Actividad are always rendered. Gente, Dinero, and
+/// Relacionado are content-gated: the host view hides them silently
+/// when their section catalog yields zero sections for the current
+/// resource. Same gating model that already governs stubs.
 ///
 /// Mapped to sections via `CapabilitySection.tabId`. The string match is
 /// `tab.id == section.tabId`. Sections without an explicit tabId default
@@ -13,20 +19,26 @@ import Foundation
 /// when the user takes an action that needs them.
 public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
     case overview
-    case activity
+    case people
+    case money
     case rules
+    case activity
     case connections
 
     public var id: String { rawValue }
 
-    /// Spanish label for the segmented control. "Vínculos" instead of
-    /// "Conexiones" so the four segments fit a single line on iPhone SE.
+    /// Spanish label for the segmented control. "Relacionado" replaces
+    /// the old "Vínculos" (graph-model leak) per V1 §C.1 Option A. The
+    /// host hides this tab when empty so the typical resource shows
+    /// 3-5 tabs, not 6.
     public var label: String {
         switch self {
         case .overview:    return "General"
-        case .activity:    return "Actividad"
+        case .people:      return "Gente"
+        case .money:       return "Dinero"
         case .rules:       return "Reglas"
-        case .connections: return "Vínculos"
+        case .activity:    return "Actividad"
+        case .connections: return "Relacionado"
         }
     }
 
@@ -36,8 +48,10 @@ public enum ResourceDetailTab: String, CaseIterable, Identifiable, Sendable {
     public var symbol: String {
         switch self {
         case .overview:    return "doc.text"
-        case .activity:    return "clock.arrow.circlepath"
+        case .people:      return "person.2"
+        case .money:       return "dollarsign.circle"
         case .rules:       return "list.bullet.clipboard"
+        case .activity:    return "clock.arrow.circlepath"
         case .connections: return "link"
         }
     }

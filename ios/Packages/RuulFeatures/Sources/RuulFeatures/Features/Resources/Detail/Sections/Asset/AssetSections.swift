@@ -42,6 +42,7 @@ public struct AssetCustodySection: View {
     public static let definition = CapabilitySection(
         id: "asset.custody",
         priority: 160,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.custody) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetCustodySection(
@@ -117,6 +118,7 @@ public struct AssetOwnershipSection: View {
     public static let definition = CapabilitySection(
         id: "asset.ownership",
         priority: 161,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.transfer) || caps.contains(CapabilityID.valuation) },
         isVisibleFor: { ctx in ctx.resource.resourceType == .asset },
         render: { ctx in AnyView(AssetOwnershipSection(

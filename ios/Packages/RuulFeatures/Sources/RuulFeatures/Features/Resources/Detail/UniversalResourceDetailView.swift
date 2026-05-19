@@ -91,9 +91,18 @@ public struct UniversalResourceDetailView: View {
 
                 RuulSegmentedControl(
                     selection: $selectedTab,
-                    segments: ResourceDetailTab.allCases.map { ($0, $0.label) }
+                    segments: visibleTabs.map { ($0, $0.label) }
                 )
                 .padding(.top, RuulSpacing.xs)
+                .onChange(of: visibleTabs) { _, newTabs in
+                    // If the user is on a tab that just disappeared
+                    // (rare — caps don't usually change mid-view), fall
+                    // back to .overview rather than render an empty
+                    // segmented selection.
+                    if !newTabs.contains(selectedTab) {
+                        selectedTab = .overview
+                    }
+                }
 
                 tabContent
             }
@@ -458,10 +467,30 @@ public struct UniversalResourceDetailView: View {
             .filter { $0.tabId == tab.id }
     }
 
+    /// Tabs the segmented control actually renders for the current
+    /// resource. `overview / rules / activity` are always present; the
+    /// other three are content-gated — they appear only when at least
+    /// one capability-driven section routes into them. Per V2 Human-Layer
+    /// doctrine §H.2: Gente/Dinero/Relacionado disappear silently for
+    /// resources with no capability driving them, so the typical
+    /// resource shows 3-5 tabs instead of all 6.
+    private var visibleTabs: [ResourceDetailTab] {
+        ResourceDetailTab.allCases.filter { tab in
+            switch tab {
+            case .overview, .rules, .activity:
+                return true
+            case .people, .money, .connections:
+                return !sectionsForTab(tab).isEmpty
+            }
+        }
+    }
+
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
         case .overview:    overviewContent
+        case .people:      peopleContent
+        case .money:       moneyContent
         case .activity:    activityContent
         case .rules:       rulesContent
         case .connections: connectionsContent
@@ -480,6 +509,24 @@ public struct UniversalResourceDetailView: View {
             ForEach(sections, id: \.id) { section in
                 section.render(context)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var peopleContent: some View {
+        // People tab is content-gated by `visibleTabs` — it never
+        // renders when sections are empty, so no empty-state needed.
+        ForEach(sectionsForTab(.people), id: \.id) { section in
+            section.render(context)
+        }
+    }
+
+    @ViewBuilder
+    private var moneyContent: some View {
+        // Money tab is content-gated by `visibleTabs` — it never
+        // renders when sections are empty, so no empty-state needed.
+        ForEach(sectionsForTab(.money), id: \.id) { section in
+            section.render(context)
         }
     }
 
@@ -515,16 +562,10 @@ public struct UniversalResourceDetailView: View {
 
     @ViewBuilder
     private var connectionsContent: some View {
-        let sections = sectionsForTab(.connections)
-        if sections.isEmpty {
-            emptyTab(
-                symbol: ResourceDetailTab.connections.symbol,
-                message: "Aún no hay recursos vinculados. Las conexiones aparecerán aquí cuando se agreguen."
-            )
-        } else {
-            ForEach(sections, id: \.id) { section in
-                section.render(context)
-            }
+        // Relacionado tab is content-gated by `visibleTabs` — it never
+        // renders when sections are empty, so no empty-state needed.
+        ForEach(sectionsForTab(.connections), id: \.id) { section in
+            section.render(context)
         }
     }
 
