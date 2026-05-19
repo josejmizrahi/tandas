@@ -22,6 +22,11 @@ public struct ProfileTab: View {
     @State private var isExporting = false
     @State private var exportShareItem: ExportShareItem?
     @State private var accountError: String?
+    /// V2 Slice 4A: edit-profile sheet lives local to ProfileTab now.
+    /// Was a root `.editProfile` cover routed through RootRouter — moved
+    /// inline since ProfileTab is the only entry point and the global
+    /// route added no value (V2 Plan §B.1: "one entry per destination").
+    @State private var showEditProfile = false
 
     private enum ProfileNav: Hashable { case language, timezone }
 
@@ -44,7 +49,7 @@ public struct ProfileTab: View {
                     coordinator: coord,
                     onOpenMyFines: { router.openSanciones() },
                     onOpenHistory: { router.selectTab(.home) },
-                    onEditProfile: { router.openEditProfile() },
+                    onEditProfile: { showEditProfile = true },
                     onSignOut: { Task { try? await app.signOut() } },
                     onOpenTimeline: { showTimeline = true },
                     outstandingPillAmount: myFinesCoordinator?.totalOutstanding,
@@ -62,6 +67,13 @@ public struct ProfileTab: View {
                     switch dest {
                     case .language: LanguagePickerView()
                     case .timezone: TimezonePickerView()
+                    }
+                }
+                .fullScreenCover(isPresented: $showEditProfile, onDismiss: {
+                    Task { await profileCoordinator?.refresh() }
+                }) {
+                    if let coord = profileCoordinator {
+                        EditProfileSheet(coordinator: coord)
                     }
                 }
                 .fullScreenCover(isPresented: $showChangePhone) { ChangePhoneFlow() }

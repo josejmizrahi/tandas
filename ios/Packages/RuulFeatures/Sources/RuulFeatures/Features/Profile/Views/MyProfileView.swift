@@ -39,6 +39,13 @@ public struct MyProfileView: View {
     public var onDeleteAccount: (() -> Void)?
 
     @State private var showSignOutConfirm = false
+    #if DEBUG
+    /// Drives the legacy ResourceWizardSheet cover for "Crear con
+    /// opciones avanzadas" — the demoted entry point for the 5-step
+    /// wizard that still surfaces capability toggles. Internal-only:
+    /// release builds strip this state entirely via the section gate.
+    @State private var legacyWizardPresented = false
+    #endif
 
     public init(
         coordinator: ProfileCoordinator,
@@ -342,6 +349,30 @@ public struct MyProfileView: View {
             }
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)
+            // "Demote ResourceWizardSheet to Governance → Advanced"
+            // landing pad. Without this, power users that wanted to
+            // poke at the legacy 5-step wizard had to flip the flag
+            // OFF, tap +, then flip back — clumsy. Now it's a direct
+            // entry that works regardless of flag state. Requires
+            // an active group (no-op otherwise) since the wizard's
+            // first step assumes group scope.
+            if app.activeGroup != nil {
+                navRow(
+                    icon: "wand.and.stars",
+                    label: "Crear con opciones avanzadas",
+                    trailing: { EmptyView() },
+                    action: { legacyWizardPresented = true }
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $legacyWizardPresented) {
+            if let group = app.activeGroup {
+                ResourceWizardSheet(
+                    group: group,
+                    suggestedDate: Date().addingTimeInterval(86_400 + 20*3600),
+                    onCreated: { _ in legacyWizardPresented = false }
+                )
+            }
         }
     }
     #endif
