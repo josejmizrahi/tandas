@@ -11,7 +11,7 @@ public enum CheckInMethod: String, Codable, Sendable, Hashable {
         switch self {
         case .selfMethod: return "Self"
         case .qrScan:     return "QR"
-        case .hostMarked: return "Host"
+        case .hostMarked: return "Anfitrión"
         }
     }
 }

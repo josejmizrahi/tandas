@@ -15,7 +15,7 @@ public struct HomeView: View {
     public var onCreateEvent: () -> Void
     public var onOpenEvent: (Event) -> Void
     public var onOpenPastEvents: () -> Void
-    /// MEMORIA DEL GRUPO "decisiones tomadas" tile tap. Abre la historia
+    /// HISTORIAL DEL GRUPO "acuerdos alcanzados" tile tap. Abre la historia
     /// completa (sin filtro — desde ahí el usuario filtra a "Votos"
     /// con el chip). Default no-op para callsites pre-P1.
     public var onOpenGroupHistory: () -> Void = {}
@@ -391,7 +391,7 @@ public struct HomeView: View {
         var title: String {
             switch self {
             case .events: return "Aún no hay eventos"
-            case .asset:  return "Aún no hay slots"
+            case .asset:  return "Aún no hay turnos disponibles"
             case .fund:   return "Aún no hay aportaciones"
             case .bare:   return "Tu grupo está listo"
             }
@@ -409,7 +409,7 @@ public struct HomeView: View {
         var ctaLabel: String {
             switch self {
             case .events: return "Crear evento"
-            case .asset:  return "Crear slot"
+            case .asset:  return "Crear turno"
             case .fund:   return "Crear fondo"
             case .bare:   return "Crear recurso"
             }
@@ -473,7 +473,7 @@ public struct HomeView: View {
     private var pendingsSection: some View {
         if let coord = inboxCoordinator, !coord.actions.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                RuulListSectionHeader("PENDIENTES", count: coord.actions.count)
+                RuulListSectionHeader("POR HACER", count: coord.actions.count)
                 RuulSeparatedRows(items: Array(coord.actions.prefix(3))) { action in
                     ActionCard(
                         icon: pendingIcon(for: action.actionType),
@@ -537,7 +537,7 @@ public struct HomeView: View {
     private var groupMemorySection: some View {
         if groupMemory.hasAnyContent {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                Text("MEMORIA DEL GRUPO")
+                Text("HISTORIAL DEL GRUPO")
                     .ruulTextStyle(RuulTypography.sectionLabel)
                     .foregroundStyle(Color.ruulTextTertiary)
 
@@ -553,7 +553,7 @@ public struct HomeView: View {
                     if groupMemory.resolvedVotesCount > 0 {
                         memoryStatCard(
                             value: memoryCountLabel(groupMemory.resolvedVotesCount, cap: 200),
-                            caption: "decisiones tomadas",
+                            caption: "acuerdos alcanzados",
                             icon: "checkmark.seal",
                             action: onOpenGroupHistory
                         )
