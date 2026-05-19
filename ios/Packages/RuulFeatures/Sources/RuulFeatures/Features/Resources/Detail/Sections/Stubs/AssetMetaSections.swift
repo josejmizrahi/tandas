@@ -128,6 +128,7 @@ public struct DelegationSectionView: View {
     public static let definition = CapabilitySection(
         id: "delegation",
         priority: 540,
+        tabId: "people",
         isEnabledFor: { caps in caps.contains(CapabilityID.delegation) },
         render: { ctx in AnyView(DelegationSectionView(context: ctx)) }
     )

@@ -91,7 +91,7 @@ public struct UniversalResourceDetailView: View {
 
                 RuulSegmentedControl(
                     selection: $selectedTab,
-                    segments: ResourceDetailTab.allCases.map { ($0, $0.label) }
+                    segments: visibleTabs.map { ($0, $0.label) }
                 )
                 .padding(.top, RuulSpacing.xs)
 
@@ -458,10 +458,25 @@ public struct UniversalResourceDetailView: View {
             .filter { $0.tabId == tab.id }
     }
 
+    /// Tabs to render in the segmented control. `.people` (Slice 2A) is
+    /// content-gated — it only appears when at least one section routes
+    /// to it. Other tabs keep their current always-visible behavior so
+    /// this slice introduces only one cognitive change. Slices 2B / 2C
+    /// extend the same gating to Money + revisit Connections.
+    private var visibleTabs: [ResourceDetailTab] {
+        ResourceDetailTab.allCases.filter { tab in
+            switch tab {
+            case .people: return !sectionsForTab(tab).isEmpty
+            default:      return true
+            }
+        }
+    }
+
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
         case .overview:    overviewContent
+        case .people:      peopleContent
         case .activity:    activityContent
         case .rules:       rulesContent
         case .connections: connectionsContent
@@ -475,6 +490,24 @@ public struct UniversalResourceDetailView: View {
             emptyTab(
                 symbol: ResourceDetailTab.overview.symbol,
                 message: "No hay información para mostrar todavía."
+            )
+        } else {
+            ForEach(sections, id: \.id) { section in
+                section.render(context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var peopleContent: some View {
+        // Tab is content-gated via visibleTabs, so an empty state shouldn't
+        // be reachable in production — but render one defensively in case
+        // section routing changes mid-session.
+        let sections = sectionsForTab(.people)
+        if sections.isEmpty {
+            emptyTab(
+                symbol: ResourceDetailTab.people.symbol,
+                message: "Aún no hay nadie agregado. Cuando invites o asignes a alguien, aparecerá aquí."
             )
         } else {
             ForEach(sections, id: \.id) { section in
