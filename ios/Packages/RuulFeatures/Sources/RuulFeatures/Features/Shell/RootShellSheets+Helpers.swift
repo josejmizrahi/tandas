@@ -192,6 +192,10 @@ extension RootShellSheets {
             // schedule, etc.) surface in the post-create intent
             // visibility instead of waiting for the next manual refresh.
             capabilityRepo: app.resourceCapabilityRepo,
+            // Coordinator hydrates `attachedResource` post-build so
+            // RecordValuationSheet et al. (accept asset: ResourceRow)
+            // stop falling back to placeholder.
+            resourceRepo: app.resourceRepo,
             members: members,
             postCreateActions: actions,
             onCreated: { _ in
