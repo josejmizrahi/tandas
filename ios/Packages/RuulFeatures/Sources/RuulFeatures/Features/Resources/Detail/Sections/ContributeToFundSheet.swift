@@ -25,6 +25,11 @@ public struct ContributeToFundSheet: View {
     public let fundId: UUID
     public let fundName: String
     public let currency: String
+    /// When set, the entry is attributed to a specific event (mig 00344
+    /// p_source_event_id). Surfaces "para {evento}" in the sheet footer
+    /// so the user understands the scope.
+    public let sourceEventId: UUID?
+    public let sourceEventName: String?
     /// Called after a successful contribute so the caller can refresh
     /// the balance card.
     public let onDidContribute: () -> Void
@@ -38,11 +43,15 @@ public struct ContributeToFundSheet: View {
         fundId: UUID,
         fundName: String,
         currency: String,
+        sourceEventId: UUID? = nil,
+        sourceEventName: String? = nil,
         onDidContribute: @escaping () -> Void
     ) {
         self.fundId = fundId
         self.fundName = fundName
         self.currency = currency
+        self.sourceEventId = sourceEventId
+        self.sourceEventName = sourceEventName
         self.onDidContribute = onDidContribute
     }
 
@@ -53,8 +62,15 @@ public struct ContributeToFundSheet: View {
                     Text(fundName)
                         .ruulTextStyle(RuulTypography.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
+                    if let sourceEventName {
+                        Label("Para \(sourceEventName)", systemImage: "calendar")
+                            .ruulTextStyle(RuulTypography.caption)
+                            .foregroundStyle(Color.ruulTextSecondary)
+                    }
                 } footer: {
-                    Text("Tu aportación entra al fondo y suma al balance común.")
+                    Text(sourceEventName != nil
+                         ? "Tu aportación queda registrada como parte de este evento."
+                         : "Tu aportación entra al fondo y suma al balance común.")
                         .ruulTextStyle(RuulTypography.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
@@ -115,7 +131,8 @@ public struct ContributeToFundSheet: View {
                 fundId: fundId,
                 amountCents: cents,
                 currency: currency,
-                note: trimmedNote.isEmpty ? nil : trimmedNote
+                note: trimmedNote.isEmpty ? nil : trimmedNote,
+                sourceEventId: sourceEventId
             )
             onDidContribute()
             dismiss()
