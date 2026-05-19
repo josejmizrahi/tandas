@@ -6,12 +6,18 @@ import RuulCore
 /// profile and cross-group activity entry points only. No group-active
 /// state leaks into this view.
 ///
-/// Layout:
-///   Hero (avatar + name + "Miembro de N grupos")
-///   Tu actividad (Mis multas, Mis movimientos, Actividad del grupo)
-///   Ajustes (Editar perfil)
-///   Apariencia (theme picker, inline)
-///   Cerrar sesión
+/// Layout (V2 Slice 4G — Profile partition):
+///   Always visible:
+///     Hero (avatar + name + "Miembro de N grupos")
+///     Segmented control: Tú · Cuenta
+///   Tab "Tú" (default):
+///     MIS GRUPOS · TU ACTIVIDAD · AJUSTES · PREFERENCIAS · APARIENCIA · DEBUG
+///   Tab "Cuenta":
+///     IDENTIDAD (teléfono + correo) · NOTIFICACIONES · DATOS Y CUENTA · Cerrar sesión
+///
+/// Per V2 Plan §B.3: account-ops (identity, notifications, data, sign
+/// out) group under Cuenta; "you-as-a-person" surfaces (groups,
+/// activity, edit profile, display preferences, theme) live under Tú.
 public struct MyProfileView: View {
     @State var coordinator: ProfileCoordinator
     @Environment(AppState.self) private var app
@@ -46,6 +52,23 @@ public struct MyProfileView: View {
     /// release builds strip this state entirely via the section gate.
     @State private var legacyWizardPresented = false
     #endif
+
+    /// V2 Slice 4G — Profile sub-tab. Defaults to `.tú` so the user
+    /// sees themselves + their activity first; account-ops (phone,
+    /// email, notifications, data, sign out) live a tap away in
+    /// `.cuenta`.
+    public enum SubTab: Hashable, CaseIterable, Sendable {
+        case tú
+        case cuenta
+
+        public var label: String {
+            switch self {
+            case .tú:     return "Tú"
+            case .cuenta: return "Cuenta"
+            }
+        }
+    }
+    @State private var subTab: SubTab = .tú
 
     public init(
         coordinator: ProfileCoordinator,
@@ -125,18 +148,29 @@ public struct MyProfileView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                 hero
-                myGroupsSection
-                identitySection
-                preferencesSection
-                notificationsSection
-                activitySection
-                settingsSection
-                appearanceSection
-                #if DEBUG
-                debugSection
-                #endif
-                dataAndAccountSection
-                signOutButton
+                // V2 Slice 4G sub-tab chrome. Two segments only — fits
+                // iPhone SE width with room to spare. Hero stays above
+                // so the user always sees who they are.
+                RuulSegmentedControl(
+                    selection: $subTab,
+                    segments: SubTab.allCases.map { ($0, $0.label) }
+                )
+                switch subTab {
+                case .tú:
+                    myGroupsSection
+                    activitySection
+                    settingsSection
+                    preferencesSection
+                    appearanceSection
+                    #if DEBUG
+                    debugSection
+                    #endif
+                case .cuenta:
+                    identitySection
+                    notificationsSection
+                    dataAndAccountSection
+                    signOutButton
+                }
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)
