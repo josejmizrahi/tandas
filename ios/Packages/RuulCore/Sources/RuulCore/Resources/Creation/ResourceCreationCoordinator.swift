@@ -65,13 +65,27 @@ public final class ResourceCreationCoordinator {
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "resource.creation")
 
+    /// Optional capability repo used to refresh `attachedCapabilities`
+    /// from the backend after a successful create. Closes the gap where
+    /// platform-inherent caps (money, custody, valuation, schedule,
+    /// status, history, description, host_actions, location, maintenance,
+    /// transfer, delegation — seeded by backend triggers per mig 00109/
+    /// 00110/00136-145/00199-200) didn't surface in the post-create
+    /// intent visibility until the next manual refresh.
+    ///
+    /// When nil, the coordinator falls back to the builder's reported
+    /// `enabledCapabilityIds` only (same behavior as pre-fix). Tests
+    /// + previews opt out of the network call this way.
+    public let capabilityRepo: (any ResourceCapabilityRepository)?
+
     public init(
         group: Group,
         builders: ResourceBuilderRegistry,
         variants: ResourceVariantRegistry = DefaultResourceVariantRegistry.v1,
         catalog: CapabilityCatalog = .v1,
         resolver: CapabilityResolver = CapabilityResolver(),
-        templateDefaultsByType: [String: [String]] = [:]
+        templateDefaultsByType: [String: [String]] = [:],
+        capabilityRepo: (any ResourceCapabilityRepository)? = nil
     ) {
         self.group = group
         self.builders = builders
@@ -79,6 +93,7 @@ public final class ResourceCreationCoordinator {
         self.catalog = catalog
         self.resolver = resolver
         self.templateDefaultsByType = templateDefaultsByType
+        self.capabilityRepo = capabilityRepo
     }
 
     // MARK: - Phase transitions
@@ -206,7 +221,33 @@ public final class ResourceCreationCoordinator {
 
         do {
             let result = try await builder.build(draft)
-            attachedCapabilities = Set(result.enabledCapabilityIds)
+            // Refresh from backend if a repo was injected so post-create
+            // intent visibility sees ALL caps now attached — including
+            // the platform-inherent ones the backend triggers seeded
+            // (money on fund creation, custody/valuation/location/
+            // maintenance on asset, schedule/status/history/host_actions/
+            // description on event, etc.). Without this, intents like
+            // `record_contribution` (needs ledger+money) would stay
+            // hidden because the iOS resolver only saw the
+            // module-provided `ledger`, not the trigger-seeded `money`.
+            //
+            // Best-effort: a failed list call falls back to the
+            // builder-reported set so the user still lands on the
+            // post-create screen with a coherent (if narrower) intent
+            // grid instead of an error.
+            if let repo = capabilityRepo {
+                do {
+                    let rows = try await repo.list(resourceId: result.resourceId)
+                    attachedCapabilities = Set(
+                        rows.filter(\.enabled).map(\.capabilityBlockId)
+                    )
+                } catch {
+                    log.warning("post-create cap refresh failed: \(error.localizedDescription); falling back to builder set")
+                    attachedCapabilities = Set(result.enabledCapabilityIds)
+                }
+            } else {
+                attachedCapabilities = Set(result.enabledCapabilityIds)
+            }
             phase = .postCreate(resourceId: result.resourceId, variant: variant)
             return result.resourceId
         } catch let e as ResourceBuilderError {
