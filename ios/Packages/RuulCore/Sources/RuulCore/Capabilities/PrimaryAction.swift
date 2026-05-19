@@ -26,6 +26,12 @@ public struct PrimaryAction: Sendable, Hashable {
         /// status='active' AND not suspended. Tapping opens the
         /// `RightActionSheet.exercise` variant. Slice 14.
         case exerciseRight
+        /// Fine + viewer is debtor + status=unpaid. Routes to existing
+        /// `FineRepository.payFine` → `rpc('pay_fine')`.
+        case payFine
+        /// Vote + status=open + viewer hasn't cast a ballot. Routes to
+        /// existing `VoteRepository.castVote` → `rpc('cast_vote')`.
+        case castVote
         case none               // no CTA — caller hides the footer
     }
 
