@@ -471,10 +471,11 @@ public struct RotationCapability: CapabilityDefinition {
     ///   - auto-generate-events v7: forwards resolved host_id to create_event_v2
     ///   - mig 00133: trigger inserts user_action(hostAssigned) when host_id ≠ created_by
     ///   - MemberMultiPickerField: real member-aware multi-picker with ordered output
-    ///   - RotationSectionView: read-only Resource Detail surface (next host,
-    ///     upcoming, rotation order, policy summary)
-    ///   - ActivitySectionView.labelForEventCreated: surfaces host name in
-    ///     the activity feed for rotation-resolved occurrences
+    ///   - EventBlockBuilder rotation block: read-only Resource Detail
+    ///     surface (next host, upcoming queue, policy summary), opens
+    ///     RotationParticipantsSheet on tap
+    ///   - ActivityFeedLoader: surfaces host name in the activity feed
+    ///     entries for rotation-resolved occurrences
     /// Future work (out of Beta scope, won't reopen .stable):
     ///   - host_skipped / host_reassigned signals (no schema field today)
     ///   - swap requests, marketplace, voting on swaps
@@ -651,7 +652,7 @@ public struct MoneyCapability: CapabilityDefinition {
     public var conflicts: [String] { [] }
     /// Tier 6 closed end-to-end (mig 00136 → 00145):
     ///   - balance projection views aggregate ledger_entries at read time
-    ///   - MoneySectionView renders top 3 non-zero balances inline
+    ///   - FundBlockBuilder renders the balance block on fund detail
     ///   - `fund` resource_type creatable via create_fund + wizard branch
     ///   - fundDeposit emits on every contribution to a fund
     ///   - fundThresholdReached emits once when cumulative deposits cross
@@ -684,10 +685,11 @@ public struct LedgerCapability: CapabilityDefinition {
     public var dependencies: [String] { [] }
     public var conflicts: [String] { [] }
     /// Tier 6 closed (mig 00136 → 00145): ledger atoms feed
-    /// balance projection views, MoneySectionView renders inline
-    /// balances, record_settlement + SettlementSheet wire the bilateral
-    /// payment loop. A dedicated group-wide ledger surface (separate
-    /// from MoneySection's resource-scoped roll-up) is intentionally
+    /// balance projection views, the universal detail surfaces render
+    /// inline balances (FundBlockBuilder balance block, ResourceLedger
+    /// sheet for per-resource roll-ups), record_settlement +
+    /// SettlementSheet wire the bilateral payment loop. A dedicated
+    /// group-wide ledger surface (separate from per-resource roll-ups) is intentionally
     /// out-of-scope for Beta — per-resource visibility covers the
     /// canonical use cases without adding a tab/surface duplication.
     public var status: CapabilityStatus { .stable }

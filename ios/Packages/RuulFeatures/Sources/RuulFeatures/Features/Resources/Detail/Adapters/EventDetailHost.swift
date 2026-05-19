@@ -288,7 +288,12 @@ public struct EventDetailHost: View {
         case .rsvpCancel:
             sheet = .cancelAttendance
         case .viewHostActions:
-            sheet = .closeEvent
+            // Reserved for a future host-actions menu (recordar / cerrar
+            // / cancelar / reabrir). EventBlockBuilder doesn't emit this
+            // kind today — when it does, replace this with a real menu
+            // sheet instead of routing to .closeEvent (which is only one
+            // of those actions and was misleading).
+            break
         case .none,
              .exerciseRight, .openContribute, .openBooking,
              .viewClosed, .payFine, .castVote:
@@ -365,10 +370,13 @@ public struct EventDetailHost: View {
     /// ShareEventSheet). EventKit solicita authorization la primera vez
     /// dentro de addToCalendar — best-effort fail-soft.
     private func addToCalendarViaPresenter() {
-        guard let service = calendarService, let event = coordinator?.event ?? Optional(event) else { return }
+        guard let service = calendarService else { return }
+        // Coordinator's live event wins; fall back to the initial prop
+        // for the brief window before bootstrap finishes.
+        let resolvedEvent = coordinator?.event ?? event
         let vocabulary = group.eventVocabulary
         Task {
-            _ = try? await service.addToCalendar(event, vocabulary: vocabulary)
+            _ = try? await service.addToCalendar(resolvedEvent, vocabulary: vocabulary)
         }
     }
 

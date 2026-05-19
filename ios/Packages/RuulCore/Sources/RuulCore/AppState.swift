@@ -156,8 +156,9 @@ public final class AppState {
     public let resourceCapabilityRepo: any ResourceCapabilityRepository
     public let ledgerRepo: any LedgerRepository
     /// Tier 6 slice 18 (mig 00136): per-member balance projection over
-    /// `ledger_entries`. Read-time aggregation, no cache. MoneySectionView
-    /// renders top balances inline; group-wide views use balancesForGroup.
+    /// `ledger_entries`. Read-time aggregation, no cache. Universal
+    /// detail surfaces (FundBlockBuilder, ResourceLedger) render balances
+    /// inline; group-wide views use balancesForGroup.
     public let balanceRepo: any BalanceRepository
     /// Mig 00198: per-fund balance + lifecycle (contribute/expense/lock).
     /// Reads from `fund_balance_view`; writers wrap `record_ledger_entry`

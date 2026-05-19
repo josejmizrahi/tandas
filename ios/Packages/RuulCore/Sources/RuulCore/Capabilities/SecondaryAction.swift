@@ -45,9 +45,9 @@ public struct SecondaryAction: Sendable, Hashable, Identifiable {
         // `PrimaryAction.openContribute`; this case fills out the `⋯`
         // menu for fund detail views. Dispatches to a dedicated sheet
         // that calls `FundRepository.recordExpense`. Lock / unlock are
-        // NOT here — `MoneySectionView` renders them inline in the
-        // dinero card via `fundLockRow`, keeping every fund admin
-        // control grouped with the money primitives.
+        // surfaced via `LockFundSheet`, opened from the fund block's
+        // openDestinationId route — keeping every fund admin control
+        // grouped with the dinero block in the universal detail view.
         case recordExpenseFromFund
     }
 

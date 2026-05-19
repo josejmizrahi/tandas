@@ -184,9 +184,9 @@ struct CapabilityResolverSecondaryActionsTests {
         #expect(!kinds.contains(.archive))
     }
 
-    // MARK: - Fund admin: registrar gasto + archive (lock lives in MoneySectionView)
+    // MARK: - Fund admin: registrar gasto + archive (lock surfaces via LockFundSheet)
 
-    @Test("fund + admin viewer → recordExpenseFromFund + archive (lock lives in MoneySectionView)")
+    @Test("fund + admin viewer → recordExpenseFromFund + archive (lock surfaces via LockFundSheet)")
     func fundAdminViewer() {
         let actions = resolver.secondaryActions(
             for: makeResource(type: .fund),

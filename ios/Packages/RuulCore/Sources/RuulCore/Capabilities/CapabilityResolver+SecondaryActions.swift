@@ -101,10 +101,10 @@ public extension CapabilityResolver {
 
     /// Menu for `fund` resources. Admin-only Registrar gasto + Archivar
     /// plus the universal Compartir floor. Lock / unlock are surfaced
-    /// inline in MoneySectionView's fundLockRow (gated on
-    /// viewerIsAdmin + resource.type=fund) — keeping every fund admin
-    /// control grouped with the dinero card avoids two menus pointing
-    /// at the same lifecycle.
+    /// via `LockFundSheet`, opened from the fund block's
+    /// openDestinationId route (gated on viewerIsAdmin + resource.type=
+    /// fund) — keeping every fund admin control grouped with the
+    /// dinero block avoids two menus pointing at the same lifecycle.
     private func fundSecondaryActions(
         resource: ResourceRow,
         viewerPermissions: Set<Permission>

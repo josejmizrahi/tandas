@@ -9,8 +9,9 @@ public protocol WalletPassService: Sendable {
     func generatePass(for event: Event, member: Member) async -> URL?
 }
 
-/// V1 stub. `isAvailable` returns false so the "Add to Wallet" button never
-/// appears in `RSVPSectionView` until the real implementation is wired.
+/// V1 stub. `isAvailable` returns false so the "Pase de Wallet" overflow
+/// item never lights up in the universal detail view until the real
+/// implementation is wired.
 public final class StubWalletPassService: WalletPassService {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "wallet")
 

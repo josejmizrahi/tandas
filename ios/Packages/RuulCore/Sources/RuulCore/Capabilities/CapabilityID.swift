@@ -43,8 +43,7 @@ public enum CapabilityID {
     public static let appeal         = "appeal"
 
     // MARK: - Money flow shapes (forward-compat synonyms — narrower than `money`)
-    // Used by MoneySectionView's enable check so it lights up for groups
-    // that ship a dedicated expenses/contributions/payouts capability block
+    // Reserved for groups that ship a dedicated expenses/contributions/payouts capability block
     // in the future, without a rename migration. No catalogue block today;
     // present here so consumer call sites are typed.
     public static let expenses       = "expenses"
