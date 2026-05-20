@@ -47,13 +47,13 @@ struct ResourceRulesBody: View {
                 RuulLoadingState()
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else if coordinator.rules.isEmpty {
-                EmptyStateView(
-                    systemImage: "list.bullet.clipboard",
-                    title: "Sin reglas aplicables",
-                    message: coordinator.canCreate
+                ContentUnavailableView {
+                    Label("Sin reglas aplicables", systemImage: "list.bullet.clipboard")
+                } description: {
+                    Text(coordinator.canCreate
                         ? "Agrega reglas que sólo apliquen a este recurso. Las del grupo seguirán aplicando."
-                        : "Sólo el anfitrión o un fundador pueden crear reglas específicas para este recurso."
-                )
+                        : "Sólo el anfitrión o un fundador pueden crear reglas específicas para este recurso.")
+                }
                 .padding(.vertical, RuulSpacing.md)
             } else {
                 scopeSection(

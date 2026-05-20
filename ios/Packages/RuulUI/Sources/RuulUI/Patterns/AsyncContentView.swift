@@ -14,7 +14,7 @@ import RuulCore
 /// | `.refreshing(value)`                       | `loaded(value)` + `RuulInlineProgress` |
 /// | `.loaded(value)`                           | `loaded(value)`                        |
 /// | `.empty`                                   | `empty()` (default: `EmptyView`)       |
-/// | `.failed(err, previous: nil)`              | `ErrorStateView` full-screen + retry   |
+/// | `.failed(err, previous: nil)`              | `ContentUnavailableView` + retry CTA   |
 /// | `.failed(err, previous: value)`            | `loaded(value)` + error banner top     |
 ///
 /// **Anti-flash:** durante `.loading`, el spinner solo aparece después de
@@ -31,12 +31,14 @@ import RuulCore
 ///     phase: coordinator.phase,
 ///     onRetry: { await coordinator.refresh() },
 ///     empty: {
-///         EmptyStateView(
-///             systemImage: "list.bullet.clipboard",
-///             title: "Sin acuerdos",
-///             message: "Crea el primero para empezar.",
-///             primaryAction: ("Crear", { ... })
-///         )
+///         ContentUnavailableView {
+///             Label("Sin acuerdos", systemImage: "list.bullet.clipboard")
+///         } description: {
+///             Text("Crea el primero para empezar.")
+///         } actions: {
+///             Button("Crear") { ... }
+///                 .buttonStyle(.borderedProminent)
+///         }
 ///     },
 ///     loaded: { rules in
 ///         ScrollView { ForEach(rules) { ruleCard($0) } }
@@ -86,7 +88,17 @@ public struct AsyncContentView<Value: Sendable, LoadedContent: View, EmptyConten
                         ErrorBanner(error: err, retry: retryClosure)
                     }
             case .failed(let err, .none):
-                ErrorStateView(error: err, retry: retryClosure)
+                ContentUnavailableView {
+                    Label(err.title, systemImage: err.isRetryable ? "exclamationmark.triangle" : "exclamationmark.octagon")
+                } description: {
+                    if let message = err.message {
+                        Text(message)
+                    }
+                } actions: {
+                    if err.isRetryable, let retry = retryClosure {
+                        Button("Reintentar", action: retry)
+                    }
+                }
             }
         }
         .animation(.smooth, value: phase.isInitialLoading)

@@ -56,11 +56,11 @@ public struct MyFinesView: View {
     /// "todo al corriente" celebratorio que aparece cuando hubo
     /// multas y todas se pagaron (en `header`).
     private var emptyHero: some View {
-        EmptyStateView(
-            systemImage: "checkmark.circle.fill",
-            title: "Sin multas",
-            message: "No tienes multas en este momento. Sigue así."
-        )
+        ContentUnavailableView {
+            Label("Sin multas", systemImage: "checkmark.circle.fill")
+        } description: {
+            Text("No tienes multas en este momento. Sigue así.")
+        }
         .padding(.horizontal, RuulSpacing.lg)
         .frame(maxHeight: .infinity)
         .refreshable { await coordinator.refresh() }

@@ -13,7 +13,7 @@ import Foundation
 ///    isLoading × error × items.isEmpty) debe mapear al estado correcto.
 ///    Bugs aquí causan estados visuales contradictorios en producción
 ///    (e.g. mostrar spinner sobre lista vacía cuando deberíamos mostrar
-///    EmptyStateView).
+///    ContentUnavailableView).
 /// 2. **Helpers derivados** — `value`, `error`, `isInitialLoading`,
 ///    `isRefreshing`, `hasValue`. Usados por AsyncContentView para
 ///    decidir qué primitiva renderizar.

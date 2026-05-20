@@ -19,11 +19,11 @@ public struct MembersListView: View {
                 phase: coordinator.activePhase,
                 onRetry: { await coordinator.refresh() },
                 empty: {
-                    EmptyStateView(
-                        systemImage: "person.2",
-                        title: "Sin miembros activos",
-                        message: "Cuando alguien se una al grupo, aparecerá aquí."
-                    )
+                    ContentUnavailableView {
+                        Label("Sin miembros activos", systemImage: "person.2")
+                    } description: {
+                        Text("Cuando alguien se una al grupo, aparecerá aquí.")
+                    }
                     .padding(RuulSpacing.lg)
                 },
                 loaded: { rows in

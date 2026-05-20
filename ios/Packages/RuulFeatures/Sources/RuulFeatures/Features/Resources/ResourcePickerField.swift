@@ -88,8 +88,8 @@ struct ResourcePickerField: View {
     }
 
     /// Compact inline error replacement for the spinner. Sheet-friendly —
-    /// the full-screen `ErrorStateView` would dominate a picker row. Tap
-    /// "Reintentar" to re-run `load()`.
+    /// the full-screen `ContentUnavailableView` would dominate a picker
+    /// row. Tap "Reintentar" to re-run `load()`.
     private func inlineErrorRow(_ err: CoordinatorError) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle")

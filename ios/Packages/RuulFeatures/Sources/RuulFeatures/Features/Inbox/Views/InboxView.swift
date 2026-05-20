@@ -234,11 +234,11 @@ private struct FilteredInboxList: View {
                 phase: phase,
                 onRetry: { await onRefresh() },
                 empty: {
-                    EmptyStateView(
-                        systemImage: "tray",
-                        title: "Sin pendientes",
-                        message: "No hay acciones en esta categoria."
-                    )
+                    ContentUnavailableView {
+                        Label("Sin pendientes", systemImage: "tray")
+                    } description: {
+                        Text("No hay acciones en esta categoria.")
+                    }
                 },
                 loaded: { actions in
                     ScrollView {
@@ -327,11 +327,11 @@ private struct ResolvedInboxList: View {
             AsyncContentView(
                 phase: phase,
                 empty: {
-                    EmptyStateView(
-                        systemImage: "checkmark.circle",
-                        title: "Sin resueltas",
-                        message: "Cuando completes acciones aparecerán aquí."
-                    )
+                    ContentUnavailableView {
+                        Label("Sin resueltas", systemImage: "checkmark.circle")
+                    } description: {
+                        Text("Cuando completes acciones aparecerán aquí.")
+                    }
                 },
                 loaded: { actions in
                     ScrollView {

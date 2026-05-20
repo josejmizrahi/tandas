@@ -24,11 +24,11 @@ public struct AddManualFineSheet: View {
             if coordinator.isLoadingMembers {
                 RuulLoadingState()
             } else if coordinator.members.isEmpty {
-                EmptyStateView(
-                    systemImage: "person.2",
-                    title: "Sin otros miembros",
-                    message: "No hay otros miembros en este grupo."
-                )
+                ContentUnavailableView {
+                    Label("Sin otros miembros", systemImage: "person.2")
+                } description: {
+                    Text("No hay otros miembros en este grupo.")
+                }
             } else {
                 memberPickerSection
                 amountSection

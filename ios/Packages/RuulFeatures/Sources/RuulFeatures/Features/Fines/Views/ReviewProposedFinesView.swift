@@ -90,11 +90,11 @@ public struct ReviewProposedFinesView: View {
     }
 
     private var emptyState: some View {
-        EmptyStateView(
-            systemImage: "checkmark.circle.fill",
-            title: "Nada que revisar",
-            message: "No hay multas propuestas pendientes para este evento."
-        )
+        ContentUnavailableView {
+            Label("Nada que revisar", systemImage: "checkmark.circle.fill")
+        } description: {
+            Text("No hay multas propuestas pendientes para este evento.")
+        }
         .padding(.top, RuulSpacing.lg)
     }
 

@@ -1,6 +1,7 @@
 import Foundation
 
-/// Sendable, equatable error envelope mostrado por `ErrorStateView`.
+/// Sendable, equatable error envelope rendered by `AsyncContentView` via
+/// `ContentUnavailableView` (or by feature-level error chrome).
 public struct CoordinatorError: Equatable, Sendable {
     public let title: String
     public let message: String?
