@@ -17,7 +17,7 @@ public struct RuulLoadingState: View {
             if let message {
                 Text(message)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

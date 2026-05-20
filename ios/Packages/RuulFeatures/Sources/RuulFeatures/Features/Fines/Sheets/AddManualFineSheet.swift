@@ -36,7 +36,7 @@ public struct AddManualFineSheet: View {
                 if let error = coordinator.error {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
                 submitButton
             }
@@ -68,7 +68,7 @@ public struct AddManualFineSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mwp.displayName)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     if mwp.member.isFounder {
                         Text("FUNDADOR")
@@ -91,7 +91,7 @@ public struct AddManualFineSheet: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparator,
+                    .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 1.5 : 0.5)
             )
         }

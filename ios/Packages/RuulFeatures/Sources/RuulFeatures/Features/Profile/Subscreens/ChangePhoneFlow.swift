@@ -29,7 +29,7 @@ public struct ChangePhoneFlow: View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Tu nuevo número")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             TextField("+52 55 1234 5678", text: $newPhone)
                 .textContentType(.telephoneNumber)
                 .keyboardType(.phonePad)
@@ -49,7 +49,7 @@ public struct ChangePhoneFlow: View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Código enviado a \(newPhone)")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             TextField("000000", text: $otp)
                 .textContentType(.oneTimeCode)
                 .keyboardType(.numberPad)
@@ -69,7 +69,7 @@ public struct ChangePhoneFlow: View {
     private func errorLabel(_ msg: String) -> some View {
         Text(msg)
             .font(.footnote)
-            .foregroundStyle(Color.ruulNegative)
+            .foregroundStyle(Color.red)
     }
 
     private func sendOTP() async {

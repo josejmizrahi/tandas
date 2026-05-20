@@ -36,10 +36,10 @@ public struct TimezonePicker: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(tz)
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             Text(offsetLabel(for: tz))
                                 .font(.caption)
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                         }
                         Spacer()
                         if tz == current {

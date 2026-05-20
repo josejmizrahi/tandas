@@ -27,16 +27,16 @@ public struct CancelAttendanceSheet: View {
                 if isAfterDeadline {
                     HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Color.ruulWarning)
+                            .foregroundStyle(Color.orange)
                         Text("Esto puede generar multa según las reglas del grupo.")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                     .padding(RuulSpacing.sm)
                     .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                            .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                            .stroke(Color(.separator), lineWidth: 0.5)
                     )
                 }
                 RuulTextField("¿Por qué no puedes?", text: $reason, label: "Razón (opcional)")

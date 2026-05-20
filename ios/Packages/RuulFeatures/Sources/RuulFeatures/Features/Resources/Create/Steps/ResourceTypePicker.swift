@@ -34,10 +34,10 @@ struct ResourceTypePicker: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("¿Qué estás creando?")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Elige el tipo. Después decides los detalles.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -82,7 +82,7 @@ struct ResourceTypePicker: View {
                 if !isImplemented {
                     Text("Pronto")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .padding(.horizontal, RuulSpacing.xs)
                         .padding(.vertical, 2)
                         .background(
@@ -92,10 +92,10 @@ struct ResourceTypePicker: View {
             }
             Text(type.humanLabel)
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text(copy.summary)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.leading)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)

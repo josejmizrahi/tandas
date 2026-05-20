@@ -105,15 +105,15 @@ public struct InviteMembersView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text("Compartir link")
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text("Mándalo por WhatsApp, SMS, donde sea.")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "square.and.arrow.up")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
             }
             .padding(RuulSpacing.md)
@@ -123,7 +123,7 @@ public struct InviteMembersView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -133,7 +133,7 @@ public struct InviteMembersView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Por invitar (\(coord.pendingInvites.count))")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             VStack(spacing: RuulSpacing.s0) {
                 ForEach(coord.pendingInvites) { pending in
                     HStack {
@@ -141,25 +141,25 @@ public struct InviteMembersView: View {
                             if let name = pending.displayName {
                                 Text(name)
                                     .font(.subheadline)
-                                    .foregroundStyle(Color.ruulTextPrimary)
+                                    .foregroundStyle(Color.primary)
                                 Text(PhoneFormatter.displayFormat(pending.phoneE164))
                                     .font(.caption)
-                                    .foregroundStyle(Color.ruulTextSecondary)
+                                    .foregroundStyle(Color.secondary)
                             } else {
                                 Text(PhoneFormatter.displayFormat(pending.phoneE164))
                                     .font(.subheadline)
-                                    .foregroundStyle(Color.ruulTextPrimary)
+                                    .foregroundStyle(Color.primary)
                             }
                         }
                         Spacer()
                         if pending.sentAt != nil {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.ruulPositive)
+                                .foregroundStyle(Color.green)
                                 .accessibilityLabel("Invitación enviada")
                         } else {
                             Button { remove(pending) } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(Color.ruulTextTertiary)
+                                    .foregroundStyle(Color(.tertiaryLabel))
                                     .accessibilityHidden(true)
                             }
                             .buttonStyle(.plain)

@@ -31,10 +31,10 @@ public struct RuleChangeVoteBody: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("RAZÓN")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Text(desc)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -43,23 +43,23 @@ public struct RuleChangeVoteBody: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text("CAMBIO PROPUESTO")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 HStack(spacing: RuulSpacing.md) {
-                    amountChip(label: "Actual",  value: currentAmount,  tint: Color.ruulTextTertiary)
+                    amountChip(label: "Actual",  value: currentAmount,  tint: Color(.tertiaryLabel))
                     Image(systemName: "arrow.right")
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .accessibilityHidden(true)
-                    amountChip(label: "Nuevo",   value: proposedAmount, tint: Color.ruulPositive)
+                    amountChip(label: "Nuevo",   value: proposedAmount, tint: Color.green)
                 }
             }
 
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
             }
         }
@@ -69,7 +69,7 @@ public struct RuleChangeVoteBody: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label.uppercased())
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text(value.map { "$\($0)" } ?? "—")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(tint)

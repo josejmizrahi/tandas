@@ -68,15 +68,15 @@ public struct LocationEditorSheet: View {
                     if pickedCoordinate != nil {
                         Label("Ubicación verificada con Apple Maps", systemImage: "checkmark.seal.fill")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulPositive)
+                            .foregroundStyle(Color.green)
                     } else if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text("Sin coordenadas todavía. Elige una sugerencia para que abra Maps al tappear.")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     } else {
                         Text("Empieza a escribir el nombre del lugar o una dirección.")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
 
@@ -89,11 +89,11 @@ public struct LocationEditorSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(suggestion.title)
                                         .font(.subheadline)
-                                        .foregroundStyle(Color.ruulTextPrimary)
+                                        .foregroundStyle(Color.primary)
                                     if !suggestion.subtitle.isEmpty {
                                         Text(suggestion.subtitle)
                                             .font(.caption)
-                                            .foregroundStyle(Color.ruulTextSecondary)
+                                            .foregroundStyle(Color.secondary)
                                     }
                                 }
                             }
@@ -107,7 +107,7 @@ public struct LocationEditorSheet: View {
                     } footer: {
                         Text("Próximos eventos donde te toque ser anfitrión arrancarán con este lugar precargado. Lo puedes cambiar por evento.")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
 
@@ -115,7 +115,7 @@ public struct LocationEditorSheet: View {
                     Section {
                         Text(errorMessage)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }

@@ -11,7 +11,7 @@ struct RelationsRailView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Relacionados")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: RuulSpacing.sm) {
                         ForEach(cards) { card in
@@ -21,11 +21,11 @@ struct RelationsRailView: View {
                                         .foregroundStyle(card.tint.color)
                                     Text(card.label)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(Color.ruulTextPrimary)
+                                        .foregroundStyle(Color.primary)
                                     if let status = card.statusLine {
                                         Text(status)
                                             .font(.caption)
-                                            .foregroundStyle(Color.ruulTextSecondary)
+                                            .foregroundStyle(Color.secondary)
                                     }
                                 }
                                 .padding(RuulSpacing.md)

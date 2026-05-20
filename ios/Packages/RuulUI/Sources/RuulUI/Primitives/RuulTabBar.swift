@@ -58,17 +58,17 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
                     if let count = tab.badgeCount, count > 0 {
                         Text("\(min(count, 99))")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.ruulOnImage)
+                            .foregroundStyle(Color.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.ruulNegative))
+                            .background(Capsule().fill(Color.red))
                             .offset(x: 8, y: -6)
                     }
                 }
                 Text(tab.label)
                     .font(.caption.weight(.medium))
             }
-            .foregroundStyle(isSelected ? Color.ruulAccent : Color.ruulTextSecondary)
+            .foregroundStyle(isSelected ? Color.ruulAccent : Color.secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .background {

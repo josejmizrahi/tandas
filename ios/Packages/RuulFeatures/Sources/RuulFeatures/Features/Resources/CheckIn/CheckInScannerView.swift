@@ -9,7 +9,7 @@ public struct CheckInScannerView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulCameraBackground.ignoresSafeArea()
+            Color.black.ignoresSafeArea()
 
             switch coordinator.scanner.state {
             case .denied:
@@ -59,7 +59,7 @@ public struct CheckInScannerView: View {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(Color.ruulOnImage, Color.ruulImageBadge)
+                    .foregroundStyle(Color.white, Color.ruulImageBadge)
                     .accessibilityHidden(true)
             }
             .buttonStyle(.plain)
@@ -68,10 +68,10 @@ public struct CheckInScannerView: View {
             VStack(alignment: .center, spacing: 4) {
                 Text("Modo check-in")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulOnImage)
+                    .foregroundStyle(Color.white)
                 Text("\(coordinator.checkedCount) de \(coordinator.totalConfirmed) llegaron")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulOnImageSecondary)
+                    .foregroundStyle(Color.white.opacity(0.85))
             }
             Spacer()
             Color.clear.frame(width: 32, height: 32)  // spacer for symmetry
@@ -83,7 +83,7 @@ public struct CheckInScannerView: View {
 
     private var scanFrame: some View {
         RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-            .strokeBorder(Color.ruulOnImage.opacity(0.6), lineWidth: 3)
+            .strokeBorder(Color.white.opacity(0.6), lineWidth: 3)
             .frame(width: 240, height: 240)
             .background(Color.clear)
     }
@@ -95,11 +95,11 @@ public struct CheckInScannerView: View {
                     RuulAvatar(name: recent.name, size: .small, border: .glass)
                     Text(recent.name)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulOnImage)
+                        .foregroundStyle(Color.white)
                     Spacer()
                     Text("✓ Llegó")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulPositive)
+                        .foregroundStyle(Color.green)
                 }
                 .padding(RuulSpacing.sm)
                 // DS v3 §13: recent check-in chip overlay — Liquid Glass real.
@@ -120,19 +120,19 @@ public struct CheckInScannerView: View {
         case .success(_, let name):
             feedbackCard(
                 icon: "checkmark.circle.fill",
-                color: .ruulPositive,
+                color: .green,
                 title: "¡Bienvenido \(name)!"
             )
         case .alreadyCheckedIn(_, let name):
             feedbackCard(
                 icon: "exclamationmark.circle.fill",
-                color: .ruulWarning,
+                color: .orange,
                 title: "\(name) ya llegó"
             )
         case .invalid:
             feedbackCard(
                 icon: "xmark.circle.fill",
-                color: .ruulNegative,
+                color: .red,
                 title: "QR inválido"
             )
         }
@@ -142,11 +142,11 @@ public struct CheckInScannerView: View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: icon)
                 .font(.largeTitle.weight(.bold))
-                .foregroundStyle(Color.ruulOnImage, color)
+                .foregroundStyle(Color.white, color)
                 .accessibilityHidden(true)
             Text(title)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulOnImage)
+                .foregroundStyle(Color.white)
         }
         .padding(RuulSpacing.xxl)
         .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
@@ -161,14 +161,14 @@ public struct CheckInScannerView: View {
             Spacer()
             Image(systemName: "camera.fill")
                 .font(.largeTitle.weight(.bold))
-                .foregroundStyle(Color.ruulOnImageSecondary)
+                .foregroundStyle(Color.white.opacity(0.85))
                 .accessibilityHidden(true)
             Text("Necesitamos permiso de cámara")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulOnImage)
+                .foregroundStyle(Color.white)
             Text("Para escanear QRs y marcar llegadas.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulOnImageSecondary)
+                .foregroundStyle(Color.white.opacity(0.85))
                 .multilineTextAlignment(.center)
             RuulButton("Abrir Configuración", style: .primary, size: .large) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -186,11 +186,11 @@ public struct CheckInScannerView: View {
             Spacer()
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.largeTitle.weight(.bold))
-                .foregroundStyle(Color.ruulOnImageSecondary)
+                .foregroundStyle(Color.white.opacity(0.85))
                 .accessibilityHidden(true)
             Text(msg)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulOnImage)
+                .foregroundStyle(Color.white)
                 .multilineTextAlignment(.center)
             RuulButton("Cerrar", style: .glass, size: .medium) { dismiss() }
             Spacer()

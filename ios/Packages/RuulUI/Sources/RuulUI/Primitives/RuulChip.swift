@@ -34,12 +34,12 @@ public struct RuulChip: View {
                 if case .count(let n) = style {
                     Text("\(n)")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 if case .removable = style {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
             .foregroundStyle(foreground)
@@ -54,7 +54,7 @@ public struct RuulChip: View {
         if case .selectable(let isSelected) = style, isSelected {
             return .ruulTextInverse
         }
-        return .ruulTextPrimary
+        return .primary
     }
 }
 

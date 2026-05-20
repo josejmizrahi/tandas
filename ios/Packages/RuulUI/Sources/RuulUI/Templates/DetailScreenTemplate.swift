@@ -27,7 +27,7 @@ public struct DetailScreenTemplate<Content: View>: View {
                     if let title {
                         Text(title)
                             .font(.largeTitle.weight(.semibold))
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                     }
                     content()
                 }

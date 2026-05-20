@@ -39,14 +39,14 @@ public struct GroupCurrencyPickerView: View {
                             Text(entry.symbol)
                                 .font(.body.monospaced())
                                 .frame(width: 44, alignment: .leading)
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(entry.label)
                                     .font(.subheadline)
-                                    .foregroundStyle(Color.ruulTextPrimary)
+                                    .foregroundStyle(Color.primary)
                                 Text(entry.code)
                                     .font(.caption)
-                                    .foregroundStyle(Color.ruulTextSecondary)
+                                    .foregroundStyle(Color.secondary)
                             }
                             Spacer()
                             if entry.code == current {
@@ -60,7 +60,7 @@ public struct GroupCurrencyPickerView: View {
                     .buttonStyle(.plain)
                     .disabled(saving)
                     if entry.code != Self.supported.last?.code {
-                        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
+                        Divider().background(Color(.separator)).padding(.leading, RuulSpacing.md)
                     }
                 }
             }
@@ -69,7 +69,7 @@ public struct GroupCurrencyPickerView: View {
             if let error {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             }
         }
         .background(Color.ruulBackground.ignoresSafeArea())

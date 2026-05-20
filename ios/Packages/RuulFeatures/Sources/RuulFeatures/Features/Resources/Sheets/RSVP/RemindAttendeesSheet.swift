@@ -29,16 +29,16 @@ public struct RemindAttendeesSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Mensaje preview")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Text("¿Confirmas? Falta tu RSVP para \"\(eventTitle)\"")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .padding(RuulSpacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
                 Text("Esto avisa a las \(pendingCount) personas que aún no han respondido.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
     }

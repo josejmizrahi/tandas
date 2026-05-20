@@ -123,11 +123,11 @@ public struct MemberDetailView: View {
             VStack(spacing: RuulSpacing.xxs) {
                 Text(displayName)
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .multilineTextAlignment(.center)
                 Text(group.name)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -193,12 +193,12 @@ public struct MemberDetailView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(value)
                 .font(.body.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label.uppercased())
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -206,7 +206,7 @@ public struct MemberDetailView: View {
         .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -241,7 +241,7 @@ public struct MemberDetailView: View {
     private var youHintSection: some View {
         Text("Este eres tú.")
             .font(.caption)
-            .foregroundStyle(Color.ruulTextTertiary)
+            .foregroundStyle(Color(.tertiaryLabel))
             .frame(maxWidth: .infinity)
             .padding(.top, RuulSpacing.md)
     }
@@ -251,12 +251,12 @@ public struct MemberDetailView: View {
         HStack(spacing: RuulSpacing.md) {
             Image(systemName: icon)
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .frame(width: RuulSpacing.xxl, alignment: .center)
                 .accessibilityHidden(true)
             Text(label)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Spacer(minLength: 0)
         }
         .padding(.vertical, RuulSpacing.sm)

@@ -44,7 +44,7 @@ public struct ShareEventSheet: View {
             VStack(spacing: RuulSpacing.lg) {
                 Text("Quien escanee este código va directo al evento.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.center)
 
                 qrCard
@@ -75,7 +75,7 @@ public struct ShareEventSheet: View {
                             Text("Agregar a Calendario")
                                 .font(.subheadline)
                         }
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, RuulSpacing.md)
                         .background(
@@ -84,7 +84,7 @@ public struct ShareEventSheet: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                                .stroke(Color(.separator), lineWidth: 0.5)
                         )
                     }
                     .buttonStyle(.ruulPress)
@@ -98,16 +98,16 @@ public struct ShareEventSheet: View {
             qrImage
                 .frame(width: 220, height: 220)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
 
             VStack(spacing: 2) {
                 Text(event.title)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .multilineTextAlignment(.center)
                 Text(event.startsAt.ruulFullDateTime)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -124,7 +124,7 @@ public struct ShareEventSheet: View {
             Image(systemName: "qrcode")
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
         }
     }

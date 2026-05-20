@@ -43,7 +43,7 @@ public struct LeaveGroupConfirmationSheet: View {
                 if let error {
                     Text(error)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
                 Spacer()
             }
@@ -57,10 +57,10 @@ public struct LeaveGroupConfirmationSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Label("Eres el único admin", systemImage: "exclamationmark.triangle")
                 .font(.headline)
-                .foregroundStyle(Color.ruulWarning)
+                .foregroundStyle(Color.orange)
             Text("Antes de salir, asigna el rol de admin a otro miembro o archiva el grupo. Tu badge de fundador permanece como historia del grupo.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Button("Entendido") { dismiss() }
                 .buttonStyle(.borderedProminent)
         }
@@ -70,10 +70,10 @@ public struct LeaveGroupConfirmationSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("¿Salir de \(group.name)?")
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Perderás acceso a este grupo y a su actividad.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             pendingFinesWarning
             Button(role: .destructive) {
                 Task { await leave() }
@@ -85,7 +85,7 @@ public struct LeaveGroupConfirmationSheet: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color.ruulNegative)
+            .tint(Color.red)
             .disabled(leaving)
         }
     }
@@ -100,14 +100,14 @@ public struct LeaveGroupConfirmationSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Label("Tienes multas pendientes aquí", systemImage: "exclamationmark.triangle.fill")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.ruulWarning)
+                    .foregroundStyle(Color.orange)
                 let count = pendingFinesInGroup.count
                 Text("\(count == 1 ? "1 multa" : "\(count) multas") por \(formatCurrency(pendingFinesTotal)). Salir no las cancela — siguen visibles en Mis multas.")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulWarning.opacity(0.08), in: RoundedRectangle(cornerRadius: RuulRadius.md))
+            .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: RuulRadius.md))
         }
     }
 

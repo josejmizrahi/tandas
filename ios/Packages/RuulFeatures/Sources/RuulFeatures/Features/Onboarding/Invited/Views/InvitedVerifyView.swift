@@ -24,7 +24,7 @@ public struct InvitedVerifyView: View {
                 )
                 Text("Te llamamos primero por WhatsApp. Si no llega, te mandamos un SMS.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
     }

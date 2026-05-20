@@ -90,7 +90,7 @@ public struct RuulInlineActionBar: View {
         let shape = RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
         switch action.style {
         case .primary:
-            shape.fill(action.isDestructive ? Color.ruulNegative : Color.ruulTextPrimary)
+            shape.fill(action.isDestructive ? Color.red : Color.primary)
         case .secondary:
             shape.fill(Color.ruulSurface)
         }
@@ -104,7 +104,7 @@ public struct RuulInlineActionBar: View {
             // same token as the text would, just swapped.
             return Color.ruulBackgroundCanvas
         case .secondary:
-            return action.isDestructive ? Color.ruulNegative : Color.ruulTextPrimary
+            return action.isDestructive ? Color.red : Color.primary
         }
     }
 }

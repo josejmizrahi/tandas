@@ -41,10 +41,10 @@ public struct GroupTourOverlay: View {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Bienvenido a \(coord.preview?.groupName ?? "tu grupo")")
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Esto es lo que necesitas saber:")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 bulletList
                 RuulButton("Entendido", style: .primary, size: .large, fillsWidth: true) {
                     Task { await dismiss() }
@@ -68,7 +68,7 @@ public struct GroupTourOverlay: View {
             RuulIconBadge(icon, size: .small)
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

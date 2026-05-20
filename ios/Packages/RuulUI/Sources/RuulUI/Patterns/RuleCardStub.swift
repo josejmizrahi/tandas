@@ -44,11 +44,11 @@ public struct RuleCardStub: View {
                 HStack {
                     Text(data.name)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if onInfo != nil {
                         Button { onInfo?() } label: {
                             Image(systemName: "info.circle")
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -63,12 +63,12 @@ public struct RuleCardStub: View {
                 if let description = data.description {
                     Text(description)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 HStack {
                     Text("Multa")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Spacer()
                     Text(formattedAmount)
                         .font(.title2.weight(.semibold))

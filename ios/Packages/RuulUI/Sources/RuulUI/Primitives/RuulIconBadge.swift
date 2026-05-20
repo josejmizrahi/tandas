@@ -50,9 +50,9 @@ public struct RuulIconBadge: View {
             RuulIconBadge("calendar", size: .large)
         }
         VStack(spacing: RuulSpacing.sm) {
-            RuulIconBadge("checkmark", tint: .ruulPositive)
-            RuulIconBadge("exclamationmark.triangle", tint: .ruulWarning)
-            RuulIconBadge("xmark", tint: .ruulNegative)
+            RuulIconBadge("checkmark", tint: .green)
+            RuulIconBadge("exclamationmark.triangle", tint: .orange)
+            RuulIconBadge("xmark", tint: .red)
         }
     }
     .padding(RuulSpacing.lg)

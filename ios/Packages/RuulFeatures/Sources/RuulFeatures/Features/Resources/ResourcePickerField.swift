@@ -52,7 +52,7 @@ struct ResourcePickerField: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             content
         }
         .task { await load() }
@@ -66,17 +66,17 @@ struct ResourcePickerField: View {
                 ProgressView()
                 Text("Cargando recursos…")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
         case .empty:
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "tray")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Text("Aún no hay recursos en este grupo.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
@@ -93,16 +93,16 @@ struct ResourcePickerField: View {
     private func inlineErrorRow(_ err: CoordinatorError) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
             VStack(alignment: .leading, spacing: 2) {
                 Text(err.title)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                 if let msg = err.message {
                     Text(msg)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
             }
@@ -118,7 +118,7 @@ struct ResourcePickerField: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulNegative.opacity(0.3), lineWidth: 1)
+                .stroke(Color.red.opacity(0.3), lineWidth: 1)
         )
     }
 
@@ -140,7 +140,7 @@ struct ResourcePickerField: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
     }
 

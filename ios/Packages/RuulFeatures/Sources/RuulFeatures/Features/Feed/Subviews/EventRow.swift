@@ -59,7 +59,7 @@ public struct EventRow: View {
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -87,7 +87,7 @@ public struct EventRow: View {
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -109,7 +109,7 @@ public struct EventRow: View {
                 .lineLimit(1)
             Text(event.title)
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
             if let location = event.locationName, !location.isEmpty {
@@ -120,7 +120,7 @@ public struct EventRow: View {
                         .font(.caption)
                         .lineLimit(1)
                 }
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             }
         }
     }
@@ -149,11 +149,11 @@ public struct EventRow: View {
     /// Meta color carries status: cancelled is red, hosted-by-me + future is
     /// accent, in-progress is the live red, otherwise secondary.
     private var metaColor: Color {
-        if event.status == .cancelled { return .ruulNegative }
-        if event.status == .inProgress { return .ruulNegative }
-        if event.startsAt < .now && event.status == .upcoming { return .ruulTextTertiary }
+        if event.status == .cancelled { return .red }
+        if event.status == .inProgress { return .red }
+        if event.startsAt < .now && event.status == .upcoming { return Color(.tertiaryLabel) }
         if Calendar.current.isDateInToday(event.startsAt) { return .ruulAccent }
-        return .ruulTextSecondary
+        return .secondary
     }
 
     // MARK: - Trailing
@@ -170,22 +170,22 @@ public struct EventRow: View {
     private var livePill: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(Color.ruulNegative)
+                .fill(Color.red)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
         }
     }
 
     private func rsvpPill(_ status: RSVPStatus) -> some View {
         let (icon, label, color): (String, String, Color) = {
             switch status {
-            case .going:      return ("checkmark", "Vas",       .ruulPositive)
-            case .maybe:      return ("questionmark", "Tal vez", .ruulWarning)
-            case .declined:   return ("xmark", "No vas",         .ruulTextTertiary)
+            case .going:      return ("checkmark", "Vas",       .green)
+            case .maybe:      return ("questionmark", "Tal vez", .orange)
+            case .declined:   return ("xmark", "No vas",         Color(.tertiaryLabel))
             case .waitlisted: return ("hourglass", "Lista",      .ruulAccent)
-            case .pending:    return ("circle", "",              .ruulTextTertiary)
+            case .pending:    return ("circle", "",              Color(.tertiaryLabel))
             }
         }()
         return HStack(spacing: 4) {

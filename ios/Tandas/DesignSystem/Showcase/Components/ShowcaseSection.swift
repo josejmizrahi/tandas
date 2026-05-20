@@ -18,11 +18,11 @@ struct ShowcaseSection<Content: View>: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             if let subtitle {
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             content()
                 .padding(.top, RuulSpacing.xs)

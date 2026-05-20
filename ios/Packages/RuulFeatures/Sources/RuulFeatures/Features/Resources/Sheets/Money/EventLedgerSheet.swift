@@ -58,18 +58,18 @@ struct ResourceLedgerSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("TOTAL REGISTRADO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                 Text(format(cents: coordinator.totalSpentCents))
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(currencyLabel)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
                 Text("\(coordinator.entries.count) \(coordinator.entries.count == 1 ? "movimiento" : "movimientos")")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .padding(RuulSpacing.lg)
@@ -77,7 +77,7 @@ struct ResourceLedgerSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -87,13 +87,13 @@ struct ResourceLedgerSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("BALANCE NETO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             RuulSeparatedRows(items: coordinator.memberBalances) { balance in
                 balanceRow(balance)
             }
             Text("Positivo: el grupo le debe. Negativo: le debe al grupo.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.top, 2)
         }
     }
@@ -103,12 +103,12 @@ struct ResourceLedgerSheet: View {
             RuulAvatar(name: balance.displayName, imageURL: balance.avatarURL, size: .small)
             Text(balance.displayName)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .lineLimit(1)
             Spacer()
             Text(formatSigned(cents: balance.netCents))
                 .font(.subheadline)
-                .foregroundStyle(balance.netCents >= 0 ? Color.ruulPositive : Color.ruulNegative)
+                .foregroundStyle(balance.netCents >= 0 ? Color.green : Color.red)
                 .monospacedDigit()
         }
         .padding(.horizontal, RuulSpacing.md)
@@ -116,7 +116,7 @@ struct ResourceLedgerSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -135,7 +135,7 @@ struct ResourceLedgerSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("HISTORIAL")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 RuulSeparatedRows(items: coordinator.entries) { entry in
                     entryRow(entry)
                 }
@@ -166,22 +166,22 @@ struct ResourceLedgerSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(kindLabel)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(contextLine(payer: payerName, receiver: receiverName))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(1)
                 if let note {
                     Text("“\(note)”")
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .lineLimit(2)
                 }
             }
             Spacer()
             Text(format(cents: entry.amountCents))
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .monospacedDigit()
         }
         .padding(.horizontal, RuulSpacing.md)
@@ -189,7 +189,7 @@ struct ResourceLedgerSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 

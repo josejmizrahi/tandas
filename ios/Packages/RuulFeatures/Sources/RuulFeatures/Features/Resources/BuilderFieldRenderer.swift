@@ -25,7 +25,7 @@ public struct BuilderFieldRenderer: View {
             if let helpText = field.helpText {
                 Text(helpText)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.leading, RuulSpacing.xxs)
             }
         }
@@ -41,7 +41,7 @@ public struct BuilderFieldRenderer: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(field.label)
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             if options.count <= 7 {
                 Picker(field.label, selection: pickerBinding(options: options)) {
                     ForEach(options.indices, id: \.self) { i in
@@ -74,14 +74,14 @@ public struct BuilderFieldRenderer: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(field.label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 TextEditor(text: stringBinding())
                     .frame(minHeight: 80)
                     .padding(RuulSpacing.sm)
                     .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
                     .overlay(
                         RoundedRectangle(cornerRadius: RuulRadius.medium)
-                            .stroke(Color.ruulSeparator, lineWidth: 1)
+                            .stroke(Color(.separator), lineWidth: 1)
                     )
             }
 
@@ -98,11 +98,11 @@ public struct BuilderFieldRenderer: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(field.label)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if let helpText = field.helpText {
                         Text(helpText)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
                 Spacer()
@@ -114,14 +114,14 @@ public struct BuilderFieldRenderer: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium)
-                    .stroke(Color.ruulSeparator, lineWidth: 1)
+                    .stroke(Color(.separator), lineWidth: 1)
             )
 
         case .date, .time, .dateTime:
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(field.label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 DatePicker(
                     "",
                     selection: dateBinding(),
@@ -135,7 +135,7 @@ public struct BuilderFieldRenderer: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(field.label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 RuulTextField(
                     "minutos",
                     text: stringBinding(),
@@ -215,14 +215,14 @@ public struct BuilderFieldRenderer: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(field.label)
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "exclamationmark.circle")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Text(note)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
@@ -232,7 +232,7 @@ public struct BuilderFieldRenderer: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .stroke(Color(.separator), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
             )
         }
     }

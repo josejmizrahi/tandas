@@ -11,7 +11,7 @@ struct BalanceLayout: View {
             HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.sm) {
                 Text(fields.primary)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if let delta = fields.delta {
                     Text(delta)
                         .font(.caption.weight(.semibold))
@@ -21,7 +21,7 @@ struct BalanceLayout: View {
             if let supporting = fields.supporting {
                 Text(supporting)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
     }

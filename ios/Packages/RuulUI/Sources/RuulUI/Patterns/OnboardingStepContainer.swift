@@ -47,11 +47,11 @@ public struct OnboardingStepContainer<Content: View>: View {
                     VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                         Text(title)
                             .font(.largeTitle.weight(.semibold))
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                         if let subtitle {
                             Text(subtitle)
                                 .font(.body)
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                         }
                     }
                     content()

@@ -45,7 +45,7 @@ private struct RuulSheetPreview: View {
                     .font(.title2.weight(.semibold))
                 Text("Full-screen takeover. Close with an explicit affordance.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 RuulButton("Close", style: .secondary) { showSheet = false }
                 Spacer()
             }

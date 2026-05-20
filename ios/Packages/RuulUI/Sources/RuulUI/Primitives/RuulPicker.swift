@@ -41,7 +41,7 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
             HStack(spacing: RuulSpacing.sm) {
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparatorOpaque, lineWidth: 2)
+                        .stroke(isSelected ? Color.ruulAccent : Color(.separator), lineWidth: 2)
                         .frame(width: 22, height: 22)
                     if isSelected {
                         Circle()
@@ -53,11 +53,11 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.label)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if let subtitle = option.subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
                 Spacer()

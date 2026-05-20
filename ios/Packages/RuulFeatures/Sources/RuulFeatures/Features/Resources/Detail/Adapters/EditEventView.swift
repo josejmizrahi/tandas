@@ -29,7 +29,7 @@ public struct EditEventView: View {
                     if let error = coordinator.error {
                         Text(error.localizedDescription)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
                 .padding(.horizontal, RuulSpacing.lg)
@@ -74,7 +74,7 @@ public struct EditEventView: View {
                 }
                 Image(systemName: "camera.fill")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulOnImage)
+                    .foregroundStyle(Color.white)
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulImageBadge, in: Circle())
                     .padding(RuulSpacing.sm)
@@ -121,13 +121,13 @@ public struct EditEventView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("HOST")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 RuulCard(.tile) {
                     HStack(spacing: RuulSpacing.sm) {
                         RuulIconBadge("person.fill", size: .small)
                         Text(coordinator.draft.hostId == nil ? "Sin asignar" : "Asignado")
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                         Spacer()
                     }
                 }
@@ -180,7 +180,7 @@ public struct EditEventView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 Text("GALERÍA")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.sm) {
                     ForEach(RuulCoverCatalog.all) { cover in
                         Button {

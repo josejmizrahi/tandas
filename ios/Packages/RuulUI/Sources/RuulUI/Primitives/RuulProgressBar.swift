@@ -62,14 +62,14 @@ private struct RuulProgressBarPreview: View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Linear")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             RuulProgressBar(value: value)
             RuulProgressBar(value: value, height: 4)
             RuulProgressBar(value: 1.0)
 
             Text("Stepped")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             RuulProgressBar(value: value, style: .steps(5))
             RuulProgressBar(value: 0.6, style: .steps(3))
 

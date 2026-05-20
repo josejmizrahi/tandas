@@ -62,12 +62,12 @@ public struct EventRSVPStateView: View {
             }
             HStack(spacing: RuulSpacing.xs) {
                 if isAtCapacity {
-                    choicePill(.going, label: "Lista", icon: "person.crop.circle.badge.clock", dot: .ruulWarning)
+                    choicePill(.going, label: "Lista", icon: "person.crop.circle.badge.clock", dot: .orange)
                 } else {
-                    choicePill(.going, label: "Voy", icon: "checkmark", dot: .ruulPositive)
+                    choicePill(.going, label: "Voy", icon: "checkmark", dot: .green)
                 }
-                choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .ruulWarning)
-                choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .ruulNegative)
+                choicePill(.maybe,    label: "Tal vez", icon: "questionmark", dot: .orange)
+                choicePill(.declined, label: "No voy",  icon: "xmark",    dot: .red)
             }
         }
     }
@@ -77,16 +77,16 @@ public struct EventRSVPStateView: View {
             VStack(spacing: RuulSpacing.xxs) {
                 ZStack {
                     Circle()
-                        .stroke(Color.ruulSeparator, lineWidth: 1)
+                        .stroke(Color(.separator), lineWidth: 1)
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .accessibilityHidden(true)
                 }
                 Text(label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.md)
@@ -94,7 +94,7 @@ public struct EventRSVPStateView: View {
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -106,11 +106,11 @@ public struct EventRSVPStateView: View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.2.fill")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
             Text("Llevo a más gente")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Spacer()
             stepperControl
         }
@@ -120,7 +120,7 @@ public struct EventRSVPStateView: View {
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -131,7 +131,7 @@ public struct EventRSVPStateView: View {
             }
             Text("+\(plusOnes)")
                 .font(.footnote.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .frame(minWidth: 28)
             stepperButton(icon: "plus", enabled: plusOnes < event.maxPlusOnesPerMember) {
                 if plusOnes < event.maxPlusOnesPerMember { plusOnes += 1 }
@@ -143,11 +143,11 @@ public struct EventRSVPStateView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                .foregroundStyle(enabled ? Color.primary : Color(.tertiaryLabel))
                 .frame(width: 26, height: 26)
                 .background(Color.ruulBackground)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
                 .accessibilityHidden(true)
         }
         .buttonStyle(.ruulPress)
@@ -160,7 +160,7 @@ public struct EventRSVPStateView: View {
     private var goingView: some View {
         confirmedCard(
             statusLabel: "VAS",
-            statusDot: .ruulPositive,
+            statusDot: .green,
             title: plusOnes > 0 ? "Confirmado · +\(plusOnes)" : "Confirmado",
             subtitle: arrivalLine
         ) {
@@ -191,7 +191,7 @@ public struct EventRSVPStateView: View {
     private var maybeView: some View {
         confirmedCard(
             statusLabel: "TAL VEZ",
-            statusDot: .ruulWarning,
+            statusDot: .orange,
             title: "Por decidir",
             subtitle: "Confirma o cancela cuando puedas"
         ) { maybeActions }
@@ -214,7 +214,7 @@ public struct EventRSVPStateView: View {
     private var waitlistedView: some View {
         confirmedCard(
             statusLabel: "EN LISTA",
-            statusDot: .ruulWarning,
+            statusDot: .orange,
             title: "En lista de espera",
             subtitle: "Te avisamos si se libera lugar"
         ) {
@@ -229,16 +229,16 @@ public struct EventRSVPStateView: View {
     private var declinedView: some View {
         HStack(spacing: RuulSpacing.sm) {
             Circle()
-                .fill(Color.ruulNegative)
+                .fill(Color.red)
                 .frame(width: 8, height: 8)
             Text("NO VAS")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Spacer()
             Button { onChange(.pending) } label: {
                 Text("Cambiar")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             .buttonStyle(.ruulPress)
         }
@@ -248,7 +248,7 @@ public struct EventRSVPStateView: View {
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -269,16 +269,16 @@ public struct EventRSVPStateView: View {
                     .frame(width: 8, height: 8)
                 Text(statusLabel)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             actions()
         }
@@ -287,7 +287,7 @@ public struct EventRSVPStateView: View {
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -315,14 +315,14 @@ public struct EventRSVPStateView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.sm)
-            .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
+            .foregroundStyle(primary ? Color.ruulTextInverse : Color.primary)
             .background(
-                primary ? Color.ruulTextPrimary : Color.ruulBackground
+                primary ? Color.primary : Color.ruulBackground
             )
             .clipShape(Capsule())
             .overlay(
                 primary ? nil :
-                Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5)
+                Capsule().stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)

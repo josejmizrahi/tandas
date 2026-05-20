@@ -181,20 +181,20 @@ public struct RulesView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(coordinator.group.name)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Text("\(activeCount) reglas activas")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             Spacer(minLength: 0)
             if canShowBuilder {
                 Button(action: openBuilder) {
                     Image(systemName: "plus")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .frame(width: 36, height: 36)
                         .background(Color.ruulSurface, in: Circle())
-                        .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                        .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain)
@@ -206,10 +206,10 @@ public struct RulesView: View {
                 } label: {
                     Image(systemName: "pencil")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .frame(width: 36, height: 36)
                         .background(Color.ruulSurface, in: Circle())
-                        .overlay(Circle().stroke(Color.ruulSeparator, lineWidth: 0.5))
+                        .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain)
@@ -266,14 +266,14 @@ public struct RulesView: View {
         VStack(spacing: RuulSpacing.md) {
             Image(systemName: "list.bullet.clipboard")
                 .font(.system(size: 44, weight: .regular))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.top, RuulSpacing.xl)
             Text("Sin reglas")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Este grupo aún no tiene reglas configuradas. Elige un patrón y se activa con dos taps.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
             if canShowBuilder {
@@ -295,7 +295,7 @@ public struct RulesView: View {
                 .padding(.top, RuulSpacing.sm)
                 Button("o componer desde cero", action: openBuilder)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
         .frame(maxWidth: .infinity)
@@ -316,19 +316,19 @@ public struct RulesView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Votos abiertos")
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(
                         coordinator.openVotesCount == 1
                         ? "1 votación pendiente"
                         : "\(coordinator.openVotesCount) votaciones pendientes"
                     )
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
             }
             .padding(RuulSpacing.md)
@@ -338,7 +338,7 @@ public struct RulesView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -350,7 +350,7 @@ public struct RulesView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(rule.name)
                         .font(.headline)
-                        .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                        .foregroundStyle(rule.isLive ? Color.primary : Color(.tertiaryLabel))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     if let chip = scopeChip(for: rule) {
@@ -359,7 +359,7 @@ public struct RulesView: View {
                     if !rule.isLive {
                         Text("INACTIVA")
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
                 Spacer()
@@ -373,7 +373,7 @@ public struct RulesView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 1)
+                    .stroke(Color(.separator), lineWidth: 1)
             )
             .opacity(rule.isLive ? 1.0 : 0.55)
             .contentShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
@@ -412,7 +412,7 @@ public struct RulesView: View {
                     .foregroundStyle(Color.ruulTextAccent)
                 Text("MULTA")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
     }
@@ -428,7 +428,7 @@ public struct RulesView: View {
     private var footnote: some View {
         Text("Las reglas se aplican automáticamente cuando ocurre el evento que las dispara. Pronto vas a poder editarlas y agregar más.")
             .font(.caption)
-            .foregroundStyle(Color.ruulTextTertiary)
+            .foregroundStyle(Color(.tertiaryLabel))
             .padding(.top, RuulSpacing.sm)
     }
 }

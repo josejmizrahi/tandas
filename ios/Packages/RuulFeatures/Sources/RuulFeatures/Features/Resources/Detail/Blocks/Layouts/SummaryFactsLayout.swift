@@ -11,10 +11,10 @@ struct SummaryFactsLayout: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(fact.key)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                     Text(fact.value)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                 }
             }
         }

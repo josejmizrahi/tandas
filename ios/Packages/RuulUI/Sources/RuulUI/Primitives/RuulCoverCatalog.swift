@@ -227,7 +227,7 @@ private struct RaysOverlay: View {
                         .aspectRatio(16/10, contentMode: .fit)
                     Text(cover.id)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
         }

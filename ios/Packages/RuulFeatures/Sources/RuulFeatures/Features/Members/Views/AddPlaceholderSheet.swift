@@ -51,7 +51,7 @@ public struct AddPlaceholderSheet: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
                 .padding(RuulSpacing.lg)
@@ -73,10 +73,10 @@ public struct AddPlaceholderSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Agrega a alguien que aún no está en Ruul")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text("Ya cuenta para turnos, RSVP, fines y votos. Cuando active su cuenta, su historial se une al suyo.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -100,10 +100,10 @@ public struct AddPlaceholderSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Ese número ya es usuario de Ruul")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("\(user.name ?? "Esta persona") ya tiene una cuenta. Para agregarla al grupo usa “Invitar miembros” con el código.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .padding(RuulSpacing.md)
         .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
@@ -113,10 +113,10 @@ public struct AddPlaceholderSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Ya hay un miembro pendiente con ese número")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Si esto es un error, revisa la lista de miembros para confirmar quién está pendiente.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .padding(RuulSpacing.md)
         .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))

@@ -75,25 +75,25 @@ public struct PresetPickerView: View {
                         .frame(width: 48, height: 48)
                     Image(systemName: preset.icon)
                         .font(.title2.weight(.medium))
-                        .foregroundStyle(isSelected ? Color.ruulAccent : Color.ruulTextSecondary)
+                        .foregroundStyle(isSelected ? Color.ruulAccent : Color.secondary)
                 }
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text(preset.displayName)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(preset.summary)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(preset.sampleResources, id: \.self) { sample in
                             HStack(spacing: RuulSpacing.xxs) {
                                 Image(systemName: "circle.fill")
                                     .font(.caption2)
-                                    .foregroundStyle(Color.ruulTextTertiary)
+                                    .foregroundStyle(Color(.tertiaryLabel))
                                 Text(sample)
                                     .font(.caption)
-                                    .foregroundStyle(Color.ruulTextTertiary)
+                                    .foregroundStyle(Color(.tertiaryLabel))
                             }
                         }
                     }
@@ -115,7 +115,7 @@ public struct PresetPickerView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparator,
+                    .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 2 : 1)
             )
         }

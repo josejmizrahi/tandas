@@ -24,7 +24,7 @@ public struct RuulOriginTag: View {
             )
             Text(groupName)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)

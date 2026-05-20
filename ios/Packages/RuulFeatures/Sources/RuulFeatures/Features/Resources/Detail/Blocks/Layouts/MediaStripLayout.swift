@@ -13,7 +13,7 @@ struct MediaStripLayout: View {
                         image.resizable().scaledToFill()
                     } placeholder: {
                         Image(systemName: item.placeholder)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                     .frame(width: 88, height: 88)
                     .clipShape(RoundedRectangle(cornerRadius: 10))

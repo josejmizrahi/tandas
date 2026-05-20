@@ -46,14 +46,14 @@ public struct ModalSheetTemplate<Content: View>: View {
                 if let title {
                     Text(title)
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                 }
                 Spacer()
                 if let dismissAction {
                     Button(action: dismissAction) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     .buttonStyle(.plain)
                 }

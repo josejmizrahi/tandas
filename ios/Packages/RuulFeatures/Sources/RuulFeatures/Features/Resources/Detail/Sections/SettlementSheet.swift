@@ -78,7 +78,7 @@ public struct SettlementSheet: View {
                             // W2 incidental: Color.ruulDanger doesn't exist
                             // in the design system — Tier 6 SettlementSheet
                             // typo. ruulNegative is the canonical error tint.
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }

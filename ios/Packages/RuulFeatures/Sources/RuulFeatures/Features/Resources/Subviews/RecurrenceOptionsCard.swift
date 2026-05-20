@@ -21,12 +21,12 @@ public struct RecurrenceOptionsCard: View {
                     RuulIconBadge("arrow.triangle.2.circlepath", size: .small)
                     Text("¿Crear los siguientes automáticamente?")
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                 }
                 if let contextLine = contextDescription {
                     Text(contextLine)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 RuulPicker(
                     selection: $selection,

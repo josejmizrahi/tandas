@@ -49,7 +49,7 @@ public struct RuulMeshBackground: View {
         RuulMeshBackground(.cool)
         Text("Cool mesh")
             .font(.largeTitle.weight(.bold))
-            .foregroundStyle(Color.ruulTextPrimary)
+            .foregroundStyle(Color.primary)
     }
 }
 
@@ -58,7 +58,7 @@ public struct RuulMeshBackground: View {
         RuulMeshBackground(.violet)
         Text("Violet mesh")
             .font(.largeTitle.weight(.bold))
-            .foregroundStyle(Color.ruulTextPrimary)
+            .foregroundStyle(Color.primary)
     }
 }
 
@@ -67,7 +67,7 @@ public struct RuulMeshBackground: View {
         RuulMeshBackground(.aqua)
         Text("Aqua mesh")
             .font(.largeTitle.weight(.bold))
-            .foregroundStyle(Color.ruulTextPrimary)
+            .foregroundStyle(Color.primary)
     }
 }
 #endif

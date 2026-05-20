@@ -40,12 +40,12 @@ public struct EventCardStub: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(data.title)
                             .font(.title2.weight(.semibold))
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         Text(data.dateText)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                     Spacer()
                     rsvpChip
@@ -53,7 +53,7 @@ public struct EventCardStub: View {
                 if let location = data.location {
                     Label(location, systemImage: "mappin.and.ellipse")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 if !data.attendees.isEmpty {
                     HStack {
@@ -78,19 +78,19 @@ public struct EventCardStub: View {
         case .going:
             Label("Voy", systemImage: "checkmark.circle.fill")
                 .font(.caption)
-                .foregroundStyle(Color.ruulPositive)
+                .foregroundStyle(Color.green)
         case .maybe:
             Label("Tal vez", systemImage: "questionmark.circle.fill")
                 .font(.caption)
-                .foregroundStyle(Color.ruulWarning)
+                .foregroundStyle(Color.orange)
         case .notGoing:
             Label("No voy", systemImage: "xmark.circle.fill")
                 .font(.caption)
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
         case .notResponded:
             Text("Pendiente")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 }

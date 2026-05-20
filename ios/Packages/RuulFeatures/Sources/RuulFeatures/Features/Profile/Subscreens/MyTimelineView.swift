@@ -75,7 +75,7 @@ public struct MyTimelineView: View {
         ScrollView {
             Text("Aún no hay actividad")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(RuulSpacing.xl)
                 .frame(maxWidth: .infinity)
         }
@@ -99,14 +99,14 @@ public struct MyTimelineView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(dayLabel(day))
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) {
                 ForEach(items) { item in
                     row(item)
                     if item.id != items.last?.id {
                         Divider()
-                            .background(Color.ruulSeparator)
+                            .background(Color(.separator))
                             .padding(.leading, 56)
                     }
                 }
@@ -114,7 +114,7 @@ public struct MyTimelineView: View {
             .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
     }
@@ -129,15 +129,15 @@ public struct MyTimelineView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(titleFor(item))
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(originLabel(item))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer()
             Text(relativeTime(item.occurredAt))
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
         .padding(RuulSpacing.md)
     }
@@ -155,10 +155,10 @@ public struct MyTimelineView: View {
 
     private func colorFor(_ item: MyActivityItem) -> Color {
         switch item.kind {
-        case .rsvp:     return Color.ruulPositive
+        case .rsvp:     return Color.green
         case .checkIn:  return Color.ruulAccent
         case .voteCast: return Color.ruulAccent
-        case .ledger:   return Color.ruulWarning
+        case .ledger:   return Color.orange
         }
     }
 

@@ -85,7 +85,7 @@ public struct MemberRolesPicker: View {
                 if let error {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                             .font(.caption)
                     }
                 }
@@ -109,7 +109,7 @@ public struct MemberRolesPicker: View {
                 HStack(spacing: RuulSpacing.xs) {
                     Text(target.displayName)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if target.member.isFounder {
                         // Identity badge — post-mig 00262 founder es
                         // inmutable. Mostramos crown para reconocimiento
@@ -122,7 +122,7 @@ public struct MemberRolesPicker: View {
                 }
                 Text("Cambia un toggle para asignar o retirar el rol al instante.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -160,10 +160,10 @@ public struct MemberRolesPicker: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(role.humanLabel)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(lockReason(role: role, isOn: isOn) ?? permissionsSummary(for: role))
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
             .disabled(locked || inFlight.contains(role.id))

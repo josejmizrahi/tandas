@@ -139,14 +139,14 @@ struct BootstrappingView: View {
                 Spacer()
                 Text("ruul")
                     .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .scaleEffect(breathing ? 1.04 : 0.96)
                     .opacity(breathing ? 1.0 : 0.85)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
                 ProgressView()
                     .controlSize(.small)
-                    .tint(Color.ruulTextTertiary)
+                    .tint(Color(.tertiaryLabel))
                     .padding(.bottom, RuulSpacing.xxl)
             }
         }

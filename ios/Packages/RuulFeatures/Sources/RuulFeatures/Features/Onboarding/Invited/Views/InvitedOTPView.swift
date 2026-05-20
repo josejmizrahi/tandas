@@ -32,12 +32,12 @@ public struct InvitedOTPView: View {
                    attempts < 3 {
                     Text("Código incorrecto. Te quedan \(3 - attempts) intentos.")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
                 if coord.error == .otpTooManyAttempts {
                     Text("Demasiados intentos. Pide otro código.")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
             }
         }
@@ -64,7 +64,7 @@ public struct InvitedOTPView: View {
         } label: {
             Text(resendCountdown > 0 ? "Reenviar (\(resendCountdown)s)" : "Reenviar código")
                 .font(.footnote)
-                .foregroundStyle(resendCountdown > 0 ? Color.ruulTextTertiary : Color.ruulAccent)
+                .foregroundStyle(resendCountdown > 0 ? Color(.tertiaryLabel) : Color.ruulAccent)
         }
         .disabled(resendCountdown > 0)
         .buttonStyle(.plain)

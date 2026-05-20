@@ -25,21 +25,21 @@ public struct RuleRepealVoteBody: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("RAZÓN")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Text(desc)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
             }
         }
@@ -52,15 +52,15 @@ public struct RuleRepealVoteBody: View {
     private var warningCard: some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "trash.fill")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Si pasa, esta regla se archiva")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Las multas ya emitidas siguen vigentes; solo deja de aplicarse a futuro.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -69,7 +69,7 @@ public struct RuleRepealVoteBody: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulNegative.opacity(0.25), lineWidth: 1)
+                .stroke(Color.red.opacity(0.25), lineWidth: 1)
         )
     }
 
@@ -77,10 +77,10 @@ public struct RuleRepealVoteBody: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("ACUERDO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text(ruleTitle)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(RuulSpacing.sm)

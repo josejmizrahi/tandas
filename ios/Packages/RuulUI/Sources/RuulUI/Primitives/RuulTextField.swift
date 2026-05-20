@@ -45,21 +45,21 @@ public struct RuulTextField: View {
             if let label {
                 Text(label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             HStack(spacing: RuulSpacing.xs) {
                 if style == .search {
                     Image(systemName: "magnifyingglass")
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
                 input
                     .focused($isFocused)
                     .disabled(isDisabled)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if style == .password {
                     Button { isPasswordVisible.toggle() } label: {
                         Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     .buttonStyle(.plain)
                 }
@@ -82,11 +82,11 @@ public struct RuulTextField: View {
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             } else if let description {
                 Text(description)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
     }
@@ -140,7 +140,7 @@ public struct RuulTextField: View {
     private var focusRing: some View {
         let shape = RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
         if error != nil {
-            shape.stroke(Color.ruulNegative, lineWidth: 1.5)
+            shape.stroke(Color.red, lineWidth: 1.5)
         } else if isFocused {
             shape.stroke(Color.ruulAccent, lineWidth: 1.5)
         }

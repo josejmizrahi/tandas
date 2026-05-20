@@ -45,7 +45,7 @@ public struct RuulInfoCard<Content: View>: View {
             if let title {
                 Text(title)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.leading, RuulSpacing.xxs)
             }
             VStack(spacing: 0) { content }
@@ -55,7 +55,7 @@ public struct RuulInfoCard<Content: View>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                        .stroke(Color(.separator), lineWidth: 0.5)
                 )
         }
     }
@@ -79,11 +79,11 @@ public struct RuulInfoRow: View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer()
             Text(value)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.trailing)
         }
         .padding(RuulSpacing.md)
@@ -122,7 +122,7 @@ public struct RuulInfoActionRow: View {
                     .font(.subheadline)
                 Spacer()
             }
-            .foregroundStyle(isDestructive ? Color.ruulNegative : Color.ruulTextPrimary)
+            .foregroundStyle(isDestructive ? Color.red : Color.primary)
             .padding(RuulSpacing.md)
             .contentShape(Rectangle())
         }
@@ -138,7 +138,7 @@ public struct RuulInfoDivider: View {
 
     public var body: some View {
         Divider()
-            .background(Color.ruulSeparator)
+            .background(Color(.separator))
             .padding(.leading, RuulSpacing.md)
     }
 }

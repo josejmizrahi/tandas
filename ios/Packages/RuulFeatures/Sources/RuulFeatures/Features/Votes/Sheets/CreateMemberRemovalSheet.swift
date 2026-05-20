@@ -27,7 +27,7 @@ public struct CreateMemberRemovalSheet: View {
                     if let err = coordinator.error {
                         Text(err.message ?? err.title)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                             .padding(.top, RuulSpacing.xs)
                     }
                 }
@@ -58,11 +58,11 @@ public struct CreateMemberRemovalSheet: View {
     private var warningCard: some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.ruulWarning)
+                .foregroundStyle(Color.orange)
                 .accessibilityHidden(true)
             Text("Si el voto pasa, un fundador deberá ejecutar la remoción manualmente desde la pantalla de Miembros.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(RuulSpacing.md)
@@ -76,7 +76,7 @@ public struct CreateMemberRemovalSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("A QUIEN")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
 
             if coordinator.isLoading {
                 ProgressView()
@@ -91,7 +91,7 @@ public struct CreateMemberRemovalSheet: View {
                         RuulAvatar(name: selected.displayName, imageURL: selected.avatarURL, size: .medium)
                         Text(selected.displayName)
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                         Spacer()
                         Text("Cambiar")
                             .font(.caption)
@@ -118,11 +118,11 @@ public struct CreateMemberRemovalSheet: View {
                     HStack {
                         Text("Elegir miembro")
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                         Spacer()
                         Image(systemName: "chevron.down")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                             .accessibilityHidden(true)
                     }
                     .padding(RuulSpacing.md)
@@ -139,7 +139,7 @@ public struct CreateMemberRemovalSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("RAZON")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
 
             TextField("Por qué propones esta remoción…", text: $coordinator.reason, axis: .vertical)
                 .lineLimit(4...8)
@@ -152,7 +152,7 @@ public struct CreateMemberRemovalSheet: View {
             let charCount = coordinator.reason.trimmingCharacters(in: .whitespacesAndNewlines).count
             Text("Mínimo 30 caracteres — actual: \(charCount)")
                 .font(.footnote)
-                .foregroundStyle(charCount >= 30 ? Color.ruulTextTertiary : Color.ruulNegative)
+                .foregroundStyle(charCount >= 30 ? Color(.tertiaryLabel) : Color.red)
         }
     }
 
@@ -160,7 +160,7 @@ public struct CreateMemberRemovalSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("DURACION")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
 
             Picker("Duración", selection: $coordinator.durationHours) {
                 Text("48 h").tag(48)
@@ -171,7 +171,7 @@ public struct CreateMemberRemovalSheet: View {
 
             Text("El servidor puede sobrescribir este valor según la configuración del grupo.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
     }
 }

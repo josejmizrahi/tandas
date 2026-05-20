@@ -188,11 +188,11 @@ public struct GroupHomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(coordinator.group?.name ?? "—")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                 Text(memberLabel)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -391,7 +391,7 @@ public struct GroupHomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("RESUMEN")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.leading, RuulSpacing.xxs)
                 HStack(spacing: RuulSpacing.sm) {
                     statTile(
@@ -426,19 +426,19 @@ public struct GroupHomeView: View {
         let content = VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(value)
                 .font(.body.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(label.uppercased())
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RuulSpacing.md)
         .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg).stroke(Color.ruulSeparator, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.lg).stroke(Color(.separator), lineWidth: 0.5)
         )
 
         if let action {
@@ -465,25 +465,25 @@ public struct GroupHomeView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) { content() }
                 .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                        .stroke(Color(.separator), lineWidth: 0.5)
                 )
         }
     }
 
     private var divider: some View {
-        Divider().background(Color.ruulSeparator).padding(.leading, 56)
+        Divider().background(Color(.separator)).padding(.leading, 56)
     }
 
     private func trailingValue(_ s: String) -> some View {
         Text(s)
             .font(.caption)
-            .foregroundStyle(Color.ruulTextSecondary)
+            .foregroundStyle(Color.secondary)
             .lineLimit(1)
     }
 
@@ -499,17 +499,17 @@ public struct GroupHomeView: View {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(destructive ? Color.ruulNegative : Color.ruulTextSecondary)
+                    .foregroundStyle(destructive ? Color.red : Color.secondary)
                     .frame(width: 24)
                     .accessibilityHidden(true)
                 Text(label)
                     .font(.subheadline)
-                    .foregroundStyle(destructive ? Color.ruulNegative : Color.ruulTextPrimary)
+                    .foregroundStyle(destructive ? Color.red : Color.primary)
                 Spacer()
                 trailing()
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
             }
             .padding(RuulSpacing.md)

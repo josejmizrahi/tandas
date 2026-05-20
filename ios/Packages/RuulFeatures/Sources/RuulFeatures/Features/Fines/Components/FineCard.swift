@@ -52,13 +52,13 @@ public struct FineCard: View {
                     .textCase(.uppercase)
             }
             statusRow
-            Divider().background(Color.ruulSeparator)
+            Divider().background(Color(.separator))
             contentRow
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity)
         .background(Color.ruulSurface, in: shape)
-        .overlay(shape.stroke(Color.ruulSeparator, lineWidth: 0.5))
+        .overlay(shape.stroke(Color(.separator), lineWidth: 0.5))
     }
 
     /// Wallet-style compact row para historial. Status dot leading,
@@ -72,12 +72,12 @@ public struct FineCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ruleName ?? fine.reason)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(1)
                 if let groupName {
                     Text(groupName)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .textCase(.uppercase)
                         .lineLimit(1)
                 }
@@ -107,12 +107,12 @@ public struct FineCard: View {
                 .frame(width: 8, height: 8)
             Text(fine.status.displayLabel)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Spacer()
             if let createdAgo {
                 Text(createdAgo)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
     }
@@ -122,13 +122,13 @@ public struct FineCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ruleName ?? fine.reason)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 if let eventTitle {
                     Text(eventTitle)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(1)
                 }
             }
@@ -153,11 +153,11 @@ public struct FineCard: View {
 
     private var statusColor: Color {
         switch fine.status {
-        case .proposed:     return .ruulWarning
-        case .officialized: return .ruulNegative
-        case .paid:         return .ruulPositive
-        case .voided:       return .ruulTextTertiary
-        case .inAppeal:     return .ruulInfo
+        case .proposed:     return .orange
+        case .officialized: return .red
+        case .paid:         return .green
+        case .voided:       return Color(.tertiaryLabel)
+        case .inAppeal:     return .blue
         }
     }
 

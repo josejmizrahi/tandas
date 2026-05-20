@@ -88,7 +88,7 @@ public struct RuulAvatar: View {
         case .accent:
             Circle().stroke(Color.ruulAccent, lineWidth: 2)
         case .success:
-            Circle().stroke(Color.ruulPositive, lineWidth: 2)
+            Circle().stroke(Color.green, lineWidth: 2)
         }
     }
 

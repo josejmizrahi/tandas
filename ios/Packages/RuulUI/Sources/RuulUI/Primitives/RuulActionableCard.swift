@@ -44,11 +44,11 @@ public struct RuulActionableCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if let subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                             .multilineTextAlignment(.leading)
                     }
                 }
@@ -67,13 +67,13 @@ public struct RuulActionableCard: View {
         case .chevron:
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         case .none:
             EmptyView()
         case .badge(let text):
             Text(text)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .padding(.horizontal, RuulSpacing.xs)
                 .padding(.vertical, 2)
                 .background(Color.ruulBackgroundRecessed, in: Capsule())
@@ -99,7 +99,7 @@ public struct RuulActionableCard: View {
             icon: "forward.fill",
             title: "Saltar",
             subtitle: "Invitas después.",
-            tint: .ruulTextSecondary,
+            tint: .secondary,
             accessory: .none
         ) { }
     }

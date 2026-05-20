@@ -30,7 +30,7 @@ struct AvatarQueueLayout: View {
             if avatars.count > 6 {
                 Text("+\(avatars.count - 6)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .padding(.leading, RuulSpacing.sm)
             }
             Spacer(minLength: 0)

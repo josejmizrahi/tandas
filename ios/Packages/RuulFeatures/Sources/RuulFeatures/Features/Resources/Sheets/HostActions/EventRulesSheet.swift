@@ -114,16 +114,16 @@ struct ResourceRulesBody: View {
                 HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                     Text(title)
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Spacer()
                     Text("\(rules.count)")
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .monospacedDigit()
                 }
                 Text(hint)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(rules) { rule in
                         ruleRow(rule, isInherited: scope != .resource)
@@ -146,18 +146,18 @@ struct ResourceRulesBody: View {
                         .frame(width: 32, height: 32)
                     Image(systemName: "list.bullet.clipboard.fill")
                         .font(.footnote)
-                        .foregroundStyle(isInherited ? Color.ruulTextSecondary : Color.ruulAccent)
+                        .foregroundStyle(isInherited ? Color.secondary : Color.ruulAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: RuulSpacing.xs) {
                         Text(rule.name)
                             .font(.subheadline)
-                            .foregroundStyle(isInherited ? Color.ruulTextSecondary : Color.ruulTextPrimary)
+                            .foregroundStyle(isInherited ? Color.secondary : Color.primary)
                             .lineLimit(2)
                         if isInherited {
                             Text(badgeText(for: rule.scope))
                                 .font(.footnote)
-                                .foregroundStyle(Color.ruulTextTertiary)
+                                .foregroundStyle(Color(.tertiaryLabel))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
@@ -167,14 +167,14 @@ struct ResourceRulesBody: View {
                     }
                     Text(triggerLabel)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
                 Spacer()
                 if let amount = fineAmount {
                     Text("$\(amount)")
                         .font(.subheadline)
-                        .foregroundStyle(isInherited ? Color.ruulTextSecondary : Color.ruulTextPrimary)
+                        .foregroundStyle(isInherited ? Color.secondary : Color.primary)
                         .monospacedDigit()
                 }
             }
@@ -184,7 +184,7 @@ struct ResourceRulesBody: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
         .opacity(isInherited ? 0.85 : 1.0)
     }

@@ -52,7 +52,7 @@ public struct RuulAvatarStack: View {
     private var overflowBadge: some View {
         Text("+\(overflowCount)")
             .font(.system(size: size.fontSize, weight: .semibold))
-            .foregroundStyle(Color.ruulTextPrimary)
+            .foregroundStyle(Color.primary)
             .frame(width: size.diameter, height: size.diameter)
             .ruulGlass(Circle(), material: .regular)
             .overlay(Circle().stroke(Color.ruulBorderGlass, lineWidth: 2))

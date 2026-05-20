@@ -54,10 +54,10 @@ public struct AttendeesListSheet: View {
                         .frame(width: 8, height: 8)
                     Text(label(for: status))
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text("\(filtered.count)")
                         .font(.footnote.monospacedDigit().weight(.bold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, RuulSpacing.xxs)
@@ -67,7 +67,7 @@ public struct AttendeesListSheet: View {
                         row(for: rsvp)
                         if rsvp.id != filtered.last?.id {
                             Divider()
-                                .background(Color.ruulSeparator)
+                                .background(Color(.separator))
                                 .padding(.leading, 56)
                         }
                     }
@@ -87,15 +87,15 @@ public struct AttendeesListSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if rsvp.isCheckedIn, let arrived = rsvp.arrivedAt {
                         Text("Llegó \(arrived.ruulShortTime)")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulPositive)
+                            .foregroundStyle(Color.green)
                     } else if rsvp.plusOnes > 0 {
                         Text("+\(rsvp.plusOnes)")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
                 Spacer(minLength: 0)
@@ -111,11 +111,11 @@ public struct AttendeesListSheet: View {
 
     private func color(for status: RSVPStatus) -> Color {
         switch status {
-        case .going:      return .ruulPositive
-        case .maybe:      return .ruulWarning
-        case .declined:   return .ruulNegative
-        case .waitlisted: return .ruulWarning
-        case .pending:    return .ruulTextTertiary
+        case .going:      return .green
+        case .maybe:      return .orange
+        case .declined:   return .red
+        case .waitlisted: return .orange
+        case .pending:    return Color(.tertiaryLabel)
         }
     }
 

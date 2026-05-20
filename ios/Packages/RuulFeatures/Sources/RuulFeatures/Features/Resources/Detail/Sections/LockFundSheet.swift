@@ -28,7 +28,7 @@ struct LockFundSheet: View {
                 Section {
                     Text("Bloquear el fondo es una marca de política suave: no impide aportar o gastar por sí solo, pero las reglas activas pueden reaccionar (bloquear, requerir aprobación, etc.).")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 if let error {
                     Section { Text(error).foregroundStyle(.red) }

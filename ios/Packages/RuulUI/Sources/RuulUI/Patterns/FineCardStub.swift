@@ -40,17 +40,17 @@ public struct FineCardStub: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(data.reason)
                             .font(.headline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                         Text(data.dateText)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                     Spacer()
                     statusChip
                 }
                 Text(formattedAmount)
                     .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if data.status == .pending {
                     HStack(spacing: RuulSpacing.xs) {
                         if onPay != nil {
@@ -69,13 +69,13 @@ public struct FineCardStub: View {
     private var statusChip: some View {
         switch data.status {
         case .pending:
-            chip("Pendiente", tint: .ruulWarning)
+            chip("Pendiente", tint: .orange)
         case .paid:
-            chip("Pagada", tint: .ruulPositive)
+            chip("Pagada", tint: .green)
         case .appealed:
-            chip("Apelada", tint: .ruulInfo)
+            chip("Apelada", tint: .blue)
         case .waived:
-            chip("Condonada", tint: .ruulTextTertiary)
+            chip("Condonada", tint: Color(.tertiaryLabel))
         }
     }
 
