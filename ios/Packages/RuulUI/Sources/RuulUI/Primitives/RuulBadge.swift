@@ -28,7 +28,7 @@ public struct RuulBadge: View {
             case .negative: return .red.opacity(0.15)
             case .warning:  return .orange.opacity(0.15)
             case .info:     return .blue.opacity(0.15)
-            case .subtle:   return .ruulFillGlass
+            case .subtle:   return Color(.tertiarySystemFill)
             case .accent:   return Color.ruulAccent.opacity(RuulOpacity.medium)
             }
         }

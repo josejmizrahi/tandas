@@ -72,7 +72,7 @@ public struct RuulTextField: View {
             // and error states surface a 1.5pt accent / negative ring
             // so the field still telegraphs interactive affordance.
             .background(
-                Color.ruulFillGlass,
+                Color(.tertiarySystemFill),
                 in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
             )
             .overlay(focusRing)

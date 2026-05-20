@@ -47,7 +47,7 @@ public struct RuulPhoneField: View {
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.md)
             .background(
-                Color.ruulFillGlass,
+                Color(.tertiarySystemFill),
                 in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
             )
             .overlay(focusRing)

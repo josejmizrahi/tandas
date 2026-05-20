@@ -89,7 +89,7 @@ public struct InviteWelcomeView: View {
                 .foregroundStyle(Color.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
-                .shadow(color: Color.ruulImageTextShadow, radius: RuulSpacing.md, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.18), radius: RuulSpacing.md, x: 0, y: 4)
         }
     }
 
@@ -104,8 +104,8 @@ public struct InviteWelcomeView: View {
             RuulCoverView(cover)
             LinearGradient(
                 colors: [
-                    Color.ruulImageVignetteMid.opacity(0),
-                    Color.ruulImageVignetteDeep
+                    Color.black.opacity(0.20).opacity(0),
+                    Color.black.opacity(0.78)
                 ],
                 startPoint: .center,
                 endPoint: .bottom
@@ -169,7 +169,7 @@ public struct InviteWelcomeView: View {
                     .foregroundStyle(Color.black)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 56)
-                    .background(Capsule().fill(Color.ruulImagePillSolid))
+                    .background(Capsule().fill(Color.white))
             }
             .buttonStyle(.ruulPress)
             .accessibilityLabel("Aceptar invitación")

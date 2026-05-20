@@ -20,7 +20,7 @@ public struct GroupTourOverlay: View {
 
     public var body: some View {
         ZStack {
-            (visible ? Color.ruulOverlayDim : Color.clear)
+            (visible ? Color.black.opacity(0.35) : Color.clear)
                 .ignoresSafeArea()
                 .animation(.smooth, value: visible)
                 .onTapGesture { /* swallow */ }
