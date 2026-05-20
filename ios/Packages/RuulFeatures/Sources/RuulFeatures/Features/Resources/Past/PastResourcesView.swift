@@ -29,11 +29,11 @@ public struct PastResourcesView: View {
                 phase: phase,
                 onRetry: { await load() },
                 empty: {
-                    EmptyStateView(
-                        systemImage: "clock",
-                        title: "Sin eventos pasados",
-                        message: "Aquí aparecen los eventos cerrados o cancelados."
-                    )
+                    ContentUnavailableView {
+                        Label("Sin eventos pasados", systemImage: "clock")
+                    } description: {
+                        Text("Aquí aparecen los eventos cerrados o cancelados.")
+                    }
                     .padding(RuulSpacing.lg)
                 },
                 loaded: { events in loadedScroll(events) }

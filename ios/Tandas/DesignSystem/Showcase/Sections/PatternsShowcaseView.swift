@@ -25,13 +25,15 @@ struct PatternsShowcaseView: View {
     }
 
     private var emptyStateSection: some View {
-        ShowcaseSection("EmptyStateView") {
-            EmptyStateView(
-                systemImage: "person.2",
-                title: "Aún no hay miembros",
-                message: "Comparte el código del grupo.",
-                primaryAction: ("Compartir", { })
-            )
+        ShowcaseSection("ContentUnavailableView (empty)") {
+            ContentUnavailableView {
+                Label("Aún no hay miembros", systemImage: "person.2")
+            } description: {
+                Text("Comparte el código del grupo.")
+            } actions: {
+                Button("Compartir") { }
+                    .buttonStyle(.borderedProminent)
+            }
         }
     }
 
@@ -47,12 +49,14 @@ struct PatternsShowcaseView: View {
     }
 
     private var errorStateSection: some View {
-        ShowcaseSection("ErrorStateView") {
-            ErrorStateView(
-                title: "Error de red",
-                message: "Verifica tu conexión.",
-                retryAction: ("Reintentar", { })
-            )
+        ShowcaseSection("ContentUnavailableView (error)") {
+            ContentUnavailableView {
+                Label("Error de red", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text("Verifica tu conexión.")
+            } actions: {
+                Button("Reintentar") { }
+            }
         }
     }
 

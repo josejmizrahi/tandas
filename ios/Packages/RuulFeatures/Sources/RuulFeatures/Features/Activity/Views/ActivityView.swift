@@ -219,13 +219,11 @@ public struct ActivityView: View {
     }
 
     private var emptyState: some View {
-        // Use the canonical EmptyStateView primitive — same shape as
-        // every other empty state in the app (consistency principle).
-        EmptyStateView(
-            systemImage: "clock.arrow.circlepath",
-            title: "Sin actividad todavía",
-            message: "Cuando pasen cosas en el grupo —eventos, RSVPs, multas, votaciones— aparecerán acá."
-        )
+        ContentUnavailableView {
+            Label("Sin actividad todavía", systemImage: "clock.arrow.circlepath")
+        } description: {
+            Text("Cuando pasen cosas en el grupo —eventos, RSVPs, multas, votaciones— aparecerán acá.")
+        }
         .padding(.top, RuulSpacing.s8)
     }
 

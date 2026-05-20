@@ -125,11 +125,11 @@ struct ResourceLedgerSheet: View {
     @ViewBuilder
     private var entriesSection: some View {
         if coordinator.entries.isEmpty {
-            EmptyStateView(
-                systemImage: "tray",
-                title: "Sin movimientos",
-                message: "Registra el primer gasto o aportación de esta \(groupVocabulary.lowercased())."
-            )
+            ContentUnavailableView {
+                Label("Sin movimientos", systemImage: "tray")
+            } description: {
+                Text("Registra el primer gasto o aportación de esta \(groupVocabulary.lowercased()).")
+            }
             .padding(.vertical, RuulSpacing.md)
         } else {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {

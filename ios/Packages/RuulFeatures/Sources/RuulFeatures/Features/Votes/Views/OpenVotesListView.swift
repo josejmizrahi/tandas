@@ -27,13 +27,16 @@ public struct OpenVotesListView: View {
                     // Beta 1 W4 F-4.3: hide the "Crear votación" CTA
                     // while generic vote creation is gated. Appeal-driven
                     // votes still open from the fine flow.
-                    EmptyStateView(
-                        systemImage: "hand.raised",
-                        title: "No hay votos abiertos",
-                        message: "Cuando el grupo abra una votación, aparecerá acá.",
-                        primaryAction: BetaFeatureFlags.current.showGenericVoteCreation
-                            ? ("Crear votación", onCreateVote) : nil
-                    )
+                    ContentUnavailableView {
+                        Label("No hay votos abiertos", systemImage: "hand.raised")
+                    } description: {
+                        Text("Cuando el grupo abra una votación, aparecerá acá.")
+                    } actions: {
+                        if BetaFeatureFlags.current.showGenericVoteCreation {
+                            Button("Crear votación", action: onCreateVote)
+                                .buttonStyle(.borderedProminent)
+                        }
+                    }
                     .padding(.top, RuulSpacing.s10)
                 },
                 loaded: { _ in

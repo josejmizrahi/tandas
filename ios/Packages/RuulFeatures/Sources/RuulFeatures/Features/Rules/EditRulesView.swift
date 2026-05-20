@@ -138,11 +138,11 @@ public struct EditRulesView: View {
     }
 
     private var emptyState: some View {
-        EmptyStateView(
-            systemImage: "list.bullet.clipboard",
-            title: "Sin reglas",
-            message: "Este grupo no tiene reglas configuradas."
-        )
+        ContentUnavailableView {
+            Label("Sin reglas", systemImage: "list.bullet.clipboard")
+        } description: {
+            Text("Este grupo no tiene reglas configuradas.")
+        }
     }
 
     private func ruleCard(_ rule: GroupRule) -> some View {

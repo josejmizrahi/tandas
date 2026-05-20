@@ -153,11 +153,11 @@ public struct MyFeedView: View {
     // MARK: - Empty state
 
     private var emptyState: some View {
-        EmptyStateView(
-            systemImage: "calendar.badge.clock",
-            title: "Todo tranquilo por ahora",
-            message: "Cuando alguno de tus grupos cree un evento, vas a verlo acá junto con los demás."
-        )
+        ContentUnavailableView {
+            Label("Todo tranquilo por ahora", systemImage: "calendar.badge.clock")
+        } description: {
+            Text("Cuando alguno de tus grupos cree un evento, vas a verlo acá junto con los demás.")
+        }
         .padding(.top, RuulSpacing.s8)
     }
 

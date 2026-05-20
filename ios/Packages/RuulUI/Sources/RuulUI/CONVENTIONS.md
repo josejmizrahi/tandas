@@ -22,8 +22,8 @@ should update the row below.
 | Repeating rows + separator   | `RuulSeparatedRows(items:) { row }` |
 | Section header (CAPS + count)| `RuulListSectionHeader("LABEL", count: n)` |
 | Section header w/ trailing   | `RuulListSectionHeader("LABEL") { trailing }` |
-| Empty state                  | `EmptyStateView(...)` |
-| Error state                  | `ErrorStateView(...)` |
+| Empty state                  | `ContentUnavailableView { Label("…", systemImage: "…") } description: { Text("…") } actions: { Button("CTA") { … } }` |
+| Error state                  | `ContentUnavailableView { Label("…", systemImage: "exclamationmark.triangle") } description: { Text(msg) } actions: { Button("Reintentar") { … } }` |
 | Loading state                | `RuulLoadingState()` |
 
 ## Identity surfaces (cover hero, ambient)

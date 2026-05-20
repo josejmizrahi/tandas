@@ -109,8 +109,8 @@ public struct LinkResourcePickerSheet: View {
     }
 
     /// Inline error for `link()` failures — distinct from the full-screen
-    /// `ErrorStateView` that `AsyncContentView` shows when the initial
-    /// candidate fetch fails.
+    /// `ContentUnavailableView` that `AsyncContentView` shows when the
+    /// initial candidate fetch fails.
     @ViewBuilder
     private var inlineSubmitError: some View {
         if let errorText {

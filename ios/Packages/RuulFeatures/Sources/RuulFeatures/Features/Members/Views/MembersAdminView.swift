@@ -64,11 +64,11 @@ public struct MembersAdminView: View {
             phase: coordinator.activePhase,
             onRetry: { await coordinator.refresh() },
             empty: {
-                EmptyStateView(
-                    systemImage: "person.2",
-                    title: "Sin miembros activos",
-                    message: "Invita miembros con el botón “+” para empezar."
-                )
+                ContentUnavailableView {
+                    Label("Sin miembros activos", systemImage: "person.2")
+                } description: {
+                    Text("Invita miembros con el botón “+” para empezar.")
+                }
                 .padding(RuulSpacing.lg)
             },
             loaded: { rows in

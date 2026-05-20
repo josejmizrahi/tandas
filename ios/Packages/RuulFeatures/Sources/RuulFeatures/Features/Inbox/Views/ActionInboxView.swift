@@ -53,11 +53,11 @@ public struct ActionInboxView: View {
     }
 
     private var emptyState: some View {
-        EmptyStateView(
-            systemImage: "tray",
-            title: "Sin pendientes",
-            message: "No hay multas, apelaciones ni RSVPs por atender. Todo al corriente."
-        )
+        ContentUnavailableView {
+            Label("Sin pendientes", systemImage: "tray")
+        } description: {
+            Text("No hay multas, apelaciones ni RSVPs por atender. Todo al corriente.")
+        }
     }
 
     /// Agrupa actions en 3 buckets de urgencia (Apple Mail / Linear

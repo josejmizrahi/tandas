@@ -32,14 +32,14 @@ public enum LoadPhase<Value: Sendable>: Sendable {
     /// Carga exitosa con datos.
     case loaded(Value)
 
-    /// Carga exitosa pero sin items. UI muestra `EmptyStateView` con CTAs
-    /// opcionales. Distinto de `.loading` para que la vista pueda saber
-    /// si está esperando o si genuinamente no hay nada.
+    /// Carga exitosa pero sin items. UI muestra `ContentUnavailableView`
+    /// con CTAs opcionales. Distinto de `.loading` para que la vista pueda
+    /// saber si está esperando o si genuinamente no hay nada.
     case empty
 
     /// Carga fallida. Si `previous` está presente, la vista degrada
     /// mostrando los datos anteriores + banner de error; si no, full
-    /// `ErrorStateView` con retry.
+    /// `ContentUnavailableView` con retry.
     case failed(CoordinatorError, previous: Value? = nil)
 }
 
