@@ -10,17 +10,17 @@ struct BalanceLayout: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.sm) {
                 Text(fields.primary)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 if let delta = fields.delta {
                     Text(delta)
-                        .ruulTextStyle(RuulTypography.captionSemibold)
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(tint.color)
                 }
             }
             if let supporting = fields.supporting {
                 Text(supporting)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }

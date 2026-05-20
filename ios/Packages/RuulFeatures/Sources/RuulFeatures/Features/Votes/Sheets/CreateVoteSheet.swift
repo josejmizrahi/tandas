@@ -27,7 +27,7 @@ public struct CreateVoteSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                     Text("¿Qué quieres proponer?")
-                        .ruulTextStyle(RuulTypography.title)
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .padding(.bottom, RuulSpacing.xs)
 
@@ -56,7 +56,7 @@ public struct CreateVoteSheet: View {
                     )
 
                     Text("PRÓXIMAMENTE")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .padding(.top, RuulSpacing.lg)
 
@@ -77,24 +77,24 @@ public struct CreateVoteSheet: View {
         Button(action: onTap) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
-                    .ruulTextStyle(RuulTypography.titleMedium)
+                    .font(.title2.weight(.medium))
                     .foregroundStyle(enabled ? Color.ruulAccent : Color.ruulTextTertiary)
                     .frame(width: 44, height: 44)
                     .background(Color.ruulSurface, in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                     Text(subtitle)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(2)
                 }
                 Spacer()
                 if enabled {
                     Image(systemName: "chevron.right")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                 }

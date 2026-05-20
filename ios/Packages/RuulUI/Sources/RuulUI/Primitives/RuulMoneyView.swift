@@ -7,9 +7,9 @@ public struct RuulMoneyView: View {
         case small, medium, large
         var font: Font {
             switch self {
-            case .small:  return .ruulMoneySmall
-            case .medium: return .ruulMoneyMedium
-            case .large:  return .ruulMoneyLarge
+            case .small:  return .body.weight(.semibold).monospacedDigit()
+            case .medium: return .title3.weight(.semibold).monospacedDigit()
+            case .large:  return .title.weight(.semibold).monospacedDigit()
             }
         }
     }

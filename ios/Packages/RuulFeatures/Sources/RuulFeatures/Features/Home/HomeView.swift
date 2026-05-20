@@ -286,18 +286,18 @@ public struct HomeView: View {
                         .fill(Color.ruulSurface)
                         .frame(width: 40, height: 40)
                     Image(systemName: icon)
-                        .ruulTextStyle(RuulTypography.bodyLarge)
+                        .font(.body)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     if let meta {
                         Text(meta)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                             .lineLimit(1)
                     }
@@ -307,7 +307,7 @@ public struct HomeView: View {
                     trailing
                 }
                 Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.labelSemibold)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             .padding(.vertical, RuulSpacing.sm)
@@ -342,7 +342,7 @@ public struct HomeView: View {
                 HStack(spacing: 4) {
                     Circle().fill(Color.ruulNegative).frame(width: 6, height: 6)
                     Text("EN VIVO")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulNegative)
                 }
             )
@@ -359,7 +359,7 @@ public struct HomeView: View {
         }
         return AnyView(
             Text(label)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(color)
         )
     }
@@ -438,16 +438,16 @@ public struct HomeView: View {
                     .fill(Color.ruulSurface)
                     .frame(width: 80, height: 80)
                 Image(systemName: variant.icon)
-                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .font(.largeTitle.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .accessibilityHidden(true)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text(variant.title)
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(variant.summary)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
             }
@@ -538,7 +538,7 @@ public struct HomeView: View {
         if groupMemory.hasAnyContent {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("HISTORIAL DEL GRUPO")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
 
                 HStack(spacing: RuulSpacing.sm) {
@@ -580,16 +580,16 @@ public struct HomeView: View {
         let content = VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: icon)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .accessibilityHidden(true)
                 Text(caption.uppercased())
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
                     .lineLimit(1)
             }
             Text(value)
-                .ruulTextStyle(RuulTypography.displayMedium)
+                .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
         }
         .padding(RuulSpacing.md)
@@ -612,13 +612,13 @@ public struct HomeView: View {
             Button(action: onOpenPastEvents) {
                 HStack(spacing: RuulSpacing.xs) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .ruulTextStyle(RuulTypography.labelSemibold)
+                        .font(.footnote.weight(.semibold))
                         .accessibilityHidden(true)
                     Text("Ver historial")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                     Spacer()
                     Image(systemName: "arrow.right")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .accessibilityHidden(true)
                 }
                 .foregroundStyle(Color.ruulTextSecondary)

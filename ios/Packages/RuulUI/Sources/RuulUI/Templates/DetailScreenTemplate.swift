@@ -26,7 +26,7 @@ public struct DetailScreenTemplate<Content: View>: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     if let title {
                         Text(title)
-                            .ruulTextStyle(RuulTypography.displayMedium)
+                            .font(.largeTitle.weight(.semibold))
                             .foregroundStyle(Color.ruulTextPrimary)
                     }
                     content()
@@ -69,7 +69,7 @@ public struct DetailScreenTemplate<Content: View>: View {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 ForEach(0..<5, id: \.self) { i in
                     RuulCard(.glass) {
-                        Text("Card \(i)").ruulTextStyle(RuulTypography.body)
+                        Text("Card \(i)").font(.subheadline)
                     }
                 }
             }

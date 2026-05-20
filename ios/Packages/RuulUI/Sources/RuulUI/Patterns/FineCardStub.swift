@@ -39,17 +39,17 @@ public struct FineCardStub: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(data.reason)
-                            .ruulTextStyle(RuulTypography.headline)
+                            .font(.headline)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Text(data.dateText)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                     Spacer()
                     statusChip
                 }
                 Text(formattedAmount)
-                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .font(.largeTitle.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 if data.status == .pending {
                     HStack(spacing: RuulSpacing.xs) {
@@ -81,7 +81,7 @@ public struct FineCardStub: View {
 
     private func chip(_ label: String, tint: Color) -> some View {
         Text(label)
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(tint)
             .padding(.horizontal, RuulSpacing.xs)
             .padding(.vertical, 4)

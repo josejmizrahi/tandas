@@ -27,7 +27,7 @@ struct AddLedgerEntrySheet: View {
             noteSection
             if let error = coordinator.error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
             submitButton
@@ -40,7 +40,7 @@ struct AddLedgerEntrySheet: View {
     private var kindPickerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("TIPO DE MOVIMIENTO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             VStack(spacing: RuulSpacing.xs) {
                 ForEach(ResourceLedgerCoordinator.EntryKind.allCases) { kind in
@@ -65,22 +65,22 @@ struct AddLedgerEntrySheet: View {
                         .fill(Color.ruulAccent.opacity(isSelected ? 0.18 : 0.10))
                         .frame(width: 36, height: 36)
                     Image(systemName: kind.iconName)
-                        .font(RuulTypography.subheadMedium.font)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.ruulAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(kind.displayLabel)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(kind.summaryHint)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                 }
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .ruulTextStyle(RuulTypography.calloutBold)
+                        .font(.footnote.weight(.bold))
                         .foregroundStyle(Color.ruulAccent)
                 }
             }
@@ -125,11 +125,11 @@ struct AddLedgerEntrySheet: View {
     private var counterpartySection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(counterpartySectionLabel)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             if coordinator.counterpartyOptions.isEmpty {
                 Text("No hay otros miembros en este grupo.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             } else {
                 VStack(spacing: RuulSpacing.xs) {
@@ -150,13 +150,13 @@ struct AddLedgerEntrySheet: View {
             HStack(spacing: RuulSpacing.sm) {
                 RuulAvatar(name: mwp.displayName, imageURL: mwp.avatarURL, size: .medium)
                 Text(mwp.displayName)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .ruulTextStyle(RuulTypography.subheadBold)
+                        .font(.subheadline.weight(.bold))
                         .foregroundStyle(Color.ruulAccent)
                 }
             }

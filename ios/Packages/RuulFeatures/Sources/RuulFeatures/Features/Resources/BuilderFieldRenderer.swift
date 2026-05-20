@@ -24,7 +24,7 @@ public struct BuilderFieldRenderer: View {
             controlView
             if let helpText = field.helpText {
                 Text(helpText)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(.leading, RuulSpacing.xxs)
             }
@@ -40,7 +40,7 @@ public struct BuilderFieldRenderer: View {
         // stringification.
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(field.label)
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
             if options.count <= 7 {
                 Picker(field.label, selection: pickerBinding(options: options)) {
@@ -73,7 +73,7 @@ public struct BuilderFieldRenderer: View {
         case .multilineText:
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(field.label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                 TextEditor(text: stringBinding())
                     .frame(minHeight: 80)
@@ -97,11 +97,11 @@ public struct BuilderFieldRenderer: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(field.label)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if let helpText = field.helpText {
                         Text(helpText)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 }
@@ -120,7 +120,7 @@ public struct BuilderFieldRenderer: View {
         case .date, .time, .dateTime:
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(field.label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                 DatePicker(
                     "",
@@ -134,7 +134,7 @@ public struct BuilderFieldRenderer: View {
         case .duration:
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(field.label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                 RuulTextField(
                     "minutos",
@@ -214,14 +214,14 @@ public struct BuilderFieldRenderer: View {
     private func unavailableField(note: String) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(field.label)
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "exclamationmark.circle")
-                    .ruulTextStyle(RuulTypography.calloutRegular)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text(note)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
                 Spacer(minLength: 0)
             }

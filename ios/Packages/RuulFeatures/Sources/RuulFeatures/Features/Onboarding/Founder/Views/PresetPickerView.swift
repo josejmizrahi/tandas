@@ -74,25 +74,25 @@ public struct PresetPickerView: View {
                         .fill(isSelected ? Color.ruulAccent.opacity(0.15) : Color.ruulSurface)
                         .frame(width: 48, height: 48)
                     Image(systemName: preset.icon)
-                        .font(RuulTypography.titleMedium.font)
+                        .font(.title2.weight(.medium))
                         .foregroundStyle(isSelected ? Color.ruulAccent : Color.ruulTextSecondary)
                 }
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text(preset.displayName)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(preset.summary)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(preset.sampleResources, id: \.self) { sample in
                             HStack(spacing: RuulSpacing.xxs) {
                                 Image(systemName: "circle.fill")
-                                    .font(RuulTypography.bulletDot.font)
+                                    .font(.caption2)
                                     .foregroundStyle(Color.ruulTextTertiary)
                                 Text(sample)
-                                    .ruulTextStyle(RuulTypography.caption)
+                                    .font(.caption)
                                     .foregroundStyle(Color.ruulTextTertiary)
                             }
                         }
@@ -103,7 +103,7 @@ public struct PresetPickerView: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Color.ruulAccent)
-                        .ruulTextStyle(RuulTypography.title)
+                        .font(.title2.weight(.semibold))
                         .transition(.scale.combined(with: .opacity))
                 }
             }

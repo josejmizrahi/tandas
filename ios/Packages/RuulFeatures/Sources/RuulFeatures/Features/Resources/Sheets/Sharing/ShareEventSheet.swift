@@ -43,7 +43,7 @@ public struct ShareEventSheet: View {
         ) {
             VStack(spacing: RuulSpacing.lg) {
                 Text("Quien escanee este código va directo al evento.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
 
@@ -52,10 +52,10 @@ public struct ShareEventSheet: View {
                 ShareLink(item: shareMessage) {
                     HStack(spacing: RuulSpacing.xs) {
                         Image(systemName: "square.and.arrow.up")
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .font(.subheadline.weight(.semibold))
                             .accessibilityHidden(true)
                         Text("Compartir link")
-                            .ruulTextStyle(RuulTypography.body)
+                            .font(.subheadline)
                     }
                     .foregroundStyle(Color.ruulTextInverse)
                     .frame(maxWidth: .infinity)
@@ -70,10 +70,10 @@ public struct ShareEventSheet: View {
                     } label: {
                         HStack(spacing: RuulSpacing.xs) {
                             Image(systemName: "calendar.badge.plus")
-                                .ruulTextStyle(RuulTypography.subheadSemibold)
+                                .font(.subheadline.weight(.semibold))
                                 .accessibilityHidden(true)
                             Text("Agregar a Calendario")
-                                .ruulTextStyle(RuulTypography.body)
+                                .font(.subheadline)
                         }
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(maxWidth: .infinity)
@@ -102,11 +102,11 @@ public struct ShareEventSheet: View {
 
             VStack(spacing: 2) {
                 Text(event.title)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .multilineTextAlignment(.center)
                 Text(event.startsAt.ruulFullDateTime)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }

@@ -57,7 +57,7 @@ public struct RuulButton: View {
         } else {
             HStack(spacing: RuulSpacing.xs) {
                 if let systemImage { Image(systemName: systemImage) }
-                Text(title).ruulTextStyle(textStyle)
+                Text(title).font(textFont)
             }
         }
     }
@@ -72,11 +72,11 @@ public struct RuulButton: View {
         }
     }
 
-    private var textStyle: RuulTextStyle {
+    private var textFont: Font {
         switch size {
-        case .small:  return RuulTypography.callout
-        case .medium: return RuulTypography.body
-        case .large:  return RuulTypography.bodyLarge
+        case .small:  return .footnote
+        case .medium: return .subheadline
+        case .large:  return .body
         }
     }
 
@@ -133,7 +133,7 @@ private struct StyleBackground: ViewModifier {
     ScrollView {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             ForEach([RuulButton.Size.small, .medium, .large], id: \.self) { size in
-                Text("\(String(describing: size))").ruulTextStyle(RuulTypography.footnote)
+                Text("\(String(describing: size))").font(.footnote)
                 HStack(spacing: RuulSpacing.sm) {
                     RuulButton("Primary", style: .primary, size: size) {}
                     RuulButton("Secondary", style: .secondary, size: size) {}

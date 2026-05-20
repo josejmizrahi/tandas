@@ -92,7 +92,7 @@ public struct MyFinesView: View {
         if coordinator.totalOutstanding > 0 {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("PENDIENTE DE PAGO")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 RuulMoneyView(
                     amount: coordinator.totalOutstanding,
@@ -115,12 +115,12 @@ public struct MyFinesView: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Todo al corriente")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(coordinator.resolved.isEmpty
                     ? "No tienes multas pendientes."
                     : "Pagaste todas tus multas.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
@@ -149,7 +149,7 @@ public struct MyFinesView: View {
             withAnimation(.ruulSnappy) { scope = s }
         } label: {
             Text(s.label)
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .padding(.horizontal, RuulSpacing.md)
                 .padding(.vertical, RuulSpacing.xs)
                 .background(
@@ -194,7 +194,7 @@ public struct MyFinesView: View {
             // Mantenemos scopeChips visible para que el usuario pueda
             // volver a "Todo".
             Text("Sin multas en este periodo.")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, RuulSpacing.lg)

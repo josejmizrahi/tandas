@@ -125,7 +125,7 @@ public struct InboxView: View {
         .overlay(alignment: .bottom) {
             if let message = toastMessage {
                 Text(message)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .padding(.horizontal, RuulSpacing.lg)
                     .padding(.vertical, RuulSpacing.sm)
                     .background(Color.ruulSurface, in: Capsule())
@@ -355,18 +355,18 @@ private struct ResolvedInboxList: View {
         HStack {
             VStack(alignment: .leading, spacing: RuulSpacing.s1) {
                 Text(action.title)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(.primary)
                 if let body = action.body {
                     Text(body)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             Spacer()
             if let resolvedAt = action.resolvedAt {
                 Text("Resuelta \(formatter.localizedString(for: resolvedAt, relativeTo: .now))")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.trailing)
             }

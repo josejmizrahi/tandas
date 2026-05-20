@@ -41,7 +41,7 @@ public struct PendingClaimsView: View {
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -58,10 +58,10 @@ public struct PendingClaimsView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Te agregaron a estos grupos")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text("Tu número coincide con un miembro pendiente. Acepta para unir tu cuenta con el historial que ya hay.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -71,9 +71,9 @@ public struct PendingClaimsView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(Color.ruulAccent)
-            Text("Nada pendiente").ruulTextStyle(RuulTypography.headline)
+            Text("Nada pendiente").font(.headline)
             Text("Ya no hay invitaciones esperando.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .frame(maxWidth: .infinity)
@@ -83,9 +83,9 @@ public struct PendingClaimsView: View {
     private func claimCard(_ claim: PendingPlaceholderClaim) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(claim.groupName)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
             Text("Te agregaron como \(claim.displayName)")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
             HStack(spacing: RuulSpacing.sm) {
                 Button("Revisar") { reviewing = claim }

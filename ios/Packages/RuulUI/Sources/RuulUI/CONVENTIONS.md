@@ -73,5 +73,7 @@ should update the row below.
   .ruulSeparator / .ruulFillGlass / .ruulOnImage* / etc.`
 - **Size**: `RuulSize.avatar* / .iconBadge* / .icon* / .heroBanner /
   .heroLarge / .coverHero / .blurAmbient`
-- **Typography**: `RuulTypography.displayLarge/.title/.headline/.body/
-  .callout/.caption/.sectionLabel/.statSmall/...`
+- **Typography**: SwiftUI native — `.largeTitle/.title/.title2/.headline/
+  .body/.subheadline/.footnote/.caption/.caption2` with optional
+  `.weight(.semibold)` / `.monospaced()` / `.monospacedDigit()`. No custom
+  font system; SF Pro across the app.

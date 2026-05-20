@@ -31,7 +31,7 @@ public struct JoinGroupSheet: View {
                     codeField
                     if let error {
                         Text(error)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulNegative)
                     }
                     RuulButton(
@@ -57,10 +57,10 @@ public struct JoinGroupSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Cuál es el código?")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("El fundador del grupo te lo compartió. Suele tener 6 caracteres.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }

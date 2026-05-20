@@ -15,7 +15,7 @@ struct AvatarQueueLayout: View {
                         .frame(width: 36, height: 36)
                         .overlay(
                             Text(avatar.initials)
-                                .ruulTextStyle(RuulTypography.captionSemibold)
+                                .font(.caption.weight(.semibold))
                                 .foregroundStyle(tint.color)
                         )
                         .overlay(Circle().stroke(Color.ruulSurface, lineWidth: 2))
@@ -29,7 +29,7 @@ struct AvatarQueueLayout: View {
             }
             if avatars.count > 6 {
                 Text("+\(avatars.count - 6)")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .padding(.leading, RuulSpacing.sm)
             }

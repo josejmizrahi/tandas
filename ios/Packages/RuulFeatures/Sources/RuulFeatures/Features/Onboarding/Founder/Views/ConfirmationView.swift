@@ -43,12 +43,12 @@ public struct ConfirmationView: View {
     private var hero: some View {
         VStack(spacing: RuulSpacing.md) {
             Text("Tu grupo está vivo")
-                .ruulTextStyle(RuulTypography.displayLarge)
+                .font(.largeTitle.weight(.bold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .multilineTextAlignment(.center)
             if let group = coord.createdGroup {
                 Text("\(group.name) tiene \(coord.pendingInvites.count) miembros invitados.")
-                    .ruulTextStyle(RuulTypography.bodyLarge)
+                    .font(.body)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
             }

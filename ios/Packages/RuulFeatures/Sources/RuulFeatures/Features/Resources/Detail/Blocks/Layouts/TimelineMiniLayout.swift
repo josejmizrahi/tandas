@@ -10,11 +10,11 @@ struct TimelineMiniLayout: View {
             ForEach(entries) { entry in
                 HStack(alignment: .top, spacing: RuulSpacing.sm) {
                     Text(entry.relativeTime)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .frame(width: 64, alignment: .leading)
                     Text(entry.sentence)
-                        .ruulTextStyle(RuulTypography.subhead)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
             }

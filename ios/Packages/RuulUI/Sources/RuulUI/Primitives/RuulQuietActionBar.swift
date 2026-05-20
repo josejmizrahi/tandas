@@ -75,7 +75,7 @@ public struct RuulQuietActionBar: View {
                 Image(systemName: action.symbol)
                     .font(.system(size: 18, weight: .regular))
                 Text(action.label)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .lineLimit(1)
             }
             .foregroundStyle(action.isDestructive ? Color.ruulNegative : Color.ruulTextSecondary)

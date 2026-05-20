@@ -43,10 +43,10 @@ struct ResourceVariantPicker: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("¿Qué tipo de \(type.humanLabel.lowercased())?")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Elige el más parecido. Cualquiera funciona.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -54,10 +54,10 @@ struct ResourceVariantPicker: View {
     private var emptyState: some View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: "tray")
-                .font(RuulTypography.title.font)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text("Por ahora no hay variantes para \(type.humanLabel.lowercased()).")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -73,10 +73,10 @@ struct ResourceVariantPicker: View {
                 iconBadge(variant.icon)
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(variant.humanName)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(variant.summary)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -86,7 +86,7 @@ struct ResourceVariantPicker: View {
                 }
                 Spacer(minLength: RuulSpacing.xs)
                 Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             .padding(RuulSpacing.md)
@@ -107,7 +107,7 @@ struct ResourceVariantPicker: View {
                 .fill(Color.ruulAccent.opacity(0.15))
                 .frame(width: 40, height: 40)
             Image(systemName: symbol)
-                .ruulTextStyle(RuulTypography.bodyLarge)
+                .font(.body)
                 .foregroundStyle(Color.ruulAccent)
         }
     }
@@ -117,7 +117,7 @@ struct ResourceVariantPicker: View {
     /// and the layout doesn't fight RuulSeparatedRows / DynamicType.
     private func examplesLine(_ examples: [String]) -> some View {
         Text(examples.joined(separator: " · "))
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)

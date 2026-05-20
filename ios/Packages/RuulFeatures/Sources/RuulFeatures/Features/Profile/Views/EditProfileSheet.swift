@@ -46,7 +46,7 @@ public struct EditProfileSheet: View {
                 if let error = coordinator.error {
                     Section {
                         Text(error.message ?? error.title)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }

@@ -104,7 +104,7 @@ public struct ActivityView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("\(visibleEvents.count) eventos")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -128,7 +128,7 @@ public struct ActivityView: View {
             }
             Spacer()
             Button("Limpiar") { coordinator.clearFilters() }
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextAccent)
         }
     }
@@ -136,7 +136,7 @@ public struct ActivityView: View {
     private func filterChip(label: String, onClear: @escaping () -> Void) -> some View {
         HStack(spacing: 4) {
             Text(label)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextPrimary)
             Button { onClear() } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -340,7 +340,7 @@ public struct HistoryFilterSheet: View {
                     coordinator.clearFilters()
                     dismiss()
                 }
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextAccent)
                 .frame(maxWidth: .infinity)
                 .padding(RuulSpacing.sm)
@@ -352,7 +352,7 @@ public struct HistoryFilterSheet: View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Tipo de evento")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Picker(selection: Binding(
                     get: { coordinator.filter.eventType },
@@ -372,7 +372,7 @@ public struct HistoryFilterSheet: View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Rango de fecha")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
 
                 DatePicker("Desde", selection: Binding(

@@ -41,7 +41,7 @@ public struct GovernanceView: View {
                 votingConfigCard
                 if let error {
                     Text(error)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
             }
@@ -105,7 +105,7 @@ public struct GovernanceView: View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Configuración de votación")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
 
                 quorumRow
@@ -120,11 +120,11 @@ public struct GovernanceView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Quórum")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
                 Text("\(rules.votingQuorumPercent)%")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextAccent)
             }
             Slider(
@@ -137,7 +137,7 @@ public struct GovernanceView: View {
             )
             .tint(Color.ruulAccent)
             Text("Mínimo del grupo que debe votar para que la votación cuente.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -146,11 +146,11 @@ public struct GovernanceView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Mayoría requerida")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
                 Text("\(rules.votingThresholdPercent)%")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextAccent)
             }
             Slider(
@@ -163,7 +163,7 @@ public struct GovernanceView: View {
             )
             .tint(Color.ruulAccent)
             Text("% de votos a favor para aprobar.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -172,18 +172,18 @@ public struct GovernanceView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Duración")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
                 Stepper("\(rules.votingDurationHours) hrs",
                         value: $rules.votingDurationHours,
                         in: 24...168,
                         step: 24)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextAccent)
             }
             Text("Cuánto tiempo está abierta una votación antes de cerrarse.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -192,12 +192,12 @@ public struct GovernanceView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Toggle(isOn: $rules.votesAreAnonymous) {
                 Text("Votos anónimos")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .tint(Color.ruulAccent)
             Text("Solo los conteos agregados son visibles. Recomendado.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -213,10 +213,10 @@ public struct GovernanceView: View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(title)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(subtitle)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Picker(selection: selection) {
                     ForEach(options, id: \.self) { level in

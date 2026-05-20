@@ -42,7 +42,7 @@ public struct OpenVotesListView: View {
                             ForEach(coordinator.sectioned(), id: \.0) { section, votes in
                                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                                     Text(section.title.uppercased())
-                                        .ruulTextStyle(RuulTypography.sectionLabel)
+                                        .font(.footnote.weight(.semibold))
                                         .foregroundStyle(Color.ruulTextTertiary)
                                     RuulSeparatedRows(items: votes) { vote in
                                         Button { onSelectVote(vote) } label: {
@@ -84,7 +84,7 @@ public struct OpenVotesListView: View {
         let alreadyCast = coordinator.hasCast(vote.id)
         return HStack(spacing: RuulSpacing.sm) {
             voteTypeIcon(vote.voteType)
-                .ruulTextStyle(RuulTypography.headlineMedium)
+                .font(.headline.weight(.medium))
                 .foregroundStyle(alreadyCast ? Color.ruulTextTertiary : Color.ruulAccent)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
@@ -92,30 +92,30 @@ public struct OpenVotesListView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(vote.title)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                 HStack(spacing: RuulSpacing.xs) {
                     if alreadyCast {
                         Image(systemName: "checkmark.circle.fill")
-                            .ruulTextStyle(RuulTypography.microSemibold)
+                            .font(.caption2.weight(.semibold))
                             .foregroundStyle(Color.ruulPositive)
                             .accessibilityHidden(true)
                         Text("Ya votaste")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                         Text("·")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                     Text("Cierra \(vote.closesAt.ruulRelativeDescription)")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
         }

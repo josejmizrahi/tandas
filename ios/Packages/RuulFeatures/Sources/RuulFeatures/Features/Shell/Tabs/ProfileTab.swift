@@ -135,7 +135,7 @@ public struct ProfileTab: View {
                         HStack(spacing: RuulSpacing.sm) {
                             ProgressView().controlSize(.small)
                             Text("Preparando export…")
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                         }
                         .padding(.horizontal, RuulSpacing.md)

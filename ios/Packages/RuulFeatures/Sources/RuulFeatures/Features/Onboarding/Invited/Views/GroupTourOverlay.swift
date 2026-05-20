@@ -40,10 +40,10 @@ public struct GroupTourOverlay: View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Bienvenido a \(coord.preview?.groupName ?? "tu grupo")")
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("Esto es lo que necesitas saber:")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 bulletList
                 RuulButton("Entendido", style: .primary, size: .large, fillsWidth: true) {
@@ -67,7 +67,7 @@ public struct GroupTourOverlay: View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             RuulIconBadge(icon, size: .small)
             Text(text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

@@ -119,11 +119,11 @@ public struct EventCard: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulOnImageSecondary)
 
                 Text(event.title)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -133,14 +133,14 @@ public struct EventCard: View {
             HStack(spacing: RuulSpacing.sm) {
                 if let location = event.locationName, !location.isEmpty {
                     Label(location, systemImage: "mappin.and.ellipse")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulOnImageSecondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 if confirmedCount > 0 {
                     Text("\(confirmedCount) van")
-                        .ruulTextStyle(RuulTypography.statSmall)
+                        .font(.footnote.monospacedDigit().weight(.bold))
                         .foregroundStyle(Color.ruulOnImage)
                 }
                 if let myStatus, myStatus != .pending {
@@ -167,10 +167,10 @@ public struct EventCard: View {
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.microBold)
+                .font(.caption2.weight(.bold))
                 .accessibilityHidden(true)
             Text(text)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
         }
         .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, RuulSpacing.xs)
@@ -184,7 +184,7 @@ public struct EventCard: View {
                 .fill(Color.ruulOnImage)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
         }
         .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, RuulSpacing.xs)
@@ -204,10 +204,10 @@ public struct EventCard: View {
         }()
         return HStack(spacing: RuulSpacing.xxs) {
             Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.microBold)
+                .font(.caption2.weight(.bold))
                 .accessibilityHidden(true)
             Text(label)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
         }
         .foregroundStyle(Color.ruulOnImage)
         .padding(.horizontal, RuulSpacing.xs)

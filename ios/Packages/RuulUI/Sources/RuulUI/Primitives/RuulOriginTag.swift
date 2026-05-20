@@ -23,7 +23,7 @@ public struct RuulOriginTag: View {
                 size: .sm
             )
             Text(groupName)
-                .font(.ruulGroupLabel)
+                .font(.caption.weight(.medium))
                 .foregroundStyle(Color.ruulTextSecondary)
                 .lineLimit(1)
         }

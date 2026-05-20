@@ -45,7 +45,7 @@ public struct ModalSheetTemplate<Content: View>: View {
             HStack {
                 if let title {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.title)
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
                 Spacer()

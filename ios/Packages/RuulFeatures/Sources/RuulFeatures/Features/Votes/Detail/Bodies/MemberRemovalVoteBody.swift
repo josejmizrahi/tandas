@@ -25,10 +25,10 @@ public struct MemberRemovalVoteBody: View {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("RAZÓN")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
                     Text(desc)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -39,7 +39,7 @@ public struct MemberRemovalVoteBody: View {
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
             }
@@ -53,10 +53,10 @@ public struct MemberRemovalVoteBody: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Si pasa, este miembro queda fuera del grupo")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("Pierde acceso a eventos, multas e historial. La decisión es del grupo, no del founder.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -73,10 +73,10 @@ public struct MemberRemovalVoteBody: View {
     private var memberCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("MIEMBRO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text(memberName)
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }

@@ -19,12 +19,12 @@ struct IdentityRibbonView: View {
                 )
             VStack(alignment: .leading, spacing: 2) {
                 Text(ribbon.title)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                 if !ribbon.subtitleSegments.isEmpty {
                     Text(ribbon.subtitleSegments.joined(separator: " · "))
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(1)
                 }

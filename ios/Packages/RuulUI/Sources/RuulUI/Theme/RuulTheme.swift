@@ -2,9 +2,9 @@ import SwiftUI
 
 /// Bundle of resolved design-system values keyed by the current scheme +
 /// contrast environment. Use sparingly — most callers should access tokens
-/// directly via `Color.ruul*` / `Font.ruul*`. The theme exists for views that
-/// need to react to scheme changes mid-render (e.g. switching the showcase
-/// preview between light/dark/HC at runtime).
+/// directly via `Color.ruul*`. The theme exists for views that need to react
+/// to scheme changes mid-render (e.g. switching the showcase preview between
+/// light/dark/HC at runtime).
 public struct RuulTheme: Sendable {
     public let colors: RuulColors
 

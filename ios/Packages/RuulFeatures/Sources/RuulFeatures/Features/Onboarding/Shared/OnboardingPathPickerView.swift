@@ -51,16 +51,16 @@ public struct OnboardingPathPickerView: View {
     private var header: some View {
         VStack(spacing: RuulSpacing.sm) {
             Text("ruul")
-                .ruulTextStyle(RuulTypography.wordmark)
+                .font(.system(size: 88, weight: .bold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(showJoinInput ? "Pega tu código" : "Bienvenido")
-                .ruulTextStyle(RuulTypography.displayMedium)
+                .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .multilineTextAlignment(.center)
             Text(showJoinInput
                  ? "Te lo compartió alguien del grupo."
                  : "¿Estrenas grupo o te invitaron a uno?")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -101,10 +101,10 @@ public struct OnboardingPathPickerView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
                     Text(subtitle)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(primary ? Color.ruulTextInverse.opacity(0.8) : Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                 }
@@ -145,7 +145,7 @@ public struct OnboardingPathPickerView: View {
                 showJoinInput = false
                 inviteCode = ""
             }
-            .ruulTextStyle(RuulTypography.callout)
+            .font(.footnote)
             .foregroundStyle(Color.ruulTextSecondary)
         }
     }

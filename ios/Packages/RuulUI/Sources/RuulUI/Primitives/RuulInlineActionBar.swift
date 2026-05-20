@@ -71,7 +71,7 @@ public struct RuulInlineActionBar: View {
                 Image(systemName: action.symbol)
                     .font(.system(size: 17, weight: .semibold))
                 Text(action.label)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)

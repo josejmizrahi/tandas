@@ -31,7 +31,7 @@ public struct SlotDetailView: View {
                 LabeledContent("Recurso", value: assetName)
             } header: {
                 Text("Cupo")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .textCase(nil)
             }
 

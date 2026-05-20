@@ -61,7 +61,7 @@ public struct GroupRoleEditorSheet: View {
                         infoRow("Identificador", value: existing?.id ?? "")
                         if isEditingSystem {
                             Text("Los roles del sistema no se pueden eliminar, pero puedes ajustar sus permisos.")
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                         }
                     }
@@ -111,7 +111,7 @@ public struct GroupRoleEditorSheet: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
             Text("Solo letras minúsculas, números y guiones bajos. Empieza con una letra. Ejemplos: `treasurer`, `seat_owner`, `lifeguard`.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         } header: {
             Text("Identificador")
@@ -148,7 +148,7 @@ public struct GroupRoleEditorSheet: View {
             Text("Cantidad")
         } footer: {
             Text("Útil para roles como Tesorero o Capitán que solo una o dos personas deben tener.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -165,10 +165,10 @@ public struct GroupRoleEditorSheet: View {
         Toggle(isOn: bound) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(permission.humanLabel)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(permission.hint)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }

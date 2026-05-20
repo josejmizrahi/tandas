@@ -115,7 +115,7 @@ public struct LinkResourcePickerSheet: View {
     private var inlineSubmitError: some View {
         if let errorText {
             Text(errorText)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulNegative)
                 .padding(.horizontal, RuulSpacing.xxs)
         }
@@ -126,10 +126,10 @@ public struct LinkResourcePickerSheet: View {
     private var headerCopy: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Qué usa este evento?")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Vincula un espacio, asset, fondo o derecho que se coordine durante este evento.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .padding(.top, RuulSpacing.xs)
@@ -148,22 +148,22 @@ public struct LinkResourcePickerSheet: View {
                         ProgressView()
                     } else {
                         Image(systemName: iconFor(row.resourceType))
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.ruulAccent)
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(displayName(row))
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
                     Text(row.resourceType.humanLabel)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "plus")
-                    .ruulTextStyle(RuulTypography.calloutBold)
+                    .font(.footnote.weight(.bold))
                     .foregroundStyle(Color.ruulAccent)
             }
             .padding(RuulSpacing.md)
@@ -186,15 +186,15 @@ public struct LinkResourcePickerSheet: View {
             ZStack {
                 Circle().fill(Color.ruulSurface).frame(width: 72, height: 72)
                 Image(systemName: "link.badge.plus")
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text("Nada que vincular aún")
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("Crea un espacio, asset o fondo en el grupo y vuelve para vincularlo a este evento.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
             }

@@ -44,7 +44,7 @@ public struct RuulInfoCard<Content: View>: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let title {
                 Text(title)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(.leading, RuulSpacing.xxs)
             }
@@ -78,11 +78,11 @@ public struct RuulInfoRow: View {
     public var body: some View {
         HStack {
             Text(label)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
             Text(value)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .multilineTextAlignment(.trailing)
         }
@@ -116,10 +116,10 @@ public struct RuulInfoActionRow: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: symbol)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .frame(width: 20)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                 Spacer()
             }
             .foregroundStyle(isDestructive ? Color.ruulNegative : Color.ruulTextPrimary)

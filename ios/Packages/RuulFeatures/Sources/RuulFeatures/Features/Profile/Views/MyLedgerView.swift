@@ -89,7 +89,7 @@ public struct MyLedgerView: View {
     private func heroTile(label: String, amount: Decimal, color: RuulMoneyView.SemanticColor) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             RuulMoneyView(
                 amount: amount,
@@ -113,7 +113,7 @@ public struct MyLedgerView: View {
         if net != 0 {
             HStack(spacing: RuulSpacing.xs) {
                 Text(net > 0 ? "El grupo te debe" : "Tú le debes al grupo")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer(minLength: RuulSpacing.sm)
                 RuulMoneyView(
@@ -157,11 +157,11 @@ public struct MyLedgerView: View {
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(ledger.group.name)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                 Text(perGroupSubtitle(ledger))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .lineLimit(1)
             }
@@ -175,7 +175,7 @@ public struct MyLedgerView: View {
                     color: ledger.netCents >= 0 ? .positive : .negative
                 )
                 Text(ledger.netCents >= 0 ? "neto a favor" : "neto a deber")
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }
@@ -220,16 +220,16 @@ public struct MyLedgerView: View {
                     .fill(Color.ruulBackgroundRecessed)
                     .frame(width: 36, height: 36)
                 Image(systemName: icon(for: entry.type))
-                    .ruulTextStyle(RuulTypography.labelSemibold)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(humanTypeLabel(entry.type))
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                 Text("\(groupName) · \(entry.occurredAt.ruulRelativeDescription)")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .lineLimit(1)
             }
@@ -282,15 +282,15 @@ public struct MyLedgerView: View {
                     .fill(Color.ruulSurface)
                     .frame(width: 80, height: 80)
                 Image(systemName: "tray")
-                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .font(.largeTitle.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text("Aún sin movimientos")
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("Cuando registres una aportación, gasto o pago, aparecerá aquí con su grupo.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, RuulSpacing.lg)
@@ -310,12 +310,12 @@ public struct MyLedgerView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 Spacer()
                 if let count {
                     Text("\(count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
+                        .font(.footnote.monospacedDigit().weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }

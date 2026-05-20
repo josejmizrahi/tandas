@@ -31,12 +31,12 @@ public struct InvitedOTPView: View {
                    case .otpVerifyFailed(_, let attempts) = err,
                    attempts < 3 {
                     Text("Código incorrecto. Te quedan \(3 - attempts) intentos.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
                 if coord.error == .otpTooManyAttempts {
                     Text("Demasiados intentos. Pide otro código.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
             }
@@ -63,7 +63,7 @@ public struct InvitedOTPView: View {
             Task { await coord.advanceFromPhoneVerify() }
         } label: {
             Text(resendCountdown > 0 ? "Reenviar (\(resendCountdown)s)" : "Reenviar código")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(resendCountdown > 0 ? Color.ruulTextTertiary : Color.ruulAccent)
         }
         .disabled(resendCountdown > 0)

@@ -27,7 +27,7 @@ struct AddResourceRuleSheet: View {
             previewSection
             if let error = coordinator.error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
             submitButton
@@ -51,7 +51,7 @@ struct AddResourceRuleSheet: View {
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("CUÁNDO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             if coordinator.availableTriggers.isEmpty {
                 emptyShapeMessage("No hay disparadores disponibles todavía.")
@@ -82,14 +82,14 @@ struct AddResourceRuleSheet: View {
             // that adds noise without choice.
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ENTONCES → \(only.labelES.uppercased())")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 configFields(for: only)
             }
         } else if !coordinator.availableConsequences.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ENTONCES")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 RuulSeparatedRows(items: coordinator.availableConsequences) { shape in
                     shapeRow(
@@ -123,7 +123,7 @@ struct AddResourceRuleSheet: View {
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(.top, 2)
                 Text("\(sentence).")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.leading)
             }
@@ -151,16 +151,16 @@ struct AddResourceRuleSheet: View {
                         .fill(Color.ruulAccent.opacity(isSelected ? 0.18 : 0.10))
                         .frame(width: 36, height: 36)
                     Image(systemName: shape.icon ?? "circle")
-                        .font(RuulTypography.subheadMedium.font)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.ruulAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(shape.labelES)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if let summary = shape.summaryES, !summary.isEmpty {
                         Text(summary)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                             .multilineTextAlignment(.leading)
                     }
@@ -168,7 +168,7 @@ struct AddResourceRuleSheet: View {
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .ruulTextStyle(RuulTypography.calloutBold)
+                        .font(.footnote.weight(.bold))
                         .foregroundStyle(Color.ruulAccent)
                 }
             }
@@ -231,7 +231,7 @@ struct AddResourceRuleSheet: View {
 
     private func emptyShapeMessage(_ message: String) -> some View {
         Text(message)
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextSecondary)
             .padding(.vertical, RuulSpacing.sm)
     }

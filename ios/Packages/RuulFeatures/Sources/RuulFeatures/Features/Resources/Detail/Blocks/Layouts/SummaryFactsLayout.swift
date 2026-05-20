@@ -10,10 +10,10 @@ struct SummaryFactsLayout: View {
             ForEach(facts) { fact in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(fact.key)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                     Text(fact.value)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
             }

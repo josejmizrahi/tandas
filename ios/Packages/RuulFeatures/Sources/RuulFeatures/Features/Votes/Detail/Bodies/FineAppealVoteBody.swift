@@ -62,28 +62,28 @@ public struct FineAppealVoteBody: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 HStack {
                     Text("MULTA APELADA")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                 }
                 HStack(alignment: .firstTextBaseline) {
                     if let reason = fineReason, !reason.isEmpty {
                         Text(reason)
-                            .ruulTextStyle(RuulTypography.headline)
+                            .font(.headline)
                             .foregroundStyle(Color.ruulTextPrimary)
                     } else {
                         Text("(Sin razón registrada)")
-                            .ruulTextStyle(RuulTypography.headline)
+                            .font(.headline)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                     Spacer(minLength: RuulSpacing.sm)
                     if let amount = fineAmount {
                         Text("$\(amount)")
-                            .ruulTextStyle(RuulTypography.statMedium)
+                            .font(.body.monospacedDigit().weight(.bold))
                             .foregroundStyle(Color.ruulTextPrimary)
                     }
                 }
@@ -106,10 +106,10 @@ public struct FineAppealVoteBody: View {
         if let reason = appealReason, !reason.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ARGUMENTO DE APELACIÓN")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text(reason)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -129,7 +129,7 @@ public struct FineAppealVoteBody: View {
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
             Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
         }

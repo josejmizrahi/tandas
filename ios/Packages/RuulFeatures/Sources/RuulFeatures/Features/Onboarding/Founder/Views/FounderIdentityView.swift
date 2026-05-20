@@ -51,13 +51,13 @@ public struct FounderIdentityView: View {
     private var signInEscape: some View {
         HStack(spacing: RuulSpacing.xs) {
             Text("¿Ya tienes cuenta?")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button {
                 switchToSignIn()
             } label: {
                 Text("Iniciar sesión")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulAccent)
             }
             .buttonStyle(.plain)
@@ -117,7 +117,7 @@ public struct FounderIdentityView: View {
                     )
                 }
                 Image(systemName: "camera.fill")
-                    .font(RuulTypography.labelSemibold.font)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulTextPrimary, in: Circle())

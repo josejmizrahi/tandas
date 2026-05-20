@@ -79,10 +79,10 @@ public struct EditRulesView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Los cambios abren votación")
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text("Necesitan \(threshold)% de votos a favor para aplicarse.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Spacer()
@@ -102,7 +102,7 @@ public struct EditRulesView: View {
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
                 Text("Tu rol no puede editar reglas en este grupo.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
             }
@@ -119,10 +119,10 @@ public struct EditRulesView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(coordinator.group.name)
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextSecondary)
             Text("Reglas predeterminadas")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
         }
         .padding(.top, RuulSpacing.xs)
@@ -130,7 +130,7 @@ public struct EditRulesView: View {
 
     private var footer: some View {
         Text("Las reglas personalizadas estarán disponibles en una próxima versión.")
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
@@ -155,7 +155,7 @@ public struct EditRulesView: View {
             HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(rule.name)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(2)
                     fineDisplay(rule)
@@ -185,11 +185,11 @@ public struct EditRulesView: View {
         switch FineConsequenceParser.shape(of: rule.consequences) {
         case .flat(let amount):
             Text("Multa: \(formatMXN(amount))")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextAccent)
         case .escalating:
             Text("Multa escalonada")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextAccent)
         case .none, .unknown:
             EmptyView()
@@ -222,7 +222,7 @@ public struct EditRulesView: View {
                 .accessibilityHidden(true)
             Text("Votación pendiente · cierra \(relative)")
         }
-        .ruulTextStyle(RuulTypography.footnote)
+        .font(.footnote)
         .foregroundStyle(Color.ruulWarning)
         .padding(.top, RuulSpacing.xxs)
     }

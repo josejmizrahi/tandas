@@ -57,24 +57,24 @@ public struct EventLocationCard: View {
     private var addressRow: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
-                .ruulTextStyle(RuulTypography.subheadSemibold)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(locationName)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 Text("CÓMO LLEGAR")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             Spacer()
             Image(systemName: "arrow.up.right.square")
-                .ruulTextStyle(RuulTypography.labelSemibold)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
         }

@@ -31,7 +31,7 @@ public struct ModulesPickerView: View {
 
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulNegative)
                     .padding(.horizontal, RuulSpacing.lg)
             }
@@ -53,10 +53,10 @@ public struct ModulesPickerView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(module.name)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(module.description)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(2)
                 }
@@ -70,12 +70,12 @@ public struct ModulesPickerView: View {
             }
             if blocked && !conflicts.isEmpty {
                 Text("Conflictúa con: \(conflicts.joined(separator: ", "))")
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulWarning)
             }
             if blocked && !unsatisfiedDeps.isEmpty {
                 Text("Requiere: \(unsatisfiedDeps.joined(separator: ", "))")
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }

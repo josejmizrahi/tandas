@@ -118,15 +118,15 @@ public struct RuulTimelineItem: View {
     private var contentColumn: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(timestamp)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text(title)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             if let subtitle {
                 Text(subtitle)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

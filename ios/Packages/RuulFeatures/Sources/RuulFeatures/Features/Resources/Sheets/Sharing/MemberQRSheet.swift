@@ -26,7 +26,7 @@ public struct MemberQRSheet: View {
             VStack(spacing: RuulSpacing.lg) {
                 // W2-C4: "host" → "anfitrión".
                 Text("Muestra este código al anfitrión para marcar tu llegada.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .multilineTextAlignment(.center)
                 qrImage
@@ -34,7 +34,7 @@ public struct MemberQRSheet: View {
                     .padding(RuulSpacing.md)
                     .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 Text(eventTitle)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .frame(maxWidth: .infinity)

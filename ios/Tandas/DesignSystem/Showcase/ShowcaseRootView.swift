@@ -21,7 +21,7 @@ public struct ShowcaseRootView: View {
                     .pickerStyle(.segmented)
                     if override.requiresHighContrast {
                         Text("HC override requires Settings → Accessibility → Increase Contrast")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 }

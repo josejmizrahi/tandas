@@ -80,12 +80,12 @@ public struct EventRSVPStateView: View {
                         .stroke(Color.ruulSeparator, lineWidth: 1)
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .accessibilityHidden(true)
                 }
                 Text(label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .frame(maxWidth: .infinity)
@@ -105,11 +105,11 @@ public struct EventRSVPStateView: View {
     private var plusOnesRow: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.2.fill")
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
             Text("Llevo a más gente")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer()
             stepperControl
@@ -130,7 +130,7 @@ public struct EventRSVPStateView: View {
                 if plusOnes > 0 { plusOnes -= 1 }
             }
             Text("+\(plusOnes)")
-                .ruulTextStyle(RuulTypography.statSmall)
+                .font(.footnote.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(minWidth: 28)
             stepperButton(icon: "plus", enabled: plusOnes < event.maxPlusOnesPerMember) {
@@ -142,7 +142,7 @@ public struct EventRSVPStateView: View {
     private func stepperButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                 .frame(width: 26, height: 26)
                 .background(Color.ruulBackground)
@@ -232,12 +232,12 @@ public struct EventRSVPStateView: View {
                 .fill(Color.ruulNegative)
                 .frame(width: 8, height: 8)
             Text("NO VAS")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer()
             Button { onChange(.pending) } label: {
                 Text("Cambiar")
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .buttonStyle(.ruulPress)
@@ -268,16 +268,16 @@ public struct EventRSVPStateView: View {
                     .fill(statusDot)
                     .frame(width: 8, height: 8)
                 Text(statusLabel)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(subtitle)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             actions()
@@ -308,10 +308,10 @@ public struct EventRSVPStateView: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.xxs) {
                 Image(systemName: icon)
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .accessibilityHidden(true)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.sm)

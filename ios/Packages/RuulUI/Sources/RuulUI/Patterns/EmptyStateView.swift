@@ -32,12 +32,12 @@ public struct EmptyStateView: View {
             RuulIconBadge(systemImage, tint: .ruulAccent, size: .large)
             VStack(spacing: RuulSpacing.xs) {
                 Text(title)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .multilineTextAlignment(.center)
                 if let message {
                     Text(message)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.center)
                 }

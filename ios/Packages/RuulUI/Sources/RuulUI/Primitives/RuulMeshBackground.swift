@@ -48,7 +48,7 @@ public struct RuulMeshBackground: View {
     ZStack {
         RuulMeshBackground(.cool)
         Text("Cool mesh")
-            .ruulTextStyle(RuulTypography.displayLarge)
+            .font(.largeTitle.weight(.bold))
             .foregroundStyle(Color.ruulTextPrimary)
     }
 }
@@ -57,7 +57,7 @@ public struct RuulMeshBackground: View {
     ZStack {
         RuulMeshBackground(.violet)
         Text("Violet mesh")
-            .ruulTextStyle(RuulTypography.displayLarge)
+            .font(.largeTitle.weight(.bold))
             .foregroundStyle(Color.ruulTextPrimary)
     }
 }
@@ -66,7 +66,7 @@ public struct RuulMeshBackground: View {
     ZStack {
         RuulMeshBackground(.aqua)
         Text("Aqua mesh")
-            .ruulTextStyle(RuulTypography.displayLarge)
+            .font(.largeTitle.weight(.bold))
             .foregroundStyle(Color.ruulTextPrimary)
     }
 }

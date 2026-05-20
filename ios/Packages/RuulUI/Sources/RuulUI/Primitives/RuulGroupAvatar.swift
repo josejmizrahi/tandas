@@ -76,7 +76,7 @@ public struct RuulGroupAvatar: View {
         ZStack {
             Circle().fill(ramp.background)
             Text(initials)
-                .font(.custom("InterVariable", size: size.fontSize).weight(.semibold))
+                .font(.system(size: size.fontSize, weight: .semibold))
                 .foregroundStyle(ramp.foreground)
         }
     }
@@ -109,7 +109,7 @@ public struct RuulGroupAvatar: View {
             ForEach(GroupCategory.allCases, id: \.self) { cat in
                 HStack(spacing: RuulSpacing.sm) {
                     RuulGroupAvatar(groupName: cat.displayName, category: cat, size: .lg)
-                    Text(cat.displayName).font(.ruulCaption)
+                    Text(cat.displayName).font(.caption)
                     Spacer()
                 }
             }

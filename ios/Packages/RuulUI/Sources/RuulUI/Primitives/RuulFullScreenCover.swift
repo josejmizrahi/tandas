@@ -40,7 +40,7 @@ private struct RuulFullScreenCoverPreview: View {
                 RuulMeshBackground(.violet)
                 VStack(spacing: RuulSpacing.md) {
                     Text("Full screen")
-                        .ruulTextStyle(RuulTypography.displayLarge)
+                        .font(.largeTitle.weight(.bold))
                         .foregroundStyle(Color.ruulTextPrimary)
                     RuulButton("Close") { presented = false }
                 }

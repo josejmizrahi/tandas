@@ -93,16 +93,16 @@ public struct SystemEventDetailView: View {
         RuulCard(.tile) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Datos")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 ForEach(payloadEntries, id: \.0) { key, value in
                     HStack(alignment: .top) {
                         Text(key)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                         Spacer()
                         Text(value)
-                            .ruulTextStyle(RuulTypography.body)
+                            .font(.subheadline)
                             .foregroundStyle(Color.ruulTextPrimary)
                             .multilineTextAlignment(.trailing)
                     }
@@ -119,11 +119,11 @@ public struct SystemEventDetailView: View {
     private func row(_ key: String, _ value: String) -> some View {
         HStack {
             Text(key)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
             Text(value)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
     }

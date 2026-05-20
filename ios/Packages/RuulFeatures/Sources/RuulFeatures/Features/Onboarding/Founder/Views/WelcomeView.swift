@@ -13,11 +13,11 @@ public struct WelcomeView: View {
                 wordmark
                 VStack(spacing: RuulSpacing.sm) {
                     Text("Bienvenido a ruul")
-                        .ruulTextStyle(RuulTypography.displayLarge)
+                        .font(.largeTitle.weight(.bold))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .multilineTextAlignment(.center)
                     Text("Vamos a crear tu grupo en 3 minutos.")
-                        .ruulTextStyle(RuulTypography.bodyLarge)
+                        .font(.body)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.center)
                 }
@@ -35,7 +35,7 @@ public struct WelcomeView: View {
     /// Typography wordmark — no asset. Letter-spaced lowercase, gradient fill.
     private var wordmark: some View {
         Text("ruul")
-            .ruulTextStyle(RuulTypography.wordmark)
+            .font(.system(size: 88, weight: .bold))
             .foregroundStyle(Color.ruulTextPrimary)
     }
 }

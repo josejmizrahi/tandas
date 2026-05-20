@@ -105,9 +105,9 @@ public struct GroupRolesSheet: View {
                 } header: {
                     VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                         Text("PLANTILLAS RÁPIDAS")
-                            .ruulTextStyle(RuulTypography.sectionLabel)
+                            .font(.footnote.weight(.semibold))
                         Text("Crea un rol común en 1 tap con permisos pre-armados. Después puedes editarlos.")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                     .textCase(nil)
@@ -137,13 +137,13 @@ public struct GroupRolesSheet: View {
                     Text("Para asignar un rol a una persona, ve a Miembros → tap en el miembro → \"Editar\" en sus roles.")
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .textCase(nil)
             } footer: {
                 if let error {
                     Text(error)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
             }
@@ -162,21 +162,21 @@ public struct GroupRolesSheet: View {
                     .fill(Color.ruulAccent.opacity(0.12))
                     .frame(width: 36, height: 36)
                 Image(systemName: preset.icon)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulAccent)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(preset.label)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(preset.summary)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .lineLimit(2)
             }
             Spacer(minLength: 0)
             Image(systemName: "plus.circle.fill")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulAccent)
                 .accessibilityHidden(true)
         }
@@ -211,25 +211,25 @@ public struct GroupRolesSheet: View {
                     .fill(role.system ? Color.ruulAccent.opacity(0.18) : Color.ruulSurface)
                     .frame(width: 36, height: 36)
                 Image(systemName: role.system ? "crown.fill" : "person.fill")
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(role.system ? Color.ruulAccent : Color.ruulTextSecondary)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(role.humanLabel)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(detail(for: role))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
             if role.system {
                 Text("SISTEMA")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             Image(systemName: "chevron.right")
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.ruulTextTertiary)
         }
         .padding(.vertical, RuulSpacing.xxs)

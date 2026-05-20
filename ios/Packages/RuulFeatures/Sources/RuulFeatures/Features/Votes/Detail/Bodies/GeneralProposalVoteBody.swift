@@ -12,12 +12,12 @@ public struct GeneralProposalVoteBody: View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 Text(desc)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("(Sin descripción)")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
 
@@ -26,7 +26,7 @@ public struct GeneralProposalVoteBody: View {
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
             }

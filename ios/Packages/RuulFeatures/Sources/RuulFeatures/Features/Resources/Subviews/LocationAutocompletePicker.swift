@@ -47,12 +47,12 @@ public struct LocationAutocompletePicker: View {
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.title)
-                                .ruulTextStyle(RuulTypography.body)
+                                .font(.subheadline)
                                 .foregroundStyle(Color.ruulTextPrimary)
                                 .lineLimit(1)
                             if !suggestion.subtitle.isEmpty {
                                 Text(suggestion.subtitle)
-                                    .ruulTextStyle(RuulTypography.caption)
+                                    .font(.caption)
                                     .foregroundStyle(Color.ruulTextSecondary)
                                     .lineLimit(1)
                             }
@@ -80,7 +80,7 @@ public struct LocationAutocompletePicker: View {
                 .foregroundStyle(Color.ruulPositive)
                 .accessibilityHidden(true)
             Text(name)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer()
             Button {

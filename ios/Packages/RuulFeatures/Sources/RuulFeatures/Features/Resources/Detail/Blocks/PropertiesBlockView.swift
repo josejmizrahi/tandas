@@ -14,11 +14,11 @@ struct PropertiesBlockView: View {
                 ForEach(Array(block.rows.enumerated()), id: \.element.id) { idx, row in
                     HStack(alignment: .firstTextBaseline) {
                         Text(row.key)
-                            .ruulTextStyle(RuulTypography.subhead)
+                            .font(.subheadline)
                             .foregroundStyle(Color.ruulTextSecondary)
                             .frame(width: 96, alignment: .leading)
                         Text(row.value)
-                            .ruulTextStyle(RuulTypography.subhead)
+                            .font(.subheadline)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Spacer(minLength: 0)
                     }

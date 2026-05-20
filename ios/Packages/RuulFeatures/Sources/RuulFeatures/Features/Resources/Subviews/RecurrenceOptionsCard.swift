@@ -20,12 +20,12 @@ public struct RecurrenceOptionsCard: View {
                 HStack(spacing: RuulSpacing.sm) {
                     RuulIconBadge("arrow.triangle.2.circlepath", size: .small)
                     Text("¿Crear los siguientes automáticamente?")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                 }
                 if let contextLine = contextDescription {
                     Text(contextLine)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 RuulPicker(

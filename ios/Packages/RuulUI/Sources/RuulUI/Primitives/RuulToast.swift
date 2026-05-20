@@ -22,11 +22,11 @@ public struct RuulToast: View {
                 .foregroundStyle(tint)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 if let message {
                     Text(message)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
             }

@@ -133,7 +133,7 @@ public struct EditRightSheet: View {
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -148,7 +148,7 @@ public struct EditRightSheet: View {
                             ProgressView()
                         } else {
                             Text("Guardar")
-                                .ruulTextStyle(RuulTypography.subheadSemibold)
+                                .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Color.ruulAccent)
                         }
                     }

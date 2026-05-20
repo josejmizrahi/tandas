@@ -17,11 +17,11 @@ struct ShowcaseSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(title)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             if let subtitle {
                 Text(subtitle)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             content()

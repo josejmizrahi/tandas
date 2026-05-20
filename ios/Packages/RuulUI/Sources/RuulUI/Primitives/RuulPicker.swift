@@ -52,11 +52,11 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.label)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if let subtitle = option.subtitle {
                         Text(subtitle)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 }

@@ -38,7 +38,7 @@ public struct RuulGroupSwitcher: View {
                 .id("\(activeGroupName)-\(activeCategory.rawValue)")
                 .transition(.opacity)
                 Text(activeGroupName)
-                    .font(.ruulTitleSmall)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                     .id(activeGroupName)

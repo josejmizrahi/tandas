@@ -30,10 +30,10 @@ public struct RuulChip: View {
                         .font(.system(size: 12, weight: .semibold))
                 }
                 Text(title)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                 if case .count(let n) = style {
                     Text("\(n)")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 if case .removable = style {
@@ -83,7 +83,7 @@ private struct RuulChipPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            Text("Selectable").ruulTextStyle(RuulTypography.footnote)
+            Text("Selectable").font(.footnote)
             HStack {
                 ForEach(["Eventos", "Reglas", "Multas"], id: \.self) { tag in
                     RuulChip(tag, style: .selectable(isSelected: selection.contains(tag))) {
@@ -91,17 +91,17 @@ private struct RuulChipPreview: View {
                     }
                 }
             }
-            Text("Count").ruulTextStyle(RuulTypography.footnote)
+            Text("Count").font(.footnote)
             HStack {
                 RuulChip("Reglas", style: .count(4))
                 RuulChip("Pendientes", systemImage: "clock", style: .count(2))
             }
-            Text("Removable").ruulTextStyle(RuulTypography.footnote)
+            Text("Removable").font(.footnote)
             HStack {
                 RuulChip("Comida", style: .removable)
                 RuulChip("Cena", style: .removable)
             }
-            Text("Suggestion").ruulTextStyle(RuulTypography.footnote)
+            Text("Suggestion").font(.footnote)
             HStack {
                 RuulChip("Cena de los miércoles", systemImage: "sparkles", style: .suggestion)
             }

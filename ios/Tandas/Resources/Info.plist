@@ -51,10 +51,6 @@
 	<string>$(TANDAS_SUPABASE_ANON_KEY)</string>
 	<key>TandasSupabaseURL</key>
 	<string>$(TANDAS_SUPABASE_URL)</string>
-	<key>UIAppFonts</key>
-	<array>
-		<string>InterVariable.ttf</string>
-	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

@@ -191,11 +191,11 @@ public struct MyProfileView: View {
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(coordinator.profile?.displayName ?? "—")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                 Text(membershipMeta)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
@@ -268,7 +268,7 @@ public struct MyProfileView: View {
 
     private func trailingValue(_ s: String) -> some View {
         Text(s)
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextSecondary)
             .lineLimit(1)
             .truncationMode(.middle)
@@ -316,7 +316,7 @@ public struct MyProfileView: View {
             HStack(spacing: RuulSpacing.sm) {
                 RuulGroupAvatar(group: group, size: .md)
                 Text(group.name)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
                 Spacer()
@@ -362,15 +362,15 @@ public struct MyProfileView: View {
         sectionContainer(title: "DEBUG") {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "plus.app")
-                    .ruulTextStyle(RuulTypography.subheadMedium)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.ruulTextSecondary)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Flow nuevo de crear recurso")
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text("Type → Variant → Identity → Create → Intents. Apagado vuelve al wizard de 5 pasos.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                 }
@@ -439,7 +439,7 @@ public struct MyProfileView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("APARIENCIA")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.leading, RuulSpacing.xxs)
             HStack(spacing: RuulSpacing.xs) {
@@ -449,10 +449,10 @@ public struct MyProfileView: View {
                     } label: {
                         VStack(spacing: RuulSpacing.xxs) {
                             Image(systemName: option.systemImage)
-                                .ruulTextStyle(RuulTypography.titleMedium)
+                                .font(.title2.weight(.medium))
                                 .accessibilityHidden(true)
                             Text(option.label)
-                                .ruulTextStyle(RuulTypography.callout)
+                                .font(.footnote)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, RuulSpacing.md)
@@ -490,7 +490,7 @@ public struct MyProfileView: View {
     private var outstandingPill: some View {
         if let amount = outstandingPillAmount, amount > 0 {
             Text(amountFormatted(amount))
-                .ruulTextStyle(RuulTypography.statSmall)
+                .font(.footnote.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.ruulWarning)
         }
     }
@@ -498,7 +498,7 @@ public struct MyProfileView: View {
     private var signOutButton: some View {
         Button { showSignOutConfirm = true } label: {
             Text("Cerrar sesión")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulNegative)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, RuulSpacing.md)
@@ -517,7 +517,7 @@ public struct MyProfileView: View {
     private func sectionContainer<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) { content() }
@@ -544,17 +544,17 @@ public struct MyProfileView: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
-                    .ruulTextStyle(RuulTypography.subheadMedium)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(destructive ? Color.ruulNegative : Color.ruulTextSecondary)
                     .frame(width: 24)
                     .accessibilityHidden(true)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(destructive ? Color.ruulNegative : Color.ruulTextPrimary)
                 Spacer()
                 trailing()
                 Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }

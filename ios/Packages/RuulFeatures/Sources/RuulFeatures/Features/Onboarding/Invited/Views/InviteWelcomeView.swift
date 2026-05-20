@@ -82,10 +82,10 @@ public struct InviteWelcomeView: View {
     private func headline(for preview: InvitePreview) -> some View {
         VStack(spacing: RuulSpacing.xs) {
             Text("Te invitan a unirte a")
-                .ruulTextStyle(RuulTypography.bodyLarge)
+                .font(.body)
                 .foregroundStyle(Color.ruulOnImageSecondary)
             Text(preview.groupName)
-                .ruulTextStyle(RuulTypography.displayLarge)
+                .font(.largeTitle.weight(.bold))
                 .foregroundStyle(Color.ruulOnImage)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
@@ -112,15 +112,15 @@ public struct InviteWelcomeView: View {
             )
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(preview.groupName)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulOnImage)
                     .lineLimit(2)
                 Text(metaCopy(for: preview))
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulOnImageSecondary)
                     .lineLimit(2)
                 Text(vintageCopy(for: preview))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulOnImageSecondary.opacity(0.85))
             }
             .padding(RuulSpacing.lg)
@@ -166,7 +166,7 @@ public struct InviteWelcomeView: View {
                 Task { await coord.acceptInvitation() }
             } label: {
                 Text("Aceptar invitación")
-                    .ruulTextStyle(RuulTypography.bodyLarge)
+                    .font(.body)
                     .foregroundStyle(Color.ruulOnImageInverse)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 56)
@@ -178,7 +178,7 @@ public struct InviteWelcomeView: View {
 
             Button(action: onDecline) {
                 Text("Ahora no")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 36)

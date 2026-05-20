@@ -68,7 +68,7 @@ private struct PreviewRow: Identifiable, Hashable {
     return ScrollView {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("LISTA")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             RuulSeparatedRows(items: items) { item in
                 HStack(spacing: RuulSpacing.md) {
@@ -77,9 +77,9 @@ private struct PreviewRow: Identifiable, Hashable {
                         .frame(width: 40, height: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.title)
-                            .ruulTextStyle(RuulTypography.headline)
+                            .font(.headline)
                         Text(item.subtitle)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                     Spacer(minLength: 0)

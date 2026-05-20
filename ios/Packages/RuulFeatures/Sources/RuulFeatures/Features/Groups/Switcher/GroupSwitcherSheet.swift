@@ -106,24 +106,24 @@ public struct GroupSwitcherSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: RuulSpacing.xs) {
                         Text(group.name)
-                            .ruulTextStyle(RuulTypography.body)
+                            .font(.subheadline)
                             .foregroundStyle(Color.ruulTextPrimary)
                             .lineLimit(1)
                         if isPinned {
                             Image(systemName: "pin.fill")
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulAccent)
                                 .accessibilityLabel("Fijado")
                         }
                     }
                     Text(group.eventVocabulary.capitalized)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Spacer(minLength: 0)
                 if isActive {
                     Text("ACTIVO")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextSecondary)
                         .padding(.horizontal, RuulSpacing.sm)
                         .padding(.vertical, 4)
@@ -167,21 +167,21 @@ public struct GroupSwitcherSheet: View {
         } label: {
             HStack(spacing: RuulSpacing.md) {
                 Image(systemName: action.icon)
-                    .ruulTextStyle(RuulTypography.subheadSemibold)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .frame(width: RuulSize.avatarMedium, height: RuulSize.avatarMedium)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(action.subtitle)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.labelSemibold)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }

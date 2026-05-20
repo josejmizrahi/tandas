@@ -187,11 +187,11 @@ public struct GroupHomeView: View {
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(coordinator.group?.name ?? "—")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                 Text(memberLabel)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
@@ -231,7 +231,7 @@ public struct GroupHomeView: View {
                     label: code,
                     trailing: {
                         Text("Compartir")
-                            .ruulTextStyle(RuulTypography.callout)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulAccent)
                     },
                     action: onShareInvite
@@ -390,7 +390,7 @@ public struct GroupHomeView: View {
         if let summary = coordinator.summary {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("RESUMEN")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(.leading, RuulSpacing.xxs)
                 HStack(spacing: RuulSpacing.sm) {
@@ -425,12 +425,12 @@ public struct GroupHomeView: View {
     private func statTile(value: String, label: String, action: (() -> Void)?) -> some View {
         let content = VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(value)
-                .ruulTextStyle(RuulTypography.statMedium)
+                .font(.body.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(label.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .lineLimit(1)
         }
@@ -464,7 +464,7 @@ public struct GroupHomeView: View {
     private func sectionContainer<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) { content() }
@@ -482,7 +482,7 @@ public struct GroupHomeView: View {
 
     private func trailingValue(_ s: String) -> some View {
         Text(s)
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextSecondary)
             .lineLimit(1)
     }
@@ -498,17 +498,17 @@ public struct GroupHomeView: View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
-                    .ruulTextStyle(RuulTypography.subheadMedium)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(destructive ? Color.ruulNegative : Color.ruulTextSecondary)
                     .frame(width: 24)
                     .accessibilityHidden(true)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(destructive ? Color.ruulNegative : Color.ruulTextPrimary)
                 Spacer()
                 trailing()
                 Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }

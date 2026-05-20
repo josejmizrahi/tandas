@@ -29,7 +29,7 @@ public struct GroupIdentityView: View {
 
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text("Sugerencias")
-                        .ruulTextStyle(RuulTypography.footnote)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                     suggestionChips
                 }
@@ -43,7 +43,7 @@ public struct GroupIdentityView: View {
 
                 if let error = coord.error, case .createGroupFailed = error {
                     Text(error.localizedDescription)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
             }

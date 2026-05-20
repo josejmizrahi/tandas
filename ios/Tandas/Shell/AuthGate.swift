@@ -138,7 +138,7 @@ struct BootstrappingView: View {
             VStack(spacing: RuulSpacing.lg) {
                 Spacer()
                 Text("ruul")
-                    .ruulTextStyle(RuulTypography.displayLarge)
+                    .font(.largeTitle.weight(.bold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .scaleEffect(breathing ? 1.04 : 0.96)
                     .opacity(breathing ? 1.0 : 0.85)

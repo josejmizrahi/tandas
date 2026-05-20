@@ -74,7 +74,7 @@ public struct MyTimelineView: View {
     private var emptyScroll: some View {
         ScrollView {
             Text("Aún no hay actividad")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(RuulSpacing.xl)
                 .frame(maxWidth: .infinity)
@@ -98,7 +98,7 @@ public struct MyTimelineView: View {
     private func section(day: Date, items: [MyActivityItem]) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(dayLabel(day))
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) {
@@ -122,21 +122,21 @@ public struct MyTimelineView: View {
     private func row(_ item: MyActivityItem) -> some View {
         HStack(spacing: RuulSpacing.md) {
             Image(systemName: iconFor(item))
-                .ruulTextStyle(RuulTypography.subheadMedium)
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(colorFor(item))
                 .frame(width: 32, height: 32)
                 .background(colorFor(item).opacity(0.12), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(titleFor(item))
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(originLabel(item))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()
             Text(relativeTime(item.occurredAt))
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
         }
         .padding(RuulSpacing.md)

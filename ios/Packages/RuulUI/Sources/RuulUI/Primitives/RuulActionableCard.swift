@@ -43,11 +43,11 @@ public struct RuulActionableCard: View {
                 RuulIconBadge(icon, tint: tint, size: .medium)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if let subtitle {
                         Text(subtitle)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                             .multilineTextAlignment(.leading)
                     }
@@ -72,7 +72,7 @@ public struct RuulActionableCard: View {
             EmptyView()
         case .badge(let text):
             Text(text)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .padding(.horizontal, RuulSpacing.xs)
                 .padding(.vertical, 2)

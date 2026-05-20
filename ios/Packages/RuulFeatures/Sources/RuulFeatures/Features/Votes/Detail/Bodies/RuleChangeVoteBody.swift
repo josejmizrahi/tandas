@@ -30,10 +30,10 @@ public struct RuleChangeVoteBody: View {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("RAZÓN")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
                     Text(desc)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -42,7 +42,7 @@ public struct RuleChangeVoteBody: View {
             // Diff visual.
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text("CAMBIO PROPUESTO")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 HStack(spacing: RuulSpacing.md) {
                     amountChip(label: "Actual",  value: currentAmount,  tint: Color.ruulTextTertiary)
@@ -58,7 +58,7 @@ public struct RuleChangeVoteBody: View {
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
             }
@@ -68,10 +68,10 @@ public struct RuleChangeVoteBody: View {
     private func amountChip(label: String, value: Int?, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text(value.map { "$\($0)" } ?? "—")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(tint)
         }
         .padding(RuulSpacing.sm)

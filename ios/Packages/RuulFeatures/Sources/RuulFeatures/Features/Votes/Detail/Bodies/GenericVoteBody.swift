@@ -14,11 +14,11 @@ public struct GenericVoteBody: View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 Text(desc)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
             } else {
                 Text("Sin detalles adicionales.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }

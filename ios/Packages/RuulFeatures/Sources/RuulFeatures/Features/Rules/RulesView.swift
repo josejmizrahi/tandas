@@ -180,17 +180,17 @@ public struct RulesView: View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(coordinator.group.name)
-                    .ruulTextStyle(RuulTypography.sectionLabelLg)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
                 Text("\(activeCount) reglas activas")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             Spacer(minLength: 0)
             if canShowBuilder {
                 Button(action: openBuilder) {
                     Image(systemName: "plus")
-                        .ruulTextStyle(RuulTypography.subheadMedium)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(width: 36, height: 36)
                         .background(Color.ruulSurface, in: Circle())
@@ -205,7 +205,7 @@ public struct RulesView: View {
                     EditRulesView(coordinator: makeEditCoordinator())
                 } label: {
                     Image(systemName: "pencil")
-                        .ruulTextStyle(RuulTypography.subheadMedium)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(width: 36, height: 36)
                         .background(Color.ruulSurface, in: Circle())
@@ -269,10 +269,10 @@ public struct RulesView: View {
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, RuulSpacing.xl)
             Text("Sin reglas")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Este grupo aún no tiene reglas configuradas. Elige un patrón y se activa con dos taps.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
@@ -283,7 +283,7 @@ public struct RulesView: View {
                 // the header "+" for free composition).
                 Button(action: { showGallery = true }) {
                     Label("Elegir un patrón", systemImage: "square.grid.2x2.fill")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulAccent)
                         .padding(.vertical, RuulSpacing.sm)
                         .padding(.horizontal, RuulSpacing.lg)
@@ -294,7 +294,7 @@ public struct RulesView: View {
                 .buttonStyle(.plain)
                 .padding(.top, RuulSpacing.sm)
                 Button("o componer desde cero", action: openBuilder)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }
@@ -315,19 +315,19 @@ public struct RulesView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Votos abiertos")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(
                         coordinator.openVotesCount == 1
                         ? "1 votación pendiente"
                         : "\(coordinator.openVotesCount) votaciones pendientes"
                     )
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }
@@ -349,7 +349,7 @@ public struct RulesView: View {
             HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(rule.name)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(rule.isLive ? Color.ruulTextPrimary : Color.ruulTextTertiary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -358,7 +358,7 @@ public struct RulesView: View {
                     }
                     if !rule.isLive {
                         Text("INACTIVA")
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                 }
@@ -408,10 +408,10 @@ public struct RulesView: View {
         if let amount = FineConsequenceParser.firstAmountMXN(in: rule.consequences) {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(format(amount: amount))
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextAccent)
                 Text("MULTA")
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }
@@ -427,7 +427,7 @@ public struct RulesView: View {
 
     private var footnote: some View {
         Text("Las reglas se aplican automáticamente cuando ocurre el evento que las dispara. Pronto vas a poder editarlas y agregar más.")
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .padding(.top, RuulSpacing.sm)
     }

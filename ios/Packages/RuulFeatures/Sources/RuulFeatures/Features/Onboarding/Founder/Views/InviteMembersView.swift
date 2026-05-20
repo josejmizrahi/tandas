@@ -35,10 +35,10 @@ public struct InviteMembersView: View {
                     } label: {
                         HStack(spacing: RuulSpacing.xs) {
                             Image(systemName: "keyboard")
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .accessibilityHidden(true)
                             Text("Escribirlo a mano")
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                         }
                         .foregroundStyle(Color.ruulAccent)
                         .padding(.top, RuulSpacing.xxs)
@@ -104,10 +104,10 @@ public struct InviteMembersView: View {
                 RuulIconBadge("link", size: .medium)
                 VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text("Compartir link")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text("Mándalo por WhatsApp, SMS, donde sea.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                 }
@@ -132,7 +132,7 @@ public struct InviteMembersView: View {
     private var pendingList: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Por invitar (\(coord.pendingInvites.count))")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
             VStack(spacing: RuulSpacing.s0) {
                 ForEach(coord.pendingInvites) { pending in
@@ -140,14 +140,14 @@ public struct InviteMembersView: View {
                         VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                             if let name = pending.displayName {
                                 Text(name)
-                                    .ruulTextStyle(RuulTypography.body)
+                                    .font(.subheadline)
                                     .foregroundStyle(Color.ruulTextPrimary)
                                 Text(PhoneFormatter.displayFormat(pending.phoneE164))
-                                    .ruulTextStyle(RuulTypography.caption)
+                                    .font(.caption)
                                     .foregroundStyle(Color.ruulTextSecondary)
                             } else {
                                 Text(PhoneFormatter.displayFormat(pending.phoneE164))
-                                    .ruulTextStyle(RuulTypography.body)
+                                    .font(.subheadline)
                                     .foregroundStyle(Color.ruulTextPrimary)
                             }
                         }
