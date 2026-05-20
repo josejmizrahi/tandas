@@ -74,8 +74,8 @@ struct UniversalDetailUniversalityTests {
     func noTabsInView() throws {
         let src = try String(contentsOf: Self.viewURL, encoding: .utf8)
         let code = Self.stripComments(src)
-        #expect(!code.contains("RuulSegmentedControl"),
-                "No segmented control — single vertical scroll only (doctrine §0)")
+        #expect(!code.contains(".pickerStyle(.segmented)"),
+                "No segmented picker — single vertical scroll only (doctrine §0)")
         #expect(!code.contains("TabView"),
                 "No TabView — single vertical scroll only (doctrine §0)")
     }
