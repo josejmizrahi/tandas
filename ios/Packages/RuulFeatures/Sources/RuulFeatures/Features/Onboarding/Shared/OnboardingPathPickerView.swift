@@ -43,7 +43,7 @@ public struct OnboardingPathPickerView: View {
                 Spacer().frame(height: RuulSpacing.lg)
             }
             .padding(.horizontal, RuulSpacing.lg)
-            .animation(.ruulMorph, value: showJoinInput)
+            .animation(.smooth, value: showJoinInput)
         }
         .toolbar(.hidden, for: .navigationBar)
     }

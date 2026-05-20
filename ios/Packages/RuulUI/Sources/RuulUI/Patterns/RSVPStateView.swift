@@ -21,7 +21,7 @@ public struct RSVPStateView: View {
                 confirmedCard
             }
         }
-        .animation(.ruulMorph, value: state)
+        .animation(.smooth, value: state)
     }
 
     private var threeButtons: some View {

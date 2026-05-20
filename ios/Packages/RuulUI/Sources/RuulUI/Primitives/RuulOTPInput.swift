@@ -97,7 +97,7 @@ private struct OTPSlot: View {
                 .foregroundStyle(Color.primary)
                 .scaleEffect(char.isEmpty ? 0.85 : 1.0)
                 .opacity(char.isEmpty ? 0 : 1)
-                .animation(.ruulSnappy, value: char)
+                .animation(.smooth, value: char)
         }
         .frame(width: 46, height: 56)
         .ruulGlass(
@@ -110,8 +110,8 @@ private struct OTPSlot: View {
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                 .stroke(strokeColor, lineWidth: 1.5)
         )
-        .animation(.ruulSnappy, value: isFocused)
-        .animation(.ruulSnappy, value: hasError)
+        .animation(.smooth, value: isFocused)
+        .animation(.smooth, value: hasError)
     }
 
     private var tintColor: Color? {

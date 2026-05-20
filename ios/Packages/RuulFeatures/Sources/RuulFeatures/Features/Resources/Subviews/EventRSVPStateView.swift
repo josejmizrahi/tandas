@@ -50,7 +50,7 @@ public struct EventRSVPStateView: View {
             case .waitlisted: waitlistedView
             }
         }
-        .animation(.ruulMorph, value: status)
+        .animation(.smooth, value: status)
     }
 
     // MARK: - Pending — 3 segment-style pills (capacity-aware) + plus-ones row

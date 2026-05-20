@@ -92,7 +92,7 @@ public struct ActivityView: View {
                             ? .selectable(isSelected: true)
                             : .selectable(isSelected: false)
                     ) {
-                        withAnimation(.ruulSnappy) { selectedChip = chip }
+                        withAnimation(.smooth) { selectedChip = chip }
                     }
                 }
             }

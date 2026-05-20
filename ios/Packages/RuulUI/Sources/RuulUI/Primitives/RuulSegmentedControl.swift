@@ -16,7 +16,7 @@ public struct RuulSegmentedControl<Value: Hashable & Sendable>: View {
             ForEach(segments, id: \.value) { segment in
                 let isSelected = segment.value == selection
                 Button {
-                    withAnimation(.ruulSnappy) { selection = segment.value }
+                    withAnimation(.smooth) { selection = segment.value }
                 } label: {
                     Text(segment.label)
                         .font(.footnote)

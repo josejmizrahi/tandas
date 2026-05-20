@@ -95,7 +95,6 @@ struct ResourceVariantPicker: View {
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
-            .ruulElevation(.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.ruulPress)

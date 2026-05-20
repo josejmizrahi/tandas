@@ -9,7 +9,7 @@ public extension View {
         self
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .opacity(isPressed ? 0.92 : 1.0)
-            .animation(.ruulSnappy, value: isPressed)
+            .animation(.smooth, value: isPressed)
     }
 }
 

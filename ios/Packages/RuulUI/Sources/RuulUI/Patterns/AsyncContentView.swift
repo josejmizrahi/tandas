@@ -19,7 +19,7 @@ import RuulCore
 ///
 /// **Anti-flash:** durante `.loading`, el spinner solo aparece después de
 /// 250ms — cargas más rápidas no causan parpadeo. La transición a `.loaded`
-/// usa `.ruulSmooth` para no chocar visualmente.
+/// usa `.smooth` para no chocar visualmente.
 ///
 /// **Stale-on-error:** si un refresh falla pero teníamos datos previos,
 /// el usuario sigue viendo la última snapshot con un banner discreto en
@@ -89,8 +89,8 @@ public struct AsyncContentView<Value: Sendable, LoadedContent: View, EmptyConten
                 ErrorStateView(error: err, retry: retryClosure)
             }
         }
-        .animation(.ruulSmooth, value: phase.isInitialLoading)
-        .animation(.ruulSmooth, value: phase.hasValue)
+        .animation(.smooth, value: phase.isInitialLoading)
+        .animation(.smooth, value: phase.hasValue)
     }
 
     private var retryClosure: (() -> Void)? {

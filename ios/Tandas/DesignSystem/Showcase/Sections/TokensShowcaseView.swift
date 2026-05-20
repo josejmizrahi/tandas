@@ -10,7 +10,6 @@ struct TokensShowcaseView: View {
                 typography
                 spacing
                 radius
-                elevation
                 motion
                 haptics
             }
@@ -138,34 +137,13 @@ struct TokensShowcaseView: View {
         }
     }
 
-    private var elevation: some View {
-        ShowcaseSection("Elevation") {
-            HStack(spacing: RuulSpacing.md) {
-                elevationCard("none", level: .none)
-                elevationCard("sm", level: .sm)
-                elevationCard("md", level: .md)
-                elevationCard("lg", level: .lg)
-            }
-        }
-    }
-
-    private func elevationCard(_ label: String, level: RuulElevation) -> some View {
-        VStack {
-            RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .fill(Color.ruulSurface)
-                .frame(width: 60, height: 60)
-                .ruulElevation(level)
-            Text(label).font(.caption).foregroundStyle(Color(.tertiaryLabel))
-        }
-    }
-
     private var motion: some View {
         ShowcaseSection("Motion") {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                MotionDemo(label: "ruulSnappy", animation: .ruulSnappy)
-                MotionDemo(label: "ruulSmooth", animation: .ruulSmooth)
-                MotionDemo(label: "ruulBouncy", animation: .ruulBouncy)
-                MotionDemo(label: "ruulMorph", animation: .ruulMorph)
+                MotionDemo(label: ".smooth", animation: .smooth)
+                MotionDemo(label: ".default", animation: .default)
+                MotionDemo(label: ".bouncy", animation: .bouncy)
+                MotionDemo(label: ".snappy", animation: .snappy)
             }
         }
     }

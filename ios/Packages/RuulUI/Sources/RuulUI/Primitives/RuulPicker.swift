@@ -36,7 +36,7 @@ public struct RuulPicker<Value: Hashable & Sendable>: View {
     private func row(for option: Option) -> some View {
         let isSelected = option.value == selection
         return Button {
-            withAnimation(.ruulSnappy) { selection = option.value }
+            withAnimation(.smooth) { selection = option.value }
         } label: {
             HStack(spacing: RuulSpacing.sm) {
                 ZStack {

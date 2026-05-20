@@ -153,7 +153,7 @@ private struct FounderFlow: View {
         NavigationStack {
             stepView
                 .environment(coordinator)
-                .animation(.ruulMorph, value: coordinator.currentStep)
+                .animation(.smooth, value: coordinator.currentStep)
         }
     }
 
@@ -193,7 +193,7 @@ private struct InvitedFlow: View {
         NavigationStack {
             stepView
                 .environment(coordinator)
-                .animation(.ruulMorph, value: coordinator.currentStep)
+                .animation(.smooth, value: coordinator.currentStep)
         }
     }
 

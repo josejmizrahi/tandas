@@ -51,7 +51,7 @@ public struct ResourceWizardSheet: View {
                         EmptyView()
                     }
                 }
-                .animation(.ruulSnappy, value: coordinator.step)
+                .animation(.smooth, value: coordinator.step)
         }
         .task {
             // Reseat coordinator with the real registry from AppState
@@ -129,7 +129,6 @@ public struct ResourceWizardSheet: View {
         return RuulCoverView(cover)
             .frame(height: 140)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
-            .ruulElevation(.sm)
     }
 
     private func coverFor(type: ResourceType) -> RuulCover {
@@ -221,7 +220,6 @@ public struct ResourceWizardSheet: View {
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
-        .ruulElevation(.sm)
     }
 
     private func timelineRow(field: BuilderField, isFirst: Bool, isLast: Bool) -> some View {
@@ -1027,7 +1025,7 @@ private struct WizardTypePicker: View {
 
     private func chipButton(_ cat: WizardCategory) -> some View {
         Button {
-            withAnimation(.ruulSnappy) { selectedCategory = cat }
+            withAnimation(.smooth) { selectedCategory = cat }
         } label: {
             Text(cat.label)
                 .font(.footnote)
@@ -1051,7 +1049,7 @@ private struct WizardTypePicker: View {
                 )
         }
         .buttonStyle(.plain)
-        .animation(.ruulSnappy, value: selectedCategory)
+        .animation(.smooth, value: selectedCategory)
     }
 
     // MARK: Tile grid

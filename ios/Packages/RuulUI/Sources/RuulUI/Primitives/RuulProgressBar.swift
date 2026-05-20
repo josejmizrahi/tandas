@@ -35,7 +35,7 @@ public struct RuulProgressBar: View {
                         endPoint: .trailing
                     ))
                     .frame(width: max(height, geo.size.width * value))
-                    .animation(.ruulSmooth, value: value)
+                    .animation(.smooth, value: value)
             }
         }
         .frame(height: height)
@@ -48,7 +48,7 @@ public struct RuulProgressBar: View {
                 Capsule()
                     .fill(index < activeCount ? Color.ruulAccent : Color.ruulBackgroundRecessed)
                     .frame(height: height)
-                    .animation(.ruulSmooth.delay(Double(index) * 0.04), value: activeCount)
+                    .animation(.smooth.delay(Double(index) * 0.04), value: activeCount)
             }
         }
     }

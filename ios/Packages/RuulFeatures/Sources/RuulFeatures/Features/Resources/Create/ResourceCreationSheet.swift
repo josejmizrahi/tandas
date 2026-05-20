@@ -94,7 +94,7 @@ public struct ResourceCreationSheet: View {
         NavigationStack {
             content
                 .toolbar { toolbarContent }
-                .animation(.ruulSnappy, value: phaseKey)
+                .animation(.smooth, value: phaseKey)
                 .background(Color.ruulBackground.ignoresSafeArea())
         }
         .onChange(of: phaseKey) { _, _ in

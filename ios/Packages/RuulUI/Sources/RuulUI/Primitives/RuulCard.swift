@@ -74,11 +74,9 @@ private struct RuulCardStyleModifier: ViewModifier {
         case .glass:
             content
                 .ruulGlass(shape, material: .regular, tint: tint, interactive: interactive)
-                .ruulElevation(.glass)
         case .solid:
             content
                 .background(Color.ruulSurface, in: shape)
-                .ruulElevation(.sm)
         case .outlined:
             content
                 .overlay(shape.stroke(Color(.separator), lineWidth: 1))

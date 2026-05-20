@@ -66,7 +66,7 @@ public struct PresetPickerView: View {
             // W3-B2: tap only selects — the explicit "Continuar" CTA
             // performs the irreversible action. Removed the 350ms
             // DispatchQueue auto-advance.
-            withAnimation(.ruulSnappy) { selected = preset }
+            withAnimation(.smooth) { selected = preset }
         } label: {
             HStack(alignment: .top, spacing: RuulSpacing.md) {
                 ZStack {

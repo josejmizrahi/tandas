@@ -106,7 +106,6 @@ private struct StyleBackground: ViewModifier {
         case .primary:
             content
                 .background(Capsule().fill(Color.ruulAccent))
-                .ruulElevation(.sm)
         case .secondary:
             content
                 .overlay(Capsule().stroke(Color.ruulBorderStrong, lineWidth: 1))
@@ -121,7 +120,6 @@ private struct StyleBackground: ViewModifier {
         case .destructive:
             content
                 .background(Capsule().fill(Color.red))
-                .ruulElevation(.sm)
         case .plain:
             content
         }
