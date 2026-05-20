@@ -47,8 +47,7 @@ public final class ResourceEditCoordinator {
             locationLat: event.locationLat,
             locationLng: event.locationLng,
             hostId: event.hostId,
-            applyRules: event.applyRules,
-            recurrenceOption: .onlyThis      // unused on edit, no recurrence card shown
+            applyRules: event.applyRules
         )
     }
 

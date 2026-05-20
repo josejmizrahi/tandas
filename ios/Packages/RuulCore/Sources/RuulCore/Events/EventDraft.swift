@@ -16,9 +16,8 @@ public struct EventDraft: Sendable, Hashable {
     public var locationLng: Double?
     public var hostId: UUID?
     public var applyRules: Bool = true
-    public var recurrenceOption: RecurrenceOption = .onlyThis
 
-    public init(title: String = "", coverImageName: String? = nil, coverImageURL: URL? = nil, description: String = "", startsAt: Date, durationMinutes: Int = 180, locationName: String? = nil, locationLat: Double? = nil, locationLng: Double? = nil, hostId: UUID? = nil, applyRules: Bool = true, recurrenceOption: RecurrenceOption = .onlyThis) {
+    public init(title: String = "", coverImageName: String? = nil, coverImageURL: URL? = nil, description: String = "", startsAt: Date, durationMinutes: Int = 180, locationName: String? = nil, locationLat: Double? = nil, locationLng: Double? = nil, hostId: UUID? = nil, applyRules: Bool = true) {
         self.title = title
         self.coverImageName = coverImageName
         self.coverImageURL = coverImageURL
@@ -30,7 +29,6 @@ public struct EventDraft: Sendable, Hashable {
         self.locationLng = locationLng
         self.hostId = hostId
         self.applyRules = applyRules
-        self.recurrenceOption = recurrenceOption
     }
 
     public var isReadyToPublish: Bool {
