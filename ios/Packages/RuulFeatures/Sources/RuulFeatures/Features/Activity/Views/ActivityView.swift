@@ -86,18 +86,25 @@ public struct ActivityView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: RuulSpacing.xs) {
                 ForEach(ActivityChip.allCases) { chip in
-                    RuulChip(
-                        chip.label,
-                        style: chip == selectedChip
-                            ? .selectable(isSelected: true)
-                            : .selectable(isSelected: false)
-                    ) {
-                        withAnimation(.smooth) { selectedChip = chip }
-                    }
+                    chipButton(for: chip)
                 }
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.vertical, RuulSpacing.sm)
+        }
+    }
+
+    @ViewBuilder
+    private func chipButton(for chip: ActivityChip) -> some View {
+        let action = { withAnimation(.smooth) { selectedChip = chip } }
+        if chip == selectedChip {
+            Button(chip.label, action: action)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+        } else {
+            Button(chip.label, action: action)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
         }
     }
 

@@ -143,22 +143,35 @@ public struct InboxView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: RuulSpacing.xs) {
                 ForEach(InboxChip.allCases) { chip in
-                    let count = chip.count(in: coordinator.actions)
-                    RuulChip(
-                        chip.label,
-                        systemImage: chip.systemImage,
-                        style: chip == selectedChip
-                            ? .selectable(isSelected: true)
-                            : (count > 0 ? .count(count) : .selectable(isSelected: false))
-                    ) {
-                        selectedChip = chip
-                    }
+                    chipButton(for: chip)
                 }
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.vertical, RuulSpacing.sm)
         }
         .background(Color.ruulBackground)
+    }
+
+    @ViewBuilder
+    private func chipButton(for chip: InboxChip) -> some View {
+        let count = chip.count(in: coordinator.actions)
+        let action = { selectedChip = chip }
+        let label = HStack(spacing: RuulSpacing.xxs) {
+            Image(systemName: chip.systemImage)
+            Text(chip.label)
+            if chip != selectedChip, count > 0 {
+                Text("\(count)").foregroundStyle(.secondary)
+            }
+        }
+        if chip == selectedChip {
+            Button(action: action) { label }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+        } else {
+            Button(action: action) { label }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
     }
 
     // MARK: - Filtered content

@@ -118,12 +118,19 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var chipSection: some View {
-        ShowcaseSection("RuulChip") {
+        ShowcaseSection("Filter buttons (.bordered)") {
             HStack {
-                RuulChip("Selectable", style: .selectable(isSelected: true))
-                RuulChip("Count", style: .count(4))
-                RuulChip("Removable", style: .removable)
-                RuulChip("Sugerencia", systemImage: "sparkles", style: .suggestion)
+                Button("Selected") {}
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                Button("Default") {}
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                Button {} label: {
+                    Label("Sugerencia", systemImage: "sparkles")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
     }

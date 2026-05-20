@@ -21,7 +21,6 @@ final class PrimitiveSnapshotTests: XCTestCase {
     private let cardSize = CGSize(width: 360, height: 120)
     private let moneySize = CGSize(width: 220, height: 80)
     private let pillSize = CGSize(width: 80, height: 64)
-    private let chipSize = CGSize(width: 220, height: 56)
 
     // MARK: - RuulButton
 
@@ -114,22 +113,6 @@ final class PrimitiveSnapshotTests: XCTestCase {
     func test_RuulPillButton_dark() {
         let view = RuulPillButton(symbol: "plus") {}
         assertImage(view, size: pillSize, scheme: .dark)
-    }
-
-    // MARK: - RuulChip
-
-    func test_RuulChip_selectableActive_light() {
-        let view = RuulChip(
-            "Activo",
-            systemImage: "checkmark.circle.fill",
-            style: .selectable(isSelected: true)
-        ) {}
-        assertImage(view, size: chipSize, scheme: .light)
-    }
-
-    func test_RuulChip_suggestion_dark() {
-        let view = RuulChip("Sugerencia", style: .suggestion) {}
-        assertImage(view, size: chipSize, scheme: .dark)
     }
 
     // MARK: - Helpers

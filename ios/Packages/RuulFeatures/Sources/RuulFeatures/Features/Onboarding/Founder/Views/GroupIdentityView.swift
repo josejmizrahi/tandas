@@ -58,9 +58,9 @@ public struct GroupIdentityView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: RuulSpacing.xs) {
                 ForEach(Self.suggestions, id: \.self) { name in
-                    RuulChip(name, style: .suggestion) {
-                        coord.draft.name = name
-                    }
+                    Button(name) { coord.draft.name = name }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                 }
             }
         }
