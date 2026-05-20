@@ -110,7 +110,7 @@ public struct SignInView: View {
                             otpEntry
                         }
                     }
-                    .animation(.ruulMorph, value: step)
+                    .animation(.smooth, value: step)
                     Spacer(minLength: RuulSpacing.xl)
                     if mode.showsCreateAccountLink {
                         createAccountLink
@@ -202,7 +202,7 @@ public struct SignInView: View {
 
     private var inputModeToggle: some View {
         Button {
-            withAnimation(.ruulSnappy) {
+            withAnimation(.smooth) {
                 inputMode = (inputMode == .phone) ? .email : .phone
                 error = nil
             }

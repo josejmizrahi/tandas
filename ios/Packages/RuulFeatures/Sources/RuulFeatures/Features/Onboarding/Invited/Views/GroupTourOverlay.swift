@@ -22,7 +22,7 @@ public struct GroupTourOverlay: View {
         ZStack {
             (visible ? Color.ruulOverlayDim : Color.clear)
                 .ignoresSafeArea()
-                .animation(.ruulSmooth, value: visible)
+                .animation(.smooth, value: visible)
                 .onTapGesture { /* swallow */ }
 
             if visible {
@@ -32,7 +32,7 @@ public struct GroupTourOverlay: View {
             }
         }
         .onAppear {
-            withAnimation(.ruulMorph) { visible = true }
+            withAnimation(.smooth) { visible = true }
         }
     }
 
@@ -52,7 +52,6 @@ public struct GroupTourOverlay: View {
                 .padding(.top, RuulSpacing.xs)
             }
         }
-        .ruulElevation(.lg)
     }
 
     private var bulletList: some View {
@@ -84,7 +83,7 @@ public struct GroupTourOverlay: View {
         // Future: if let url = await walletGen.createPass(for: ...), present
         // PKAddPassesViewController via a UIViewControllerRepresentable.
         await coord.finishOnboarding()
-        withAnimation(.ruulSmooth) { visible = false }
+        withAnimation(.smooth) { visible = false }
         try? await Task.sleep(for: .milliseconds(220))
         onDismiss()
     }

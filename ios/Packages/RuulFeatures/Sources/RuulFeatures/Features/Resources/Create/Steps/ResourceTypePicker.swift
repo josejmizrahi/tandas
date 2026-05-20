@@ -106,7 +106,6 @@ struct ResourceTypePicker: View {
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
-        .ruulElevation(.sm)
     }
 
     // MARK: - Copy

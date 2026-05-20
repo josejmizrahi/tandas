@@ -146,7 +146,7 @@ public struct MyFinesView: View {
 
     private func scopeChip(_ s: FineScope) -> some View {
         Button {
-            withAnimation(.ruulSnappy) { scope = s }
+            withAnimation(.smooth) { scope = s }
         } label: {
             Text(s.label)
                 .font(.footnote)

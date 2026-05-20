@@ -127,7 +127,6 @@ public struct InviteWelcomeView: View {
         }
         .aspectRatio(0.78, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
-        .ruulElevation(.lg)
     }
 
     /// Meta line del poster card. Antes era genérico "12 miembros";
@@ -171,7 +170,6 @@ public struct InviteWelcomeView: View {
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 56)
                     .background(Capsule().fill(Color.ruulImagePillSolid))
-                    .ruulElevation(.sm)
             }
             .buttonStyle(.ruulPress)
             .accessibilityLabel("Aceptar invitación")

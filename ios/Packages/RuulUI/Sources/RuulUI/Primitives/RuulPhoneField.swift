@@ -51,8 +51,8 @@ public struct RuulPhoneField: View {
                 in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
             )
             .overlay(focusRing)
-            .animation(.ruulSnappy, value: isFocused)
-            .animation(.ruulSnappy, value: error)
+            .animation(.smooth, value: isFocused)
+            .animation(.smooth, value: error)
 
             if let error {
                 Text(error)

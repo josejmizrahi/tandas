@@ -77,7 +77,7 @@ public struct RuleCardStub: View {
             }
         }
         .opacity(data.isActive ? 1.0 : 0.55)
-        .animation(.ruulSnappy, value: data.isActive)
+        .animation(.smooth, value: data.isActive)
     }
 
     private var formattedAmount: String {

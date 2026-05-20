@@ -46,7 +46,6 @@ public struct TemplatePickerCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(RuulSpacing.lg)
             .background(Color.ruulSurface, in: shape)
-            .ruulElevation(.sm)
             .overlay(selectedBorder)
             .overlay(alignment: .topTrailing) { selectionBadge }
             .opacity(isComingSoon ? 0.55 : 1.0)

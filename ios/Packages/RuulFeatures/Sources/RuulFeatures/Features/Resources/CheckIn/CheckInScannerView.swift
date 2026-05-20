@@ -107,7 +107,7 @@ public struct CheckInScannerView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.ruulSmooth, value: coordinator.recentCheckIns.map(\.memberId))
+        .animation(.smooth, value: coordinator.recentCheckIns.map(\.memberId))
     }
 
     // MARK: - Feedback overlay (success / already / invalid)
@@ -151,7 +151,7 @@ public struct CheckInScannerView: View {
         .padding(RuulSpacing.xxl)
         .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
         .transition(.scale.combined(with: .opacity))
-        .animation(.ruulSnappy, value: coordinator.overlay)
+        .animation(.smooth, value: coordinator.overlay)
     }
 
     // MARK: - Empty states

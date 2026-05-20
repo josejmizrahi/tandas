@@ -38,7 +38,6 @@ public struct RuulToast: View {
             material: .thick,
             tint: tint.opacity(0.10)
         )
-        .ruulElevation(.lg)
     }
 
     private var iconName: String {
@@ -102,13 +101,13 @@ private struct ToastPresenter: ViewModifier {
                         .id(model.id)
                         .task {
                             try? await Task.sleep(for: .seconds(autoDismiss))
-                            withAnimation(.ruulSmooth) {
+                            withAnimation(.smooth) {
                                 self.model = nil
                             }
                         }
                 }
             }
-            .animation(.ruulSmooth, value: model)
+            .animation(.smooth, value: model)
     }
 }
 

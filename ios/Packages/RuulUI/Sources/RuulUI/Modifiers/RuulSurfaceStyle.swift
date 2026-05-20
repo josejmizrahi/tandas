@@ -40,7 +40,6 @@ private struct RuulCardSurfaceModifier: ViewModifier {
         case .solid:
             content
                 .background(Color.ruulSurface, in: shapeFor(radius))
-                .ruulElevation(.sm)
         case .glass:
             // 2026-05-15: dropped card chrome entirely — no fill, no
             // shadow, no border. The "contorno gris" complaint and the

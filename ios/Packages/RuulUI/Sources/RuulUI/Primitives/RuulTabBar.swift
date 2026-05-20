@@ -49,7 +49,7 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
     private func tabButton(for tab: Tab) -> some View {
         let isSelected = selectedID == tab.id
         return Button {
-            withAnimation(.ruulTap) { selectedID = tab.id }
+            withAnimation(.smooth) { selectedID = tab.id }
         } label: {
             VStack(spacing: 2) {
                 ZStack(alignment: .topTrailing) {
@@ -76,7 +76,7 @@ public struct RuulTabBar<Tab: RuulTabItem>: View {
                     Capsule().fill(Color.ruulAccent.opacity(0.14))
                 }
             }
-            .animation(.ruulSnappy, value: isSelected)
+            .animation(.smooth, value: isSelected)
         }
         .buttonStyle(.plain)
         .ruulHaptic(.light, trigger: isSelected)

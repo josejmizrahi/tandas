@@ -68,7 +68,7 @@ public struct RootShell: View {
         }
         .tint(Color.ruulAccent)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .animation(.ruulGroupSwitch, value: app.activeGroupId)
+        .animation(.smooth, value: app.activeGroupId)
         .environment(router)
         .modifier(RootShellSheets(router: router))
         .task { await rebuildCoordinators() }
