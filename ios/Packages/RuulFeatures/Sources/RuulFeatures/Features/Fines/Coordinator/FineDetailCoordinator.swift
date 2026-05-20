@@ -11,8 +11,8 @@ public final class FineDetailCoordinator {
     public private(set) var isMutating: Bool = false
     public private(set) var isRefreshing: Bool = false
     /// Surfaces inline above las acciones cuando un mutating op (apelar /
-    /// pagar) o el refresh fallan. View consume vía `RuulInlineMessage`.
-    /// Per DS v3 §11.4 (CoordinatorError canonical pattern).
+    /// pagar) o el refresh fallan. View consume con un Section footer
+    /// rojo o un `.alert` para errores que bloquean (per Component Map §11).
     public var error: CoordinatorError?
 
     public func clearError() { error = nil }
