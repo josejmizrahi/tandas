@@ -18,7 +18,6 @@ public struct ActionInboxView: View {
 
     public var body: some View {
         contentLayer
-            .ruulAmbientScreen(palette: nil)
             .task { await coordinator.refresh() }
     }
 
@@ -29,24 +28,33 @@ public struct ActionInboxView: View {
             onRetry: { await coordinator.refresh() },
             empty: { emptyState },
             loaded: { actions in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RuulSpacing.xl) {
-                        ForEach(prioritizedBuckets(actions), id: \.label) { bucket in
-                            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                                RuulListSectionHeader(bucket.label.uppercased(), count: bucket.actions.count)
-                                RuulSeparatedRows(items: bucket.actions) { action in
-                                    actionRow(action)
+                List {
+                    ForEach(prioritizedBuckets(actions), id: \.label) { bucket in
+                        Section {
+                            ForEach(bucket.actions) { action in
+                                InboxActionRow(
+                                    icon: icon(for: action.actionType),
+                                    meta: meta(for: action),
+                                    title: action.title,
+                                    subtitle: action.body,
+                                    priorityDot: dotColor(for: action.priority),
+                                    timeRemaining: UserActionExpiry.remainingDescription(for: action),
+                                    onTap: { onOpenAction(action) }
+                                )
+                                .contextMenu {
+                                    Button {
+                                        Task { await coordinator.resolveQuick(action.id) }
+                                    } label: {
+                                        Label("Marcar como hecho", systemImage: "checkmark.circle.fill")
+                                    }
                                 }
                             }
+                        } header: {
+                            Text(bucket.label)
                         }
                     }
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.top, RuulSpacing.md)
-                    .padding(.bottom, RuulSpacing.s12)
                 }
-                .scrollIndicators(.hidden)
-                .contentMargins(RuulSpacing.md, for: .scrollIndicators)
-                .scrollEdgeEffectStyle(.soft, for: .vertical)
+                .listStyle(.insetGrouped)
                 .refreshable { await coordinator.refresh() }
             }
         )
@@ -77,30 +85,6 @@ public struct ActionInboxView: View {
         if !pending.isEmpty { out.append(ActionBucket(label: "Pendientes", actions: pending)) }
         if !later.isEmpty   { out.append(ActionBucket(label: "Después",   actions: later)) }
         return out
-    }
-
-    @ViewBuilder
-    private func actionRow(_ action: UserAction) -> some View {
-        ActionCard(
-            icon: icon(for: action.actionType),
-            meta: meta(for: action),
-            title: action.title,
-            subtitle: action.body,
-            priority: priority(for: action.priority),
-            timeRemaining: UserActionExpiry.remainingDescription(for: action),
-            onTap: { onOpenAction(action) }
-        )
-        .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
-            content
-                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
-        }
-        .contextMenu {
-            Button {
-                Task { await coordinator.resolveQuick(action.id) }
-            } label: {
-                Label("Marcar como hecho", systemImage: "checkmark.circle.fill")
-            }
-        }
     }
 
     // MARK: - Mapping (template-aware in V1; future templates will plug their own)
@@ -134,12 +118,72 @@ public struct ActionInboxView: View {
         }
     }
 
-    private func priority(for raw: ActionPriority) -> ActionCard.Priority {
+    private func dotColor(for raw: ActionPriority) -> Color {
         switch raw {
-        case .low:    return .low
-        case .medium: return .medium
-        case .high:   return .high
-        case .urgent: return .urgent
+        case .low:    return Color(.tertiaryLabel)
+        case .medium: return .blue
+        case .high:   return .orange
+        case .urgent: return .red
         }
+    }
+}
+
+/// Pending-action row inside the inbox List. Native list row chrome
+/// (List provides separators + insetGrouped background); the row body
+/// composes icon + meta line + title with priority dot + subtitle +
+/// trailing time-remaining. Replaces `ActionCard` per Plan §2.5 +
+/// Component Map §10 (Activity Feed pattern).
+private struct InboxActionRow: View {
+    let icon: String
+    let meta: String?
+    let title: String
+    let subtitle: String?
+    let priorityDot: Color
+    let timeRemaining: String?
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 40, height: 40)
+                    .background(Color(.tertiarySystemFill), in: .circle)
+                VStack(alignment: .leading, spacing: 2) {
+                    if let meta {
+                        Text(meta.uppercased())
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tint)
+                            .lineLimit(1)
+                    }
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(priorityDot)
+                            .frame(width: 8, height: 8)
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                Spacer(minLength: 0)
+                if let timeRemaining {
+                    Text(timeRemaining)
+                        .font(.footnote.monospacedDigit().weight(.bold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
