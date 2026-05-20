@@ -14,7 +14,6 @@ struct PrimitivesShowcaseView: View {
     @State private var date = Date()
     @State private var sheetPresented = false
     @State private var coverPresented = false
-    @State private var toast: RuulToastModel?
     @State private var pickedTemplate: String = "dinner"
 
     var body: some View {
@@ -34,7 +33,6 @@ struct PrimitivesShowcaseView: View {
                 iconBadgeSection
                 meshSection
                 presentationSection
-                toastSection
                 templatePickerSection
                 actionCardSection
                 metricCardSection
@@ -43,7 +41,6 @@ struct PrimitivesShowcaseView: View {
             .padding(RuulSpacing.lg)
         }
         .background(Color.ruulBackground)
-        .ruulToast($toast)
     }
 
     private var buttonsSection: some View {
@@ -235,18 +232,6 @@ struct PrimitivesShowcaseView: View {
                     VStack {
                         Text("Full screen").font(.largeTitle.weight(.bold)).foregroundStyle(Color.primary)
                         RuulButton("Close") { coverPresented = false }
-                    }
-                }
-            }
-        }
-    }
-
-    private var toastSection: some View {
-        ShowcaseSection("RuulToast") {
-            VStack(spacing: RuulSpacing.xs) {
-                ForEach([RuulToast.Style.success, .warning, .error, .info], id: \.self) { style in
-                    RuulButton("\(String(describing: style))", style: .secondary, size: .small) {
-                        toast = .init("Toast", message: "\(String(describing: style)) example", style: style)
                     }
                 }
             }
