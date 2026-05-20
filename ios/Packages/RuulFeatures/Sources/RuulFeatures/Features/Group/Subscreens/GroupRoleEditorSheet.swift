@@ -85,8 +85,8 @@ public struct GroupRoleEditorSheet: View {
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") {
                         Task {
                             dismiss()
                             await onClose(nil)

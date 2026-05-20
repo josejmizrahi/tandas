@@ -462,8 +462,8 @@ private struct GroupHomeSheetContent: View {
                 // the screen becomes a dead-end. Matches the chrome
                 // pattern of every other modal in the app (Switcher,
                 // CreateGroup, Members*, etc.).
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
                 }
             }
         }
