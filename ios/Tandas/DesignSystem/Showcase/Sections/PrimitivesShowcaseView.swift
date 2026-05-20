@@ -169,10 +169,10 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var datePickerSection: some View {
-        ShowcaseSection("RuulDatePicker") {
+        ShowcaseSection("DatePicker") {
             VStack(spacing: RuulSpacing.sm) {
-                RuulDatePicker("Fecha", date: $date)
-                RuulDatePicker("Fecha y hora", date: $date, components: [.date, .hourAndMinute])
+                DatePicker("Fecha", selection: $date, displayedComponents: [.date])
+                DatePicker("Fecha y hora", selection: $date, displayedComponents: [.date, .hourAndMinute])
             }
         }
     }
