@@ -27,13 +27,18 @@ public protocol FineRepository: Actor {
     ///
     /// V1 default: caller passes only `eventId`; server coalesces
     /// `resource_id := coalesce(p_resource_id, p_event_id)`.
+    /// `clientId` (mig 00353) is an idempotency key — the sheet holds a
+    /// stable UUID in `@State` so a re-tap after a network error reuses
+    /// the same key and the backend returns the existing fine instead
+    /// of issuing a duplicate.
     func issueManual(
         groupId: UUID,
         userId: UUID,
         amount: Decimal,
         reason: String,
         eventId: UUID?,
-        resourceId: UUID?
+        resourceId: UUID?,
+        clientId: UUID?
     ) async throws -> Fine
     /// User pays their own fine (legacy `pay_fine` RPC).
     func pay(fineId: UUID) async throws -> Fine
@@ -110,17 +115,28 @@ public actor MockFineRepository: FineRepository {
         }
     }
 
+    /// Tracks (clientId → Fine) so the Mock mirrors server-side dedup
+    /// semantics: a second call with the same clientId returns the prior
+    /// fine instead of creating a duplicate.
+    private var finesByClientId: [UUID: Fine] = [:]
+
     public func issueManual(
         groupId: UUID,
         userId: UUID,
         amount: Decimal,
         reason: String,
         eventId: UUID?,
-        resourceId: UUID?
+        resourceId: UUID?,
+        clientId: UUID? = nil
     ) async throws -> Fine {
         if throwOnIssueManual {
             throwOnIssueManual = false
             throw NSError(domain: "MockFineRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "admin only"])
+        }
+        // V1-03: mirror server-side idempotency. Same clientId → return
+        // the prior fine, no new row appended.
+        if let clientId, let existing = finesByClientId[clientId] {
+            return existing
         }
         let fine = Fine(
             id: UUID(),
@@ -145,6 +161,7 @@ public actor MockFineRepository: FineRepository {
             updatedAt: .now
         )
         fines.append(fine)
+        if let clientId { finesByClientId[clientId] = fine }
         return fine
     }
 
@@ -243,11 +260,13 @@ public actor LiveFineRepository: FineRepository {
         amount: Decimal,
         reason: String,
         eventId: UUID?,
-        resourceId: UUID?
+        resourceId: UUID?,
+        clientId: UUID? = nil
     ) async throws -> Fine {
         // §14 step 5c-ii: issue_manual_fine collapsed p_event_id and
         // p_resource_id into a single p_resource_id arg. eventId still
         // works as a callsite alias because events.id == resources.id.
+        // mig 00353 added p_client_id for retry-idempotency.
         struct Params: Encodable {
             let p_group_id: String
             let p_user_id: String
@@ -255,6 +274,7 @@ public actor LiveFineRepository: FineRepository {
             let p_reason: String
             let p_rule_id: String?
             let p_resource_id: String?
+            let p_client_id: String?
         }
         return try await client
             .rpc("issue_manual_fine", params: Params(
@@ -263,7 +283,8 @@ public actor LiveFineRepository: FineRepository {
                 p_amount: amount,
                 p_reason: reason,
                 p_rule_id: nil,
-                p_resource_id: (resourceId ?? eventId)?.uuidString.lowercased()
+                p_resource_id: (resourceId ?? eventId)?.uuidString.lowercased(),
+                p_client_id: clientId?.uuidString.lowercased()
             ))
             .execute()
             .value

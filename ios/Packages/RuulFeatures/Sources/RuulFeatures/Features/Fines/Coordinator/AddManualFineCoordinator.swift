@@ -23,6 +23,15 @@ public final class AddManualFineCoordinator {
     public private(set) var isSubmitting: Bool = false
     public private(set) var error: String?
 
+    /// Stable idempotency key (mig 00353) keyed by the form values. A
+    /// re-tap with the SAME (recipient, amount, reason) reuses the same
+    /// UUID → backend returns the existing fine instead of issuing a
+    /// duplicate. If any field changes between attempts, the form hash
+    /// changes too and we mint a fresh UUID — preventing the wrong
+    /// fine from being returned on retry-after-edit.
+    private var clientId: UUID = UUID()
+    private var lastFormKey: String?
+
     private let fineRepo: any FineRepository
     private let groupsRepo: any GroupsRepository
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "fines.addManual")
@@ -107,6 +116,15 @@ public final class AddManualFineCoordinator {
               let amount = parsedAmount else { return nil }
         let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // V1-03 idempotency: derive a stable key from the form values.
+        // Same key as last attempt → reuse clientId (idempotent retry).
+        // Different key → mint a fresh clientId (different intent).
+        let formKey = "\(userId.uuidString)|\(amount)|\(trimmedReason)"
+        if lastFormKey != formKey {
+            clientId = UUID()
+            lastFormKey = formKey
+        }
+
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
@@ -118,7 +136,8 @@ public final class AddManualFineCoordinator {
                 amount: amount,
                 reason: trimmedReason,
                 eventId: eventId,
-                resourceId: eventId  // V1: events-only entry; resource_id == event_id post-00039
+                resourceId: eventId,  // V1: events-only entry; resource_id == event_id post-00039
+                clientId: clientId
             )
             return fine
         } catch {
