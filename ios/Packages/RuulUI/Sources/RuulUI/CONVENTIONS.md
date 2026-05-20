@@ -42,7 +42,7 @@ should update the row below.
 | Primary CTA                  | `RuulButton(.., style: .primary, size: .large)` |
 | Soft glass input             | `RuulTextField` / `RuulPhoneField` (already glass-fill) |
 | Status pill (positive/etc.)  | `RuulBadge(tone:)` |
-| Selectable filter chip       | `RuulChip(style: .selectable(...))` |
+| Selectable filter chip       | `Button(...) { ... }.buttonStyle(isSelected ? .borderedProminent : .bordered).controlSize(.small)` |
 | Solid CTA over an image      | hardcoded `Color.ruulImagePillSolid` + `ruulOnImageInverse` (Tripsy pattern; deliberate override) |
 
 ## Don't
