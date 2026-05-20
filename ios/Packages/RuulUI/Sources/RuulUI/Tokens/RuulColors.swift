@@ -281,13 +281,21 @@ private extension UIColor {
 // MARK: - Static accessors (convenience for views that don't need env reactivity)
 
 public extension Color {
-    static var ruulBackgroundCanvas: Color    { RuulColors.default.backgroundCanvas }
-    static var ruulBackgroundElevated: Color  { RuulColors.default.backgroundElevated }
-    static var ruulBackgroundRecessed: Color  { RuulColors.default.backgroundRecessed }
+    /// Bridged to system backgrounds per Plan §4.2. `Canvas` = the
+    /// page-level background (`.systemBackground`); `Elevated` = row
+    /// fill on inset-grouped lists (`.secondarySystemBackground`);
+    /// `Recessed` = the grouped-list backdrop (`.systemGroupedBackground`).
+    /// These adapt to dark mode and high-contrast trait natively.
+    static var ruulBackgroundCanvas: Color    { Color(.systemBackground) }
+    static var ruulBackgroundElevated: Color  { Color(.secondarySystemBackground) }
+    static var ruulBackgroundRecessed: Color  { Color(.systemGroupedBackground) }
 
-    static var ruulSurfaceGlassThin: Color    { RuulColors.default.surfaceGlassThin }
-    static var ruulSurfaceGlassRegular: Color { RuulColors.default.surfaceGlassRegular }
-    static var ruulSurfaceGlassThick: Color   { RuulColors.default.surfaceGlassThick }
+    /// Glass fill tints. Apple's recipe is `.glassEffect()` over content,
+    /// not a flat color — these stay as bridges to `Color(.tertiarySystemFill)`
+    /// so legacy call sites compile while we migrate to `.glassEffect()`.
+    static var ruulSurfaceGlassThin: Color    { Color(.tertiarySystemFill) }
+    static var ruulSurfaceGlassRegular: Color { Color(.tertiarySystemFill) }
+    static var ruulSurfaceGlassThick: Color   { Color(.tertiarySystemFill) }
 
     static var ruulTextPrimary: Color    { RuulColors.default.textPrimary }
     static var ruulTextSecondary: Color  { RuulColors.default.textSecondary }
@@ -320,10 +328,17 @@ public extension Color {
     static var ruulSemanticError: Color   { RuulColors.default.semanticError }
     static var ruulSemanticInfo: Color    { RuulColors.default.semanticInfo }
 
-    static var ruulBorderSubtle: Color   { RuulColors.default.borderSubtle }
-    static var ruulBorderDefault: Color  { RuulColors.default.borderDefault }
-    static var ruulBorderStrong: Color   { RuulColors.default.borderStrong }
-    static var ruulBorderGlass: Color    { RuulColors.default.borderGlass }
+    /// All border tokens bridge to `Color(.separator)` per Plan §4.2:
+    /// Apple uses materials + separators (not borders) for visual
+    /// grouping. Subtle/Default/Strong/Glass variants collapse to the
+    /// single system separator color — it already adapts to dark mode
+    /// and high-contrast. Where the visual delta really matters, the
+    /// canonical pattern is moving the contained content into a
+    /// `Section` inside a `List` (which gets separators for free).
+    static var ruulBorderSubtle: Color   { Color(.separator) }
+    static var ruulBorderDefault: Color  { Color(.separator) }
+    static var ruulBorderStrong: Color   { Color(.separator) }
+    static var ruulBorderGlass: Color    { Color(.separator) }
 
     /// Modal scrim / dimming overlay (Color.black.opacity(0.35) replacement).
     /// Adapts: stronger in light mode (so dim is visible) vs dark mode.
