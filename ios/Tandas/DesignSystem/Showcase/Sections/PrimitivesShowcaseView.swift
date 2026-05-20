@@ -129,11 +129,14 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var segmentedSection: some View {
-        ShowcaseSection("RuulSegmentedControl") {
-            RuulSegmentedControl(
-                selection: $selectedSegment,
-                segments: [("Eventos", "Eventos"), ("Reglas", "Reglas"), ("Multas", "Multas")]
-            )
+        ShowcaseSection("Picker(.segmented)") {
+            Picker("Sección", selection: $selectedSegment) {
+                Text("Eventos").tag("Eventos")
+                Text("Reglas").tag("Reglas")
+                Text("Multas").tag("Multas")
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
     }
 

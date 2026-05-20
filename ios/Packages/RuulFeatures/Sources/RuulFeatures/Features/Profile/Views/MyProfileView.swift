@@ -151,10 +151,13 @@ public struct MyProfileView: View {
                 // V2 Slice 4G sub-tab chrome. Two segments only — fits
                 // iPhone SE width with room to spare. Hero stays above
                 // so the user always sees who they are.
-                RuulSegmentedControl(
-                    selection: $subTab,
-                    segments: SubTab.allCases.map { ($0, $0.label) }
-                )
+                Picker("Sección del perfil", selection: $subTab) {
+                    ForEach(SubTab.allCases, id: \.self) { tab in
+                        Text(tab.label).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
                 switch subTab {
                 case .tú:
                     myGroupsSection

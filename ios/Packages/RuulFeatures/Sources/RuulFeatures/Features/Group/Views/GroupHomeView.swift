@@ -152,10 +152,13 @@ public struct GroupHomeView: View {
                 // fit comfortably on iPhone SE width. Hero/summary/pendings
                 // sit above so the high-signal stuff isn't hidden behind a
                 // tab selection.
-                RuulSegmentedControl(
-                    selection: $subTab,
-                    segments: SubTab.allCases.map { ($0, $0.label) }
-                )
+                Picker("Sección del grupo", selection: $subTab) {
+                    ForEach(SubTab.allCases, id: \.self) { tab in
+                        Text(tab.label).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
                 switch subTab {
                 case .personas:
                     identitySection
