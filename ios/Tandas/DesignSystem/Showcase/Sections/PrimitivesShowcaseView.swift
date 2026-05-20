@@ -158,12 +158,13 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var pickerSection: some View {
-        ShowcaseSection("RuulPicker") {
-            RuulPicker(selection: $pickedCadence, options: [
-                .init(value: "weekly", label: "Semanal", subtitle: "Cada miércoles"),
-                .init(value: "biweekly", label: "Quincenal"),
-                .init(value: "monthly", label: "Mensual")
-            ])
+        ShowcaseSection("Picker(.menu)") {
+            Picker("Cadencia", selection: $pickedCadence) {
+                Text("Semanal").tag("weekly")
+                Text("Quincenal").tag("biweekly")
+                Text("Mensual").tag("monthly")
+            }
+            .pickerStyle(.menu)
         }
     }
 

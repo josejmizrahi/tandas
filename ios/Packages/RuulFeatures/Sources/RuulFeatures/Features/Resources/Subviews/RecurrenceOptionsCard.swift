@@ -28,10 +28,13 @@ public struct RecurrenceOptionsCard: View {
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                 }
-                RuulPicker(
-                    selection: $selection,
-                    options: RecurrenceOption.allCases.map { .init(value: $0, label: $0.displayName) }
-                )
+                Picker("Frecuencia", selection: $selection) {
+                    ForEach(RecurrenceOption.allCases) { option in
+                        Text(option.displayName).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
             }
         }
     }
