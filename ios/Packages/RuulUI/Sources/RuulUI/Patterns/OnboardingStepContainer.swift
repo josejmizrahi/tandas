@@ -2,14 +2,13 @@ import SwiftUI
 
 /// Standard layout for an onboarding step.
 ///
-/// - top: a `RuulProgressBar` showing where the user is in the flow.
+/// - top: a `ProgressView` showing where the user is in the flow.
 /// - middle: arbitrary content.
 /// - bottom: a primary CTA button, plus optional secondary CTA.
 /// - optional skip button in the trailing toolbar position (caller wires the
 ///   toolbar item).
 public struct OnboardingStepContainer<Content: View>: View {
     private let progress: Double
-    private let stepCount: Int?
     private let title: String
     private let subtitle: String?
     private let primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)?
@@ -19,7 +18,6 @@ public struct OnboardingStepContainer<Content: View>: View {
 
     public init(
         progress: Double,
-        stepCount: Int? = nil,
         title: String,
         subtitle: String? = nil,
         primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)? = nil,
@@ -28,7 +26,6 @@ public struct OnboardingStepContainer<Content: View>: View {
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.progress = progress
-        self.stepCount = stepCount
         self.title = title
         self.subtitle = subtitle
         self.primaryCTA = primaryCTA
@@ -39,7 +36,7 @@ public struct OnboardingStepContainer<Content: View>: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            ProgressView(value: progress)
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.sm)
             ScrollView {
@@ -66,15 +63,6 @@ public struct OnboardingStepContainer<Content: View>: View {
     }
 
     @ViewBuilder
-    private var progressBar: some View {
-        if let stepCount {
-            RuulProgressBar(value: progress, style: .steps(stepCount))
-        } else {
-            RuulProgressBar(value: progress)
-        }
-    }
-
-    @ViewBuilder
     private var ctaStack: some View {
         VStack(spacing: RuulSpacing.xs) {
             if let primaryCTA {
@@ -92,7 +80,6 @@ public struct OnboardingStepContainer<Content: View>: View {
 #Preview("OnboardingStepContainer") {
     OnboardingStepContainer(
         progress: 0.4,
-        stepCount: 5,
         title: "¿Cómo te llaman?",
         subtitle: "Así te van a ver tus grupos.",
         primaryCTA: ("Continuar", false, { })

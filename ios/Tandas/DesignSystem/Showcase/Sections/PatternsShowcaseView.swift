@@ -60,7 +60,6 @@ struct PatternsShowcaseView: View {
         ShowcaseSection("OnboardingStepContainer") {
             OnboardingStepContainer(
                 progress: 0.4,
-                stepCount: 5,
                 title: "Pregunta",
                 subtitle: "Subtítulo",
                 primaryCTA: ("Continuar", false, { })

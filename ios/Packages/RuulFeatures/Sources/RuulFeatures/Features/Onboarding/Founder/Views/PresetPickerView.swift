@@ -14,7 +14,6 @@ public struct PresetPickerView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.visibleSteps.count,
             title: "¿Para qué será \(coord.draft.name.isEmpty ? "tu grupo" : coord.draft.name)?",
             subtitle: "Elige cómo arrancar. Puedes agregar más después.",
             // W3-B2: explicit "Continuar" CTA — previously the screen

@@ -13,7 +13,6 @@ public struct InvitedOTPView: View {
         OnboardingScreenTemplate(
             mesh: .aqua,
             progress: progressValue,
-            stepCount: InvitedStep.allCases.count,
             title: titleForChannel,
             subtitle: "Llega a \(PhoneFormatter.displayFormat(coord.phoneE164)). Pégalo aquí.",
             primaryCTA: ("Confirmar", coord.isLoading, submit),

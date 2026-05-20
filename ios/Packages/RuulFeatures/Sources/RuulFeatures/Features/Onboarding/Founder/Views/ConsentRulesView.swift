@@ -24,7 +24,6 @@ public struct ConsentRulesView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: FounderStep.consent.progressFraction,
-            stepCount: FounderStep.visibleSteps.count,
             title: "Reglas sugeridas",
             subtitle: "Estas son las reglas que la gente suele usar. Por ahora están en modo sugerencia — no se activan hasta que tu grupo decida.",
             primaryCTA: ("Continuar", false, { Task { await coord.advanceFromConsent() } }),

@@ -5,7 +5,6 @@ import SwiftUI
 public struct OnboardingScreenTemplate<Content: View>: View {
     private let mesh: RuulMeshBackground.Variant
     private let progress: Double
-    private let stepCount: Int?
     private let title: String
     private let subtitle: String?
     private let primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)?
@@ -17,7 +16,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
     public init(
         mesh: RuulMeshBackground.Variant = .cool,
         progress: Double,
-        stepCount: Int? = nil,
         title: String,
         subtitle: String? = nil,
         primaryCTA: (label: String, isLoading: Bool, perform: () -> Void)? = nil,
@@ -28,7 +26,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
     ) {
         self.mesh = mesh
         self.progress = progress
-        self.stepCount = stepCount
         self.title = title
         self.subtitle = subtitle
         self.primaryCTA = primaryCTA
@@ -43,7 +40,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
             Color.ruulBackground.ignoresSafeArea()
             OnboardingStepContainer(
                 progress: progress,
-                stepCount: stepCount,
                 title: title,
                 subtitle: subtitle,
                 primaryCTA: primaryCTA,
@@ -69,7 +65,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
         OnboardingScreenTemplate(
             mesh: .violet,
             progress: 0.6,
-            stepCount: 5,
             title: "¿Cómo te llaman?",
             subtitle: "Así te van a ver tus grupos.",
             primaryCTA: ("Continuar", false, { }),
