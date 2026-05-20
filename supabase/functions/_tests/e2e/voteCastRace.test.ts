@@ -178,3 +178,143 @@ Deno.test(
     }
   },
 );
+
+// V1-15 (FASE 0 correctness): retry-idempotency for cast_vote.
+//
+// Existing coverage above tests CONCURRENT casts by DIFFERENT members.
+// This case tests RETRY by the SAME member — the iOS layer has no
+// dedup logic and relies on cast_vote's upsert-or-latest semantics.
+//
+// Properties to verify:
+//   1. Same member, same choice, twice → vote tally counts the member
+//      exactly once (no double-count). The `latest_per_member`
+//      projection in finalize_vote (mig 00131+) collapses multi-row
+//      casts to the most recent per voter.
+//   2. Same member, choice changed (in_favor → against) → tally sees
+//      the second choice. "Latest wins" semantics.
+//
+// These two invariants are what protects fund_balance projections of
+// vote-driven consequences (e.g., rule_change action) from getting
+// double-applied on retry. The iOS guard story is "isMutating gates
+// double-taps", but a real network re-tap (slow Wi-Fi → second RPC
+// fires) lands at the server and must be safe there too.
+
+Deno.test(
+  "cast_vote retry-idempotency: same member casting same choice twice → tally counts once",
+  async () => {
+    let group: SeededGroup | null = null;
+    try {
+      group = await seedGroup({
+        memberSpecs: [
+          { handle: "alice" },
+          { handle: "bob" },
+        ],
+      });
+      const [alice, bob] = group.members;
+
+      const { data: voteIdRaw, error: openErr } = await alice.client.rpc(
+        "start_vote",
+        {
+          p_group_id:          group.groupId,
+          p_vote_type:         "general_proposal",
+          p_reference_id:      group.groupId,
+          p_title:             "retry idempotency same choice",
+          p_duration_hours:    1,
+          p_quorum_percent:    25,
+          p_threshold_percent: 50,
+          p_is_anonymous:      false,
+        },
+      );
+      if (openErr) throw new Error(`start_vote: ${openErr.message}`);
+      const voteId = (extractRowId(voteIdRaw) ?? voteIdRaw) as string;
+
+      // Same member, same choice, twice in a row — simulates a network
+      // re-tap on the iOS submit button.
+      const { error: e1 } = await alice.client.rpc("cast_vote", {
+        p_vote_id: voteId,
+        p_choice:  "in_favor",
+      });
+      assert(!e1, `cast_vote 1 failed: ${e1?.message}`);
+
+      const { error: e2 } = await alice.client.rpc("cast_vote", {
+        p_vote_id: voteId,
+        p_choice:  "in_favor",
+      });
+      assert(!e2, `cast_vote 2 (retry) failed: ${e2?.message}`);
+
+      // Bob casts once so we have a non-trivial tally.
+      await bob.client.rpc("cast_vote", { p_vote_id: voteId, p_choice: "against" });
+
+      const { error: finalErr } = await admin.rpc("finalize_vote", {
+        p_vote_id: voteId,
+      });
+      if (finalErr) throw new Error(`finalize_vote: ${finalErr.message}`);
+
+      const { data: finalVote } = await admin
+        .from("votes")
+        .select("status, counts")
+        .eq("id", voteId)
+        .single();
+      const counts = finalVote.counts as Record<string, number | string>;
+
+      // The bug: pre-`latest_per_member` semantics would double-count
+      // Alice → inFavor=2 against=1 totalEligible=2 (logically broken
+      // because totalEligible was 2 distinct members).
+      assertEquals(counts.inFavor,       1, "Alice's two same-choice casts must count as one in_favor");
+      assertEquals(counts.against,       1, "Bob's single against must count");
+      assertEquals(counts.totalEligible, 2, "2 eligible voters total");
+      assertEquals(counts.resolution,   "passed", "1 in_favor vs 1 against → tie; 50% threshold → in_favor >= 50% → passed");
+    } finally {
+      if (group) await cleanupGroup(group);
+    }
+  },
+);
+
+Deno.test(
+  "cast_vote retry-idempotency: same member changing choice → latest wins",
+  async () => {
+    let group: SeededGroup | null = null;
+    try {
+      group = await seedGroup({
+        memberSpecs: [
+          { handle: "alice" },
+          { handle: "bob" },
+        ],
+      });
+      const [alice, bob] = group.members;
+
+      const { data: voteIdRaw } = await alice.client.rpc("start_vote", {
+        p_group_id:          group.groupId,
+        p_vote_type:         "general_proposal",
+        p_reference_id:      group.groupId,
+        p_title:             "retry idempotency change of mind",
+        p_duration_hours:    1,
+        p_quorum_percent:    25,
+        p_threshold_percent: 50,
+        p_is_anonymous:      false,
+      });
+      const voteId = (extractRowId(voteIdRaw) ?? voteIdRaw) as string;
+
+      // Alice "changes her mind" between RPC calls — first in_favor,
+      // then against. Latest cast wins per latest_per_member.
+      await alice.client.rpc("cast_vote", { p_vote_id: voteId, p_choice: "in_favor" });
+      await alice.client.rpc("cast_vote", { p_vote_id: voteId, p_choice: "against" });
+      await bob.client.rpc(  "cast_vote", { p_vote_id: voteId, p_choice: "against" });
+
+      await admin.rpc("finalize_vote", { p_vote_id: voteId });
+
+      const { data: finalVote } = await admin
+        .from("votes")
+        .select("status, counts")
+        .eq("id", voteId)
+        .single();
+      const counts = finalVote.counts as Record<string, number | string>;
+
+      assertEquals(counts.inFavor, 0, "Alice's later 'against' must replace her earlier 'in_favor'");
+      assertEquals(counts.against, 2, "Alice (latest) + Bob = 2 against");
+      assertEquals(counts.resolution, "failed", "0 in_favor / 2 against → fails 50% threshold");
+    } finally {
+      if (group) await cleanupGroup(group);
+    }
+  },
+);

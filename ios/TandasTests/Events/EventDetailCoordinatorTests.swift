@@ -78,6 +78,61 @@ struct EventDetailCoordinatorTests {
         #expect(coord.error != nil)
     }
 
+    // V1-14 (FASE 0 correctness): isMutating guard blocks a re-tap fired
+    // while the first server call is in-flight. Deterministic version —
+    // a holding RSVP repo pauses the first call until we explicitly
+    // resume it, so we can verify that a second call attempted while
+    // isMutating==true short-circuits inside the guard and never
+    // reaches the repo.
+    @Test("setRSVP double-tap: isMutating guard prevents second call while first is in-flight")
+    func setRSVPDoubleTapGuard() async {
+        let holdingRepo = HoldingRSVPRepository()
+        let group = sampleGroup()
+        let event = sampleEvent(host: UUID(), group: group)
+        let eventRepo = MockEventRepository(seed: [event])
+        let coord = EventDetailCoordinator(
+            event: event,
+            group: group,
+            userId: UUID(),
+            eventRepo: eventRepo,
+            rsvpRepo: holdingRepo,
+            checkInRepo: MockCheckInRepository(),
+            lifecycle: EventLifecycleService(eventRepo: eventRepo),
+            notifications: nil,
+            walletService: StubWalletPassService(),
+            analytics: EventAnalytics(analytics: MockAnalyticsService())
+        )
+
+        // T1: kick off the first setRSVP. It enters the coordinator,
+        // sets isMutating=true, awaits rsvpRepo.setRSVP, and is held
+        // there by the holding repo's continuation.
+        let t1 = Task { await coord.setRSVP(.going) }
+
+        // Wait until T1 has reached the held setRSVP (isMutating=true).
+        // Bounded so the test fails fast on a hang rather than spinning.
+        var spins = 0
+        while !coord.isMutating && spins < 1_000 {
+            await Task.yield()
+            spins += 1
+        }
+        #expect(coord.isMutating, "T1 must have entered setRSVP and set isMutating=true")
+
+        // T2: while T1 is still held, fire a second setRSVP from the
+        // test scope. The guard `guard !isMutating else { return }`
+        // must short-circuit immediately. holdingRepo.callCount stays 1.
+        await coord.setRSVP(.declined)
+        let callsDuringHold = await holdingRepo.callCount
+        #expect(callsDuringHold == 1, "second setRSVP must NOT reach the repo while T1 is in-flight")
+
+        // Release T1 and let it finish.
+        await holdingRepo.resumeAll()
+        await t1.value
+
+        let finalCalls = await holdingRepo.callCount
+        #expect(finalCalls == 1, "still exactly one repo call after both tasks settled")
+        #expect(coord.isMutating == false, "isMutating must reset after T1 completes")
+    }
+
     @Test("hostMarkCheckIn no-op when viewer is guest")
     func hostMarkCheckInGuestNoop() async {
         let (coord, _, checkRepo, _) = makeCoord(viewerIsHost: false)
@@ -107,5 +162,40 @@ struct EventDetailCoordinatorTests {
 extension MockRSVPRepository {
     func setNextError(_ err: EventError) {
         nextSetError = err
+    }
+}
+
+/// V1-14 helper. RSVPRepository whose `setRSVP` blocks on a continuation
+/// per call until the test explicitly resumes it. Lets the double-tap
+/// test pin the in-flight state deterministically.
+actor HoldingRSVPRepository: RSVPRepository {
+    private(set) var callCount: Int = 0
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+
+    func rsvps(for eventId: UUID) async throws -> [RSVP] { [] }
+    func myRSVP(for eventId: UUID, userId: UUID) async throws -> RSVP? { nil }
+    func promoteFromWaitlist(eventId: UUID) async throws -> RSVP {
+        throw EventError.notFound
+    }
+
+    func setRSVP(eventId: UUID, status: RSVPStatus, plusOnes: Int, reason: String?) async throws -> RSVP {
+        callCount += 1
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            continuations.append(cont)
+        }
+        return RSVP(
+            id: UUID(),
+            eventId: eventId,
+            userId: UUID(),
+            status: status,
+            respondedAt: .now,
+            cancelledReason: reason,
+            plusOnes: plusOnes
+        )
+    }
+
+    func resumeAll() {
+        for c in continuations { c.resume() }
+        continuations.removeAll()
     }
 }
