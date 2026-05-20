@@ -12,20 +12,6 @@ public struct EventAnalytics: Sendable {
         self.analytics = analytics
     }
 
-    public func eventCreated(
-        groupId: UUID, hasLocation: Bool, hasDescription: Bool,
-        applyRules: Bool, hostAssigned: Bool, recurrence: RecurrenceOption
-    ) async {
-        await analytics.track(.eventCreated(
-            groupId: groupId,
-            hasLocation: hasLocation,
-            hasDescription: hasDescription,
-            applyRules: applyRules,
-            hostAssigned: hostAssigned,
-            recurrenceOption: recurrence.rawValue
-        ))
-    }
-
     public func eventCreateStarted() async {
         await analytics.track(.eventCreateStarted)
     }
@@ -88,17 +74,6 @@ public struct EventAnalytics: Sendable {
 
 // Extend the AnalyticsEvent enum with event-layer cases.
 public extension AnalyticsEvent {
-    public static func eventCreated(groupId: UUID, hasLocation: Bool, hasDescription: Bool, applyRules: Bool, hostAssigned: Bool, recurrenceOption: String) -> AnalyticsEvent {
-        .untyped(name: "event_created", properties: [
-            "group_id": .string(groupId.uuidString.lowercased()),
-            "has_location": .bool(hasLocation),
-            "has_description": .bool(hasDescription),
-            "apply_rules": .bool(applyRules),
-            "host_assigned": .bool(hostAssigned),
-            "recurrence_option": .string(recurrenceOption)
-        ])
-    }
-
     public static var eventCreateStarted: AnalyticsEvent {
         .untyped(name: "event_create_started", properties: [:])
     }
