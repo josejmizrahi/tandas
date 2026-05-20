@@ -94,7 +94,7 @@ private struct OTPSlot: View {
         ZStack {
             Text(char.isEmpty ? " " : char)
                 .font(.title2.monospaced().weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .scaleEffect(char.isEmpty ? 0.85 : 1.0)
                 .opacity(char.isEmpty ? 0 : 1)
                 .animation(.ruulSnappy, value: char)
@@ -115,15 +115,15 @@ private struct OTPSlot: View {
     }
 
     private var tintColor: Color? {
-        if hasError { return Color.ruulNegative.opacity(0.25) }
+        if hasError { return Color.red.opacity(0.25) }
         if isFocused { return Color.ruulAccent.opacity(0.20) }
         return nil
     }
 
     private var strokeColor: Color {
-        if hasError { return .ruulNegative }
+        if hasError { return .red }
         if isFocused { return .ruulAccent }
-        return .ruulSeparator
+        return Color(.separator)
     }
 }
 

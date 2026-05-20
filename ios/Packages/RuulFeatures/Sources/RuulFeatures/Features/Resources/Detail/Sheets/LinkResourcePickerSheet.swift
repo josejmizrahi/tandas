@@ -116,7 +116,7 @@ public struct LinkResourcePickerSheet: View {
         if let errorText {
             Text(errorText)
                 .font(.caption)
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .padding(.horizontal, RuulSpacing.xxs)
         }
     }
@@ -127,10 +127,10 @@ public struct LinkResourcePickerSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Qué usa este evento?")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Vincula un espacio, asset, fondo o derecho que se coordine durante este evento.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .padding(.top, RuulSpacing.xs)
     }
@@ -155,11 +155,11 @@ public struct LinkResourcePickerSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(displayName(row))
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     Text(row.resourceType.humanLabel)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "plus")
@@ -173,7 +173,7 @@ public struct LinkResourcePickerSheet: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
@@ -187,15 +187,15 @@ public struct LinkResourcePickerSheet: View {
                 Circle().fill(Color.ruulSurface).frame(width: 72, height: 72)
                 Image(systemName: "link.badge.plus")
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text("Nada que vincular aún")
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Crea un espacio, asset o fondo en el grupo y vuelve para vincularlo a este evento.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.center)
             }
             Spacer()

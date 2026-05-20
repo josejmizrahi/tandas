@@ -72,7 +72,7 @@ public struct NotificationPreferencesView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                     Text("Activa o desactiva tipos de aviso. Tu dispositivo recibirá solo los tipos activos.")
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                     // Form area: `AsyncContentView` maneja loading
                     // (spinner) y loaded (form). No usamos retry: el
                     // load no expone errores al phase, así que las
@@ -87,7 +87,7 @@ public struct NotificationPreferencesView: View {
                     if let msg = errorMessage {
                         Text(msg)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
                 .padding(RuulSpacing.lg)
@@ -103,14 +103,14 @@ public struct NotificationPreferencesView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(group.title)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) {
                 ForEach(group.types, id: \.key) { entry in
                     prefRow(entry)
                     if entry.key != group.types.last?.key {
                         Divider()
-                            .background(Color.ruulSeparator)
+                            .background(Color(.separator))
                             .padding(.leading, 56)
                     }
                 }
@@ -118,7 +118,7 @@ public struct NotificationPreferencesView: View {
             .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
     }
@@ -127,11 +127,11 @@ public struct NotificationPreferencesView: View {
         let isOn = prefs[entry.key] ?? true  // default ON
         return HStack {
             Image(systemName: entry.icon)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .frame(width: 28)
             Text(entry.label)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Spacer()
             Toggle("", isOn: Binding(
                 get: { isOn },

@@ -59,7 +59,7 @@ public struct ResourceTabBar<Value: Hashable & Sendable, Content: View>: View {
                     .modifier(TabBadgeModifier(badge: tab.badge))
             }
         }
-        .tint(Color.ruulTextPrimary)
+        .tint(Color.primary)
         // DS v3 §13.2: iOS 26 TabView ya renderiza Liquid Glass nativo.
         // No usar `.toolbarBackground(.ultraThinMaterial)` — overridería
         // el glass con un material plano (antipatrón explícito del DS doc).
@@ -113,7 +113,7 @@ private struct ResourceTabBarPreview: View {
                 Color.ruulBackground.ignoresSafeArea()
                 Text("Tab: \(String(describing: tab))")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
         }
     }

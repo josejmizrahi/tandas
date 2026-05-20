@@ -83,10 +83,10 @@ public struct InviteWelcomeView: View {
         VStack(spacing: RuulSpacing.xs) {
             Text("Te invitan a unirte a")
                 .font(.body)
-                .foregroundStyle(Color.ruulOnImageSecondary)
+                .foregroundStyle(Color.white.opacity(0.85))
             Text(preview.groupName)
                 .font(.largeTitle.weight(.bold))
-                .foregroundStyle(Color.ruulOnImage)
+                .foregroundStyle(Color.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .shadow(color: Color.ruulImageTextShadow, radius: RuulSpacing.md, x: 0, y: 4)
@@ -113,15 +113,15 @@ public struct InviteWelcomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(preview.groupName)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulOnImage)
+                    .foregroundStyle(Color.white)
                     .lineLimit(2)
                 Text(metaCopy(for: preview))
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulOnImageSecondary)
+                    .foregroundStyle(Color.white.opacity(0.85))
                     .lineLimit(2)
                 Text(vintageCopy(for: preview))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulOnImageSecondary.opacity(0.85))
+                    .foregroundStyle(Color.white.opacity(0.85).opacity(0.85))
             }
             .padding(RuulSpacing.lg)
         }
@@ -167,7 +167,7 @@ public struct InviteWelcomeView: View {
             } label: {
                 Text("Aceptar invitación")
                     .font(.body)
-                    .foregroundStyle(Color.ruulOnImageInverse)
+                    .foregroundStyle(Color.black)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 56)
                     .background(Capsule().fill(Color.ruulImagePillSolid))
@@ -179,7 +179,7 @@ public struct InviteWelcomeView: View {
             Button(action: onDecline) {
                 Text("Ahora no")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 36)
             }

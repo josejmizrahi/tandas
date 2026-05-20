@@ -27,15 +27,15 @@ public struct MemberQRSheet: View {
                 // W2-C4: "host" → "anfitrión".
                 Text("Muestra este código al anfitrión para marcar tu llegada.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.center)
                 qrImage
                     .frame(width: 240, height: 240)
                     .padding(RuulSpacing.md)
-                    .background(Color.ruulOnImage, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 Text(eventTitle)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             .frame(maxWidth: .infinity)
         }
@@ -57,7 +57,7 @@ public struct MemberQRSheet: View {
             Image(systemName: "qrcode")
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
     }
 }

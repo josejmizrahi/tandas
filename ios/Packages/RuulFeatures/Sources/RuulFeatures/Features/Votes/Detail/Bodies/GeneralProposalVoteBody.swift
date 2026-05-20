@@ -13,21 +13,21 @@ public struct GeneralProposalVoteBody: View {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 Text(desc)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("(Sin descripción)")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
 
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
             }
         }

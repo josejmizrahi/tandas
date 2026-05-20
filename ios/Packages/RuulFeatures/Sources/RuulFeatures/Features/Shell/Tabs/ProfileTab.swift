@@ -136,7 +136,7 @@ public struct ProfileTab: View {
                             ProgressView().controlSize(.small)
                             Text("Preparando export…")
                                 .font(.caption)
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                         }
                         .padding(.horizontal, RuulSpacing.md)
                         .padding(.vertical, RuulSpacing.xs)

@@ -77,7 +77,7 @@ public struct RSVPAvatarStrip: View {
                 if rsvp.isCheckedIn {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulPositive)
+                        .foregroundStyle(Color.green)
                         .padding(2)
                         .background(Color.ruulBackground, in: Circle())
                         .accessibilityHidden(true)
@@ -85,7 +85,7 @@ public struct RSVPAvatarStrip: View {
             }
             Text(firstNameOnly(name))
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .lineLimit(1)
                 .frame(maxWidth: 64)
         }
@@ -103,11 +103,11 @@ public struct RSVPAvatarStrip: View {
                     .frame(width: 40, height: 40)
                 Text("+\(count)")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             Text("Ver todos")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .frame(width: 64)
         .accessibilityLabel("\(count) personas más. Toca para ver la lista.")
@@ -117,11 +117,11 @@ public struct RSVPAvatarStrip: View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.crop.circle.badge.questionmark")
                 .font(.body)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
             Text("Sin confirmaciones aún")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, RuulSpacing.xxs)

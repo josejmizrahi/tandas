@@ -15,11 +15,11 @@ struct PropertiesBlockView: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(row.key)
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                             .frame(width: 96, alignment: .leading)
                         Text(row.value)
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                         Spacer(minLength: 0)
                     }
                     .padding(.vertical, RuulSpacing.sm)

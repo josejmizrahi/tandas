@@ -122,11 +122,11 @@ public struct PostCreateIntentScreen: View {
                 .foregroundStyle(Color.ruulAccent)
             Text(variant.postCreateHeadline)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.center)
             Text("Elige lo que quieras hacer. Después puedes volver al recurso.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -137,13 +137,13 @@ public struct PostCreateIntentScreen: View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: "sparkles")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text("Nada que configurar todavía.")
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Lo que necesites lo activas desde el recurso.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -159,10 +159,10 @@ public struct PostCreateIntentScreen: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(intent.humanLabel)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(intent.summary)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -190,7 +190,7 @@ public struct PostCreateIntentScreen: View {
         } else {
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
     }
 
@@ -221,16 +221,16 @@ public struct PostCreateIntentScreen: View {
     private func errorBanner(_ message: String) -> some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
             Text(message)
                 .font(.caption)
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(RuulSpacing.sm)
         .background(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulNegative.opacity(0.08))
+                .fill(Color.red.opacity(0.08))
         )
     }
 
@@ -665,7 +665,7 @@ private struct DestinationPresenter: View {
                     .controlSize(.large)
                 Text("Abriendo…")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(RuulSpacing.xl)
@@ -692,7 +692,7 @@ private struct DestinationPresenter: View {
                 .controlSize(.large)
             Text("Abriendo…")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(RuulSpacing.xl)
@@ -740,10 +740,10 @@ private struct DestinationPresenter: View {
                 .foregroundStyle(Color.ruulAccent)
             Text(intent.humanLabel)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text(placeholderCopy)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
             RuulButton(

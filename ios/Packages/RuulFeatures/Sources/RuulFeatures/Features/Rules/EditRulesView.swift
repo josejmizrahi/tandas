@@ -80,10 +80,10 @@ public struct EditRulesView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Los cambios abren votación")
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text("Necesitan \(threshold)% de votos a favor para aplicarse.")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 Spacer()
             }
@@ -99,11 +99,11 @@ public struct EditRulesView: View {
         case .readOnly:
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "lock")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
                 Text("Tu rol no puede editar reglas en este grupo.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
             }
             .padding(RuulSpacing.md)
@@ -120,10 +120,10 @@ public struct EditRulesView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(coordinator.group.name)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Text("Reglas predeterminadas")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
         .padding(.top, RuulSpacing.xs)
     }
@@ -131,7 +131,7 @@ public struct EditRulesView: View {
     private var footer: some View {
         Text("Las reglas personalizadas estarán disponibles en una próxima versión.")
             .font(.caption)
-            .foregroundStyle(Color.ruulTextTertiary)
+            .foregroundStyle(Color(.tertiaryLabel))
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
             .padding(.top, RuulSpacing.md)
@@ -156,7 +156,7 @@ public struct EditRulesView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(rule.name)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .lineLimit(2)
                     fineDisplay(rule)
                     if let pending {
@@ -173,7 +173,7 @@ public struct EditRulesView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 1)
+                    .stroke(Color(.separator), lineWidth: 1)
             )
             .opacity(rule.isActive ? 1.0 : 0.55)
         }
@@ -223,7 +223,7 @@ public struct EditRulesView: View {
             Text("Votación pendiente · cierra \(relative)")
         }
         .font(.footnote)
-        .foregroundStyle(Color.ruulWarning)
+        .foregroundStyle(Color.orange)
         .padding(.top, RuulSpacing.xxs)
     }
 

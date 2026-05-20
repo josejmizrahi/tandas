@@ -81,7 +81,7 @@ private struct RuulCardStyleModifier: ViewModifier {
                 .ruulElevation(.sm)
         case .outlined:
             content
-                .overlay(shape.stroke(Color.ruulSeparatorOpaque, lineWidth: 1))
+                .overlay(shape.stroke(Color(.separator), lineWidth: 1))
         }
     }
 }
@@ -94,26 +94,26 @@ private struct RuulCardStyleModifier: ViewModifier {
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     Text("Glass card")
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text("Default card style. Use over mesh backgrounds.")
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
             RuulCard(.glass, tint: .ruulAccent) {
                 Text("Glass tinted")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             RuulCard(.solid) {
                 Text("Solid card — for in-list usage on canvas backgrounds")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             RuulCard(.outlined) {
                 Text("Outlined card — minimal, no fill")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
         }
         .padding(RuulSpacing.lg)

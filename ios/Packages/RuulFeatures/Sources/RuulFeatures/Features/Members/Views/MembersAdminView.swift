@@ -101,7 +101,7 @@ public struct MembersAdminView: View {
                                 } label: {
                                     Label("Proponer voto", systemImage: "checkmark.bubble")
                                 }
-                                .tint(Color.ruulWarning)
+                                .tint(Color.orange)
                             }
                         }
                     }
@@ -121,10 +121,10 @@ public struct MembersAdminView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.displayName)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(provenanceLabel(row.member))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer()
             if row.member.isFounder {

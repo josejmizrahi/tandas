@@ -47,7 +47,7 @@ public struct UniversalTemplateGallerySheet: View {
                 } header: {
                     Text("Elige el patrón que se parezca a lo que quieres. Llena los huecos y actívalo.")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .textCase(nil)
                 }
             }
@@ -76,36 +76,36 @@ public struct UniversalTemplateGallerySheet: View {
             if template.doctrinalCategory != "uncategorized" {
                 Text(template.doctrinalCategory)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(
-                        Capsule().fill(Color.ruulTextTertiary.opacity(0.12))
+                        Capsule().fill(Color(.tertiaryLabel).opacity(0.12))
                     )
             }
             Text(template.displayNameES)
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text(template.descriptionES)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .lineLimit(3)
             if template.naturalLanguagePreviewTemplate != nil {
                 Text(RuleSentenceFormatter.preview(forTemplate: template))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .padding(RuulSpacing.xs)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.ruulTextTertiary.opacity(0.06))
+                    .background(Color(.tertiaryLabel).opacity(0.06))
                     .cornerRadius(RuulSpacing.xs)
             }
             ForEach(template.whatItIsNot, id: \.self) { hint in
                 HStack(alignment: .top, spacing: 4) {
                     Text("·")
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Text(hint)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
             }
             if !template.examplesAcrossVerticals.isEmpty {
@@ -113,11 +113,11 @@ public struct UniversalTemplateGallerySheet: View {
                     ForEach(Array(template.examplesAcrossVerticals.prefix(3)), id: \.vertical) { example in
                         Text(example.vertical)
                             .font(.caption2)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
-                                Capsule().fill(Color.ruulTextTertiary.opacity(0.08))
+                                Capsule().fill(Color(.tertiaryLabel).opacity(0.08))
                             )
                     }
                 }

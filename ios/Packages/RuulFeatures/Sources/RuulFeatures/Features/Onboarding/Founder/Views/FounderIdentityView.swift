@@ -52,7 +52,7 @@ public struct FounderIdentityView: View {
         HStack(spacing: RuulSpacing.xs) {
             Text("¿Ya tienes cuenta?")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Button {
                 switchToSignIn()
             } label: {
@@ -120,7 +120,7 @@ public struct FounderIdentityView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
-                    .background(Color.ruulTextPrimary, in: Circle())
+                    .background(Color.primary, in: Circle())
                     .offset(x: RuulSpacing.xxl, y: RuulSpacing.xxl)
             }
         }

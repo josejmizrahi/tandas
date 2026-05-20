@@ -32,7 +32,7 @@ public struct RuulPhoneField: View {
             if let label {
                 Text(label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             HStack(spacing: RuulSpacing.xs) {
                 countryButton
@@ -42,7 +42,7 @@ public struct RuulPhoneField: View {
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
                     .focused($isFocused)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.md)
@@ -57,7 +57,7 @@ public struct RuulPhoneField: View {
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             }
         }
     }
@@ -76,10 +76,10 @@ public struct RuulPhoneField: View {
                 Text(country.flag).font(.system(size: 18))
                 Text("+\(country.dialCode)")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
     }
@@ -91,7 +91,7 @@ public struct RuulPhoneField: View {
     private var focusRing: some View {
         let shape = RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
         if error != nil {
-            shape.stroke(Color.ruulNegative, lineWidth: 1.5)
+            shape.stroke(Color.red, lineWidth: 1.5)
         } else if isFocused {
             shape.stroke(Color.ruulAccent, lineWidth: 1.5)
         }
@@ -127,7 +127,7 @@ private struct RuulPhoneFieldPreview: View {
             RuulPhoneField(text: $phone, label: "Tu número")
             Text(verbatim: "E.164: \(RuulPhoneField(text: .constant(phone)).e164 ?? "—")")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             RuulPhoneField(text: $withError, defaultCountry: .usa, label: "Con error", error: "Número muy corto")
         }
         .padding(RuulSpacing.lg)

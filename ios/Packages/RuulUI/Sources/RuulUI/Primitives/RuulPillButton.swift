@@ -63,7 +63,7 @@ public struct RuulPillButton: View {
                     .contentShape(Circle())
                 Image(systemName: symbol)
                     .font(.system(size: size.symbolSize, weight: .medium))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .frame(width: size.dimension, height: size.dimension)
                     .ruulGlass(Circle(), material: .regular)
                     .allowsHitTesting(false)

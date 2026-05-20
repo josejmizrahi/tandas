@@ -70,7 +70,7 @@ private struct MainAppScreenTemplatePreview: View {
                 Color.ruulBackground.ignoresSafeArea()
                 Text("Tab: \(String(describing: tab))")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
         }
     }

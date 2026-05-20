@@ -129,12 +129,12 @@ public struct SignInView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(step == .start ? mode.startHeadline : "Confirma tu código")
                 .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text(step == .start
                 ? mode.startSubtitle
                 : otpStepSubtitle)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -155,7 +155,7 @@ public struct SignInView: View {
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             }
         }
     }
@@ -239,11 +239,11 @@ public struct SignInView: View {
 
     private var divider: some View {
         HStack(spacing: RuulSpacing.sm) {
-            Rectangle().fill(Color.ruulSeparator).frame(height: 1)
+            Rectangle().fill(Color(.separator)).frame(height: 1)
             Text("o")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextTertiary)
-            Rectangle().fill(Color.ruulSeparator).frame(height: 1)
+                .foregroundStyle(Color(.tertiaryLabel))
+            Rectangle().fill(Color(.separator)).frame(height: 1)
         }
     }
 
@@ -260,7 +260,7 @@ public struct SignInView: View {
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             }
             resendRow
             HStack(spacing: RuulSpacing.sm) {
@@ -293,11 +293,11 @@ public struct SignInView: View {
             HStack(spacing: RuulSpacing.xs) {
                 Text("¿No te llegó?")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 if remaining > 0 {
                     Text("Reenviar en \(remaining) s")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 } else {
                     Button("Reenviar código") { resendOTP() }
                         .font(.caption)
@@ -316,7 +316,7 @@ public struct SignInView: View {
         HStack(spacing: RuulSpacing.xs) {
             Text("¿Empezar de cero?")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Button {
                 createNewAccount()
             } label: {

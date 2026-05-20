@@ -45,7 +45,7 @@ private struct ResourceActionRow: View {
                 Image(systemName: action.icon)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(action.isDestructive
-                        ? Color.ruulNegative
+                        ? Color.red
                         : Color.ruulAccent)
                     .frame(width: 32, height: 32)
                     .background(Color.ruulSurface, in: Circle())
@@ -54,12 +54,12 @@ private struct ResourceActionRow: View {
                     Text(action.title)
                         .font(.headline)
                         .foregroundStyle(action.isDestructive
-                            ? Color.ruulNegative
-                            : Color.ruulTextPrimary)
+                            ? Color.red
+                            : Color.primary)
                     if let subtitle = action.subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
 
@@ -70,14 +70,14 @@ private struct ResourceActionRow: View {
                 } else {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
             }
             .padding(RuulSpacing.md)
             .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
             .opacity(isInvoking ? RuulOpacity.disabled : 1.0)
         }

@@ -24,10 +24,10 @@ public struct RuulBadge: View {
         var background: Color {
             switch self {
             case .neutral:  return Color.ruulNeutral.opacity(0.15)
-            case .positive: return .ruulPositiveBackground
-            case .negative: return .ruulNegativeBackground
-            case .warning:  return .ruulWarningBackground
-            case .info:     return .ruulInfoBackground
+            case .positive: return .green.opacity(0.15)
+            case .negative: return .red.opacity(0.15)
+            case .warning:  return .orange.opacity(0.15)
+            case .info:     return .blue.opacity(0.15)
             case .subtle:   return .ruulFillGlass
             case .accent:   return Color.ruulAccent.opacity(RuulOpacity.medium)
             }
@@ -35,12 +35,12 @@ public struct RuulBadge: View {
 
         var foreground: Color {
             switch self {
-            case .neutral:  return .ruulTextSecondary
-            case .positive: return .ruulPositive
-            case .negative: return .ruulNegative
-            case .warning:  return .ruulWarning
-            case .info:     return .ruulInfo
-            case .subtle:   return .ruulTextSecondary
+            case .neutral:  return .secondary
+            case .positive: return .green
+            case .negative: return .red
+            case .warning:  return .orange
+            case .info:     return .blue
+            case .subtle:   return .secondary
             case .accent:   return .ruulAccent
             }
         }

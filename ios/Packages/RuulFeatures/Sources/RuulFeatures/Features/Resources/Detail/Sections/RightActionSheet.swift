@@ -79,7 +79,7 @@ public struct RightActionSheet: View {
                 Section {
                     Text(blurb)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
 
                 if needsMember {
@@ -126,7 +126,7 @@ public struct RightActionSheet: View {
                     Section {
                         Text(errorMessage)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }
@@ -142,7 +142,7 @@ public struct RightActionSheet: View {
                             Text(submitLabel)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(
-                                    isDestructive ? Color.ruulNegative : Color.ruulAccent
+                                    isDestructive ? Color.red : Color.ruulAccent
                                 )
                         }
                     }
@@ -162,7 +162,7 @@ public struct RightActionSheet: View {
         if candidates.isEmpty {
             Text("Ningún otro miembro activo disponible.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         } else {
             Picker("Miembro", selection: $selectedMemberId) {
                 Text("Selecciona…").tag(Optional<UUID>(nil))

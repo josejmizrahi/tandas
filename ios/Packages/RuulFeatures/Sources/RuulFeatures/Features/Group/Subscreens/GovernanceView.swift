@@ -42,7 +42,7 @@ public struct GovernanceView: View {
                 if let error {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
             }
             .padding(.horizontal, RuulSpacing.lg)
@@ -56,7 +56,7 @@ public struct GovernanceView: View {
                 Button(isSaving ? "Guardando…" : "Guardar") {
                     Task { await save() }
                 }
-                .foregroundStyle(hasChanges ? Color.ruulAccent : Color.ruulTextTertiary)
+                .foregroundStyle(hasChanges ? Color.ruulAccent : Color(.tertiaryLabel))
                 .disabled(!hasChanges || isSaving)
             }
         }
@@ -106,7 +106,7 @@ public struct GovernanceView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Configuración de votación")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
 
                 quorumRow
                 thresholdRow
@@ -121,7 +121,7 @@ public struct GovernanceView: View {
             HStack {
                 Text("Quórum")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text("\(rules.votingQuorumPercent)%")
                     .font(.subheadline)
@@ -138,7 +138,7 @@ public struct GovernanceView: View {
             .tint(Color.ruulAccent)
             Text("Mínimo del grupo que debe votar para que la votación cuente.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -147,7 +147,7 @@ public struct GovernanceView: View {
             HStack {
                 Text("Mayoría requerida")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text("\(rules.votingThresholdPercent)%")
                     .font(.subheadline)
@@ -164,7 +164,7 @@ public struct GovernanceView: View {
             .tint(Color.ruulAccent)
             Text("% de votos a favor para aprobar.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -173,7 +173,7 @@ public struct GovernanceView: View {
             HStack {
                 Text("Duración")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 Stepper("\(rules.votingDurationHours) hrs",
                         value: $rules.votingDurationHours,
@@ -184,7 +184,7 @@ public struct GovernanceView: View {
             }
             Text("Cuánto tiempo está abierta una votación antes de cerrarse.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -193,12 +193,12 @@ public struct GovernanceView: View {
             Toggle(isOn: $rules.votesAreAnonymous) {
                 Text("Votos anónimos")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             .tint(Color.ruulAccent)
             Text("Solo los conteos agregados son visibles. Recomendado.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -214,10 +214,10 @@ public struct GovernanceView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Picker(selection: selection) {
                     ForEach(options, id: \.self) { level in
                         Text(label(for: level)).tag(level)

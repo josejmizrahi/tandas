@@ -32,7 +32,7 @@ public struct RuulCloseToolbarButton: View {
         Button(action: action) {
             Image(systemName: "xmark")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
         }

@@ -68,17 +68,17 @@ public struct TemplatePickerCard: View {
                     .frame(width: 44, height: 44)
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: RuulSpacing.xs) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if isComingSoon {
                         Text("PRÓXIMAMENTE")
                             .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                             .padding(.horizontal, RuulSpacing.xs)
                             .padding(.vertical, 2)
                             .background(Color.ruulBackgroundRecessed, in: Capsule())
@@ -86,7 +86,7 @@ public struct TemplatePickerCard: View {
                 }
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -100,12 +100,12 @@ public struct TemplatePickerCard: View {
             ForEach(bullets, id: \.self) { bullet in
                 HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                     Circle()
-                        .fill(Color.ruulTextTertiary)
+                        .fill(Color(.tertiaryLabel))
                         .frame(width: 4, height: 4)
                         .alignmentGuide(.firstTextBaseline) { _ in 4 }
                     Text(bullet)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -124,7 +124,7 @@ public struct TemplatePickerCard: View {
     @ViewBuilder
     private var selectedBorder: some View {
         if isSelected {
-            shape.stroke(Color.ruulTextPrimary, lineWidth: 2)
+            shape.stroke(Color.primary, lineWidth: 2)
         }
     }
 
@@ -133,7 +133,7 @@ public struct TemplatePickerCard: View {
         if isSelected {
             ZStack {
                 Circle()
-                    .fill(Color.ruulTextPrimary)
+                    .fill(Color.primary)
                     .frame(width: 24, height: 24)
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .bold))

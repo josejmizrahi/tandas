@@ -93,7 +93,7 @@ public struct MyFinesView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("PENDIENTE DE PAGO")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 RuulMoneyView(
                     amount: coordinator.totalOutstanding,
                     currency: "MXN",
@@ -111,17 +111,17 @@ public struct MyFinesView: View {
         HStack(alignment: .center, spacing: RuulSpacing.md) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 32, weight: .semibold))
-                .foregroundStyle(Color.ruulPositive)
+                .foregroundStyle(Color.green)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Todo al corriente")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(coordinator.resolved.isEmpty
                     ? "No tienes multas pendientes."
                     : "Pagaste todas tus multas.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -156,10 +156,10 @@ public struct MyFinesView: View {
                     Capsule()
                         .fill(scope == s ? Color.ruulAccent : Color.ruulSurface)
                 )
-                .foregroundStyle(scope == s ? Color.ruulTextInverse : Color.ruulTextSecondary)
+                .foregroundStyle(scope == s ? Color.ruulTextInverse : Color.secondary)
                 .overlay(
                     Capsule()
-                        .stroke(scope == s ? Color.clear : Color.ruulSeparator, lineWidth: 1)
+                        .stroke(scope == s ? Color.clear : Color(.separator), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
@@ -195,7 +195,7 @@ public struct MyFinesView: View {
             // volver a "Todo".
             Text("Sin multas en este periodo.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, RuulSpacing.lg)
         }

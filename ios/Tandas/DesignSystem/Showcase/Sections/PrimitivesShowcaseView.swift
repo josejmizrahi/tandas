@@ -172,8 +172,8 @@ struct PrimitivesShowcaseView: View {
                 RuulIconBadge("calendar", size: .small)
                 RuulIconBadge("calendar", size: .medium)
                 RuulIconBadge("calendar", size: .large)
-                RuulIconBadge("checkmark", tint: .ruulPositive)
-                RuulIconBadge("xmark", tint: .ruulNegative)
+                RuulIconBadge("checkmark", tint: .green)
+                RuulIconBadge("xmark", tint: .red)
             }
         }
     }
@@ -195,7 +195,7 @@ struct PrimitivesShowcaseView: View {
             }
             .frame(width: 100, height: 80)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium))
-            Text(label).font(.caption).foregroundStyle(Color.ruulTextTertiary)
+            Text(label).font(.caption).foregroundStyle(Color(.tertiaryLabel))
         }
     }
 
@@ -214,7 +214,7 @@ struct PrimitivesShowcaseView: View {
                 ZStack {
                     RuulMeshBackground(.violet)
                     VStack {
-                        Text("Full screen").font(.largeTitle.weight(.bold)).foregroundStyle(Color.ruulTextPrimary)
+                        Text("Full screen").font(.largeTitle.weight(.bold)).foregroundStyle(Color.primary)
                         RuulButton("Close") { coverPresented = false }
                     }
                 }

@@ -46,7 +46,7 @@ struct MemberMultiPickerField: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             content
         }
         .task { await load() }
@@ -60,17 +60,17 @@ struct MemberMultiPickerField: View {
                 ProgressView()
                 Text("Cargando miembros…")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
         case .empty:
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "person.2.slash")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Text("Este grupo no tiene miembros para rotar")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
@@ -87,16 +87,16 @@ struct MemberMultiPickerField: View {
     private func inlineErrorRow(_ err: CoordinatorError) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
             VStack(alignment: .leading, spacing: 2) {
                 Text(err.title)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                 if let msg = err.message {
                     Text(msg)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
             }
@@ -112,7 +112,7 @@ struct MemberMultiPickerField: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulNegative.opacity(0.3), lineWidth: 1)
+                .stroke(Color.red.opacity(0.3), lineWidth: 1)
         )
     }
 
@@ -129,12 +129,12 @@ struct MemberMultiPickerField: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
         if !binding.isEmpty {
             Text("Rotación: \(binding.count) miembros en este orden")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
     }
 
@@ -153,15 +153,15 @@ struct MemberMultiPickerField: View {
                         .background(Circle().fill(Color.ruulAccent))
                 } else {
                     Circle()
-                        .stroke(Color.ruulSeparator, lineWidth: 1)
+                        .stroke(Color(.separator), lineWidth: 1)
                         .frame(width: 22, height: 22)
                 }
                 Text(entry.member.displayName)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer(minLength: 0)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Color.ruulAccent : Color.ruulTextTertiary)
+                    .foregroundStyle(isSelected ? Color.ruulAccent : Color(.tertiaryLabel))
             }
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)

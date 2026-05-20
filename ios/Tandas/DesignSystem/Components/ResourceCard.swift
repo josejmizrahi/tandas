@@ -77,17 +77,17 @@ private struct UnknownResourceCard: View {
         HStack(spacing: RuulSpacing.xs) {
             Image(systemName: "questionmark.square.dashed")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text("Resource \(String(describing: resource.resourceType)) sin body")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 }

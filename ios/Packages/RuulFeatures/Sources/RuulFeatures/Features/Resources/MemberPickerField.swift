@@ -54,7 +54,7 @@ struct MemberPickerField: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             content
         }
         .task { await load() }
@@ -68,17 +68,17 @@ struct MemberPickerField: View {
                 ProgressView()
                 Text("Cargando miembros…")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
         case .empty:
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "person.2.slash")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Text("Sin miembros disponibles")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: 0)
             }
             .padding(RuulSpacing.md)
@@ -95,16 +95,16 @@ struct MemberPickerField: View {
     private func inlineErrorRow(_ err: CoordinatorError) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
             VStack(alignment: .leading, spacing: 2) {
                 Text(err.title)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                 if let msg = err.message {
                     Text(msg)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
             }
@@ -120,7 +120,7 @@ struct MemberPickerField: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulNegative.opacity(0.3), lineWidth: 1)
+                .stroke(Color.red.opacity(0.3), lineWidth: 1)
         )
     }
 
@@ -142,7 +142,7 @@ struct MemberPickerField: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
     }
 

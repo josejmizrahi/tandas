@@ -90,7 +90,7 @@ public struct MyLedgerView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             RuulMoneyView(
                 amount: amount,
                 currency: "MXN",
@@ -103,7 +103,7 @@ public struct MyLedgerView: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -114,7 +114,7 @@ public struct MyLedgerView: View {
             HStack(spacing: RuulSpacing.xs) {
                 Text(net > 0 ? "El grupo te debe" : "Tú le debes al grupo")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer(minLength: RuulSpacing.sm)
                 RuulMoneyView(
                     amount: decimal(abs(net)),
@@ -127,7 +127,7 @@ public struct MyLedgerView: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
     }
@@ -158,11 +158,11 @@ public struct MyLedgerView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ledger.group.name)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(1)
                 Text(perGroupSubtitle(ledger))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(1)
             }
             Spacer()
@@ -176,7 +176,7 @@ public struct MyLedgerView: View {
                 )
                 Text(ledger.netCents >= 0 ? "neto a favor" : "neto a deber")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
         .padding(.horizontal, RuulSpacing.md)
@@ -221,16 +221,16 @@ public struct MyLedgerView: View {
                     .frame(width: 36, height: 36)
                 Image(systemName: icon(for: entry.type))
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(humanTypeLabel(entry.type))
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(1)
                 Text("\(groupName) · \(entry.occurredAt.ruulRelativeDescription)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(1)
             }
             Spacer()
@@ -283,15 +283,15 @@ public struct MyLedgerView: View {
                     .frame(width: 80, height: 80)
                 Image(systemName: "tray")
                     .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text("Aún sin movimientos")
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Cuando registres una aportación, gasto o pago, aparecerá aquí con su grupo.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, RuulSpacing.lg)
             }
@@ -311,12 +311,12 @@ public struct MyLedgerView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Spacer()
                 if let count {
                     Text("\(count)")
                         .font(.footnote.monospacedDigit().weight(.bold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
             }
             .padding(.horizontal, RuulSpacing.xxs)
@@ -324,14 +324,14 @@ public struct MyLedgerView: View {
                 .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                        .stroke(Color(.separator), lineWidth: 0.5)
                 )
         }
     }
 
     private var rowDivider: some View {
         Divider()
-            .background(Color.ruulSeparator)
+            .background(Color(.separator))
             .padding(.leading, 56)
     }
 

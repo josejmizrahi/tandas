@@ -189,7 +189,7 @@ public struct ResourceCreationSheet: View {
                 .controlSize(.large)
             Text("Creando…")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -206,7 +206,7 @@ public struct ResourceCreationSheet: View {
         ToolbarItem(placement: .principal) {
             Text(toolbarTitle)
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
     }
 
@@ -215,7 +215,7 @@ public struct ResourceCreationSheet: View {
         switch coordinator.phase {
         case .typePicker:
             Button("Cancelar") { dismiss() }
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         case .creating, .postCreate:
             // Mid-flight + post-success: only "Cerrar" on the trailing
             // edge of the success screen itself. Leading slot stays empty
@@ -227,7 +227,7 @@ public struct ResourceCreationSheet: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             .accessibilityLabel("Atrás")
         }

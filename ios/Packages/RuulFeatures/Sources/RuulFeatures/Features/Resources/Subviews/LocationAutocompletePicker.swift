@@ -48,12 +48,12 @@ public struct LocationAutocompletePicker: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.title)
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                                 .lineLimit(1)
                             if !suggestion.subtitle.isEmpty {
                                 Text(suggestion.subtitle)
                                     .font(.caption)
-                                    .foregroundStyle(Color.ruulTextSecondary)
+                                    .foregroundStyle(Color.secondary)
                                     .lineLimit(1)
                             }
                         }
@@ -66,7 +66,7 @@ public struct LocationAutocompletePicker: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                            .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                            .stroke(Color(.separator), lineWidth: 0.5)
                     )
                 }
                 .buttonStyle(.ruulPress)
@@ -77,11 +77,11 @@ public struct LocationAutocompletePicker: View {
     private func selectedRow(name: String) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
-                .foregroundStyle(Color.ruulPositive)
+                .foregroundStyle(Color.green)
                 .accessibilityHidden(true)
             Text(name)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Spacer()
             Button {
                 locationName = nil
@@ -90,7 +90,7 @@ public struct LocationAutocompletePicker: View {
                 query = ""
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
             }
             .buttonStyle(.plain)

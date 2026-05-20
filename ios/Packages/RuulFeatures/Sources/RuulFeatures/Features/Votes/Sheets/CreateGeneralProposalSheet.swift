@@ -52,7 +52,7 @@ public struct CreateGeneralProposalSheet: View {
                 if let error = coordinator.error {
                     Section {
                         Text(error)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }

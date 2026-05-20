@@ -22,7 +22,7 @@ public struct ShowcaseRootView: View {
                     if override.requiresHighContrast {
                         Text("HC override requires Settings → Accessibility → Increase Contrast")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
                 Section("Browse") {

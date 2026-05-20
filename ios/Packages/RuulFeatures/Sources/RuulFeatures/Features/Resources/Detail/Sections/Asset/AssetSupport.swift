@@ -114,7 +114,7 @@ struct MemberPickerSheet: View {
                         Text(m.displayName)
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
             }

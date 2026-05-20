@@ -105,7 +105,7 @@ public struct ActivityView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("\(visibleEvents.count) eventos")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -137,10 +137,10 @@ public struct ActivityView: View {
         HStack(spacing: 4) {
             Text(label)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Button { onClear() } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .accessibilityHidden(true)
             }
             .accessibilityLabel("Quitar filtro \(label)")
@@ -353,7 +353,7 @@ public struct HistoryFilterSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Tipo de evento")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Picker(selection: Binding(
                     get: { coordinator.filter.eventType },
                     set: { coordinator.setEventType($0) }
@@ -373,7 +373,7 @@ public struct HistoryFilterSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Rango de fecha")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
 
                 DatePicker("Desde", selection: Binding(
                     get: { coordinator.filter.fromDate ?? Calendar.current.date(byAdding: .month, value: -3, to: .now) ?? .now },

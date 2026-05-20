@@ -66,7 +66,7 @@ public struct RuulButton: View {
         switch style {
         case .primary:     return .ruulTextInverse
         case .secondary:   return .ruulAccent
-        case .glass:       return .ruulTextPrimary
+        case .glass:       return .primary
         case .destructive: return .ruulTextInverse
         case .plain:       return .ruulAccent
         }
@@ -120,7 +120,7 @@ private struct StyleBackground: ViewModifier {
                 .ruulGlass(Capsule(), material: .regular)
         case .destructive:
             content
-                .background(Capsule().fill(Color.ruulNegative))
+                .background(Capsule().fill(Color.red))
                 .ruulElevation(.sm)
         case .plain:
             content

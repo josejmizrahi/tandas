@@ -37,22 +37,22 @@ public struct MemberRowStub: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(data.name)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if let subtitle = data.subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
             Spacer()
             if let metaText = data.metaText {
                 Text(metaText)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             if let trailingIcon, action != nil {
                 Image(systemName: trailingIcon)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .padding(RuulSpacing.md)

@@ -47,7 +47,7 @@ public struct EditProfileSheet: View {
                     Section {
                         Text(error.message ?? error.title)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }
@@ -103,14 +103,14 @@ public struct EditProfileSheet: View {
                         .fill(Color.ruulOverlayDim)
                         .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
                     ProgressView()
-                        .tint(Color.ruulOnImage)
+                        .tint(Color.white)
                 }
 
                 Image(systemName: "camera.fill")
                     .font(.system(size: RuulSize.iconSmall, weight: .semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
-                    .background(Color.ruulTextPrimary, in: Circle())
+                    .background(Color.primary, in: Circle())
                     .offset(x: RuulSize.avatarXLarge * 0.35, y: RuulSize.avatarXLarge * 0.35)
             }
         }

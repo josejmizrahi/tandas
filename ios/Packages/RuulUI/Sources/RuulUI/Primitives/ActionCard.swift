@@ -24,10 +24,10 @@ public struct ActionCard: View {
 
         var dotColor: Color {
             switch self {
-            case .low:    return .ruulTextTertiary
-            case .medium: return .ruulInfo
-            case .high:   return .ruulWarning
-            case .urgent: return .ruulNegative
+            case .low:    return Color(.tertiaryLabel)
+            case .medium: return .blue
+            case .high:   return .orange
+            case .urgent: return .red
             }
         }
 
@@ -96,7 +96,7 @@ public struct ActionCard: View {
                 .frame(width: 40, height: 40)
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
     }
 
@@ -114,14 +114,14 @@ public struct ActionCard: View {
                     .frame(width: 8, height: 8)
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
             if let subtitle {
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
@@ -133,11 +133,11 @@ public struct ActionCard: View {
             if let timeRemaining {
                 Text(timeRemaining)
                     .font(.footnote.monospacedDigit().weight(.bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
     }
 

@@ -44,10 +44,10 @@ struct ResourceVariantPicker: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("¿Qué tipo de \(type.humanLabel.lowercased())?")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Elige el más parecido. Cualquiera funciona.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -55,10 +55,10 @@ struct ResourceVariantPicker: View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: "tray")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text("Por ahora no hay variantes para \(type.humanLabel.lowercased()).")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -74,10 +74,10 @@ struct ResourceVariantPicker: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(variant.humanName)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(variant.summary)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     if !variant.examples.isEmpty {
@@ -87,7 +87,7 @@ struct ResourceVariantPicker: View {
                 Spacer(minLength: RuulSpacing.xs)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -118,7 +118,7 @@ struct ResourceVariantPicker: View {
     private func examplesLine(_ examples: [String]) -> some View {
         Text(examples.joined(separator: " · "))
             .font(.caption)
-            .foregroundStyle(Color.ruulTextTertiary)
+            .foregroundStyle(Color(.tertiaryLabel))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, RuulSpacing.xxs)

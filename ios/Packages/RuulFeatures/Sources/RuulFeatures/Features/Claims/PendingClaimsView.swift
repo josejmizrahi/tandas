@@ -42,7 +42,7 @@ public struct PendingClaimsView: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
                 .padding(RuulSpacing.lg)
@@ -59,10 +59,10 @@ public struct PendingClaimsView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Te agregaron a estos grupos")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text("Tu número coincide con un miembro pendiente. Acepta para unir tu cuenta con el historial que ya hay.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -74,7 +74,7 @@ public struct PendingClaimsView: View {
             Text("Nada pendiente").font(.headline)
             Text("Ya no hay invitaciones esperando.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(RuulSpacing.xl)
@@ -86,7 +86,7 @@ public struct PendingClaimsView: View {
                 .font(.headline)
             Text("Te agregaron como \(claim.displayName)")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             HStack(spacing: RuulSpacing.sm) {
                 Button("Revisar") { reviewing = claim }
                     .buttonStyle(.bordered)

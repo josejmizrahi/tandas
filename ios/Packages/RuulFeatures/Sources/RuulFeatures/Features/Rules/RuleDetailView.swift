@@ -86,20 +86,20 @@ public struct RuleDetailView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack(spacing: RuulSpacing.xs) {
                 Circle()
-                    .fill(rule.isLive ? Color.ruulPositive : Color.ruulTextTertiary)
+                    .fill(rule.isLive ? Color.green : Color(.tertiaryLabel))
                     .frame(width: 8, height: 8)
                 Text(rule.isLive ? "ACTIVA" : "INACTIVA")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Text(rule.name)
                 .font(.title.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             if let amount = FineConsequenceParser.firstAmountMXN(in: rule.consequences), amount > 0 {
                 HStack {
                     Text("MULTA")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Spacer()
                     RuulMoneyView(
                         amount: Decimal(amount),
@@ -111,7 +111,7 @@ public struct RuleDetailView: View {
                 .padding(RuulSpacing.md)
                 .background(
                     RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .fill(Color.ruulNegativeBackground)
+                        .fill(Color.red.opacity(0.15))
                 )
                 .padding(.top, RuulSpacing.sm)
             }
@@ -125,7 +125,7 @@ public struct RuleDetailView: View {
             if rule.consequences.isEmpty {
                 Text("Sin consecuencias configuradas.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             } else {
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     ForEach(Array(rule.consequences.enumerated()), id: \.offset) { _, cons in
@@ -162,7 +162,7 @@ public struct RuleDetailView: View {
                             .opacity(0.5)
                             Text("Hay un cambio en votación — espera al resultado")
                                 .font(.caption)
-                                .foregroundStyle(Color.ruulTextTertiary)
+                                .foregroundStyle(Color(.tertiaryLabel))
                                 .padding(.horizontal, RuulSpacing.xs)
                         }
                     } else {
@@ -230,7 +230,7 @@ public struct RuleDetailView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(title)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             content()
                 .padding(RuulSpacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -240,7 +240,7 @@ public struct RuleDetailView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .strokeBorder(Color.ruulSeparator, lineWidth: 0.5)
+                        .strokeBorder(Color(.separator), lineWidth: 0.5)
                 )
         }
     }
@@ -249,13 +249,13 @@ public struct RuleDetailView: View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "arrow.right.circle.fill")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .frame(width: 24)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
             Text(humanConsequence(cons))
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
@@ -265,11 +265,11 @@ public struct RuleDetailView: View {
         HStack {
             Text(label)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Spacer()
             Text(value)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 

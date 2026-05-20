@@ -28,9 +28,9 @@ struct TokensShowcaseView: View {
                     ("ruulBackgroundRecessed", .ruulBackgroundRecessed)
                 ])
                 colorGroup("Text", entries: [
-                    ("ruulTextPrimary", .ruulTextPrimary),
-                    ("ruulTextSecondary", .ruulTextSecondary),
-                    ("ruulTextTertiary", .ruulTextTertiary),
+                    ("ruulTextPrimary", .primary),
+                    ("ruulTextSecondary", .secondary),
+                    ("ruulTextTertiary", Color(.tertiaryLabel)),
                     ("ruulTextAccent", .ruulTextAccent)
                 ])
                 colorGroup("Accent", entries: [
@@ -39,14 +39,14 @@ struct TokensShowcaseView: View {
                     ("ruulAccentMuted", .ruulAccentMuted)
                 ])
                 colorGroup("Semantic", entries: [
-                    ("ruulPositive", .ruulPositive),
-                    ("ruulWarning", .ruulWarning),
-                    ("ruulNegative", .ruulNegative),
-                    ("ruulInfo", .ruulInfo)
+                    ("ruulPositive", .green),
+                    ("ruulWarning", .orange),
+                    ("ruulNegative", .red),
+                    ("ruulInfo", .blue)
                 ])
                 colorGroup("Borders", entries: [
-                    ("ruulSeparator", .ruulSeparator),
-                    ("ruulSeparatorOpaque", .ruulSeparatorOpaque),
+                    ("ruulSeparator", Color(.separator)),
+                    ("ruulSeparatorOpaque", Color(.separator)),
                     ("ruulBorderStrong", .ruulBorderStrong),
                     ("ruulBorderGlass", .ruulBorderGlass)
                 ])
@@ -56,22 +56,22 @@ struct TokensShowcaseView: View {
 
     private func colorGroup(_ title: String, entries: [(String, Color)]) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(title).font(.footnote).foregroundStyle(Color.ruulTextTertiary)
+            Text(title).font(.footnote).foregroundStyle(Color(.tertiaryLabel))
             VStack(spacing: 4) {
                 ForEach(entries, id: \.0) { entry in
                     Button { UIPasteboard.general.string = entry.0 } label: {
                         HStack {
                             RoundedRectangle(cornerRadius: 6)
                                 .fill(entry.1)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.ruulSeparator, lineWidth: 0.5))
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(.separator), lineWidth: 0.5))
                                 .frame(width: 32, height: 32)
                             Text(entry.0)
                                 .font(.footnote)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             Spacer()
                             Image(systemName: "doc.on.doc")
                                 .font(.system(size: 12))
-                                .foregroundStyle(Color.ruulTextTertiary)
+                                .foregroundStyle(Color(.tertiaryLabel))
                         }
                         .padding(.vertical, 4)
                     }
@@ -102,8 +102,8 @@ struct TokensShowcaseView: View {
 
     private func typographyRow(_ label: String, font: Font, sample: String = "The quick brown fox") -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.footnote).foregroundStyle(Color.ruulTextTertiary)
-            Text(sample).font(font).foregroundStyle(Color.ruulTextPrimary)
+            Text(label).font(.footnote).foregroundStyle(Color(.tertiaryLabel))
+            Text(sample).font(font).foregroundStyle(Color.primary)
         }
     }
 
@@ -116,7 +116,7 @@ struct TokensShowcaseView: View {
                         Rectangle()
                             .fill(Color.ruulAccent.opacity(0.7))
                             .frame(width: item.1, height: 8)
-                        Text("\(Int(item.1))pt").font(.caption).foregroundStyle(Color.ruulTextTertiary)
+                        Text("\(Int(item.1))pt").font(.caption).foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
             }
@@ -131,7 +131,7 @@ struct TokensShowcaseView: View {
                         RoundedRectangle(cornerRadius: item.1)
                             .fill(Color.ruulAccentMuted)
                             .frame(width: 60, height: 60)
-                        Text(item.0).font(.caption).foregroundStyle(Color.ruulTextTertiary)
+                        Text(item.0).font(.caption).foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
             }
@@ -155,7 +155,7 @@ struct TokensShowcaseView: View {
                 .fill(Color.ruulSurface)
                 .frame(width: 60, height: 60)
                 .ruulElevation(level)
-            Text(label).font(.caption).foregroundStyle(Color.ruulTextTertiary)
+            Text(label).font(.caption).foregroundStyle(Color(.tertiaryLabel))
         }
     }
 

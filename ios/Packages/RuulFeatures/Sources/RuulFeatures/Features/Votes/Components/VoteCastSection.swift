@@ -43,9 +43,9 @@ private struct VoteCastButtons: View {
 
     public var body: some View {
         VStack(spacing: RuulSpacing.xs) {
-            castButton(.inFavor,    label: "A favor",      systemImage: "checkmark.circle.fill", tint: .ruulPositive)
-            castButton(.against,    label: "En contra",    systemImage: "xmark.circle.fill",     tint: .ruulNegative)
-            castButton(.abstained,  label: "Me abstengo",  systemImage: "minus.circle.fill",     tint: .ruulTextTertiary)
+            castButton(.inFavor,    label: "A favor",      systemImage: "checkmark.circle.fill", tint: .green)
+            castButton(.against,    label: "En contra",    systemImage: "xmark.circle.fill",     tint: .red)
+            castButton(.abstained,  label: "Me abstengo",  systemImage: "minus.circle.fill",     tint: Color(.tertiaryLabel))
         }
         .disabled(coordinator.isCasting)
         .opacity(coordinator.isCasting ? RuulOpacity.disabled : 1.0)
@@ -67,7 +67,7 @@ private struct VoteCastButtons: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -86,7 +86,7 @@ private struct VoteAlreadyCastView: View {
                 .accessibilityHidden(true)
             Text("Tu voto: \(text)")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer()
         }
         .padding(RuulSpacing.md)
@@ -95,10 +95,10 @@ private struct VoteAlreadyCastView: View {
 
     private func display(for choice: VoteChoice?) -> (String, Color, String) {
         switch choice {
-        case .inFavor:    return ("a favor",     .ruulPositive, "checkmark.circle.fill")
-        case .against:    return ("en contra",   .ruulNegative,   "xmark.circle.fill")
-        case .abstained:  return ("abstención",  .ruulTextTertiary,    "minus.circle.fill")
-        case .pending, .none: return ("pendiente", .ruulTextTertiary, "clock")
+        case .inFavor:    return ("a favor",     .green, "checkmark.circle.fill")
+        case .against:    return ("en contra",   .red,   "xmark.circle.fill")
+        case .abstained:  return ("abstención",  Color(.tertiaryLabel),    "minus.circle.fill")
+        case .pending, .none: return ("pendiente", Color(.tertiaryLabel), "clock")
         }
     }
 }
@@ -116,12 +116,12 @@ private struct VoteResolvedView: View {
                     .accessibilityHidden(true)
                 Text(displayed.label)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             if let resolvedAt = vote.resolvedAt {
                 Text("Cerrado \(resolvedAt.ruulRelativeDescription)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
         .padding(RuulSpacing.md)
@@ -140,19 +140,19 @@ private struct VoteResolvedView: View {
     private func display() -> Displayed {
         switch vote.status {
         case .quorumFailed:
-            return Displayed(label: "Voto sin quórum", tint: .ruulTextTertiary)
+            return Displayed(label: "Voto sin quórum", tint: Color(.tertiaryLabel))
         case .cancelled:
-            return Displayed(label: "Voto cancelado",  tint: .ruulTextTertiary)
+            return Displayed(label: "Voto cancelado",  tint: Color(.tertiaryLabel))
         case .open:
             // voteIsClosed should have prevented us reaching this branch,
             // but defensively render a neutral state.
-            return Displayed(label: "Voto cerrado",    tint: .ruulTextTertiary)
+            return Displayed(label: "Voto cerrado",    tint: Color(.tertiaryLabel))
         case .closed, .resolved:
             switch counts?.resolution {
-            case .passed:        return Displayed(label: "Voto aprobado",    tint: .ruulPositive)
-            case .failed:        return Displayed(label: "Voto rechazado",   tint: .ruulNegative)
-            case .quorumFailed:  return Displayed(label: "Voto sin quórum",  tint: .ruulTextTertiary)
-            case nil:            return Displayed(label: "Voto cerrado",     tint: .ruulTextTertiary)  // resolver pending
+            case .passed:        return Displayed(label: "Voto aprobado",    tint: .green)
+            case .failed:        return Displayed(label: "Voto rechazado",   tint: .red)
+            case .quorumFailed:  return Displayed(label: "Voto sin quórum",  tint: Color(.tertiaryLabel))
+            case nil:            return Displayed(label: "Voto cerrado",     tint: Color(.tertiaryLabel))  // resolver pending
             }
         }
     }

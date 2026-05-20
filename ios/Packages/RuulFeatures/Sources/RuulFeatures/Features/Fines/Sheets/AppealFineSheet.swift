@@ -27,7 +27,7 @@ public struct AppealFineSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
                 Text("Cuéntale al grupo por qué crees que esta multa no aplica. Tendrán 72 horas para votar.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 summaryCard
                 RuulTextField(
@@ -54,7 +54,7 @@ public struct AppealFineSheet: View {
             HStack {
                 Text(fine.reason)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
                 RuulMoneyView(
                     amount: fine.amount,
@@ -69,7 +69,7 @@ public struct AppealFineSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 

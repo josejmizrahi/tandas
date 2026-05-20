@@ -36,7 +36,7 @@ private struct RuulGlassModifier<Content: View, S: InsettableShape>: View {
         if reduceTransparency {
             content
                 .background(Color.ruulSurface, in: shape)
-                .overlay(shape.strokeBorder(Color.ruulSeparatorOpaque, lineWidth: 0.5))
+                .overlay(shape.strokeBorder(Color(.separator), lineWidth: 0.5))
         } else {
             content.glassEffect(resolvedGlass, in: shape)
         }

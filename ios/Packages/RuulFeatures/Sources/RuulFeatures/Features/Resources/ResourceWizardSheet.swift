@@ -42,7 +42,7 @@ public struct ResourceWizardSheet: View {
                     ToolbarItem(placement: .principal) {
                         Text(title)
                             .font(.headline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         // Inline CTA lives at the bottom of each step;
@@ -231,7 +231,7 @@ public struct ResourceWizardSheet: View {
             HStack {
                 Text(field.label)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer(minLength: RuulSpacing.sm)
                 DatePicker(
                     "",
@@ -254,10 +254,10 @@ public struct ResourceWizardSheet: View {
         ZStack {
             VStack(spacing: 0) {
                 Rectangle()
-                    .fill(isFirst ? Color.clear : Color.ruulSeparator)
+                    .fill(isFirst ? Color.clear : Color(.separator))
                     .frame(width: 1.5)
                 Rectangle()
-                    .fill(isLast ? Color.clear : Color.ruulSeparator)
+                    .fill(isLast ? Color.clear : Color(.separator))
                     .frame(width: 1.5)
             }
             Circle()
@@ -307,10 +307,10 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(builder.displayName)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(builder.summary)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
     }
@@ -323,7 +323,7 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 Text("¿Qué más quieres que pase?")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .padding(.leading, RuulSpacing.xxs)
                 if coordinator.availableCapabilityBlocks.isEmpty {
                     emptyCapabilitiesView
@@ -335,7 +335,7 @@ public struct ResourceWizardSheet: View {
                 if let error = coordinator.error {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                         .padding(.top, RuulSpacing.sm)
                 }
                 RuulButton(
@@ -358,10 +358,10 @@ public struct ResourceWizardSheet: View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: "checkmark.circle")
                 .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Text("Listo, no necesitas configurar nada más.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(RuulSpacing.xl)
@@ -374,10 +374,10 @@ public struct ResourceWizardSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(block.displayName)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(block.summary)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 Spacer()
                 Toggle("", isOn: Binding(
@@ -421,7 +421,7 @@ public struct ResourceWizardSheet: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
     }
 
@@ -469,7 +469,7 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Acciones adicionales para lo que activaste arriba — recordatorios y reglas específicas.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.leading, RuulSpacing.xxs)
@@ -493,10 +493,10 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("PATRONES UNIVERSALES")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Text("Patrones de coordinación que sirven en muchos grupos. Elige los que apliquen — se activan en este \(coordinator.selectedBuilder?.displayName.lowercased() ?? "recurso") cuando lo crees.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(compatible, id: \.id) { template in
@@ -514,20 +514,20 @@ public struct ResourceWizardSheet: View {
                 if template.doctrinalCategory != "uncategorized" {
                     Text(template.doctrinalCategory)
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
                 Text(template.displayNameES)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if template.naturalLanguagePreviewTemplate != nil {
                     Text(RuleSentenceFormatter.preview(forTemplate: template))
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                 } else {
                     Text(template.descriptionES)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                 }
             }
@@ -543,7 +543,7 @@ public struct ResourceWizardSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -561,7 +561,7 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text(block.displayName.uppercased())
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(grouped[block.id] ?? [], id: \.template.slug) { pair in
                         suggestedRuleRow(block: pair.block, template: pair.template)
@@ -577,10 +577,10 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(template.displayName)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(template.summary)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.leading)
             }
             Spacer()
@@ -595,7 +595,7 @@ public struct ResourceWizardSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -613,7 +613,7 @@ public struct ResourceWizardSheet: View {
                     if let error = coordinator.error {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                             .padding(.top, RuulSpacing.sm)
                     }
                     RuulButton(
@@ -645,7 +645,7 @@ public struct ResourceWizardSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -653,17 +653,17 @@ public struct ResourceWizardSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("DETALLES")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             VStack(spacing: 0) {
                 ForEach(Array(builder.requiredFields.enumerated()), id: \.offset) { idx, field in
                     HStack(alignment: .firstTextBaseline) {
                         Text(field.label)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                         Spacer()
                         Text(displayValue(for: field))
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                             .multilineTextAlignment(.trailing)
                     }
                     .padding(RuulSpacing.md)
@@ -675,7 +675,7 @@ public struct ResourceWizardSheet: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
     }
@@ -688,7 +688,7 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("OPCIONES ACTIVAS")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(enabled, id: \.id) { block in
                         HStack(spacing: RuulSpacing.sm) {
@@ -696,7 +696,7 @@ public struct ResourceWizardSheet: View {
                                 .foregroundStyle(Color.ruulAccent)
                             Text(block.displayName)
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             Spacer()
                         }
                         .padding(.horizontal, RuulSpacing.md)
@@ -729,7 +729,7 @@ public struct ResourceWizardSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ACUERDOS QUE APLICAN")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(allNames, id: \.self) { name in
                         HStack(alignment: .top, spacing: RuulSpacing.sm) {
@@ -738,7 +738,7 @@ public struct ResourceWizardSheet: View {
                                 .padding(.top, 2)
                             Text(name)
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             Spacer()
                         }
                         .padding(.horizontal, RuulSpacing.md)
@@ -787,7 +787,7 @@ public struct ResourceWizardSheet: View {
         switch coordinator.step {
         case .typePicker:
             Button("Cancelar") { dismiss() }
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         case .fields, .options, .rules, .review:
             Button {
                 coordinator.goBack()
@@ -796,7 +796,7 @@ public struct ResourceWizardSheet: View {
                     Image(systemName: "chevron.left")
                     Text("Atrás")
                 }
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             }
         }
     }
@@ -1041,12 +1041,12 @@ private struct WizardTypePicker: View {
                 )
                 .foregroundStyle(selectedCategory == cat
                                  ? Color.ruulTextInverse
-                                 : Color.ruulTextSecondary)
+                                 : Color.secondary)
                 .overlay(
                     Capsule()
                         .stroke(selectedCategory == cat
                                 ? Color.clear
-                                : Color.ruulSeparator,
+                                : Color(.separator),
                                 lineWidth: 1)
                 )
         }
@@ -1101,7 +1101,7 @@ private struct WizardTypePicker: View {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: chrome.symbol)
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(isImplemented ? chrome.semanticColor : Color.ruulTextTertiary)
+                    .foregroundStyle(isImplemented ? chrome.semanticColor : Color(.tertiaryLabel))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if !isImplemented {
                     RuulBadge("Pronto", style: .subtle)
@@ -1109,7 +1109,7 @@ private struct WizardTypePicker: View {
             }
             Text(type.humanLabel)
                 .font(.footnote)
-                .foregroundStyle(isImplemented ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                .foregroundStyle(isImplemented ? Color.primary : Color(.tertiaryLabel))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .multilineTextAlignment(.leading)
         }
@@ -1121,7 +1121,7 @@ private struct WizardTypePicker: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
     }
 }
