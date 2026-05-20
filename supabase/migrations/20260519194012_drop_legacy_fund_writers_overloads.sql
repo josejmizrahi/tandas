@@ -1,0 +1,32 @@
+-- 00352 — Drop legacy 5-arg overloads of fund_contribute + fund_record_expense.
+--
+-- Why
+-- ===
+-- Mig 00351 added a `p_client_id uuid default null` param to both RPCs via
+-- `create or replace function`. But Postgres treats functions with
+-- different argument lists as DIFFERENT functions, so the old 5-arg
+-- overloads remained installed alongside the new 6-arg versions:
+--
+--   fund_contribute(uuid, bigint, text, text, uuid)             -- legacy
+--   fund_contribute(uuid, bigint, text, text, uuid, uuid)       -- V1-01
+--
+-- PostgREST resolves RPC overloads by the JSON keys it gets in the body.
+-- A client that sends just 5 keys would hit the legacy overload (no
+-- idempotency); a client that sends all 6 hits the V1-01 overload. That
+-- inconsistency defeats the whole purpose of V1-01.
+--
+-- Fix: drop the legacy 5-arg overloads explicitly. The new 6-arg
+-- versions handle both call shapes (`p_client_id` defaults to null, so
+-- pre-V1-01 callers keep working — they just don't get idempotency).
+--
+-- Idempotent: `drop function if exists` is a no-op on a clean install
+-- (where mig 00351's overload never existed). Safe to re-apply.
+--
+-- Rollback
+-- ========
+-- _rollbacks/20260519194012_rollback.sql recreates the 5-arg overloads
+-- (which puts the system back into the "two-overload limbo" state — not
+-- a useful state, only for emergency revert sequencing).
+
+drop function if exists public.fund_contribute(uuid, bigint, text, text, uuid);
+drop function if exists public.fund_record_expense(uuid, bigint, uuid, text, text, uuid);
