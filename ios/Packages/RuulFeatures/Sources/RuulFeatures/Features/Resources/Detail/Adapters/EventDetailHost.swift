@@ -169,6 +169,7 @@ public struct EventDetailHost: View {
                 bootView
             }
         }
+        .ruulSheetToolbar(coordinator.event.title, onClose: onClose)
         .environment(\.eventInteractor, coordinator)
         .environment(\.eventDetailPresenter, presenter)
         .task { await coordinator.refresh() }
