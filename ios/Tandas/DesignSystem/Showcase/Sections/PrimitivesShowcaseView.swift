@@ -138,10 +138,18 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var toggleSection: some View {
-        ShowcaseSection("RuulToggle") {
+        ShowcaseSection("Toggle") {
             VStack(spacing: RuulSpacing.xs) {
-                RuulToggle("Notificaciones", isOn: $toggleOn)
-                RuulToggle("Auto-RSVP", isOn: .constant(false), description: "Confirma automáticamente.")
+                Toggle("Notificaciones", isOn: $toggleOn)
+                Toggle(isOn: .constant(false)) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Auto-RSVP")
+                            .font(.subheadline)
+                        Text("Confirma automáticamente.")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
             }
         }
     }

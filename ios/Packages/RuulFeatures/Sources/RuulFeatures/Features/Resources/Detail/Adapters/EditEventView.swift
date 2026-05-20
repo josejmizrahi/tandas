@@ -144,11 +144,15 @@ public struct EditEventView: View {
     }
 
     private var rulesToggleSection: some View {
-        RuulToggle(
-            "Aplicar reglas del grupo",
-            isOn: $coordinator.draft.applyRules,
-            description: "Si está apagado, este evento no genera multas al cerrarse."
-        )
+        Toggle(isOn: $coordinator.draft.applyRules) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Aplicar reglas del grupo")
+                    .font(.subheadline)
+                Text("Si está apagado, este evento no genera multas al cerrarse.")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+            }
+        }
     }
 
     private var saveButton: some View {
