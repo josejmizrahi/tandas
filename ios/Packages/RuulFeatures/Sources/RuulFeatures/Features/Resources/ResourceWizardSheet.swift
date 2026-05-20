@@ -1102,7 +1102,12 @@ private struct WizardTypePicker: View {
                     .foregroundStyle(isImplemented ? chrome.semanticColor : Color(.tertiaryLabel))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if !isImplemented {
-                    RuulBadge("Pronto", style: .subtle)
+                    Text("Pronto")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.tertiarySystemFill), in: .capsule)
                 }
             }
             Text(type.humanLabel)

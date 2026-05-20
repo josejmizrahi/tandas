@@ -125,7 +125,10 @@ public struct EditEventView: View {
                     .foregroundStyle(Color(.tertiaryLabel))
                 RuulCard(.tile) {
                     HStack(spacing: RuulSpacing.sm) {
-                        RuulIconBadge("person.fill", size: .small)
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.tint)
+                            .frame(width: 32, height: 32)
                         Text(coordinator.draft.hostId == nil ? "Sin asignar" : "Asignado")
                             .font(.subheadline)
                             .foregroundStyle(Color.primary)

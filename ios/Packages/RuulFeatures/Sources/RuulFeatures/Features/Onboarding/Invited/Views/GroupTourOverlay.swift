@@ -64,7 +64,10 @@ public struct GroupTourOverlay: View {
 
     private func bullet(icon: String, text: String) -> some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
-            RuulIconBadge(icon, size: .small)
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 32, height: 32)
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(Color.primary)

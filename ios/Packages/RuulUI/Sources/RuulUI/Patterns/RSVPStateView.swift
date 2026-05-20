@@ -53,7 +53,10 @@ public struct RSVPStateView: View {
 
     private var confirmedCard: some View {
         HStack(spacing: RuulSpacing.sm) {
-            RuulIconBadge(confirmedIcon, tint: confirmedTint, size: .medium)
+            Image(systemName: confirmedIcon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(confirmedTint)
+                .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(confirmedTitle)
                     .font(.headline)
