@@ -40,6 +40,9 @@ public struct RecordExpenseFromFundSheet: View {
     @State private var note: String = ""
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
+    /// Stable idempotency key (mig 00351). Same retry-safety semantics as
+    /// ContributeToFundSheet — generated per sheet open, reused on re-tap.
+    @State private var clientId: UUID = UUID()
 
     public init(
         fundId: UUID,
@@ -144,7 +147,8 @@ public struct RecordExpenseFromFundSheet: View {
                 toMemberId: toId,
                 currency: currency,
                 note: trimmedNote.isEmpty ? nil : trimmedNote,
-                sourceEventId: sourceEventId
+                sourceEventId: sourceEventId,
+                clientId: clientId
             )
             onDidRecord()
             dismiss()

@@ -28,26 +28,32 @@ public protocol FundRepository: Actor {
     /// `note` lands in the ledger entry's metadata jsonb. `sourceEventId`
     /// (mig 00344) attributes the entry to a specific event so the
     /// event's money tab can render event-scoped balances without
-    /// duplicating the fund per event.
+    /// duplicating the fund per event. `clientId` (mig 00351) is an
+    /// idempotency key — sheets hold a stable UUID in `@State` so a
+    /// re-tap after a network error reuses the same key and the backend
+    /// returns the existing row instead of inserting a duplicate.
     func contribute(
         fundId: UUID,
         amountCents: Int64,
         currency: String?,
         note: String?,
-        sourceEventId: UUID?
+        sourceEventId: UUID?,
+        clientId: UUID?
     ) async throws -> LedgerEntry
 
     /// Records an expense FROM the fund TO a recipient member. Vendor
     /// expenses without a recipient are out of scope (the projection
     /// uses direction-based balance math). `sourceEventId` (mig 00344)
-    /// attributes the entry to a specific event.
+    /// attributes the entry to a specific event. `clientId` (mig 00351)
+    /// is an idempotency key — same semantics as `contribute`.
     func recordExpense(
         fundId: UUID,
         amountCents: Int64,
         toMemberId: UUID,
         currency: String?,
         note: String?,
-        sourceEventId: UUID?
+        sourceEventId: UUID?,
+        clientId: UUID?
     ) async throws -> LedgerEntry
 
     /// Admin-only soft lock. Emits `fundLocked`. Does NOT block writers
@@ -85,13 +91,24 @@ public actor MockFundRepository: FundRepository {
         amountCents: Int64,
         currency: String?,
         note: String?,
-        sourceEventId: UUID? = nil
+        sourceEventId: UUID? = nil,
+        clientId: UUID? = nil
     ) async throws -> LedgerEntry {
         guard let snapshot = funds[fundId]?.first else { throw FundError.notFound }
+        // Mirror the server-side V1-01 dedup: if clientId already exists
+        // among recorded entries, return the prior row. Lets feature
+        // tests verify retry-idempotency without a live backend.
+        if let clientId,
+           let existing = entries.first(where: {
+               $0.metadata["client_id"]?.stringValue == clientId.uuidString.lowercased()
+           }) {
+            return existing
+        }
         let resolvedCurrency = currency ?? snapshot.currency
         var meta: [String: JSONConfig] = [:]
         if let note, !note.isEmpty { meta["note"] = .string(note) }
         if let sourceEventId { meta["source_event_id"] = .string(sourceEventId.uuidString.lowercased()) }
+        if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: fundId,
@@ -113,13 +130,21 @@ public actor MockFundRepository: FundRepository {
         toMemberId: UUID,
         currency: String?,
         note: String?,
-        sourceEventId: UUID? = nil
+        sourceEventId: UUID? = nil,
+        clientId: UUID? = nil
     ) async throws -> LedgerEntry {
         guard let snapshot = funds[fundId]?.first else { throw FundError.notFound }
+        if let clientId,
+           let existing = entries.first(where: {
+               $0.metadata["client_id"]?.stringValue == clientId.uuidString.lowercased()
+           }) {
+            return existing
+        }
         let resolvedCurrency = currency ?? snapshot.currency
         var meta: [String: JSONConfig] = [:]
         if let note, !note.isEmpty { meta["note"] = .string(note) }
         if let sourceEventId { meta["source_event_id"] = .string(sourceEventId.uuidString.lowercased()) }
+        if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: fundId,
@@ -264,7 +289,8 @@ public actor LiveFundRepository: FundRepository {
         amountCents: Int64,
         currency: String?,
         note: String?,
-        sourceEventId: UUID? = nil
+        sourceEventId: UUID? = nil,
+        clientId: UUID? = nil
     ) async throws -> LedgerEntry {
         struct Params: Encodable {
             let p_fund_id: String
@@ -272,6 +298,7 @@ public actor LiveFundRepository: FundRepository {
             let p_currency: String?
             let p_note: String?
             let p_source_event_id: String?
+            let p_client_id: String?
         }
         do {
             return try await client
@@ -280,7 +307,8 @@ public actor LiveFundRepository: FundRepository {
                     p_amount_cents: amountCents,
                     p_currency: currency,
                     p_note: (note?.isEmpty ?? true) ? nil : note,
-                    p_source_event_id: sourceEventId?.uuidString.lowercased()
+                    p_source_event_id: sourceEventId?.uuidString.lowercased(),
+                    p_client_id: clientId?.uuidString.lowercased()
                 ))
                 .execute()
                 .value
@@ -295,7 +323,8 @@ public actor LiveFundRepository: FundRepository {
         toMemberId: UUID,
         currency: String?,
         note: String?,
-        sourceEventId: UUID? = nil
+        sourceEventId: UUID? = nil,
+        clientId: UUID? = nil
     ) async throws -> LedgerEntry {
         struct Params: Encodable {
             let p_fund_id: String
@@ -304,6 +333,7 @@ public actor LiveFundRepository: FundRepository {
             let p_currency: String?
             let p_note: String?
             let p_source_event_id: String?
+            let p_client_id: String?
         }
         do {
             return try await client
@@ -313,7 +343,8 @@ public actor LiveFundRepository: FundRepository {
                     p_to_member_id: toMemberId.uuidString.lowercased(),
                     p_currency: currency,
                     p_note: (note?.isEmpty ?? true) ? nil : note,
-                    p_source_event_id: sourceEventId?.uuidString.lowercased()
+                    p_source_event_id: sourceEventId?.uuidString.lowercased(),
+                    p_client_id: clientId?.uuidString.lowercased()
                 ))
                 .execute()
                 .value

@@ -38,6 +38,12 @@ public struct ContributeToFundSheet: View {
     @State private var note: String = ""
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
+    /// Stable idempotency key (mig 00351). Generated once when the sheet
+    /// opens; re-taps after a network error reuse it so the server
+    /// returns the existing ledger row instead of inserting a duplicate.
+    /// Dismissing the sheet tears down @State, so the next open gets a
+    /// fresh UUID.
+    @State private var clientId: UUID = UUID()
 
     public init(
         fundId: UUID,
@@ -132,7 +138,8 @@ public struct ContributeToFundSheet: View {
                 amountCents: cents,
                 currency: currency,
                 note: trimmedNote.isEmpty ? nil : trimmedNote,
-                sourceEventId: sourceEventId
+                sourceEventId: sourceEventId,
+                clientId: clientId
             )
             onDidContribute()
             dismiss()
