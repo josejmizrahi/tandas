@@ -292,12 +292,28 @@ public extension Color {
     static var ruulTextPrimary: Color    { RuulColors.default.textPrimary }
     static var ruulTextSecondary: Color  { RuulColors.default.textSecondary }
     static var ruulTextTertiary: Color   { RuulColors.default.textTertiary }
-    static var ruulTextInverse: Color    { RuulColors.default.textInverse }
-    static var ruulTextAccent: Color     { RuulColors.default.textAccent }
+    /// White over a tinted button label. With `.borderedProminent` and
+    /// `.tint(.accentColor)` SwiftUI handles inverse text automatically,
+    /// but call sites that pre-date that pattern still reach for this
+    /// token. Bridged to `Color.white` so the visual stays correct on
+    /// any tint backdrop.
+    static var ruulTextInverse: Color    { .white }
+    /// Foreground color for "accent-tinted text" (links, prominent
+    /// labels). Bridged to `Color.accentColor` so the new system accent
+    /// (deep unsaturated blue, per doctrine #3) drives every accent-y
+    /// label without per-site changes.
+    static var ruulTextAccent: Color     { .accentColor }
 
-    static var ruulAccentPrimary: Color   { RuulColors.default.accentPrimary }
-    static var ruulAccentSecondary: Color { RuulColors.default.accentSecondary }
-    static var ruulAccentSubtle: Color    { RuulColors.default.accentSubtle }
+    /// Bridged to `Color.accentColor` (Asset Catalog `AccentColor` set).
+    /// Per doctrine decision #3 — one accent color, period. Single
+    /// source of truth for the tint of every primary affordance.
+    static var ruulAccentPrimary: Color   { .accentColor }
+    /// Bridged to `.secondary` per doctrine #3 (`accentSecondary` was a
+    /// rainbow brand var; collapsed to the system's secondary content).
+    static var ruulAccentSecondary: Color { .secondary }
+    /// Inline accent tint at 15% opacity — the canonical pattern for
+    /// chip/tag fills derived from the system accent.
+    static var ruulAccentSubtle: Color    { Color.accentColor.opacity(0.15) }
 
     static var ruulSemanticSuccess: Color { RuulColors.default.semanticSuccess }
     static var ruulSemanticWarning: Color { RuulColors.default.semanticWarning }

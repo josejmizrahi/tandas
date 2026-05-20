@@ -250,6 +250,7 @@ struct TandasApp: App {
             AuthGate()
                 .environment(appState)
                 .ruulTheme()
+                .tint(.accentColor)
                 .preferredColorScheme(appearance.colorScheme)
                 #if DEBUG
                 .ruulShowcaseShakeListener()
