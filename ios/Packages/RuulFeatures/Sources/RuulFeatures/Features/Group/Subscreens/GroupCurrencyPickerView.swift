@@ -37,15 +37,15 @@ public struct GroupCurrencyPickerView: View {
                     Button { Task { await select(entry.code) } } label: {
                         HStack {
                             Text(entry.symbol)
-                                .ruulTextStyle(RuulTypography.mono)
+                                .font(.body.monospaced())
                                 .frame(width: 44, alignment: .leading)
                                 .foregroundStyle(Color.ruulTextSecondary)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(entry.label)
-                                    .ruulTextStyle(RuulTypography.body)
+                                    .font(.subheadline)
                                     .foregroundStyle(Color.ruulTextPrimary)
                                 Text(entry.code)
-                                    .ruulTextStyle(RuulTypography.caption)
+                                    .font(.caption)
                                     .foregroundStyle(Color.ruulTextSecondary)
                             }
                             Spacer()
@@ -68,7 +68,7 @@ public struct GroupCurrencyPickerView: View {
             .padding(RuulSpacing.lg)
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulNegative)
             }
         }

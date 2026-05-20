@@ -33,10 +33,10 @@ struct ResourceTypePicker: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("¿Qué estás creando?")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Elige el tipo. Después decides los detalles.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -76,12 +76,12 @@ struct ResourceTypePicker: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(alignment: .center, spacing: RuulSpacing.xs) {
                 Image(systemName: copy.icon)
-                    .font(RuulTypography.bodyLarge.font)
+                    .font(.body)
                     .foregroundStyle(Color.ruulAccent)
                 Spacer()
                 if !isImplemented {
                     Text("Pronto")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .padding(.horizontal, RuulSpacing.xs)
                         .padding(.vertical, 2)
@@ -91,10 +91,10 @@ struct ResourceTypePicker: View {
                 }
             }
             Text(type.humanLabel)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(copy.summary)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.leading)
                 .lineLimit(2)

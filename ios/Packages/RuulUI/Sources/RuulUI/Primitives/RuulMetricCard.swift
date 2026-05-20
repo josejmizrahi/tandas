@@ -69,7 +69,7 @@ public struct RuulMetricCard: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             valueRow
             if let trend {
@@ -91,15 +91,15 @@ public struct RuulMetricCard: View {
         HStack(alignment: .lastTextBaseline, spacing: 2) {
             if let unitPrefix {
                 Text(unitPrefix)
-                    .ruulTextStyle(unitStyle)
+                    .font(unitFont)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Text(value)
-                .ruulTextStyle(valueStyle)
+                .font(valueFont)
                 .foregroundStyle(Color.ruulTextPrimary)
             if let unitSuffix {
                 Text(unitSuffix)
-                    .ruulTextStyle(unitStyle)
+                    .font(unitFont)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }
@@ -111,24 +111,24 @@ public struct RuulMetricCard: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(trend.color)
             Text(trend.label)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
 
-    private var valueStyle: RuulTextStyle {
+    private var valueFont: Font {
         switch size {
-        case .compact: return RuulTypography.statSmall
-        case .regular: return RuulTypography.statMedium
-        case .hero:    return RuulTypography.statHero
+        case .compact: return .footnote.monospacedDigit().weight(.bold)
+        case .regular: return .body.monospacedDigit().weight(.bold)
+        case .hero:    return .largeTitle.monospacedDigit().weight(.heavy)
         }
     }
 
-    private var unitStyle: RuulTextStyle {
+    private var unitFont: Font {
         switch size {
-        case .compact: return RuulTypography.caption
-        case .regular: return RuulTypography.callout
-        case .hero:    return RuulTypography.headline
+        case .compact: return .caption
+        case .regular: return .footnote
+        case .hero:    return .headline
         }
     }
 

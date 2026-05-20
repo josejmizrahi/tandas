@@ -89,16 +89,16 @@ public struct RuleDetailView: View {
                     .fill(rule.isLive ? Color.ruulPositive : Color.ruulTextTertiary)
                     .frame(width: 8, height: 8)
                 Text(rule.isLive ? "ACTIVA" : "INACTIVA")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Text(rule.name)
-                .ruulTextStyle(RuulTypography.titleLarge)
+                .font(.title.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             if let amount = FineConsequenceParser.firstAmountMXN(in: rule.consequences), amount > 0 {
                 HStack {
                     Text("MULTA")
-                        .ruulTextStyle(RuulTypography.sectionLabel)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextTertiary)
                     Spacer()
                     RuulMoneyView(
@@ -124,7 +124,7 @@ public struct RuleDetailView: View {
         sectionContainer(title: "QUÉ HACE") {
             if rule.consequences.isEmpty {
                 Text("Sin consecuencias configuradas.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             } else {
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
@@ -161,7 +161,7 @@ public struct RuleDetailView: View {
                             .disabled(true)
                             .opacity(0.5)
                             Text("Hay un cambio en votación — espera al resultado")
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextTertiary)
                                 .padding(.horizontal, RuulSpacing.xs)
                         }
@@ -229,7 +229,7 @@ public struct RuleDetailView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             Text(title)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextSecondary)
             content()
                 .padding(RuulSpacing.md)
@@ -248,13 +248,13 @@ public struct RuleDetailView: View {
     private func consequenceRow(_ cons: GroupRule.ConsequenceEnvelope) -> some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "arrow.right.circle.fill")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulNegative)
                 .frame(width: 24)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
             Text(humanConsequence(cons))
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -264,11 +264,11 @@ public struct RuleDetailView: View {
     private func metadataRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
             Spacer()
             Text(value)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }

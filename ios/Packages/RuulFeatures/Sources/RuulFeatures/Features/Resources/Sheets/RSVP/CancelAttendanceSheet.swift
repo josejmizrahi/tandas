@@ -29,7 +29,7 @@ public struct CancelAttendanceSheet: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(Color.ruulWarning)
                         Text("Esto puede generar multa según las reglas del grupo.")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                     .padding(RuulSpacing.sm)

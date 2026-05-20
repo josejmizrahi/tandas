@@ -76,7 +76,7 @@ public struct RSVPAvatarStrip: View {
                 RuulAvatar(name: name, imageURL: profile?.avatarURL, size: .medium)
                 if rsvp.isCheckedIn {
                     Image(systemName: "checkmark.seal.fill")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulPositive)
                         .padding(2)
                         .background(Color.ruulBackground, in: Circle())
@@ -84,7 +84,7 @@ public struct RSVPAvatarStrip: View {
                 }
             }
             Text(firstNameOnly(name))
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .lineLimit(1)
                 .frame(maxWidth: 64)
@@ -102,11 +102,11 @@ public struct RSVPAvatarStrip: View {
                     .fill(Color.ruulSurface)
                     .frame(width: 40, height: 40)
                 Text("+\(count)")
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             Text("Ver todos")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .frame(width: 64)
@@ -116,11 +116,11 @@ public struct RSVPAvatarStrip: View {
     private var emptyState: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "person.crop.circle.badge.questionmark")
-                .ruulTextStyle(RuulTypography.bodyLarge)
+                .font(.body)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
             Text("Sin confirmaciones aún")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer(minLength: 0)
         }

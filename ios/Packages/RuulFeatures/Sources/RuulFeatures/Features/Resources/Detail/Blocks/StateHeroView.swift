@@ -13,12 +13,12 @@ struct StateHeroView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text(headline.headline)
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .lineLimit(3)
             if !headline.supportingFacts.isEmpty {
                 Text(headline.supportingFacts.joined(separator: " · "))
-                    .ruulTextStyle(RuulTypography.subhead)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             if let action = headline.primaryAction, action.kind != .none {
@@ -28,7 +28,7 @@ struct StateHeroView: View {
                             Image(systemName: symbol)
                         }
                         Text(action.label)
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .font(.subheadline.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, RuulSpacing.sm)

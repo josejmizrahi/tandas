@@ -42,7 +42,7 @@ public struct LeaveGroupConfirmationSheet: View {
                 }
                 if let error {
                     Text(error)
-                        .ruulTextStyle(RuulTypography.footnote)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulNegative)
                 }
                 Spacer()
@@ -56,10 +56,10 @@ public struct LeaveGroupConfirmationSheet: View {
     private var soleAdminBlocker: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Label("Eres el único admin", systemImage: "exclamationmark.triangle")
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulWarning)
             Text("Antes de salir, asigna el rol de admin a otro miembro o archiva el grupo. Tu badge de fundador permanece como historia del grupo.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button("Entendido") { dismiss() }
                 .buttonStyle(.borderedProminent)
@@ -69,10 +69,10 @@ public struct LeaveGroupConfirmationSheet: View {
     private var confirmation: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("¿Salir de \(group.name)?")
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Perderás acceso a este grupo y a su actividad.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             pendingFinesWarning
             Button(role: .destructive) {
@@ -99,11 +99,11 @@ public struct LeaveGroupConfirmationSheet: View {
         if !pendingFinesInGroup.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Label("Tienes multas pendientes aquí", systemImage: "exclamationmark.triangle.fill")
-                    .ruulTextStyle(RuulTypography.subheadSemibold)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.ruulWarning)
                 let count = pendingFinesInGroup.count
                 Text("\(count == 1 ? "1 multa" : "\(count) multas") por \(formatCurrency(pendingFinesTotal)). Salir no las cancela — siguen visibles en Mis multas.")
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             .padding(RuulSpacing.md)

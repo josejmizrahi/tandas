@@ -26,10 +26,10 @@ public struct DetailAttentionView: View {
                         .frame(width: 8, height: 8)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Necesita atención")
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.ruulTextPrimary)
                         Text(summary)
-                            .ruulTextStyle(RuulTypography.callout)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulTextSecondary)
                             .lineLimit(2)
                     }

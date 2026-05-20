@@ -50,7 +50,7 @@ public struct VoteOnAppealSheet: View {
                 }
                 votingButtons
                 Text("Tu voto es anónimo. Solo se publican los conteos agregados.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
@@ -63,7 +63,7 @@ public struct VoteOnAppealSheet: View {
             RuulListSectionHeader("MULTA APELADA")
             HStack {
                 Text(fine.reason)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
                 RuulMoneyView(
@@ -87,7 +87,7 @@ public struct VoteOnAppealSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             RuulListSectionHeader("ARGUMENTO DE \(appellantName.uppercased())")
             Text(appeal.reason)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -116,7 +116,7 @@ public struct VoteOnAppealSheet: View {
             return "La multa se anula si la mayoría del grupo vota a favor."
         }()
         Text(copy)
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextSecondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -155,7 +155,7 @@ public struct VoteOnAppealSheet: View {
             HStack(spacing: RuulSpacing.xs) {
                 Circle().fill(dotColor).frame(width: 8, height: 8)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)

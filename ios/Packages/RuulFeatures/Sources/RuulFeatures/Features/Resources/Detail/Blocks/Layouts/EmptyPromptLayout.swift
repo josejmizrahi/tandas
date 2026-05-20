@@ -9,7 +9,7 @@ struct EmptyPromptLayout: View {
 
     var body: some View {
         Text(prompt)
-            .ruulTextStyle(RuulTypography.subhead)
+            .font(.subheadline)
             .foregroundStyle(Color.ruulTextSecondary)
     }
 }

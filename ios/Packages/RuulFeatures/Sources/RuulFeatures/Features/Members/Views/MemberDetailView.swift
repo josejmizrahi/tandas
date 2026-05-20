@@ -122,11 +122,11 @@ public struct MemberDetailView: View {
             )
             VStack(spacing: RuulSpacing.xxs) {
                 Text(displayName)
-                    .ruulTextStyle(RuulTypography.titleLarge)
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .multilineTextAlignment(.center)
                 Text(group.name)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }
@@ -192,12 +192,12 @@ public struct MemberDetailView: View {
     private func statTile(value: String, label: String) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text(value)
-                .ruulTextStyle(RuulTypography.statMedium)
+                .font(.body.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .lineLimit(1)
         }
@@ -219,7 +219,7 @@ public struct MemberDetailView: View {
                 Spacer()
                 if canManageRoles {
                     Button("Editar") { showRolesPicker = true }
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulAccent)
                 }
             }
@@ -240,7 +240,7 @@ public struct MemberDetailView: View {
 
     private var youHintSection: some View {
         Text("Este eres tú.")
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .frame(maxWidth: .infinity)
             .padding(.top, RuulSpacing.md)
@@ -250,12 +250,12 @@ public struct MemberDetailView: View {
     private func infoRow(icon: String, label: String) -> some View {
         HStack(spacing: RuulSpacing.md) {
             Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .frame(width: RuulSpacing.xxl, alignment: .center)
                 .accessibilityHidden(true)
             Text(label)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer(minLength: 0)
         }

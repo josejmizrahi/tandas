@@ -66,18 +66,18 @@ public struct ContributeToFundSheet: View {
             Form {
                 Section {
                     Text(fundName)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if let sourceEventName {
                         Label("Para \(sourceEventName)", systemImage: "calendar")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 } footer: {
                     Text(sourceEventName != nil
                          ? "Tu aportación queda registrada como parte de este evento."
                          : "Tu aportación entra al fondo y suma al balance común.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
 
@@ -94,7 +94,7 @@ public struct ContributeToFundSheet: View {
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }

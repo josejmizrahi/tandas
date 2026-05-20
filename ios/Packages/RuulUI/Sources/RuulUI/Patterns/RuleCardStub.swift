@@ -43,7 +43,7 @@ public struct RuleCardStub: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 HStack {
                     Text(data.name)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if onInfo != nil {
                         Button { onInfo?() } label: {
@@ -62,16 +62,16 @@ public struct RuleCardStub: View {
                 }
                 if let description = data.description {
                     Text(description)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 HStack {
                     Text("Multa")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                     Spacer()
                     Text(formattedAmount)
-                        .ruulTextStyle(RuulTypography.title)
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(Color.ruulTextAccent)
                 }
             }

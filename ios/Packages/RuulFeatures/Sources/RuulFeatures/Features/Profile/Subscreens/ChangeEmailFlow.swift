@@ -28,7 +28,7 @@ public struct ChangeEmailFlow: View {
     private var enterEmailStep: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Tu nuevo correo")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             TextField("nombre@dominio.com", text: $newEmail)
                 .textContentType(.emailAddress)
@@ -37,7 +37,7 @@ public struct ChangeEmailFlow: View {
                 .padding(RuulSpacing.md)
                 .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             if let error {
-                Text(error).ruulTextStyle(RuulTypography.footnote).foregroundStyle(Color.ruulNegative)
+                Text(error).font(.footnote).foregroundStyle(Color.ruulNegative)
             }
             Spacer()
             Button("Enviar código") { Task { await sendOTP() } }
@@ -51,7 +51,7 @@ public struct ChangeEmailFlow: View {
     private var enterOTPStep: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             Text("Código enviado a \(newEmail)")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             TextField("000000", text: $otp)
                 .textContentType(.oneTimeCode)
@@ -59,7 +59,7 @@ public struct ChangeEmailFlow: View {
                 .padding(RuulSpacing.md)
                 .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             if let error {
-                Text(error).ruulTextStyle(RuulTypography.footnote).foregroundStyle(Color.ruulNegative)
+                Text(error).font(.footnote).foregroundStyle(Color.ruulNegative)
             }
             Spacer()
             Button("Confirmar") { Task { await confirm() } }

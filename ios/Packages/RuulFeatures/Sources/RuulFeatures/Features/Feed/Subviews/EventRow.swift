@@ -104,20 +104,20 @@ public struct EventRow: View {
                 RuulOriginTag(group: originGroup)
             }
             Text(metaLine)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(metaColor)
                 .lineLimit(1)
             Text(event.title)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
             if let location = event.locationName, !location.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "mappin")
-                        .font(RuulTypography.microSemibold.font)
+                        .font(.caption2.weight(.semibold))
                     Text(location)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .lineLimit(1)
                 }
                 .foregroundStyle(Color.ruulTextSecondary)
@@ -173,7 +173,7 @@ public struct EventRow: View {
                 .fill(Color.ruulNegative)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulNegative)
         }
     }
@@ -190,9 +190,9 @@ public struct EventRow: View {
         }()
         return HStack(spacing: 4) {
             Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.microSemibold)
+                .font(.caption2.weight(.semibold))
             Text(label)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
         }
         .foregroundStyle(color)
     }

@@ -74,7 +74,7 @@ public struct SettlementSheet: View {
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             // W2 incidental: Color.ruulDanger doesn't exist
                             // in the design system — Tier 6 SettlementSheet
                             // typo. ruulNegative is the canonical error tint.

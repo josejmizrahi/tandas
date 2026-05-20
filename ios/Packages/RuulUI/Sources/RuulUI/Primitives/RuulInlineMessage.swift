@@ -67,11 +67,11 @@ public struct RuulInlineMessage: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(text)
-                    .font(.ruulCaption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextPrimary)
                 if let action {
                     Button(action.label, action: action.handler)
-                        .font(.ruulCaptionEmphasis)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(style.foreground)
                 }
             }

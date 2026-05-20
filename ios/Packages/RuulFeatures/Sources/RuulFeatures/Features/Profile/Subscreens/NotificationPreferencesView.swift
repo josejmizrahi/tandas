@@ -71,7 +71,7 @@ public struct NotificationPreferencesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
                     Text("Activa o desactiva tipos de aviso. Tu dispositivo recibirá solo los tipos activos.")
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextSecondary)
                     // Form area: `AsyncContentView` maneja loading
                     // (spinner) y loaded (form). No usamos retry: el
@@ -86,7 +86,7 @@ public struct NotificationPreferencesView: View {
                     }
                     if let msg = errorMessage {
                         Text(msg)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -102,7 +102,7 @@ public struct NotificationPreferencesView: View {
     private func prefGroupSection(_ group: PrefGroup) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(group.title)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.leading, RuulSpacing.xxs)
             VStack(spacing: 0) {
@@ -130,7 +130,7 @@ public struct NotificationPreferencesView: View {
                 .foregroundStyle(Color.ruulTextSecondary)
                 .frame(width: 28)
             Text(entry.label)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer()
             Toggle("", isOn: Binding(

@@ -53,7 +53,7 @@ struct MemberPickerField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
             content
         }
@@ -67,7 +67,7 @@ struct MemberPickerField: View {
             HStack(spacing: RuulSpacing.sm) {
                 ProgressView()
                 Text("Cargando miembros…")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer(minLength: 0)
             }
@@ -77,7 +77,7 @@ struct MemberPickerField: View {
                 Image(systemName: "person.2.slash")
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text("Sin miembros disponibles")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer(minLength: 0)
             }
@@ -98,19 +98,19 @@ struct MemberPickerField: View {
                 .foregroundStyle(Color.ruulNegative)
             VStack(alignment: .leading, spacing: 2) {
                 Text(err.title)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                 if let msg = err.message {
                     Text(msg)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(2)
                 }
             }
             Spacer(minLength: 0)
             Button("Reintentar") { Task { await load() } }
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulAccent)
         }
         .padding(RuulSpacing.md)

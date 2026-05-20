@@ -86,9 +86,9 @@ struct PrimitivesShowcaseView: View {
     private var cardSection: some View {
         ShowcaseSection("RuulCard") {
             VStack(spacing: RuulSpacing.sm) {
-                RuulCard(.glass) { Text("Glass card").ruulTextStyle(RuulTypography.body) }
-                RuulCard(.solid) { Text("Solid card").ruulTextStyle(RuulTypography.body) }
-                RuulCard(.outlined) { Text("Outlined card").ruulTextStyle(RuulTypography.body) }
+                RuulCard(.glass) { Text("Glass card").font(.subheadline) }
+                RuulCard(.solid) { Text("Solid card").font(.subheadline) }
+                RuulCard(.outlined) { Text("Outlined card").font(.subheadline) }
             }
         }
     }
@@ -195,7 +195,7 @@ struct PrimitivesShowcaseView: View {
             }
             .frame(width: 100, height: 80)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium))
-            Text(label).ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
+            Text(label).font(.caption).foregroundStyle(Color.ruulTextTertiary)
         }
     }
 
@@ -207,14 +207,14 @@ struct PrimitivesShowcaseView: View {
             }
             .ruulSheet(isPresented: $sheetPresented) {
                 ModalSheetTemplate(title: "Sheet", dismissAction: { sheetPresented = false }, primaryCTA: ("OK", { sheetPresented = false })) {
-                    Text("Sheet content").ruulTextStyle(RuulTypography.body)
+                    Text("Sheet content").font(.subheadline)
                 }
             }
             .ruulFullScreenCover(isPresented: $coverPresented) {
                 ZStack {
                     RuulMeshBackground(.violet)
                     VStack {
-                        Text("Full screen").ruulTextStyle(RuulTypography.displayLarge).foregroundStyle(Color.ruulTextPrimary)
+                        Text("Full screen").font(.largeTitle.weight(.bold)).foregroundStyle(Color.ruulTextPrimary)
                         RuulButton("Close") { coverPresented = false }
                     }
                 }

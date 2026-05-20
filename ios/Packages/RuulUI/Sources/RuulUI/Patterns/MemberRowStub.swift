@@ -36,18 +36,18 @@ public struct MemberRowStub: View {
             RuulAvatar(name: data.name, imageURL: data.avatarURL, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(data.name)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 if let subtitle = data.subtitle {
                     Text(subtitle)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
             }
             Spacer()
             if let metaText = data.metaText {
                 Text(metaText)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             if let trailingIcon, action != nil {

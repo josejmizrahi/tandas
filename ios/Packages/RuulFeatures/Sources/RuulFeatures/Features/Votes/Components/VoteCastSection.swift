@@ -60,7 +60,7 @@ private struct VoteCastButtons: View {
                     .foregroundStyle(tint)
                     .accessibilityHidden(true)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                 Spacer()
             }
             .padding(RuulSpacing.md)
@@ -85,7 +85,7 @@ private struct VoteAlreadyCastView: View {
                 .foregroundStyle(tint)
                 .accessibilityHidden(true)
             Text("Tu voto: \(text)")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
         }
@@ -115,12 +115,12 @@ private struct VoteResolvedView: View {
                     .foregroundStyle(displayed.tint)
                     .accessibilityHidden(true)
                 Text(displayed.label)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             if let resolvedAt = vote.resolvedAt {
                 Text("Cerrado \(resolvedAt.ruulRelativeDescription)")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }

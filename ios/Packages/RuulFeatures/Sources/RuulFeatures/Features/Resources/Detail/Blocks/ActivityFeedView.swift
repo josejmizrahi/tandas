@@ -11,17 +11,17 @@ struct ActivityFeedView: View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Actividad")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     ForEach(entries) { entry in
                         HStack(alignment: .top, spacing: RuulSpacing.sm) {
                             Text(entry.relativeTime)
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                                 .frame(width: 64, alignment: .leading)
                             Text(entry.sentence)
-                                .ruulTextStyle(RuulTypography.subhead)
+                                .font(.subheadline)
                                 .foregroundStyle(Color.ruulTextPrimary)
                         }
                     }
@@ -29,7 +29,7 @@ struct ActivityFeedView: View {
                 if hasMore {
                     Button(action: onSeeMore) {
                         Text("Ver más")
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .font(.subheadline.weight(.semibold))
                     }
                     .buttonStyle(.plain)
                 }

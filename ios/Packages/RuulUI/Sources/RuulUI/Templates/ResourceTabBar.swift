@@ -112,7 +112,7 @@ private struct ResourceTabBarPreview: View {
             ZStack {
                 Color.ruulBackground.ignoresSafeArea()
                 Text("Tab: \(String(describing: tab))")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
             }
         }

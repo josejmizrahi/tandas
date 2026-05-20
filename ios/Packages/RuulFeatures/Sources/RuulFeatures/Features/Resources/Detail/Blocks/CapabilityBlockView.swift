@@ -38,7 +38,7 @@ struct CapabilityBlockView: View {
                 if let verb = block.footerVerb {
                     Button(action: onOpen) {
                         Text(verb)
-                            .ruulTextStyle(RuulTypography.subheadSemibold)
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(tint.color)
                     }
                     .buttonStyle(.plain)
@@ -58,7 +58,7 @@ struct CapabilityBlockView: View {
                 Image(systemName: block.icon)
                     .foregroundStyle(tint.color)
                 Text(block.title)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")

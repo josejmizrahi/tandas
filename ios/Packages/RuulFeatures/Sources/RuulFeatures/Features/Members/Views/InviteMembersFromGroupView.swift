@@ -30,7 +30,7 @@ public struct InviteMembersFromGroupView: View {
                     if !pending.isEmpty { pendingSection }
                     if let error {
                         Text(error)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -66,16 +66,16 @@ public struct InviteMembersFromGroupView: View {
     private var shareCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Código de invitación")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             HStack {
                 Text(group.inviteCode)
-                    .ruulTextStyle(RuulTypography.mono)
+                    .font(.body.monospaced())
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
                 ShareLink(item: "Únete a \(group.name): \(group.inviteCode)") {
                     Label("Compartir", systemImage: "square.and.arrow.up")
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                 }
             }
             .padding(RuulSpacing.md)
@@ -86,7 +86,7 @@ public struct InviteMembersFromGroupView: View {
     private var addManualSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Invitar por teléfono")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             HStack {
                 TextField("+52 55 ...", text: $newPhone)
@@ -111,7 +111,7 @@ public struct InviteMembersFromGroupView: View {
                         showContactPicker = true
                     } label: {
                         Label("De mis contactos", systemImage: "person.crop.circle.badge.plus")
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                     }
                     .buttonStyle(.borderedProminent)
 
@@ -120,14 +120,14 @@ public struct InviteMembersFromGroupView: View {
                         showAddPlaceholder = true
                     } label: {
                         Label("Manual", systemImage: "square.and.pencil")
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                     }
                     .buttonStyle(.bordered)
                 }
                 .padding(.top, RuulSpacing.xs)
 
                 Text("Las personas que agregues cuentan desde ya para turnos, RSVPs, fines y votos. Reciben WhatsApp para activar su cuenta.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(.top, RuulSpacing.xxs)
             }
@@ -157,22 +157,22 @@ public struct InviteMembersFromGroupView: View {
     private var pendingSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Invitaciones pendientes (\(pending.count))")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             VStack(spacing: 0) {
                 ForEach(pending) { invite in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(invite.phoneE164 ?? "Sin teléfono")
-                                .ruulTextStyle(RuulTypography.body)
+                                .font(.subheadline)
                                 .foregroundStyle(Color.ruulTextPrimary)
                             Text(relativeDateLabel(invite.createdAt))
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                         }
                         Spacer()
                         Text("Pendiente")
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                     .padding(RuulSpacing.md)

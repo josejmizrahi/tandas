@@ -42,9 +42,9 @@ private struct RuulSheetPreview: View {
         .ruulSheet(isPresented: $showSheet) {
             VStack(spacing: RuulSpacing.md) {
                 Text("Modal content")
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                 Text("Full-screen takeover. Close with an explicit affordance.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 RuulButton("Close", style: .secondary) { showSheet = false }
                 Spacer()

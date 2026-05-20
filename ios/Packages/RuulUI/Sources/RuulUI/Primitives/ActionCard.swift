@@ -104,7 +104,7 @@ public struct ActionCard: View {
         VStack(alignment: .leading, spacing: 2) {
             if let meta {
                 Text(meta.uppercased())
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextAccent)
                     .lineLimit(1)
             }
@@ -113,14 +113,14 @@ public struct ActionCard: View {
                     .fill(priority.dotColor)
                     .frame(width: 8, height: 8)
                 Text(title)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
             if let subtitle {
                 Text(subtitle)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -132,7 +132,7 @@ public struct ActionCard: View {
         VStack(alignment: .trailing, spacing: RuulSpacing.xxs) {
             if let timeRemaining {
                 Text(timeRemaining)
-                    .ruulTextStyle(RuulTypography.statSmall)
+                    .font(.footnote.monospacedDigit().weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             Image(systemName: "chevron.right")

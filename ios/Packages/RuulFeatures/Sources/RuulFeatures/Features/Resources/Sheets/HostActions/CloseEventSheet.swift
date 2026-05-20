@@ -24,11 +24,11 @@ public struct CloseEventSheet: View {
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Después de cerrar, no se podrán hacer más check-ins.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 if vocabulary != "evento" {
                     Text("Si tu grupo tiene generación automática, creamos el siguiente \(vocabulary).")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
             }

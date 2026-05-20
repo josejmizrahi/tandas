@@ -23,7 +23,7 @@ public struct CancelEventSheet: View {
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Esto avisa a todos los confirmados.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 RuulTextField("Razón (opcional)", text: $reason, label: "¿Por qué?")
                 RuulButton("No, mantenerlo", style: .glass, size: .medium, fillsWidth: true) {

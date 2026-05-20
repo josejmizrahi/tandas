@@ -31,14 +31,14 @@ public struct RuulPhoneField: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let label {
                 Text(label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             HStack(spacing: RuulSpacing.xs) {
                 countryButton
                 Divider().frame(height: 22)
                 TextField("Tu número", text: $text)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
                     .focused($isFocused)
@@ -56,7 +56,7 @@ public struct RuulPhoneField: View {
 
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
         }
@@ -75,7 +75,7 @@ public struct RuulPhoneField: View {
             HStack(spacing: 4) {
                 Text(country.flag).font(.system(size: 18))
                 Text("+\(country.dialCode)")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .semibold))
@@ -126,7 +126,7 @@ private struct RuulPhoneFieldPreview: View {
         VStack(spacing: RuulSpacing.md) {
             RuulPhoneField(text: $phone, label: "Tu número")
             Text(verbatim: "E.164: \(RuulPhoneField(text: .constant(phone)).e164 ?? "—")")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             RuulPhoneField(text: $withError, defaultCountry: .usa, label: "Con error", error: "Número muy corto")
         }

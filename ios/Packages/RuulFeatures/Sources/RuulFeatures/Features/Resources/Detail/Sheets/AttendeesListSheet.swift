@@ -53,10 +53,10 @@ public struct AttendeesListSheet: View {
                         .fill(color(for: status))
                         .frame(width: 8, height: 8)
                     Text(label(for: status))
-                        .ruulTextStyle(RuulTypography.sectionLabelLg)
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text("\(filtered.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
+                        .font(.footnote.monospacedDigit().weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                     Spacer(minLength: 0)
                 }
@@ -86,15 +86,15 @@ public struct AttendeesListSheet: View {
                 RuulAvatar(name: name, imageURL: profile?.avatarURL, size: .small)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if rsvp.isCheckedIn, let arrived = rsvp.arrivedAt {
                         Text("Llegó \(arrived.ruulShortTime)")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulPositive)
                     } else if rsvp.plusOnes > 0 {
                         Text("+\(rsvp.plusOnes)")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextTertiary)
                     }
                 }

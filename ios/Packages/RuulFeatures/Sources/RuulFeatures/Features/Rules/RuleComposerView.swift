@@ -44,7 +44,7 @@ public struct RuleComposerView: View {
                     previewSection
                     if let error = coord.error {
                         Text(error)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulWarning)
                     }
                 }
@@ -127,7 +127,7 @@ public struct RuleComposerView: View {
                 .fill(done ? Color.ruulPositive : (required ? Color.ruulTextTertiary : Color.ruulSeparator))
                 .frame(width: 6, height: 6)
             Text(label)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(done ? Color.ruulTextSecondary : Color.ruulTextTertiary)
         }
     }
@@ -138,7 +138,7 @@ public struct RuleComposerView: View {
     @ViewBuilder
     private func sectionHint(_ text: String) -> some View {
         Text(text)
-            .ruulTextStyle(RuulTypography.caption)
+            .font(.caption)
             .foregroundStyle(Color.ruulTextTertiary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -148,15 +148,15 @@ public struct RuleComposerView: View {
             sectionLabel("Nombre")
             TextField("Ej. Multa por llegar tarde", text: nameBinding)
                 .textFieldStyle(.roundedBorder)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
             if let preview = coord.slugPreview {
                 HStack(spacing: RuulSpacing.xxs) {
                     Image(systemName: "tag")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                     Text("ID: \(preview)")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -197,7 +197,7 @@ public struct RuleComposerView: View {
                 }
                 if coord.availableTriggers.isEmpty {
                     Text("No hay momentos compatibles con este recurso")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                 }
             } label: {
                 pickerLabel(
@@ -279,7 +279,7 @@ public struct RuleComposerView: View {
             }
         )) {
             Text("Avanzado")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .toggleStyle(.switch)
@@ -319,7 +319,7 @@ public struct RuleComposerView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     HStack(spacing: RuulSpacing.xs) {
                         Text(isOr ? "Cualquiera de estas:" : "Todas estas:")
-                            .ruulTextStyle(RuulTypography.captionBold)
+                            .font(.caption.weight(.bold))
                             .foregroundStyle(isOr ? Color.ruulAccent : Color.ruulTextSecondary)
                         Spacer(minLength: 0)
                         opActionsMenu(opId: id, canToggle: true)
@@ -335,7 +335,7 @@ public struct RuleComposerView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                     HStack(spacing: RuulSpacing.xs) {
                         Text("Ninguna se cumple:")
-                            .ruulTextStyle(RuulTypography.captionBold)
+                            .font(.caption.weight(.bold))
                             .foregroundStyle(Color.ruulWarning)
                         Spacer(minLength: 0)
                         opActionsMenu(opId: id, canToggle: false)
@@ -365,7 +365,7 @@ public struct RuleComposerView: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .ruulTextStyle(RuulTypography.subheadMedium)
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, RuulSpacing.xs)
                 .accessibilityLabel("Acciones para esta condición")
@@ -392,7 +392,7 @@ public struct RuleComposerView: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityLabel("Acciones para esta agrupación")
         }
@@ -474,15 +474,15 @@ public struct RuleComposerView: View {
             } label: {
                 HStack(spacing: RuulSpacing.xxs) {
                     Image(systemName: "arrow.right.circle")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                     Text("Aplica: \(coord.targetLabel(forSelector: instance.target))")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulAccent)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.down")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                         .accessibilityHidden(true)
                 }
@@ -533,7 +533,7 @@ public struct RuleComposerView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             sectionLabel("Vista previa")
             Text(previewSentence)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .padding(RuulSpacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -560,7 +560,7 @@ public struct RuleComposerView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .ruulTextStyle(RuulTypography.sectionLabelLg)
+            .font(.footnote.weight(.semibold))
             .foregroundStyle(Color.ruulTextSecondary)
     }
 
@@ -569,7 +569,7 @@ public struct RuleComposerView: View {
             Image(systemName: systemImage)
             Text(text)
         }
-        .ruulTextStyle(RuulTypography.body)
+        .font(.subheadline)
         .foregroundStyle(Color.ruulAccent)
         .padding(.vertical, RuulSpacing.sm)
         .padding(.horizontal, RuulSpacing.md)
@@ -595,18 +595,18 @@ private struct ShapeInstanceRow: View {
             HStack(alignment: .top, spacing: RuulSpacing.sm) {
                 if let icon = shape.icon {
                     Image(systemName: icon)
-                        .ruulTextStyle(RuulTypography.subheadMedium)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.ruulAccent)
                         .frame(width: 28, height: 28)
                         .background(Color.ruulSurface, in: Circle())
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(shape.labelES)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if let summary = shape.summaryES, !summary.isEmpty {
                         Text(summary)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextTertiary)
                             .lineLimit(2)
                     }
@@ -614,7 +614,7 @@ private struct ShapeInstanceRow: View {
                 Spacer(minLength: 0)
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
                 .buttonStyle(.plain)
@@ -662,12 +662,12 @@ private struct FieldRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 0) {
                 Text(field.labelES)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 TextField(field.placeholder ?? "", text: $text)
                     .textFieldStyle(.roundedBorder)
                     .keyboardType(keyboardType)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .onAppear {
                         text = renderInitial()
                     }

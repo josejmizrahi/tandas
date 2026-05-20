@@ -19,7 +19,7 @@ public struct RuulSegmentedControl<Value: Hashable & Sendable>: View {
                     withAnimation(.ruulSnappy) { selection = segment.value }
                 } label: {
                     Text(segment.label)
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(isSelected ? Color.ruulTextInverse : Color.ruulTextPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, RuulSpacing.xs)

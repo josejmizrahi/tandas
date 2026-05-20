@@ -18,7 +18,7 @@ struct ShowcaseRow<Content: View>: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack {
                 Text(label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer()
                 if let snippet {

@@ -63,7 +63,7 @@ public struct RuulBadge: View {
                     .font(.system(size: 11, weight: .semibold))
             }
             Text(text)
-                .font(.ruulMicro.weight(.semibold))
+                .font(.caption2.weight(.semibold))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

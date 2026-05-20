@@ -33,10 +33,10 @@ public struct ReviewProposedFinesView: View {
                     if let err = coordinator.error {
                         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                             Text("ERROR AL CARGAR")
-                                .ruulTextStyle(RuulTypography.sectionLabel)
+                                .font(.footnote.weight(.semibold))
                                 .foregroundStyle(Color.ruulNegative)
                             Text(err)
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .textSelection(.enabled)
@@ -75,13 +75,13 @@ public struct ReviewProposedFinesView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("EVENTO")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text(coordinator.event.title)
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Estas multas se oficializan automáticamente 24 h después del cierre. Anula las que consideres injustas.")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, RuulSpacing.xs)
@@ -103,12 +103,12 @@ public struct ReviewProposedFinesView: View {
             RuulListSectionHeader("PROPUESTAS") {
                 HStack(spacing: RuulSpacing.sm) {
                     Text("\(coordinator.proposed.count)")
-                        .ruulTextStyle(RuulTypography.statSmall)
+                        .font(.footnote.monospacedDigit().weight(.bold))
                         .foregroundStyle(Color.ruulTextTertiary)
                     Button("Oficializar todas") {
                         Task { await coordinator.officializeAll() }
                     }
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .disabled(coordinator.isMutating)
                 }
@@ -124,10 +124,10 @@ public struct ReviewProposedFinesView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(memberLookup(fine.userId))
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(fine.reason)
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -144,7 +144,7 @@ public struct ReviewProposedFinesView: View {
                     voidConfirmFor = fine
                 } label: {
                     Text("Anular")
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, RuulSpacing.sm)
@@ -156,7 +156,7 @@ public struct ReviewProposedFinesView: View {
                     Task { await coordinator.officialize(fineId: fine.id) }
                 } label: {
                     Text("Oficializar")
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextInverse)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, RuulSpacing.sm)
@@ -177,11 +177,11 @@ public struct ReviewProposedFinesView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack {
                 Text("YA RESUELTAS")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 Spacer()
                 Text("\(coordinator.resolved.count)")
-                    .ruulTextStyle(RuulTypography.statSmall)
+                    .font(.footnote.monospacedDigit().weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
             RuulSeparatedRows(items: coordinator.resolved) { fine in
@@ -213,7 +213,7 @@ public struct ReviewProposedFinesView: View {
             ) {
                 VStack(alignment: .leading, spacing: RuulSpacing.md) {
                     Text("Esta multa de \(fine.amountFormatted) para \(memberLookup(fine.userId)) se va a anular. Opcionalmente, deja una razón.")
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextSecondary)
                     RuulTextField("Razón (opcional)", text: $voidReason, label: "Razón")
                     RuulButton(

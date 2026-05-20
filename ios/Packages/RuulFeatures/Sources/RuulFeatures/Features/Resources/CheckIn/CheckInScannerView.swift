@@ -58,7 +58,7 @@ public struct CheckInScannerView: View {
         HStack {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .ruulTextStyle(RuulTypography.displayMedium)
+                    .font(.largeTitle.weight(.semibold))
                     .foregroundStyle(Color.ruulOnImage, Color.ruulImageBadge)
                     .accessibilityHidden(true)
             }
@@ -67,10 +67,10 @@ public struct CheckInScannerView: View {
             Spacer()
             VStack(alignment: .center, spacing: 4) {
                 Text("Modo check-in")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulOnImage)
                 Text("\(coordinator.checkedCount) de \(coordinator.totalConfirmed) llegaron")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulOnImageSecondary)
             }
             Spacer()
@@ -94,11 +94,11 @@ public struct CheckInScannerView: View {
                 HStack(spacing: RuulSpacing.sm) {
                     RuulAvatar(name: recent.name, size: .small, border: .glass)
                     Text(recent.name)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulOnImage)
                     Spacer()
                     Text("✓ Llegó")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulPositive)
                 }
                 .padding(RuulSpacing.sm)
@@ -141,11 +141,11 @@ public struct CheckInScannerView: View {
     private func feedbackCard(icon: String, color: Color, title: String) -> some View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: icon)
-                .ruulTextStyle(RuulTypography.displayHero)
+                .font(.largeTitle.weight(.bold))
                 .foregroundStyle(Color.ruulOnImage, color)
                 .accessibilityHidden(true)
             Text(title)
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulOnImage)
         }
         .padding(RuulSpacing.xxl)
@@ -160,14 +160,14 @@ public struct CheckInScannerView: View {
         VStack(spacing: RuulSpacing.lg) {
             Spacer()
             Image(systemName: "camera.fill")
-                .ruulTextStyle(RuulTypography.displayHero)
+                .font(.largeTitle.weight(.bold))
                 .foregroundStyle(Color.ruulOnImageSecondary)
                 .accessibilityHidden(true)
             Text("Necesitamos permiso de cámara")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulOnImage)
             Text("Para escanear QRs y marcar llegadas.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulOnImageSecondary)
                 .multilineTextAlignment(.center)
             RuulButton("Abrir Configuración", style: .primary, size: .large) {
@@ -185,11 +185,11 @@ public struct CheckInScannerView: View {
         VStack(spacing: RuulSpacing.md) {
             Spacer()
             Image(systemName: "exclamationmark.triangle.fill")
-                .ruulTextStyle(RuulTypography.displayHero)
+                .font(.largeTitle.weight(.bold))
                 .foregroundStyle(Color.ruulOnImageSecondary)
                 .accessibilityHidden(true)
             Text(msg)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulOnImage)
                 .multilineTextAlignment(.center)
             RuulButton("Cerrar", style: .glass, size: .medium) { dismiss() }

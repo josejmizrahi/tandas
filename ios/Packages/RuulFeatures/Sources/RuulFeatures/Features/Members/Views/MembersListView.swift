@@ -71,22 +71,22 @@ public struct MembersListView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: RuulSpacing.xxs) {
                     Text(row.displayName)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if row.member.userId == coordinator.actorUserId {
                         Text("· Tú")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 }
                 Text(subtitleFor(row))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()
             if row.member.joinedVia == "placeholder" {
                 Text("PENDIENTE")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextSecondary)
                     .padding(.horizontal, RuulSpacing.xs)
                     .padding(.vertical, 2)
@@ -97,11 +97,11 @@ public struct MembersListView: View {
                     .accessibilityLabel("Miembro pendiente de activación")
             } else if row.member.isFounder {
                 Text("FUNDADOR")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulAccent)
             }
             Image(systemName: "chevron.right")
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .accessibilityHidden(true)
         }

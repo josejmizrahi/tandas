@@ -128,12 +128,12 @@ public struct SignInView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(step == .start ? mode.startHeadline : "Confirma tu código")
-                .ruulTextStyle(RuulTypography.displayMedium)
+                .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(step == .start
                 ? mode.startSubtitle
                 : otpStepSubtitle)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -154,7 +154,7 @@ public struct SignInView: View {
             otpInputSection
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
         }
@@ -208,7 +208,7 @@ public struct SignInView: View {
             }
         } label: {
             Text(inputMode == .phone ? "o usa correo" : "o usa teléfono")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulAccent)
         }
         .buttonStyle(.plain)
@@ -241,7 +241,7 @@ public struct SignInView: View {
         HStack(spacing: RuulSpacing.sm) {
             Rectangle().fill(Color.ruulSeparator).frame(height: 1)
             Text("o")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
             Rectangle().fill(Color.ruulSeparator).frame(height: 1)
         }
@@ -259,7 +259,7 @@ public struct SignInView: View {
             }
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
             resendRow
@@ -292,15 +292,15 @@ public struct SignInView: View {
             let remaining = max(0, Int(resendCooldownExpiresAt.timeIntervalSince(context.date).rounded(.up)))
             HStack(spacing: RuulSpacing.xs) {
                 Text("¿No te llegó?")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
                 if remaining > 0 {
                     Text("Reenviar en \(remaining) s")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                 } else {
                     Button("Reenviar código") { resendOTP() }
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulAccent)
                         .buttonStyle(.plain)
                         .disabled(isLoading)
@@ -315,13 +315,13 @@ public struct SignInView: View {
     private var createAccountLink: some View {
         HStack(spacing: RuulSpacing.xs) {
             Text("¿Empezar de cero?")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Button {
                 createNewAccount()
             } label: {
                 Text("Crear grupo nuevo")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulAccent)
             }
             .buttonStyle(.plain)

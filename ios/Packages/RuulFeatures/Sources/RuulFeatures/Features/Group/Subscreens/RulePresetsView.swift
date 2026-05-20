@@ -91,10 +91,10 @@ public struct RulePresetsView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("Cómo decide este grupo")
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Esto define quién puede cambiar las cosas y cómo se vota. Las reglas concretas (multas, llegadas, RSVP) viven en Reglas.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -109,7 +109,7 @@ public struct RulePresetsView: View {
             }
             if let err = coordinator.error {
                 Text(err)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -128,10 +128,10 @@ public struct RulePresetsView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(preset.title)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(preset.subtitle)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Spacer()
@@ -166,10 +166,10 @@ public struct RulePresetsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text(subtitle)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .padding(.bottom, RuulSpacing.xs)
             content()
@@ -191,17 +191,17 @@ public struct RulePresetsView: View {
                     HStack(alignment: .top, spacing: RuulSpacing.sm) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.question)
-                                .ruulTextStyle(RuulTypography.body)
+                                .font(.subheadline)
                                 .foregroundStyle(Color.ruulTextPrimary)
                             if !entry.isLive {
                                 Text("Próximamente")
-                                    .ruulTextStyle(RuulTypography.sectionLabel)
+                                    .font(.footnote.weight(.semibold))
                                     .foregroundStyle(Color.ruulTextTertiary)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         Text(entry.answer)
-                            .ruulTextStyle(RuulTypography.body)
+                            .font(.subheadline)
                             .foregroundStyle(entry.isLive ? Color.ruulTextPrimary : Color.ruulTextSecondary)
                             .multilineTextAlignment(.trailing)
                     }

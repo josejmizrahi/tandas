@@ -7,7 +7,7 @@ import SwiftUI
 /// modifier downstream:
 ///
 ///   `.topBarLeading`  — xmark close (`RuulCloseToolbarButton`)
-///   `.principal`      — title centered, `RuulTypography.headline`
+///   `.principal`      — title centered, `.headline`
 ///
 /// Replaces the inline pattern duplicated across ~20 sheets:
 ///
@@ -17,7 +17,7 @@ import SwiftUI
 ///         RuulCloseToolbarButton { dismiss() }
 ///     }
 ///     ToolbarItem(placement: .principal) {
-///         Text("Title").ruulTextStyle(RuulTypography.headline)...
+///         Text("Title").font(.headline)...
 ///     }
 /// }
 /// .toolbarBackground(.visible, for: .navigationBar)
@@ -55,7 +55,7 @@ public struct RuulSheetToolbarModifier: ViewModifier {
                 }
                 ToolbarItem(placement: .principal) {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
                 }

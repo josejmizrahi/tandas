@@ -73,11 +73,11 @@ public struct TemplatePickerCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: RuulSpacing.xs) {
                     Text(title)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if isComingSoon {
                         Text("PRÓXIMAMENTE")
-                            .ruulTextStyle(RuulTypography.sectionLabel)
+                            .font(.footnote.weight(.semibold))
                             .foregroundStyle(Color.ruulTextTertiary)
                             .padding(.horizontal, RuulSpacing.xs)
                             .padding(.vertical, 2)
@@ -85,7 +85,7 @@ public struct TemplatePickerCard: View {
                     }
                 }
                 Text(subtitle)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -104,7 +104,7 @@ public struct TemplatePickerCard: View {
                         .frame(width: 4, height: 4)
                         .alignmentGuide(.firstTextBaseline) { _ in 4 }
                     Text(bullet)
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

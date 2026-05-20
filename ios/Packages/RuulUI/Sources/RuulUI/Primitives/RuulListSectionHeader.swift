@@ -42,14 +42,14 @@ public struct RuulListSectionHeader: View {
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
             Text(label)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Spacer(minLength: 0)
             if let accessory {
                 accessory
             } else if let count {
                 Text("\(count)")
-                    .ruulTextStyle(RuulTypography.statSmall)
+                    .font(.footnote.monospacedDigit().weight(.bold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }

@@ -120,16 +120,16 @@ public struct MembersAdminView: View {
             RuulAvatar(name: row.displayName, imageURL: row.avatarURL, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.displayName)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text(provenanceLabel(row.member))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()
             if row.member.isFounder {
                 Text("FUNDADOR")
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulAccent)
             }
         }

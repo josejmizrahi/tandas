@@ -79,7 +79,7 @@ private struct UnknownResourceCard: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text("Resource \(String(describing: resource.resourceType)) sin body")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
         }
         .padding(RuulSpacing.md)

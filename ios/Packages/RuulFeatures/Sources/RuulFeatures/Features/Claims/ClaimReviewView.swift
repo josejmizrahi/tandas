@@ -35,7 +35,7 @@ public struct ClaimReviewView: View {
                     summarySection
                     if let errorMessage {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -51,10 +51,10 @@ public struct ClaimReviewView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Te agregaron a un grupo en Ruul")
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Tu lugar ya está reservado. Acepta para unir tu cuenta con el historial existente, o rechaza si no eres quien creen.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -63,12 +63,12 @@ public struct ClaimReviewView: View {
     private var summarySection: some View {
         if isLoadingSummary {
             HStack { ProgressView(); Text("Cargando historial…") }
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         } else if let summary {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Historial atribuido")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 metricRow(systemImage: "exclamationmark.circle", label: "Fines", value: summary.fineCount)
                 metricRow(systemImage: "checkmark.seal", label: "Votos emitidos", value: summary.voteCount)
@@ -81,7 +81,7 @@ public struct ClaimReviewView: View {
             // by token endpoint to preview. Skip the summary; accept still
             // works (server enforces token validity).
             Text("Confirma para ver tu grupo.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -91,10 +91,10 @@ public struct ClaimReviewView: View {
             Image(systemName: systemImage)
                 .foregroundStyle(Color.ruulAccent)
                 .frame(width: 22)
-            Text(label).ruulTextStyle(RuulTypography.body)
+            Text(label).font(.subheadline)
             Spacer()
             Text("\(value)")
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
     }

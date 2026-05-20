@@ -45,7 +45,7 @@ struct MemberMultiPickerField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
             content
         }
@@ -59,7 +59,7 @@ struct MemberMultiPickerField: View {
             HStack(spacing: RuulSpacing.sm) {
                 ProgressView()
                 Text("Cargando miembros…")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer(minLength: 0)
             }
@@ -69,7 +69,7 @@ struct MemberMultiPickerField: View {
                 Image(systemName: "person.2.slash")
                     .foregroundStyle(Color.ruulTextTertiary)
                 Text("Este grupo no tiene miembros para rotar")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                 Spacer(minLength: 0)
             }
@@ -90,19 +90,19 @@ struct MemberMultiPickerField: View {
                 .foregroundStyle(Color.ruulNegative)
             VStack(alignment: .leading, spacing: 2) {
                 Text(err.title)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                 if let msg = err.message {
                     Text(msg)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(2)
                 }
             }
             Spacer(minLength: 0)
             Button("Reintentar") { Task { await load() } }
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulAccent)
         }
         .padding(RuulSpacing.md)
@@ -133,7 +133,7 @@ struct MemberMultiPickerField: View {
         )
         if !binding.isEmpty {
             Text("Rotación: \(binding.count) miembros en este orden")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
         }
     }
@@ -147,7 +147,7 @@ struct MemberMultiPickerField: View {
             HStack(spacing: RuulSpacing.sm) {
                 if let pos = entry.position {
                     Text("\(pos + 1)")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextInverse)
                         .frame(width: 22, height: 22)
                         .background(Circle().fill(Color.ruulAccent))
@@ -157,7 +157,7 @@ struct MemberMultiPickerField: View {
                         .frame(width: 22, height: 22)
                 }
                 Text(entry.member.displayName)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Spacer(minLength: 0)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")

@@ -35,7 +35,7 @@ public struct AddManualFineSheet: View {
                 reasonSection
                 if let error = coordinator.error {
                     Text(error)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
                 submitButton
@@ -67,19 +67,19 @@ public struct AddManualFineSheet: View {
                 RuulAvatar(name: mwp.displayName, imageURL: mwp.avatarURL, size: .medium)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mwp.displayName)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
                     if mwp.member.isFounder {
                         Text("FUNDADOR")
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulAccent)
                     }
                 }
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .ruulTextStyle(RuulTypography.subheadBold)
+                        .font(.subheadline.weight(.bold))
                         .foregroundStyle(Color.ruulAccent)
                 }
             }

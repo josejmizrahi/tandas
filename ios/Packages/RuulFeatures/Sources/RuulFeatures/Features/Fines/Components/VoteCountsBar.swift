@@ -47,10 +47,10 @@ public struct VoteCountsBar: View {
         HStack(spacing: RuulSpacing.xxs) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(label)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             Text("\(count)")
-                .ruulTextStyle(RuulTypography.statSmall)
+                .font(.footnote.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.ruulTextPrimary)
         }
     }

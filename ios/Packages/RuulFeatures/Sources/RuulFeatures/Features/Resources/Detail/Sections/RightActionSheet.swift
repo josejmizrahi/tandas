@@ -78,7 +78,7 @@ public struct RightActionSheet: View {
             Form {
                 Section {
                     Text(blurb)
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
 
@@ -125,7 +125,7 @@ public struct RightActionSheet: View {
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -140,7 +140,7 @@ public struct RightActionSheet: View {
                             ProgressView()
                         } else {
                             Text(submitLabel)
-                                .ruulTextStyle(RuulTypography.subheadSemibold)
+                                .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(
                                     isDestructive ? Color.ruulNegative : Color.ruulAccent
                                 )
@@ -161,7 +161,7 @@ public struct RightActionSheet: View {
         }
         if candidates.isEmpty {
             Text("Ningún otro miembro activo disponible.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextTertiary)
         } else {
             Picker("Miembro", selection: $selectedMemberId) {

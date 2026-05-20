@@ -102,10 +102,10 @@ public struct RuulAmbientBackground: View {
         RuulAmbientBackground(palette: sunset)
         VStack(spacing: RuulSpacing.lg) {
             Text("Quiet ambient tint")
-                .ruulTextStyle(RuulTypography.displayLarge)
+                .font(.largeTitle.weight(.bold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Single color, no mesh — Luma uniform fill")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .padding(RuulSpacing.lg)

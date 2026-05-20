@@ -10,7 +10,7 @@ struct RelationsRailView: View {
         if !cards.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Relacionados")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextSecondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: RuulSpacing.sm) {
@@ -20,11 +20,11 @@ struct RelationsRailView: View {
                                     Image(systemName: card.icon)
                                         .foregroundStyle(card.tint.color)
                                     Text(card.label)
-                                        .ruulTextStyle(RuulTypography.subheadSemibold)
+                                        .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(Color.ruulTextPrimary)
                                     if let status = card.statusLine {
                                         Text(status)
-                                            .ruulTextStyle(RuulTypography.caption)
+                                            .font(.caption)
                                             .foregroundStyle(Color.ruulTextSecondary)
                                     }
                                 }

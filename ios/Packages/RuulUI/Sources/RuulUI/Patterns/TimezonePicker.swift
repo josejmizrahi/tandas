@@ -35,10 +35,10 @@ public struct TimezonePicker: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(tz)
-                                .ruulTextStyle(RuulTypography.body)
+                                .font(.subheadline)
                                 .foregroundStyle(Color.ruulTextPrimary)
                             Text(offsetLabel(for: tz))
-                                .ruulTextStyle(RuulTypography.caption)
+                                .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                         }
                         Spacer()

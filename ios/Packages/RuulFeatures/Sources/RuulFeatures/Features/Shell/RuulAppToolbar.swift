@@ -7,7 +7,7 @@ import RuulUI
 /// page reads the same way:
 ///
 ///   `.topBarLeading`  — active group avatar (tap → `GroupSwitcherSheet`)
-///   `.principal`      — "ruul" wordmark (InterVariable bold 20pt)
+///   `.principal`      — "ruul" wordmark (system 20pt bold)
 ///   `.topBarTrailing` — left empty; each view appends its own actions via
 ///                       a standard `.toolbar { ... }` modifier downstream.
 ///
@@ -48,8 +48,7 @@ public struct RuulAppToolbarModifier: ViewModifier {
                 }
                 ToolbarItem(placement: .principal) {
                     Text("ruul")
-                        .font(.custom("InterVariable", size: 20).weight(.bold))
-                        .tracking(-0.4)
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .accessibilityAddTraits(.isHeader)
                 }

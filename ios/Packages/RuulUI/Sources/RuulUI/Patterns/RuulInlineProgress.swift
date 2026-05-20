@@ -55,15 +55,15 @@ public struct ErrorBanner: View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: error.isRetryable ? "exclamationmark.triangle.fill" : "exclamationmark.octagon.fill")
                 .foregroundStyle(Color.ruulNegative)
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(error.title)
-                    .ruulTextStyle(RuulTypography.captionBold)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 if let message = error.message {
                     Text(message)
-                        .ruulTextStyle(RuulTypography.footnote)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(2)
                 }
@@ -72,7 +72,7 @@ public struct ErrorBanner: View {
             if let retry, error.isRetryable {
                 Button(action: retry) {
                     Image(systemName: "arrow.clockwise")
-                        .ruulTextStyle(RuulTypography.captionBold)
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulAccent)
                         .padding(RuulSpacing.xs)
                 }
@@ -99,7 +99,7 @@ public struct ErrorBanner: View {
         RuulInlineProgress()
             .frame(width: 320)
         Text("Lista de ejemplo")
-            .ruulTextStyle(RuulTypography.body)
+            .font(.subheadline)
     }
     .padding()
     .background(Color.ruulBackground)

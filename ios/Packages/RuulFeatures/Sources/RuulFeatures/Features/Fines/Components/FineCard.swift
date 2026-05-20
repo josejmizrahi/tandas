@@ -47,7 +47,7 @@ public struct FineCard: View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             if let groupName {
                 Text(groupName)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextAccent)
                     .textCase(.uppercase)
             }
@@ -71,12 +71,12 @@ public struct FineCard: View {
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
                 Text(ruleName ?? fine.reason)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
                     .lineLimit(1)
                 if let groupName {
                     Text(groupName)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .textCase(.uppercase)
                         .lineLimit(1)
@@ -106,12 +106,12 @@ public struct FineCard: View {
                 .fill(statusColor)
                 .frame(width: 8, height: 8)
             Text(fine.status.displayLabel)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Spacer()
             if let createdAgo {
                 Text(createdAgo)
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }
@@ -121,13 +121,13 @@ public struct FineCard: View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ruleName ?? fine.reason)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 if let eventTitle {
                     Text(eventTitle)
-                        .ruulTextStyle(RuulTypography.callout)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(1)
                 }

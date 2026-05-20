@@ -97,7 +97,7 @@ public struct RotationParticipantsSheet: View {
             ProgressView()
                 .controlSize(.large)
             Text("Cargando miembros…")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -109,7 +109,7 @@ public struct RotationParticipantsSheet: View {
                 .font(.largeTitle)
                 .foregroundStyle(Color.ruulNegative)
             Text(message)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)
@@ -129,7 +129,7 @@ public struct RotationParticipantsSheet: View {
                 )
             } footer: {
                 Text("El primer turno será para quien aparezca primero. El siguiente se asigna solo cuando llegue el día.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
 
@@ -145,7 +145,7 @@ public struct RotationParticipantsSheet: View {
                 Text(order == "random"
                      ? "Cada evento elige aleatoriamente del grupo seleccionado."
                      : "Sigue el orden en que los seleccionaste arriba. Cuando llega al final, vuelve a empezar.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
 
@@ -161,14 +161,14 @@ public struct RotationParticipantsSheet: View {
                 Text(replacementPolicy == "host_stays_until_swap"
                      ? "El elegido sigue siendo el anfitrión hasta que alguien acepte cambiar con él."
                      : "El turno pasa automáticamente al siguiente en la lista.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
 
             if let errorMessage {
                 Section {
                     Text(errorMessage)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulNegative)
                 }
             }

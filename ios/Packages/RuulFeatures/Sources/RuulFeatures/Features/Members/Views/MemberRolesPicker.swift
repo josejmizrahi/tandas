@@ -86,7 +86,7 @@ public struct MemberRolesPicker: View {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(Color.ruulNegative)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                     }
                 }
                 Section {
@@ -108,20 +108,20 @@ public struct MemberRolesPicker: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: RuulSpacing.xs) {
                     Text(target.displayName)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if target.member.isFounder {
                         // Identity badge — post-mig 00262 founder es
                         // inmutable. Mostramos crown para reconocimiento
                         // visual sin afectar la editabilidad del catalog.
                         Image(systemName: "crown.fill")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulAccent)
                             .accessibilityLabel("Fundador del grupo")
                     }
                 }
                 Text("Cambia un toggle para asignar o retirar el rol al instante.")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
@@ -159,10 +159,10 @@ public struct MemberRolesPicker: View {
             Toggle(isOn: bound) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(role.humanLabel)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(lockReason(role: role, isOn: isOn) ?? permissionsSummary(for: role))
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
             }

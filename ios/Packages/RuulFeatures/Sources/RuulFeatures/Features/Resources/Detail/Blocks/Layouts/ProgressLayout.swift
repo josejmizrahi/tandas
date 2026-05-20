@@ -13,7 +13,7 @@ struct ProgressLayout: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(fields.label)
-                .ruulTextStyle(RuulTypography.subhead)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextPrimary)
             ProgressView(value: fraction)
                 .tint(tint.color)

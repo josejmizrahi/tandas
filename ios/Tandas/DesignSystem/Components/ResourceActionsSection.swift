@@ -52,13 +52,13 @@ private struct ResourceActionRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(action.isDestructive
                             ? Color.ruulNegative
                             : Color.ruulTextPrimary)
                     if let subtitle = action.subtitle {
                         Text(subtitle)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 }

@@ -93,7 +93,7 @@ private struct OTPSlot: View {
     var body: some View {
         ZStack {
             Text(char.isEmpty ? " " : char)
-                .ruulTextStyle(RuulTypography.monoLarge)
+                .font(.title2.monospaced().weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .scaleEffect(char.isEmpty ? 0.85 : 1.0)
                 .opacity(char.isEmpty ? 0 : 1)
@@ -135,7 +135,7 @@ private struct RuulOTPInputPreview: View {
     var body: some View {
         VStack(spacing: RuulSpacing.xxl) {
             Spacer()
-            Text("Código de verificación").ruulTextStyle(RuulTypography.headline)
+            Text("Código de verificación").font(.headline)
             RuulOTPInput(code: $code, hasError: $hasError) { _ in
                 hasError.toggle()
             }

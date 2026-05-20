@@ -56,7 +56,7 @@ struct TokensShowcaseView: View {
 
     private func colorGroup(_ title: String, entries: [(String, Color)]) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(title).ruulTextStyle(RuulTypography.footnote).foregroundStyle(Color.ruulTextTertiary)
+            Text(title).font(.footnote).foregroundStyle(Color.ruulTextTertiary)
             VStack(spacing: 4) {
                 ForEach(entries, id: \.0) { entry in
                     Button { UIPasteboard.general.string = entry.0 } label: {
@@ -66,7 +66,7 @@ struct TokensShowcaseView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.ruulSeparator, lineWidth: 0.5))
                                 .frame(width: 32, height: 32)
                             Text(entry.0)
-                                .ruulTextStyle(RuulTypography.callout)
+                                .font(.footnote)
                                 .foregroundStyle(Color.ruulTextPrimary)
                             Spacer()
                             Image(systemName: "doc.on.doc")
@@ -84,27 +84,26 @@ struct TokensShowcaseView: View {
     private var typography: some View {
         ShowcaseSection("Typography") {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                typographyRow("displayHero", style: RuulTypography.displayHero)
-                typographyRow("displayLarge", style: RuulTypography.displayLarge)
-                typographyRow("displayMedium", style: RuulTypography.displayMedium)
-                typographyRow("titleLarge", style: RuulTypography.titleLarge)
-                typographyRow("title", style: RuulTypography.title)
-                typographyRow("headline", style: RuulTypography.headline)
-                typographyRow("bodyLarge", style: RuulTypography.bodyLarge)
-                typographyRow("body", style: RuulTypography.body)
-                typographyRow("callout", style: RuulTypography.callout)
-                typographyRow("caption", style: RuulTypography.caption)
-                typographyRow("footnote", style: RuulTypography.footnote)
-                typographyRow("mono", style: RuulTypography.mono, sample: "0123456789")
-                typographyRow("monoLarge", style: RuulTypography.monoLarge, sample: "0123456789")
+                typographyRow("largeTitle", font: .largeTitle.weight(.bold))
+                typographyRow("title", font: .title.weight(.semibold))
+                typographyRow("title2", font: .title2.weight(.semibold))
+                typographyRow("title3", font: .title3)
+                typographyRow("headline", font: .headline)
+                typographyRow("body", font: .body)
+                typographyRow("subheadline", font: .subheadline)
+                typographyRow("footnote", font: .footnote)
+                typographyRow("caption", font: .caption)
+                typographyRow("caption2", font: .caption2)
+                typographyRow("mono body", font: .body.monospaced(), sample: "0123456789")
+                typographyRow("mono title2", font: .title2.monospaced().weight(.semibold), sample: "0123456789")
             }
         }
     }
 
-    private func typographyRow(_ label: String, style: RuulTextStyle, sample: String = "The quick brown fox") -> some View {
+    private func typographyRow(_ label: String, font: Font, sample: String = "The quick brown fox") -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).ruulTextStyle(RuulTypography.footnote).foregroundStyle(Color.ruulTextTertiary)
-            Text(sample).ruulTextStyle(style).foregroundStyle(Color.ruulTextPrimary)
+            Text(label).font(.footnote).foregroundStyle(Color.ruulTextTertiary)
+            Text(sample).font(font).foregroundStyle(Color.ruulTextPrimary)
         }
     }
 
@@ -113,11 +112,11 @@ struct TokensShowcaseView: View {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach([("xxs", RuulSpacing.xxs), ("xs", RuulSpacing.xs), ("sm", RuulSpacing.sm), ("md", RuulSpacing.md), ("lg", RuulSpacing.lg), ("xl", RuulSpacing.xl), ("xxl", RuulSpacing.xxl), ("s8", RuulSpacing.s8), ("xxxl", RuulSpacing.xxxl), ("s10", RuulSpacing.s10)], id: \.0) { item in
                     HStack {
-                        Text(item.0).ruulTextStyle(RuulTypography.caption).frame(width: 36, alignment: .leading)
+                        Text(item.0).font(.caption).frame(width: 36, alignment: .leading)
                         Rectangle()
                             .fill(Color.ruulAccent.opacity(0.7))
                             .frame(width: item.1, height: 8)
-                        Text("\(Int(item.1))pt").ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
+                        Text("\(Int(item.1))pt").font(.caption).foregroundStyle(Color.ruulTextTertiary)
                     }
                 }
             }
@@ -132,7 +131,7 @@ struct TokensShowcaseView: View {
                         RoundedRectangle(cornerRadius: item.1)
                             .fill(Color.ruulAccentMuted)
                             .frame(width: 60, height: 60)
-                        Text(item.0).ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
+                        Text(item.0).font(.caption).foregroundStyle(Color.ruulTextTertiary)
                     }
                 }
             }
@@ -156,7 +155,7 @@ struct TokensShowcaseView: View {
                 .fill(Color.ruulSurface)
                 .frame(width: 60, height: 60)
                 .ruulElevation(level)
-            Text(label).ruulTextStyle(RuulTypography.caption).foregroundStyle(Color.ruulTextTertiary)
+            Text(label).font(.caption).foregroundStyle(Color.ruulTextTertiary)
         }
     }
 
@@ -189,7 +188,7 @@ private struct MotionDemo: View {
 
     var body: some View {
         HStack {
-            Text(label).ruulTextStyle(RuulTypography.callout).frame(width: 110, alignment: .leading)
+            Text(label).font(.footnote).frame(width: 110, alignment: .leading)
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.ruulBackgroundRecessed).frame(width: 200, height: 32)
                 Capsule().fill(Color.ruulAccent).frame(width: 32, height: 32)
@@ -209,7 +208,7 @@ private struct HapticDemo: View {
 
     var body: some View {
         HStack {
-            Text("\(String(describing: haptic))").ruulTextStyle(RuulTypography.callout).frame(width: 110, alignment: .leading)
+            Text("\(String(describing: haptic))").font(.footnote).frame(width: 110, alignment: .leading)
             Spacer()
             RuulButton("Trigger", style: .secondary, size: .small) { trigger &+= 1 }
         }

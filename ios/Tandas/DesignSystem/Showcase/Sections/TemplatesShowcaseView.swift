@@ -52,7 +52,7 @@ struct TemplatesShowcaseView: View {
             ) { tab in
                 ZStack {
                     Color.ruulBackground.ignoresSafeArea()
-                    Text("Tab \(String(describing: tab))").ruulTextStyle(RuulTypography.title)
+                    Text("Tab \(String(describing: tab))").font(.title2.weight(.semibold))
                 }
             }
             .frame(height: 360)
@@ -72,7 +72,7 @@ struct TemplatesShowcaseView: View {
             ) { tab in
                 ZStack {
                     Color.ruulBackground.ignoresSafeArea()
-                    Text("\(String(describing: tab))").ruulTextStyle(RuulTypography.title)
+                    Text("\(String(describing: tab))").font(.title2.weight(.semibold))
                 }
             }
             .frame(height: 360)
@@ -88,7 +88,7 @@ struct TemplatesShowcaseView: View {
                     secondaryCTA: ("Editar", { })
                 ) {
                     ForEach(0..<3, id: \.self) { i in
-                        RuulCard(.glass) { Text("Card \(i)").ruulTextStyle(RuulTypography.body) }
+                        RuulCard(.glass) { Text("Card \(i)").font(.subheadline) }
                     }
                 }
             }

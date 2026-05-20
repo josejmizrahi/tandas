@@ -39,12 +39,12 @@ public struct EventCardStub: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(data.title)
-                            .ruulTextStyle(RuulTypography.title)
+                            .font(.title2.weight(.semibold))
                             .foregroundStyle(Color.ruulTextPrimary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         Text(data.dateText)
-                            .ruulTextStyle(RuulTypography.callout)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                     Spacer()
@@ -52,7 +52,7 @@ public struct EventCardStub: View {
                 }
                 if let location = data.location {
                     Label(location, systemImage: "mappin.and.ellipse")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextSecondary)
                 }
                 if !data.attendees.isEmpty {
@@ -77,19 +77,19 @@ public struct EventCardStub: View {
         switch data.rsvp {
         case .going:
             Label("Voy", systemImage: "checkmark.circle.fill")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulPositive)
         case .maybe:
             Label("Tal vez", systemImage: "questionmark.circle.fill")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulWarning)
         case .notGoing:
             Label("No voy", systemImage: "xmark.circle.fill")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulNegative)
         case .notResponded:
             Text("Pendiente")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }

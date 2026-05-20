@@ -70,7 +70,7 @@ public struct DevicesView: View {
                 }
                 if let msg = errorMessage {
                     Text(msg)
-                        .ruulTextStyle(RuulTypography.footnote)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulNegative)
                         .padding(.horizontal, RuulSpacing.lg)
                 }
@@ -84,12 +84,12 @@ public struct DevicesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                 Text("Aún no hay dispositivos registrados.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextTertiary)
                     .padding(RuulSpacing.lg)
                 if let msg = errorMessage {
                     Text(msg)
-                        .ruulTextStyle(RuulTypography.footnote)
+                        .font(.footnote)
                         .foregroundStyle(Color.ruulNegative)
                         .padding(.horizontal, RuulSpacing.lg)
                 }
@@ -108,7 +108,7 @@ public struct DevicesView: View {
     private func deviceSection<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.leading, RuulSpacing.xxs)
             content()
@@ -128,16 +128,16 @@ public struct DevicesView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(device.platform.capitalized)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     if isCurrent {
                         Text("(este)")
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
                     }
                 }
                 Text("Último uso: \(relativeTime(device.updatedAt))")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()
@@ -145,7 +145,7 @@ public struct DevicesView: View {
                 Button("Revocar", role: .destructive) {
                     Task { await revoke(device.id) }
                 }
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
             }
         }
         .padding(RuulSpacing.md)

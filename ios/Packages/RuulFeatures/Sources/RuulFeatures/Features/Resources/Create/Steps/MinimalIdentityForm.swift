@@ -49,10 +49,10 @@ struct MinimalIdentityForm: View {
             iconBadge(variant.icon)
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(variant.humanName)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("Lo esencial. El resto lo configuramos después.")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
@@ -63,7 +63,7 @@ struct MinimalIdentityForm: View {
     private var fieldsStack: some View {
         if fields.isEmpty {
             Text("Este tipo no necesita información extra para crearse.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .padding(.vertical, RuulSpacing.md)
         } else {
@@ -104,7 +104,7 @@ struct MinimalIdentityForm: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Color.ruulNegative)
             Text(message)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulNegative)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -121,7 +121,7 @@ struct MinimalIdentityForm: View {
                 .fill(Color.ruulAccent.opacity(0.15))
                 .frame(width: 44, height: 44)
             Image(systemName: symbol)
-                .ruulTextStyle(RuulTypography.bodyLarge)
+                .font(.body)
                 .foregroundStyle(Color.ruulAccent)
         }
     }

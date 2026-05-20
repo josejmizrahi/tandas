@@ -188,7 +188,7 @@ public struct ResourceCreationSheet: View {
             ProgressView()
                 .controlSize(.large)
             Text("Creando…")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
         }
@@ -205,7 +205,7 @@ public struct ResourceCreationSheet: View {
         }
         ToolbarItem(placement: .principal) {
             Text(toolbarTitle)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
         }
     }
@@ -226,7 +226,7 @@ public struct ResourceCreationSheet: View {
                 coordinator.backOneStep()
             } label: {
                 Image(systemName: "chevron.left")
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             .accessibilityLabel("Atrás")

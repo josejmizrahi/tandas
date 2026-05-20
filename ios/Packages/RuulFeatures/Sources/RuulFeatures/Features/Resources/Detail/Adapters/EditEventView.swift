@@ -28,7 +28,7 @@ public struct EditEventView: View {
                     rulesToggleSection
                     if let error = coordinator.error {
                         Text(error.localizedDescription)
-                            .ruulTextStyle(RuulTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -73,7 +73,7 @@ public struct EditEventView: View {
                         .frame(height: 180)
                 }
                 Image(systemName: "camera.fill")
-                    .ruulTextStyle(RuulTypography.labelSemibold)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulOnImage)
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulImageBadge, in: Circle())
@@ -120,13 +120,13 @@ public struct EditEventView: View {
         if coordinator.group.effectiveActiveModules.contains(GroupModule.rotatingHost.id) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("HOST")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 RuulCard(.tile) {
                     HStack(spacing: RuulSpacing.sm) {
                         RuulIconBadge("person.fill", size: .small)
                         Text(coordinator.draft.hostId == nil ? "Sin asignar" : "Asignado")
-                            .ruulTextStyle(RuulTypography.body)
+                            .font(.subheadline)
                             .foregroundStyle(Color.ruulTextPrimary)
                         Spacer()
                     }
@@ -179,7 +179,7 @@ public struct EditEventView: View {
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 Text("GALERÍA")
-                    .ruulTextStyle(RuulTypography.sectionLabel)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.sm) {
                     ForEach(RuulCoverCatalog.all) { cover in

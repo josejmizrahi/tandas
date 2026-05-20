@@ -44,7 +44,7 @@ public struct RuulTextField: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let label {
                 Text(label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             HStack(spacing: RuulSpacing.xs) {
@@ -81,11 +81,11 @@ public struct RuulTextField: View {
 
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             } else if let description {
                 Text(description)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextTertiary)
             }
         }
@@ -96,38 +96,38 @@ public struct RuulTextField: View {
         switch style {
         case .standard:
             TextField(placeholder, text: $text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
         case .email:
             TextField(placeholder, text: $text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textContentType(.emailAddress)
         case .phone:
             TextField(placeholder, text: $text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
         case .numeric:
             TextField(placeholder, text: $text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .keyboardType(.numberPad)
         case .search:
             TextField(placeholder, text: $text)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         case .password:
             if isPasswordVisible {
                 TextField(placeholder, text: $text)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .textContentType(.password)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             } else {
                 SecureField(placeholder, text: $text)
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .textContentType(.password)
             }
         }

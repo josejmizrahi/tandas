@@ -45,10 +45,10 @@ public struct ConsentRulesView: View {
             RuulIconBadge("doc.text", size: .medium)
             VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                 Text(rule.name)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("En modo sugerencia")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer(minLength: 0)
@@ -67,12 +67,12 @@ public struct ConsentRulesView: View {
     private var footnote: some View {
         HStack(alignment: .top, spacing: RuulSpacing.xs) {
             Image(systemName: "info.circle")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextTertiary)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
             Text("Podrás revisar y activar cada regla desde la sección Reglas cuando estén todos listos.")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer(minLength: 0)
         }

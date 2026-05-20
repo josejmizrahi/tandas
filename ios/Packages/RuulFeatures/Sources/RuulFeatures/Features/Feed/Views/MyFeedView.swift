@@ -107,11 +107,11 @@ public struct MyFeedView: View {
     private func sectionHeader(section: MyFeedCoordinator.Section, count: Int) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(section.title.uppercased())
-                .ruulTextStyle(RuulTypography.sectionLabelLg)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextSecondary)
             Spacer()
             Text("\(count)")
-                .ruulTextStyle(RuulTypography.statSmall)
+                .font(.footnote.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.ruulTextTertiary)
         }
     }

@@ -121,11 +121,11 @@ public struct PostCreateIntentScreen: View {
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(Color.ruulAccent)
             Text(variant.postCreateHeadline)
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .multilineTextAlignment(.center)
             Text("Elige lo que quieras hacer. Después puedes volver al recurso.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -136,13 +136,13 @@ public struct PostCreateIntentScreen: View {
     private var emptyState: some View {
         VStack(spacing: RuulSpacing.sm) {
             Image(systemName: "sparkles")
-                .font(RuulTypography.title.font)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text("Nada que configurar todavía.")
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Lo que necesites lo activas desde el recurso.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -158,10 +158,10 @@ public struct PostCreateIntentScreen: View {
                 iconBadge(intent.icon)
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text(intent.humanLabel)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Text(intent.summary)
-                        .ruulTextStyle(RuulTypography.body)
+                        .font(.subheadline)
                         .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -189,7 +189,7 @@ public struct PostCreateIntentScreen: View {
                 .controlSize(.small)
         } else {
             Image(systemName: "chevron.right")
-                .ruulTextStyle(RuulTypography.captionBold)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.ruulTextTertiary)
         }
     }
@@ -200,7 +200,7 @@ public struct PostCreateIntentScreen: View {
                 .fill(Color.ruulAccent.opacity(0.15))
                 .frame(width: 40, height: 40)
             Image(systemName: symbol)
-                .ruulTextStyle(RuulTypography.bodyLarge)
+                .font(.body)
                 .foregroundStyle(Color.ruulAccent)
         }
     }
@@ -223,7 +223,7 @@ public struct PostCreateIntentScreen: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Color.ruulNegative)
             Text(message)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulNegative)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -664,7 +664,7 @@ private struct DestinationPresenter: View {
                 ProgressView()
                     .controlSize(.large)
                 Text("Abriendo…")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -691,7 +691,7 @@ private struct DestinationPresenter: View {
             ProgressView()
                 .controlSize(.large)
             Text("Abriendo…")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -739,10 +739,10 @@ private struct DestinationPresenter: View {
                 .font(.system(size: 48, weight: .semibold))
                 .foregroundStyle(Color.ruulAccent)
             Text(intent.humanLabel)
-                .ruulTextStyle(RuulTypography.title)
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(placeholderCopy)
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, RuulSpacing.lg)

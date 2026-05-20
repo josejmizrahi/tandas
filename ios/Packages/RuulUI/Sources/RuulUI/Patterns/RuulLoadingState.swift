@@ -16,7 +16,7 @@ public struct RuulLoadingState: View {
                 .tint(Color.ruulAccent)
             if let message {
                 Text(message)
-                    .font(.ruulCaption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
         }

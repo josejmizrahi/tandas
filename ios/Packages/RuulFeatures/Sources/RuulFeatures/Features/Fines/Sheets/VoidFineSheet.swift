@@ -18,7 +18,7 @@ public struct VoidFineSheet: View {
             reasonSection
             if let error = coordinator.error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulNegative)
             }
             submitButton
@@ -37,7 +37,7 @@ public struct VoidFineSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                     Text(coordinator.targetMemberName)
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                         .foregroundStyle(Color.ruulTextPrimary)
                     Spacer()
                     RuulMoneyView(
@@ -48,7 +48,7 @@ public struct VoidFineSheet: View {
                     )
                 }
                 Text("\u{201C}\(coordinator.fine.reason)\u{201D}")
-                    .ruulTextStyle(RuulTypography.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             .padding(RuulSpacing.md)
@@ -76,7 +76,7 @@ public struct VoidFineSheet: View {
                 isDisabled: coordinator.isSubmitting
             )
             Text("Visible para \(coordinator.targetMemberName).")
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextTertiary)
         }
     }

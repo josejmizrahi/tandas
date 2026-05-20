@@ -53,7 +53,7 @@ public struct InvitedIdentityView: View {
                     )
                 }
                 Image(systemName: "camera.fill")
-                    .font(RuulTypography.labelSemibold.font)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
                     .background(Color.ruulTextPrimary, in: Circle())

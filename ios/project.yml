@@ -60,7 +60,6 @@ targets:
           - "Resources/Tandas.entitlements"
     resources:
       - path: Tandas/Resources/Assets.xcassets
-      - path: Tandas/Resources/Fonts
     dependencies:
       - package: Supabase
         product: Supabase

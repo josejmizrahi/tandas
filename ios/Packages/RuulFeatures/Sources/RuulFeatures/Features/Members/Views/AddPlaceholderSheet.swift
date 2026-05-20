@@ -50,7 +50,7 @@ public struct AddPlaceholderSheet: View {
                     if duplicatePlaceholder != nil { duplicateCard }
                     if let errorMessage {
                         Text(errorMessage)
-                            .ruulTextStyle(RuulTypography.footnote)
+                            .font(.footnote)
                             .foregroundStyle(Color.ruulNegative)
                     }
                 }
@@ -72,10 +72,10 @@ public struct AddPlaceholderSheet: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Agrega a alguien que aún no está en Ruul")
-                .ruulTextStyle(RuulTypography.sectionLabel)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.ruulTextTertiary)
             Text("Ya cuenta para turnos, RSVP, fines y votos. Cuando active su cuenta, su historial se une al suyo.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
     }
@@ -99,10 +99,10 @@ public struct AddPlaceholderSheet: View {
     private func existingUserCard(_ user: (id: UUID, name: String?)) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Ese número ya es usuario de Ruul")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("\(user.name ?? "Esta persona") ya tiene una cuenta. Para agregarla al grupo usa “Invitar miembros” con el código.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .padding(RuulSpacing.md)
@@ -112,10 +112,10 @@ public struct AddPlaceholderSheet: View {
     private var duplicateCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Ya hay un miembro pendiente con ese número")
-                .ruulTextStyle(RuulTypography.callout)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text("Si esto es un error, revisa la lista de miembros para confirmar quién está pendiente.")
-                .ruulTextStyle(RuulTypography.footnote)
+                .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
         }
         .padding(RuulSpacing.md)

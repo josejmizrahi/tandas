@@ -39,7 +39,7 @@ public struct RSVPStateView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(tint)
                 Text(label)
-                    .ruulTextStyle(RuulTypography.callout)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulTextPrimary)
             }
             .frame(maxWidth: .infinity)
@@ -56,10 +56,10 @@ public struct RSVPStateView: View {
             RuulIconBadge(confirmedIcon, tint: confirmedTint, size: .medium)
             VStack(alignment: .leading, spacing: 2) {
                 Text(confirmedTitle)
-                    .ruulTextStyle(RuulTypography.headline)
+                    .font(.headline)
                     .foregroundStyle(Color.ruulTextPrimary)
                 Text("Tap para cambiar")
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextSecondary)
             }
             Spacer()

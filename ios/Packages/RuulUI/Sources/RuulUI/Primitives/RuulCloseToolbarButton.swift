@@ -31,7 +31,7 @@ public struct RuulCloseToolbarButton: View {
     public var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .ruulTextStyle(RuulTypography.subheadSemibold)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
@@ -51,7 +51,7 @@ public struct RuulCloseToolbarButton: View {
                 }
                 ToolbarItem(placement: .principal) {
                     Text("Sheet title")
-                        .ruulTextStyle(RuulTypography.headline)
+                        .font(.headline)
                 }
             }
     }

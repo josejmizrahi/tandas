@@ -35,11 +35,11 @@ public struct RegenerateInviteCodeSheet: View {
     private var confirmStep: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("Esto invalidará el código actual. Los nuevos miembros usarán el nuevo código para unirse.")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             if let error {
                 Text(error)
-                    .ruulTextStyle(RuulTypography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(Color.ruulNegative)
             }
             Spacer()
@@ -58,11 +58,11 @@ public struct RegenerateInviteCodeSheet: View {
     private var successStep: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("Tu nuevo código:")
-                .ruulTextStyle(RuulTypography.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
             if let code = newCode {
                 Text(code)
-                    .ruulTextStyle(RuulTypography.title)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextPrimary)
                     .padding(RuulSpacing.md)
                     .frame(maxWidth: .infinity)

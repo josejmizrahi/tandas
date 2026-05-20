@@ -74,20 +74,6 @@ struct TokenResolutionTests {
         #expect(RuulRadius.pill < RuulRadius.circle)
     }
 
-    @Test("Typography styles all have positive line height")
-    func typographyHasValidLineHeights() {
-        let styles = [
-            RuulTypography.displayHero, RuulTypography.displayLarge, RuulTypography.displayMedium,
-            RuulTypography.titleLarge, RuulTypography.title, RuulTypography.headline,
-            RuulTypography.bodyLarge, RuulTypography.body, RuulTypography.callout,
-            RuulTypography.caption, RuulTypography.footnote,
-            RuulTypography.mono, RuulTypography.monoLarge
-        ]
-        for style in styles {
-            #expect(style.lineHeight > 0)
-        }
-    }
-
     @Test("RuulSchemeOverride covers all 4 modes")
     func schemeOverrideHasAllCases() {
         #expect(RuulSchemeOverride.allCases.count == 4)

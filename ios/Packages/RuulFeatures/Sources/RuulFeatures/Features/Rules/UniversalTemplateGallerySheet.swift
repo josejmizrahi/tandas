@@ -46,7 +46,7 @@ public struct UniversalTemplateGallerySheet: View {
                     }
                 } header: {
                     Text("Elige el patrón que se parezca a lo que quieres. Llena los huecos y actívalo.")
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                         .textCase(nil)
                 }
@@ -84,15 +84,15 @@ public struct UniversalTemplateGallerySheet: View {
                     )
             }
             Text(template.displayNameES)
-                .ruulTextStyle(RuulTypography.headline)
+                .font(.headline)
                 .foregroundStyle(Color.ruulTextPrimary)
             Text(template.descriptionES)
-                .ruulTextStyle(RuulTypography.caption)
+                .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .lineLimit(3)
             if template.naturalLanguagePreviewTemplate != nil {
                 Text(RuleSentenceFormatter.preview(forTemplate: template))
-                    .ruulTextStyle(RuulTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .padding(RuulSpacing.xs)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,7 +104,7 @@ public struct UniversalTemplateGallerySheet: View {
                     Text("·")
                         .foregroundStyle(Color.ruulTextTertiary)
                     Text(hint)
-                        .ruulTextStyle(RuulTypography.caption)
+                        .font(.caption)
                         .foregroundStyle(Color.ruulTextTertiary)
                 }
             }
