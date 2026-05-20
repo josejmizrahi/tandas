@@ -2,34 +2,11 @@ import SwiftUI
 
 /// Canonical toolbar chrome for every modal sheet / push detail.
 ///
-/// Two slots are filled here, leaving `.topBarTrailing` open for each
-/// caller to append its own actions via a regular `.toolbar { ... }`
-/// modifier downstream:
-///
-///   `.topBarLeading`  — xmark close (`RuulCloseToolbarButton`)
-///   `.principal`      — title centered, `.headline`
-///
-/// Replaces the inline pattern duplicated across ~20 sheets:
-///
-/// ```swift
-/// .toolbar {
-///     ToolbarItem(placement: .topBarLeading) {
-///         RuulCloseToolbarButton { dismiss() }
-///     }
-///     ToolbarItem(placement: .principal) {
-///         Text("Title").font(.headline)...
-///     }
-/// }
-/// .toolbarBackground(.visible, for: .navigationBar)
-/// .toolbarBackground(Color.ruulBackground, for: .navigationBar)
-/// .navigationBarTitleDisplayMode(.inline)
-/// ```
-///
-/// Now a single line at the call site:
-///
-/// ```swift
-/// .ruulSheetToolbar("Editar grupo")
-/// ```
+/// Renders Apple's standard sheet header: native `.navigationTitle`
+/// (centered inline) and a "Cancelar" button in `.cancellationAction`
+/// placement. Trailing actions stay open for each caller via a normal
+/// `.toolbar { ToolbarItem(placement: .topBarTrailing) { ... } }`
+/// modifier downstream.
 ///
 /// Pass `onClose` only when the sheet needs to tear down some external
 /// route binding before SwiftUI propagates `\.dismiss` (e.g. router
@@ -47,28 +24,21 @@ public struct RuulSheetToolbarModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RuulCloseToolbarButton {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") {
                         if let onClose { onClose() } else { dismiss() }
                     }
                 }
-                ToolbarItem(placement: .principal) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(Color.primary)
-                        .lineLimit(1)
-                }
             }
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.ruulBackground, for: .navigationBar)
-            .navigationBarTitleDisplayMode(.inline)
     }
 }
 
 public extension View {
-    /// Mounts the canonical sheet toolbar (xmark close on the left,
-    /// title centered). Trailing actions go through a normal
+    /// Mounts the canonical sheet toolbar (Cancelar in `.cancellationAction`
+    /// + native inline title). Trailing actions go through a normal
     /// `.toolbar { ToolbarItem(placement: .topBarTrailing) { ... } }`
     /// modifier and compose with this one.
     func ruulSheetToolbar(_ title: String, onClose: (() -> Void)? = nil) -> some View {
