@@ -1,8 +1,17 @@
 import SwiftUI
 
-/// Layout for content presented inside a modal sheet (already wrapped via
-/// `.sheet(...)` by the caller). Provides drag indicator + title +
-/// scrollable content area + optional sticky bottom action row.
+/// Thin wrapper that mounts Apple-native sheet chrome inside a host
+/// `.sheet(...)`. Provides:
+///
+///   - `NavigationStack` + native inline `.navigationTitle(title)`
+///   - `Button("Cancelar")` in `.cancellationAction` placement
+///   - Optional `primaryCTA` rendered in `.confirmationAction`
+///   - Scrollable content area
+///
+/// Doctrine: doctrine §0.1 + Component Map §6 say modal sheets use
+/// native nav-bar chrome (Cancelar / Listo / Save), not custom title
+/// + xmark headers. This wrapper enforces that across the app while
+/// keeping the 22 caller sites declarative.
 public struct ModalSheetTemplate<Content: View>: View {
     private let title: String?
     private let dismissAction: (() -> Void)?
@@ -22,45 +31,29 @@ public struct ModalSheetTemplate<Content: View>: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            header
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: RuulSpacing.md) {
                     content()
                 }
                 .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.lg)
             }
-            if let primaryCTA {
-                RuulButton(primaryCTA.label, style: .primary, size: .large, fillsWidth: true) { primaryCTA.perform() }
-                    .padding(.horizontal, RuulSpacing.lg)
-                    .padding(.bottom, RuulSpacing.md)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var header: some View {
-        if title != nil || dismissAction != nil {
-            HStack {
-                if let title {
-                    Text(title)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(Color.primary)
-                }
-                Spacer()
+            .navigationTitle(title ?? "")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
                 if let dismissAction {
-                    Button(action: dismissAction) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(Color(.tertiaryLabel))
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancelar", action: dismissAction)
                     }
-                    .buttonStyle(.plain)
+                }
+                if let primaryCTA {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(primaryCTA.label, action: primaryCTA.perform)
+                    }
                 }
             }
-            .padding(.horizontal, RuulSpacing.lg)
-            .padding(.top, RuulSpacing.md)
-            .padding(.bottom, RuulSpacing.sm)
         }
     }
 }
