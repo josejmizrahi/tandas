@@ -88,12 +88,10 @@ public struct UniversalResourceDetailView: View {
         }
         .scrollIndicators(.hidden)
         .background(Color.ruulBackground.ignoresSafeArea())
-        // Canonical sheet chrome: xmark close on leading, title centered.
-        // Reuses the same .ruulSheetToolbar every other modal in the app
-        // uses, so the dismiss affordance is consistent. Hosts that need
-        // a custom dismiss path pass `onClose`; the default is SwiftUI's
-        // `\.dismiss` from the environment.
-        .ruulSheetToolbar(navigationTitle ?? blocks.identity.title, onClose: onClose)
+        // Toolbar chrome (xmark close + centered title) is the host's
+        // responsibility — we don't apply `.ruulSheetToolbar(...)` here
+        // to avoid stacking it with the outer wrapper's toolbar (which
+        // would surface two leading-x buttons on the same nav bar).
         .toolbar {
             if !supportedOverflowActions.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {

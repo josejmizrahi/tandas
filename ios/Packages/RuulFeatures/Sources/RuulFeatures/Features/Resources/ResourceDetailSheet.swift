@@ -43,6 +43,7 @@ public struct ResourceDetailSheet: View {
     public var body: some View {
         NavigationStack {
             content
+                .ruulSheetToolbar(displayName, onClose: { dismiss() })
         }
         .task { await load() }
         .task { await redirectIfEvent() }
