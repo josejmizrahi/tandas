@@ -135,8 +135,9 @@ public struct RootShellSheets: ViewModifier {
             }
 
             // MARK: Vote-on-appeal sheet (carries AppealRouteContext)
-            .ruulSheet(item: appealItem) { ctx in
+            .sheet(item: appealItem) { ctx in
                 voteOnAppealSheet(ctx)
+                    .presentationDetents([.medium, .large])
             }
 
             // V2 Slice 4A: .editProfile cover removed. EditProfileSheet

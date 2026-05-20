@@ -67,8 +67,9 @@ public struct ReviewProposedFinesView: View {
         .task { await coordinator.refresh() }
         .navigationTitle("Multas propuestas")
         .navigationBarTitleDisplayMode(.large)
-        .ruulSheet(isPresented: voidSheetBinding) {
+        .sheet(isPresented: voidSheetBinding) {
             voidSheet
+                .presentationDetents([.medium])
         }
     }
 

@@ -72,17 +72,18 @@ public struct FineDetailHost: View {
         // Appeal sheet — opened from primary action when builder emits
         // an appeal-cast intent (no current path; reserved for future
         // builder rewrite that surfaces "Apelar" as a primary action).
-        .ruulSheet(isPresented: $appealSheetPresented) {
+        .sheet(isPresented: $appealSheetPresented) {
             AppealFineSheet(
                 isPresented: $appealSheetPresented,
                 fine: coordinator.fine
             ) { reason in
                 Task { await coordinator.startAppeal(reason: reason) }
             }
+            .presentationDetents([.medium])
         }
         // Void fine sheet — admin destructive action surfaced through
         // the overflow `.delete` slot.
-        .ruulSheet(isPresented: $voidSheetPresented) {
+        .sheet(isPresented: $voidSheetPresented) {
             if canVoidFine {
                 VoidFineSheet(
                     isPresented: $voidSheetPresented,
@@ -95,6 +96,7 @@ public struct FineDetailHost: View {
                         }
                     )
                 )
+                .presentationDetents([.medium])
             }
         }
     }

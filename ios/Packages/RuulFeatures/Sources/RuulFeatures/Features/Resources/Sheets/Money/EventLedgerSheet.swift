@@ -44,11 +44,12 @@ struct ResourceLedgerSheet: View {
                 .padding(.top, RuulSpacing.sm)
         }
         .task { await coordinator.load() }
-        .ruulSheet(isPresented: $coordinator.addSheetPresented) {
+        .sheet(isPresented: $coordinator.addSheetPresented) {
             AddLedgerEntrySheet(
                 isPresented: $coordinator.addSheetPresented,
                 coordinator: coordinator
             )
+            .presentationDetents([.medium, .large])
         }
     }
 

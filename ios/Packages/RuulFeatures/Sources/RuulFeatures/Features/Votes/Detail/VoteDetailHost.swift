@@ -68,13 +68,15 @@ public struct VoteDetailHost: View {
         // Cast picker — opens from the StateHero primary action when the
         // builder emits `castVote`. The legacy VoteCastSection handles the
         // three-choice ballot inside.
-        .ruulSheet(isPresented: $showCastSheet) {
+        .sheet(isPresented: $showCastSheet) {
             voteCastPickerSheet
+                .presentationDetents([.medium])
         }
         // Admin actions — opens from overflow `.edit` when finalize/cancel
         // is available. Closes after a successful action.
-        .ruulSheet(isPresented: $showAdminSheet) {
+        .sheet(isPresented: $showAdminSheet) {
             voteAdminSheet
+                .presentationDetents([.medium])
         }
         .alert("Finalizar votación", isPresented: $showFinalizeConfirm) {
             Button("Finalizar", role: .destructive) {

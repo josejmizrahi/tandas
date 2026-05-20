@@ -53,7 +53,7 @@ public struct EventDetailSheets: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
-            .ruulSheet(isPresented: bindingForSheet(.share)) {
+            .sheet(isPresented: bindingForSheet(.share)) {
                 ShareEventSheet(
                     isPresented: bindingForSheet(.share),
                     event: b.coordinator.event,
@@ -61,29 +61,33 @@ public struct EventDetailSheets: ViewModifier {
                     hostName: hostName(for: b.coordinator.event),
                     onAddToCalendar: { addToCalendar(event: b.coordinator.event) }
                 )
+                .presentationDetents([.medium])
             }
-            .ruulSheet(isPresented: bindingForSheet(.qr)) {
+            .sheet(isPresented: bindingForSheet(.qr)) {
                 MemberQRSheet(
                     isPresented: bindingForSheet(.qr),
                     eventId: b.coordinator.event.id,
                     memberId: b.coordinator.myRSVP?.userId ?? b.currentUserId,
                     eventTitle: b.coordinator.event.title
                 )
+                .presentationDetents([.medium])
             }
-            .ruulSheet(isPresented: bindingForSheet(.cancelEvent)) {
+            .sheet(isPresented: bindingForSheet(.cancelEvent)) {
                 CancelEventSheet(isPresented: bindingForSheet(.cancelEvent)) { reason in
                     Task { await b.coordinator.cancelEvent(reason: reason) }
                 }
+                .presentationDetents([.medium])
             }
-            .ruulSheet(isPresented: bindingForSheet(.cancelAttendance)) {
+            .sheet(isPresented: bindingForSheet(.cancelAttendance)) {
                 CancelAttendanceSheet(
                     isPresented: bindingForSheet(.cancelAttendance),
                     isAfterDeadline: isAfterRSVPDeadline(coordinator: b.coordinator)
                 ) { reason in
                     Task { await b.coordinator.setRSVP(.declined, plusOnes: 0, reason: reason) }
                 }
+                .presentationDetents([.medium])
             }
-            .ruulSheet(isPresented: bindingForSheet(.remindAttendees)) {
+            .sheet(isPresented: bindingForSheet(.remindAttendees)) {
                 RemindAttendeesSheet(
                     isPresented: bindingForSheet(.remindAttendees),
                     pendingCount: b.coordinator.rsvps.filter { $0.status == .pending }.count,
@@ -92,42 +96,47 @@ public struct EventDetailSheets: ViewModifier {
                 ) {
                     Task { _ = await b.coordinator.sendHostReminders() }
                 }
+                .presentationDetents([.medium])
             }
-            .ruulSheet(isPresented: bindingForSheet(.closeEvent)) {
+            .sheet(isPresented: bindingForSheet(.closeEvent)) {
                 CloseEventSheet(
                     isPresented: bindingForSheet(.closeEvent),
                     vocabulary: b.group.eventVocabulary
                 ) {
                     Task { await b.coordinator.closeEvent(autoGenerateEnabled: false) }
                 }
+                .presentationDetents([.medium])
             }
-            .ruulSheet(isPresented: bindingForSheet(.manualFine)) {
+            .sheet(isPresented: bindingForSheet(.manualFine)) {
                 if let mf = b.manualFineCoordinator {
                     AddManualFineSheet(
                         isPresented: bindingForSheet(.manualFine),
                         coordinator: mf,
                         currentUserId: b.currentUserId
                     )
+                    .presentationDetents([.medium, .large])
                 }
             }
-            .ruulSheet(isPresented: bindingForSheet(.ledger)) {
+            .sheet(isPresented: bindingForSheet(.ledger)) {
                 if let lc = b.ledgerCoordinator {
                     ResourceLedgerSheet(
                         isPresented: bindingForSheet(.ledger),
                         coordinator: lc,
                         groupVocabulary: b.group.eventVocabulary
                     )
+                    .presentationDetents([.large])
                 }
             }
-            .ruulSheet(isPresented: bindingForSheet(.rules)) {
+            .sheet(isPresented: bindingForSheet(.rules)) {
                 if let rc = b.rulesCoordinator {
                     ResourceRulesSheet(
                         isPresented: bindingForSheet(.rules),
                         coordinator: rc
                     )
+                    .presentationDetents([.large])
                 }
             }
-            .ruulSheet(isPresented: bindingForSheet(.attendees)) {
+            .sheet(isPresented: bindingForSheet(.attendees)) {
                 AttendeesListSheet(
                     rsvps: b.coordinator.rsvps,
                     memberDirectory: b.memberDirectory
@@ -137,6 +146,7 @@ public struct EventDetailSheets: ViewModifier {
                         b.attendeeRoute.wrappedValue = mwp
                     }
                 }
+                .presentationDetents([.large])
             }
             .fullScreenCover(item: b.attendeeRoute) { mwp in
                 NavigationStack {
