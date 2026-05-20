@@ -41,7 +41,10 @@ public struct ConsentRulesView: View {
 
     private func ruleRow(_ rule: OnboardingRule) -> some View {
         HStack(alignment: .center, spacing: RuulSpacing.md) {
-            RuulIconBadge("doc.text", size: .medium)
+            Image(systemName: "doc.text")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                 Text(rule.name)
                     .font(.headline)

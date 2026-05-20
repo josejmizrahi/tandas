@@ -22,11 +22,17 @@ public struct RuulHeaderActions<Content: View>: View {
 #if DEBUG
 #Preview("RuulHeaderActions") {
     HStack {
-        RuulPillButton(symbol: "chevron.left", accessibilityLabel: "Atrás") {}
+        Button { } label: { Image(systemName: "chevron.left") }
+            .buttonStyle(.glass)
+            .accessibilityLabel("Atrás")
         Spacer()
         RuulHeaderActions {
-            RuulPillButton(symbol: "magnifyingglass", accessibilityLabel: "Buscar") {}
-            RuulPillButton(symbol: "ellipsis", accessibilityLabel: "Más") {}
+            Button { } label: { Image(systemName: "magnifyingglass") }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Buscar")
+            Button { } label: { Image(systemName: "ellipsis") }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Más")
         }
     }
     .padding(RuulSpacing.md)

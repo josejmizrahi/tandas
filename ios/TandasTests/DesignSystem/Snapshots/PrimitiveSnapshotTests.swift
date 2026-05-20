@@ -17,10 +17,8 @@ import RuulCore
 final class PrimitiveSnapshotTests: XCTestCase {
 
     private let buttonSize = CGSize(width: 320, height: 64)
-    private let badgeSize = CGSize(width: 220, height: 56)
     private let cardSize = CGSize(width: 360, height: 120)
     private let moneySize = CGSize(width: 220, height: 80)
-    private let pillSize = CGSize(width: 80, height: 64)
 
     // MARK: - RuulButton
 
@@ -44,17 +42,6 @@ final class PrimitiveSnapshotTests: XCTestCase {
         assertImage(view, size: buttonSize, scheme: .dark)
     }
 
-    // MARK: - RuulBadge
-
-    func test_RuulBadge_neutral_light() {
-        let view = RuulBadge("Pendiente")
-        assertImage(view, size: badgeSize, scheme: .light)
-    }
-
-    func test_RuulBadge_neutral_dark() {
-        let view = RuulBadge("Pendiente")
-        assertImage(view, size: badgeSize, scheme: .dark)
-    }
 
     // MARK: - RuulMoneyView
 
@@ -101,18 +88,6 @@ final class PrimitiveSnapshotTests: XCTestCase {
         #if CI
         throw XCTSkip("RuulMoneyView snapshots skipped on CI — cross-Xcode font rendering. See PrimitiveSnapshotTests.swift skipOnCI() comment.")
         #endif
-    }
-
-    // MARK: - RuulPillButton
-
-    func test_RuulPillButton_light() {
-        let view = RuulPillButton(symbol: "plus") {}
-        assertImage(view, size: pillSize, scheme: .light)
-    }
-
-    func test_RuulPillButton_dark() {
-        let view = RuulPillButton(symbol: "plus") {}
-        assertImage(view, size: pillSize, scheme: .dark)
     }
 
     // MARK: - Helpers

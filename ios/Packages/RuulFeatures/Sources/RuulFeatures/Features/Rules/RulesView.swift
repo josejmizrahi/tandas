@@ -387,19 +387,19 @@ public struct RulesView: View {
     /// would just add noise. Non-group scopes get a labelled badge so the
     /// reader can tell at a glance whether the rule covers one resource,
     /// one series, one module, or one member.
-    private func scopeChip(for rule: GroupRule) -> RuulBadge? {
+    private func scopeChip(for rule: GroupRule) -> ScopeBadge? {
         switch rule.scope {
         case .group:
             return nil
         case .module:
             let label = rule.moduleKey.map { "Módulo · \($0)" } ?? "Módulo"
-            return RuulBadge(label, style: .neutral, icon: "puzzlepiece")
+            return ScopeBadge(label: label, icon: "puzzlepiece", tint: .secondary)
         case .series:
-            return RuulBadge("Toda la recurrencia", style: .info, icon: "repeat")
+            return ScopeBadge(label: "Toda la recurrencia", icon: "repeat", tint: .blue)
         case .resource:
-            return RuulBadge("Esta instancia", style: .info, icon: "scope")
+            return ScopeBadge(label: "Esta instancia", icon: "scope", tint: .blue)
         case .membership:
-            return RuulBadge("Por miembro", style: .warning, icon: "person")
+            return ScopeBadge(label: "Por miembro", icon: "person", tint: .orange)
         }
     }
 
@@ -430,5 +430,26 @@ public struct RulesView: View {
             .font(.caption)
             .foregroundStyle(Color(.tertiaryLabel))
             .padding(.top, RuulSpacing.sm)
+    }
+}
+
+/// Inline pill rendered by `RulesView.scopeChip(for:)`. Tinted capsule
+/// with icon + caption-weight label. Lives next to its only caller.
+private struct ScopeBadge: View {
+    let label: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(label)
+                .font(.caption2.weight(.semibold))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .foregroundStyle(tint)
+        .background(tint.opacity(0.15), in: .capsule)
     }
 }

@@ -40,7 +40,10 @@ public struct RuulActionableCard: View {
     public var body: some View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.md) {
-                RuulIconBadge(icon, tint: tint, size: .medium)
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)

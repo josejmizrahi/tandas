@@ -182,13 +182,28 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var iconBadgeSection: some View {
-        ShowcaseSection("RuulIconBadge") {
-            HStack {
-                RuulIconBadge("calendar", size: .small)
-                RuulIconBadge("calendar", size: .medium)
-                RuulIconBadge("calendar", size: .large)
-                RuulIconBadge("checkmark", tint: .green)
-                RuulIconBadge("xmark", tint: .red)
+        ShowcaseSection("Image(systemName:) bare") {
+            HStack(spacing: RuulSpacing.md) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 32, height: 32)
+                Image(systemName: "calendar")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "calendar")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 56, height: 56)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.green)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "xmark")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.red)
+                    .frame(width: 44, height: 44)
             }
         }
     }

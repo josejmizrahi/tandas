@@ -101,7 +101,10 @@ public struct InviteMembersView: View {
         let message = InviteLinkGenerator.shareMessage(groupName: group.name, code: group.inviteCode)
         return ShareLink(item: message) {
             HStack(spacing: RuulSpacing.md) {
-                RuulIconBadge("link", size: .medium)
+                Image(systemName: "link")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text("Compartir link")
                         .font(.headline)
