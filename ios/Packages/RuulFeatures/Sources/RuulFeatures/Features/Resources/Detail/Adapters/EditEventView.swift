@@ -98,10 +98,10 @@ public struct EditEventView: View {
     }
 
     private var dateSection: some View {
-        RuulDatePicker(
+        DatePicker(
             "Fecha y hora",
-            date: $coordinator.draft.startsAt,
-            components: [.date, .hourAndMinute]
+            selection: $coordinator.draft.startsAt,
+            displayedComponents: [.date, .hourAndMinute]
         )
     }
 
