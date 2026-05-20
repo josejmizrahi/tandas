@@ -13,7 +13,6 @@ public struct GroupIdentityView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.visibleSteps.count,
             title: "Crea tu grupo",
             subtitle: "Tu grupo se vuelve vivo en cuanto le pongas nombre.",
             primaryCTA: ("Crear grupo", coord.isLoading, { Task { await coord.advanceFromGroupIdentity() } }),

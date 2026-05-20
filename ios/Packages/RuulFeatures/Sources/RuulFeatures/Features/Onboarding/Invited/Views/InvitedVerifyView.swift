@@ -10,7 +10,6 @@ public struct InvitedVerifyView: View {
         OnboardingScreenTemplate(
             mesh: .aqua,
             progress: progressValue,
-            stepCount: InvitedStep.allCases.count,
             title: "Confirma tu número",
             subtitle: "Para mandarte recordatorios y multas si aplica.",
             primaryCTA: ("Enviar código", coord.isLoading, sendCode),

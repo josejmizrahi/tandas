@@ -12,7 +12,6 @@ public struct InviteMembersView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.visibleSteps.count,
             title: "Invita a tu grupo",
             subtitle: "Mínimo 3 personas para empezar.",
             primaryCTA: ("Continuar", coord.isLoading, { Task { await coord.advanceFromInvite() } }),

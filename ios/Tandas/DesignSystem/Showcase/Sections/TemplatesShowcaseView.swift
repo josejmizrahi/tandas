@@ -28,7 +28,6 @@ struct TemplatesShowcaseView: View {
                 OnboardingScreenTemplate(
                     mesh: .violet,
                     progress: 0.6,
-                    stepCount: 5,
                     title: "Demo",
                     subtitle: "Mesh background + step container.",
                     primaryCTA: ("Continuar", false, { })

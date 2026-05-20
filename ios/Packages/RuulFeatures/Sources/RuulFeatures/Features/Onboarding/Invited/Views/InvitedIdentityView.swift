@@ -14,7 +14,6 @@ public struct InvitedIdentityView: View {
         OnboardingScreenTemplate(
             mesh: .aqua,
             progress: progressValue,
-            stepCount: InvitedStep.allCases.count,
             title: "¿Cómo te llamas?",
             subtitle: "El grupo necesita saber quién entra.",
             primaryCTA: ("Continuar", coord.isLoading, { Task { await coord.advanceFromIdentity() } }),

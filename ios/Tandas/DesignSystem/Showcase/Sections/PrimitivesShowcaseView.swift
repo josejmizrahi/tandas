@@ -94,11 +94,10 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var progressSection: some View {
-        ShowcaseSection("RuulProgressBar") {
+        ShowcaseSection("ProgressView") {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                RuulProgressBar(value: sliderValue)
-                RuulProgressBar(value: sliderValue, style: .steps(5))
-                Slider(value: $sliderValue, in: 0...1).tint(Color.ruulAccent)
+                ProgressView(value: sliderValue)
+                Slider(value: $sliderValue, in: 0...1)
             }
         }
     }

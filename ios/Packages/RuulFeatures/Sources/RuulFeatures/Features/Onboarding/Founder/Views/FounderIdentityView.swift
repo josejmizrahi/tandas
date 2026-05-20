@@ -16,7 +16,6 @@ public struct FounderIdentityView: View {
         OnboardingScreenTemplate(
             mesh: .cool,
             progress: progressValue,
-            stepCount: FounderStep.visibleSteps.count,
             title: "¿Cómo te llamas?",
             subtitle: "Así te van a ver tus grupos.",
             primaryCTA: ("Continuar", coord.isLoading, primaryAction),
