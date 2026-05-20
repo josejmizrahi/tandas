@@ -20,8 +20,8 @@ public extension Color {
     static var ruulSeparator: Color         { ruulBorderSubtle }
     static var ruulSeparatorOpaque: Color   { ruulBorderDefault }
 
-    static var ruulAccent: Color            { ruulAccentPrimary }
-    static var ruulAccentMuted: Color       { ruulAccentSubtle }
+    static var ruulAccent: Color            { .accentColor }
+    static var ruulAccentMuted: Color       { Color.accentColor.opacity(0.15) }
 
     /// Tinted backgrounds para estados (NEW).
     static var ruulPositiveBackground: Color { ruulSemanticSuccess.opacity(0.12) }
