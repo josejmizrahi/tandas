@@ -62,7 +62,7 @@ public struct GroupRoleEditorSheet: View {
                         if isEditingSystem {
                             Text("Los roles del sistema no se pueden eliminar, pero puedes ajustar sus permisos.")
                                 .font(.caption)
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                         }
                     }
                 }
@@ -79,7 +79,7 @@ public struct GroupRoleEditorSheet: View {
                     maxHoldersSection
                 }
                 if let error {
-                    Section { Text(error).foregroundStyle(Color.ruulNegative) }
+                    Section { Text(error).foregroundStyle(Color.red) }
                 }
             }
             .navigationTitle(navigationTitle)
@@ -112,7 +112,7 @@ public struct GroupRoleEditorSheet: View {
                 .autocorrectionDisabled(true)
             Text("Solo letras minúsculas, números y guiones bajos. Empieza con una letra. Ejemplos: `treasurer`, `seat_owner`, `lifeguard`.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         } header: {
             Text("Identificador")
         }
@@ -149,7 +149,7 @@ public struct GroupRoleEditorSheet: View {
         } footer: {
             Text("Útil para roles como Tesorero o Capitán que solo una o dos personas deben tener.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -166,10 +166,10 @@ public struct GroupRoleEditorSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(permission.humanLabel)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(permission.hint)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .disabled(isFounderAssignRolesLock(permission))
@@ -178,9 +178,9 @@ public struct GroupRoleEditorSheet: View {
     @ViewBuilder
     private func infoRow(_ title: String, value: String) -> some View {
         HStack {
-            Text(title).foregroundStyle(Color.ruulTextPrimary)
+            Text(title).foregroundStyle(Color.primary)
             Spacer()
-            Text(value).foregroundStyle(Color.ruulTextSecondary)
+            Text(value).foregroundStyle(Color.secondary)
         }
     }
 

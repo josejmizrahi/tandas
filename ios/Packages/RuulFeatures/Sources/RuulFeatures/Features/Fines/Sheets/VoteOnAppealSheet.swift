@@ -51,7 +51,7 @@ public struct VoteOnAppealSheet: View {
                 votingButtons
                 Text("Tu voto es anónimo. Solo se publican los conteos agregados.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
             }
@@ -64,7 +64,7 @@ public struct VoteOnAppealSheet: View {
             HStack {
                 Text(fine.reason)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 RuulMoneyView(
                     amount: fine.amount,
@@ -79,7 +79,7 @@ public struct VoteOnAppealSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -88,7 +88,7 @@ public struct VoteOnAppealSheet: View {
             RuulListSectionHeader("ARGUMENTO DE \(appellantName.uppercased())")
             Text(appeal.reason)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(RuulSpacing.md)
@@ -96,7 +96,7 @@ public struct VoteOnAppealSheet: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -117,7 +117,7 @@ public struct VoteOnAppealSheet: View {
         }()
         Text(copy)
             .font(.caption)
-            .foregroundStyle(Color.ruulTextSecondary)
+            .foregroundStyle(Color.secondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
     }
@@ -126,20 +126,20 @@ public struct VoteOnAppealSheet: View {
         VStack(spacing: RuulSpacing.xs) {
             voteButton(
                 label: "A favor — anular la multa",
-                dotColor: .ruulPositive,
+                dotColor: .green,
                 choice: .inFavor,
                 primary: true
             )
             HStack(spacing: RuulSpacing.xs) {
                 voteButton(
                     label: "En contra",
-                    dotColor: .ruulNegative,
+                    dotColor: .red,
                     choice: .against,
                     primary: false
                 )
                 voteButton(
                     label: "Abstenerme",
-                    dotColor: .ruulTextTertiary,
+                    dotColor: Color(.tertiaryLabel),
                     choice: .abstained,
                     primary: false
                 )
@@ -161,11 +161,11 @@ public struct VoteOnAppealSheet: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.md)
             .padding(.horizontal, RuulSpacing.md)
-            .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
-            .background(primary ? Color.ruulTextPrimary : Color.ruulSurface, in: Capsule())
+            .foregroundStyle(primary ? Color.ruulTextInverse : Color.primary)
+            .background(primary ? Color.primary : Color.ruulSurface, in: Capsule())
             .overlay(
                 primary ? nil :
-                Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5)
+                Capsule().stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)

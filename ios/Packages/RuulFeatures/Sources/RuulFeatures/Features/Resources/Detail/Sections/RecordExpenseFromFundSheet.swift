@@ -68,18 +68,18 @@ public struct RecordExpenseFromFundSheet: View {
                 Section {
                     Text(fundName)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if let sourceEventName {
                         Label("Gasto de \(sourceEventName)", systemImage: "calendar")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 } footer: {
                     Text(sourceEventName != nil
                          ? "El gasto sale del fondo y queda asociado a este evento. El destinatario recibe el cobro."
                          : "El gasto sale del fondo y se acredita al destinatario.")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
 
                 Section("Destinatario") {
@@ -107,7 +107,7 @@ public struct RecordExpenseFromFundSheet: View {
                     Section {
                         Text(errorMessage)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }

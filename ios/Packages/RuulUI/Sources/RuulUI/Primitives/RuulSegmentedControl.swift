@@ -20,7 +20,7 @@ public struct RuulSegmentedControl<Value: Hashable & Sendable>: View {
                 } label: {
                     Text(segment.label)
                         .font(.footnote)
-                        .foregroundStyle(isSelected ? Color.ruulTextInverse : Color.ruulTextPrimary)
+                        .foregroundStyle(isSelected ? Color.ruulTextInverse : Color.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, RuulSpacing.xs)
                         .background {

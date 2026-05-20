@@ -36,7 +36,7 @@ public struct ClaimReviewView: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
                 .padding(RuulSpacing.lg)
@@ -52,10 +52,10 @@ public struct ClaimReviewView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Te agregaron a un grupo en Ruul")
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Tu lugar ya está reservado. Acepta para unir tu cuenta con el historial existente, o rechaza si no eres quien creen.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -64,12 +64,12 @@ public struct ClaimReviewView: View {
         if isLoadingSummary {
             HStack { ProgressView(); Text("Cargando historial…") }
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         } else if let summary {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("Historial atribuido")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 metricRow(systemImage: "exclamationmark.circle", label: "Fines", value: summary.fineCount)
                 metricRow(systemImage: "checkmark.seal", label: "Votos emitidos", value: summary.voteCount)
                 metricRow(systemImage: "calendar", label: "Eventos registrados", value: summary.eventCount)
@@ -82,7 +82,7 @@ public struct ClaimReviewView: View {
             // works (server enforces token validity).
             Text("Confirma para ver tu grupo.")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 
@@ -95,7 +95,7 @@ public struct ClaimReviewView: View {
             Spacer()
             Text("\(value)")
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
     }
 

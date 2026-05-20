@@ -46,10 +46,10 @@ public struct ConsentRulesView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                 Text(rule.name)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("En modo sugerencia")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -60,7 +60,7 @@ public struct ConsentRulesView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 
@@ -68,12 +68,12 @@ public struct ConsentRulesView: View {
         HStack(alignment: .top, spacing: RuulSpacing.xs) {
             Image(systemName: "info.circle")
                 .font(.footnote)
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.top, 2)
                 .accessibilityHidden(true)
             Text("Podrás revisar y activar cada regla desde la sección Reglas cuando estén todos listos.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer(minLength: 0)
         }
     }

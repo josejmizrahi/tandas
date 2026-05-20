@@ -32,7 +32,7 @@ public struct JoinGroupSheet: View {
                     if let error {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                     RuulButton(
                         "Unirme",
@@ -58,10 +58,10 @@ public struct JoinGroupSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Cuál es el código?")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("El fundador del grupo te lo compartió. Suele tener 6 caracteres.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 

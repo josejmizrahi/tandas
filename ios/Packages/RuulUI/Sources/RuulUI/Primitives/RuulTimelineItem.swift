@@ -19,11 +19,11 @@ public struct RuulTimelineItem: View {
 
         var dotColor: Color {
             switch self {
-            case .neutral:  return .ruulTextTertiary
-            case .positive: return .ruulPositive
-            case .warning:  return .ruulWarning
-            case .negative: return .ruulNegative
-            case .info:     return .ruulInfo
+            case .neutral:  return Color(.tertiaryLabel)
+            case .positive: return .green
+            case .warning:  return .orange
+            case .negative: return .red
+            case .info:     return .blue
             }
         }
     }
@@ -82,7 +82,7 @@ public struct RuulTimelineItem: View {
             // for endpoints. Hidden when the row is both first AND last.
             if !(isFirst && isLast) {
                 Rectangle()
-                    .fill(Color.ruulSeparator)
+                    .fill(Color(.separator))
                     .frame(width: 1)
                     .padding(.top, isFirst ? 24 : 0)
                     .padding(.bottom, isLast ? 0 : 0)
@@ -103,7 +103,7 @@ public struct RuulTimelineItem: View {
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                 }
                 Circle()
                     .fill(tone.dotColor)
@@ -119,15 +119,15 @@ public struct RuulTimelineItem: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(timestamp)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text(title)
                 .font(.headline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
             if let subtitle {
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

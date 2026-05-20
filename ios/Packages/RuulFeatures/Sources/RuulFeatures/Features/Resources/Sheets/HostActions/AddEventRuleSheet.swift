@@ -28,7 +28,7 @@ struct AddResourceRuleSheet: View {
             if let error = coordinator.error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             }
             submitButton
                 .padding(.top, RuulSpacing.sm)
@@ -52,7 +52,7 @@ struct AddResourceRuleSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("CUÁNDO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             if coordinator.availableTriggers.isEmpty {
                 emptyShapeMessage("No hay disparadores disponibles todavía.")
             } else {
@@ -83,14 +83,14 @@ struct AddResourceRuleSheet: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ENTONCES → \(only.labelES.uppercased())")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 configFields(for: only)
             }
         } else if !coordinator.availableConsequences.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ENTONCES")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 RuulSeparatedRows(items: coordinator.availableConsequences) { shape in
                     shapeRow(
                         shape,
@@ -120,11 +120,11 @@ struct AddResourceRuleSheet: View {
         ) {
             HStack(alignment: .top, spacing: RuulSpacing.xs) {
                 Image(systemName: "text.alignleft")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.top, 2)
                 Text("\(sentence).")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.leading)
             }
             .padding(RuulSpacing.sm)
@@ -132,7 +132,7 @@ struct AddResourceRuleSheet: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
     }
@@ -157,11 +157,11 @@ struct AddResourceRuleSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(shape.labelES)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if let summary = shape.summaryES, !summary.isEmpty {
                         Text(summary)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                             .multilineTextAlignment(.leading)
                     }
                 }
@@ -180,7 +180,7 @@ struct AddResourceRuleSheet: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparator,
+                    .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 1.5 : 0.5)
             )
         }
@@ -232,7 +232,7 @@ struct AddResourceRuleSheet: View {
     private func emptyShapeMessage(_ message: String) -> some View {
         Text(message)
             .font(.caption)
-            .foregroundStyle(Color.ruulTextSecondary)
+            .foregroundStyle(Color.secondary)
             .padding(.vertical, RuulSpacing.sm)
     }
 

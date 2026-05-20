@@ -55,7 +55,7 @@ public struct EditGroupIdentitySheet: View {
                 if let error {
                     Section {
                         Text(error)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
             }

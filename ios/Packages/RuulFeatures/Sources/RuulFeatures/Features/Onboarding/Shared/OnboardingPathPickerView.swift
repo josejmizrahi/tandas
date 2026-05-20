@@ -52,16 +52,16 @@ public struct OnboardingPathPickerView: View {
         VStack(spacing: RuulSpacing.sm) {
             Text("ruul")
                 .font(.system(size: 88, weight: .bold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text(showJoinInput ? "Pega tu código" : "Bienvenido")
                 .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.center)
             Text(showJoinInput
                  ? "Te lo compartió alguien del grupo."
                  : "¿Estrenas grupo o te invitaron a uno?")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -96,16 +96,16 @@ public struct OnboardingPathPickerView: View {
             HStack(alignment: .center, spacing: RuulSpacing.md) {
                 Image(systemName: systemImage)
                     .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
+                    .foregroundStyle(primary ? Color.ruulTextInverse : Color.primary)
                     .frame(width: 44, height: 44)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(primary ? Color.ruulTextInverse : Color.ruulTextPrimary)
+                        .foregroundStyle(primary ? Color.ruulTextInverse : Color.primary)
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(primary ? Color.ruulTextInverse.opacity(0.8) : Color.ruulTextSecondary)
+                        .foregroundStyle(primary ? Color.ruulTextInverse.opacity(0.8) : Color.secondary)
                         .multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 0)
@@ -114,11 +114,11 @@ public struct OnboardingPathPickerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .fill(primary ? Color.ruulTextPrimary : Color.ruulSurface)
+                    .fill(primary ? Color.primary : Color.ruulSurface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(primary ? Color.clear : Color.ruulSeparator, lineWidth: 1)
+                    .stroke(primary ? Color.clear : Color(.separator), lineWidth: 1)
             )
         }
         .buttonStyle(.ruulPress)
@@ -146,7 +146,7 @@ public struct OnboardingPathPickerView: View {
                 inviteCode = ""
             }
             .font(.footnote)
-            .foregroundStyle(Color.ruulTextSecondary)
+            .foregroundStyle(Color.secondary)
         }
     }
 

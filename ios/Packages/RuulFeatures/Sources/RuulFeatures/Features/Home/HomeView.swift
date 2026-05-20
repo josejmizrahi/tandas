@@ -287,18 +287,18 @@ public struct HomeView: View {
                         .frame(width: 40, height: 40)
                     Image(systemName: icon)
                         .font(.body)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     if let meta {
                         Text(meta)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -308,7 +308,7 @@ public struct HomeView: View {
                 }
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             .padding(.vertical, RuulSpacing.sm)
             .contentShape(Rectangle())
@@ -340,10 +340,10 @@ public struct HomeView: View {
         if event.status == .inProgress {
             return AnyView(
                 HStack(spacing: 4) {
-                    Circle().fill(Color.ruulNegative).frame(width: 6, height: 6)
+                    Circle().fill(Color.red).frame(width: 6, height: 6)
                     Text("EN VIVO")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
             )
         }
@@ -351,10 +351,10 @@ public struct HomeView: View {
         let color: Color
         let label: String
         switch status {
-        case .going:      color = .ruulPositive;     label = "Vas"
-        case .maybe:      color = .ruulWarning;      label = "Tal vez"
-        case .declined:   color = .ruulTextTertiary; label = "No vas"
-        case .waitlisted: color = .ruulWarning;      label = "Lista"
+        case .going:      color = .green;     label = "Vas"
+        case .maybe:      color = .orange;      label = "Tal vez"
+        case .declined:   color = Color(.tertiaryLabel); label = "No vas"
+        case .waitlisted: color = .orange;      label = "Lista"
         case .pending:    return nil
         }
         return AnyView(
@@ -439,16 +439,16 @@ public struct HomeView: View {
                     .frame(width: 80, height: 80)
                 Image(systemName: variant.icon)
                     .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .accessibilityHidden(true)
             }
             VStack(spacing: RuulSpacing.xs) {
                 Text(variant.title)
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(variant.summary)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .multilineTextAlignment(.center)
             }
             RuulButton(variant.ctaLabel, systemImage: "plus", style: .primary, size: .large, action: onCreateEvent)
@@ -539,7 +539,7 @@ public struct HomeView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 Text("HISTORIAL DEL GRUPO")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
 
                 HStack(spacing: RuulSpacing.sm) {
                     if groupMemory.pastEventsCount > 0 {
@@ -581,16 +581,16 @@ public struct HomeView: View {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: icon)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .accessibilityHidden(true)
                 Text(caption.uppercased())
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(1)
             }
             Text(value)
                 .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -621,7 +621,7 @@ public struct HomeView: View {
                         .font(.caption.weight(.bold))
                         .accessibilityHidden(true)
                 }
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .padding(.vertical, RuulSpacing.md)
             }
             .buttonStyle(.plain)

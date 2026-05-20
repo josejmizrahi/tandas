@@ -43,14 +43,14 @@ public struct RuulListSectionHeader: View {
         HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
             Text(label)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Spacer(minLength: 0)
             if let accessory {
                 accessory
             } else if let count {
                 Text("\(count)")
                     .font(.footnote.monospacedDigit().weight(.bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
     }

@@ -22,7 +22,7 @@ public struct ModulesPickerView: View {
                 ForEach(ModuleRegistry.v1Fallback.modules, id: \.id) { module in
                     moduleRow(module)
                     if module.id != ModuleRegistry.v1Fallback.modules.last?.id {
-                        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
+                        Divider().background(Color(.separator)).padding(.leading, RuulSpacing.md)
                     }
                 }
             }
@@ -32,7 +32,7 @@ public struct ModulesPickerView: View {
             if let error {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
                     .padding(.horizontal, RuulSpacing.lg)
             }
         }
@@ -54,10 +54,10 @@ public struct ModulesPickerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(module.name)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(module.description)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
                 Spacer()
@@ -71,12 +71,12 @@ public struct ModulesPickerView: View {
             if blocked && !conflicts.isEmpty {
                 Text("Conflictúa con: \(conflicts.joined(separator: ", "))")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulWarning)
+                    .foregroundStyle(Color.orange)
             }
             if blocked && !unsatisfiedDeps.isEmpty {
                 Text("Requiere: \(unsatisfiedDeps.joined(separator: ", "))")
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
         .padding(RuulSpacing.md)

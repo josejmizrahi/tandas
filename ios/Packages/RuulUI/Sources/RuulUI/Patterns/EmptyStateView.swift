@@ -33,12 +33,12 @@ public struct EmptyStateView: View {
             VStack(spacing: RuulSpacing.xs) {
                 Text(title)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .multilineTextAlignment(.center)
                 if let message {
                     Text(message)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.center)
                 }
             }

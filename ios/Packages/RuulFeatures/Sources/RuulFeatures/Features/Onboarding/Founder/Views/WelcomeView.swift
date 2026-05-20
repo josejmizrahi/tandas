@@ -14,11 +14,11 @@ public struct WelcomeView: View {
                 VStack(spacing: RuulSpacing.sm) {
                     Text("Bienvenido a ruul")
                         .font(.largeTitle.weight(.bold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .multilineTextAlignment(.center)
                     Text("Vamos a crear tu grupo en 3 minutos.")
                         .font(.body)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.center)
                 }
                 Spacer()
@@ -36,6 +36,6 @@ public struct WelcomeView: View {
     private var wordmark: some View {
         Text("ruul")
             .font(.system(size: 88, weight: .bold))
-            .foregroundStyle(Color.ruulTextPrimary)
+            .foregroundStyle(Color.primary)
     }
 }

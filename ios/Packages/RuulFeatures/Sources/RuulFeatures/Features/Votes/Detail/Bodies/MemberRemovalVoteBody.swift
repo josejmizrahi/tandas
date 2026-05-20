@@ -26,21 +26,21 @@ public struct MemberRemovalVoteBody: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("RAZÓN")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Text(desc)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: "clock")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
                 Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
             }
         }
@@ -49,15 +49,15 @@ public struct MemberRemovalVoteBody: View {
     private var warningCard: some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "person.fill.xmark")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Si pasa, este miembro queda fuera del grupo")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Pierde acceso a eventos, multas e historial. La decisión es del grupo, no del founder.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -66,7 +66,7 @@ public struct MemberRemovalVoteBody: View {
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulNegative.opacity(0.25), lineWidth: 1)
+                .stroke(Color.red.opacity(0.25), lineWidth: 1)
         )
     }
 
@@ -74,10 +74,10 @@ public struct MemberRemovalVoteBody: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("MIEMBRO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text(memberName)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(RuulSpacing.sm)

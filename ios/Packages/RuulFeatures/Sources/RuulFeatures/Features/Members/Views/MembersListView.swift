@@ -45,7 +45,7 @@ public struct MembersListView: View {
                                 }
                                 .buttonStyle(.plain)
                                 if row.id != rows.last?.id {
-                                    Divider().background(Color.ruulSeparator).padding(.leading, 76)
+                                    Divider().background(Color(.separator)).padding(.leading, 76)
                                 }
                             }
                         }
@@ -72,22 +72,22 @@ public struct MembersListView: View {
                 HStack(spacing: RuulSpacing.xxs) {
                     Text(row.displayName)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if row.member.userId == coordinator.actorUserId {
                         Text("· Tú")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
                 Text(subtitleFor(row))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer()
             if row.member.joinedVia == "placeholder" {
                 Text("PENDIENTE")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .padding(.horizontal, RuulSpacing.xs)
                     .padding(.vertical, 2)
                     .background(
@@ -102,7 +102,7 @@ public struct MembersListView: View {
             }
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
         }
         .padding(RuulSpacing.md)

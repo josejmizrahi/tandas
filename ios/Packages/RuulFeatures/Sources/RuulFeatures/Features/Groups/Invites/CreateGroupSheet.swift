@@ -35,7 +35,7 @@ public struct CreateGroupSheet: View {
                     if let error {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                     RuulButton(
                         "Crear grupo",
@@ -61,10 +61,10 @@ public struct CreateGroupSheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("¿Cómo se llama tu grupo?")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Usaremos plantilla de cena recurrente con las 5 reglas por defecto. Podrás editarlas después.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 

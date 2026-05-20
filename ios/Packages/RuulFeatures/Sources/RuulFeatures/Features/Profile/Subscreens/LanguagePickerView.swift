@@ -33,7 +33,7 @@ public struct LanguagePickerView: View {
                         HStack {
                             Text(entry.label)
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             Spacer()
                             if entry.code == current {
                                 Image(systemName: "checkmark")
@@ -47,7 +47,7 @@ public struct LanguagePickerView: View {
                     .buttonStyle(.plain)
                     .disabled(saving)
                     if entry.code != Self.supported.last?.code {
-                        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
+                        Divider().background(Color(.separator)).padding(.leading, RuulSpacing.md)
                     }
                 }
             }
@@ -57,7 +57,7 @@ public struct LanguagePickerView: View {
             if let error {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
                     .padding(.horizontal, RuulSpacing.lg)
             }
         }

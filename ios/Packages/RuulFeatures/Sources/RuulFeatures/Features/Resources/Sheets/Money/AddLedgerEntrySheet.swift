@@ -28,7 +28,7 @@ struct AddLedgerEntrySheet: View {
             if let error = coordinator.error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
             }
             submitButton
                 .padding(.top, RuulSpacing.sm)
@@ -41,7 +41,7 @@ struct AddLedgerEntrySheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("TIPO DE MOVIMIENTO")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             VStack(spacing: RuulSpacing.xs) {
                 ForEach(ResourceLedgerCoordinator.EntryKind.allCases) { kind in
                     kindRow(kind)
@@ -71,10 +71,10 @@ struct AddLedgerEntrySheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(kind.displayLabel)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(kind.summaryHint)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .multilineTextAlignment(.leading)
                 }
                 Spacer()
@@ -92,7 +92,7 @@ struct AddLedgerEntrySheet: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparator,
+                    .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 1.5 : 0.5)
             )
         }
@@ -126,11 +126,11 @@ struct AddLedgerEntrySheet: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(counterpartySectionLabel)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             if coordinator.counterpartyOptions.isEmpty {
                 Text("No hay otros miembros en este grupo.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             } else {
                 VStack(spacing: RuulSpacing.xs) {
                     ForEach(coordinator.counterpartyOptions) { mwp in
@@ -151,7 +151,7 @@ struct AddLedgerEntrySheet: View {
                 RuulAvatar(name: mwp.displayName, imageURL: mwp.avatarURL, size: .medium)
                 Text(mwp.displayName)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(1)
                 Spacer()
                 if isSelected {
@@ -168,7 +168,7 @@ struct AddLedgerEntrySheet: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(isSelected ? Color.ruulAccent : Color.ruulSeparator,
+                    .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 1.5 : 0.5)
             )
         }

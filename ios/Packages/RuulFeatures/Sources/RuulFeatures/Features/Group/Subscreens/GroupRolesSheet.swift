@@ -108,7 +108,7 @@ public struct GroupRolesSheet: View {
                             .font(.footnote.weight(.semibold))
                         Text("Crea un rol común en 1 tap con permisos pre-armados. Después puedes editarlos.")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     .textCase(nil)
                 }
@@ -135,16 +135,16 @@ public struct GroupRolesSheet: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                     Text("Este es el catálogo de roles del grupo: qué roles existen y qué permisos otorga cada uno.")
                     Text("Para asignar un rol a una persona, ve a Miembros → tap en el miembro → \"Editar\" en sus roles.")
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .textCase(nil)
             } footer: {
                 if let error {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                 }
             }
         }
@@ -168,10 +168,10 @@ public struct GroupRolesSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(preset.label)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(preset.summary)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(2)
             }
             Spacer(minLength: 0)
@@ -212,25 +212,25 @@ public struct GroupRolesSheet: View {
                     .frame(width: 36, height: 36)
                 Image(systemName: role.system ? "crown.fill" : "person.fill")
                     .font(.footnote)
-                    .foregroundStyle(role.system ? Color.ruulAccent : Color.ruulTextSecondary)
+                    .foregroundStyle(role.system ? Color.ruulAccent : Color.secondary)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(role.humanLabel)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text(detail(for: role))
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer(minLength: 0)
             if role.system {
                 Text("SISTEMA")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
         .padding(.vertical, RuulSpacing.xxs)
     }

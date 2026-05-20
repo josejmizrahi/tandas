@@ -27,15 +27,15 @@ public struct DetailAttentionView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Necesita atención")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                         Text(summary)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                             .lineLimit(2)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
                 .padding(RuulSpacing.s4)
                 .background(

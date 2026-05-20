@@ -50,10 +50,10 @@ struct MinimalIdentityForm: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(variant.humanName)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Lo esencial. El resto lo configuramos después.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -64,7 +64,7 @@ struct MinimalIdentityForm: View {
         if fields.isEmpty {
             Text("Este tipo no necesita información extra para crearse.")
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .padding(.vertical, RuulSpacing.md)
         } else {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
@@ -102,16 +102,16 @@ struct MinimalIdentityForm: View {
     private func errorBanner(_ message: String) -> some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
             Text(message)
                 .font(.caption)
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(RuulSpacing.sm)
         .background(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .fill(Color.ruulNegative.opacity(0.08))
+                .fill(Color.red.opacity(0.08))
         )
     }
 

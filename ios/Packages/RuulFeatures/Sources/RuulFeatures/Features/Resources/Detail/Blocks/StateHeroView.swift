@@ -14,12 +14,12 @@ struct StateHeroView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text(headline.headline)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .lineLimit(3)
             if !headline.supportingFacts.isEmpty {
                 Text(headline.supportingFacts.joined(separator: " · "))
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             if let action = headline.primaryAction, action.kind != .none {
                 Button(action: onPrimaryTap) {

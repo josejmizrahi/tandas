@@ -49,7 +49,7 @@ public struct RuulAppToolbarModifier: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     Text("ruul")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .accessibilityAddTraits(.isHeader)
                 }
             }

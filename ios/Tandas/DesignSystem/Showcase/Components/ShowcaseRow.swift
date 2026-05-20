@@ -19,7 +19,7 @@ struct ShowcaseRow<Content: View>: View {
             HStack {
                 Text(label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                 Spacer()
                 if let snippet {
                     Button {
@@ -27,7 +27,7 @@ struct ShowcaseRow<Content: View>: View {
                     } label: {
                         Image(systemName: "doc.on.doc")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     .buttonStyle(.plain)
                 }

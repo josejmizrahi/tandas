@@ -63,28 +63,28 @@ public struct FineAppealVoteBody: View {
                 HStack {
                     Text("MULTA APELADA")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .accessibilityHidden(true)
                 }
                 HStack(alignment: .firstTextBaseline) {
                     if let reason = fineReason, !reason.isEmpty {
                         Text(reason)
                             .font(.headline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                     } else {
                         Text("(Sin razón registrada)")
                             .font(.headline)
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     Spacer(minLength: RuulSpacing.sm)
                     if let amount = fineAmount {
                         Text("$\(amount)")
                             .font(.body.monospacedDigit().weight(.bold))
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                     }
                 }
             }
@@ -93,7 +93,7 @@ public struct FineAppealVoteBody: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
             .contentShape(Rectangle())
         }
@@ -107,10 +107,10 @@ public struct FineAppealVoteBody: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("ARGUMENTO DE APELACIÓN")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                 Text(reason)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(RuulSpacing.md)
@@ -118,7 +118,7 @@ public struct FineAppealVoteBody: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
     }
@@ -126,11 +126,11 @@ public struct FineAppealVoteBody: View {
     private var closesAtRow: some View {
         HStack(spacing: RuulSpacing.xs) {
             Image(systemName: "clock")
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
             Text("Cierra \(coordinator.vote.closesAt.ruulRelativeDescription)")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer()
         }
     }

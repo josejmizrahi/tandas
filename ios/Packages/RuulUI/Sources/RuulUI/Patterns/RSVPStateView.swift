@@ -26,9 +26,9 @@ public struct RSVPStateView: View {
 
     private var threeButtons: some View {
         HStack(spacing: RuulSpacing.sm) {
-            stateButton(.going, label: "Voy", systemImage: "checkmark", tint: .ruulPositive)
-            stateButton(.maybe, label: "Tal vez", systemImage: "questionmark", tint: .ruulWarning)
-            stateButton(.notGoing, label: "No voy", systemImage: "xmark", tint: .ruulNegative)
+            stateButton(.going, label: "Voy", systemImage: "checkmark", tint: .green)
+            stateButton(.maybe, label: "Tal vez", systemImage: "questionmark", tint: .orange)
+            stateButton(.notGoing, label: "No voy", systemImage: "xmark", tint: .red)
         }
     }
 
@@ -40,7 +40,7 @@ public struct RSVPStateView: View {
                     .foregroundStyle(tint)
                 Text(label)
                     .font(.footnote)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.md)
@@ -57,10 +57,10 @@ public struct RSVPStateView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(confirmedTitle)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Text("Tap para cambiar")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer()
         }
@@ -85,10 +85,10 @@ public struct RSVPStateView: View {
 
     private var confirmedTint: Color {
         switch state {
-        case .going: return .ruulPositive
-        case .maybe: return .ruulWarning
-        case .notGoing: return .ruulNegative
-        case .notResponded: return .ruulTextTertiary
+        case .going: return .green
+        case .maybe: return .orange
+        case .notGoing: return .red
+        case .notResponded: return Color(.tertiaryLabel)
         }
     }
 

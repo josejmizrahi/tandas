@@ -44,7 +44,7 @@ public struct RuulSeparatedRows<Item: Identifiable, RowContent: View>: View {
     /// Apple Settings / Mail (past the leading thumbnail).
     private var hairline: some View {
         Rectangle()
-            .fill(Color.ruulTextPrimary.opacity(0.08))
+            .fill(Color.primary.opacity(0.08))
             .frame(height: 0.5)
             .padding(.leading, dividerLeadingInset)
     }
@@ -69,7 +69,7 @@ private struct PreviewRow: Identifiable, Hashable {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text("LISTA")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             RuulSeparatedRows(items: items) { item in
                 HStack(spacing: RuulSpacing.md) {
                     Circle()
@@ -80,7 +80,7 @@ private struct PreviewRow: Identifiable, Hashable {
                             .font(.headline)
                         Text(item.subtitle)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                     Spacer(minLength: 0)
                 }

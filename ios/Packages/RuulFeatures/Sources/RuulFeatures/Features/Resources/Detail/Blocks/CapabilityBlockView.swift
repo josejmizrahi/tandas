@@ -17,11 +17,11 @@ struct CapabilityBlockView: View {
             Button(action: onOpen) {
                 HStack(spacing: RuulSpacing.sm) {
                     Image(systemName: block.icon)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                     EmptyPromptLayout(prompt: block.payload.emptyPrompt ?? block.title)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.vertical, RuulSpacing.md)
@@ -59,10 +59,10 @@ struct CapabilityBlockView: View {
                     .foregroundStyle(tint.color)
                 Text(block.title)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
         .buttonStyle(.plain)

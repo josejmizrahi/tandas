@@ -108,11 +108,11 @@ public struct MyFeedView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(section.title.uppercased())
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer()
             Text("\(count)")
                 .font(.footnote.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
         }
     }
 

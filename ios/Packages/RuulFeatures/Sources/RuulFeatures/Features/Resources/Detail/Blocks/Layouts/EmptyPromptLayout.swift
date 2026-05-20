@@ -10,6 +10,6 @@ struct EmptyPromptLayout: View {
     var body: some View {
         Text(prompt)
             .font(.subheadline)
-            .foregroundStyle(Color.ruulTextSecondary)
+            .foregroundStyle(Color.secondary)
     }
 }

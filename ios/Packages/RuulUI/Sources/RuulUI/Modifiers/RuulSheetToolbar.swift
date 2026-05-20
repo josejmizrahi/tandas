@@ -56,7 +56,7 @@ public struct RuulSheetToolbarModifier: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .lineLimit(1)
                 }
             }

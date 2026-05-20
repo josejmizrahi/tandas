@@ -23,11 +23,11 @@ public struct RuulToast: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if let message {
                     Text(message)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
             Spacer(minLength: 0)
@@ -52,10 +52,10 @@ public struct RuulToast: View {
 
     private var tint: Color {
         switch style {
-        case .success: return .ruulPositive
-        case .warning: return .ruulWarning
-        case .error:   return .ruulNegative
-        case .info:    return .ruulInfo
+        case .success: return .green
+        case .warning: return .orange
+        case .error:   return .red
+        case .info:    return .blue
         }
     }
 }

@@ -59,7 +59,7 @@ public struct EventCard: View {
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)
@@ -95,13 +95,13 @@ public struct EventCard: View {
                     livePill
                 }
                 if event.status == .cancelled {
-                    overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.ruulNegative)
+                    overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.red)
                 }
                 if event.status == .closed {
                     overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.ruulImageBadge)
                 }
                 if isAtCapacity && event.status == .upcoming {
-                    overlayBadge(icon: "person.fill.checkmark", text: "Lleno", tint: Color.ruulNegative)
+                    overlayBadge(icon: "person.fill.checkmark", text: "Lleno", tint: Color.red)
                 }
                 Spacer()
                 if isHostedByMe {
@@ -120,11 +120,11 @@ public struct EventCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dateDescription)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulOnImageSecondary)
+                    .foregroundStyle(Color.white.opacity(0.85))
 
                 Text(event.title)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.ruulOnImage)
+                    .foregroundStyle(Color.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .shadow(color: Color.ruulImageTextShadow, radius: 2, x: 0, y: 1)
@@ -134,14 +134,14 @@ public struct EventCard: View {
                 if let location = event.locationName, !location.isEmpty {
                     Label(location, systemImage: "mappin.and.ellipse")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulOnImageSecondary)
+                        .foregroundStyle(Color.white.opacity(0.85))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 if confirmedCount > 0 {
                     Text("\(confirmedCount) van")
                         .font(.footnote.monospacedDigit().weight(.bold))
-                        .foregroundStyle(Color.ruulOnImage)
+                        .foregroundStyle(Color.white)
                 }
                 if let myStatus, myStatus != .pending {
                     myRSVPPill(myStatus)
@@ -172,7 +172,7 @@ public struct EventCard: View {
             Text(text)
                 .font(.footnote.weight(.semibold))
         }
-        .foregroundStyle(Color.ruulOnImage)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, RuulSpacing.xs)
         .padding(.vertical, RuulSpacing.xxs + 1)
         .background(tint, in: Capsule())
@@ -181,15 +181,15 @@ public struct EventCard: View {
     private var livePill: some View {
         HStack(spacing: RuulSpacing.xxs + 1) {
             Circle()
-                .fill(Color.ruulOnImage)
+                .fill(Color.white)
                 .frame(width: 6, height: 6)
             Text("EN VIVO")
                 .font(.footnote.weight(.semibold))
         }
-        .foregroundStyle(Color.ruulOnImage)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, RuulSpacing.xs)
         .padding(.vertical, RuulSpacing.xxs + 1)
-        .background(Color.ruulNegative, in: Capsule())
+        .background(Color.red, in: Capsule())
     }
 
     private func myRSVPPill(_ status: RSVPStatus) -> some View {
@@ -209,7 +209,7 @@ public struct EventCard: View {
             Text(label)
                 .font(.footnote.weight(.semibold))
         }
-        .foregroundStyle(Color.ruulOnImage)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, RuulSpacing.xs)
         .padding(.vertical, RuulSpacing.xxs)
         .background(Color.ruulImagePill, in: Capsule())

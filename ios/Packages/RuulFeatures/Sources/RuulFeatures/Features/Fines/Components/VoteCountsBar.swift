@@ -15,17 +15,17 @@ public struct VoteCountsBar: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack(spacing: 2) {
-                segment(width: ratio(counts.inFavor), color: .ruulPositive)
-                segment(width: ratio(counts.against), color: .ruulNegative)
-                segment(width: ratio(counts.pending + counts.abstained), color: .ruulTextTertiary)
+                segment(width: ratio(counts.inFavor), color: .green)
+                segment(width: ratio(counts.against), color: .red)
+                segment(width: ratio(counts.pending + counts.abstained), color: Color(.tertiaryLabel))
             }
             .frame(height: 6)
             .clipShape(Capsule())
             HStack(spacing: RuulSpacing.md) {
-                legendItem(color: .ruulPositive, label: "A favor", count: counts.inFavor)
-                legendItem(color: .ruulNegative,   label: "En contra", count: counts.against)
+                legendItem(color: .green, label: "A favor", count: counts.inFavor)
+                legendItem(color: .red,   label: "En contra", count: counts.against)
                 Spacer()
-                legendItem(color: .ruulTextTertiary,    label: "Pendiente", count: counts.pending)
+                legendItem(color: Color(.tertiaryLabel),    label: "Pendiente", count: counts.pending)
             }
         }
         .accessibilityElement(children: .combine)
@@ -48,10 +48,10 @@ public struct VoteCountsBar: View {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Text("\(count)")
                 .font(.footnote.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
     }
 }

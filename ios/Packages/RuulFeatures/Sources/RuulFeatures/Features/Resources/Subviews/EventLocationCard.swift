@@ -47,7 +47,7 @@ public struct EventLocationCard: View {
             interactionModes: []  // non-interactive — taps go to the wrapping Button
         ) {
             Marker(locationName, coordinate: coordinate)
-                .tint(Color.ruulTextPrimary)
+                .tint(Color.primary)
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
         .frame(height: 160)
@@ -58,24 +58,24 @@ public struct EventLocationCard: View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: "mappin.and.ellipse")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(locationName)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 Text("CÓMO LLEGAR")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             Spacer()
             Image(systemName: "arrow.up.right.square")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
         }
     }

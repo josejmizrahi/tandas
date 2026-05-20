@@ -18,9 +18,9 @@ public struct RuulMoneyView: View {
         case neutral, positive, negative
         var color: Color {
             switch self {
-            case .neutral:  return .ruulTextPrimary
-            case .positive: return .ruulPositive
-            case .negative: return .ruulNegative
+            case .neutral:  return .primary
+            case .positive: return .green
+            case .negative: return .red
             }
         }
     }

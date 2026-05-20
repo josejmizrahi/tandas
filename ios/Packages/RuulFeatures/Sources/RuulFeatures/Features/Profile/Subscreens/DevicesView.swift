@@ -61,7 +61,7 @@ public struct DevicesView: View {
                                 row(device, isCurrent: false)
                                 if device.id != others.last?.id {
                                     Divider()
-                                        .background(Color.ruulSeparator)
+                                        .background(Color(.separator))
                                         .padding(.leading, 56)
                                 }
                             }
@@ -71,7 +71,7 @@ public struct DevicesView: View {
                 if let msg = errorMessage {
                     Text(msg)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                         .padding(.horizontal, RuulSpacing.lg)
                 }
             }
@@ -85,12 +85,12 @@ public struct DevicesView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                 Text("Aún no hay dispositivos registrados.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(RuulSpacing.lg)
                 if let msg = errorMessage {
                     Text(msg)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulNegative)
+                        .foregroundStyle(Color.red)
                         .padding(.horizontal, RuulSpacing.lg)
                 }
             }
@@ -109,13 +109,13 @@ public struct DevicesView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.leading, RuulSpacing.xxs)
             content()
                 .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
                 .overlay(
                     RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                        .stroke(Color(.separator), lineWidth: 0.5)
                 )
         }
     }
@@ -129,16 +129,16 @@ public struct DevicesView: View {
                 HStack {
                     Text(device.platform.capitalized)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     if isCurrent {
                         Text("(este)")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                 }
                 Text("Último uso: \(relativeTime(device.updatedAt))")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Spacer()
             if !isCurrent {

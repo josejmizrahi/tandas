@@ -54,17 +54,17 @@ public struct ErrorBanner: View {
     public var body: some View {
         HStack(spacing: RuulSpacing.sm) {
             Image(systemName: error.isRetryable ? "exclamationmark.triangle.fill" : "exclamationmark.octagon.fill")
-                .foregroundStyle(Color.ruulNegative)
+                .foregroundStyle(Color.red)
                 .font(.caption.weight(.bold))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(error.title)
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if let message = error.message {
                     Text(message)
                         .font(.footnote)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
             }
@@ -85,7 +85,7 @@ public struct ErrorBanner: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
         .padding(.horizontal, RuulSpacing.md)
         .padding(.top, RuulSpacing.sm)

@@ -28,7 +28,7 @@ public struct CreateVoteSheet: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                     Text("¿Qué quieres proponer?")
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                         .padding(.bottom, RuulSpacing.xs)
 
                     voteTypeCard(
@@ -57,7 +57,7 @@ public struct CreateVoteSheet: View {
 
                     Text("PRÓXIMAMENTE")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .padding(.top, RuulSpacing.lg)
 
                     voteTypeCard(title: "Archivar regla",       subtitle: "Quitar una regla del grupo.",            icon: "trash",                              enabled: false, onTap: {})
@@ -78,24 +78,24 @@ public struct CreateVoteSheet: View {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: icon)
                     .font(.title2.weight(.medium))
-                    .foregroundStyle(enabled ? Color.ruulAccent : Color.ruulTextTertiary)
+                    .foregroundStyle(enabled ? Color.ruulAccent : Color(.tertiaryLabel))
                     .frame(width: 44, height: 44)
                     .background(Color.ruulSurface, in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(enabled ? Color.ruulTextPrimary : Color.ruulTextTertiary)
+                        .foregroundStyle(enabled ? Color.primary : Color(.tertiaryLabel))
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
                 Spacer()
                 if enabled {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                         .accessibilityHidden(true)
                 }
             }
@@ -103,7 +103,7 @@ public struct CreateVoteSheet: View {
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                    .stroke(Color(.separator), lineWidth: 0.5)
             )
             .opacity(enabled ? 1.0 : 0.6)
         }

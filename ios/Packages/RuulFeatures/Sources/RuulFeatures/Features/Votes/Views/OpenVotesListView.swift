@@ -43,7 +43,7 @@ public struct OpenVotesListView: View {
                                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                                     Text(section.title.uppercased())
                                         .font(.footnote.weight(.semibold))
-                                        .foregroundStyle(Color.ruulTextTertiary)
+                                        .foregroundStyle(Color(.tertiaryLabel))
                                     RuulSeparatedRows(items: votes) { vote in
                                         Button { onSelectVote(vote) } label: {
                                             voteRow(vote)
@@ -85,7 +85,7 @@ public struct OpenVotesListView: View {
         return HStack(spacing: RuulSpacing.sm) {
             voteTypeIcon(vote.voteType)
                 .font(.headline.weight(.medium))
-                .foregroundStyle(alreadyCast ? Color.ruulTextTertiary : Color.ruulAccent)
+                .foregroundStyle(alreadyCast ? Color(.tertiaryLabel) : Color.ruulAccent)
                 .frame(width: 32, height: 32)
                 .background(Color.ruulSurface, in: Circle())
                 .accessibilityHidden(true)
@@ -93,37 +93,37 @@ public struct OpenVotesListView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(vote.title)
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2)
                 HStack(spacing: RuulSpacing.xs) {
                     if alreadyCast {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Color.ruulPositive)
+                            .foregroundStyle(Color.green)
                             .accessibilityHidden(true)
                         Text("Ya votaste")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                         Text("·")
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     Text("Cierra \(vote.closesAt.ruulRelativeDescription)")
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextTertiary)
+                        .foregroundStyle(Color(.tertiaryLabel))
                 }
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
                 .accessibilityHidden(true)
         }
         .padding(RuulSpacing.md)
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 

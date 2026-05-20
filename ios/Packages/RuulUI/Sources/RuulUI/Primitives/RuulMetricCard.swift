@@ -30,9 +30,9 @@ public struct RuulMetricCard: View {
 
         var color: Color {
             switch self {
-            case .up:   return .ruulPositive
-            case .down: return .ruulNegative
-            case .flat: return .ruulTextTertiary
+            case .up:   return .green
+            case .down: return .red
+            case .flat: return Color(.tertiaryLabel)
             }
         }
 
@@ -70,7 +70,7 @@ public struct RuulMetricCard: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(label)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             valueRow
             if let trend {
                 trendRow(trend)
@@ -92,15 +92,15 @@ public struct RuulMetricCard: View {
             if let unitPrefix {
                 Text(unitPrefix)
                     .font(unitFont)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
             Text(value)
                 .font(valueFont)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             if let unitSuffix {
                 Text(unitSuffix)
                     .font(unitFont)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
     }
@@ -112,7 +112,7 @@ public struct RuulMetricCard: View {
                 .foregroundStyle(trend.color)
             Text(trend.label)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
         }
     }
 

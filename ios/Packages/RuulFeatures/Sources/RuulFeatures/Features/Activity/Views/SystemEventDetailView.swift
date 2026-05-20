@@ -94,16 +94,16 @@ public struct SystemEventDetailView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 Text("Datos")
                     .font(.headline)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 ForEach(payloadEntries, id: \.0) { key, value in
                     HStack(alignment: .top) {
                         Text(key)
                             .font(.caption)
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                         Spacer()
                         Text(value)
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                             .multilineTextAlignment(.trailing)
                     }
                 }
@@ -120,11 +120,11 @@ public struct SystemEventDetailView: View {
         HStack {
             Text(key)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
             Spacer()
             Text(value)
                 .font(.subheadline)
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
         }
     }
 

@@ -107,7 +107,7 @@ public struct GroupSwitcherSheet: View {
                     HStack(spacing: RuulSpacing.xs) {
                         Text(group.name)
                             .font(.subheadline)
-                            .foregroundStyle(Color.ruulTextPrimary)
+                            .foregroundStyle(Color.primary)
                             .lineLimit(1)
                         if isPinned {
                             Image(systemName: "pin.fill")
@@ -118,17 +118,17 @@ public struct GroupSwitcherSheet: View {
                     }
                     Text(group.eventVocabulary.capitalized)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 Spacer(minLength: 0)
                 if isActive {
                     Text("ACTIVO")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                         .padding(.horizontal, RuulSpacing.sm)
                         .padding(.vertical, 4)
                         .overlay(
-                            Capsule().stroke(Color.ruulSeparator, lineWidth: 0.5)
+                            Capsule().stroke(Color(.separator), lineWidth: 0.5)
                         )
                         .accessibilityHidden(true)
                 }
@@ -168,21 +168,21 @@ public struct GroupSwitcherSheet: View {
             HStack(spacing: RuulSpacing.md) {
                 Image(systemName: action.icon)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                     .frame(width: RuulSize.avatarMedium, height: RuulSize.avatarMedium)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(action.subtitle)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
             }
             .padding(.vertical, RuulSpacing.sm)

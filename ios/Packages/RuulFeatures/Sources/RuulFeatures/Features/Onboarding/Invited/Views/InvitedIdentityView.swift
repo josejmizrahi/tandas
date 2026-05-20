@@ -56,7 +56,7 @@ public struct InvitedIdentityView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
-                    .background(Color.ruulTextPrimary, in: Circle())
+                    .background(Color.primary, in: Circle())
                     .offset(x: RuulSpacing.xxl, y: RuulSpacing.xxl)
             }
         }

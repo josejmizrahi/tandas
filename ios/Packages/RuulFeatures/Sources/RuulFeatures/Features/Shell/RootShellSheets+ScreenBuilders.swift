@@ -197,7 +197,7 @@ extension RootShellSheets {
                 })
             } else {
                 Text("Grupo no encontrado")
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
                     .padding()
             }
         }

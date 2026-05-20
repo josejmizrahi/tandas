@@ -92,10 +92,10 @@ public struct RulePresetsView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("Cómo decide este grupo")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .foregroundStyle(Color.primary)
             Text("Esto define quién puede cambiar las cosas y cómo se vota. Las reglas concretas (multas, llegadas, RSVP) viven en Reglas.")
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -110,7 +110,7 @@ public struct RulePresetsView: View {
             if let err = coordinator.error {
                 Text(err)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulNegative)
+                    .foregroundStyle(Color.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -123,16 +123,16 @@ public struct RulePresetsView: View {
         } label: {
             HStack(alignment: .top, spacing: RuulSpacing.md) {
                 Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isActive ? Color.ruulAccent : Color.ruulTextTertiary)
+                    .foregroundStyle(isActive ? Color.ruulAccent : Color(.tertiaryLabel))
                     .imageScale(.large)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(preset.title)
                         .font(.subheadline)
-                        .foregroundStyle(Color.ruulTextPrimary)
+                        .foregroundStyle(Color.primary)
                     Text(preset.subtitle)
                         .font(.caption)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 Spacer()
                 if coordinator.isSaving && isActive {
@@ -146,7 +146,7 @@ public struct RulePresetsView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(isActive ? Color.ruulAccent : Color.ruulSeparator, lineWidth: 1)
+                    .stroke(isActive ? Color.ruulAccent : Color(.separator), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -167,10 +167,10 @@ public struct RulePresetsView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text(title.uppercased())
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             Text(subtitle)
                 .font(.caption)
-                .foregroundStyle(Color.ruulTextSecondary)
+                .foregroundStyle(Color.secondary)
                 .padding(.bottom, RuulSpacing.xs)
             content()
         }
@@ -186,23 +186,23 @@ public struct RulePresetsView: View {
             ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
                 VStack(spacing: 0) {
                     if idx > 0 {
-                        Divider().background(Color.ruulSeparator).padding(.leading, RuulSpacing.md)
+                        Divider().background(Color(.separator)).padding(.leading, RuulSpacing.md)
                     }
                     HStack(alignment: .top, spacing: RuulSpacing.sm) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.question)
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             if !entry.isLive {
                                 Text("Próximamente")
                                     .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(Color.ruulTextTertiary)
+                                    .foregroundStyle(Color(.tertiaryLabel))
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         Text(entry.answer)
                             .font(.subheadline)
-                            .foregroundStyle(entry.isLive ? Color.ruulTextPrimary : Color.ruulTextSecondary)
+                            .foregroundStyle(entry.isLive ? Color.primary : Color.secondary)
                             .multilineTextAlignment(.trailing)
                     }
                     .padding(.vertical, RuulSpacing.sm)
@@ -216,7 +216,7 @@ public struct RulePresetsView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color.ruulSeparator, lineWidth: 0.5)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 }

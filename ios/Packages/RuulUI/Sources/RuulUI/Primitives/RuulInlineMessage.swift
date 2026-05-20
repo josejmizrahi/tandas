@@ -7,19 +7,19 @@ public struct RuulInlineMessage: View {
 
         var background: Color {
             switch self {
-            case .info:    return .ruulInfoBackground
-            case .success: return .ruulPositiveBackground
-            case .warning: return .ruulWarningBackground
-            case .error:   return .ruulNegativeBackground
+            case .info:    return .blue.opacity(0.15)
+            case .success: return .green.opacity(0.15)
+            case .warning: return .orange.opacity(0.15)
+            case .error:   return .red.opacity(0.15)
             }
         }
 
         var foreground: Color {
             switch self {
-            case .info:    return .ruulInfo
-            case .success: return .ruulPositive
-            case .warning: return .ruulWarning
-            case .error:   return .ruulNegative
+            case .info:    return .blue
+            case .success: return .green
+            case .warning: return .orange
+            case .error:   return .red
             }
         }
 
@@ -68,7 +68,7 @@ public struct RuulInlineMessage: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(text)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 if let action {
                     Button(action.label, action: action.handler)
                         .font(.subheadline.weight(.medium))

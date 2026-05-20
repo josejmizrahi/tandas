@@ -40,7 +40,7 @@ public struct SlotDetailView: View {
                     LabeledContent("Titular", value: assigned.displayName)
                 } else {
                     Text("Sin titular")
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 if let booking = bookingId {
                     LabeledContent("Reserva", value: booking.uuidString.prefix(8) + "…")

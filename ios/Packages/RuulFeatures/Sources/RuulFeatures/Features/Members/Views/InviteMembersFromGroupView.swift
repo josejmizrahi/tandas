@@ -31,7 +31,7 @@ public struct InviteMembersFromGroupView: View {
                     if let error {
                         Text(error)
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulNegative)
+                            .foregroundStyle(Color.red)
                     }
                 }
                 .padding(RuulSpacing.lg)
@@ -67,11 +67,11 @@ public struct InviteMembersFromGroupView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Código de invitación")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             HStack {
                 Text(group.inviteCode)
                     .font(.body.monospaced())
-                    .foregroundStyle(Color.ruulTextPrimary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 ShareLink(item: "Únete a \(group.name): \(group.inviteCode)") {
                     Label("Compartir", systemImage: "square.and.arrow.up")
@@ -87,7 +87,7 @@ public struct InviteMembersFromGroupView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Invitar por teléfono")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             HStack {
                 TextField("+52 55 ...", text: $newPhone)
                     .textContentType(.telephoneNumber)
@@ -128,7 +128,7 @@ public struct InviteMembersFromGroupView: View {
 
                 Text("Las personas que agregues cuentan desde ya para turnos, RSVPs, fines y votos. Reciben WhatsApp para activar su cuenta.")
                     .font(.caption)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.top, RuulSpacing.xxs)
             }
         }
@@ -158,26 +158,26 @@ public struct InviteMembersFromGroupView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Text("Invitaciones pendientes (\(pending.count))")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.ruulTextTertiary)
+                .foregroundStyle(Color(.tertiaryLabel))
             VStack(spacing: 0) {
                 ForEach(pending) { invite in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(invite.phoneE164 ?? "Sin teléfono")
                                 .font(.subheadline)
-                                .foregroundStyle(Color.ruulTextPrimary)
+                                .foregroundStyle(Color.primary)
                             Text(relativeDateLabel(invite.createdAt))
                                 .font(.caption)
-                                .foregroundStyle(Color.ruulTextSecondary)
+                                .foregroundStyle(Color.secondary)
                         }
                         Spacer()
                         Text("Pendiente")
                             .font(.footnote)
-                            .foregroundStyle(Color.ruulTextTertiary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                     }
                     .padding(RuulSpacing.md)
                     if invite.id != pending.last?.id {
-                        Divider().background(Color.ruulSeparator)
+                        Divider().background(Color(.separator))
                     }
                 }
             }

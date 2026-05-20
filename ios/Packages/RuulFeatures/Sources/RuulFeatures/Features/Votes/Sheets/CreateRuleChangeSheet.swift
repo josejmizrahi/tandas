@@ -38,7 +38,7 @@ public struct CreateRuleChangeSheet: View {
                 if let rule = coordinator.selectedRule {
                     Section("Monto actual") {
                         Text(currentAmountLabel(for: rule))
-                            .foregroundStyle(Color.ruulTextSecondary)
+                            .foregroundStyle(Color.secondary)
                     }
                     Section("Nuevo monto propuesto") {
                         TextField("$0", value: $coordinator.proposedAmount, format: .number)
@@ -63,7 +63,7 @@ public struct CreateRuleChangeSheet: View {
 
                 if let error = coordinator.error {
                     Section {
-                        Text(error).foregroundStyle(Color.ruulNegative)
+                        Text(error).foregroundStyle(Color.red)
                     }
                 }
             }

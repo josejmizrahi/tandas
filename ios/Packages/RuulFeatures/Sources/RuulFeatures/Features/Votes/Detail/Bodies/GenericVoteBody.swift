@@ -15,11 +15,11 @@ public struct GenericVoteBody: View {
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 Text(desc)
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextSecondary)
+                    .foregroundStyle(Color.secondary)
             } else {
                 Text("Sin detalles adicionales.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextTertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
         }
     }

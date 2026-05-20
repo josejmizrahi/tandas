@@ -56,7 +56,7 @@ public struct OnboardingScreenTemplate<Content: View>: View {
             if let onSkip {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Saltar", action: onSkip)
-                        .foregroundStyle(Color.ruulTextSecondary)
+                        .foregroundStyle(Color.secondary)
                 }
             }
         }
