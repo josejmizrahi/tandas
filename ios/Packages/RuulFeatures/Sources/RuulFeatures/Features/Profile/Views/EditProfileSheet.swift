@@ -100,7 +100,7 @@ public struct EditProfileSheet: View {
 
                 if coordinator.isUploadingAvatar {
                     Circle()
-                        .fill(Color.ruulOverlayDim)
+                        .fill(Color.black.opacity(0.35))
                         .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
                     ProgressView()
                         .tint(Color.white)

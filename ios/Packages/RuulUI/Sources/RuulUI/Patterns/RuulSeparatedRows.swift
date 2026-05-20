@@ -73,7 +73,7 @@ private struct PreviewRow: Identifiable, Hashable {
             RuulSeparatedRows(items: items) { item in
                 HStack(spacing: RuulSpacing.md) {
                     Circle()
-                        .fill(Color.ruulFillGlass)
+                        .fill(Color(.tertiarySystemFill))
                         .frame(width: 40, height: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.title)

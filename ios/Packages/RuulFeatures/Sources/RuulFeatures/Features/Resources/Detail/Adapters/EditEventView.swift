@@ -76,7 +76,7 @@ public struct EditEventView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.white)
                     .padding(RuulSpacing.xs)
-                    .background(Color.ruulImageBadge, in: Circle())
+                    .background(Color.black.opacity(0.55), in: Circle())
                     .padding(RuulSpacing.sm)
             }
         }

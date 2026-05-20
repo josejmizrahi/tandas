@@ -46,8 +46,8 @@ public struct EventCard: View {
                     stops: [
                         .init(color: .clear,                    location: 0.00),
                         .init(color: .clear,                    location: 0.30),
-                        .init(color: Color.ruulImageVignetteMid, location: 0.55),
-                        .init(color: Color.ruulImageVignetteDeep, location: 1.00)
+                        .init(color: Color.black.opacity(0.20), location: 0.55),
+                        .init(color: Color.black.opacity(0.78), location: 1.00)
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
@@ -98,14 +98,14 @@ public struct EventCard: View {
                     overlayBadge(icon: "xmark", text: "Cancelado", tint: Color.red)
                 }
                 if event.status == .closed {
-                    overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.ruulImageBadge)
+                    overlayBadge(icon: "checkmark", text: "Cerrado", tint: Color.black.opacity(0.55))
                 }
                 if isAtCapacity && event.status == .upcoming {
                     overlayBadge(icon: "person.fill.checkmark", text: "Lleno", tint: Color.red)
                 }
                 Spacer()
                 if isHostedByMe {
-                    overlayBadge(icon: "star.fill", text: "Hosteas", tint: Color.ruulImageBadge)
+                    overlayBadge(icon: "star.fill", text: "Hosteas", tint: Color.black.opacity(0.55))
                 }
             }
             .padding(RuulSpacing.sm)
@@ -127,7 +127,7 @@ public struct EventCard: View {
                     .foregroundStyle(Color.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .shadow(color: Color.ruulImageTextShadow, radius: 2, x: 0, y: 1)
+                    .shadow(color: Color.black.opacity(0.18), radius: 2, x: 0, y: 1)
             }
 
             HStack(spacing: RuulSpacing.sm) {
@@ -212,7 +212,7 @@ public struct EventCard: View {
         .foregroundStyle(Color.white)
         .padding(.horizontal, RuulSpacing.xs)
         .padding(.vertical, RuulSpacing.xxs)
-        .background(Color.ruulImagePill, in: Capsule())
-        .overlay(Capsule().stroke(Color.ruulImagePillBorder, lineWidth: 0.5))
+        .background(Color.white.opacity(0.22), in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.30), lineWidth: 0.5))
     }
 }
