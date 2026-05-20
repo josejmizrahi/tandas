@@ -218,17 +218,18 @@ struct PrimitivesShowcaseView: View {
     }
 
     private var presentationSection: some View {
-        ShowcaseSection("RuulSheet / RuulFullScreenCover") {
+        ShowcaseSection(".sheet / .fullScreenCover") {
             VStack(spacing: RuulSpacing.xs) {
                 RuulButton("Show sheet", style: .secondary) { sheetPresented = true }
                 RuulButton("Show full-screen cover", style: .secondary) { coverPresented = true }
             }
-            .ruulSheet(isPresented: $sheetPresented) {
+            .sheet(isPresented: $sheetPresented) {
                 ModalSheetTemplate(title: "Sheet", dismissAction: { sheetPresented = false }, primaryCTA: ("OK", { sheetPresented = false })) {
                     Text("Sheet content").font(.subheadline)
                 }
+                .presentationDetents([.medium, .large])
             }
-            .ruulFullScreenCover(isPresented: $coverPresented) {
+            .fullScreenCover(isPresented: $coverPresented) {
                 ZStack {
                     RuulMeshBackground(.violet)
                     VStack {

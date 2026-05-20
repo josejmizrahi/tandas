@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Layout for content presented inside a modal sheet (already wrapped via
-/// `.ruulSheet(...)` by the caller). Provides drag indicator + title +
+/// `.sheet(...)` by the caller). Provides drag indicator + title +
 /// scrollable content area + optional sticky bottom action row.
 public struct ModalSheetTemplate<Content: View>: View {
     private let title: String?
@@ -71,7 +71,7 @@ private struct ModalSheetTemplatePreview: View {
 
     var body: some View {
         ZStack { Color.ruulBackground.ignoresSafeArea() }
-            .ruulSheet(isPresented: $presented) {
+            .sheet(isPresented: $presented) {
                 ModalSheetTemplate(
                     title: "Nueva regla",
                     dismissAction: { presented = false },
@@ -81,6 +81,7 @@ private struct ModalSheetTemplatePreview: View {
                     RuulTextField("$50", text: .constant(""), label: "Multa", style: .numeric)
                     RuulTextField("Descripción", text: .constant(""), label: "Descripción", description: "Explica brevemente cuándo aplica.")
                 }
+                .presentationDetents([.medium, .large])
             }
     }
 }

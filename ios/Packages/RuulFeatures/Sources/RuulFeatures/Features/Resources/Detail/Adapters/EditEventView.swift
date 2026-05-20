@@ -44,8 +44,9 @@ public struct EditEventView: View {
             .onChange(of: coordinator.updatedEvent) { _, newValue in
                 if newValue != nil { dismiss() }
             }
-            .ruulSheet(isPresented: $coverPickerPresented) {
+            .sheet(isPresented: $coverPickerPresented) {
                 coverPickerSheet
+                    .presentationDetents([.medium])
             }
         }
     }

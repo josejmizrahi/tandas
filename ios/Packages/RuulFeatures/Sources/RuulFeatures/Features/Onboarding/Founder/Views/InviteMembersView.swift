@@ -57,8 +57,9 @@ public struct InviteMembersView: View {
         .sheet(isPresented: $contactsPresented) {
             ContactPicker(onPicked: handleContactsPick)
         }
-        .ruulSheet(isPresented: $manualEntryPresented) {
+        .sheet(isPresented: $manualEntryPresented) {
             manualEntrySheet
+                .presentationDetents([.medium, .large])
         }
     }
 

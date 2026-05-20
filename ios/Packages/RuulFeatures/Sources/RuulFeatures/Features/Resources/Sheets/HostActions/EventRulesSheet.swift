@@ -81,11 +81,12 @@ struct ResourceRulesBody: View {
             }
         }
         .task { await coordinator.load() }
-        .ruulSheet(isPresented: $coordinator.addSheetPresented) {
+        .sheet(isPresented: $coordinator.addSheetPresented) {
             AddResourceRuleSheet(
                 isPresented: $coordinator.addSheetPresented,
                 coordinator: coordinator
             )
+            .presentationDetents([.medium, .large])
         }
         .fullScreenCover(item: $composerCoord) { coord in
             RuleComposerView(

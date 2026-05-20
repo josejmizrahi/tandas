@@ -47,13 +47,14 @@ public struct ResourceDetailSheet: View {
         }
         .task { await load() }
         .task { await redirectIfEvent() }
-        .ruulSheet(isPresented: $ledgerSheetPresented) {
+        .sheet(isPresented: $ledgerSheetPresented) {
             if let ledgerCoordinator {
                 ResourceLedgerSheet(
                     isPresented: $ledgerSheetPresented,
                     coordinator: ledgerCoordinator,
                     groupVocabulary: typeLabel.lowercased()
                 )
+                .presentationDetents([.large])
             }
         }
         .onChange(of: ledgerSheetPresented) { _, presented in
@@ -61,12 +62,13 @@ public struct ResourceDetailSheet: View {
                 ledgerCoordinator = makeLedgerCoordinator()
             }
         }
-        .ruulSheet(isPresented: $rulesSheetPresented) {
+        .sheet(isPresented: $rulesSheetPresented) {
             if let rulesCoordinator {
                 ResourceRulesSheet(
                     isPresented: $rulesSheetPresented,
                     coordinator: rulesCoordinator
                 )
+                .presentationDetents([.large])
             }
         }
         .onChange(of: rulesSheetPresented) { _, presented in

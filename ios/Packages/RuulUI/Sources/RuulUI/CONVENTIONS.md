@@ -10,7 +10,8 @@ should update the row below.
 |------------------------------|----------------------------------------|
 | Screen with active group     | `.ruulAmbientScreen(palette: app.activeGroup.map { RuulCoverPalette.deterministicCover(for: $0.id).palette })` |
 | List/dashboard screen        | `.ruulAmbientScreen(palette: nil)` (canvas only) |
-| Modal (any flow)             | `.fullScreenCover(...)` or `.ruulSheet(...)` wrapper (full-screen takeover, explicit close) |
+| Sheet (edit / picker / quick action) | `.sheet(isPresented:) { ... }.presentationDetents([.medium, .large])` — swipe-down dismiss OK |
+| Takeover (wizard / OTP / camera) | `.fullScreenCover(isPresented:) { ... }` — no swipe-down |
 | Card body (default)          | `.ruulCardSurface(.glass)` — no chrome, paired with `RuulSeparatedRows` for separator |
 | Card body (elevated)         | `.ruulCardSurface(.solid)` — opaque + soft elevation |
 | Card body (inset row)        | `.ruulCardSurface(.recessed)` |
@@ -56,11 +57,11 @@ should update the row below.
 - Don't reach for `Color.gray` / raw hex / `cornerRadius: 12` — pick
   the matching token (`RuulColors`, `RuulRadius`, `RuulSpacing`,
   `RuulOpacity`, `RuulSize`).
-- Don't reach for `.sheet(...)` — app-wide policy is
-  `.fullScreenCover(...)` (full takeover, explicit close). The
-  `ruulSheet(item:)` / `ruulSheet(isPresented:)` wrappers route to
-  `fullScreenCover` under the hood; call sites read "I'm presenting
-  a modal" without naming the implementation.
+- Use `.sheet(isPresented:) { ... }.presentationDetents([.medium, .large])`
+  for edit / picker / quick-action flows (swipe-down dismiss is safe).
+  Reserve `.fullScreenCover(...)` for true takeovers: wizards, OTP,
+  camera, photo viewer, splash. (Apple HIG; reverses the 2026-05-15
+  "every modal is fullScreenCover" policy.)
 
 ## Tokens
 
