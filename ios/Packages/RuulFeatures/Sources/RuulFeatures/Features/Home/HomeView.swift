@@ -109,7 +109,7 @@ public struct HomeView: View {
             // Zero vertical chrome — the menu lives in the title bar.
             ToolbarTitleMenu {
                 Button {
-                    Task { await coordinator.setScope(.all) }
+                    pickScope(.all)
                 } label: {
                     Label("Todos los grupos", systemImage: "square.grid.2x2")
                 }
@@ -117,7 +117,7 @@ public struct HomeView: View {
                     Divider()
                     ForEach(app.groups, id: \.id) { group in
                         Button {
-                            Task { await coordinator.setScope(.group(group.id)) }
+                            pickScope(.group(group.id))
                         } label: {
                             Label(group.name, systemImage: "person.3.fill")
                         }
@@ -155,10 +155,37 @@ public struct HomeView: View {
             // No forced refresh here — `setActiveGroup` (called from
             // ProfileTab quick-switch) kicks its own background refresh.
         }
+        .task(id: app.homeScope) {
+            // Global scope changed (could be from this view's switcher,
+            // or from MyGroupsTab tapping back, or rehydrated at launch).
+            // Mirror into the coordinator and force a refresh.
+            await coordinator.setScope(toCoordinatorScope(app.homeScope))
+        }
         .fullScreenCover(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
                 .environment(app)
                 .environment(router)
+        }
+    }
+
+    // MARK: - Scope plumbing (AppState ↔ HomeCoordinator)
+
+    /// Writes the picked scope to the global AppState, which the
+    /// `.task(id: app.homeScope)` observer above mirrors into the
+    /// coordinator. Single source of truth = AppState.homeScope;
+    /// HomeCoordinator's scope is a cached view-state for refresh
+    /// dispatch.
+    private func pickScope(_ scope: AppState.HomeScope) {
+        app.homeScope = scope
+    }
+
+    /// Bridge between the global `AppState.HomeScope` and the
+    /// coordinator-local `HomeCoordinator.Scope` enum. Same shape,
+    /// different namespaces so each module can evolve independently.
+    private func toCoordinatorScope(_ scope: AppState.HomeScope) -> HomeCoordinator.Scope {
+        switch scope {
+        case .all:               return .all
+        case .group(let id):     return .group(id)
         }
     }
 
@@ -172,7 +199,7 @@ public struct HomeView: View {
     private var scopeSwitcherButton: some View {
         Menu {
             Button {
-                Task { await coordinator.setScope(.all) }
+                pickScope(.all)
             } label: {
                 Label("Todos los grupos", systemImage: "square.grid.2x2")
             }
@@ -180,7 +207,7 @@ public struct HomeView: View {
                 Divider()
                 ForEach(app.groups, id: \.id) { group in
                     Button {
-                        Task { await coordinator.setScope(.group(group.id)) }
+                        pickScope(.group(group.id))
                     } label: {
                         Label(group.name, systemImage: "person.3.fill")
                     }
@@ -200,9 +227,12 @@ public struct HomeView: View {
     }
 
     /// Visual indicator of the current scope inside the switcher pill.
+    /// Reads from `app.homeScope` (global truth) so it reflects the
+    /// picked scope instantly, even while the coordinator's async
+    /// refresh is still in flight.
     @ViewBuilder
     private var scopeAvatar: some View {
-        switch coordinator.scope {
+        switch app.homeScope {
         case .all:
             ZStack {
                 Circle()
@@ -223,7 +253,7 @@ public struct HomeView: View {
     }
 
     private var scopeLabel: String {
-        switch coordinator.scope {
+        switch app.homeScope {
         case .all: return "Todos los grupos"
         case .group(let id): return app.groups.first(where: { $0.id == id })?.name ?? "Grupo"
         }
@@ -232,9 +262,10 @@ public struct HomeView: View {
     /// True when the feed mixes events from multiple groups — drives
     /// whether each row renders an inline group tag (Luma "Layer 2,
     /// Le..." pattern). Single-group scope hides the tag (redundant
-    /// with the surface itself).
+    /// with the surface itself). Reads `app.homeScope` (global truth).
     private var showGroupTag: Bool {
-        coordinator.scope == .all && app.groups.count > 1
+        if case .all = app.homeScope { return app.groups.count > 1 }
+        return false
     }
 
     /// Inline group tag pill rendered above the title on event /
@@ -337,9 +368,10 @@ public struct HomeView: View {
     /// Pendings filtered by current scope. `.all` shows everything;
     /// `.group(id)` filters to that group's actions only so the switcher
     /// affects "Tu día" consistently with "Pronto" and "Tus recursos".
+    /// Reads `app.homeScope` (global truth).
     private var scopedPendings: [UserAction] {
         guard let coord = inboxCoordinator else { return [] }
-        switch coordinator.scope {
+        switch app.homeScope {
         case .all:
             return coord.actions
         case .group(let id):
