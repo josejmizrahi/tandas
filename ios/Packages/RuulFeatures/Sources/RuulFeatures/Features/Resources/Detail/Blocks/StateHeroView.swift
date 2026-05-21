@@ -2,9 +2,21 @@ import SwiftUI
 import RuulCore
 import RuulUI
 
-/// Layer 2: the single hero block. Headline + supporting line + inline
-/// primary action. NO floating CTA, NO sticky footer — the action is
-/// the bottom edge of this block when present.
+/// Universal Resource Detail — **Identity layer hero**.
+///
+/// The single answer-block for "¿Qué está pasando ahora?" + "¿Qué
+/// puedo hacer?". Above the fold below the identity ribbon. Apple
+/// Calendar / Wallet / Reminders all put the most load-bearing
+/// current-state line at title weight so the eye lands here first.
+///
+/// Doctrine (`Plans/Active/Fase1ComponentMap.md` §"Universal Resource
+/// Detail — Identity layer"): the viewer's relationship to the
+/// resource ("Eres anfitrión", "Aportaste $500 este mes", "Mañana
+/// 8:00 PM") shows below the ribbon as a strong anchor — NOT in a
+/// separate "you" block.
+///
+/// Inline primary action sits at the bottom edge of the same block —
+/// no floating CTA, no sticky footer. Calm doctrine.
 struct StateHeroView: View {
     let headline: StateHeadline
     let tint: ResourceFamilyTint
@@ -13,12 +25,12 @@ struct StateHeroView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             Text(headline.headline)
-                .font(.title2.weight(.semibold))
+                .font(.title.weight(.semibold))
                 .foregroundStyle(Color.primary)
                 .lineLimit(3)
             if !headline.supportingFacts.isEmpty {
                 Text(headline.supportingFacts.joined(separator: " · "))
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(Color.secondary)
             }
             if let action = headline.primaryAction, action.kind != .none {
@@ -28,7 +40,7 @@ struct StateHeroView: View {
                             Image(systemName: symbol)
                         }
                         Text(action.label)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.body.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, RuulSpacing.sm)
