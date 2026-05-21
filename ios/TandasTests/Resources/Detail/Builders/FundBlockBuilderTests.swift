@@ -7,7 +7,7 @@ import RuulCore
 @MainActor
 struct FundBlockBuilderTests {
 
-    @Test("active fund with balance renders balance layout + ambient urgency")
+    @Test("active fund: amount is the hero headline + ambient urgency + openContribute")
     func activeFund() {
         let builder = FundBlockBuilder()
         let source  = TestFixtures.activeFundRow(balanceCents: 430_000)
@@ -15,9 +15,11 @@ struct FundBlockBuilderTests {
         let blocks  = builder.build(source: source, viewer: viewer, now: TestFixtures.now)
 
         #expect(blocks.state.urgency == .ambient)
-        let balanceBlock = blocks.capabilities.first { $0.id == "balance" }
-        #expect(balanceBlock != nil)
-        #expect(balanceBlock?.layoutKind == .balance)
+        // Apple-Wallet redesign (founder review 2026-05-21): the amount
+        // lives in the StateHero headline; the separate `balance`
+        // CapabilityBlock was dropped, so capabilities is empty.
+        #expect(blocks.state.headline.contains("4,300"))
+        #expect(blocks.capabilities.isEmpty)
         #expect(blocks.state.primaryAction?.kind == .openContribute)
     }
 
@@ -35,7 +37,7 @@ struct FundBlockBuilderTests {
         #expect(blocks.state.urgency == .terminal)
     }
 
-    @Test("fund with no balance_cents renders fallback dash")
+    @Test("fund with no balance_cents renders the calm empty-state headline")
     func fundNoBalance() {
         let source = TestFixtures.activeFundRow(balanceCents: nil)
         let blocks = FundBlockBuilder().build(
@@ -43,7 +45,9 @@ struct FundBlockBuilderTests {
             viewer: TestFixtures.guestViewerContext(),
             now: TestFixtures.now
         )
-        let balanceBlock = blocks.capabilities.first { $0.id == "balance" }
-        #expect(balanceBlock?.payload.balance?.primary == "—")
+        // Unknown balance → the hero is a calm prompt rather than a
+        // broken "Saldo —"; no separate balance card is produced.
+        #expect(blocks.state.headline == "Aún sin movimientos")
+        #expect(blocks.capabilities.isEmpty)
     }
 }
