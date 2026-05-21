@@ -70,7 +70,7 @@ public struct ReviewProposedFinesView: View {
         .sheet(isPresented: voidSheetBinding) {
             voidSheet
                 .presentationDetents([.medium])
-                .presentationBackground(.ultraThinMaterial)
+                .presentationBackground(.ultraThinMaterial.opacity(0.7))
         }
     }
 
