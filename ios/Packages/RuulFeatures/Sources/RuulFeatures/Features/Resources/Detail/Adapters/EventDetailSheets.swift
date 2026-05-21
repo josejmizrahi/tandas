@@ -62,7 +62,7 @@ public struct EventDetailSheets: ViewModifier {
                     onAddToCalendar: { addToCalendar(event: b.coordinator.event) }
                 )
                 .presentationDetents([.medium])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.qr)) {
                 MemberQRSheet(
@@ -72,14 +72,14 @@ public struct EventDetailSheets: ViewModifier {
                     eventTitle: b.coordinator.event.title
                 )
                 .presentationDetents([.medium])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelEvent)) {
                 CancelEventSheet(isPresented: bindingForSheet(.cancelEvent)) { reason in
                     Task { await b.coordinator.cancelEvent(reason: reason) }
                 }
                 .presentationDetents([.medium])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelAttendance)) {
                 CancelAttendanceSheet(
@@ -89,7 +89,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { await b.coordinator.setRSVP(.declined, plusOnes: 0, reason: reason) }
                 }
                 .presentationDetents([.medium])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.remindAttendees)) {
                 RemindAttendeesSheet(
@@ -101,7 +101,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { _ = await b.coordinator.sendHostReminders() }
                 }
                 .presentationDetents([.medium])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.closeEvent)) {
                 CloseEventSheet(
@@ -111,7 +111,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { await b.coordinator.closeEvent(autoGenerateEnabled: false) }
                 }
                 .presentationDetents([.medium])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.manualFine)) {
                 if let mf = b.manualFineCoordinator {
@@ -121,7 +121,7 @@ public struct EventDetailSheets: ViewModifier {
                         currentUserId: b.currentUserId
                     )
                     .presentationDetents([.medium, .large])
-                    .presentationBackground(.thinMaterial)
+                    .presentationBackground(.ultraThinMaterial)
                 }
             }
             .sheet(isPresented: bindingForSheet(.ledger)) {
@@ -132,7 +132,7 @@ public struct EventDetailSheets: ViewModifier {
                         groupVocabulary: b.group.eventVocabulary
                     )
                     .presentationDetents([.large])
-                    .presentationBackground(.thinMaterial)
+                    .presentationBackground(.ultraThinMaterial)
                 }
             }
             .sheet(isPresented: bindingForSheet(.rules)) {
@@ -142,7 +142,7 @@ public struct EventDetailSheets: ViewModifier {
                         coordinator: rc
                     )
                     .presentationDetents([.large])
-                    .presentationBackground(.thinMaterial)
+                    .presentationBackground(.ultraThinMaterial)
                 }
             }
             .sheet(isPresented: bindingForSheet(.attendees)) {
@@ -156,7 +156,7 @@ public struct EventDetailSheets: ViewModifier {
                     }
                 }
                 .presentationDetents([.large])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(item: b.attendeeRoute) { mwp in
                 NavigationStack {

@@ -59,7 +59,7 @@ public struct InviteMembersView: View {
         .sheet(isPresented: $manualEntryPresented) {
             manualEntrySheet
                 .presentationDetents([.medium, .large])
-                .presentationBackground(.thinMaterial)
+                .presentationBackground(.ultraThinMaterial)
         }
     }
 

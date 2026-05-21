@@ -50,7 +50,7 @@ struct ResourceLedgerSheet: View {
                 coordinator: coordinator
             )
             .presentationDetents([.medium, .large])
-            .presentationBackground(.thinMaterial)
+            .presentationBackground(.ultraThinMaterial)
         }
     }
 

@@ -87,7 +87,7 @@ struct ResourceRulesBody: View {
                 coordinator: coordinator
             )
             .presentationDetents([.medium, .large])
-            .presentationBackground(.thinMaterial)
+            .presentationBackground(.ultraThinMaterial)
         }
         .fullScreenCover(item: $composerCoord) { coord in
             RuleComposerView(
