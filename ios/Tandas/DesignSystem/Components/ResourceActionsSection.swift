@@ -79,7 +79,7 @@ private struct ResourceActionRow: View {
                 RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
-            .opacity(isInvoking ? RuulOpacity.disabled : 1.0)
+            .opacity(isInvoking ? 0.5 : 1.0)
         }
         .buttonStyle(.plain)
         .disabled(isInvoking)

@@ -48,7 +48,7 @@ private struct VoteCastButtons: View {
             castButton(.abstained,  label: "Me abstengo",  systemImage: "minus.circle.fill",     tint: Color(.tertiaryLabel))
         }
         .disabled(coordinator.isCasting)
-        .opacity(coordinator.isCasting ? RuulOpacity.disabled : 1.0)
+        .opacity(coordinator.isCasting ? 0.5 : 1.0)
     }
 
     private func castButton(_ choice: VoteChoice, label: String, systemImage: String, tint: Color) -> some View {
