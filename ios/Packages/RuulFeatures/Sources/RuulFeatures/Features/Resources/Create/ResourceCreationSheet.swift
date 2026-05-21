@@ -20,10 +20,15 @@ import RuulCore
 /// can present the PostCreateIntentScreen (Sprint 4 work).
 public struct ResourceCreationSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(RootRouter.self) private var router
 
     @State private var coordinator: ResourceCreationCoordinator
     public var onCreated: ((UUID) -> Void)?
+
+    /// Pre-selected resource type. When set, the sheet calls
+    /// `coordinator.pickType(_:)` on appear so the type-picker step
+    /// is skipped. Wired from compose chips ("Evento" / "Fondo" / …).
+    /// nil = standard flow with the type picker.
+    public let initialResourceType: ResourceType?
 
     /// Permissions the viewer holds in `group`. Used to filter the
     /// post-create intent grid. Caller is expected to resolve from
@@ -66,6 +71,7 @@ public struct ResourceCreationSheet: View {
         templateDefaultsLoader: (@Sendable (RuulCore.Group) async -> [String: [String]])? = nil,
         members: [MemberWithProfile] = [],
         postCreateActions: PostCreateResourceActions = PostCreateResourceActions(),
+        initialResourceType: ResourceType? = nil,
         onCreated: ((UUID) -> Void)? = nil
     ) {
         _coordinator = State(initialValue: ResourceCreationCoordinator(
@@ -88,6 +94,7 @@ public struct ResourceCreationSheet: View {
         self.activator = activator
         self.members = members
         self.postCreateActions = postCreateActions
+        self.initialResourceType = initialResourceType
         self.onCreated = onCreated
     }
 
@@ -105,13 +112,10 @@ public struct ResourceCreationSheet: View {
         }
         .task {
             // Compose-chip prefill: when "Evento" / "Fondo" / etc. is
-            // tapped from the group home, the chip stashes the type on
-            // `router.state.pendingWizardResourceType`. Consume + clear
-            // it here so the sheet skips the type picker step and
-            // jumps straight to the variant/identity flow for that
-            // builder. Same mechanism as `ResourceWizardSheet`.
-            if let pending = router.state.pendingWizardResourceType {
-                router.state.pendingWizardResourceType = nil
+            // tapped from the group home, the caller passes the chosen
+            // type via `initialResourceType` and the sheet jumps
+            // straight to the variant/identity flow for that builder.
+            if let pending = initialResourceType {
                 coordinator.pickType(pending)
             }
         }

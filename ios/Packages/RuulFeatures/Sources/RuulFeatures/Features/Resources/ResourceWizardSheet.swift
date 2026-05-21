@@ -16,14 +16,26 @@ import RuulCore
 ///   5. review     — confirmar y crear
 public struct ResourceWizardSheet: View {
     @Environment(AppState.self) private var app
-    @Environment(RootRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
 
     @State private var coordinator: ResourceWizardCoordinator
     public var onCreated: ((UUID) -> Void)?
 
-    public init(group: RuulCore.Group, suggestedDate: Date = .now.addingTimeInterval(86_400), onCreated: ((UUID) -> Void)? = nil) {
+    /// Pre-selected resource type. When set, the wizard calls
+    /// `coordinator.selectType(_:)` after rebuilding with the real
+    /// registry so the type-picker step is skipped. Wired from compose
+    /// chips that already know the user picked "Evento" / "Fondo" / etc.
+    /// nil = standard 5-step flow with type picker.
+    public let initialResourceType: ResourceType?
+
+    public init(
+        group: RuulCore.Group,
+        suggestedDate: Date = .now.addingTimeInterval(86_400),
+        initialResourceType: ResourceType? = nil,
+        onCreated: ((UUID) -> Void)? = nil
+    ) {
         self.onCreated = onCreated
+        self.initialResourceType = initialResourceType
         // Coordinator built with a placeholder registry; replaced in
         // onAppear once AppState is in scope.
         _coordinator = State(initialValue: ResourceWizardCoordinator(
@@ -62,12 +74,11 @@ public struct ResourceWizardSheet: View {
             await rebuildCoordinatorWithTemplate()
 
             // Compose-chip prefill: when "Evento" / "Fondo" / etc. is
-            // tapped from the group home, the chip stashes the type on
-            // `router.state.pendingWizardResourceType`. Consume + clear
-            // it here so the wizard jumps straight to step 2 (fields)
-            // for that builder, skipping the type picker.
-            if let pending = router.state.pendingWizardResourceType {
-                router.state.pendingWizardResourceType = nil
+            // tapped from the group home, the caller passes the type
+            // via `initialResourceType` and the wizard jumps straight
+            // to step 2 (fields) for that builder, skipping the type
+            // picker.
+            if let pending = initialResourceType {
                 coordinator.selectType(pending)
             }
         }

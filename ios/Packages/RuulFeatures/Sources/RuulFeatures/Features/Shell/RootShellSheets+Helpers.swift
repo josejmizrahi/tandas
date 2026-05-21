@@ -62,18 +62,28 @@ extension RootShellSheets {
     /// founder smoke pass.
     @ViewBuilder
     func resourceCreationCover(group: RuulCore.Group) -> some View {
+        // Compose chips ("Evento" / "Fondo" / …) stage their pick on
+        // `pendingWizardResourceType` right before presenting the
+        // cover. We snapshot here and clear via `.onAppear` below so
+        // a second present without a chip falls back to the standard
+        // type-picker flow. Mutating router state inside @ViewBuilder
+        // would invalidate this view immediately and cause a loop.
+        let pendingType = router.state.pendingWizardResourceType
         if ResourceCreationFeatureFlag.isEnabled {
-            newResourceCreationSheet(group: group)
+            newResourceCreationSheet(group: group, initialType: pendingType)
+                .onAppear { router.state.pendingWizardResourceType = nil }
         } else {
             ResourceWizardSheet(
                 group: group,
                 suggestedDate: nextDefaultDate(for: group),
+                initialResourceType: pendingType,
                 onCreated: { _ in
                     Task {
                         await router.state.homeCoordinator?.refresh(force: true)
                     }
                 }
             )
+            .onAppear { router.state.pendingWizardResourceType = nil }
         }
     }
 
@@ -83,7 +93,7 @@ extension RootShellSheets {
     /// routing is a follow-up; today we dismiss + refresh on nav taps
     /// so the user sees the intent acknowledged.
     @ViewBuilder
-    private func newResourceCreationSheet(group: RuulCore.Group) -> some View {
+    private func newResourceCreationSheet(group: RuulCore.Group, initialType: ResourceType?) -> some View {
         let activator = LazyCapabilityActivator(
             catalog: .v1,
             resolver: CapabilityResolver(),
@@ -226,6 +236,7 @@ extension RootShellSheets {
             },
             members: members,
             postCreateActions: actions,
+            initialResourceType: initialType,
             onCreated: { _ in
                 Task {
                     await router.state.homeCoordinator?.refresh(force: true)
