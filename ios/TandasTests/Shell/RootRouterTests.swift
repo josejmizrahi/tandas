@@ -27,27 +27,27 @@ struct RootRouterTests {
         #expect(state.activeRoutes == [.createGroup])
     }
 
-    @Test("intercept .create tab with active group opens createCover route, does not change tab")
-    func createInterceptWithActiveGroup() {
+    @Test("presentCreate with active group opens createCover route, does not change tab")
+    func presentCreateWithActiveGroup() {
         let (router, state) = makeRouter()
-        router.handleTabSelection(.create, hasActiveGroup: true)
+        router.presentCreate(hasActiveGroup: true)
         #expect(state.selectedTab == .home, "tab unchanged")
         #expect(state.activeRoutes == [.createCover])
     }
 
-    @Test("intercept .create with no group routes to createGroup")
-    func createInterceptNoGroup() {
+    @Test("presentCreate with no group routes to createGroup")
+    func presentCreateNoGroup() {
         let (router, state) = makeRouter()
-        router.handleTabSelection(.create, hasActiveGroup: false)
+        router.presentCreate(hasActiveGroup: false)
         #expect(state.selectedTab == .home)
         #expect(state.activeRoutes == [.createGroup])
     }
 
-    @Test("non-create tab selection updates selectedTab normally")
+    @Test("tab selection updates selectedTab normally")
     func normalTab() {
         let (router, state) = makeRouter()
-        router.handleTabSelection(.inbox, hasActiveGroup: true)
-        #expect(state.selectedTab == .inbox)
+        router.handleTabSelection(.groups, hasActiveGroup: true)
+        #expect(state.selectedTab == .groups)
         #expect(state.activeRoutes.isEmpty)
     }
 
