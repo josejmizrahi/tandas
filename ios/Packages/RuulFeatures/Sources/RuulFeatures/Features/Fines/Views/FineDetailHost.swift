@@ -28,6 +28,8 @@ public struct FineDetailHost: View {
     @State private var appealSheetPresented = false
     @State private var voidSheetPresented = false
     @State private var canVoidFine: Bool = false
+    /// "Ver más" tap on the Activity layer.
+    @State private var activityHistoryPresented: Bool = false
 
     public init(
         coordinator: FineDetailCoordinator,
@@ -47,7 +49,7 @@ public struct FineDetailHost: View {
                     onPrimaryAction: { Task { await dispatchPrimary() } },
                     onOpenBlock: { id in openDestination(id) },
                     onTapRelation: { _ in },
-                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
+                    onSeeMoreActivity: { activityHistoryPresented = true },
                     onOverflowAction: { handleOverflow($0) }
                 )
             } else {
@@ -102,6 +104,16 @@ public struct FineDetailHost: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.regularMaterial)
             }
+        }
+        .sheet(isPresented: $activityHistoryPresented) {
+            ResourceActivityHistorySheet(
+                groupId: coordinator.fine.groupId,
+                resourceId: coordinator.fine.id,
+                displayName: coordinator.fine.reason
+            )
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
         }
     }
 
