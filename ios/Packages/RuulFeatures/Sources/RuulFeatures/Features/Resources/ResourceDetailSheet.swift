@@ -47,16 +47,17 @@ public struct ResourceDetailSheet: View {
         }
         .task { await load() }
         .task { await redirectIfEvent() }
-        .sheet(isPresented: $ledgerSheetPresented) {
+        // Ledger + Rules promoted to fullScreenCover per the sheet-on-
+        // sheet doctrine (2026-05-20): both surfaces host their own
+        // NavigationStack with the Add form as a push destination.
+        .fullScreenCover(isPresented: $ledgerSheetPresented) {
             if let ledgerCoordinator {
                 ResourceLedgerSheet(
                     isPresented: $ledgerSheetPresented,
                     coordinator: ledgerCoordinator,
                     groupVocabulary: typeLabel.lowercased()
                 )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.ultraThinMaterial)
             }
         }
         .onChange(of: ledgerSheetPresented) { _, presented in
@@ -64,15 +65,13 @@ public struct ResourceDetailSheet: View {
                 ledgerCoordinator = makeLedgerCoordinator()
             }
         }
-        .sheet(isPresented: $rulesSheetPresented) {
+        .fullScreenCover(isPresented: $rulesSheetPresented) {
             if let rulesCoordinator {
                 ResourceRulesSheet(
                     isPresented: $rulesSheetPresented,
                     coordinator: rulesCoordinator
                 )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.ultraThinMaterial)
             }
         }
         .onChange(of: rulesSheetPresented) { _, presented in

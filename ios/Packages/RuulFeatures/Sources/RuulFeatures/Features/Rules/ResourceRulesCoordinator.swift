@@ -42,7 +42,6 @@ public final class ResourceRulesCoordinator {
     public private(set) var isLoading: Bool = true
     public private(set) var isSubmitting: Bool = false
     public private(set) var error: String?
-    public var addSheetPresented: Bool = false
 
     // Form state — catalog-driven.
     public var formName: String = ""

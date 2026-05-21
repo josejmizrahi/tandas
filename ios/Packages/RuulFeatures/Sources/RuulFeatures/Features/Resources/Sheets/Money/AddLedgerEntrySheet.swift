@@ -2,36 +2,60 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Form sheet for recording a single ledger entry scoped to an event.
-/// Backed by `ResourceLedgerCoordinator` — view binds form fields, dispatches
-/// `submit()`, and dismisses on success.
+/// Push destination for recording a single ledger entry scoped to the
+/// parent resource. Backed by `ResourceLedgerCoordinator` — view binds
+/// form fields, dispatches `submit()`, and pops on success.
 ///
-/// Scope contract: the parent coordinator was built with `event.id`, so
-/// every write here lands as `ledger_entries.resource_id = event.id`. Do
-/// NOT shortcut the coordinator's `recordEntry` — that's where the scope
-/// is anchored.
-struct AddLedgerEntrySheet: View {
-    @Binding var isPresented: Bool
+/// Sheet-on-sheet doctrine (2026-05-20): the parent `ResourceLedgerSheet`
+/// is a fullScreenCover that hosts its own NavigationStack. This view
+/// is the push destination registered behind `LedgerAddRoute`, NOT a
+/// child sheet — Apple Wallet "Add Card" pattern.
+///
+/// Scope contract: the parent coordinator was built with the resource's
+/// id, so every write here lands as `ledger_entries.resource_id =
+/// resource.id`. Do NOT shortcut the coordinator's `recordEntry` —
+/// that's where the scope is anchored.
+struct AddLedgerEntryDestination: View {
     @Bindable var coordinator: ResourceLedgerCoordinator
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ModalSheetTemplate(
-            title: "Registrar movimiento",
-            dismissAction: { isPresented = false }
-        ) {
-            kindPickerSection
-            amountSection
-            if coordinator.formKind.requiresCounterparty {
-                counterpartySection
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                kindPickerSection
+                amountSection
+                if coordinator.formKind.requiresCounterparty {
+                    counterpartySection
+                }
+                noteSection
+                if let error = coordinator.error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(Color.red)
+                }
             }
-            noteSection
-            if let error = coordinator.error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(Color.red)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.lg)
+        }
+        .navigationTitle("Registrar movimiento")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    Task {
+                        let entry = await coordinator.submit()
+                        if entry != nil { dismiss() }
+                    }
+                } label: {
+                    if coordinator.isSubmitting {
+                        ProgressView()
+                    } else {
+                        Text("Registrar")
+                    }
+                }
+                .disabled(!coordinator.canSubmit || coordinator.isSubmitting)
             }
-            submitButton
-                .padding(.top, RuulSpacing.sm)
         }
     }
 
@@ -184,29 +208,5 @@ struct AddLedgerEntrySheet: View {
             label: "NOTA (OPCIONAL)",
             isDisabled: coordinator.isSubmitting
         )
-    }
-
-    // MARK: - CTA
-
-    private var submitButton: some View {
-        let label: String = {
-            if coordinator.isSubmitting { return "Guardando…" }
-            return "Registrar"
-        }()
-        return RuulButton(
-            label,
-            style: .primary,
-            size: .large,
-            isLoading: coordinator.isSubmitting,
-            fillsWidth: true
-        ) {
-            Task {
-                let entry = await coordinator.submit()
-                if entry != nil {
-                    isPresented = false
-                }
-            }
-        }
-        .disabled(!coordinator.canSubmit)
     }
 }
