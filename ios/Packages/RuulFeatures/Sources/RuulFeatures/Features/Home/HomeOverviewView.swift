@@ -73,11 +73,11 @@ public struct HomeOverviewView: View {
                 greetingHeader
 
                 if let actions = inboxCoordinator?.actions, !actions.isEmpty {
+                    SectionHeading("Necesita tu atención")
                     AttentionCard(
                         actions: actions,
                         onTap: { action in Task { await onInboxActionTap(action) } }
                     )
-                    .padding(.top, RuulSpacing.s4)
                 }
 
                 if !app.groups.isEmpty {
@@ -250,51 +250,31 @@ public struct HomeOverviewView: View {
 // MARK: ATTENTION
 // MARK: ════════════════════════════════════════════════════════════════════
 
+/// Recipe mirrored verbatim from `GroupPendingsBlock` — `Color.ruulSurface`
+/// directly in `.background(_, in: RoundedRectangle(cornerRadius: .lg))`,
+/// 0.5pt separator stroke, leading-inset divider, `RuulSpacing.md` row
+/// padding, 40pt circular icon badge with 12% tint.  The "Necesita tu
+/// atención" label now lives in the outer `SectionHeading`; the card
+/// itself is rows-only, no internal header bar.
 private struct AttentionCard: View {
     let actions: [UserAction]
     let onTap: (UserAction) -> Void
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s0) {
-            HStack {
-                HStack(spacing: RuulSpacing.micro) {
-                    PulseDot(color: Color.ruulSemanticWarning)
-                    Text("Necesita tu atención")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulSemanticWarning)
-                        .textCase(.uppercase)
-                        .tracking(0.8)
-                }
-                Spacer()
-                Text("\(actions.count)")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
-                    .padding(.horizontal, RuulSpacing.s2)
-                    .padding(.vertical, RuulSpacing.s0_5)
-                    .background(Color.ruulSemanticWarning, in: Capsule())
-            }
-            .padding(.bottom, RuulSpacing.s4)
-
-            VStack(spacing: RuulSpacing.s0) {
-                ForEach(Array(actions.prefix(5).enumerated()), id: \.element.id) { index, action in
-                    AttentionRow(action: action, onTap: { onTap(action) })
-                    if index < min(actions.count, 5) - 1 {
-                        Divider().padding(.vertical, RuulSpacing.s2)
-                    }
+        VStack(spacing: 0) {
+            ForEach(Array(actions.prefix(5).enumerated()), id: \.element.id) { index, action in
+                AttentionRow(action: action, onTap: { onTap(action) })
+                if index < min(actions.count, 5) - 1 {
+                    Divider()
+                        .background(Color(.separator))
+                        .padding(.leading, 64)
                 }
             }
         }
-        .padding(RuulSpacing.s5)
-        .ruulCardSurface(.solid, radius: RuulRadius.xl)
-        // Apple Settings "Update Available" recipe: solid card surface +
-        // a hairline semantic stroke so the warning identity stays
-        // legible without resorting to a gradient halo (Liquid Glass
-        // canon — chrome is light, identity rides on color + type).
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .strokeBorder(Color.ruulSemanticWarning.opacity(0.25),
-                              lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: RuulRadius.lg)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
 }
@@ -309,41 +289,47 @@ private struct AttentionRow: View {
             tapTick &+= 1
             onTap()
         }) {
-            HStack(spacing: RuulSpacing.s4) {
-                Image(systemName: action.iconName)
-                    .font(.subheadline.weight(.semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(action.tintColor)
-                    .frame(width: HomeMetrics.iconTile, height: HomeMetrics.iconTile)
-                    // 22% tint backdrop — light mode reads the family
-                    // color clearly without bleeding into the canvas;
-                    // dark mode keeps enough contrast against ruulSurface.
-                    .background(action.tintColor.opacity(0.22),
-                                in: RoundedRectangle(cornerRadius: RuulRadius.sm,
-                                                     style: .continuous))
-
-                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
-                    Text(action.title)
+            HStack(spacing: RuulSpacing.md) {
+                // 40pt circular tint-tinted badge (GroupPendingsBlock recipe).
+                // Urgent / high priority gets a small red dot at top-right,
+                // bordered against the surface so it pops on either mode.
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: action.iconName)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .lineLimit(1)
+                        .foregroundStyle(action.tintColor)
+                        .frame(width: 40, height: 40)
+                        .background(action.tintColor.opacity(0.12), in: Circle())
 
-                    Text(action.urgencyText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(action.urgencyColor)
-                        .monospacedDigit()
+                    if action.priority == .urgent || action.priority == .high {
+                        Circle()
+                            .fill(Color.ruulNegative)
+                            .frame(width: 8, height: 8)
+                            .overlay(Circle().strokeBorder(Color.ruulSurface, lineWidth: 2))
+                            .offset(x: 2, y: -2)
+                    }
                 }
 
-                Spacer(minLength: RuulSpacing.s2)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(action.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Text(action.urgencyText)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
 
                 Text(action.ctaLabel)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, RuulSpacing.s3)
-                    .padding(.vertical, RuulSpacing.micro)
+                    .foregroundStyle(Color.ruulTextInverse)
+                    .padding(.horizontal, RuulSpacing.sm)
+                    .padding(.vertical, RuulSpacing.xxs)
                     .background(action.tintColor, in: Capsule())
             }
-            .padding(.vertical, RuulSpacing.s0_5)
+            .padding(RuulSpacing.md)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -414,12 +400,12 @@ private struct GroupCard: View {
             }
         }
         .frame(width: HomeMetrics.groupCardWidth, alignment: .leading)
-        .padding(RuulSpacing.s4)
-        .ruulCardSurface(.solid, radius: RuulRadius.xl)
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .stroke(isActive ? Color.ruulAccent : Color.clear,
-                        lineWidth: HomeMetrics.activeStrokeWidth)
+            RoundedRectangle(cornerRadius: RuulRadius.lg)
+                .stroke(isActive ? Color.ruulAccent : Color(.separator),
+                        lineWidth: isActive ? HomeMetrics.activeStrokeWidth : 0.5)
         )
         .scrollTransition(.animated.threshold(.visible(0.05))) { content, phase in
             content
@@ -484,8 +470,12 @@ private struct UpcomingCard: View {
                 rsvpButton(.declined, label: "No", tint: .ruulSemanticError)
             }
         }
-        .padding(RuulSpacing.s4)
-        .ruulCardSurface(.solid, radius: RuulRadius.lg)
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg)
+                .stroke(Color(.separator), lineWidth: 0.5)
+        )
     }
 
     /// Takes a free-form address (e.g. "Altezza Bosques, Camino a
@@ -553,7 +543,11 @@ private struct DateTile: View {
                 .foregroundStyle(Color.ruulTextPrimary)
         }
         .frame(width: HomeMetrics.dateTile, height: HomeMetrics.dateTile)
-        .ruulCardSurface(.recessed, radius: RuulRadius.sm)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md)
+                .stroke(Color(.separator), lineWidth: 0.5)
+        )
     }
 }
 
@@ -573,22 +567,27 @@ private struct SectionHeading: View {
     }
 
     var body: some View {
+        // Group-page recipe (GroupPendingsBlock / GroupStreamBlock /
+        // GroupSpacesGrid): `.footnote.weight(.semibold)` in
+        // `tertiaryLabel`, leading-inset `RuulSpacing.xxs` (4pt) so the
+        // title aligns with the card body, not the screen edge.
         HStack {
             Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.ruulTextPrimary)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color(.tertiaryLabel))
             Spacer()
             if let actionLabel, let action {
                 Button(action: action) {
                     Text(actionLabel)
-                        .font(.caption.weight(.semibold))
+                        .font(.footnote.weight(.semibold))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.ruulAccent)
             }
         }
+        .padding(.leading, RuulSpacing.xxs)
         .padding(.top, RuulSpacing.s5)
-        .padding(.bottom, RuulSpacing.s3)
+        .padding(.bottom, RuulSpacing.xs)
     }
 }
 
