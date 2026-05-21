@@ -121,7 +121,7 @@ public struct OnboardingPathPickerView: View {
                     .stroke(primary ? Color.clear : Color(.separator), lineWidth: 1)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityHint(subtitle)
     }

@@ -103,7 +103,7 @@ public struct CreateVoteSheet: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
             .opacity(enabled ? 1.0 : 0.6)
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .disabled(!enabled)
     }
 }

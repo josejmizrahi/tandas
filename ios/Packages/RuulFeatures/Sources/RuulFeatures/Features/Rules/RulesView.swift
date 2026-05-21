@@ -340,7 +340,7 @@ public struct RulesView: View {
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 
     private func ruleCard(_ rule: GroupRule) -> some View {
@@ -377,7 +377,7 @@ public struct RulesView: View {
             .opacity(rule.isLive ? 1.0 : 0.55)
             .contentShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .accessibilityHint("Abre el detalle de la regla")
     }
 

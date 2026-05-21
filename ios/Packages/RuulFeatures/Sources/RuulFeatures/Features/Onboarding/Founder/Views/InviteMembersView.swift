@@ -20,14 +20,8 @@ public struct InviteMembersView: View {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
                 if let group = coord.createdGroup {
                     shareLinkCard(group: group)
-                    RuulActionableCard(
-                        icon: "person.crop.circle.badge.plus",
-                        title: "Importar de contactos",
-                        subtitle: "Elige quién va a estar en el grupo desde tu agenda.",
-                        accessory: .badge("Recomendado")
-                    ) {
-                        contactsPresented = true
-                    }
+                    importContactsCard
+
                     Button {
                         manualEntryPresented = true
                     } label: {
@@ -98,6 +92,45 @@ public struct InviteMembersView: View {
         FounderStep.invite.progressFraction
     }
 
+    private var importContactsCard: some View {
+        Button {
+            contactsPresented = true
+        } label: {
+            HStack(spacing: RuulSpacing.md) {
+                Image(systemName: "person.crop.circle.badge.plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
+                    Text("Importar de contactos")
+                        .font(.headline)
+                        .foregroundStyle(Color.primary)
+                    Text("Elige quién va a estar en el grupo desde tu agenda.")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Text("Recomendado")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+                    .padding(.horizontal, RuulSpacing.xs)
+                    .padding(.vertical, 2)
+                    .background(Color.ruulBackgroundRecessed, in: Capsule())
+            }
+            .padding(RuulSpacing.md)
+            .background(
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     private func shareLinkCard(group: RuulCore.Group) -> some View {
         let message = InviteLinkGenerator.shareMessage(groupName: group.name, code: group.inviteCode)
         return ShareLink(item: message) {
@@ -130,7 +163,7 @@ public struct InviteMembersView: View {
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 
     private var pendingList: some View {

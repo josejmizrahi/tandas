@@ -14,7 +14,6 @@ struct PrimitivesShowcaseView: View {
     @State private var date = Date()
     @State private var sheetPresented = false
     @State private var coverPresented = false
-    @State private var pickedTemplate: String = "dinner"
 
     var body: some View {
         ScrollView {
@@ -22,7 +21,6 @@ struct PrimitivesShowcaseView: View {
                 buttonsSection
                 textFieldSection
                 otpSection
-                cardSection
                 progressSection
                 avatarSection
                 chipSection
@@ -32,9 +30,6 @@ struct PrimitivesShowcaseView: View {
                 datePickerSection
                 iconBadgeSection
                 presentationSection
-                templatePickerSection
-                actionCardSection
-                metricCardSection
                 timelineSection
             }
             .padding(RuulSpacing.lg)
@@ -75,16 +70,6 @@ struct PrimitivesShowcaseView: View {
             VStack(spacing: RuulSpacing.sm) {
                 RuulOTPInput(code: $otp, hasError: $otpError)
                 RuulButton("Trigger error", style: .secondary, size: .small) { otpError = true }
-            }
-        }
-    }
-
-    private var cardSection: some View {
-        ShowcaseSection("RuulCard") {
-            VStack(spacing: RuulSpacing.sm) {
-                RuulCard(.glass) { Text("Glass card").font(.subheadline) }
-                RuulCard(.solid) { Text("Solid card").font(.subheadline) }
-                RuulCard(.outlined) { Text("Outlined card").font(.subheadline) }
             }
         }
     }
@@ -227,78 +212,6 @@ struct PrimitivesShowcaseView: View {
                         Text("Full screen").font(.largeTitle.weight(.bold)).foregroundStyle(Color.primary)
                         RuulButton("Close") { coverPresented = false }
                     }
-                }
-            }
-        }
-    }
-
-    // MARK: - Sprint 0 (platform-template DS adjustments)
-
-    private var templatePickerSection: some View {
-        ShowcaseSection("TemplatePickerCard", subtitle: "single-select template tile, supports coming-soon variant") {
-            VStack(spacing: RuulSpacing.sm) {
-                TemplatePickerCard(
-                    icon: "fork.knife.circle.fill",
-                    title: "Cena recurrente",
-                    subtitle: "Cenas que se repiten con el mismo grupo",
-                    bullets: ["Rotación de host", "RSVP + check-in", "Multas por reglas"],
-                    isSelected: pickedTemplate == "dinner",
-                    onSelect: { pickedTemplate = "dinner" }
-                )
-                TemplatePickerCard(
-                    icon: "ticket.fill",
-                    title: "Recurso compartido",
-                    subtitle: "Palco, casa, suscripción",
-                    bullets: ["Asignación rotativa"],
-                    isComingSoon: true,
-                    onSelect: {}
-                )
-            }
-        }
-    }
-
-    private var actionCardSection: some View {
-        ShowcaseSection("ActionCard", subtitle: "inbox row — type icon + priority dot + time-remaining") {
-            VStack(spacing: RuulSpacing.sm) {
-                ActionCard(
-                    icon: "exclamationmark.triangle.fill",
-                    title: "Multa pendiente: $300",
-                    subtitle: "No-show en cena del 12 de mayo",
-                    priority: .urgent,
-                    timeRemaining: "VENCE EN 3 D",
-                    onTap: {}
-                )
-                ActionCard(
-                    icon: "hand.raised.fill",
-                    title: "Vota una apelación",
-                    subtitle: "María apeló su multa",
-                    priority: .high,
-                    timeRemaining: "12 H",
-                    onTap: {}
-                )
-                ActionCard(
-                    icon: "bell.fill",
-                    title: "Recordatorio de pago",
-                    priority: .low,
-                    onTap: {}
-                )
-            }
-        }
-    }
-
-    private var metricCardSection: some View {
-        ShowcaseSection("RuulMetricCard", subtitle: "stat tile — compact / regular / hero with trend deltas") {
-            VStack(spacing: RuulSpacing.sm) {
-                RuulMetricCard(
-                    label: "ASISTENCIA PROMEDIO",
-                    value: "87",
-                    unitSuffix: "%",
-                    trend: .up("+5% vs mes pasado"),
-                    size: .hero
-                )
-                HStack(spacing: RuulSpacing.sm) {
-                    RuulMetricCard(label: "MULTAS DEL MES", value: "1240", unitPrefix: "$", trend: .down("-15%"), size: .compact)
-                    RuulMetricCard(label: "EVENTOS", value: "4", trend: .flat("igual"), size: .compact)
                 }
             }
         }

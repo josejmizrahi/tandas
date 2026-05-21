@@ -156,6 +156,6 @@ public struct VoteOnAppealSheet: View {
             .foregroundStyle(primary ? Color.ruulTextInverse : Color.primary)
             .background(primary ? Color.primary : Color.ruulSurface, in: Capsule())
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 }

@@ -254,25 +254,21 @@ private struct FilteredInboxList: View {
                     }
                 },
                 loaded: { actions in
-                    ScrollView {
-                        VStack(spacing: RuulSpacing.sm) {
-                            ForEach(actions) { action in
-                                ActionCard(
-                                    icon: icon(for: action.actionType),
-                                    meta: nil,
-                                    title: action.title,
-                                    subtitle: action.body,
-                                    priority: priority(for: action.priority),
-                                    timeRemaining: UserActionExpiry.remainingDescription(for: action),
-                                    onTap: { onOpenAction(action) }
-                                )
-                            }
+                    List {
+                        ForEach(actions) { action in
+                            InboxActionRow(
+                                icon: icon(for: action.actionType),
+                                meta: nil,
+                                title: action.title,
+                                subtitle: action.body,
+                                priorityDot: priorityDot(for: action.priority),
+                                timeRemaining: UserActionExpiry.remainingDescription(for: action),
+                                onTap: { onOpenAction(action) }
+                            )
                         }
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.md)
-                        .padding(.bottom, RuulSpacing.s12)
                     }
-                    .scrollIndicators(.hidden)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
                     .refreshable { await onRefresh() }
                 }
             )
@@ -296,12 +292,12 @@ private struct FilteredInboxList: View {
         }
     }
 
-    private func priority(for p: ActionPriority) -> ActionCard.Priority {
+    private func priorityDot(for p: ActionPriority) -> Color {
         switch p {
-        case .low:    return .low
-        case .medium: return .medium
-        case .high:   return .high
-        case .urgent: return .urgent
+        case .low:    return Color(.tertiaryLabel)
+        case .medium: return .blue
+        case .high:   return .orange
+        case .urgent: return .red
         }
     }
 }

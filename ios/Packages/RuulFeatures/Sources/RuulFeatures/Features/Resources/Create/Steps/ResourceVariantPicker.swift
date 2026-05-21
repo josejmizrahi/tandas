@@ -97,7 +97,7 @@ struct ResourceVariantPicker: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 
     private func iconBadge(_ symbol: String) -> some View {

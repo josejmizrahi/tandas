@@ -166,7 +166,7 @@ public struct InviteWelcomeView: View {
                     .frame(minHeight: 56)
                     .background(Capsule().fill(Color.white))
             }
-            .buttonStyle(.ruulPress)
+            .buttonStyle(.plain)
             .accessibilityLabel("Aceptar invitación")
 
             Button(action: onDecline) {

@@ -133,7 +133,7 @@ public struct ActionInboxView: View {
 /// composes icon + meta line + title with priority dot + subtitle +
 /// trailing time-remaining. Replaces `ActionCard` per Plan §2.5 +
 /// Component Map §10 (Activity Feed pattern).
-private struct InboxActionRow: View {
+struct InboxActionRow: View {
     let icon: String
     let meta: String?
     let title: String

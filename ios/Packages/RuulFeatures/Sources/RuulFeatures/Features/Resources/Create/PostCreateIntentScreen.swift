@@ -177,7 +177,7 @@ public struct PostCreateIntentScreen: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .disabled(inflightIntentId != nil)
     }
 

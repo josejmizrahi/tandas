@@ -10,7 +10,7 @@ import RuulCore
 /// | Phase                                      | Renderiza                              |
 /// |--------------------------------------------|----------------------------------------|
 /// | `.idle`                                    | `Color.clear` (placeholder neutral)    |
-/// | `.loading`                                 | `RuulLoadingState` con debounce 250ms  |
+/// | `.loading`                                 | `ProgressView()` con debounce 250ms    |
 /// | `.refreshing(value)`                       | `loaded(value)` + `RuulInlineProgress` |
 /// | `.loaded(value)`                           | `loaded(value)`                        |
 /// | `.empty`                                   | `empty()` (default: `EmptyView`)       |
@@ -73,8 +73,17 @@ public struct AsyncContentView<Value: Sendable, LoadedContent: View, EmptyConten
             case .idle:
                 Color.clear
             case .loading:
-                RuulLoadingState(message: loadingMessage)
-                    .ruulLoadingDebounce()
+                VStack(spacing: RuulSpacing.md) {
+                    ProgressView()
+                        .controlSize(.large)
+                    if let loadingMessage {
+                        Text(loadingMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ruulLoadingDebounce()
             case .refreshing(let value):
                 loaded(value)
                     .overlay(alignment: .top) { RuulInlineProgress() }

@@ -22,7 +22,9 @@ public struct AddManualFineSheet: View {
             dismissAction: { isPresented = false }
         ) {
             if coordinator.isLoadingMembers {
-                RuulLoadingState()
+                ProgressView()
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if coordinator.members.isEmpty {
                 ContentUnavailableView {
                     Label("Solo estás tú", systemImage: "person.2")

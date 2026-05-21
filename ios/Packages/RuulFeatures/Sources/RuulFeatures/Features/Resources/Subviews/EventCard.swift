@@ -62,7 +62,7 @@ public struct EventCard: View {
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Cover

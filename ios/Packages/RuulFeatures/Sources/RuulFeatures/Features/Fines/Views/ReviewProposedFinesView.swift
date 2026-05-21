@@ -154,7 +154,7 @@ public struct ReviewProposedFinesView: View {
                         .background(Color.ruulBackground, in: Capsule())
                         .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
                 }
-                .buttonStyle(.ruulPress)
+                .buttonStyle(.plain)
                 Button {
                     Task { await coordinator.officialize(fineId: fine.id) }
                 } label: {
@@ -165,7 +165,7 @@ public struct ReviewProposedFinesView: View {
                         .padding(.vertical, RuulSpacing.sm)
                         .background(Color.primary, in: Capsule())
                 }
-                .buttonStyle(.ruulPress)
+                .buttonStyle(.plain)
             }
         }
         .padding(RuulSpacing.md)

@@ -51,7 +51,7 @@ public struct OpenVotesListView: View {
                                         Button { onSelectVote(vote) } label: {
                                             voteRow(vote)
                                         }
-                                        .buttonStyle(.ruulPress)
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             }

@@ -150,7 +150,9 @@ public struct EventDetailHost: View {
     private var bootView: some View {
         ZStack {
             Color.ruulBackgroundCanvas.ignoresSafeArea()
-            RuulLoadingState()
+            ProgressView()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

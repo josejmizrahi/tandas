@@ -101,12 +101,8 @@ public struct GovernanceView: View {
     }
 
     private var votingConfigCard: some View {
-        RuulCard(.tile) {
+        GroupBox("Configuración de votación") {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                Text("Configuración de votación")
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-
                 quorumRow
                 thresholdRow
                 durationRow
@@ -209,14 +205,12 @@ public struct GovernanceView: View {
         selection: Binding<PermissionLevel>,
         options: [PermissionLevel]
     ) -> some View {
-        RuulCard(.tile) {
+        GroupBox(title) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(Color.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Picker(selection: selection) {
                     ForEach(options, id: \.self) { level in
                         Text(label(for: level)).tag(level)

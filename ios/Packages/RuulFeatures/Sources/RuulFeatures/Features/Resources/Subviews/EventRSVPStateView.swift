@@ -97,7 +97,7 @@ public struct EventRSVPStateView: View {
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Plus-ones stepper (inline row, shown when event allows it)
@@ -150,7 +150,7 @@ public struct EventRSVPStateView: View {
                 .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
                 .accessibilityHidden(true)
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .disabled(!enabled)
         .accessibilityLabel(icon == "plus" ? "Agregar invitado" : "Quitar invitado")
     }
@@ -240,7 +240,7 @@ public struct EventRSVPStateView: View {
                     .font(.footnote)
                     .foregroundStyle(Color.primary)
             }
-            .buttonStyle(.ruulPress)
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.md)
@@ -325,6 +325,6 @@ public struct EventRSVPStateView: View {
                 Capsule().stroke(Color(.separator), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
     }
 }

@@ -70,7 +70,7 @@ private struct VoteCastButtons: View {
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
 }

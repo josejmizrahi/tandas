@@ -33,7 +33,9 @@ public struct EditRulesView: View {
     @ViewBuilder
     private var content: some View {
         if coordinator.isLoading && coordinator.rules.isEmpty {
-            RuulLoadingState()
+            ProgressView()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if coordinator.rules.isEmpty {
             emptyState
         } else {

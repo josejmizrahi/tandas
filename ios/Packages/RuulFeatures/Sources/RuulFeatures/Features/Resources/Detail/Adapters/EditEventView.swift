@@ -83,7 +83,7 @@ public struct EditEventView: View {
                     .padding(RuulSpacing.sm)
             }
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .accessibilityLabel("Cambiar portada")
     }
 
@@ -121,21 +121,16 @@ public struct EditEventView: View {
         // Post BigBang: presence of `rotating_host` module proxies "this
         // group has hosts". Phase 2 rotation capability will refine this.
         if coordinator.group.effectiveActiveModules.contains(GroupModule.rotatingHost.id) {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Host")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                RuulCard(.tile) {
-                    HStack(spacing: RuulSpacing.sm) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.tint)
-                            .frame(width: 32, height: 32)
-                        Text(coordinator.draft.hostId == nil ? "Sin asignar" : "Asignado")
-                            .font(.subheadline)
-                            .foregroundStyle(Color.primary)
-                        Spacer()
-                    }
+            GroupBox("Host") {
+                HStack(spacing: RuulSpacing.sm) {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.tint)
+                        .frame(width: 32, height: 32)
+                    Text(coordinator.draft.hostId == nil ? "Sin asignar" : "Asignado")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.primary)
+                    Spacer()
                 }
             }
         }
@@ -205,7 +200,7 @@ public struct EditEventView: View {
                                         .stroke(coordinator.draft.coverImageName == cover.id ? Color.ruulAccent : .clear, lineWidth: 3)
                                 )
                         }
-                        .buttonStyle(.ruulPress)
+                        .buttonStyle(.plain)
                     }
                 }
             }

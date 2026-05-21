@@ -8,7 +8,6 @@ struct PatternsShowcaseView: View {
         ScrollView {
             VStack(spacing: RuulSpacing.md) {
                 emptyStateSection
-                loadingStateSection
                 errorStateSection
                 onboardingSection
             }
@@ -26,17 +25,6 @@ struct PatternsShowcaseView: View {
             } actions: {
                 Button("Compartir") { }
                     .buttonStyle(.borderedProminent)
-            }
-        }
-    }
-
-    private var loadingStateSection: some View {
-        ShowcaseSection("RuulLoadingState") {
-            VStack(spacing: RuulSpacing.md) {
-                RuulLoadingState()
-                    .frame(height: 120)
-                RuulLoadingState(message: "Cargando…")
-                    .frame(height: 120)
             }
         }
     }

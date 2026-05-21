@@ -1083,7 +1083,7 @@ private struct WizardTypePicker: View {
             } label: {
                 tileContent(type: type, chrome: chrome, isImplemented: true)
             }
-            .buttonStyle(.ruulPress)
+            .buttonStyle(.plain)
         } else {
             tileContent(type: type, chrome: chrome, isImplemented: false)
                 .accessibilityLabel("\(type.humanLabel), próximamente")

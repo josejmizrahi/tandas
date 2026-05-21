@@ -38,7 +38,7 @@ public struct FineCard: View {
                 fullBody
             }
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(ruleName ?? fine.reason), \(fine.amountFormatted), \(fine.status.displayLabel)")
     }

@@ -62,7 +62,7 @@ struct ResourceTypePicker: View {
             } label: {
                 tileContent(type: type, copy: copy, isImplemented: true)
             }
-            .buttonStyle(.ruulPress)
+            .buttonStyle(.plain)
         } else {
             tileContent(type: type, copy: copy, isImplemented: false)
                 .accessibilityLabel("\(type.humanLabel), próximamente")

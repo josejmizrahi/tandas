@@ -43,7 +43,7 @@ public struct DetailAttentionView: View {
                         .fill(Color.orange.opacity(0.1))
                 )
             }
-            .buttonStyle(.ruulPress)
+            .buttonStyle(.plain)
             .padding(.horizontal, RuulSpacing.s6)
             .symbolEffect(.bounce, value: context.attentionActions.count)
         }

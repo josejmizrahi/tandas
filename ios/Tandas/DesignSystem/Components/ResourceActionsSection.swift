@@ -81,7 +81,7 @@ private struct ResourceActionRow: View {
             )
             .opacity(isInvoking ? RuulOpacity.disabled : 1.0)
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .disabled(isInvoking)
         .accessibilityLabel(action.title)
         .accessibilityHint(action.subtitle ?? "")

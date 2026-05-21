@@ -48,7 +48,9 @@ public struct OnboardingRootView: View {
                     onJoin: { code in Task { await startInvited(code: code) } }
                 )
             } else {
-                RuulLoadingState()
+                ProgressView()
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .task { await bootstrap() }

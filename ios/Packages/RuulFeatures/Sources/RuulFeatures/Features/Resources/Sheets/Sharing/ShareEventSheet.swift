@@ -62,7 +62,7 @@ public struct ShareEventSheet: View {
                     .padding(.vertical, RuulSpacing.md)
                     .background(Color.ruulAccent, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
                 }
-                .buttonStyle(.ruulPress)
+                .buttonStyle(.plain)
 
                 if let onAddToCalendar {
                     Button {
@@ -87,7 +87,7 @@ public struct ShareEventSheet: View {
                                 .stroke(Color(.separator), lineWidth: 0.5)
                         )
                     }
-                    .buttonStyle(.ruulPress)
+                    .buttonStyle(.plain)
                 }
             }
         }

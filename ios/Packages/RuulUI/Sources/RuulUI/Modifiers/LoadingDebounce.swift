@@ -45,7 +45,7 @@ public extension View {
     /// Uso típico (dentro de AsyncContentView, pero también disponible
     /// para callsites custom):
     /// ```swift
-    /// RuulLoadingState()
+    /// ProgressView()
     ///     .ruulLoadingDebounce()
     /// ```
     func ruulLoadingDebounce(_ delay: Duration = .milliseconds(250)) -> some View {

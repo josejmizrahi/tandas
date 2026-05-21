@@ -45,7 +45,8 @@ struct ResourceRulesBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
             if coordinator.isLoading && coordinator.rules.isEmpty {
-                RuulLoadingState()
+                ProgressView()
+                    .controlSize(.large)
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else if coordinator.rules.isEmpty {
                 ContentUnavailableView {

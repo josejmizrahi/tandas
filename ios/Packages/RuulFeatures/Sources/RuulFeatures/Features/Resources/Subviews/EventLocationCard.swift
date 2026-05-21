@@ -31,7 +31,7 @@ public struct EventLocationCard: View {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         }
-        .buttonStyle(.ruulPress)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Ubicación: \(locationName). Tocá para abrir en Mapas")
     }

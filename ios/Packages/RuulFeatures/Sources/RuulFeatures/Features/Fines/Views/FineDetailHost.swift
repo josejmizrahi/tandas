@@ -55,7 +55,9 @@ public struct FineDetailHost: View {
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
-                    RuulLoadingState()
+                    ProgressView()
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }

@@ -70,19 +70,13 @@ public struct SystemEventDetailView: View {
     }
 
     private var metadataCard: some View {
-        RuulCard(.tile) {
+        GroupBox {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                // W2-C3: humanLabel covers every case; rawString stays internal.
                 row("Tipo", event.eventType.humanLabel)
                 row("Cuándo", event.occurredAt.ruulLongDateTime)
                 if let name = memberName {
                     row("Miembro", name)
                 }
-                // W2-C3: uuidString.prefix(8) leak removed — a hash
-                // fragment doesn't identify a resource to the user. If
-                // the parent has a resolved name it should pass it
-                // through (future hookup); for now we omit the row
-                // when we can't show a meaningful identifier.
                 row("Procesado",
                     event.processedAt.map { $0.ruulLongDateTime } ?? "Pendiente")
             }
@@ -90,11 +84,8 @@ public struct SystemEventDetailView: View {
     }
 
     private var payloadCard: some View {
-        RuulCard(.tile) {
+        GroupBox("Datos") {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Datos")
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
                 ForEach(payloadEntries, id: \.0) { key, value in
                     HStack(alignment: .top) {
                         Text(key)

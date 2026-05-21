@@ -353,32 +353,24 @@ public struct HistoryFilterSheet: View {
     }
 
     private var typeSection: some View {
-        RuulCard(.tile) {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Tipo de evento")
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-                Picker(selection: Binding(
-                    get: { coordinator.filter.eventType },
-                    set: { coordinator.setEventType($0) }
-                )) {
-                    Text("Todos").tag(SystemEventType?.none)
-                    ForEach(SystemEventType.knownCases, id: \.self) { t in
-                        Text(t.rawString).tag(SystemEventType?.some(t))
-                    }
-                } label: { EmptyView() }
-                .pickerStyle(.menu)
-            }
+        GroupBox("Tipo de evento") {
+            Picker(selection: Binding(
+                get: { coordinator.filter.eventType },
+                set: { coordinator.setEventType($0) }
+            )) {
+                Text("Todos").tag(SystemEventType?.none)
+                ForEach(SystemEventType.knownCases, id: \.self) { t in
+                    Text(t.rawString).tag(SystemEventType?.some(t))
+                }
+            } label: { EmptyView() }
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private var dateSection: some View {
-        RuulCard(.tile) {
+        GroupBox("Rango de fecha") {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Rango de fecha")
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-
                 DatePicker("Desde", selection: Binding(
                     get: { coordinator.filter.fromDate ?? Calendar.current.date(byAdding: .month, value: -3, to: .now) ?? .now },
                     set: { coordinator.setDateRange(from: $0, to: coordinator.filter.toDate) }
