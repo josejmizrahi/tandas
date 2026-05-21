@@ -94,7 +94,7 @@ public struct HomeView: View {
             }
         }
         .listStyle(.plain)
-        .listSectionSpacing(RuulSpacing.s8)
+        .listSectionSpacing(.compact)
         .refreshable {
             async let h: Void = coordinator.refresh(force: true)
             async let i: Void? = inboxCoordinator?.refresh()
@@ -269,10 +269,11 @@ public struct HomeView: View {
                     }
                 }
                 .padding(.horizontal, RuulSpacing.md)
-                .padding(.vertical, RuulSpacing.xs)
+                .padding(.vertical, 4)
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
     }
 
@@ -405,7 +406,7 @@ public struct HomeView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, RuulSpacing.xs)
+            .padding(.vertical, 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -466,7 +467,7 @@ public struct HomeView: View {
                 Spacer(minLength: 0)
                 rsvpTrailing(for: event)
             }
-            .padding(.vertical, RuulSpacing.xs)
+            .padding(.vertical, 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
