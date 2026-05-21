@@ -77,7 +77,7 @@ public struct HomeOverviewView: View {
                         actions: actions,
                         onTap: { action in Task { await onInboxActionTap(action) } }
                     )
-                    .padding(.top, RuulSpacing.s2)
+                    .padding(.top, RuulSpacing.s4)
                 }
 
                 if !app.groups.isEmpty {
@@ -126,34 +126,56 @@ public struct HomeOverviewView: View {
     }
 
     // MARK: Greeting
+    //
+    // Apple Health / Apple Fitness daily-brief pattern: bold large title +
+    // dense first-name, weekday tag right-aligned. The italic is dropped
+    // when the displayName looks like an email/handle id (no spaces,
+    // all-lower) so "jmizrahit" doesn't read like a stylised brand.
 
     @ViewBuilder
     private var greetingHeader: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: RuulSpacing.s0) {
                 Text(greetingLine)
                     .font(.largeTitle.weight(.bold))
                 Text(displayName)
                     .font(.largeTitle.weight(.semibold))
-                    .italic()
+                    .italic(displayNameLooksLikeRealName)
                     .foregroundStyle(Color.ruulTextPrimary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             Spacer(minLength: RuulSpacing.s3)
-            Text(Date.now, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated))
-                .font(.caption)
+            Text(Date.now, format: .dateTime.weekday(.wide))
+                .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
-                .monospacedDigit()
-                .padding(.top, RuulSpacing.s1)
+                .textCase(.lowercase)
         }
-        .padding(.top, RuulSpacing.s3)
-        .padding(.bottom, RuulSpacing.s4)
+        .padding(.top, RuulSpacing.s2)
     }
 
+    /// Returns the friendliest form of the profile name we can render
+    /// without surprising the user. Three cases:
+    ///   1. has a space → first word capitalised ("Jose Mizrahi" → "Jose")
+    ///   2. looks like a handle (no spaces, all lowercase, optional dots /
+    ///      underscores / digits) → capitalise the first character only
+    ///      ("jmizrahit" → "Jmizrahit")
+    ///   3. anything else → return as-is.
     private var displayName: String {
-        app.profile?.displayName.split(separator: " ").first.map(String.init)
-            ?? app.profile?.displayName
-            ?? ""
+        guard let raw = app.profile?.displayName, !raw.isEmpty else { return "" }
+        if let firstSpace = raw.firstIndex(of: " ") {
+            return String(raw[..<firstSpace]).capitalized
+        }
+        if raw.allSatisfy({ $0.isLetter ? $0.isLowercase : true }) {
+            return raw.prefix(1).uppercased() + raw.dropFirst()
+        }
+        return raw
+    }
+
+    /// True when the displayName has a real space (suggesting "Nombre
+    /// Apellido"). Drives the italic — handles look better upright.
+    private var displayNameLooksLikeRealName: Bool {
+        app.profile?.displayName.contains(" ") == true
     }
 
     private var greetingLine: String {
@@ -169,19 +191,14 @@ public struct HomeOverviewView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // Apple Maps pattern: avatar-only button to the profile sheet —
+        // no inline name (the greeting body owns the name) so the toolbar
+        // stays uncrowded. Tap targets remain 44pt via the .glass button.
         ToolbarItem(placement: .topBarLeading) {
             Button {
                 router.selectTab(.profile)
             } label: {
-                HStack(spacing: RuulSpacing.micro) {
-                    RuulAvatar(name: app.profile?.displayName ?? "", size: .xs)
-                    Text(displayName)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color.ruulTextPrimary)
-                    Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextSecondary)
-                }
+                RuulAvatar(name: app.profile?.displayName ?? "", size: .xs)
             }
             .buttonStyle(.glass)
             .accessibilityLabel("Tu perfil")
@@ -270,6 +287,15 @@ private struct AttentionCard: View {
         }
         .padding(RuulSpacing.s5)
         .ruulCardSurface(.solid, radius: RuulRadius.xl)
+        // Apple Settings "Update Available" recipe: solid card surface +
+        // a hairline semantic stroke so the warning identity stays
+        // legible without resorting to a gradient halo (Liquid Glass
+        // canon — chrome is light, identity rides on color + type).
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
+                .strokeBorder(Color.ruulSemanticWarning.opacity(0.25),
+                              lineWidth: 0.5)
+        )
     }
 }
 
@@ -289,7 +315,10 @@ private struct AttentionRow: View {
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(action.tintColor)
                     .frame(width: HomeMetrics.iconTile, height: HomeMetrics.iconTile)
-                    .background(action.tintColor.opacity(0.15),
+                    // 22% tint backdrop — light mode reads the family
+                    // color clearly without bleeding into the canvas;
+                    // dark mode keeps enough contrast against ruulSurface.
+                    .background(action.tintColor.opacity(0.22),
                                 in: RoundedRectangle(cornerRadius: RuulRadius.sm,
                                                      style: .continuous))
 
@@ -361,19 +390,28 @@ private struct GroupCard: View {
     let pending: Int
 
     var body: some View {
+        // Apple Music "Recently Played" tile pattern: bigger avatar
+        // anchored at the top, single bold title underneath, optional
+        // micro-status line ("3 pendientes") when there's actionable
+        // signal. The repeated `category.displayName` was visual noise —
+        // every group in the same template flavour echoed the same
+        // phrase, so it dropped.
         VStack(alignment: .leading, spacing: RuulSpacing.s0) {
-            RuulGroupAvatar(groupName: group.name, category: group.category, size: .md)
-                .padding(.bottom, RuulSpacing.s4)
+            RuulGroupAvatar(groupName: group.name, category: group.category, size: .lg)
+                .padding(.bottom, RuulSpacing.s3)
 
             Text(group.name)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.ruulTextPrimary)
                 .lineLimit(1)
 
-            Text(group.category.displayName)
-                .font(.caption2)
-                .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.top, RuulSpacing.s0_5)
+            if pending > 0 {
+                Text("\(pending) pendiente\(pending == 1 ? "" : "s")")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Color.ruulSemanticError)
+                    .padding(.top, RuulSpacing.s0_5)
+                    .monospacedDigit()
+            }
         }
         .frame(width: HomeMetrics.groupCardWidth, alignment: .leading)
         .padding(RuulSpacing.s4)
@@ -383,18 +421,6 @@ private struct GroupCard: View {
                 .stroke(isActive ? Color.ruulAccent : Color.clear,
                         lineWidth: HomeMetrics.activeStrokeWidth)
         )
-        .overlay(alignment: .topTrailing) {
-            if pending > 0 {
-                Text("\(pending)")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
-                    .padding(.horizontal, RuulSpacing.micro)
-                    .padding(.vertical, RuulSpacing.s0_5)
-                    .background(Color.ruulSemanticError, in: Capsule())
-                    .padding(RuulSpacing.s4)
-            }
-        }
         .scrollTransition(.animated.threshold(.visible(0.05))) { content, phase in
             content
                 .scaleEffect(phase.isIdentity ? 1 : 0.92)
@@ -424,17 +450,22 @@ private struct UpcomingCard: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.ruulTextPrimary)
                             .lineLimit(2)
+                        // Apple Calendar event-cell pattern: time + venue
+                        // on one line, venue uses first comma-segment so
+                        // "Altezza Bosques, Camino a Tecamachalco 98"
+                        // reads as "Altezza Bosques" — no mid-word cut.
                         HStack(spacing: RuulSpacing.s1) {
                             Text(event.startsAt, format: .dateTime.hour().minute())
                                 .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
                                 .monospacedDigit()
-                            if event.locationName?.isEmpty == false {
+                            if let venue = primaryVenue(event.locationName) {
                                 Text("·").font(.caption).foregroundStyle(Color.ruulTextSecondary)
-                                Text(event.locationName ?? "")
+                                Text(venue)
                                     .font(.caption)
                                     .foregroundStyle(Color.ruulTextSecondary)
                                     .lineLimit(1)
+                                    .truncationMode(.tail)
                             }
                         }
                     }
@@ -455,6 +486,19 @@ private struct UpcomingCard: View {
         }
         .padding(RuulSpacing.s4)
         .ruulCardSurface(.solid, radius: RuulRadius.lg)
+    }
+
+    /// Takes a free-form address (e.g. "Altezza Bosques, Camino a
+    /// Tecamachalco 98, El Olivo, 52789 Naucalpan") and returns the
+    /// venue / first-segment so the card preview never cuts a road
+    /// number mid-word. Returns nil for empty/whitespace input.
+    private func primaryVenue(_ raw: String?) -> String? {
+        guard let raw, !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        if let comma = raw.firstIndex(of: ",") {
+            let head = raw[..<comma].trimmingCharacters(in: .whitespaces)
+            return head.isEmpty ? raw : head
+        }
+        return raw
     }
 
     /// Apple segmented-selector recipe: the selected option fills via
