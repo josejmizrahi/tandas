@@ -125,7 +125,7 @@ public struct HomeView: View {
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
-                scopeAvatar
+                scopeSwitcherButton
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if let onInvitePeople {
@@ -162,29 +162,70 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Scope avatar (topBarLeading, visual indicator only)
+    // MARK: - Scope switcher (topBarLeading Menu — primary tap target)
 
-    /// Small visual indicator of the current scope. The actual menu
-    /// lives in `.toolbarTitleMenu` (tap on LargeTitle "Inicio"),
-    /// keeping the chrome canonical iOS. This avatar is just so the
-    /// user has a glanceable identity marker even when the title is
-    /// scrolled away.
+    /// Tappable scope switcher in `topBarLeading`. The `ToolbarTitleMenu`
+    /// fallback exists for collapsed inline title (Apple Mail canonical),
+    /// but iOS doesn't render a visible chevron on the LargeTitle at
+    /// rest — so users wouldn't know they can tap. This explicit pill
+    /// guarantees discoverability whether the title is large or inline.
+    private var scopeSwitcherButton: some View {
+        Menu {
+            Button {
+                Task { await coordinator.setScope(.all) }
+            } label: {
+                Label("Todos los grupos", systemImage: "square.grid.2x2")
+            }
+            if !app.groups.isEmpty {
+                Divider()
+                ForEach(app.groups, id: \.id) { group in
+                    Button {
+                        Task { await coordinator.setScope(.group(group.id)) }
+                    } label: {
+                        Label(group.name, systemImage: "person.3.fill")
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                scopeAvatar
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Cambiar grupo. Actual: \(scopeLabel).")
+    }
+
+    /// Visual indicator of the current scope inside the switcher pill.
     @ViewBuilder
     private var scopeAvatar: some View {
         switch coordinator.scope {
         case .all:
-            Image(systemName: "square.grid.2x2")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.secondary)
-                .accessibilityLabel("Todos los grupos")
+            ZStack {
+                Circle()
+                    .fill(Color(.tertiarySystemFill))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "square.grid.2x2")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+            }
         case .group(let id):
             if let group = app.groups.first(where: { $0.id == id }) {
-                RuulGroupAvatar(group: group, size: .lg)
-                    .accessibilityLabel(group.name)
+                RuulGroupAvatar(group: group, size: .md)
             } else {
                 Image(systemName: "person.3.fill")
                     .font(.subheadline.weight(.semibold))
             }
+        }
+    }
+
+    private var scopeLabel: String {
+        switch coordinator.scope {
+        case .all: return "Todos los grupos"
+        case .group(let id): return app.groups.first(where: { $0.id == id })?.name ?? "Grupo"
         }
     }
 
@@ -292,15 +333,28 @@ public struct HomeView: View {
 
     // MARK: - Section 2: Tu día (pendings)
 
+    /// Pendings filtered by current scope. `.all` shows everything;
+    /// `.group(id)` filters to that group's actions only so the switcher
+    /// affects "Tu día" consistently with "Pronto" and "Tus recursos".
+    private var scopedPendings: [UserAction] {
+        guard let coord = inboxCoordinator else { return [] }
+        switch coordinator.scope {
+        case .all:
+            return coord.actions
+        case .group(let id):
+            return coord.actions.filter { $0.groupId == id }
+        }
+    }
+
     private var hasPendings: Bool {
-        !(inboxCoordinator?.actions.isEmpty ?? true)
+        !scopedPendings.isEmpty
     }
 
     @ViewBuilder
     private var tuDiaSection: some View {
-        if let coord = inboxCoordinator, !coord.actions.isEmpty {
+        if let coord = inboxCoordinator, !scopedPendings.isEmpty {
             Section("Tu día") {
-                ForEach(Array(coord.actions.prefix(4)), id: \.id) { action in
+                ForEach(Array(scopedPendings.prefix(4)), id: \.id) { action in
                     pendingRow(action, coordinator: coord)
                 }
             }
@@ -421,7 +475,7 @@ public struct HomeView: View {
     // MARK: - Empty state
 
     private var isFullyEmpty: Bool {
-        let pendingsEmpty = inboxCoordinator?.actions.isEmpty ?? true
+        let pendingsEmpty = scopedPendings.isEmpty
         let upcomingEmpty = upcomingEventsFiltered.isEmpty
         let resourcesEmpty = coordinator.upcomingResources.isEmpty
         return pendingsEmpty && upcomingEmpty && resourcesEmpty
