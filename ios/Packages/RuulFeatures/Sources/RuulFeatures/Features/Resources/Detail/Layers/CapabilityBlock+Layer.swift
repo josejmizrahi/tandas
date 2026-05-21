@@ -27,4 +27,44 @@ extension CapabilityBlock {
             return false
         }
     }
+
+    /// Sub-category inside the Coordination layer per the universal
+    /// block grammar. Drives the renderer the layer will pick in a
+    /// follow-up PR (MoneyBlock / ScheduleBlock / AccessBlock /
+    /// RulesBlock / ResponsibilityBlock / UsageBlock). PR 4 only
+    /// classifies — the layer renders every kind through the existing
+    /// `CapabilityBlockView` until the primitives ship.
+    enum CoordinationKind {
+        /// Balance, contributions, expenses, distributions, settlements.
+        case money
+        /// Dates, recurrence, rotations, reservations.
+        case schedule
+        /// Location, availability, bookings, ticketing.
+        case access
+        /// Active rules, votes, agreements, limits.
+        case rules
+        /// Custody, ownership, host assignment, maintenance.
+        case responsibility
+        /// Check-ins, occupancy, asset usage logs.
+        case usage
+        /// Not yet classified. Renders through the existing
+        /// `CapabilityBlockView` until a future PR maps it.
+        case other
+    }
+
+    /// Maps known block IDs to their Coordination sub-category. IDs
+    /// that today live in the Participation layer return `.other`
+    /// since `coordinationKind` is only meaningful for the residual
+    /// the Participation filter leaves behind.
+    var coordinationKind: CoordinationKind {
+        switch id {
+        case "balance":  return .money
+        case "location": return .access
+        // Future: "schedule"/"recurrence" → .schedule
+        //         "rules" → .rules
+        //         "custody"/"owner" → .responsibility
+        //         "check_ins"/"usage" → .usage
+        default:         return .other
+        }
+    }
 }

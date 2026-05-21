@@ -57,11 +57,12 @@ public struct UniversalResourceDetailView: View {
 
     public var body: some View {
         ScrollView {
-            // Layered Universal Detail (PR 3 of 7) — Identity / Context /
-            // Participation / (Coordination still inline as the remaining
-            //  capability blocks → PR 4) / Activity. See
+            // Layered Universal Detail (PR 4 of N) — Identity / Context /
+            // Participation / Coordination / Activity. See
             // `Plans/Active/Fase1ComponentMap.md` §"Universal Resource
-            // Detail — layered architecture".
+            // Detail — layered architecture". Coordination still renders
+            // through the existing `CapabilityBlockView` per block until
+            // the universal-block primitives ship in a follow-up PR.
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                 IdentityLayerView(
                     identity: blocks.identity,
@@ -78,17 +79,11 @@ public struct UniversalResourceDetailView: View {
                     tint: blocks.identity.tint,
                     onOpen: onOpenBlock
                 )
-                ForEach(coordinationBlocks) { block in
-                    CapabilityBlockView(
-                        block: block,
-                        tint: blocks.identity.tint,
-                        onOpen: {
-                            if let id = block.openDestinationId {
-                                onOpenBlock(id)
-                            }
-                        }
-                    )
-                }
+                CoordinationLayerView(
+                    blocks: coordinationBlocks,
+                    tint: blocks.identity.tint,
+                    onOpen: onOpenBlock
+                )
                 ActivityLayerView(
                     entries: blocks.activityHead,
                     hasMore: blocks.hasMoreActivity,
