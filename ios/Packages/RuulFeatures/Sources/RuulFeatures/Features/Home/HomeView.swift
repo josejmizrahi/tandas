@@ -93,8 +93,8 @@ public struct HomeView: View {
                     .listRowSeparator(.hidden)
             }
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.visible)
+        .listStyle(.plain)
+        .listSectionSpacing(RuulSpacing.s8)
         .refreshable {
             async let h: Void = coordinator.refresh(force: true)
             async let i: Void? = inboxCoordinator?.refresh()
@@ -103,8 +103,29 @@ public struct HomeView: View {
         .navigationTitle("Inicio")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
+            // Luma "Ciudad de México ▾" pattern: tap the LargeTitle to
+            // open the scope menu. iOS-canonical via .toolbarTitleMenu
+            // (Apple Mail, Photos library, Music sources all do this).
+            // Zero vertical chrome — the menu lives in the title bar.
+            ToolbarTitleMenu {
+                Button {
+                    Task { await coordinator.setScope(.all) }
+                } label: {
+                    Label("Todos los grupos", systemImage: "square.grid.2x2")
+                }
+                if !app.groups.isEmpty {
+                    Divider()
+                    ForEach(app.groups, id: \.id) { group in
+                        Button {
+                            Task { await coordinator.setScope(.group(group.id)) }
+                        } label: {
+                            Label(group.name, systemImage: "person.3.fill")
+                        }
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarLeading) {
-                scopeSwitcher
+                scopeAvatar
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if let onInvitePeople {
@@ -141,55 +162,25 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Scope switcher (topBarLeading Menu)
+    // MARK: - Scope avatar (topBarLeading, visual indicator only)
 
-    /// Native Menu pill showing the current scope; opens to "Todos los
-    /// grupos" + per-group rows. Apple Mail "Mailboxes" pattern, shrunk
-    /// to a compact toolbar control so it doesn't eat vertical real
-    /// estate.
-    private var scopeSwitcher: some View {
-        Menu {
-            Button {
-                Task { await coordinator.setScope(.all) }
-            } label: {
-                Label("Todos los grupos", systemImage: "square.grid.2x2")
-            }
-            if !app.groups.isEmpty {
-                Divider()
-                ForEach(app.groups, id: \.id) { group in
-                    Button {
-                        Task { await coordinator.setScope(.group(group.id)) }
-                    } label: {
-                        Label(group.name, systemImage: "person.3.fill")
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: RuulSpacing.xxs) {
-                scopeIcon
-                Text(scopeLabel)
-                    .font(.subheadline.weight(.medium))
-                    .lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.secondary)
-                    .accessibilityHidden(true)
-            }
-            .foregroundStyle(Color.primary)
-        }
-        .accessibilityLabel("Cambiar grupo. Actual: \(scopeLabel).")
-    }
-
+    /// Small visual indicator of the current scope. The actual menu
+    /// lives in `.toolbarTitleMenu` (tap on LargeTitle "Inicio"),
+    /// keeping the chrome canonical iOS. This avatar is just so the
+    /// user has a glanceable identity marker even when the title is
+    /// scrolled away.
     @ViewBuilder
-    private var scopeIcon: some View {
+    private var scopeAvatar: some View {
         switch coordinator.scope {
         case .all:
             Image(systemName: "square.grid.2x2")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.secondary)
+                .accessibilityLabel("Todos los grupos")
         case .group(let id):
             if let group = app.groups.first(where: { $0.id == id }) {
-                RuulGroupAvatar(group: group, size: .sm)
+                RuulGroupAvatar(group: group, size: .lg)
+                    .accessibilityLabel(group.name)
             } else {
                 Image(systemName: "person.3.fill")
                     .font(.subheadline.weight(.semibold))
@@ -197,12 +188,29 @@ public struct HomeView: View {
         }
     }
 
-    private var scopeLabel: String {
-        switch coordinator.scope {
-        case .all:
-            return "Todos"
-        case .group(let id):
-            return app.groups.first(where: { $0.id == id })?.name ?? "Grupo"
+    /// True when the feed mixes events from multiple groups — drives
+    /// whether each row renders an inline group tag (Luma "Layer 2,
+    /// Le..." pattern). Single-group scope hides the tag (redundant
+    /// with the surface itself).
+    private var showGroupTag: Bool {
+        coordinator.scope == .all && app.groups.count > 1
+    }
+
+    /// Inline group tag pill rendered above the title on event /
+    /// pending rows when scope is `.all`. Tiny dot in the group's
+    /// accent color + name in tertiary. Luma "Layer 2, Le..." pattern.
+    @ViewBuilder
+    private func groupTagPill(for groupId: UUID) -> some View {
+        if let group = app.groups.first(where: { $0.id == groupId }) {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(group.category.ramp.accent)
+                    .frame(width: 6, height: 6)
+                Text(group.name)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Color.secondary)
+                    .lineLimit(1)
+            }
         }
     }
 
@@ -227,33 +235,57 @@ public struct HomeView: View {
         }
     }
 
+    /// Luma "Ciudades" pattern: 180pt-wide card with a tinted gradient
+    /// header (resource-type accent) + bottom info (group tag + name +
+    /// status). Visually richer than tiny 140pt pills; gives non-time
+    /// resources real estate when they exist.
     private func resourcePill(_ row: ResourceRow) -> some View {
         Button { openedResource = row } label: {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                ZStack {
-                    Circle()
-                        .fill(Color(.tertiarySystemFill))
-                        .frame(width: 36, height: 36)
+            VStack(alignment: .leading, spacing: 0) {
+                // Tinted header — type accent color, ~60pt tall
+                ZStack(alignment: .topLeading) {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.accentColor.opacity(0.25), Color.accentColor.opacity(0.10)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(height: 64)
                     Image(systemName: ResourceTypeChrome.resolve(row.resourceType).symbol)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(RuulSpacing.md)
+                }
+                // Body
+                VStack(alignment: .leading, spacing: 4) {
+                    if showGroupTag {
+                        groupTagPill(for: row.groupId)
+                    }
+                    Text(displayNameFor(row))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Text(subtitleFor(row))
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
                 }
-                Text(displayNameFor(row))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Text(subtitleFor(row))
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-                    .lineLimit(1)
+                .padding(RuulSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: 140, alignment: .leading)
-            .padding(RuulSpacing.md)
+            .frame(width: 180, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color(.secondarySystemGroupedBackground))
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -275,39 +307,51 @@ public struct HomeView: View {
         }
     }
 
+    /// Luma-style rich row: 48×48 tinted icon container + group tag
+    /// pill (when scope=.all) + bold title (2 lines) + meta with small
+    /// clock icon + trailing time-remaining. ~78pt height total.
     private func pendingRow(_ action: UserAction, coordinator: InboxCoordinator) -> some View {
         Button {
             Task { await onInboxActionTap(action) }
         } label: {
-            HStack(spacing: RuulSpacing.md) {
-                Image(systemName: pendingIcon(for: action.actionType))
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(pendingTint(for: action.priority))
-                    .frame(width: 28, alignment: .center)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top, spacing: RuulSpacing.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(pendingTint(for: action.priority).opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: pendingIcon(for: action.actionType))
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(pendingTint(for: action.priority))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    if showGroupTag {
+                        groupTagPill(for: action.groupId)
+                    }
                     Text(action.title)
-                        .font(.subheadline.weight(.medium))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary)
                         .lineLimit(2)
-                    if let meta = pendingMeta(for: action, coordinator: coordinator) {
-                        Text(meta)
-                            .font(.caption)
+                        .multilineTextAlignment(.leading)
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
                             .foregroundStyle(Color.secondary)
-                            .lineLimit(1)
+                            .accessibilityHidden(true)
+                        if let remaining = UserActionExpiry.remainingDescription(for: action) {
+                            Text(remaining)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(Color.secondary)
+                        } else if let meta = pendingMeta(for: action, coordinator: coordinator) {
+                            Text(meta)
+                                .font(.caption)
+                                .foregroundStyle(Color.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
                 Spacer(minLength: 0)
-                if let remaining = UserActionExpiry.remainingDescription(for: action) {
-                    Text(remaining)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(Color(.tertiaryLabel))
-                }
-                Image(systemName: "chevron.forward")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .accessibilityHidden(true)
             }
+            .padding(.vertical, RuulSpacing.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -331,34 +375,44 @@ public struct HomeView: View {
         }
     }
 
+    /// Luma-style rich row: 48×48 tinted icon container + optional
+    /// group tag pill (cross-group scope) + bold title + meta with
+    /// clock icon + trailing RSVP chip. ~78pt height total.
     private func eventRow(_ event: Event) -> some View {
         Button { onOpenEvent(event) } label: {
-            HStack(spacing: RuulSpacing.md) {
+            HStack(alignment: .top, spacing: RuulSpacing.md) {
                 ZStack {
-                    Circle()
-                        .fill(Color(.tertiarySystemFill))
-                        .frame(width: 36, height: 36)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12))
+                        .frame(width: 48, height: 48)
                     Image(systemName: ResourceTypeChrome.resolve(.event).symbol)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color.primary)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if showGroupTag {
+                        groupTagPill(for: event.groupId)
+                    }
                     Text(event.title)
-                        .font(.subheadline.weight(.medium))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary)
                         .lineLimit(2)
-                    Text(eventMetaLine(event))
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                        .lineLimit(1)
+                        .multilineTextAlignment(.leading)
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                            .foregroundStyle(Color.secondary)
+                            .accessibilityHidden(true)
+                        Text(eventMetaLine(event))
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
                 rsvpTrailing(for: event)
-                Image(systemName: "chevron.forward")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .accessibilityHidden(true)
             }
+            .padding(.vertical, RuulSpacing.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
