@@ -87,21 +87,19 @@ public struct HomeTab: View {
                 router.selectTab(.home)
                 router.openEvent(event)
             }
-        case .assetActionApproval:
-            // Mig 00226+00227: reference_id apunta directo al asset; el
-            // admin revisa + resuelve desde el resource detail. V2
-            // tendrá una vista de revisión dedicada.
-            router.openResource(id: action.referenceId)
-        case .slotPending:
-            // reference_id = slot resource id (mig 00204). Abre el
-            // resource detail polimórfico para que el usuario acepte/
-            // decline el slot ofrecido.
-            router.openResource(id: action.referenceId)
-        case .contributionDue, .compensationDue:
-            // Fund-related: el reference_id es el fund. Abre el detail
-            // del fund donde el usuario puede contribuir o marcar
-            // compensación. Sin esto el tap era no-op silencioso.
-            router.openResource(id: action.referenceId)
+        case .assetActionApproval, .slotPending,
+             .contributionDue, .compensationDue:
+            // Polymorphic resources (asset/slot/fund). Mirrors
+            // `MyGroupsTab.handleInboxAction`: fetch the `ResourceRow`
+            // so the cover mounts `ResourceDetailSheet` via
+            // `router.openResource(_ row:)`. The legacy
+            // `openResource(id:)` overload pushes `.eventDetail` and
+            // is wrong for non-event types — that's why a tap on a
+            // contribution-due action from Home used to land on the
+            // event screen instead of the fund detail.
+            if let row = try? await app.resourceRepo.resource(action.referenceId) {
+                router.openResource(row)
+            }
         }
     }
 

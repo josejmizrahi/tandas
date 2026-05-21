@@ -279,6 +279,11 @@ private struct AttentionCard: View {
     }
 }
 
+/// Reuses `GroupPendingsBlock` static helpers for icon / tint / cta —
+/// single source of truth across home + group page. The data-side
+/// `action.title` / `action.body` come straight from the backend so
+/// neither surface invents its own copy.  Routing lives in
+/// `HomeTab.handleInboxAction(_:)`; we just dispatch with `onTap`.
 private struct AttentionRow: View {
     let action: UserAction
     let onTap: () -> Void
@@ -290,15 +295,15 @@ private struct AttentionRow: View {
             onTap()
         }) {
             HStack(spacing: RuulSpacing.md) {
-                // 40pt circular tint-tinted badge (GroupPendingsBlock recipe).
-                // Urgent / high priority gets a small red dot at top-right,
-                // bordered against the surface so it pops on either mode.
                 ZStack(alignment: .topTrailing) {
-                    Image(systemName: action.iconName)
+                    Image(systemName: GroupPendingsBlock.icon(for: action.actionType))
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(action.tintColor)
+                        .foregroundStyle(GroupPendingsBlock.tint(for: action.actionType))
                         .frame(width: 40, height: 40)
-                        .background(action.tintColor.opacity(0.12), in: Circle())
+                        .background(
+                            GroupPendingsBlock.tint(for: action.actionType).opacity(0.12),
+                            in: Circle()
+                        )
 
                     if action.priority == .urgent || action.priority == .high {
                         Circle()
@@ -314,20 +319,26 @@ private struct AttentionRow: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
-                    Text(action.urgencyText)
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                        .lineLimit(1)
+                    if let body = action.body, !body.isEmpty {
+                        Text(body)
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer(minLength: 0)
 
-                Text(action.ctaLabel)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.ruulTextInverse)
-                    .padding(.horizontal, RuulSpacing.sm)
-                    .padding(.vertical, RuulSpacing.xxs)
-                    .background(action.tintColor, in: Capsule())
+                Button(GroupPendingsBlock.cta(for: action.actionType)) {
+                    tapTick &+= 1
+                    onTap()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.ruulTextInverse)
+                .padding(.horizontal, RuulSpacing.sm)
+                .padding(.vertical, RuulSpacing.xxs)
+                .background(GroupPendingsBlock.tint(for: action.actionType), in: Capsule())
+                .buttonStyle(.plain)
             }
             .padding(RuulSpacing.md)
             .contentShape(Rectangle())
@@ -640,80 +651,8 @@ private enum HomeMetrics {
     static let rsvpButtonMinHeight: CGFloat = 32
 }
 
-// MARK: - UserAction → row shape
-
-private extension UserAction {
-    var title: String {
-        switch actionType {
-        case .rsvpPending:           return "Confirma asistencia"
-        case .finePending:           return "Multa pendiente"
-        case .fineVoided:            return "Multa anulada"
-        case .fineProposalReview:    return "Revisar multa propuesta"
-        case .appealVotePending:     return "Votar apelación"
-        case .votePending:           return "Votación abierta"
-        case .ruleChangeApplyPending:return "Aplicar cambio de regla"
-        case .hostAssigned:          return "Te asignaron anfitrión"
-        case .assetActionApproval:   return "Aprobar acción"
-        case .slotPending:           return "Slot ofrecido"
-        case .contributionDue:       return "Aporte pendiente"
-        case .compensationDue:       return "Compensación pendiente"
-        }
-    }
-
-    var ctaLabel: String {
-        switch actionType {
-        case .rsvpPending:                return "RSVP"
-        case .votePending, .appealVotePending: return "Votar"
-        case .finePending, .contributionDue, .compensationDue: return "Pagar"
-        case .fineProposalReview, .ruleChangeApplyPending, .assetActionApproval: return "Revisar"
-        case .hostAssigned:               return "Ver"
-        case .slotPending:                return "Decidir"
-        case .fineVoided:                 return "Ver"
-        }
-    }
-
-    var iconName: String {
-        switch actionType {
-        case .rsvpPending:           return "calendar.badge.checkmark"
-        case .finePending:           return "exclamationmark.bubble"
-        case .fineVoided:            return "checkmark.shield"
-        case .fineProposalReview:    return "doc.text.magnifyingglass"
-        case .appealVotePending:     return "hand.raised"
-        case .votePending:           return "checkmark.seal"
-        case .ruleChangeApplyPending:return "scale.3d"
-        case .hostAssigned:          return "person.badge.shield.checkmark"
-        case .assetActionApproval:   return "key.fill"
-        case .slotPending:           return "rectangle.stack.badge.person.crop"
-        case .contributionDue:       return "arrow.down.circle"
-        case .compensationDue:       return "arrow.up.circle"
-        }
-    }
-
-    var tintColor: Color {
-        switch actionType {
-        case .rsvpPending, .hostAssigned: return ResourceFamilyTint.events.color
-        case .finePending, .fineVoided, .fineProposalReview, .appealVotePending: return ResourceFamilyTint.fines.color
-        case .votePending, .ruleChangeApplyPending: return ResourceFamilyTint.votes.color
-        case .assetActionApproval, .slotPending: return ResourceFamilyTint.assets.color
-        case .contributionDue, .compensationDue: return ResourceFamilyTint.funds.color
-        }
-    }
-
-    var urgencyText: String {
-        switch priority {
-        case .urgent: return "Urgente"
-        case .high:   return "Alta"
-        case .medium: return "Media"
-        case .low:    return "Baja"
-        }
-    }
-
-    var urgencyColor: Color {
-        switch priority {
-        case .urgent: return Color.ruulSemanticError
-        case .high:   return Color.ruulSemanticWarning
-        case .medium: return Color.ruulTextSecondary
-        case .low:    return Color.ruulTextTertiary
-        }
-    }
-}
+// UserAction row mapping (icon/tint/cta) was duplicated here previously.
+// Now we read it directly from `GroupPendingsBlock.icon/tint/cta` so the
+// home and group page can never drift on the same actionType, and the
+// row title/body comes verbatim from the data (`action.title`,
+// `action.body`) — backend is the single source of truth.
