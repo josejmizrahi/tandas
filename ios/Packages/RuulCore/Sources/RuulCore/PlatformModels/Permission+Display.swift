@@ -18,7 +18,7 @@ public extension Permission {
         case .createVotes:      return "Iniciar votaciones"
         case .castVote:         return "Votar"
         case .manageEvents:     return "Administrar eventos"
-        case .manageModules:    return "Activar módulos"
+        case .manageModules:    return "Activar funciones"
 
         case .assignSlot:       return "Asignar cupos"
         case .bookSlot:         return "Reservar cupos"
@@ -57,7 +57,7 @@ public extension Permission {
         case .createVotes:      return "Abrir una votación de cualquier tipo."
         case .castVote:         return "Emitir un voto en votaciones abiertas."
         case .manageEvents:     return "Cerrar, cancelar o editar eventos, y check-in a otros miembros."
-        case .manageModules:    return "Activar o desactivar módulos del grupo (multas, votos, cupos…)."
+        case .manageModules:    return "Activar o desactivar funciones del grupo (multas, votos, cupos…)."
 
         case .assignSlot:       return "Otorgar cupos a miembros (palco, casa…)."
         case .bookSlot:         return "Reservar un cupo para sí."

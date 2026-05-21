@@ -227,7 +227,7 @@ public extension CapabilityResolver {
         // --- Money section: ledger and fines ---
         if enabledCapabilities.contains("ledger") {
             items.append(SecondaryAction(
-                label: "Ledger",
+                label: "Movimientos",
                 symbol: "list.bullet.rectangle",
                 section: .money,
                 kind: .openLedger

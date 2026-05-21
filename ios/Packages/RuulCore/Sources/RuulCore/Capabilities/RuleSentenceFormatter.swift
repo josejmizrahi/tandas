@@ -143,7 +143,7 @@ public enum RuleSentenceFormatter {
         if let trigger = draft.trigger {
             clauses.append("Cuando " + phrase(for: trigger, registry: registry))
         } else {
-            clauses.append("Cuando (elige un disparador)")
+            clauses.append("Cuando (elige cuándo aplica)")
         }
 
         // Conditions clause. §22.4 (mig 00251): when the composer is
@@ -176,7 +176,7 @@ public enum RuleSentenceFormatter {
         // when present so the sentence reads naturally — e.g. "multa
         // al anfitrión", "notifica al rol tesorero".
         if draft.consequences.isEmpty {
-            clauses.append("entonces (agrega al menos una consecuencia)")
+            clauses.append("entonces (agrega qué pasa)")
         } else if draft.consequences.count == 1 {
             clauses.append("entonces " + phraseWithTarget(for: draft.consequences[0], registry: registry))
         } else {

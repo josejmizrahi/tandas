@@ -167,7 +167,7 @@ public final class ResourceWizardCoordinator {
             // Builder not yet registered — type is "Próximamente". The
             // TypePicker normally prevents tapping these tiles (disabled),
             // but guard here as a safety net.
-            error = "Este tipo de recurso aún no está disponible."
+            error = "Este recurso aún no está disponible."
         }
     }
 

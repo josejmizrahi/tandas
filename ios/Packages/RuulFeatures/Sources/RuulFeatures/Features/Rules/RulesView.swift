@@ -391,7 +391,7 @@ public struct RulesView: View {
         case .group:
             return nil
         case .module:
-            let label = rule.moduleKey.map { "Módulo · \($0)" } ?? "Módulo"
+            let label = rule.moduleKey.map { "Función · \($0)" } ?? "Función"
             return ScopeBadge(label: label, icon: "puzzlepiece", tint: .secondary)
         case .series:
             return ScopeBadge(label: "Toda la recurrencia", icon: "repeat", tint: .blue)

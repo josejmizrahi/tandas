@@ -79,7 +79,7 @@ struct AddResourceRuleDestination: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             if coordinator.availableTriggers.isEmpty {
-                emptyShapeMessage("No hay disparadores disponibles todavía.")
+                emptyShapeMessage("Aún no hay opciones disponibles.")
             } else {
                 RuulSeparatedRows(items: coordinator.availableTriggers) { shape in
                     shapeRow(
@@ -129,7 +129,7 @@ struct AddResourceRuleDestination: View {
                 }
             }
         } else {
-            emptyShapeMessage("No hay consecuencias disponibles todavía.")
+            emptyShapeMessage("Aún no hay opciones de qué pasa.")
         }
     }
 
