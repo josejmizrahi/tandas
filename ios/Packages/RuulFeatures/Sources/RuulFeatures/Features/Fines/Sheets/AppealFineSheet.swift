@@ -69,7 +69,7 @@ public struct AppealFineSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 

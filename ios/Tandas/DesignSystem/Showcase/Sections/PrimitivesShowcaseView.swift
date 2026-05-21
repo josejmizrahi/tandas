@@ -218,6 +218,7 @@ struct PrimitivesShowcaseView: View {
                     Text("Sheet content").font(.subheadline)
                 }
                 .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .fullScreenCover(isPresented: $coverPresented) {
                 ZStack {

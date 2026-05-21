@@ -132,7 +132,7 @@ struct AddResourceRuleSheet: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.medium)
-                    .stroke(Color(.separator), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
             )
         }
     }

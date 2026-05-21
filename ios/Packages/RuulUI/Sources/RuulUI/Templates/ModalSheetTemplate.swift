@@ -75,6 +75,7 @@ private struct ModalSheetTemplatePreview: View {
                     RuulTextField("Descripción", text: .constant(""), label: "Descripción", description: "Explica brevemente cuándo aplica.")
                 }
                 .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
     }
 }

@@ -80,6 +80,7 @@ public struct FineDetailHost: View {
                 Task { await coordinator.startAppeal(reason: reason) }
             }
             .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
         // Void fine sheet — admin destructive action surfaced through
@@ -98,6 +99,7 @@ public struct FineDetailHost: View {
                     )
                 )
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
         }

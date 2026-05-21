@@ -79,7 +79,7 @@ public struct VoteOnAppealSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 
@@ -96,7 +96,7 @@ public struct VoteOnAppealSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 
@@ -165,7 +165,7 @@ public struct VoteOnAppealSheet: View {
             .background(primary ? Color.primary : Color.ruulSurface, in: Capsule())
             .overlay(
                 primary ? nil :
-                Capsule().stroke(Color(.separator), lineWidth: 0.5)
+                Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.5)
             )
         }
         .buttonStyle(.ruulPress)

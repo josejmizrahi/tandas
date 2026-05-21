@@ -87,6 +87,7 @@ struct ResourceRulesBody: View {
                 coordinator: coordinator
             )
             .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
         .fullScreenCover(item: $composerCoord) { coord in
@@ -186,7 +187,7 @@ struct ResourceRulesBody: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
         .opacity(isInherited ? 0.85 : 1.0)
     }

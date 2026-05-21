@@ -71,6 +71,7 @@ public struct VoteDetailHost: View {
         .sheet(isPresented: $showCastSheet) {
             voteCastPickerSheet
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
         // Admin actions — opens from overflow `.edit` when finalize/cancel
@@ -78,6 +79,7 @@ public struct VoteDetailHost: View {
         .sheet(isPresented: $showAdminSheet) {
             voteAdminSheet
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
         .alert("Finalizar votación", isPresented: $showFinalizeConfirm) {
@@ -211,6 +213,7 @@ public struct VoteDetailHost: View {
             if alreadyVoted { showCastSheet = false }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
         .presentationBackground(.ultraThinMaterial.opacity(0.5))
     }
 
@@ -262,6 +265,7 @@ public struct VoteDetailHost: View {
             }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
         .presentationBackground(.ultraThinMaterial.opacity(0.5))
     }
 }

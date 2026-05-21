@@ -62,6 +62,7 @@ public struct EventDetailSheets: ViewModifier {
                     onAddToCalendar: { addToCalendar(event: b.coordinator.event) }
                 )
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .sheet(isPresented: bindingForSheet(.qr)) {
@@ -72,6 +73,7 @@ public struct EventDetailSheets: ViewModifier {
                     eventTitle: b.coordinator.event.title
                 )
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .sheet(isPresented: bindingForSheet(.cancelEvent)) {
@@ -79,6 +81,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { await b.coordinator.cancelEvent(reason: reason) }
                 }
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .sheet(isPresented: bindingForSheet(.cancelAttendance)) {
@@ -89,6 +92,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { await b.coordinator.setRSVP(.declined, plusOnes: 0, reason: reason) }
                 }
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .sheet(isPresented: bindingForSheet(.remindAttendees)) {
@@ -101,6 +105,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { _ = await b.coordinator.sendHostReminders() }
                 }
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .sheet(isPresented: bindingForSheet(.closeEvent)) {
@@ -111,6 +116,7 @@ public struct EventDetailSheets: ViewModifier {
                     Task { await b.coordinator.closeEvent(autoGenerateEnabled: false) }
                 }
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .sheet(isPresented: bindingForSheet(.manualFine)) {
@@ -121,6 +127,7 @@ public struct EventDetailSheets: ViewModifier {
                         currentUserId: b.currentUserId
                     )
                     .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                     .presentationBackground(.ultraThinMaterial.opacity(0.5))
                 }
             }
@@ -132,6 +139,7 @@ public struct EventDetailSheets: ViewModifier {
                         groupVocabulary: b.group.eventVocabulary
                     )
                     .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
                     .presentationBackground(.ultraThinMaterial.opacity(0.5))
                 }
             }
@@ -142,6 +150,7 @@ public struct EventDetailSheets: ViewModifier {
                         coordinator: rc
                     )
                     .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
                     .presentationBackground(.ultraThinMaterial.opacity(0.5))
                 }
             }
@@ -156,6 +165,7 @@ public struct EventDetailSheets: ViewModifier {
                     }
                 }
                 .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
             .fullScreenCover(item: b.attendeeRoute) { mwp in

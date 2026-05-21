@@ -50,6 +50,7 @@ struct ResourceLedgerSheet: View {
                 coordinator: coordinator
             )
             .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
     }
@@ -79,7 +80,7 @@ struct ResourceLedgerSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.large)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 
@@ -118,7 +119,7 @@ struct ResourceLedgerSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 
@@ -191,7 +192,7 @@ struct ResourceLedgerSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color(.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         )
     }
 

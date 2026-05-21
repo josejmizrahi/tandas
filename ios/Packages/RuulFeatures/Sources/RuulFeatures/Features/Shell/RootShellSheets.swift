@@ -151,6 +151,7 @@ public struct RootShellSheets: ViewModifier {
             .sheet(item: appealItem) { ctx in
                 voteOnAppealSheet(ctx)
                     .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                     .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
 

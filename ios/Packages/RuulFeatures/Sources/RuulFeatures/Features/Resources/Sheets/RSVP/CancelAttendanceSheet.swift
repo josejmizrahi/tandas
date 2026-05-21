@@ -36,7 +36,7 @@ public struct CancelAttendanceSheet: View {
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                            .stroke(Color(.separator), lineWidth: 0.5)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
                     )
                 }
                 RuulTextField("¿Por qué no puedes?", text: $reason, label: "Razón (opcional)")
