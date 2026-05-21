@@ -2,27 +2,32 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Tab "Yo" — Nivel 0 (Identity, cross-group). Apple Settings-flat
-/// structure: LargeTitle "Yo" + grouped `List` of native `Section`s.
+/// Tab "Yo" — Layer 1 persistent identity per Ruul Identity & Context
+/// Doctrine. One identity expressed through different contexts: this
+/// surface shows the viewer's own STABLE, CROSS-GROUP identity — never
+/// any group-scoped activity (that belongs in Inicio / Group home).
 ///
-/// Layout (Wave 3 PR #4 — Settings-flat rebuild):
+/// Apple Settings-flat structure: LargeTitle "Yo" + grouped `List` of
+/// native `Section`s. References: Settings.app, Wallet settings,
+/// Reminders settings sheet.
+///
+/// Layout:
 ///   - Profile hero (avatar + name + member count, no card chrome)
-///   - "Mis grupos" — up to 3 rows + "Ver todos" link
-///   - "Tu actividad" — multas / movimientos / timeline / historial
+///   - "Mis grupos" — global participation summary (Layer 1)
+///   - "Tu participación" — cross-group personal history (multas,
+///     movimientos, timeline). NEVER group-scoped links.
 ///   - "Personal" — editar perfil
 ///   - "Notificaciones" — preferencias / dispositivos
 ///   - "Preferencias" — idioma / zona horaria
 ///   - "Apariencia" — inline picker
-///   - "Cuenta" — teléfono / correo
-///   - "Datos y cuenta" — exportar / eliminar
+///   - "Cuenta" — teléfono / correo (Layer 1 contact methods)
+///   - "Datos y cuenta" — exportar / eliminar (Layer 1 privacy)
 ///   - Cerrar sesión
 ///
-/// Per Fase1HumanLayerRules + Ruul Canonical UX Doctrine §13 — Settings,
-/// Wallet, Reminders are the Apple references. Drops the previous Tú/
-/// Cuenta segmented picker (V2 Slice 4G) in favor of a flat scroll that
-/// matches `Settings.app`. The custom `sectionContainer`/`navRow` chrome
-/// is replaced with native `List` + `Section`, letting the OS provide
-/// background, separators, and corner clipping.
+/// Per Identity & Context Doctrine §2: Layer 1 should feel calm,
+/// minimal, timeless — NOT operational or activity-heavy. Group-scoped
+/// surfaces ("Actividad del grupo", "Historial del grupo") were removed
+/// to keep this view strictly cross-group.
 public struct MyProfileView: View {
     @State var coordinator: ProfileCoordinator
     @Environment(AppState.self) private var app
@@ -235,8 +240,13 @@ public struct MyProfileView: View {
         .accessibilityLabel(isActive ? "\(group.name), grupo activo" : "Cambiar a \(group.name)")
     }
 
+    /// Cross-group personal participation. Per Ruul Identity & Context
+    /// Doctrine §2: Layer 1 (persistent identity) includes "global
+    /// participation summary" — these rows surface the viewer's own
+    /// cross-group history. NEVER group-specific activity links —
+    /// those belong in Inicio / Group home, not in Yo.
     private var activitySection: some View {
-        Section("Tu actividad") {
+        Section("Tu participación") {
             actionRow(label: "Mis multas", systemImage: "creditcard", trailing: {
                 outstandingPill
             }, action: onOpenMyFines)
@@ -246,7 +256,6 @@ public struct MyProfileView: View {
             if let onOpenTimeline {
                 actionRow(label: "Mi línea de tiempo", systemImage: "clock.badge.checkmark", action: onOpenTimeline)
             }
-            actionRow(label: "Actividad del grupo", systemImage: "clock.arrow.circlepath", action: onOpenHistory)
         }
     }
 
