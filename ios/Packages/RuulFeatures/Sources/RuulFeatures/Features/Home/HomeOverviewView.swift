@@ -235,14 +235,20 @@ public struct HomeOverviewView: View {
     private func setRSVP(event: Event, status: RSVPStatus) async {
         // Use the repo directly — `HomeCoordinator` doesn't own a mutator
         // since RSVP changes live on the detail surface.  The next
-        // `coordinator.refresh()` will sync `myRSVPs`.
+        // `coordinator.refresh()` will sync `myRSVPs`. The inbox refresh
+        // is required so the server-resolved `rsvpPending` user_action
+        // (mig 00158 `on_rsvp_action_inserted` trigger) actually drops
+        // out of the "Necesita tu atención" list — otherwise the row
+        // lingers until pull-to-refresh.
         _ = try? await app.rsvpRepo.setRSVP(
             eventId: event.id,
             status: status,
             plusOnes: 0,
             reason: nil
         )
-        await coordinator.refresh(force: true)
+        async let h: Void = coordinator.refresh(force: true)
+        async let i: Void? = router.state.refreshInboxes()
+        _ = await (h, i)
     }
 }
 

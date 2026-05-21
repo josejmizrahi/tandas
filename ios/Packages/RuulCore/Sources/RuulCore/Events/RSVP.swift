@@ -63,9 +63,17 @@ public struct RSVP: Identifiable, Codable, Sendable, Hashable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id                       = try c.decode(UUID.self, forKey: .id)
         self.eventId                  = try c.decode(UUID.self, forKey: .eventId)
         self.userId                   = try c.decode(UUID.self, forKey: .userId)
+        // `attendance_view` (the canonical RSVP projection and the
+        // return type of `set_rsvp_v2`) has no `id` column — it merges
+        // rsvp_actions + check_in_actions atoms by (resource_id,
+        // member_id), so there's no single primary key to surface.
+        // Fall back to `userId` so Identifiable conformance stays
+        // stable per (event-scope, member) and decoding doesn't throw,
+        // which previously rolled back optimistic RSVP updates and
+        // left the "Confirma asistencia" CTA on screen forever.
+        self.id                       = (try? c.decode(UUID.self, forKey: .id)) ?? userId
         self.status                   = (try? c.decode(RSVPStatus.self, forKey: .status)) ?? .pending
         self.respondedAt              = try c.decodeIfPresent(Date.self, forKey: .respondedAt)
         self.cancelledReason          = try c.decodeIfPresent(String.self, forKey: .cancelledReason)

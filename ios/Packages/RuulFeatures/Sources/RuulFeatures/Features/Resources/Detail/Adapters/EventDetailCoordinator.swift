@@ -93,9 +93,11 @@ public final class EventDetailCoordinator {
         let previous = myRSVP
         // Optimistic update — replace local immediately. Server may downgrade
         // .going → .waitlisted if at capacity; the post-RPC update lands the
-        // truth when the server response comes back.
+        // truth when the server response comes back. `id` mirrors the
+        // RSVP decoder's synthetic fallback (userId — attendance_view has
+        // no primary key) so the optimistic row matches the RPC response.
         myRSVP = RSVP(
-            id: previous?.id ?? UUID(),
+            id: previous?.id ?? userId,
             eventId: event.id,
             userId: userId,
             status: status,
