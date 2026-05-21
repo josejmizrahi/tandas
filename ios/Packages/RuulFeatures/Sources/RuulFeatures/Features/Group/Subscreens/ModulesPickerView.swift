@@ -2,6 +2,14 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
+/// "Características del grupo" — toggle list of group modules
+/// (`basic_fines`, `rotating_host`, `rsvp`, `check_in`,
+/// `appeal_voting`, `slot_assignment`, `common_fund`, etc.). Pushed
+/// from Ajustes → "Características del grupo" → here.
+///
+/// Apple Settings pattern: `Form` of `Section`s, one row per module
+/// with a native `Toggle`. Blocked rows surface a footer explaining
+/// the conflict or unmet dependency.
 @MainActor
 public struct ModulesPickerView: View {
     @Environment(AppState.self) private var app
@@ -17,27 +25,19 @@ public struct ModulesPickerView: View {
     private var activeSlugs: Set<String> { Set(current?.activeModules ?? []) }
 
     public var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
+        Form {
+            Section {
                 ForEach(ModuleRegistry.v1Fallback.modules, id: \.id) { module in
                     moduleRow(module)
-                    if module.id != ModuleRegistry.v1Fallback.modules.last?.id {
-                        Divider().background(Color(.separator)).padding(.leading, RuulSpacing.md)
-                    }
+                }
+            } footer: {
+                if let error {
+                    Text(error)
+                        .foregroundStyle(Color.ruulNegative)
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .padding(RuulSpacing.lg)
-
-            if let error {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(Color.red)
-                    .padding(.horizontal, RuulSpacing.lg)
-            }
         }
-        .background(Color.ruulBackground.ignoresSafeArea())
-        .navigationTitle("Funciones")
+        .navigationTitle("Características del grupo")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -49,37 +49,33 @@ public struct ModulesPickerView: View {
         let unsatisfiedDeps = module.dependencies.filter { !activeSlugs.contains($0) }
         let blocked = !enabled && (!conflicts.isEmpty || !unsatisfiedDeps.isEmpty)
 
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
+            Toggle(isOn: Binding(
+                get: { enabled },
+                set: { newVal in Task { await toggle(module.id, newVal) } }
+            )) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(module.name)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.primary)
+                        .foregroundStyle(blocked ? Color.secondary : Color.primary)
                     Text(module.description)
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .lineLimit(2)
                 }
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { enabled },
-                    set: { newVal in Task { await toggle(module.id, newVal) } }
-                ))
-                .labelsHidden()
-                .disabled(isSaving || blocked)
             }
+            .disabled(isSaving || blocked)
+
             if blocked && !conflicts.isEmpty {
                 Text("Conflictúa con: \(conflicts.joined(separator: ", "))")
-                    .font(.footnote)
-                    .foregroundStyle(Color.orange)
+                    .font(.caption)
+                    .foregroundStyle(Color.ruulWarning)
             }
             if blocked && !unsatisfiedDeps.isEmpty {
                 Text("Requiere: \(unsatisfiedDeps.joined(separator: ", "))")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(Color(.tertiaryLabel))
             }
         }
-        .padding(RuulSpacing.md)
     }
 
     private func toggle(_ slug: String, _ newValue: Bool) async {

@@ -40,7 +40,7 @@ public struct RegenerateInviteCodeSheet: View {
             if let error {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(Color.red)
+                    .foregroundStyle(Color.ruulNegative)
             }
             Spacer()
             Button { Task { await rotate() } } label: {
