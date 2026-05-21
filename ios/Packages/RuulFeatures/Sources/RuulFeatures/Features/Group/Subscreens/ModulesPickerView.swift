@@ -8,8 +8,9 @@ import RuulCore
 /// from Ajustes → "Características del grupo" → here.
 ///
 /// Apple Settings pattern: `Form` of `Section`s, one row per module
-/// with a native `Toggle`. Blocked rows surface a footer explaining
-/// the conflict or unmet dependency.
+/// with a native `Toggle`. Blocked rows surface a footer with a
+/// human sentence — never the slug graph (no "Conflictúa con: X" /
+/// "Requiere: Y"; we use the module's display name and prose).
 @MainActor
 public struct ModulesPickerView: View {
     @Environment(AppState.self) private var app
@@ -65,16 +66,49 @@ public struct ModulesPickerView: View {
             }
             .disabled(isSaving || blocked)
 
-            if blocked && !conflicts.isEmpty {
-                Text("Conflictúa con: \(conflicts.joined(separator: ", "))")
+            if blocked, let reason = blockedSentence(
+                conflicts: conflicts,
+                unsatisfiedDeps: unsatisfiedDeps
+            ) {
+                Text(reason)
                     .font(.caption)
-                    .foregroundStyle(Color.ruulWarning)
+                    .foregroundStyle(!conflicts.isEmpty ? Color.ruulWarning : Color(.tertiaryLabel))
             }
-            if blocked && !unsatisfiedDeps.isEmpty {
-                Text("Requiere: \(unsatisfiedDeps.joined(separator: ", "))")
-                    .font(.caption)
-                    .foregroundStyle(Color(.tertiaryLabel))
-            }
+        }
+    }
+
+    /// Renders the block reason as a human sentence using module display
+    /// names. Never exposes the slug graph — users see "No se puede
+    /// activar mientras «Multas básicas» esté activa." instead of
+    /// "Conflictúa con: basic_fines".
+    private func blockedSentence(conflicts: [String], unsatisfiedDeps: [String]) -> String? {
+        if !conflicts.isEmpty {
+            let names = conflicts.map(humanName(forSlug:))
+            let list = quotedList(names)
+            return names.count == 1
+                ? "No se puede activar mientras \(list) esté activa."
+                : "No se puede activar mientras \(list) estén activas."
+        }
+        if !unsatisfiedDeps.isEmpty {
+            let names = unsatisfiedDeps.map(humanName(forSlug:))
+            let list = quotedList(names)
+            return "Necesita \(list) para funcionar."
+        }
+        return nil
+    }
+
+    private func humanName(forSlug slug: String) -> String {
+        ModuleRegistry.v1Fallback.modules.first(where: { $0.id == slug })?.name ?? slug
+    }
+
+    private func quotedList(_ names: [String]) -> String {
+        switch names.count {
+        case 0:  return ""
+        case 1:  return "«\(names[0])»"
+        case 2:  return "«\(names[0])» y «\(names[1])»"
+        default:
+            let head = names.dropLast().map { "«\($0)»" }.joined(separator: ", ")
+            return "\(head) y «\(names.last ?? "")»"
         }
     }
 

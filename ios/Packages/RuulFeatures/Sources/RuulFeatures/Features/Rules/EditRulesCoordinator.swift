@@ -279,7 +279,7 @@ public final class EditRulesCoordinator {
     private func mapGenericError(_ error: Error) -> String {
         let message = error.localizedDescription.lowercased()
         if message.contains("policy") || message.contains("42501") {
-            return "La gobernanza del grupo cambió. Tirá pull-to-refresh para ver los permisos actuales."
+            return "Las decisiones del grupo cambiaron. Tirá pull-to-refresh para ver los permisos actuales."
         }
         return "No se pudo guardar el cambio. Probá de nuevo."
     }

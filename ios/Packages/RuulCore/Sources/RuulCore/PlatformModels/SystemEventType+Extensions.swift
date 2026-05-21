@@ -107,7 +107,7 @@ public extension SystemEventType {
         case .groupArchived:          return "Grupo archivado"
         case .groupUnarchived:        return "Grupo desarchivado"
         case .groupRenamed:           return "Grupo renombrado"
-        case .governanceUpdated:      return "Gobernanza actualizada"
+        case .governanceUpdated:      return "Decisiones del grupo actualizadas"
 
         // Resource lifecycle (mig 00186)
         case .resourceArchived:       return "Recurso archivado"

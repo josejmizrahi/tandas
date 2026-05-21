@@ -237,18 +237,23 @@ public struct GroupRolesSheet: View {
         .padding(.vertical, RuulSpacing.xxs)
     }
 
+    /// Catalog-row subtitle. Doctrine: surface a role's responsibility
+    /// AREAS (Multas, Fondo común, Decisiones…) — not a permission count
+    /// like "5 permisos", which makes the role feel like an ACL bitmask.
+    /// The full per-permission detail still lives inside the editor sheet
+    /// for the admins who need it.
     private func detail(for role: RoleDefinition) -> String {
-        let permCount = role.permissions.count
-        let permLabel: String
-        switch permCount {
-        case 0:  permLabel = "Sin permisos"
-        case 1:  permLabel = "1 permiso"
-        default: permLabel = "\(permCount) permisos"
+        if role.system, role.id == "founder" {
+            return "Fundador del grupo"
         }
+        if role.system, role.id == "member" {
+            return "Todos los miembros"
+        }
+        let summary = role.responsibilitySummary
         if let max = role.maxHolders {
-            return "\(permLabel) · máx. \(max)"
+            return "\(summary) · máx. \(max)"
         }
-        return permLabel
+        return summary
     }
 
     private var deleteAlertBinding: Binding<Bool> {

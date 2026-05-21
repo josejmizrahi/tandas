@@ -9,8 +9,8 @@ import RuulCore
 /// tile, not here. This view groups settings into 4 buckets:
 ///
 ///   1. Identidad — name, photo, description.
-///   2. Permisos del grupo — quién decide qué (roles × CRUD + cómo se
-///      aprueban votos). Both live in the single Permisos surface.
+///   2. Roles y decisiones — qué rol tiene cada miembro y cómo se
+///      aprueban los votos.
 ///   3. Configuración — moneda + zona horaria.
 ///   4. Avanzado — funciones activas (qué tipo de coordinación tiene
 ///      el grupo), rotar código, archivar grupo.
@@ -18,6 +18,12 @@ import RuulCore
 /// `Plantillas de reglas` (rule templates catalog) is intentionally
 /// NOT here — its canonical entry is inside Reglas (RulesView's
 /// gallery composer) where adding a rule is the natural verb.
+///
+/// Doctrine note: there is no "Permisos por rol" matrix surface. The
+/// role × permission grid (banned per identity-context doctrine) was
+/// removed; the catalog editor inside "Tipos de rol" carries all the
+/// granular detail an admin needs without flattening the group into a
+/// permissions table.
 @MainActor
 public struct GroupAjustesView: View {
     public let group: RuulCore.Group
@@ -28,7 +34,6 @@ public struct GroupAjustesView: View {
     public var onPickTimezone: () -> Void
     public var onPickModules: () -> Void
     public var onOpenRoles: () -> Void
-    public var onOpenPermisosMatrix: () -> Void
     public var onOpenGovernance: () -> Void
     public var onOpenReglas: () -> Void
     public var onRotateCode: () -> Void
@@ -43,7 +48,6 @@ public struct GroupAjustesView: View {
         onPickTimezone: @escaping () -> Void,
         onPickModules: @escaping () -> Void,
         onOpenRoles: @escaping () -> Void,
-        onOpenPermisosMatrix: @escaping () -> Void,
         onOpenGovernance: @escaping () -> Void,
         onOpenReglas: @escaping () -> Void,
         onRotateCode: @escaping () -> Void,
@@ -57,7 +61,6 @@ public struct GroupAjustesView: View {
         self.onPickTimezone = onPickTimezone
         self.onPickModules = onPickModules
         self.onOpenRoles = onOpenRoles
-        self.onOpenPermisosMatrix = onOpenPermisosMatrix
         self.onOpenGovernance = onOpenGovernance
         self.onOpenReglas = onOpenReglas
         self.onRotateCode = onRotateCode
@@ -83,19 +86,13 @@ public struct GroupAjustesView: View {
                     action: onOpenRoles
                 )
                 row(
-                    icon: "lock.shield",
-                    label: "Permisos por rol",
-                    detail: "Qué puede hacer cada rol — crear, ver, editar, borrar",
-                    action: onOpenPermisosMatrix
-                )
-                row(
                     icon: "scale.3d",
                     label: "Cómo se aprueban votos",
                     detail: "Quórum mínimo y mayoría para que un voto pase",
                     action: onOpenGovernance
                 )
             } header: {
-                Text("Roles y permisos")
+                Text("Roles y decisiones")
             }
 
             Section {

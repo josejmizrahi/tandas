@@ -203,7 +203,7 @@ public struct HistoryItemPresentation {
             self.tone = .neutral
         case .governanceUpdated:
             self.icon = "scalemass"
-            self.title = "\(actor) actualizó la gobernanza"
+            self.title = "\(actor) actualizó las decisiones del grupo"
             self.tone = .neutral
         case .resourceArchived:
             self.icon = "archivebox"

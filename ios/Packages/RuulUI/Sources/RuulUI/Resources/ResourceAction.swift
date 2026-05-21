@@ -17,7 +17,7 @@ import RuulCore
 /// este field documenta a qué permission key corresponde la action
 /// (útil para analytics, logs y futuro re-check). V1 NO re-chequea
 /// en `onTap`. Sub-fase D puede expandir a defense-in-depth con UI
-/// fallback ("La gobernanza cambió, refrescá") si decide.
+/// fallback ("Las decisiones del grupo cambiaron, refrescá") si decide.
 public struct ResourceAction: Identifiable, Sendable {
     public let id: String
     public let icon: String

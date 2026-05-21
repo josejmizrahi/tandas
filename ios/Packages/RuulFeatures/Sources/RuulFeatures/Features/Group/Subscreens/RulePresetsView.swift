@@ -2,8 +2,8 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Group governance settings — the social-system layer. NOT behavior rules
-/// (those live under "Acuerdos" / RulesView). Doctrine: keeps the group
+/// Group decision-making settings — the social-system layer. NOT behavior
+/// rules (those live under "Reglas" / RulesView). Doctrine: keeps the group
 /// from becoming an ERP. See memory/project_group_governance_rules.md.
 ///
 /// Six sections in importance order: Decisions → Permissions → Members →
@@ -78,15 +78,15 @@ public struct RulePresetsView: View {
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
         }
-        .ruulSheetToolbar("Gobierno del grupo")
+        .ruulSheetToolbar("Decisiones del grupo")
         .task { await coordinator.refresh() }
     }
 
     // MARK: - Intro
 
     /// One-line framing so users get the doctrine without reading docs:
-    /// these presets gobiernan el GRUPO (quién puede modificar qué,
-    /// quórum de votos, etc.), no los acuerdos del día a día.
+    /// estos presets configuran cómo decide el GRUPO (quién puede modificar
+    /// qué, quórum de votos, etc.), no los acuerdos del día a día.
     private var intro: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             Text("Cómo decide este grupo")

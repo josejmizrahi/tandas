@@ -161,9 +161,16 @@ public struct MemberRolesPicker: View {
                     Text(role.humanLabel)
                         .font(.subheadline)
                         .foregroundStyle(Color.primary)
-                    Text(lockReason(role: role, isOn: isOn) ?? permissionsSummary(for: role))
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
+                    // Subtitle only renders for lock reasons (system base
+                    // role, last admin). The catalog editor — Ajustes →
+                    // "Roles del grupo" — is where granular permissions
+                    // live; the assignment surface stays identity-first
+                    // and never enumerates ACL bits inline.
+                    if let reason = lockReason(role: role, isOn: isOn) {
+                        Text(reason)
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
                 }
             }
             .disabled(locked || inFlight.contains(role.id))
@@ -189,18 +196,6 @@ public struct MemberRolesPicker: View {
             return "Asigna admin a otro miembro antes de retirar este. El grupo necesita al menos un admin."
         }
         return nil
-    }
-
-    private func permissionsSummary(for role: RoleDefinition) -> String {
-        switch role.permissions.count {
-        case 0:  return "Sin permisos."
-        case 1:  return "1 permiso · \(role.permissions[0].humanLabel)."
-        case let n where n <= 3:
-            return role.permissions.map(\.humanLabel).joined(separator: ", ") + "."
-        default:
-            let preview = role.permissions.prefix(2).map(\.humanLabel).joined(separator: ", ")
-            return "\(preview) y \(role.permissions.count - 2) más."
-        }
     }
 
     // MARK: - Toggle

@@ -15,8 +15,8 @@ import RuulUI
 ///   - Avatar stack tap          → `.personas` (MembersListView)
 ///   - Stream "Ver todo"         → `.actividad` (ActivityView)
 ///   - Toolbar "⋯" → Ajustes     → `.ajustes` (GroupAjustesView)
-///       └→ Permisos del grupo   → `.permisos` (role × permission matrix)
-///       └→ Cómo se decide        → `.governance` (quórum/threshold)
+///       └→ Roles del grupo      → `.roles` / `.tiposDeRol`
+///       └→ Cómo se aprueban votos → `.governance` (quórum/threshold)
 ///       └→ Plantillas / Modules → `.rulePresets` / `.modules`
 ///       └→ Moneda / Zona        → `.currency` / `.timezone`
 @MainActor
@@ -48,11 +48,10 @@ public struct MyGroupsTab: View {
         case eventos
         case multas
         case fondos
-        // Permisos / ajustes hierarchy
+        // Ajustes hierarchy
         case ajustes
         case roles            // assignments: members grouped by role
-        case tiposDeRol       // catalog: role definitions × permissions
-        case permisosMatrix   // permission-first audit view
+        case tiposDeRol       // catalog: role definitions (admin editor)
         case governance       // quórum + threshold
         case rulePresets
         case modules
@@ -238,7 +237,6 @@ public struct MyGroupsTab: View {
                     onPickTimezone:        { navPath.append(GroupDestination.timezone) },
                     onPickModules:         { navPath.append(GroupDestination.modules) },
                     onOpenRoles:           { navPath.append(GroupDestination.roles) },
-                    onOpenPermisosMatrix:  { navPath.append(GroupDestination.permisosMatrix) },
                     onOpenGovernance:      { navPath.append(GroupDestination.governance) },
                     onOpenReglas:          { navPath.append(GroupDestination.reglas) },
                     onRotateCode:          { showRotateCode = true },
@@ -269,18 +267,6 @@ public struct MyGroupsTab: View {
             case .tiposDeRol:
                 GroupRolesSheet(groupId: group.id)
                     .environment(app)
-
-            case .permisosMatrix:
-                GroupPermisosMatrixView(
-                    group: group,
-                    onSelectRole: { _ in
-                        // Tap a role chip → jump to the catalog
-                        // (Tipos de rol) where the role editor lives.
-                        if !navPath.isEmpty { navPath.removeLast() }
-                        navPath.append(GroupDestination.tiposDeRol)
-                    }
-                )
-                .environment(app)
 
             case .governance:
                 GovernanceView(group: group, onSaved: nil)

@@ -7,7 +7,7 @@ import RuulCore
 /// `GovernanceConfigView` (founder onboarding step 6) but works on a
 /// post-onboarding RuulCore.Group via `groupsRepo.updateGovernance`.
 ///
-/// Reachable from `GroupInfoSheet` "Editar gobierno" for members whose
+/// Reachable from Ajustes → "Cómo se aprueban votos" for members whose
 /// permission level matches `governance.whoCanModifyGovernance`. When that
 /// level is `majorityVote`, the contract is "this opens a vote", not
 /// "writes directly" — V1 we still write directly; the vote-gated path

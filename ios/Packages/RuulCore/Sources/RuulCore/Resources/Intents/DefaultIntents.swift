@@ -245,12 +245,12 @@ public enum DefaultIntents {
     public static let changeControl = ResourceIntent(
         id: "change_control",
         humanLabel: "Cambiar reglas del grupo",
-        summary: "Modificar cómo se gobierna esto.",
+        summary: "Modificar cómo decide esto.",
         icon: "slider.horizontal.3",
         resourceTypes: [.event, .fund, .asset, .space, .slot, .right],
         activation: .primerSheet(
             title: "Cambiar reglas",
-            body: "Vas a entrar al editor de gobernanza. Los cambios pueden necesitar aprobación del grupo.",
+            body: "Vas a entrar al editor de decisiones del grupo. Los cambios pueden necesitar aprobación del grupo.",
             ctaLabel: "Continuar"
         ),
         destination: .governanceRuleEditor,

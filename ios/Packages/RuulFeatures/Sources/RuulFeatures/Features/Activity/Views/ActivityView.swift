@@ -225,10 +225,21 @@ public struct ActivityView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Sin actividad reciente", systemImage: "clock.arrow.circlepath")
-        } description: {
-            Text("Acá aparece todo lo que pasa en el grupo.")
+        Group {
+            switch selectedChip {
+            case .moments:
+                ContentUnavailableView {
+                    Label("Aún no hay momentos guardados", systemImage: "sparkles")
+                } description: {
+                    Text("Los momentos que marcan al grupo — quién entró, qué se decidió, qué se cerró — aparecen acá a medida que pasan.")
+                }
+            default:
+                ContentUnavailableView {
+                    Label("Sin actividad reciente", systemImage: "clock.arrow.circlepath")
+                } description: {
+                    Text("Acá aparece todo lo que pasa en el grupo.")
+                }
+            }
         }
         .padding(.top, RuulSpacing.s8)
     }
@@ -239,18 +250,27 @@ public struct ActivityView: View {
 
 /// Categories for the horizontal filter strip at the top of ActivityView.
 ///
+/// "Todo" is the full live chronological stream. "Momentos" filters to
+/// durable narrative inflections — the events that define what this group
+/// IS, separate from day-to-day churn. The remaining chips are subject
+/// filters (money / resources / decisions / members) used to narrow to
+/// a specific kind of activity.
+///
 /// Category → SystemEventType mapping:
+///   Momentos:        group lifecycle, member join/leave, vote/appeal resolved,
+///                    event closed, rule toggled, resource created, governance updated
 ///   Dinero (6):      fineOfficialized, fineVoided, finePaid, fineReminderSent, fundDeposit, fundThresholdReached
 ///   Recursos (12):   eventCreated, eventClosed, rsvpDeadlinePassed, hoursBeforeEvent, rsvpSubmitted,
 ///                    rsvpChangedSameDay, checkInRecorded, checkInMissed, eventDescriptionMissing,
 ///                    slotAssigned, slotDeclined, slotExpired, slotSwapRequested, slotSwapApproved,
 ///                    bookingCreated, bookingCancelled, bookingExpired, assetCreated, fundCreated
-///   Gobernanza (7):  appealCreated, appealResolved, voteOpened, voteCast, voteResolved,
+///   Decisiones (7):  appealCreated, appealResolved, voteOpened, voteCast, voteResolved,
 ///                    ruleEnabledChanged, ruleAmountChanged, pendingChangeApplied
 ///   Miembros (2):    positionChanged, memberJoined, memberLeft
 ///   (unknown) falls through to .resources at runtime)
 private enum ActivityChip: String, CaseIterable, Identifiable {
     case all
+    case moments
     case money
     case resources
     case governance
@@ -261,6 +281,7 @@ private enum ActivityChip: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .all:        return "Todo"
+        case .moments:    return "Momentos"
         case .money:      return "Dinero"
         case .resources:  return "Recursos"
         case .governance: return "Decisiones"
@@ -272,6 +293,27 @@ private enum ActivityChip: String, CaseIterable, Identifiable {
         switch self {
         case .all:
             return true
+
+        case .moments:
+            // Milestone inflections: durable narrative events that
+            // become part of the group's memory. Excludes high-volume
+            // operational churn (RSVPs, check-ins, individual votes,
+            // intermediate vote casts) and rule-fuel synthetic events.
+            switch eventType {
+            case .groupCreated, .groupArchived, .groupUnarchived, .groupRenamed,
+                 .memberJoined, .memberLeft,
+                 .voteResolved, .appealResolved,
+                 .eventClosed, .eventCancelled,
+                 .ruleEnabledChanged,
+                 .assetCreated, .fundCreated, .spaceCreated,
+                 .governanceUpdated,
+                 .positionChanged,
+                 .pendingChangeApplied,
+                 .rightCreated, .rightRevoked, .rightExpired:
+                return true
+            default:
+                return false
+            }
 
         case .money:
             switch eventType {

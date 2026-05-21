@@ -6,7 +6,7 @@ public extension Permission {
     /// added permissions still render something meaningful.
     var humanLabel: String {
         switch self {
-        case .modifyGovernance: return "Cambiar gobierno"
+        case .modifyGovernance: return "Cambiar decisiones del grupo"
         case .modifyRules:      return "Editar reglas"
         case .modifyMembers:    return "Editar miembros"
         case .assignRoles:      return "Asignar roles"
@@ -108,7 +108,7 @@ public extension Permission {
 
         public var title: String {
             switch self {
-            case .governance: return "Gobierno y miembros"
+            case .governance: return "Decisiones y miembros"
             case .fines:      return "Multas"
             case .slots:      return "Cupos y reservas"
             case .fund:       return "Fondo común"
@@ -138,6 +138,24 @@ public extension RoleDefinition {
                 return first + rest
             }
             .joined(separator: " ")
+        }
+    }
+
+    /// Human-readable summary of what areas this role is responsible
+    /// for. Surfaces the role as a coordination scope ("Multas y
+    /// fondo común") instead of a permission-count bitmask
+    /// ("5 permisos"). Used by the catalog row in GroupRolesSheet.
+    var responsibilitySummary: String {
+        let categories = Array(Set(permissions.map(\.category)))
+            .sorted { $0.rawValue < $1.rawValue }
+            .map(\.title)
+        switch categories.count {
+        case 0:  return "Sin responsabilidades"
+        case 1:  return categories[0]
+        case 2:  return "\(categories[0]) y \(categories[1])"
+        default:
+            let head = categories.prefix(2).joined(separator: ", ")
+            return "\(head) y \(categories.count - 2) más"
         }
     }
 }
