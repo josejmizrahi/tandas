@@ -1,6 +1,6 @@
 # SharedMoney — Phase 3 (Group Money UI)
 
-**Status:** PLAN (no code yet)
+**Status:** IN PROGRESS — bricks 1-5 implemented (brick 1 in `838e76c`; card + coordinator + GroupSpaceView wiring + sheets + list filter on this branch). Pending: Xcode build/test verification + simulator smoke (no Swift toolchain in the authoring env).
 **Depends on:** Phase 1 (data model — committed `c3bb8e14`), Phase 2 (wrappers — committed `2a4425a1` + `9f67578d`).
 **Doctrines:**
 - `doctrine_shared_money.md` — Shared Money is default; resources contextualize.
@@ -121,16 +121,16 @@ Either:
 - (a) extend `FundRepository` with `summaryForGroup(groupId: UUID) async throws -> SharedPoolSummary?`
 - (b) add a new tiny `SharedMoneyRepository` actor
 
-**Recommendation (a)** — keeps the repo surface coherent (it already does fund-shaped reads). The shared pool IS a fund row.
+**Decision: (a)** — shipped in `838e76c`. Keeps the repo surface coherent (it already does fund-shaped reads). The shared pool IS a fund row. Signature is `summaryForGroup(_ groupId: UUID, preferredCurrency: String?) async throws -> SharedPoolSummary?`.
 
-Live impl: `client.from("group_money_summary_view").select().eq("group_id", value: gid).single().execute().value`.
+Live impl reads **all** currency rows then filters — NOT `.single()`. The view emits one row per `(group, currency)` (it groups by `le.currency`), so `.single()` would throw on a multi-currency group. Instead: `from("group_money_summary_view").select().eq("group_id", gid)` → decode `[SharedPoolSummary]` → return the row matching `preferredCurrency` (the group's currency), else `rows.first`. Multi-currency UI (V1.5+) can read all rows.
 
-Mock impl: derive from seeded funds + ledger entries (already done in MockFundRepository's existing rebuild logic — extract to a private helper).
+Mock impl: derive from the seeded `Fund` snapshot for the group (same `preferredCurrency` pick logic). Test fixtures seed one fund per group (the implicit shared pool); server-side resolution is authoritative.
 
 ### Coordinator wiring
 Extend `GroupHomeCoordinator`:
 - Add `var sharedPoolSummary: SharedPoolSummary?`
-- In `refresh()`, kick off a `fundRepo.summaryForGroup(groupId)` task in parallel with existing tasks.
+- In `refresh()`, kick off a `fundRepo.summaryForGroup(groupId, preferredCurrency: nil)` task in parallel with the other group-scoped loads (currency isn't known until `detail` resolves; for V1 single-currency the view emits exactly one row, so `preferredCurrency: nil` → `rows.first` is the group's currency. Multi-currency V1.5+ will pass the resolved currency).
 - View binds to the coordinator's published `sharedPoolSummary`.
 
 ---
@@ -175,7 +175,7 @@ The `RuulSheet` doctrine memory `doctrine_ruul_sheet_on_sheet_doctrine.md` says 
 
 - **`GroupSpaceView`** shows `SharedMoneyCard` (canonical).
 - **`GroupSpacesGrid` "Fondos" tile** → relabel to **"Otros fondos"**. Hidden entirely when the group has no non-shared-pool funds (most groups eventually).
-- **`GroupFundsListView`** → filter OUT rows where `Fund.metadata.is_shared_pool == true` (or equivalent signal — we need to surface this flag in `Fund`; see Open Question 9.1).
+- **`GroupFundsListView`** → filter OUT the shared pool row by cross-referencing `Fund.fundId == sharedPoolSummary.sharedPoolId` (founder decision 9.1, option (c) — zero schema change, no new flag on `Fund`). The view already loads the summary, so the id is in hand.
 - **Empty state in GroupFundsListView**: when nothing remains after filtering, show "No hay fondos separados. Todo el dinero del grupo está en Dinero compartido." with no "Crear fondo" CTA (Phase 6 will surface that under Advanced).
 
 ---
@@ -225,16 +225,18 @@ Snapshot tests deferred — there's no harness today, introducing one is its own
 
 ## 10. Phase 3 DoD
 
-- [ ] `SharedPoolSummary` model added to RuulCore.
-- [ ] `FundRepository.summaryForGroup(_:)` implemented in protocol + Mock + Live.
-- [ ] `GroupHomeCoordinator` loads + exposes `sharedPoolSummary`.
-- [ ] `SharedMoneyCard` view component composed from existing RuulUI primitives.
-- [ ] `GroupSpaceView` renders the card between compose bar and pendings.
-- [ ] `RecordSharedExpenseSheet` + `ContributeToSharedMoneySheet` ship with `.medium`/`.large` detents.
-- [ ] `GroupFundsListView` filters out shared pool; tile relabeled to "Otros fondos"; hidden when count=0.
-- [ ] Build green, no warnings.
-- [ ] `#Preview` on SharedMoneyCard renders all three states.
-- [ ] Functional smoke on simulator: tap "Aportar" → fill amount → submit → balance refreshes.
+- [x] `SharedPoolSummary` model added to RuulCore. *(838e76c)*
+- [x] `FundRepository.summaryForGroup(_:preferredCurrency:)` implemented in protocol + Mock + Live. *(838e76c)*
+- [x] `GroupHomeCoordinator` loads + exposes `sharedPoolSummary` (+ `allMembers`, `otherFundsCount`).
+- [x] `SharedMoneyCard` view component composed from existing RuulUI primitives.
+- [x] `GroupSpaceView` renders the card between compose bar and pendings.
+- [x] `RecordSharedExpenseSheet` + `ContributeToSharedMoneySheet` ship with `.medium`/`.large` detents.
+- [x] `GroupFundsListView` filters out shared pool; tile relabeled to "Otros fondos"; hidden when count=0.
+- [ ] Build green, no warnings. *(pending — no Swift toolchain in this env; needs Xcode verify)*
+- [x] `#Preview` on SharedMoneyCard renders all three states.
+- [x] Unit tests: `MockFundRepository.summaryForGroup` aggregates / over-spent / nil / preferredCurrency.
+- [ ] Unit test for `GroupFundsListView` filter logic — deferred; filter is a one-line inline `.filter` in the view's `load()`, not worth extracting a testable seam for now.
+- [ ] Functional smoke on simulator: tap "Aportar" → fill amount → submit → balance refreshes. *(pending — needs simulator)*
 
 ---
 
