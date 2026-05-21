@@ -85,8 +85,8 @@ public extension ResourceConfig {
                 label: "Saldo en MXN",
                 size: .display,
                 subRow: [
-                    ("Aportado", fund.contributed.formatted(.currency(code: "MXN"))),
-                    ("Retirado", fund.withdrawn.formatted(.currency(code: "MXN")))
+                    HeroPair("Aportado", fund.contributed.formatted(.currency(code: "MXN"))),
+                    HeroPair("Retirado", fund.withdrawn.formatted(.currency(code: "MXN")))
                 ]
             ),
             actions: [

@@ -123,21 +123,35 @@ public struct ResourceBadge {
 // MARK: - Hero
 
 public struct HeroData {
-    public let value: String                // "$0.00", "2:03 p.m.", "Disponible"
-    public let label: String                // "Saldo en MXN", "21 may · 180 min"
+    public let value: String        // "$0.00", "2:03 p.m.", "Disponible"
+    public let label: String        // "Saldo en MXN", "21 may · 180 min"
     public let size: HeroSize
-    public let subRow: [(String, String)]?  // [("Aportado", "$0"), ...]
+    public let subRow: [HeroPair]?  // [HeroPair("Aportado", "$0"), …]
 
     public init(
         value: String,
         label: String,
         size: HeroSize = .title,
-        subRow: [(String, String)]? = nil
+        subRow: [HeroPair]? = nil
     ) {
         self.value = value
         self.label = label
         self.size = size
         self.subRow = subRow
+    }
+}
+
+/// Named pair for the hero sub-row. Replaces the older `(String, String)`
+/// tuple shape so `ForEach` can use the label as a stable identity
+/// instead of array offset (which breaks animations when pairs reorder).
+public struct HeroPair: Identifiable, Hashable, Sendable {
+    public var id: String { label }
+    public let label: String
+    public let value: String
+
+    public init(_ label: String, _ value: String) {
+        self.label = label
+        self.value = value
     }
 }
 

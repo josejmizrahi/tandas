@@ -30,11 +30,19 @@ struct ActivityErrorView: View {
 
     var body: some View {
         VStack(spacing: RuulSpacing.s4) {
-            ContentUnavailableView(
-                "No pudimos cargar la actividad",
-                systemImage: "exclamationmark.triangle.fill",
-                description: Text(message)
-            )
+            ContentUnavailableView {
+                Label {
+                    Text("No pudimos cargar la actividad")
+                } icon: {
+                    // `systemImage:` init tints the symbol with the platform
+                    // tertiary color and ignores `.foregroundStyle`. Building
+                    // the label manually keeps the warning yellow explicit.
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Color.ruulSemanticWarning)
+                }
+            } description: {
+                Text(message)
+            }
 
             Button(action: retry) {
                 Label("Reintentar", systemImage: "arrow.clockwise")

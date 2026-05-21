@@ -545,7 +545,6 @@ public struct EventDetailHost: View {
             isHost: coordinator.viewerIsHost,
             needsRSVPConfirm: needsConfirm,
             viewerIsGoing: isGoing,
-            canIssueManualFine: canIssueManualFine,
             address: e.locationName ?? "",
             coordinate: CLLocationCoordinate2D(
                 latitude: e.locationLat ?? 19.4326,

@@ -30,9 +30,6 @@ public struct EventInput {
     /// True when the viewer has already RSVP'd `.going`. Swaps the first
     /// action for "Cancelar asistencia" (destructive tint).
     public let viewerIsGoing: Bool
-    /// True when the viewer holds the `issue_manual_fine` permission.
-    /// Drives the conditional "Multa manual" item in the toolbar menu.
-    public let canIssueManualFine: Bool
     public let address: String
     public let coordinate: CLLocationCoordinate2D
     public let attendees: [Person]
@@ -55,7 +52,6 @@ public struct EventInput {
         isHost: Bool,
         needsRSVPConfirm: Bool = false,
         viewerIsGoing: Bool = false,
-        canIssueManualFine: Bool = false,
         address: String,
         coordinate: CLLocationCoordinate2D,
         attendees: [Person],
@@ -72,7 +68,6 @@ public struct EventInput {
         self.isHost = isHost
         self.needsRSVPConfirm = needsRSVPConfirm
         self.viewerIsGoing = viewerIsGoing
-        self.canIssueManualFine = canIssueManualFine
         self.address = address
         self.coordinate = coordinate
         self.attendees = attendees

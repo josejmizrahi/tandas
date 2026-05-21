@@ -32,11 +32,11 @@ struct HeroSlot: View {
 
             if let subRow = data.subRow, !subRow.isEmpty {
                 HStack(spacing: RuulSpacing.s5) {
-                    ForEach(Array(subRow.enumerated()), id: \.offset) { _, pair in
+                    ForEach(subRow) { pair in
                         HStack(spacing: RuulSpacing.s1) {
-                            Text(pair.0)
+                            Text(pair.label)
                                 .foregroundStyle(Color.ruulTextSecondary)
-                            Text(pair.1)
+                            Text(pair.value)
                                 .fontWeight(.semibold)
                         }
                         .font(.caption)
