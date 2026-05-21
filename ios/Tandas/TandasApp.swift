@@ -249,7 +249,6 @@ struct TandasApp: App {
             // Luma-style: respeta sistema o user preference (Auto/Claro/Oscuro).
             AuthGate()
                 .environment(appState)
-                .ruulTheme()
                 .tint(.accentColor)
                 .preferredColorScheme(appearance.colorScheme)
                 #if DEBUG
