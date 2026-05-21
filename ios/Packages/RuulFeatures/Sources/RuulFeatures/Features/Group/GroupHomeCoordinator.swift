@@ -10,6 +10,8 @@ public final class GroupHomeCoordinator {
     private let groupsRepo: any GroupsRepository
     private let moduleRegistry: ModuleRegistry
     private let groupSummaryRepo: (any GroupSummaryRepository)?
+    private let userActionRepo: (any UserActionRepository)?
+    private let myActivityRepo: (any MyActivityRepository)?
     private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
@@ -18,9 +20,19 @@ public final class GroupHomeCoordinator {
     public var myRole: String?          // "founder" | "member" | "admin"
     /// Verbatim roles from `group_members.roles` jsonb for the calling
     /// user. Drives Phase 5 permission-gated affordances in
-    /// `GroupHomeView`. Empty until the first successful refresh.
+    /// `GroupSpaceView`. Empty until the first successful refresh.
     public var myRawRoles: [String] = []
     public var activeModules: [GroupModule] = []
+    /// Sample of members for the PresenceHeader avatar stack. Top 8
+    /// fetched in parallel with `refresh()`; never errors hard — empty
+    /// stack is acceptable degradation.
+    public var members: [MemberWithProfile] = []
+    /// Recent items from `my_activity_v1` filtered to this group. Top
+    /// 5, newest first. Populated only if `myActivityRepo` is wired.
+    public var recentActivity: [MyActivityItem] = []
+    /// Pending UserActions for the current user in this group. Drives
+    /// the PendingsBlock list. Loaded in parallel with summary.
+    public var pendingActions: [UserAction] = []
     public var isLoading: Bool = false
     public var error: CoordinatorError?
     /// True después de que `refresh()` completó al menos una vez. Permite
@@ -79,12 +91,16 @@ public final class GroupHomeCoordinator {
         groupsRepo: any GroupsRepository,
         moduleRegistry: ModuleRegistry = .v1Fallback,
         groupSummaryRepo: (any GroupSummaryRepository)? = nil,
+        userActionRepo: (any UserActionRepository)? = nil,
+        myActivityRepo: (any MyActivityRepository)? = nil,
         actorUserId: UUID? = nil
     ) {
         self.groupId = groupId
         self.groupsRepo = groupsRepo
         self.moduleRegistry = moduleRegistry
         self.groupSummaryRepo = groupSummaryRepo
+        self.userActionRepo = userActionRepo
+        self.myActivityRepo = myActivityRepo
         self.actorUserId = actorUserId
     }
 
@@ -97,9 +113,15 @@ public final class GroupHomeCoordinator {
         }
         do {
             async let detailTask = groupsRepo.get(groupId)
+            async let membersTask = loadMembers()
             async let summaryTask: Void = loadSummary()
+            async let pendingsTask: Void = loadPendingActions()
+            async let activityTask: Void = loadRecentActivity()
             let detail = try await detailTask
+            self.members = await membersTask
             _ = await summaryTask
+            _ = await pendingsTask
+            _ = await activityTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -113,7 +135,7 @@ public final class GroupHomeCoordinator {
 
     public func clearError() { error = nil }
 
-    // MARK: - Summary
+    // MARK: - Parallel loads
 
     public func loadSummary() async {
         guard let repo = groupSummaryRepo, let userId = actorUserId else { return }
@@ -121,6 +143,39 @@ public final class GroupHomeCoordinator {
             self.summary = try await repo.summary(groupId: groupId, userId: userId)
         } catch {
             log.warning("group summary load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Top 8 members for the PresenceHeader stack. Soft-fails — an
+    /// empty stack still renders a valid header.
+    private func loadMembers() async -> [MemberWithProfile] {
+        do {
+            let all = try await groupsRepo.membersWithProfiles(of: groupId)
+            return Array(all.prefix(8))
+        } catch {
+            log.warning("group members load failed: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    private func loadPendingActions() async {
+        guard let repo = userActionRepo, let userId = actorUserId else { return }
+        do {
+            self.pendingActions = try await repo.pending(userId: userId, groupId: groupId)
+        } catch {
+            log.warning("group pending actions load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Filters cross-group `my_activity_v1` by current group. Optional —
+    /// the repo is wired only in live builds, so previews/mocks pass nil.
+    private func loadRecentActivity() async {
+        guard let repo = myActivityRepo else { return }
+        do {
+            let cross = try await repo.loadRecent(limit: 40)
+            self.recentActivity = Array(cross.filter { $0.groupId == groupId }.prefix(5))
+        } catch {
+            log.warning("group activity load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

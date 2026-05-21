@@ -168,73 +168,17 @@ public struct MyGroupsTab: View {
         }
     }
 
-    // MARK: - .group(id) branch: group context view (placeholder)
+    // MARK: - .group(id) branch: group context view
 
-    /// V1 placeholder. Future: rebuild as `GroupHomeView` with sub-tabs
-    /// (Personas / Movimientos / Acuerdos / Historia) per doctrine §9.
-    /// For now: hero + member count + "Volver" CTA. The user can
-    /// already coordinate via Inicio (filtered to this group) — this
-    /// surface is the eventual drill-in destination for managing the
-    /// group's content + governance.
+    /// Group context view = the new `GroupSpaceView` layered scroll
+    /// (presence header, compose bar, pendings, spaces grid, stream,
+    /// FAB). Hosted in a child view so the `GroupHomeCoordinator`
+    /// lifecycle is owned by `@State` rather than re-instantiated on
+    /// every parent render.
     private func groupContextView(_ group: RuulCore.Group) -> some View {
-        ScrollView {
-            VStack(alignment: .center, spacing: 16) {
-                RuulGroupAvatar(group: group, size: .xl)
-                    .padding(.top, 32)
-                Text(group.name)
-                    .font(.title.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                if let desc = group.description, !desc.isEmpty {
-                    Text(desc)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
-
-                // Drill-in subsections per doctrine §9. Each pushes
-                // the canonical surface for that aspect of the group.
-                VStack(spacing: 8) {
-                    sectionRow(value: .personas, icon: "person.2", label: "Personas")
-                    sectionRow(value: .movimientos, icon: "arrow.left.arrow.right", label: "Movimientos")
-                    sectionRow(value: .acuerdos, icon: "list.bullet.clipboard", label: "Acuerdos")
-                    sectionRow(value: .historia, icon: "clock.arrow.circlepath", label: "Historia")
-                }
-                .padding(.top, 24)
-                .padding(.horizontal, 16)
-
-                Spacer(minLength: 32)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    /// Drill-in subsection row with chevron — pushes the canonical
-    /// surface via the navigation stack's `navigationDestination`.
-    private func sectionRow(value: GroupSection, icon: String, label: String) -> some View {
-        NavigationLink(value: value) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28)
-                Text(label)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-            )
-        }
-        .buttonStyle(.plain)
+        GroupSpaceScreen(group: group)
+            .environment(app)
+            .environment(router)
     }
 
     /// Per-subsection destination. Coordinators constructed inline
@@ -308,6 +252,122 @@ public struct MyGroupsTab: View {
             Button("Crear grupo") { router.present(.createGroup) }
                 .buttonStyle(.borderedProminent)
             Button("Unirme con código") { router.present(.joinGroup) }
+        }
+    }
+}
+
+// MARK: - GroupSpaceScreen host
+
+/// Owns the `GroupHomeCoordinator` lifecycle and wires the new
+/// `GroupSpaceView` into the Grupo tab's NavigationStack. Sheet states
+/// for "Editar grupo" / "Rotar código" / "Salir" / "Archivar" live
+/// here as `@State` so they survive parent re-renders.
+@MainActor
+private struct GroupSpaceScreen: View {
+    let group: RuulCore.Group
+    @Environment(AppState.self) private var app
+    @Environment(RootRouter.self) private var router
+
+    @State private var coordinator: GroupHomeCoordinator?
+    @State private var showEditIdentity = false
+    @State private var showRotateCode = false
+    @State private var showInvite = false
+    @State private var showLeave = false
+    @State private var showArchiveConfirm = false
+    @State private var archiveError: String?
+
+    var body: some View {
+        Group {
+            if let coordinator {
+                GroupSpaceView(
+                    coordinator: coordinator,
+                    onCreateEvent: { router.present(.createCover) },
+                    onOpenDecisions: { /* drill-in handled by navigation push below */ },
+                    onInviteMembers: { showInvite = true },
+                    onOpenEvents: { router.selectTab(.home) },
+                    onOpenFines: { router.requestOpenMyFines() },
+                    onOpenInbox: { router.selectTab(.home) },
+                    onOpenMembers: nil,  // tap avatar stack → push .personas below
+                    onOpenActivity: nil,
+                    onSelectPending: { _ in router.selectTab(.home) },
+                    onShareInvite: { router.present(.inviteShare) },
+                    onEditIdentity: { showEditIdentity = true },
+                    onRotateCode: { showRotateCode = true },
+                    onArchiveGroup: { showArchiveConfirm = true },
+                    onConfirmLeave: { showLeave = true },
+                    onLeaveGroup: {
+                        Task {
+                            try? await app.groupsRepo.leave(group.id)
+                            await app.refreshProfileAndGroups()
+                            app.homeScope = .all
+                        }
+                    }
+                )
+            } else {
+                Color.clear
+            }
+        }
+        .task(id: group.id) {
+            if coordinator?.groupId != group.id {
+                coordinator = GroupHomeCoordinator(
+                    groupId: group.id,
+                    groupsRepo: app.groupsRepo,
+                    groupSummaryRepo: app.groupSummaryRepo,
+                    userActionRepo: app.userActionRepo,
+                    myActivityRepo: app.myActivityRepo,
+                    actorUserId: app.session?.user.id
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showEditIdentity) {
+            EditGroupIdentitySheet(groupId: group.id)
+                .environment(app)
+                .presentationBackground(.regularMaterial)
+        }
+        .fullScreenCover(isPresented: $showRotateCode) {
+            RegenerateInviteCodeSheet(groupId: group.id)
+                .environment(app)
+                .presentationBackground(.regularMaterial)
+        }
+        .fullScreenCover(isPresented: $showInvite) {
+            InviteMembersFromGroupView(group: group)
+                .environment(app)
+                .presentationBackground(.regularMaterial)
+        }
+        .fullScreenCover(isPresented: $showLeave) {
+            LeaveGroupConfirmationSheet(group: group)
+                .environment(app)
+                .presentationBackground(.regularMaterial)
+        }
+        .confirmationDialog(
+            "¿Archivar \(group.name)?",
+            isPresented: $showArchiveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Archivar grupo", role: .destructive) {
+                Task { await archiveGroup() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Se ocultará de tu lista de grupos. Su historia, multas e historia se mantienen y puedes restaurarlo después.")
+        }
+        .alert("No pudimos archivar", isPresented: Binding(
+            get: { archiveError != nil },
+            set: { if !$0 { archiveError = nil } }
+        )) {
+            Button("OK", role: .cancel) { archiveError = nil }
+        } message: {
+            Text(archiveError ?? "")
+        }
+    }
+
+    private func archiveGroup() async {
+        do {
+            try await app.groupsRepo.archive(groupId: group.id)
+            await app.refreshProfileAndGroups()
+            app.homeScope = .all
+        } catch {
+            archiveError = "No pudimos archivar el grupo. Intenta de nuevo."
         }
     }
 }
