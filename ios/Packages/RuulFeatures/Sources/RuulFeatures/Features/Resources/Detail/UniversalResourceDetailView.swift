@@ -100,13 +100,29 @@ public struct UniversalResourceDetailView: View {
         // to avoid stacking it with the outer wrapper's toolbar (which
         // would surface two leading-x buttons on the same nav bar).
         .toolbar {
-            if !supportedOverflowActions.isEmpty {
+            // Action layer per doctrine: `[+]` compose menu + `[⚙]`
+            // settings split (replaces the previous single
+            // `ellipsis.circle` overflow). See
+            // `Plans/Active/Fase1ComponentMap.md` §"Universal Resource
+            // Detail — Action layer".
+            if !composeActions.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        overflowMenuContents
+                        composeMenuContents
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Acciones")
+                }
+            }
+            if !settingsActions.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        settingsMenuContents
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Ajustes")
                 }
             }
         }
@@ -130,29 +146,49 @@ public struct UniversalResourceDetailView: View {
         orderedCapabilities.filter { !$0.belongsToParticipationLayer }
     }
 
-    /// Renders only the overflow items the host opted in to, so tapping
-    /// never produces a silent no-op. Per doctrine §0: the overflow is
-    /// for meta-actions only — capabilities live in their own blocks.
+    // MARK: - Action layer (PR 8 — toolbar [+] compose + [⚙] settings)
+
+    /// Compose actions per doctrine — outward-facing verbs that grow
+    /// the resource (share/invite, add to calendar). Future PRs add
+    /// inline composers (Invitar gente, Agregar gasto, Asignar
+    /// custodia, Agregar regla) here.
+    private var composeActions: Set<OverflowAction> {
+        supportedOverflowActions.intersection([.share, .addToCalendar])
+    }
+
+    /// Settings actions per doctrine — configuration and meta only,
+    /// never primary actions. Includes the destructive cluster.
+    private var settingsActions: Set<OverflowAction> {
+        supportedOverflowActions.intersection([
+            .edit, .walletPass, .archive, .delete, .report
+        ])
+    }
+
+    /// `[+]` menu contents. Sentence case, verb+noun labels.
     @ViewBuilder
-    private var overflowMenuContents: some View {
+    private var composeMenuContents: some View {
         if supportedOverflowActions.contains(.share) {
             Button("Compartir", systemImage: "square.and.arrow.up") { onOverflowAction(.share) }
-        }
-        if supportedOverflowActions.contains(.edit) {
-            Button("Editar", systemImage: "pencil") { onOverflowAction(.edit) }
         }
         if supportedOverflowActions.contains(.addToCalendar) {
             Button("Agregar al calendario", systemImage: "calendar.badge.plus") {
                 onOverflowAction(.addToCalendar)
             }
         }
+    }
+
+    /// `[⚙]` menu contents. Configuration + meta. Destructive cluster
+    /// trails behind a divider (only when both clusters are populated)
+    /// — mirrors Apple Settings sheet ordering.
+    @ViewBuilder
+    private var settingsMenuContents: some View {
+        if supportedOverflowActions.contains(.edit) {
+            Button("Editar", systemImage: "pencil") { onOverflowAction(.edit) }
+        }
         if supportedOverflowActions.contains(.walletPass) {
             Button("Pase de Wallet", systemImage: "wallet.pass") { onOverflowAction(.walletPass) }
         }
-        // Divider only between the "viewing/editing" cluster and the
-        // destructive cluster, and only when both clusters have at least
-        // one supported action.
-        if hasNondestructiveSupported && hasDestructiveSupported {
+        if hasSettingsNondestructive && hasSettingsDestructive {
             Divider()
         }
         if supportedOverflowActions.contains(.archive) {
@@ -166,14 +202,12 @@ public struct UniversalResourceDetailView: View {
         }
     }
 
-    private var hasNondestructiveSupported: Bool {
-        supportedOverflowActions.contains(.share)
-            || supportedOverflowActions.contains(.edit)
-            || supportedOverflowActions.contains(.addToCalendar)
+    private var hasSettingsNondestructive: Bool {
+        supportedOverflowActions.contains(.edit)
             || supportedOverflowActions.contains(.walletPass)
     }
 
-    private var hasDestructiveSupported: Bool {
+    private var hasSettingsDestructive: Bool {
         supportedOverflowActions.contains(.archive)
             || supportedOverflowActions.contains(.delete)
             || supportedOverflowActions.contains(.report)
