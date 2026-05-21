@@ -457,8 +457,14 @@ private struct UpcomingCard: View {
         .ruulCardSurface(.solid, radius: RuulRadius.lg)
     }
 
+    /// Apple segmented-selector recipe: the selected option fills via
+    /// `.glassProminent` + semantic tint (filled CTA, white label by
+    /// system contrast); the others stay outlined via plain `.glass`
+    /// with default accent label.  Avoids the `Color.ruulFillGlassStrong`
+    /// as-tint antipattern that washed the label into the background.
     @ViewBuilder
     private func rsvpButton(_ status: RSVPStatus, label: String, icon: String? = nil, tint: Color?) -> some View {
+        let isSelected = rsvp?.status == status
         Button { onRSVP(status) } label: {
             HStack(spacing: RuulSpacing.s1) {
                 if let icon { Image(systemName: icon).font(.caption.weight(.bold)) }
@@ -466,9 +472,24 @@ private struct UpcomingCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: HomeMetrics.rsvpButtonMinHeight)
         }
-        .buttonStyle(.glass)
-        .tint(rsvp?.status == status ? (tint ?? Color.ruulAccent) : Color.ruulFillGlassStrong)
+        .modifier(RSVPButtonStyle(isSelected: isSelected, tint: tint))
         .sensoryFeedback(.success, trigger: rsvp?.status)
+    }
+}
+
+private struct RSVPButtonStyle: ViewModifier {
+    let isSelected: Bool
+    let tint: Color?
+
+    func body(content: Content) -> some View {
+        if isSelected {
+            content
+                .buttonStyle(.glassProminent)
+                .tint(tint ?? Color.ruulAccent)
+        } else {
+            content
+                .buttonStyle(.glass)
+        }
     }
 }
 

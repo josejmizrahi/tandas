@@ -77,8 +77,10 @@ struct MapSection: View {
                                 .font(.subheadline.weight(.semibold))
                                 .frame(width: 32, height: 32)
                         }
+                        // Default accent — passing ruulFillGlassStrong as tint
+                        // colored the ellipsis with the fill wash and made it
+                        // disappear into the glass background.
                         .buttonStyle(.glass)
-                        .tint(Color.ruulFillGlassStrong)
                     }
                 }
                 .padding(.horizontal, 14)
