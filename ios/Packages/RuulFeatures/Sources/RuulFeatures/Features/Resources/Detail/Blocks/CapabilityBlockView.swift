@@ -61,8 +61,16 @@ struct CapabilityBlockView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.primary)
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(Color(.tertiaryLabel))
+                // Dedupe (PR 9): when the block exposes a labeled footer
+                // verb ("Ver libro" / "Editar anfitriones" / "Abrir en
+                // Mapas"), the footer is the explicit primary tap target
+                // — header chevron becomes redundant clutter per Apple
+                // HIG. Show the chevron only on chevron-only-cards (no
+                // footer verb).
+                if block.footerVerb == nil {
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(Color(.tertiaryLabel))
+                }
             }
         }
         .buttonStyle(.plain)
