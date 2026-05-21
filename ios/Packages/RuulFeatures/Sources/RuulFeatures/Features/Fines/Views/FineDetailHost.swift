@@ -20,6 +20,7 @@ import RuulUI
 @MainActor
 public struct FineDetailHost: View {
     @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
     @Bindable var coordinator: FineDetailCoordinator
 
     public var onViewAppeal: ((Appeal) -> Void)?
@@ -30,6 +31,12 @@ public struct FineDetailHost: View {
     @State private var canVoidFine: Bool = false
     /// "Ver más" tap on the Activity layer.
     @State private var activityHistoryPresented: Bool = false
+
+    /// Member directory keyed by `auth.users.id` for resolving the
+    /// fine's `issuedBy` field into a display name. The `Fine` model
+    /// stores the issuer's user-id (not group-members.id) so we key
+    /// the dictionary the same way.
+    @State private var membersByUserId: [UUID: MemberWithProfile] = [:]
 
     public init(
         coordinator: FineDetailCoordinator,
@@ -56,6 +63,7 @@ public struct FineDetailHost: View {
             await coordinator.refresh()
             await coordinator.trackSeen()
             canVoidFine = await computeCanVoid()
+            await loadMembers()
             await rebuildBlocks()
         }
         .onChange(of: coordinator.fine) { _, _ in
@@ -201,49 +209,99 @@ public struct FineDetailHost: View {
 
     // MARK: - ResourceBlocks → ResourceConfig
 
-    /// Adapter from the fine's `ResourceBlocks` to the new
-    /// `ResourceConfig`. Inline primary action surfaces the legacy
-    /// `payFine` CTA; the destructive "Anular multa" lane (admin only)
-    /// lands in the toolbar menu when the governance gate allows it.
+    /// Builds the `FineInput` the new `.fine(_:)` factory expects from
+    /// the live coordinator state. Amount as display hero, status as
+    /// label, pay/appeal inline, void in toolbar menu (admin gated).
     private func makeConfig(blocks: ResourceBlocks) -> ResourceConfig {
-        let accent = blocks.identity.tint.color
-        let primary = blocks.state.primaryAction
-        let actions: [ResourceAction] = {
-            guard let primary, primary.kind != .none else { return [] }
-            return [
-                ResourceAction(
-                    label: primary.label,
-                    icon: primary.symbol,
-                    tint: accent,
-                    handler: { Task { await dispatchPrimary() } }
-                )
-            ]
+        let f = coordinator.fine
+        let viewerIsDebtor = coordinator.isMine
+        let canPay    = viewerIsDebtor && !f.paid && f.status != .voided
+        let canAppeal = viewerIsDebtor
+                        && coordinator.existingAppeal == nil
+                        && f.status == .officialized
+                        && !f.paid
+        let appealStatusLabel: String? = {
+            guard coordinator.existingAppeal != nil else { return nil }
+            return f.status == .inAppeal ? "En curso" : "Resuelta"
         }()
+        let issuerName = f.issuedBy
+            .flatMap { membersByUserId[$0]?.profile?.displayName }
+        let input = FineInput(
+            id: f.id.uuidString,
+            reason: f.reason,
+            amountFormatted: f.amountFormatted,
+            statusLabel: f.status.displayLabel,
+            createdAtLabel: Self.relativeAgo(f.createdAt),
+            issuedByName: issuerName,
+            canPay: canPay,
+            canAppeal: canAppeal,
+            appealStatusLabel: appealStatusLabel,
+            activity: blocks.activityHead.map(Self.mapActivityEntry)
+        )
         var toolbar: [ToolbarMenuItem] = []
         if canVoidFine {
             toolbar.append(ToolbarMenuItem(label: "Anular multa", icon: "xmark.bin", role: .destructive) {
                 voidSheetPresented = true
             })
         }
-        return ResourceConfig(
-            identity: IdentityData(
-                iconSystemName: blocks.identity.icon,
-                name: blocks.identity.title,
-                typeLabel: "Multa",
-                metadata: blocks.identity.subtitleSegments,
-                badge: nil
-            ),
-            accent: accent,
-            hero: HeroData(
-                value: blocks.state.headline,
-                label: blocks.state.supportingFacts.joined(separator: " · "),
-                size: .title
-            ),
-            actions: actions,
-            sections: [],
-            activity: .static(blocks.activityHead.map(Self.mapActivityEntry)),
+        return withGroupContext(.fine(
+            input,
+            onPay: { Task { await coordinator.payFine() } },
+            onAppeal: { appealSheetPresented = true },
             toolbarMenu: toolbar
+        ))
+    }
+
+    /// Resolves the parent group from `AppState.groups` so the
+    /// `GroupContextSlot` renders under the identity ribbon. Fines
+    /// without a resolvable group (cross-group leak / stale cache)
+    /// degrade to no context rather than render a broken header.
+    private func withGroupContext(_ config: ResourceConfig) -> ResourceConfig {
+        guard let group = app.groups.first(where: { $0.id == coordinator.fine.groupId }) else {
+            return config
+        }
+        return ResourceConfig(
+            identity: config.identity,
+            accent: config.accent,
+            hero: config.hero,
+            actions: config.actions,
+            sections: config.sections,
+            activity: config.activity,
+            toolbarMenu: config.toolbarMenu,
+            groupContext: GroupContextData(
+                groupName: group.name,
+                groupInitials: Self.groupInitials(group.name),
+                proposedBy: nil,
+                proposedAt: coordinator.fine.createdAt,
+                // Tap on group → dismiss the fine detail (same V1 UX as
+                // votes; "open GroupHome" requires router access here).
+                onTapGroup: { dismiss() }
+            )
         )
+    }
+
+    private static func groupInitials(_ name: String) -> String {
+        let chars = name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init)
+        return chars.joined().uppercased()
+    }
+
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.unitsStyle = .short
+        return f
+    }()
+
+    private static func relativeAgo(_ date: Date) -> String {
+        relativeFormatter.localizedString(for: date, relativeTo: .now)
+    }
+
+    @MainActor
+    private func loadMembers() async {
+        let rows = (try? await app.groupsRepo.membersWithProfiles(of: coordinator.fine.groupId)) ?? []
+        var dir: [UUID: MemberWithProfile] = [:]
+        for row in rows { dir[row.member.userId] = row }
+        membersByUserId = dir
     }
 
     private static func mapActivityEntry(_ entry: ActivityEntry) -> ActivityItem {

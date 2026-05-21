@@ -42,6 +42,8 @@ import SwiftUI
 import MapKit
 import CoreLocation
 import UIKit
+import RuulCore
+import RuulUI
 
 // MARK: ════════════════════════════════════════════════════════════════════
 // MARK: 1. CONFIGURACIÓN DEL RECURSO
@@ -58,6 +60,11 @@ public struct ResourceConfig {
     public let sections: [ResourceSection]
     public let activity: ActivitySource?
     public let toolbarMenu: [ToolbarMenuItem]
+    /// Group the resource belongs to. When non-nil the detail renders a
+    /// `GroupContextSlot` right under the identity ribbon so the user
+    /// always sees which group originated the resource (Founder doctrine
+    /// 2026-05-20 §3 — "no orphan resources").
+    public let groupContext: GroupContextData?
 
     public init(
         identity: IdentityData,
@@ -66,7 +73,8 @@ public struct ResourceConfig {
         actions: [ResourceAction] = [],
         sections: [ResourceSection] = [],
         activity: ActivitySource? = nil,
-        toolbarMenu: [ToolbarMenuItem] = []
+        toolbarMenu: [ToolbarMenuItem] = [],
+        groupContext: GroupContextData? = nil
     ) {
         self.identity = identity
         self.accent = accent
@@ -75,6 +83,35 @@ public struct ResourceConfig {
         self.sections = sections
         self.activity = activity
         self.toolbarMenu = toolbarMenu
+        self.groupContext = groupContext
+    }
+}
+
+// MARK: - Group context
+
+/// Carried alongside `ResourceConfig` to render the persistent "En
+/// {Group}" / "Propuesto por {x}" card under the identity ribbon. The
+/// avatar uses a simple gradient pair to stay light — no per-group
+/// branded color is required.
+public struct GroupContextData {
+    public let groupName: String
+    public let groupInitials: String
+    public let proposedBy: String?
+    public let proposedAt: Date?
+    public let onTapGroup: () -> Void
+
+    public init(
+        groupName: String,
+        groupInitials: String,
+        proposedBy: String? = nil,
+        proposedAt: Date? = nil,
+        onTapGroup: @escaping () -> Void = {}
+    ) {
+        self.groupName = groupName
+        self.groupInitials = groupInitials
+        self.proposedBy = proposedBy
+        self.proposedAt = proposedAt
+        self.onTapGroup = onTapGroup
     }
 }
 
@@ -258,6 +295,10 @@ public struct ActivityItem: Identifiable, Equatable {
     public let timestamp: Date
     public let icon: String?
     public let kind: ActivityKind
+    /// Pre-formatted relative time string. When non-nil the view uses it
+    /// directly instead of computing from `timestamp` (lets callers feed
+    /// already-localized strings like "hace 2h" from `ActivityEntry`).
+    public let prebakedRelativeTime: String?
 
     public init(
         id: String,
@@ -265,7 +306,8 @@ public struct ActivityItem: Identifiable, Equatable {
         subtitle: String? = nil,
         timestamp: Date,
         icon: String? = nil,
-        kind: ActivityKind = .neutral
+        kind: ActivityKind = .neutral,
+        prebakedRelativeTime: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -273,6 +315,7 @@ public struct ActivityItem: Identifiable, Equatable {
         self.timestamp = timestamp
         self.icon = icon
         self.kind = kind
+        self.prebakedRelativeTime = prebakedRelativeTime
     }
 }
 
@@ -281,10 +324,10 @@ public enum ActivityKind: Equatable {
 
     var color: Color {
         switch self {
-        case .neutral:  return .gray
-        case .positive: return .green
-        case .negative: return .red
-        case .warning:  return .orange
+        case .neutral:  return Color.ruulTextTertiary
+        case .positive: return .ruulSemanticSuccess
+        case .negative: return .ruulSemanticError
+        case .warning:  return .ruulSemanticWarning
         }
     }
 }
@@ -372,40 +415,48 @@ public struct ResourceDetailContent: View {
 
     public var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: RuulSpacing.s0) {
                 IdentitySlot(data: config.identity, accent: config.accent)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.horizontal, RuulSpacing.s5)
+                    .padding(.top, RuulSpacing.s2)
+
+                if let ctx = config.groupContext {
+                    GroupContextSlot(data: ctx)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s3)
+                }
 
                 if let hero = config.hero {
                     HeroSlot(data: hero)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s3)
                 }
 
                 if !config.actions.isEmpty {
                     ActionsSlot(actions: config.actions, accent: config.accent)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s4)
                 }
 
                 ForEach(config.sections) { section in
                     SectionSlot(section: section, accent: config.accent)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
                 }
 
                 if let activity = config.activity {
                     ActivitySlot(source: activity, accent: config.accent)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
                 }
 
                 Color.clear.frame(height: 32)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.ruulBackgroundRecessed)
         .scrollDismissesKeyboard(.interactively)
+        .scrollEdgeEffectStyle(.soft, for: .all)
+        .tint(config.accent)
     }
 }
 
@@ -420,13 +471,14 @@ struct IdentitySlot: View {
     let accent: Color
 
     var body: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+        HStack(spacing: RuulSpacing.s3) {
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(accent.opacity(0.15))
                 .frame(width: 56, height: 56)
                 .overlay(
                     Image(systemName: data.iconSystemName)
                         .font(.system(size: 26, weight: .medium))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(accent)
                 )
 
@@ -435,10 +487,10 @@ struct IdentitySlot: View {
                     .font(.title2.weight(.bold))
                     .lineLimit(2)
 
-                HStack(spacing: 6) {
-                    Text(([data.typeLabel] + data.metadata).joined(separator: " · "))
+                HStack(spacing: RuulSpacing.micro) {
+                    Text(subtitleSegments.joined(separator: " · "))
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(1)
 
                     if let badge = data.badge {
@@ -450,6 +502,95 @@ struct IdentitySlot: View {
             Spacer(minLength: 0)
         }
     }
+
+    /// Joins `[typeLabel] + metadata` while filtering out any metadata
+    /// entry that already equals `typeLabel` (case-insensitive). Prevents
+    /// the "Fondo · Fondo" duplication seen when block builders push the
+    /// resource family label into `subtitleSegments`.
+    private var subtitleSegments: [String] {
+        let label = data.typeLabel.trimmingCharacters(in: .whitespaces)
+        let extras = data.metadata.filter {
+            !$0.trimmingCharacters(in: .whitespaces)
+                .caseInsensitiveEquivalent(label)
+        }
+        return label.isEmpty ? extras : [label] + extras
+    }
+}
+
+private extension String {
+    func caseInsensitiveEquivalent(_ other: String) -> Bool {
+        compare(other, options: .caseInsensitive) == .orderedSame
+    }
+}
+
+// MARK: GroupContextSlot
+
+/// Subtle Liquid Glass card showing the parent group + provenance.
+/// Drives the "no orphan resource" doctrine: tapping lifts the viewer
+/// out of the resource and into the group surface that owns it.
+///
+/// Visual treatment is **fase 1 doctrine** — `.ruulGlass(.thin)` for the
+/// blur+depth surface (auto fallback to `ruulSurface` under reduce-
+/// transparency) and design system color tokens for every fill / text
+/// (no hardcoded `.indigo` / `.purple` / `.primary` / `.tertiary`).
+struct GroupContextSlot: View {
+    let data: GroupContextData
+
+    @State private var tapTick: Int = 0
+
+    var body: some View {
+        Button(action: {
+            tapTick &+= 1
+            data.onTapGroup()
+        }) {
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.ruulAccentMuted)
+                    .frame(width: 26, height: 26)
+                    .overlay(
+                        Text(data.groupInitials)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.ruulAccent)
+                    )
+
+                contextText
+                    .font(.footnote)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.ruulTextTertiary)
+            }
+            .padding(.horizontal, RuulSpacing.s3)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .ruulGlass(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous),
+            material: .thin,
+            interactive: true
+        )
+        .sensoryFeedback(.selection, trigger: tapTick)
+    }
+
+    private var contextText: Text {
+        var t = Text("En ").foregroundColor(Color.ruulTextSecondary)
+            + Text(data.groupName).fontWeight(.semibold).foregroundColor(Color.ruulTextPrimary)
+        if let by = data.proposedBy {
+            t = t
+                + Text(" · Propuesto por ").foregroundColor(Color.ruulTextSecondary)
+                + Text(by).fontWeight(.semibold).foregroundColor(Color.ruulTextPrimary)
+        }
+        if let at = data.proposedAt {
+            t = t
+                + Text(" ").foregroundColor(Color.ruulTextSecondary)
+                + Text(at, style: .relative).foregroundColor(Color.ruulTextTertiary)
+        }
+        return t
+    }
 }
 
 struct BadgeView: View {
@@ -459,8 +600,8 @@ struct BadgeView: View {
         Text(badge.text)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(badge.color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
+            .padding(.horizontal, RuulSpacing.s2)
+            .padding(.vertical, RuulSpacing.s0_5)
             .background(badge.color.opacity(0.15), in: Capsule())
     }
 }
@@ -471,36 +612,38 @@ struct HeroSlot: View {
     let data: HeroData
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: RuulSpacing.micro) {
             Text(data.value)
                 .font(heroFont)
                 .fontDesign(.rounded)
                 .fontWeight(.bold)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.85)
 
             Text(data.label)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
 
             if let subRow = data.subRow, !subRow.isEmpty {
-                HStack(spacing: 20) {
+                HStack(spacing: RuulSpacing.s5) {
                     ForEach(Array(subRow.enumerated()), id: \.offset) { _, pair in
-                        HStack(spacing: 4) {
+                        HStack(spacing: RuulSpacing.s1) {
                             Text(pair.0)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.ruulTextSecondary)
                             Text(pair.1)
                                 .fontWeight(.semibold)
                         }
                         .font(.caption)
                     }
                 }
-                .padding(.top, 6)
+                .padding(.top, RuulSpacing.micro)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, RuulSpacing.s2)
     }
 
     private var heroFont: Font {
@@ -518,10 +661,10 @@ struct ActionsSlot: View {
     let accent: Color
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: RuulSpacing.s2) {
             ForEach(actions) { action in
                 Button(role: action.role, action: action.handler) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: RuulSpacing.micro) {
                         if let icon = action.icon {
                             Image(systemName: icon)
                                 .font(.footnote.weight(.semibold))
@@ -533,7 +676,7 @@ struct ActionsSlot: View {
                     .frame(maxWidth: .infinity, minHeight: 38)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(action.tint ?? Color.gray.opacity(0.4))
+                .tint(action.tint ?? Color.ruulFillGlassStrong)
             }
         }
     }
@@ -569,10 +712,10 @@ struct RowsSection: View {
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             SectionHeader(title: title)
 
-            VStack(spacing: 0) {
+            VStack(spacing: RuulSpacing.s0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     RowView(item: item, accent: accent)
                     if index < items.count - 1 {
@@ -580,8 +723,8 @@ struct RowsSection: View {
                     }
                 }
             }
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
     }
 }
@@ -602,7 +745,7 @@ struct RowView: View {
 
                 Text(item.label)
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.ruulTextPrimary)
 
                 Spacer(minLength: 8)
 
@@ -610,24 +753,27 @@ struct RowView: View {
                 case .text(let value):
                     Text(value)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.ruulTextSecondary)
                         .multilineTextAlignment(.trailing)
                         .lineLimit(2)
                 case .link(let value):
-                    HStack(spacing: 4) {
+                    HStack(spacing: RuulSpacing.s1) {
                         Text(value)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(accent)
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color.ruulTextTertiary)
                     }
                 case .toggle(let binding):
-                    Toggle("", isOn: binding).labelsHidden().tint(accent)
+                    Toggle(item.label, isOn: binding)
+                        .labelsHidden()
+                        .tint(accent)
+                        .accessibilityLabel(item.label)
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.vertical, RuulSpacing.s3)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -665,10 +811,10 @@ struct MapSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             SectionHeader(title: title)
 
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: RuulSpacing.s0) {
                 Map(position: $cameraPosition, interactionModes: []) {
                     Marker(location.title ?? "Ubicación", coordinate: location.coordinate)
                         .tint(accent)
@@ -677,6 +823,11 @@ struct MapSection: View {
                 .frame(height: 140)
                 .contentShape(Rectangle())
                 .onTapGesture { openInAppleMaps() }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(location.title ?? "Ubicación")
+                .accessibilityValue(location.address)
+                .accessibilityHint("Toca para abrir en Mapas")
+                .accessibilityAddTraits(.isButton)
 
                 VStack(alignment: .leading, spacing: 10) {
                     if let t = location.title {
@@ -684,10 +835,10 @@ struct MapSection: View {
                     }
                     Text(location.address)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(3)
 
-                    HStack(spacing: 8) {
+                    HStack(spacing: RuulSpacing.s2) {
                         Button(action: openInAppleMaps) {
                             Label("Abrir en Mapas", systemImage: "arrow.up.right.square")
                                 .font(.subheadline.weight(.semibold))
@@ -701,14 +852,14 @@ struct MapSection: View {
                                 .frame(width: 32, height: 32)
                         }
                         .buttonStyle(.glass)
-                        .tint(.gray)
+                        .tint(Color.ruulFillGlassStrong)
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 12)
+                .padding(.vertical, RuulSpacing.s3)
             }
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
             .confirmationDialog("Direcciones", isPresented: $showingOptions, titleVisibility: .hidden) {
                 Button("Apple Maps")  { openInAppleMaps() }
                 Button("Google Maps") { openInGoogleMaps() }
@@ -752,28 +903,28 @@ struct AvatarsSection: View {
     let onTapMore: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             SectionHeader(title: title)
 
             Button(action: { onTapMore?() }) {
-                HStack(spacing: 12) {
+                HStack(spacing: RuulSpacing.s3) {
                     if people.isEmpty {
                         HStack(spacing: -10) {
                             ForEach(0..<3, id: \.self) { _ in
                                 Circle()
-                                    .fill(Color(.tertiarySystemFill))
+                                    .fill(Color.ruulSurfaceGlassThin)
                                     .frame(width: 30, height: 30)
                                     .overlay(
                                         Image(systemName: "plus")
                                             .font(.caption.weight(.semibold))
-                                            .foregroundStyle(.tertiary)
+                                            .foregroundStyle(Color.ruulTextTertiary)
                                     )
-                                    .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+                                    .overlay(Circle().stroke(Color.ruulSurface, lineWidth: 2))
                             }
                         }
                         Text(emptyText ?? "Aún nadie")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.ruulTextSecondary)
                     } else {
                         HStack(spacing: -10) {
                             ForEach(people.prefix(3)) { person in
@@ -781,15 +932,15 @@ struct AvatarsSection: View {
                             }
                             if people.count > 3 {
                                 Circle()
-                                    .fill(Color(.tertiarySystemFill))
+                                    .fill(Color.ruulSurfaceGlassThin)
                                     .frame(width: 30, height: 30)
-                                    .overlay(Text("+\(people.count - 3)").font(.caption2.weight(.bold)).foregroundStyle(.secondary))
-                                    .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+                                    .overlay(Text("+\(people.count - 3)").font(.caption2.weight(.bold)).foregroundStyle(Color.ruulTextSecondary))
+                                    .overlay(Circle().stroke(Color.ruulSurface, lineWidth: 2))
                             }
                         }
                         Text("\(people.count) \(people.count == 1 ? "persona" : "personas")")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.ruulTextSecondary)
                     }
 
                     Spacer(minLength: 8)
@@ -797,18 +948,18 @@ struct AvatarsSection: View {
                     if onTapMore != nil {
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color.ruulTextTertiary)
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 12)
+                .padding(.vertical, RuulSpacing.s3)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(onTapMore == nil)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
     }
 }
@@ -832,7 +983,7 @@ struct AvatarView: View {
         }
         .frame(width: 30, height: 30)
         .clipShape(Circle())
-        .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+        .overlay(Circle().stroke(Color.ruulSurface, lineWidth: 2))
     }
 
     private var fallback: some View {
@@ -854,25 +1005,17 @@ struct EmptySection: View {
     let description: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             SectionHeader(title: title)
 
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 28))
-                    .foregroundStyle(.tertiary)
-                Text(message)
-                    .font(.subheadline.weight(.semibold))
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 240)
-            }
+            ContentUnavailableView(
+                message,
+                systemImage: icon,
+                description: Text(description)
+            )
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 28)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Color.ruulSurface)
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
     }
 }
@@ -884,12 +1027,12 @@ struct CustomSection: View {
     let content: AnyView
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             if let title { SectionHeader(title: title) }
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Color.ruulSurface)
+                .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
     }
 }
@@ -899,11 +1042,14 @@ struct CustomSection: View {
 struct SectionHeader: View {
     let title: String
     var body: some View {
-        Text(title.uppercased())
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .tracking(0.5)
-            .padding(.horizontal, 4)
+        // V2 cherry-pick: iOS-26-native grouped-list header — title case,
+        // subheadline, secondary. Replaces the older all-caps + tracking
+        // variant which read as a print convention rather than as Apple's
+        // native section style.
+        Text(title)
+            .font(.subheadline)
+            .foregroundStyle(Color.ruulTextSecondary)
+            .padding(.horizontal, RuulSpacing.s1)
     }
 }
 
@@ -930,7 +1076,7 @@ struct ActivityStaticView: View {
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             SectionHeader(title: "Actividad")
             if items.isEmpty {
                 ActivityEmptyView()
@@ -945,16 +1091,16 @@ struct ActivityPaginatedView: View {
     let loader: ActivityLoader
     let accent: Color
 
-    @StateObject private var viewModel: ActivityViewModel
+    @State private var viewModel: ActivityViewModel
 
     init(loader: ActivityLoader, accent: Color) {
         self.loader = loader
         self.accent = accent
-        self._viewModel = StateObject(wrappedValue: ActivityViewModel(loader: loader))
+        self._viewModel = State(wrappedValue: ActivityViewModel(loader: loader))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
             SectionHeader(title: "Actividad")
 
             switch viewModel.phase {
@@ -982,39 +1128,40 @@ struct ActivityPaginatedView: View {
             ActivityGroupedTimeline(items: viewModel.items, accent: accent)
 
             if viewModel.hasMore {
-                HStack(spacing: 8) {
+                HStack(spacing: RuulSpacing.s2) {
                     if viewModel.phase == .loadingMore {
                         ProgressView().controlSize(.small)
                         Text("Cargando más…")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.ruulTextSecondary)
                     } else {
                         Color.clear.frame(height: 1)
                             .onAppear { viewModel.loadMore() }
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .padding(.vertical, RuulSpacing.s3)
             }
 
             if case .error(let msg) = viewModel.phase, !viewModel.items.isEmpty {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    Text(msg).font(.footnote).foregroundStyle(.secondary)
+                HStack(spacing: RuulSpacing.s2) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.ruulSemanticWarning)
+                    Text(msg).font(.footnote).foregroundStyle(Color.ruulTextSecondary)
                     Button("Reintentar") { viewModel.loadMore() }
                         .font(.footnote.weight(.semibold))
                         .tint(accent)
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, RuulSpacing.s2)
             }
         }
     }
 }
 
 @MainActor
-final class ActivityViewModel: ObservableObject {
-    @Published private(set) var items: [ActivityItem] = []
-    @Published private(set) var phase: Phase = .idle
-    @Published private(set) var hasMore: Bool = true
+@Observable
+final class ActivityViewModel {
+    private(set) var items: [ActivityItem] = []
+    private(set) var phase: Phase = .idle
+    private(set) var hasMore: Bool = true
 
     private var cursor: String?
     private let loader: ActivityLoader
@@ -1078,14 +1225,14 @@ struct ActivityGroupedTimeline: View {
     var body: some View {
         VStack(spacing: 14) {
             ForEach(groups, id: \.label) { group in
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: RuulSpacing.s0) {
                     Text(group.label)
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
-                        .padding(.bottom, 6)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                        .padding(.horizontal, RuulSpacing.s1)
+                        .padding(.bottom, RuulSpacing.micro)
 
-                    VStack(spacing: 0) {
+                    VStack(spacing: RuulSpacing.s0) {
                         ForEach(Array(group.items.enumerated()), id: \.element.id) { i, item in
                             ActivityRowView(item: item, accent: accent)
                             if i < group.items.count - 1 {
@@ -1093,8 +1240,8 @@ struct ActivityGroupedTimeline: View {
                             }
                         }
                     }
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.ruulSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
                 }
             }
         }
@@ -1116,15 +1263,29 @@ struct ActivityGroupedTimeline: View {
         return order.map { ActivityBucket(label: $0, items: buckets[$0]!) }
     }
 
+    private static let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.dateFormat = "MMMM"
+        return f
+    }()
+
+    private static let monthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.dateFormat = "MMMM yyyy"
+        return f
+    }()
+
     private func bucketLabel(for date: Date, now: Date, cal: Calendar) -> String {
         if cal.isDateInToday(date)     { return "Hoy" }
         if cal.isDateInYesterday(date) { return "Ayer" }
         if let w = cal.date(byAdding: .day, value: -7, to: now), date > w { return "Esta semana" }
         if let m = cal.date(byAdding: .month, value: -1, to: now), date > m { return "Este mes" }
 
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_MX")
-        f.dateFormat = cal.isDate(date, equalTo: now, toGranularity: .year) ? "MMMM" : "MMMM yyyy"
+        let f = cal.isDate(date, equalTo: now, toGranularity: .year)
+            ? Self.monthFormatter
+            : Self.monthYearFormatter
         return f.string(from: date).capitalized
     }
 }
@@ -1134,7 +1295,7 @@ struct ActivityRowView: View {
     let accent: Color
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: RuulSpacing.s3) {
             Group {
                 if let icon = item.icon {
                     Image(systemName: icon)
@@ -1150,46 +1311,46 @@ struct ActivityRowView: View {
             }
             .padding(.top, 1)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                 Text(item.title).font(.subheadline)
                 if let s = item.subtitle {
-                    Text(s).font(.caption).foregroundStyle(.secondary)
+                    Text(s).font(.caption).foregroundStyle(Color.ruulTextSecondary)
                 }
             }
 
             Spacer(minLength: 8)
 
-            Text(relativeTime(item.timestamp))
+            Text(item.prebakedRelativeTime ?? relativeTime(item.timestamp))
                 .font(.caption)
-                .foregroundStyle(.tertiary)
-                .padding(.top, 2)
+                .foregroundStyle(Color.ruulTextTertiary)
+                .padding(.top, RuulSpacing.s0_5)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.vertical, RuulSpacing.s3)
     }
 
-    private func relativeTime(_ date: Date) -> String {
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.locale = Locale(identifier: "es_MX")
         f.unitsStyle = .short
-        return f.localizedString(for: date, relativeTo: Date())
+        return f
+    }()
+
+    private func relativeTime(_ date: Date) -> String {
+        Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
 struct ActivityEmptyView: View {
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 28))
-                .foregroundStyle(.tertiary)
-            Text("Sin actividad aún").font(.subheadline.weight(.semibold))
-            Text("Las acciones aparecerán aquí.")
-                .font(.caption).foregroundStyle(.secondary)
-        }
+        ContentUnavailableView(
+            "Sin actividad aún",
+            systemImage: "clock.arrow.circlepath",
+            description: Text("Las acciones aparecerán aquí.")
+        )
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color.ruulSurface)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
     }
 }
 
@@ -1199,27 +1360,24 @@ struct ActivityErrorView: View {
     let retry: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 28))
-                .foregroundStyle(.orange)
-            Text("No pudimos cargar la actividad")
-                .font(.subheadline.weight(.semibold))
-            Text(message)
-                .font(.caption).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
+        VStack(spacing: RuulSpacing.s4) {
+            ContentUnavailableView(
+                "No pudimos cargar la actividad",
+                systemImage: "exclamationmark.triangle.fill",
+                description: Text(message)
+            )
+
             Button(action: retry) {
                 Label("Reintentar", systemImage: "arrow.clockwise")
                     .font(.footnote.weight(.semibold))
             }
             .buttonStyle(.glass)
             .tint(accent)
+            .padding(.bottom, RuulSpacing.s6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color.ruulSurface)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
     }
 }
 
@@ -1227,26 +1385,26 @@ struct ActivitySkeletonView: View {
     @State private var phase: CGFloat = -1
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: RuulSpacing.s0) {
             ForEach(0..<3, id: \.self) { i in
-                HStack(spacing: 12) {
-                    Circle().fill(Color(.tertiarySystemFill)).frame(width: 8, height: 8)
-                    VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: RuulSpacing.s3) {
+                    Circle().fill(Color.ruulSurfaceGlassThin).frame(width: 8, height: 8)
+                    VStack(alignment: .leading, spacing: RuulSpacing.micro) {
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(.tertiarySystemFill))
+                            .fill(Color.ruulSurfaceGlassThin)
                             .frame(height: 12).frame(maxWidth: 180)
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(.quaternarySystemFill))
+                            .fill(Color.ruulSurfaceGlassThin)
                             .frame(height: 9).frame(maxWidth: 80)
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 14).padding(.vertical, 12)
+                .padding(.horizontal, 14).padding(.vertical, RuulSpacing.s3)
                 if i < 2 { Divider().padding(.leading, 36) }
             }
         }
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color.ruulSurface)
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         .redacted(reason: .placeholder)
     }
 }
@@ -1266,10 +1424,26 @@ public struct EventInput {
     public let dayLabel: String         // "Hoy"
     public let durationMin: Int
     public let isHost: Bool
+    /// True when the viewer hasn't accepted yet (no RSVP or pending).
+    /// Drives the conditional "Confirma asistencia" primary action.
+    public let needsRSVPConfirm: Bool
+    /// True when the viewer has already RSVP'd `.going`. Swaps the first
+    /// action for "Cancelar asistencia" (destructive tint).
+    public let viewerIsGoing: Bool
+    /// True when the viewer holds the `issue_manual_fine` permission.
+    /// Drives the conditional "Multa manual" item in the toolbar menu.
+    public let canIssueManualFine: Bool
     public let address: String
     public let coordinate: CLLocationCoordinate2D
     public let attendees: [Person]
     public let activity: [ActivityItem]
+    /// True when the event was generated from a recurring `ResourceSeries`.
+    /// Drives the "Recurrente" badge in `IdentitySlot`. One-off events
+    /// keep this false.
+    public let isRecurrent: Bool
+    /// Pre-formatted recurrence cadence label ("Recurrente · Semanal",
+    /// "Recurrente · Mensual · Ciclo 3"). nil for one-off events.
+    public let recurrenceLabel: String?
 
     public init(
         id: String,
@@ -1279,10 +1453,15 @@ public struct EventInput {
         dayLabel: String,
         durationMin: Int,
         isHost: Bool,
+        needsRSVPConfirm: Bool = false,
+        viewerIsGoing: Bool = false,
+        canIssueManualFine: Bool = false,
         address: String,
         coordinate: CLLocationCoordinate2D,
         attendees: [Person],
-        activity: [ActivityItem]
+        activity: [ActivityItem],
+        isRecurrent: Bool = false,
+        recurrenceLabel: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -1291,10 +1470,15 @@ public struct EventInput {
         self.dayLabel = dayLabel
         self.durationMin = durationMin
         self.isHost = isHost
+        self.needsRSVPConfirm = needsRSVPConfirm
+        self.viewerIsGoing = viewerIsGoing
+        self.canIssueManualFine = canIssueManualFine
         self.address = address
         self.coordinate = coordinate
         self.attendees = attendees
         self.activity = activity
+        self.isRecurrent = isRecurrent
+        self.recurrenceLabel = recurrenceLabel
     }
 }
 
@@ -1326,6 +1510,92 @@ public struct FundInput {
         self.withdrawn = withdrawn
         self.participants = participants
         self.movements = movements
+    }
+}
+
+public struct VoteInput {
+    public let id: String
+    public let title: String
+    public let description: String?
+    public let statusLabel: String        // "Abierta", "Resuelta · Aprobada", "Cancelada"
+    public let voteTypeLabel: String       // "Apelación de multa", "Cambio de regla", etc.
+    public let timingLabel: String         // "Cierra en 2 d", "Cerró hace 1 d"
+    public let inFavor: Int
+    public let against: Int
+    public let abstained: Int
+    public let totalEligible: Int
+    public let quorumPercent: Int
+    public let thresholdPercent: Int
+    public let viewerAlreadyVoted: Bool
+    public let activity: [ActivityItem]
+
+    public init(
+        id: String,
+        title: String,
+        description: String?,
+        statusLabel: String,
+        voteTypeLabel: String,
+        timingLabel: String,
+        inFavor: Int,
+        against: Int,
+        abstained: Int,
+        totalEligible: Int,
+        quorumPercent: Int,
+        thresholdPercent: Int,
+        viewerAlreadyVoted: Bool,
+        activity: [ActivityItem]
+    ) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.statusLabel = statusLabel
+        self.voteTypeLabel = voteTypeLabel
+        self.timingLabel = timingLabel
+        self.inFavor = inFavor
+        self.against = against
+        self.abstained = abstained
+        self.totalEligible = totalEligible
+        self.quorumPercent = quorumPercent
+        self.thresholdPercent = thresholdPercent
+        self.viewerAlreadyVoted = viewerAlreadyVoted
+        self.activity = activity
+    }
+}
+
+public struct FineInput {
+    public let id: String
+    public let reason: String
+    public let amountFormatted: String
+    public let statusLabel: String
+    public let createdAtLabel: String
+    public let issuedByName: String?
+    public let canPay: Bool
+    public let canAppeal: Bool
+    public let appealStatusLabel: String?
+    public let activity: [ActivityItem]
+
+    public init(
+        id: String,
+        reason: String,
+        amountFormatted: String,
+        statusLabel: String,
+        createdAtLabel: String,
+        issuedByName: String?,
+        canPay: Bool,
+        canAppeal: Bool,
+        appealStatusLabel: String?,
+        activity: [ActivityItem]
+    ) {
+        self.id = id
+        self.reason = reason
+        self.amountFormatted = amountFormatted
+        self.statusLabel = statusLabel
+        self.createdAtLabel = createdAtLabel
+        self.issuedByName = issuedByName
+        self.canPay = canPay
+        self.canAppeal = canAppeal
+        self.appealStatusLabel = appealStatusLabel
+        self.activity = activity
     }
 }
 
@@ -1369,47 +1639,115 @@ public extension ResourceConfig {
         onInvite: @escaping () -> Void = {},
         onEdit: @escaping () -> Void = {},
         onRotateHost: @escaping () -> Void = {},
-        onSeeAllAttendees: @escaping () -> Void = {}
+        onSeeAllAttendees: @escaping () -> Void = {},
+        onRSVPConfirm: @escaping () -> Void = {},
+        onRSVPCancel: @escaping () -> Void = {},
+        onAddToCalendar: @escaping () -> Void = {},
+        toolbarMenu: [ToolbarMenuItem] = []
     ) -> ResourceConfig {
-        ResourceConfig(
+        let accent = ResourceFamilyTint.events.color
+
+        // Actions row, capped at 3. RSVP state takes precedence over the
+        // host workflow: an event creator is still an attendee until they
+        // confirm, and the old surface showed "Sin tu respuesta aún" for
+        // hosts who hadn't yet RSVP'd themselves. So:
+        //   - Anyone with no RSVP / pending:
+        //        [Confirma asistencia (success), Invitar, Editar]   if host
+        //        [Confirma asistencia, Compartir, Calendario]       otherwise
+        //   - Anyone going + host: [Invitar, Editar, Rotar]
+        //   - Anyone going + non-host: [Cancelar (error), Compartir, Calendario]
+        //   - Declined / closed + non-host: [Compartir, Calendario]
+        let actions: [ResourceAction]
+        if event.needsRSVPConfirm {
+            let confirm = ResourceAction(
+                label: "Confirma asistencia",
+                icon: "checkmark",
+                tint: .ruulSemanticSuccess,
+                handler: onRSVPConfirm
+            )
+            if event.isHost {
+                actions = [
+                    confirm,
+                    ResourceAction(label: "Invitar", icon: "plus", tint: accent, handler: onInvite),
+                    ResourceAction(label: "Editar", handler: onEdit)
+                ]
+            } else {
+                actions = [
+                    confirm,
+                    ResourceAction(label: "Compartir", icon: "square.and.arrow.up", handler: onInvite),
+                    ResourceAction(label: "Calendario", icon: "calendar.badge.plus", handler: onAddToCalendar)
+                ]
+            }
+        } else if event.isHost {
+            actions = [
+                ResourceAction(label: "Invitar", icon: "plus", tint: accent, handler: onInvite),
+                ResourceAction(label: "Editar", handler: onEdit),
+                ResourceAction(label: "Rotar", handler: onRotateHost)
+            ]
+        } else if event.viewerIsGoing {
+            actions = [
+                ResourceAction(label: "Cancelar", icon: "xmark", tint: .ruulSemanticError, handler: onRSVPCancel),
+                ResourceAction(label: "Compartir", icon: "square.and.arrow.up", handler: onInvite),
+                ResourceAction(label: "Calendario", icon: "calendar.badge.plus", handler: onAddToCalendar)
+            ]
+        } else {
+            actions = [
+                ResourceAction(label: "Compartir", icon: "square.and.arrow.up", handler: onInvite),
+                ResourceAction(label: "Calendario", icon: "calendar.badge.plus", handler: onAddToCalendar)
+            ]
+        }
+
+        // Metadata under the title — adds the recurrence cadence so the
+        // viewer can tell a one-off from a recurring instance at a glance.
+        var identityMetadata: [String] = [event.dayLabel]
+        if let recurrence = event.recurrenceLabel {
+            identityMetadata.append(recurrence)
+        } else if event.isRecurrent {
+            identityMetadata.append("Recurrente")
+        }
+
+        // When recurrent, prepend a "Detalles" row section so the cadence
+        // is also a tappable / scannable property, not just a tag.
+        var sections: [ResourceSection] = []
+        if let recurrence = event.recurrenceLabel ?? (event.isRecurrent ? "Recurrente" : nil) {
+            sections.append(.rows(title: "Detalles", items: [
+                RowItem(icon: "arrow.triangle.2.circlepath", label: "Recurrencia", value: .text(recurrence))
+            ]))
+        }
+        sections.append(contentsOf: [
+            .map(
+                title: "Lugar",
+                location: MapLocation(
+                    coordinate: event.coordinate,
+                    address: event.address
+                )
+            ),
+            .avatars(
+                title: "Asistencia",
+                people: event.attendees,
+                emptyText: "Aún nadie invitado",
+                onTapMore: onSeeAllAttendees
+            )
+        ])
+
+        return ResourceConfig(
             identity: IdentityData(
                 iconSystemName: "calendar",
                 name: event.title,
                 typeLabel: "Evento",
-                metadata: [event.dayLabel],
-                badge: event.isHost ? ResourceBadge(text: "Anfitrión", color: .orange) : nil
+                metadata: identityMetadata,
+                badge: event.isHost ? ResourceBadge(text: "Anfitrión", color: accent) : nil
             ),
-            accent: .orange,
+            accent: accent,
             hero: HeroData(
                 value: event.timeLabel,
                 label: "\(event.dateLabel) · \(event.durationMin) min de duración",
                 size: .title
             ),
-            actions: [
-                ResourceAction(label: "Invitar", icon: "plus", tint: .orange, handler: onInvite),
-                ResourceAction(label: "Editar", handler: onEdit),
-                ResourceAction(label: "Rotar", handler: onRotateHost)
-            ],
-            sections: [
-                .map(
-                    title: "Lugar",
-                    location: MapLocation(
-                        coordinate: event.coordinate,
-                        address: event.address
-                    )
-                ),
-                .avatars(
-                    title: "Asistencia",
-                    people: event.attendees,
-                    emptyText: "Aún nadie invitado",
-                    onTapMore: onSeeAllAttendees
-                )
-            ],
+            actions: actions,
+            sections: sections,
             activity: .static(event.activity),
-            toolbarMenu: [
-                ToolbarMenuItem(label: "Compartir", icon: "square.and.arrow.up", handler: {}),
-                ToolbarMenuItem(label: "Eliminar", icon: "trash", role: .destructive, handler: {})
-            ]
+            toolbarMenu: toolbarMenu
         )
     }
 
@@ -1438,6 +1776,7 @@ public extension ResourceConfig {
                 )
             })
 
+        let accent = ResourceFamilyTint.funds.color
         return ResourceConfig(
             identity: IdentityData(
                 iconSystemName: "banknote",
@@ -1445,7 +1784,7 @@ public extension ResourceConfig {
                 typeLabel: "Fondo",
                 metadata: ["Creado \(fund.createdAgo)"]
             ),
-            accent: .green,
+            accent: accent,
             hero: HeroData(
                 value: fund.balance.formatted(.currency(code: "MXN")),
                 label: "Saldo en MXN",
@@ -1456,8 +1795,8 @@ public extension ResourceConfig {
                 ]
             ),
             actions: [
-                ResourceAction(label: "Aportar", icon: "arrow.down", tint: .green, handler: onContribute),
-                ResourceAction(label: "Retirar", icon: "arrow.up", tint: .red, handler: onWithdraw),
+                ResourceAction(label: "Aportar", icon: "arrow.down", tint: .ruulSemanticSuccess, handler: onContribute),
+                ResourceAction(label: "Retirar", icon: "arrow.up", tint: .ruulSemanticError, handler: onWithdraw),
                 ResourceAction(label: "Libro", handler: onSeeLedger)
             ],
             sections: [
@@ -1478,6 +1817,113 @@ public extension ResourceConfig {
         )
     }
 
+    // MARK: Votación
+
+    /// Renders a Vote with results breakdown (a-favor / en-contra /
+    /// abstención / total elegibles) plus the decision rules section
+    /// (quórum + mayoría). The cast picker opens via `onCast` from the
+    /// inline action; admin finalize/cancel land in `toolbarMenu` and
+    /// stay gated by the host.
+    static func vote(
+        _ vote: VoteInput,
+        onCast: @escaping () -> Void = {},
+        toolbarMenu: [ToolbarMenuItem] = []
+    ) -> ResourceConfig {
+        let accent = ResourceFamilyTint.votes.color
+        let actions: [ResourceAction] = vote.viewerAlreadyVoted ? [] : [
+            ResourceAction(label: "Emitir voto", icon: "checkmark.seal", tint: accent, handler: onCast)
+        ]
+        var sections: [ResourceSection] = []
+        if vote.totalEligible > 0 {
+            sections.append(.rows(title: "Resultados", items: [
+                RowItem(icon: "hand.thumbsup",   label: "A favor",        value: .text("\(vote.inFavor)")),
+                RowItem(icon: "hand.thumbsdown", label: "En contra",      value: .text("\(vote.against)")),
+                RowItem(icon: "minus.circle",    label: "Abstención",     value: .text("\(vote.abstained)")),
+                RowItem(icon: "person.3",        label: "Total elegibles",value: .text("\(vote.totalEligible)"))
+            ]))
+        }
+        sections.append(.rows(title: "Reglas de decisión", items: [
+            RowItem(icon: "checkmark.shield", label: "Quórum",            value: .text("\(vote.quorumPercent)%")),
+            RowItem(icon: "scale.3d",         label: "Mayoría requerida", value: .text("\(vote.thresholdPercent)%"))
+        ]))
+        return ResourceConfig(
+            identity: IdentityData(
+                iconSystemName: "checkmark.seal",
+                name: vote.title,
+                typeLabel: "Votación",
+                metadata: [vote.voteTypeLabel],
+                badge: nil
+            ),
+            accent: accent,
+            hero: HeroData(
+                value: vote.statusLabel,
+                label: vote.timingLabel,
+                size: .title
+            ),
+            actions: actions,
+            sections: sections,
+            activity: .static(vote.activity),
+            toolbarMenu: toolbarMenu
+        )
+    }
+
+    // MARK: Multa
+
+    /// Renders a Fine with the amount as the dominant hero metric +
+    /// status as label. Pay / Appeal lives inline as gated actions;
+    /// admin "Anular" lands in `toolbarMenu`. Detail rows expose
+    /// reason, emisor, and timing; an "Apelación" section only renders
+    /// when `appealStatusLabel` is set.
+    static func fine(
+        _ fine: FineInput,
+        onPay: @escaping () -> Void = {},
+        onAppeal: @escaping () -> Void = {},
+        toolbarMenu: [ToolbarMenuItem] = []
+    ) -> ResourceConfig {
+        let accent = ResourceFamilyTint.fines.color
+        var actions: [ResourceAction] = []
+        if fine.canPay {
+            actions.append(ResourceAction(label: "Pagar", icon: "creditcard", tint: .ruulSemanticSuccess, handler: onPay))
+        }
+        if fine.canAppeal {
+            actions.append(ResourceAction(label: "Apelar", icon: "exclamationmark.bubble", handler: onAppeal))
+        }
+        var detailRows: [RowItem] = [
+            RowItem(icon: "doc.text", label: "Razón",   value: .text(fine.reason)),
+            RowItem(icon: "calendar", label: "Emitida", value: .text(fine.createdAtLabel))
+        ]
+        if let issuer = fine.issuedByName {
+            detailRows.append(RowItem(icon: "person", label: "Emisor", value: .text(issuer)))
+        }
+        var sections: [ResourceSection] = [
+            .rows(title: "Detalles", items: detailRows)
+        ]
+        if let appealLabel = fine.appealStatusLabel {
+            sections.append(.rows(title: "Apelación", items: [
+                RowItem(icon: "exclamationmark.bubble", label: "Estado", value: .text(appealLabel))
+            ]))
+        }
+        return ResourceConfig(
+            identity: IdentityData(
+                iconSystemName: "exclamationmark.bubble",
+                name: fine.reason,
+                typeLabel: "Multa",
+                metadata: [fine.statusLabel],
+                badge: nil
+            ),
+            accent: accent,
+            hero: HeroData(
+                value: fine.amountFormatted,
+                label: fine.statusLabel,
+                size: .display
+            ),
+            actions: actions,
+            sections: sections,
+            activity: .static(fine.activity),
+            toolbarMenu: toolbarMenu
+        )
+    }
+
     // MARK: Espacio
 
     static func space(
@@ -1486,14 +1932,15 @@ public extension ResourceConfig {
         onSeeCalendar: @escaping () -> Void = {},
         onEdit: @escaping () -> Void = {}
     ) -> ResourceConfig {
-        ResourceConfig(
+        let accent = ResourceFamilyTint.assets.color
+        return ResourceConfig(
             identity: IdentityData(
                 iconSystemName: "key.fill",
                 name: space.name,
                 typeLabel: "Espacio",
-                badge: space.isActive ? ResourceBadge(text: "Activo", color: .green) : nil
+                badge: space.isActive ? ResourceBadge(text: "Activo", color: .ruulSemanticSuccess) : nil
             ),
-            accent: .purple,
+            accent: accent,
             hero: HeroData(
                 value: space.nextBookingTime ?? "Disponible",
                 label: space.nextBookingTime == nil
@@ -1502,7 +1949,7 @@ public extension ResourceConfig {
                 size: .title
             ),
             actions: [
-                ResourceAction(label: "Reservar", icon: "calendar.badge.plus", tint: .purple, handler: onReserve),
+                ResourceAction(label: "Reservar", icon: "calendar.badge.plus", tint: accent, handler: onReserve),
                 ResourceAction(label: "Calendario", handler: onSeeCalendar),
                 ResourceAction(label: "Editar", handler: onEdit)
             ],
@@ -1580,6 +2027,51 @@ public extension ResourceConfig {
             ActivityItem(id: "s1", title: "Espacio creado",
                          subtitle: "Tú",
                          timestamp: Date().addingTimeInterval(-172800))
+        ]
+    )))
+}
+
+#Preview("Votación") {
+    ResourceDetailView(config: .vote(VoteInput(
+        id: "1",
+        title: "¿Subimos la cuota mensual a $500?",
+        description: "Para cubrir gastos del próximo trimestre.",
+        statusLabel: "Abierta",
+        voteTypeLabel: "Cambio de regla",
+        timingLabel: "Cierra en 2 d",
+        inFavor: 4,
+        against: 1,
+        abstained: 1,
+        totalEligible: 8,
+        quorumPercent: 60,
+        thresholdPercent: 50,
+        viewerAlreadyVoted: false,
+        activity: [
+            ActivityItem(id: "v1", title: "Votación iniciada",
+                         subtitle: "Jose", timestamp: Date().addingTimeInterval(-7200)),
+            ActivityItem(id: "v2", title: "Voto emitido",
+                         subtitle: "Linda · A favor",
+                         timestamp: Date().addingTimeInterval(-3600),
+                         kind: .positive)
+        ]
+    )))
+}
+
+#Preview("Multa") {
+    ResourceDetailView(config: .fine(FineInput(
+        id: "1",
+        reason: "Llegada tarde a la cena",
+        amountFormatted: "$200.00",
+        statusLabel: "Pendiente",
+        createdAtLabel: "Hoy · 21 may",
+        issuedByName: "Jose",
+        canPay: true,
+        canAppeal: true,
+        appealStatusLabel: nil,
+        activity: [
+            ActivityItem(id: "f1", title: "Multa emitida",
+                         subtitle: "Jose", timestamp: Date().addingTimeInterval(-1800),
+                         kind: .negative)
         ]
     )))
 }

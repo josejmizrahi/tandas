@@ -13,6 +13,12 @@ public struct EventPatch: Sendable, Equatable {
     public var locationLng: Double?
     public var hostId: UUID?
     public var applyRules: Bool?
+    /// Optional cap. Use `.some(Int?)` with a nested nil to clear back to
+    /// "unlimited"; a missing patch entry means "don't touch".
+    public var capacityMax: Int??
+    public var allowPlusOnes: Bool?
+    public var maxPlusOnesPerMember: Int?
+    public var rsvpDeadline: Date??
 
     public init(title: String? = nil, description: String? = nil, coverImageName: String? = nil, coverImageURL: URL? = nil, startsAt: Date? = nil, durationMinutes: Int? = nil, locationName: String? = nil, locationLat: Double? = nil, locationLng: Double? = nil, hostId: UUID? = nil, applyRules: Bool? = nil) {
         self.title = title
@@ -396,6 +402,14 @@ public actor LiveEventRepository: EventRepository {
         if let v = patch.locationLng        { patchJSON["location_lng"] = .double(v) }
         if let v = patch.hostId             { patchJSON["host_id"] = .string(v.uuidString.lowercased()) }
         if let v = patch.applyRules         { patchJSON["apply_rules"] = .bool(v) }
+        if let v = patch.capacityMax {
+            patchJSON["capacity_max"] = v.map { .integer($0) } ?? .null
+        }
+        if let v = patch.allowPlusOnes      { patchJSON["allow_plus_ones"] = .bool(v) }
+        if let v = patch.maxPlusOnesPerMember { patchJSON["max_plus_ones_per_member"] = .integer(v) }
+        if let v = patch.rsvpDeadline {
+            patchJSON["rsvp_deadline"] = v.map { .string(ISO8601DateFormatter().string(from: $0)) } ?? .null
+        }
 
         struct Params: Encodable {
             let p_event_id: String

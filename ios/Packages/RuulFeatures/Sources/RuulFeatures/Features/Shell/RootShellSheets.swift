@@ -136,11 +136,11 @@ public struct RootShellSheets: ViewModifier {
                     .presentationBackground(.regularMaterial)
             }
 
-            // MARK: Event edit cover (item: state.activeEditEvent)
-            .fullScreenCover(item: activeEditEventItem) { wrappedEvent in
-                eventEditScreen(wrappedEvent.event)
-                .presentationBackground(.regularMaterial)
-            }
+            // MARK: Event edit cover moved INSIDE `eventDetailScreen` so
+            // it can present above the event detail's own fullScreenCover.
+            // Attaching it here as a sibling caused the edit cover to be
+            // silently ignored whenever a detail was already up (SwiftUI
+            // renders one sibling cover at a time).
 
             // MARK: Scanner cover (item: state.activeScannerCoordinator)
             .fullScreenCover(item: activeScannerItem) { wrappedCoord in
@@ -336,15 +336,43 @@ private struct GroupHomeSheetContent: View {
             groupId: group.id,
             groupsRepo: app.groupsRepo,
             groupSummaryRepo: app.groupSummaryRepo,
+            userActionRepo: app.userActionRepo,
+            myActivityRepo: app.myActivityRepo,
             actorUserId: app.session?.user.id
         )
         NavigationStack(path: $path) {
-            GroupHomeView(
+            GroupSpaceView(
                 coordinator: coord,
-                onOpenMembersList: { path.append(GroupNav.membersList) },
-                onOpenMembersAdmin: { path.append(GroupNav.membersAdmin) },
-                onOpenGovernance: { path.append(GroupNav.governance) },
-                onOpenRulePresets: { path.append(GroupNav.rulePresets) },
+                onCreateEvent: { router.present(.createCover) },
+                onOpenDecisions: { path.append(GroupNav.acuerdos) },
+                onInviteMembers: { showInvite = true },
+                onOpenEvents: {
+                    // No group-scoped events list yet — Home tab is the
+                    // event surface and already supports group filtering
+                    // (V2 Slice 4D HomeScope). Dismiss this sheet so the
+                    // user lands on the surface, not a stacked modal.
+                    while router.state.contains(.groupHome) { router.state.dismissTop() }
+                    router.selectTab(.home)
+                },
+                onOpenFines: {
+                    while router.state.contains(.groupHome) { router.state.dismissTop() }
+                    router.requestOpenMyFines()
+                },
+                onOpenInbox: { router.selectTab(.home) },
+                onOpenMembers: {
+                    path.append(
+                        coord.isCurrentUserAdmin
+                            ? GroupNav.membersAdmin
+                            : GroupNav.membersList
+                    )
+                },
+                onOpenActivity: nil,
+                onSelectPending: { _ in router.selectTab(.home) },
+                onShareInvite: { router.present(.inviteShare) },
+                onEditIdentity: { showEditIdentity = true },
+                onRotateCode: { showRotateCode = true },
+                onArchiveGroup: { showArchiveConfirm = true },
+                onConfirmLeave: { showLeave = true },
                 onLeaveGroup: {
                     Task {
                         try? await app.groupsRepo.leave(group.id)
@@ -352,31 +380,7 @@ private struct GroupHomeSheetContent: View {
                         while router.state.contains(.groupHome) { router.state.dismissTop() }
                         while router.state.contains(.inviteShare) { router.state.dismissTop() }
                     }
-                },
-                onShareInvite: { router.present(.inviteShare) },
-                onEditIdentity: { showEditIdentity = true },
-                onPickModules: { path.append(GroupNav.modules) },
-                onPickCurrency: { path.append(GroupNav.currency) },
-                onPickTimezone: { path.append(GroupNav.timezone) },
-                onRotateCode: { showRotateCode = true },
-                onInviteMembers: { showInvite = true },
-                onConfirmLeave: { showLeave = true },
-                onOpenRoles: { path.append(GroupNav.roles) },
-                onArchiveGroup: { showArchiveConfirm = true },
-                onOpenMyLedger: nil,
-                onOpenMyFines: {
-                    // V2 Slice 4D: dismiss the Group sheet first so the
-                    // cross-tab deep link doesn't stack on top of it.
-                    // requestOpenMyFines switches to .profile and raises
-                    // the flag ProfileTab observes.
-                    while router.state.contains(.groupHome) { router.state.dismissTop() }
-                    router.requestOpenMyFines()
-                },
-                onOpenVotes: {
-                    router.openOpenVotes(OpenVotesRouteContext(id: group.id))
-                },
-                onOpenInbox: { router.selectTab(.home) },
-                onOpenAcuerdos: { path.append(GroupNav.acuerdos) }
+                }
             )
             .navigationDestination(for: GroupNav.self) { dest in
                 switch dest {

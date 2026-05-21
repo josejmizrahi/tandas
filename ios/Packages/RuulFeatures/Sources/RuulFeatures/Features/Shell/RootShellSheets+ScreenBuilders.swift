@@ -87,6 +87,16 @@ extension RootShellSheets {
             )
             .environment(app)
             .environment(router)
+            // The edit cover lives INSIDE the detail screen so SwiftUI
+            // can present it above the detail's own fullScreenCover.
+            // Attaching at root level (where other covers live) makes it
+            // a sibling — and SwiftUI only renders one sibling cover at
+            // a time, so the edit silently never appeared while the
+            // detail was up. See activeEditEventItem binding.
+            .fullScreenCover(item: activeEditEventItem) { wrappedEvent in
+                eventEditScreen(wrappedEvent.event)
+                    .presentationBackground(.regularMaterial)
+            }
         )
     }
 

@@ -40,6 +40,35 @@ public struct ResourceDetailSheet: View {
     /// "Ver más" tap on the Activity layer.
     @State private var activityHistoryPresented: Bool = false
 
+    // MARK: - Type-specific projections loaded on first appear
+
+    /// Fund balance snapshot. Lives here (not on Resource) because the
+    /// rich `.fund(_:)` factory in `ResourceDetailView` needs
+    /// `balanceCents` / `inCents` / `outCents` / `currency` — all of which
+    /// come from `fund_balance_view`, not the polymorphic `resources` row.
+    @State private var fundProjection: Fund?
+    /// Last 50 ledger entries for this resource. Renders in the
+    /// "Movimientos" section of funds; we map each to an `ActivityItem`
+    /// at config-build time.
+    @State private var ledgerEntries: [LedgerEntry] = []
+    /// All bookings for a slot/space resource. Powers `nextBookingTime`
+    /// and `bookingsThisMonth` on `SpaceInput`.
+    @State private var bookings: [Booking] = []
+    /// Slots that belong to the space (resource_type=slot, assetId=space.id).
+    /// V1 derives bookings this month + next booking time from this list
+    /// without joining `public.bookings` — a slot with `bookingId != nil`
+    /// is considered an active reservation.
+    @State private var spaceSlots: [Slot] = []
+
+    // Space-specific sheet bindings — wire the 3 V1 actions (Reservar /
+    // Calendario / Editar) to dedicated sheets in
+    // `Resources/Sheets/Space/`. State lives here so the new universal
+    // detail's inline action handlers can flip a single binding.
+    @State private var spaceReservePresented: Bool = false
+    @State private var spaceCalendarPresented: Bool = false
+    @State private var spaceEditPresented: Bool = false
+    @State private var fundEditPresented: Bool = false
+
     public init(resource: ResourceRow) { self.resource = resource }
 
     public var body: some View {
@@ -68,7 +97,9 @@ public struct ResourceDetailSheet: View {
                 if ledgerCoordinator == nil {
                     ledgerCoordinator = makeLedgerCoordinator()
                 }
-                ledgerCoordinator?.resetForm()
+                // Do NOT call resetForm() here — `presentLedgerForm(kind:)`
+                // already reset + assigned the right entry kind. Calling
+                // it again would clobber Aportar back to `.expense`.
                 Task { await ledgerCoordinator?.load() }
             }
         }
@@ -92,6 +123,37 @@ public struct ResourceDetailSheet: View {
                 resourceId: resource.id,
                 displayName: displayName
             )
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        // MARK: Space-specific covers — present above the resource detail
+        // by attaching here (inside the content), not as siblings at the
+        // shell root. SwiftUI only renders one sibling cover at a time.
+        .sheet(isPresented: $spaceReservePresented) {
+            SpaceReserveSheet(resourceName: displayName)
+                .environment(app)
+                .presentationBackground(.regularMaterial)
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $spaceCalendarPresented) {
+            SpaceCalendarSheet(resource: liveResource ?? resource)
+                .environment(app)
+                .presentationBackground(.regularMaterial)
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $spaceEditPresented) {
+            SpaceEditSheet(resource: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $fundEditPresented) {
+            FundEditSheet(resource: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
             .environment(app)
             .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
@@ -199,7 +261,7 @@ public struct ResourceDetailSheet: View {
     private var content: some View {
         if let group = parentGroup {
             if let blocks {
-                ResourceDetailContent(config: makeConfig(blocks: blocks, group: group))
+                ResourceDetailContent(config: withGroupContext(makeConfig(blocks: blocks, group: group), group: group))
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -221,15 +283,29 @@ public struct ResourceDetailSheet: View {
 
     // MARK: - ResourceBlocks → ResourceConfig
 
-    /// Generic adapter that turns the polymorphic `ResourceBlocks`
-    /// produced by the type-specific builders into a `ResourceConfig`
-    /// the new universal detail can render. Covers fund/asset/space/
-    /// slot/right at once since each type's identity ribbon already
-    /// carries the right icon, family tint, and subtitle segments.
-    /// Capability sections are not yet mapped — empty for now; the
-    /// header + hero + activity already deliver the new layout.
+    /// Dispatches to a type-specific adapter when one exists, otherwise
+    /// falls back to a generic header + hero + activity shell built from
+    /// the polymorphic `ResourceBlocks`. Rich adapters (fund, space) use
+    /// the boceto's `.fund(_:)` / `.space(_:)` factories so the user gets
+    /// the dedicated balance/breakdown/bookings UI instead of the empty
+    /// generic fallback.
     private func makeConfig(blocks: ResourceBlocks, group: RuulCore.Group) -> ResourceConfig {
         let live = liveResource ?? resource
+        switch live.resourceType {
+        case .fund:
+            return makeFundConfig(live: live, blocks: blocks)
+        case .space:
+            return makeSpaceConfig(live: live, blocks: blocks)
+        case .asset, .slot, .right, .event, .unknown:
+            return makeGenericConfig(live: live, blocks: blocks, group: group)
+        }
+    }
+
+    /// Generic fallback for resource types without a rich factory yet.
+    /// Maps Identity + Hero + the primary action + Activity. Capability
+    /// sections are skipped — promoting them is a follow-up that maps
+    /// each `BlockLayoutKind` to a `ResourceSection`.
+    private func makeGenericConfig(live: ResourceRow, blocks: ResourceBlocks, group: RuulCore.Group) -> ResourceConfig {
         let accent = blocks.identity.tint.color
         let primary = blocks.state.primaryAction
         let actions: [ResourceAction] = {
@@ -264,8 +340,101 @@ public struct ResourceDetailSheet: View {
         )
     }
 
+    /// Fund adapter — feeds the boceto's `.fund(_:)` factory so the user
+    /// sees the proper balance hero (with Aportado/Retirado sub-row),
+    /// Aportar/Retirar/Libro actions, the movements list, and the
+    /// participants pile. Reads `fund_balance_view` + `ledger_entries`
+    /// loaded in `loadTypeSpecificProjections`.
+    private func makeFundConfig(live: ResourceRow, blocks: ResourceBlocks) -> ResourceConfig {
+        let fund = fundProjection
+        let currency = fund?.currency ?? "MXN"
+        let balance     = Decimal(fund?.balanceCents ?? 0) / 100
+        let contributed = Decimal(fund?.inCents ?? 0)      / 100
+        let withdrawn   = Decimal(fund?.outCents ?? 0)     / 100
+        let createdAgo  = Self.relativeAgo(fund?.createdAt ?? live.createdAt)
+
+        let movements = ledgerEntries.map { entry in
+            ActivityItem(
+                id: entry.id.uuidString,
+                title: Self.ledgerTitle(for: entry),
+                subtitle: Self.formatLedgerAmount(entry, currency: currency),
+                timestamp: entry.occurredAt,
+                icon: Self.ledgerIcon(for: entry),
+                kind: entry.amountCents >= 0 ? .positive : .negative,
+                prebakedRelativeTime: Self.relativeAgo(entry.occurredAt)
+            )
+        }
+
+        let participants = memberDirectory.values
+            .sorted(by: { ($0.profile?.displayName ?? "") < ($1.profile?.displayName ?? "") })
+            .map(Self.makePerson)
+
+        let input = FundInput(
+            id: live.id.uuidString,
+            name: blocks.identity.title,
+            createdAgo: createdAgo,
+            balance: balance,
+            contributed: contributed,
+            withdrawn: withdrawn,
+            participants: participants,
+            movements: movements
+        )
+
+        return .fund(
+            input,
+            onContribute: { presentLedgerForm(kind: .contribution) },
+            onWithdraw:   { presentLedgerForm(kind: .expense) },
+            onSeeLedger:  { activityHistoryPresented = true },
+            onSeeParticipants: { /* future: members sheet */ },
+            activityLoader: nil
+        )
+    }
+
+    /// Opens the AddLedgerEntry form with a pre-selected entry kind so
+    /// "Aportar" lands on a contribution form and "Retirar" lands on an
+    /// expense form. The legacy single-sheet flow opened both with the
+    /// default `.expense` kind which made `Aportar` silently incorrect.
+    private func presentLedgerForm(kind: ResourceLedgerCoordinator.EntryKind) {
+        if ledgerCoordinator == nil {
+            ledgerCoordinator = makeLedgerCoordinator()
+        }
+        ledgerCoordinator?.resetForm()
+        ledgerCoordinator?.formKind = kind
+        ledgerSheetPresented = true
+    }
+
+    /// Space adapter — uses the boceto's `.space(_:)` factory. Capacity
+    /// and location come from `resources.metadata`; bookings this month
+    /// and next booking time aggregate over the child `slot` resources
+    /// loaded into `spaceSlots`.
+    private func makeSpaceConfig(live: ResourceRow, blocks: ResourceBlocks) -> ResourceConfig {
+        let capacity = (live.metadata["capacity"]?.intValue) ?? 0
+        let location: String = {
+            if case let .string(s) = live.metadata["location"] { return s }
+            return ""
+        }()
+        let (bookingsThisMonth, nextBookingTime) = Self.summarize(slots: spaceSlots)
+        let input = SpaceInput(
+            id: live.id.uuidString,
+            name: blocks.identity.title,
+            isActive: live.archivedAt == nil,
+            capacity: capacity,
+            location: location,
+            bookingsThisMonth: bookingsThisMonth,
+            nextBookingTime: nextBookingTime,
+            activity: blocks.activityHead.map(Self.mapActivityEntry)
+        )
+        return .space(
+            input,
+            onReserve:     { spaceReservePresented = true },
+            onSeeCalendar: { spaceCalendarPresented = true },
+            onEdit:        { spaceEditPresented = true }
+        )
+    }
+
     private func makeToolbarMenu() -> [ToolbarMenuItem] {
-        [
+        let live = liveResource ?? resource
+        var items: [ToolbarMenuItem] = [
             ToolbarMenuItem(label: "Reglas", icon: "list.bullet.rectangle") {
                 rulesSheetPresented = true
             },
@@ -273,6 +442,22 @@ public struct ResourceDetailSheet: View {
                 ledgerSheetPresented = true
             }
         ]
+        // Editar — exposed per resource type. Funds + spaces have
+        // dedicated edit sheets; other types skip the entry until their
+        // metadata-update RPC ships.
+        switch live.resourceType {
+        case .space:
+            items.append(ToolbarMenuItem(label: "Editar espacio", icon: "pencil") {
+                spaceEditPresented = true
+            })
+        case .fund:
+            items.append(ToolbarMenuItem(label: "Editar fondo", icon: "pencil") {
+                fundEditPresented = true
+            })
+        case .asset, .slot, .right, .event, .unknown:
+            break
+        }
+        return items
     }
 
     private static func typeLabel(for type: ResourceType) -> String {
@@ -300,6 +485,145 @@ public struct ResourceDetailSheet: View {
             kind: .neutral,
             prebakedRelativeTime: entry.relativeTime
         )
+    }
+
+    /// Pretty Spanish relative-time string ("hace 2h", "hace 3 d"). Used
+    /// for fund creation age and ledger movement prebaked timestamps so
+    /// the new view's formatter doesn't recompute from `.now` and lose
+    /// the original `occurred_at` context.
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.unitsStyle = .short
+        return f
+    }()
+
+    private static func relativeAgo(_ date: Date) -> String {
+        relativeFormatter.localizedString(for: date, relativeTo: .now)
+    }
+
+    /// One sentence per ledger row. Builders haven't standardized this
+    /// surface yet — we fall back to the entry's `metadata.note` and
+    /// finally to a default per `type`.
+    private static func ledgerTitle(for entry: LedgerEntry) -> String {
+        if case let .string(note) = entry.metadata["note"], !note.isEmpty {
+            return note
+        }
+        switch entry.type {
+        case LedgerEntry.Kind.contribution: return "Aporte"
+        case LedgerEntry.Kind.expense:      return "Gasto"
+        case LedgerEntry.Kind.payout:       return "Pago"
+        case LedgerEntry.Kind.reimbursement: return "Reembolso"
+        case LedgerEntry.Kind.settlement:   return "Liquidación"
+        case LedgerEntry.Kind.fineIssued:   return "Multa emitida"
+        case LedgerEntry.Kind.finePaid:     return "Multa pagada"
+        default:                            return entry.type.capitalized
+        }
+    }
+
+    private static func ledgerIcon(for entry: LedgerEntry) -> String {
+        switch entry.type {
+        case LedgerEntry.Kind.contribution, LedgerEntry.Kind.reimbursement, LedgerEntry.Kind.finePaid:
+            return "arrow.down.circle"
+        case LedgerEntry.Kind.expense, LedgerEntry.Kind.payout, LedgerEntry.Kind.fineIssued:
+            return "arrow.up.circle"
+        case LedgerEntry.Kind.settlement:
+            return "arrow.left.arrow.right.circle"
+        default:
+            return "circle"
+        }
+    }
+
+    private static func formatLedgerAmount(_ entry: LedgerEntry, currency: String) -> String {
+        let amount = Decimal(entry.amountCents) / 100
+        let formatted = amount.formatted(.currency(code: currency))
+        return entry.amountCents >= 0 ? "+\(formatted)" : formatted  // negatives carry their own sign
+    }
+
+    /// Avatar tint comes from `ResourceFamilyTint.persons` to stay
+    /// consistent with the rest of the identity surface.
+    private static func makePerson(_ mwp: MemberWithProfile) -> Person {
+        let name = mwp.profile?.displayName ?? "Miembro"
+        let avatar = mwp.profile?.avatarUrl.flatMap(URL.init(string:))
+        return Person(
+            id: mwp.member.userId.uuidString,
+            name: name,
+            initials: personInitials(from: name),
+            color: ResourceFamilyTint.persons.color,
+            imageURL: avatar
+        )
+    }
+
+    private static func personInitials(from name: String) -> String {
+        let chars = name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init)
+        let joined = chars.joined()
+        return joined.isEmpty ? "?" : joined.uppercased()
+    }
+
+    /// Splices the group context into the config so `GroupContextSlot`
+    /// renders under the identity ribbon. Resolves `proposedBy` from
+    /// `resources.created_by` against the loaded `memberDirectory`.
+    private func withGroupContext(_ config: ResourceConfig, group: RuulCore.Group) -> ResourceConfig {
+        let live = liveResource ?? resource
+        let proposedBy = live.createdBy.flatMap { memberDirectory[$0]?.profile?.displayName }
+        return ResourceConfig(
+            identity: config.identity,
+            accent: config.accent,
+            hero: config.hero,
+            actions: config.actions,
+            sections: config.sections,
+            activity: config.activity,
+            toolbarMenu: config.toolbarMenu,
+            groupContext: GroupContextData(
+                groupName: group.name,
+                groupInitials: Self.groupInitials(group.name),
+                proposedBy: proposedBy,
+                proposedAt: live.createdAt,
+                onTapGroup: { dismiss() }
+            )
+        )
+    }
+
+    private static func groupInitials(_ name: String) -> String {
+        let chars = name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init)
+        return chars.joined().uppercased()
+    }
+
+    /// Derives `(bookingsThisMonth, nextBookingTime)` from a flat slot
+    /// list. "Booking" here = a slot with `bookingId != nil` (i.e.
+    /// someone has claimed the time window). Next booking = the closest
+    /// future slot whose status hasn't transitioned to archived.
+    private static func summarize(slots: [Slot]) -> (count: Int, next: String?) {
+        let now = Date.now
+        let cal = Calendar.current
+        let monthStart = cal.dateInterval(of: .month, for: now)?.start ?? now
+        let monthEnd   = cal.dateInterval(of: .month, for: now)?.end   ?? now
+
+        let bookedThisMonth = slots.filter { slot in
+            slot.bookingId != nil
+                && slot.archivedAt == nil
+                && slot.startsAt >= monthStart
+                && slot.startsAt < monthEnd
+        }.count
+
+        let nextSlot = slots
+            .filter { $0.bookingId != nil && $0.archivedAt == nil && $0.startsAt >= now }
+            .sorted { $0.startsAt < $1.startsAt }
+            .first
+
+        let nextLabel: String?
+        if let next = nextSlot {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "es_MX")
+            f.dateFormat = cal.isDateInToday(next.startsAt)
+                ? "'hoy' h:mm a"
+                : cal.isDateInTomorrow(next.startsAt) ? "'mañana' h:mm a"
+                : "d MMM · h:mm a"
+            nextLabel = f.string(from: next.startsAt)
+        } else {
+            nextLabel = nil
+        }
+        return (bookedThisMonth, nextLabel)
     }
 
     /// Per-resource-type overflow allowlist. Today every non-event row
@@ -578,6 +902,37 @@ public struct ResourceDetailSheet: View {
         // Phase E: build the initial block tree now that we have member directory.
         if let group = parentGroup {
             await buildBlocks(for: group)
+        }
+
+        // Type-specific projections that power the rich `.fund(_:)` /
+        // `.space(_:)` factories. Skip the fetches for types that don't
+        // need them so we don't waste a round-trip on assets/rights.
+        await loadTypeSpecificProjections()
+    }
+
+    /// Fetches the polymorphic projections the rich per-type adapters
+    /// need (Fund balance row, ledger entries, slot bookings). Each
+    /// branch fails open — silent fallback means the new layout still
+    /// renders even if the projection isn't reachable yet.
+    @MainActor
+    private func loadTypeSpecificProjections() async {
+        let live = liveResource ?? resource
+        switch live.resourceType {
+        case .fund:
+            async let fund = app.fundRepo.get(live.id)
+            async let ledger = app.ledgerRepo.listForResource(live.id, limit: 50)
+            fundProjection = (try? await fund)?.first
+            ledgerEntries = (try? await ledger) ?? []
+        case .slot:
+            bookings = (try? await app.bookingRepo.listForSlot(live.id)) ?? []
+        case .space:
+            // A space is a parent container; its bookable units are
+            // child `slot` resources with `assetId == space.id`. We
+            // surface slot-derived counts directly so V1 doesn't need
+            // a separate "space_booking_summary" projection.
+            spaceSlots = (try? await app.slotRepo.listForAsset(live.id)) ?? []
+        case .asset, .right, .event, .unknown:
+            break
         }
     }
 

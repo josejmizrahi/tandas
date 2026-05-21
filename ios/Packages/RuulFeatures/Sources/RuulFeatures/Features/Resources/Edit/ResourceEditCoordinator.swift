@@ -47,7 +47,11 @@ public final class ResourceEditCoordinator {
             locationLat: event.locationLat,
             locationLng: event.locationLng,
             hostId: event.hostId,
-            applyRules: event.applyRules
+            applyRules: event.applyRules,
+            capacityMax: event.capacityMax,
+            allowPlusOnes: event.allowPlusOnes,
+            maxPlusOnesPerMember: event.maxPlusOnesPerMember,
+            rsvpDeadline: event.rsvpDeadline
         )
     }
 
@@ -110,6 +114,20 @@ public final class ResourceEditCoordinator {
         }
         if draft.applyRules != originalEvent.applyRules {
             patch.applyRules = draft.applyRules
+        }
+        if draft.capacityMax != originalEvent.capacityMax {
+            // Double-optional wrap: outer Some = "patch this field",
+            // inner nil = "clear back to unlimited".
+            patch.capacityMax = .some(draft.capacityMax)
+        }
+        if draft.allowPlusOnes != originalEvent.allowPlusOnes {
+            patch.allowPlusOnes = draft.allowPlusOnes
+        }
+        if draft.maxPlusOnesPerMember != originalEvent.maxPlusOnesPerMember {
+            patch.maxPlusOnesPerMember = draft.maxPlusOnesPerMember
+        }
+        if draft.rsvpDeadline != originalEvent.rsvpDeadline {
+            patch.rsvpDeadline = .some(draft.rsvpDeadline)
         }
         return patch
     }
