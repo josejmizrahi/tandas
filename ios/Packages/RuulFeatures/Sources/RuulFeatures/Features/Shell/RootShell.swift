@@ -89,12 +89,16 @@ public struct RootShell: View {
         }
         .sheet(isPresented: $showPendingClaims) {
             PendingClaimsView()
+                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationDragIndicator(.visible)
         }
         .sheet(item: Binding(
             get: { pendingClaimToken.map(IdentifiableToken.init) },
             set: { pendingClaimToken = $0?.value }
         )) { holder in
             ClaimReviewView(token: holder.value, placeholderUid: nil)
+                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationDragIndicator(.visible)
         }
         .environment(\.locale, Locale(identifier: app.profile?.locale ?? "es-MX"))
     }

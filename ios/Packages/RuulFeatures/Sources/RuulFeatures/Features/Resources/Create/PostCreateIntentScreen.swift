@@ -455,6 +455,8 @@ private struct PostCreateIntentScreenContainer: View {
                 resourceContext: resourceContext,
                 onClose: { presentedIntent = nil }
             )
+            .presentationBackground(.ultraThinMaterial.opacity(0.5))
+            .presentationDragIndicator(.visible)
         }
     }
 }
