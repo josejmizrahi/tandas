@@ -59,7 +59,7 @@ public struct GroupFundsListView: View {
                 .refreshable { await load() }
             }
         )
-        .background(Color.ruulBackground.ignoresSafeArea())
+        .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
         .navigationTitle("Fondos")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

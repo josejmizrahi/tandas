@@ -86,9 +86,13 @@ public struct MemberDetailView: View {
             }
             .padding(.horizontal, RuulSpacing.screenPadding)
             .padding(.top, RuulSpacing.md)
-            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
+            .padding(.bottom, RuulSpacing.xxl)
         }
         .scrollIndicators(.hidden)
+        // Luma / Apple Settings pattern: subtle gray page bg so the
+        // `Color.ruulSurface` cards (participation + responsibilities)
+        // read as bright tiles. Matches GroupSpaceView.
+        .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

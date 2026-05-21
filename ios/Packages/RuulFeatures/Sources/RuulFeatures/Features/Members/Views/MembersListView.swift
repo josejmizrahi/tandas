@@ -14,7 +14,7 @@ public struct MembersListView: View {
 
     public var body: some View {
         ZStack {
-            Color.ruulBackground.ignoresSafeArea()
+            Color.ruulBackgroundRecessed.ignoresSafeArea()
             AsyncContentView(
                 phase: coordinator.activePhase,
                 onRetry: { await coordinator.refresh() },

@@ -65,7 +65,7 @@ public struct GroupFinesListView: View {
                 .refreshable { await load() }
             }
         )
-        .background(Color.ruulBackground.ignoresSafeArea())
+        .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
         .navigationTitle("Multas")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

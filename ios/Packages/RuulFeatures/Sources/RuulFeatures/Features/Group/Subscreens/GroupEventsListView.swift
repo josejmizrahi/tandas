@@ -63,7 +63,7 @@ public struct GroupEventsListView: View {
                 .refreshable { await load() }
             }
         )
-        .background(Color.ruulBackground.ignoresSafeArea())
+        .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
         .navigationTitle("Eventos")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
