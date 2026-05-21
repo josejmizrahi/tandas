@@ -40,7 +40,6 @@ public struct ActivityView: View {
             .contentMargins(RuulSpacing.md, for: .scrollIndicators)
             .scrollEdgeEffectStyle(.soft, for: .vertical)
         }
-        .ruulAmbientScreen(palette: nil)
         .ruulAppToolbar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

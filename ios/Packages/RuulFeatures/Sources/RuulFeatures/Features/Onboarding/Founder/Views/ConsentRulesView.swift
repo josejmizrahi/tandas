@@ -22,7 +22,6 @@ public struct ConsentRulesView: View {
 
     public var body: some View {
         OnboardingScreenTemplate(
-            mesh: .cool,
             progress: FounderStep.consent.progressFraction,
             title: "Reglas sugeridas",
             subtitle: "Estas son las reglas que la gente suele usar. Por ahora están en modo sugerencia — no se activan hasta que tu grupo decida.",

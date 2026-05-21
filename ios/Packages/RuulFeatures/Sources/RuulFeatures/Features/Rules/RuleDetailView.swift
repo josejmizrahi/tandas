@@ -71,7 +71,6 @@ public struct RuleDetailView: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .ruulAmbientScreen(palette: nil)
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(item: $paramsCoordinator) { coord in

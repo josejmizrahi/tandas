@@ -49,7 +49,6 @@ public struct JoinGroupSheet: View {
                 .padding(.bottom, RuulSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .ruulAmbientScreen(palette: nil)
             .ruulSheetToolbar("Unirme con código")
         }
     }

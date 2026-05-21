@@ -12,7 +12,6 @@ public struct InvitedIdentityView: View {
     public var body: some View {
         @Bindable var bindable = coord
         OnboardingScreenTemplate(
-            mesh: .aqua,
             progress: progressValue,
             title: "¿Cómo te llamas?",
             subtitle: "El grupo necesita saber quién entra.",

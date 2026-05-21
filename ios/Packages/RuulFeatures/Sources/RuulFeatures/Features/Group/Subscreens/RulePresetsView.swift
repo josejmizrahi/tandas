@@ -78,7 +78,6 @@ public struct RulePresetsView: View {
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
         }
-        .ruulAmbientScreen(palette: nil)
         .ruulSheetToolbar("Gobierno del grupo")
         .task { await coordinator.refresh() }
     }

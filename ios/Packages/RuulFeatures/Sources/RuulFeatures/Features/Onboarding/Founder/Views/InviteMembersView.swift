@@ -10,7 +10,6 @@ public struct InviteMembersView: View {
 
     public var body: some View {
         OnboardingScreenTemplate(
-            mesh: .cool,
             progress: progressValue,
             title: "Invita a tu grupo",
             subtitle: "Mínimo 3 personas para empezar.",
