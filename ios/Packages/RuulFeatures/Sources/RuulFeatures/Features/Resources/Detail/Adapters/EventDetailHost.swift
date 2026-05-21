@@ -382,27 +382,6 @@ public struct EventDetailHost: View {
         // Phase 2: resource_links deep navigation
     }
 
-    // MARK: - Phase E: Overflow action routing
-
-    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction, coordinator: EventDetailCoordinator) {
-        switch action {
-        case .share:
-            sheet = .share
-        case .edit:
-            onEditEvent(coordinator.event)
-        case .addToCalendar:
-            addToCalendarViaPresenter()
-        case .walletPass:
-            Task { _ = await coordinator.generateWalletPass() }
-        case .archive:
-            // TODO: archive_resource RPC — post-Beta-1
-            break
-        case .delete, .report:
-            // Not exposed in Phase E — post-Beta-1
-            break
-        }
-    }
-
     // MARK: - Legacy Context wiring (kept for eventDetailSheets modifier compatibility)
 
     private var presenter: EventDetailPresenter {
@@ -528,15 +507,6 @@ public struct EventDetailHost: View {
             break
         }
     }
-
-    // MARK: - Overflow declaration
-
-    /// Events support sharing, editing, calendar export, and wallet pass.
-    /// Archive/delete/report are not surfaced — archive lands in a post-
-    /// Beta-1 follow-up that wires the existing archive_resource RPC.
-    private static let supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> = [
-        .share, .edit, .addToCalendar, .walletPass
-    ]
 
     // MARK: - New universal detail adapter (ResourceDetailContent)
 

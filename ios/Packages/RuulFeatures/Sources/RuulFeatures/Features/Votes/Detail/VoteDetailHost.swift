@@ -146,21 +146,6 @@ public struct VoteDetailHost: View {
         )
     }
 
-    // MARK: - Overflow declaration
-
-    /// Votes surface only `.edit` (gated to open the admin actions sheet
-    /// when the viewer has finalize/cancel privileges). Everything else
-    /// — share/calendar/wallet/archive/delete/report — doesn't apply to
-    /// a governance vote and is filtered out so taps never produce a
-    /// silent no-op.
-    private var supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> {
-        var set: Set<UniversalResourceDetailView.OverflowAction> = []
-        if coordinator.shouldShowFinalize || coordinator.shouldShowCancel {
-            set.insert(.edit)
-        }
-        return set
-    }
-
     // MARK: - ResourceBlocks → ResourceConfig
 
     /// Builds the `VoteInput` the new `.vote(_:)` factory expects from
@@ -320,26 +305,6 @@ public struct VoteDetailHost: View {
              .rsvpConfirm, .rsvpCancel, .viewHostActions,
              .openContribute, .openBooking, .viewClosed,
              .exerciseRight, .payFine:
-            break  // not applicable to votes
-        }
-    }
-
-    // MARK: - Overflow
-
-    /// Overflow menu items. `.edit` opens the admin actions sheet only
-    /// when at least one admin action (finalize/cancel) is available;
-    /// otherwise the tap is a no-op. Other items are not surfaced in the
-    /// new view because the universal overflow is hardcoded — filtering
-    /// would require host-level pruning that the doctrine doesn't expose
-    /// yet (TODO: per-host overflow predicate so unsupported items
-    /// disappear from the menu instead of failing silently).
-    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction) {
-        switch action {
-        case .edit:
-            if coordinator.shouldShowFinalize || coordinator.shouldShowCancel {
-                showAdminSheet = true
-            }
-        case .share, .addToCalendar, .walletPass, .archive, .delete, .report:
             break  // not applicable to votes
         }
     }

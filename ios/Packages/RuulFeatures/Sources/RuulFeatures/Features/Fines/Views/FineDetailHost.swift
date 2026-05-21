@@ -181,32 +181,6 @@ public struct FineDetailHost: View {
         }
     }
 
-    // MARK: - Overflow
-
-    /// Fines surface only the destructive admin lane through the overflow
-    /// (admin "Anular multa") and Share. Other meta-actions
-    /// (edit / calendar / wallet) don't apply to a fine record.
-    private var supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> {
-        var set: Set<UniversalResourceDetailView.OverflowAction> = [.share]
-        if canVoidFine { set.insert(.delete) }   // "Eliminar" label = "void" semantically
-        return set
-    }
-
-    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction) {
-        switch action {
-        case .share:
-            // Phase F follow-up: deep-link share of the fine
-            break
-        case .delete:
-            // .delete is the admin "Anular multa" lane. The label inside
-            // the menu still reads "Eliminar" — semantically equivalent
-            // for a fine (the row stays in audit but is voided).
-            if canVoidFine { voidSheetPresented = true }
-        case .edit, .archive, .addToCalendar, .walletPass, .report:
-            break  // filtered out by supportedOverflowActions
-        }
-    }
-
     // MARK: - ResourceBlocks → ResourceConfig
 
     /// Builds the `FineInput` the new `.fine(_:)` factory expects from

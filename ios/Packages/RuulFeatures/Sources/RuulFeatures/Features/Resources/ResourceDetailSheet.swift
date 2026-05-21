@@ -626,21 +626,6 @@ public struct ResourceDetailSheet: View {
         return (bookedThisMonth, nextLabel)
     }
 
-    /// Per-resource-type overflow allowlist. Today every non-event row
-    /// reachable through this sheet supports just Share (the universal
-    /// action that every resource family carries). Type-specific
-    /// surfaces — fund settlement, asset transfer, right revoke — live
-    /// in their dedicated sheets, not the universal overflow.
-    private func supportedOverflowActions(
-        for blocks: ResourceBlocks
-    ) -> Set<UniversalResourceDetailView.OverflowAction> {
-        // Events that somehow reach this generic sheet trigger the
-        // redirect-to-EventDetailHost task; while the redirect is in
-        // flight, show no overflow.
-        if (liveResource ?? resource).resourceType == .event { return [] }
-        return [.share]
-    }
-
     /// Builds blocks from the current resource row + group, then augments
     /// the result with the live activity feed.
     ///
@@ -779,21 +764,6 @@ public struct ResourceDetailSheet: View {
         case "rules":
             rulesSheetPresented = true
         default:
-            break
-        }
-    }
-
-    private func handleOverflow(_ action: UniversalResourceDetailView.OverflowAction) {
-        switch action {
-        case .share:
-            break  // post-Beta-1
-        case .edit:
-            break  // no editor for fund/asset in this path yet
-        case .addToCalendar, .walletPass:
-            break  // not applicable
-        case .archive:
-            break  // post-Beta-1
-        case .delete, .report:
             break
         }
     }
