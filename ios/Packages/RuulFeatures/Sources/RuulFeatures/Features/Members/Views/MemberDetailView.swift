@@ -2,9 +2,28 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Detail view de un miembro del grupo. Per DS v3 §6.4. Hidrata stats
-/// (asistencia, multas, votos) vía `get_member_summary` RPC (mig 00254)
-/// expuesto en `GroupSummaryRepository.memberSummary`.
+/// Detail view de una persona inside this group context.
+///
+/// Per Ruul Identity & Context Doctrine (2026-05-20): a person doesn't
+/// have multiple profiles — they have one identity expressed through
+/// different contexts. This surface frames the viewed person as
+/// "[Nombre] en [GroupContext]": Layer 1 (persistent identity) sits
+/// compactly at the top; Layer 2 (contextual participation) is the
+/// primary content below.
+///
+/// Sections (in this order, doctrine §5 + §7):
+///   - Identity header (compact: avatar + name + "(Tú)" badge if owner)
+///   - Trust signals row (subtle chips derived from MemberSummary,
+///     max 3 — "Al día", "Activo en eventos", "Vota seguido")
+///   - "Aquí" participation card (narrative sentences from
+///     MemberSummary — never stat-dashboard tiles)
+///   - "Responsabilidades" card (sentence-form role rendering;
+///     hidden when only the default `member` role applies)
+///   - Joined footer (single soft line)
+///
+/// Banned (per doctrine §11): role matrices, ACL grids, permission
+/// dashboards, reputation scores. Role editing lives in a toolbar
+/// menu (admin only), never inline in the main view.
 public struct MemberDetailView: View {
     @Environment(AppState.self) private var app
     public let memberWithProfile: MemberWithProfile
@@ -12,22 +31,18 @@ public struct MemberDetailView: View {
     public let isCurrentUser: Bool
     /// Whether the calling user can manage roles on this member. Wired
     /// from the parent coordinator (which has the actor's permissions).
-    /// `false` hides the "Editar roles" CTA — server is still the
+    /// `false` hides the toolbar edit menu — server is still the
     /// authoritative gate via `assign_role`/`unassign_role` RPCs.
     public let canManageRoles: Bool
     /// Active-founder count in this group. Post-mig 00262: founder es
-    /// identity inmutable; el picker filtra el founder toggle, así que
-    /// este field sirve solo para mostrar el badge "crown" si aplica.
+    /// identity inmutable; el picker filtra el founder toggle.
     public let founderCount: Int
     /// Active-admin count. Post-mig 00262: el picker lockea el admin
     /// toggle cuando es el último admin (server lo rechazaría también).
-    /// Defaults a 1 (conservative) when parent doesn't supply.
     public let adminCount: Int
-    /// Async callback fired when the role picker mutates rawRoles. The
-    /// parent (typically `MembersCoordinator`) should refresh its
-    /// `members` list so MembersAdmin/List views see the new roles.
-    /// `nil` skips the upward refresh; the local section still updates
-    /// via `liveRawRoles`.
+    /// Async callback fired when the role picker mutates rawRoles. Parent
+    /// (typically `MembersCoordinator`) should refresh its `members`
+    /// list so MembersAdmin/List views see the new responsibilities.
     public var onMemberChanged: (() async -> Void)?
 
     @State private var showRolesPicker: Bool = false
@@ -35,8 +50,8 @@ public struct MemberDetailView: View {
     @State private var summaryLoading: Bool = false
     /// Live mirror of the member's rawRoles. Seeded from the value-passed
     /// `memberWithProfile` at init; updated optimistically when the role
-    /// picker completes so the "ROLES EN ESTE GRUPO" section reflects
-    /// the new state without waiting for a parent refetch.
+    /// picker completes so the responsibilities section reflects the
+    /// new state without waiting for a parent refetch.
     @State private var liveRawRoles: [String]
 
     public init(
@@ -61,21 +76,36 @@ public struct MemberDetailView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                hero
-                statsSection
-                rolesSection
-                joinedSection
-                if isCurrentUser {
-                    youHintSection
+                identityHeader
+                if !trustChips.isEmpty {
+                    trustChipsRow
                 }
+                participationCard
+                responsibilitiesCard
+                joinedFooter
             }
             .padding(.horizontal, RuulSpacing.screenPadding)
             .padding(.top, RuulSpacing.md)
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .navigationTitle("Miembro")
+        .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if canManageRoles {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            showRolesPicker = true
+                        } label: {
+                            Label("Editar responsabilidades", systemImage: "pencil")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+        }
         .fullScreenCover(isPresented: $showRolesPicker) {
             MemberRolesPicker(
                 group: group,
@@ -83,7 +113,7 @@ public struct MemberDetailView: View {
                 founderCount: founderCount,
                 adminCount: adminCount,
                 onChange: { updated in
-                    // Reflect locally so the rolesSection updates
+                    // Reflect locally so responsibilities update
                     // immediately, then bubble up so MembersAdmin/List
                     // get fresh data when the picker closes.
                     liveRawRoles = updated.rawRoles
@@ -95,10 +125,10 @@ public struct MemberDetailView: View {
         .task { await loadSummary() }
     }
 
-    /// Carga stats via get_member_summary RPC. La sección se renderiza
-    /// con placeholders ("—") mientras `summary == nil`, y se rellena
-    /// cuando la llamada vuelve. Best-effort: cualquier error deja la
-    /// section vacía sin bloquear el resto del detail.
+    /// Carga stats via get_member_summary RPC. Best-effort: cualquier
+    /// error deja las secciones colapsadas sin bloquear el resto del
+    /// detail (trust chips + participation card se ocultan cuando no
+    /// hay summary).
     private func loadSummary() async {
         guard !summaryLoading, summary == nil else { return }
         guard let repo = app.groupSummaryRepo else { return }
@@ -110,155 +140,264 @@ public struct MemberDetailView: View {
         }
     }
 
-    // MARK: - Hero
+    // MARK: - Layer 1: Identity header (compact)
 
-    private var hero: some View {
-        VStack(alignment: .center, spacing: RuulSpacing.md) {
+    /// Compact identity strip per Identity & Context Doctrine §7. Avatar
+    /// + name + optional "(Tú)" tag. The group context lives implicitly
+    /// in the navigation title bar above; this view is always opened
+    /// "[Nombre] en [GroupContext]" from a group surface.
+    private var identityHeader: some View {
+        HStack(spacing: RuulSpacing.md) {
             RuulAvatar(
                 name: displayName,
                 imageURL: avatarURL,
-                size: .hero
+                size: .large
             )
-            VStack(spacing: RuulSpacing.xxs) {
-                Text(displayName)
-                    .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.primary)
-                    .multilineTextAlignment(.center)
-                Text(group.name)
-                    .font(.caption)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: RuulSpacing.xs) {
+                    Text(displayName)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    if isCurrentUser {
+                        Text("(Tú)")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
+                Text("En \(group.name)")
+                    .font(.subheadline)
                     .foregroundStyle(Color.secondary)
+                    .lineLimit(1)
             }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, RuulSpacing.lg)
     }
 
-    // MARK: - Stats (asistencia / multas / votos)
+    // MARK: - Layer 2: Trust signals (subtle)
 
-    /// 4 tiles: Asistencia % · Multas pendientes (cents) · Multas pagadas
-    /// (count) · Votos emitidos. Se renderiza con placeholders ("—")
-    /// hasta que la RPC vuelve. Si la persona no es miembro activo
-    /// (is_member=false), la section no se muestra.
+    /// Tiny capsule chips, max 3, derived from `MemberSummary`. Doctrine
+    /// §5 Trust Signals: subtle only, never reputation scores or
+    /// gamification. Hidden entirely when no chips qualify.
+    private var trustChipsRow: some View {
+        HStack(spacing: RuulSpacing.xs) {
+            ForEach(trustChips, id: \.self) { chip in
+                trustChip(chip)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func trustChip(_ text: String) -> some View {
+        Text(text)
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(Color.secondary)
+            .padding(.horizontal, RuulSpacing.sm)
+            .padding(.vertical, RuulSpacing.xxs)
+            .background(
+                Capsule().fill(Color(.secondarySystemBackground))
+            )
+    }
+
+    /// Derive up to 3 trust signals from the `MemberSummary`. Calm,
+    /// matter-of-fact phrases — never "score N points" or "level X".
+    private var trustChips: [String] {
+        guard let summary, summary.isMember else { return [] }
+        var chips: [String] = []
+
+        // 1. Pago: cumplió con multas (al día) o nunca tuvo (sin multas)
+        if summary.finesPendingCount == 0 {
+            if summary.finesPaidCount > 0 {
+                chips.append("Al día con pagos")
+            } else if summary.eventsEligible >= 3 {
+                // "Sin multas" solo es señal si llevan tiempo en el grupo
+                chips.append("Sin multas")
+            }
+        }
+
+        // 2. Asistencia: ≥75% en al menos 3 eventos elegibles
+        if let rate = summary.attendanceRate, rate >= 0.75, summary.eventsAttended >= 3 {
+            chips.append("Activo en eventos")
+        }
+
+        // 3. Participación en decisiones
+        if summary.votesCast >= 3 {
+            chips.append("Vota seguido")
+        }
+
+        return Array(chips.prefix(3))
+    }
+
+    // MARK: - Layer 2: "Aquí" participation card
+
+    /// Participation narrative — what this person does inside this
+    /// group. Replaces the previous 4-tile stat dashboard with
+    /// readable sentences (doctrine §11: "exposed as plain language
+    /// sentences"). One row per non-trivial fact.
     @ViewBuilder
-    private var statsSection: some View {
-        if summary?.isMember != false {
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                RuulListSectionHeader("Actividad")
-                HStack(spacing: RuulSpacing.sm) {
-                    statTile(value: attendanceDisplay, label: "Asistencia")
-                    statTile(value: pendingFinesDisplay, label: "Por pagar")
-                    statTile(value: paidFinesDisplay, label: "Pagadas")
-                    statTile(value: votesDisplay, label: "Votos")
+    private var participationCard: some View {
+        let lines = participationLines
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                sectionHeader("Aquí")
+                VStack(spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { idx, line in
+                        if idx > 0 { rowDivider }
+                        participationRow(symbol: line.symbol, text: line.text)
+                    }
                 }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
             }
         }
     }
 
-    private var attendanceDisplay: String {
-        guard let summary else { return "—" }
-        if let rate = summary.attendanceRate {
-            return "\(Int(round(rate * 100)))%"
-        }
-        if summary.eventsEligible == 0 { return "—" }
-        return "\(summary.eventsAttended)/\(summary.eventsEligible)"
+    private struct ParticipationLine {
+        let symbol: String
+        let text: String
     }
 
-    private var pendingFinesDisplay: String {
-        guard let summary else { return "—" }
-        if summary.finesPendingCount == 0 { return "$0" }
-        return formatCents(summary.finesPendingAmountCents)
-    }
+    private var participationLines: [ParticipationLine] {
+        guard let summary, summary.isMember else { return [] }
+        var lines: [ParticipationLine] = []
 
-    private var paidFinesDisplay: String {
-        guard let summary else { return "—" }
-        return "\(summary.finesPaidCount)"
-    }
-
-    private var votesDisplay: String {
-        guard let summary else { return "—" }
-        return "\(summary.votesCast)"
-    }
-
-    private func formatCents(_ cents: Int64) -> String {
-        let amount = Decimal(cents) / 100
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.currencyCode = "MXN"
-        nf.maximumFractionDigits = 0
-        return nf.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
-
-    private func statTile(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text(value)
-                .font(.body.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(label)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(.tertiaryLabel))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RuulSpacing.sm)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
-    }
-
-    // MARK: - Roles
-
-    private var rolesSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            HStack {
-                RuulListSectionHeader("Roles en este grupo")
-                Spacer()
-                if canManageRoles {
-                    Button("Editar") { showRolesPicker = true }
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.ruulAccent)
-                }
+        // Eventos
+        if summary.eventsEligible > 0 {
+            let text: String
+            if summary.eventsAttended == summary.eventsEligible {
+                text = "Fue a los \(summary.eventsAttended) eventos donde se le esperaba"
+            } else {
+                text = "Fue a \(summary.eventsAttended) de \(summary.eventsEligible) eventos"
             }
-            RuulSeparatedRows(items: rolesList) { entry in
-                infoRow(icon: roleIcon(for: entry.id), label: entry.humanLabel)
-            }
+            lines.append(.init(symbol: "calendar", text: text))
         }
-    }
 
-    // MARK: - Joined date
-
-    private var joinedSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulListSectionHeader("Unión")
-            infoRow(icon: "calendar", label: joinedFormatted)
+        // Multas pendientes — destacar solo si las hay
+        if summary.finesPendingCount > 0 {
+            let amount = formatCents(summary.finesPendingAmountCents)
+            let n = summary.finesPendingCount
+            let text = n == 1
+                ? "Debe \(amount) por una multa"
+                : "Debe \(amount) por \(n) multas"
+            lines.append(.init(symbol: "creditcard", text: text))
+        } else if summary.finesPaidCount > 0 {
+            let amount = formatCents(summary.finesPaidAmountCents)
+            let n = summary.finesPaidCount
+            let text = n == 1
+                ? "Pagó \(amount) en una multa"
+                : "Pagó \(amount) en \(n) multas"
+            lines.append(.init(symbol: "checkmark.seal", text: text))
         }
+
+        // Votos
+        if summary.votesCast > 0 {
+            let text = summary.votesCast == 1
+                ? "Participó en una decisión"
+                : "Participó en \(summary.votesCast) decisiones"
+            lines.append(.init(symbol: "hand.raised", text: text))
+        }
+
+        return lines
     }
 
-    private var youHintSection: some View {
-        Text("Este eres tú.")
-            .font(.caption)
-            .foregroundStyle(Color(.tertiaryLabel))
-            .frame(maxWidth: .infinity)
-            .padding(.top, RuulSpacing.md)
-    }
-
-    @ViewBuilder
-    private func infoRow(icon: String, label: String) -> some View {
+    private func participationRow(symbol: String, text: String) -> some View {
         HStack(spacing: RuulSpacing.md) {
-            Image(systemName: icon)
-                .font(.footnote)
+            Image(systemName: symbol)
+                .font(.subheadline)
                 .foregroundStyle(Color.secondary)
                 .frame(width: RuulSpacing.xxl, alignment: .center)
                 .accessibilityHidden(true)
-            Text(label)
+            Text(text)
                 .font(.subheadline)
                 .foregroundStyle(Color.primary)
+                .multilineTextAlignment(.leading)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, RuulSpacing.sm)
+        .padding(RuulSpacing.md)
+    }
+
+    // MARK: - Layer 2: Responsibilities card
+
+    /// Responsibilities (specialized roles only). Doctrine §11: never
+    /// expose role matrices or permission grids. The default `member`
+    /// role is filtered — everyone is a member, so it adds noise.
+    /// Custom roles fall back to the catalog's `humanLabel` so the user
+    /// reads "Tesorero" / "Anfitrión", not the snake_case id.
+    @ViewBuilder
+    private var responsibilitiesCard: some View {
+        let entries = specialResponsibilities
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                sectionHeader("Responsabilidades")
+                VStack(spacing: 0) {
+                    ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
+                        if idx > 0 { rowDivider }
+                        participationRow(
+                            symbol: roleIcon(for: entry.id),
+                            text: responsibilitySentence(for: entry)
+                        )
+                    }
+                }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
+            }
+        }
+    }
+
+    /// Roles to render, with the universal `member` removed (everyone
+    /// is a member by definition; surfacing it adds noise).
+    private var specialResponsibilities: [RoleDefinition] {
+        let nonMember = liveRawRoles.filter { $0 != "member" }
+        guard !nonMember.isEmpty else { return [] }
+        let catalog = group.effectiveRoles
+        return nonMember.map { id in
+            catalog[id] ?? RoleDefinition(id: id, label: nil, permissions: [], system: false)
+        }
+    }
+
+    /// Canonical Spanish phrase for each system role; falls back to the
+    /// custom role's `humanLabel` for catalog-defined roles.
+    private func responsibilitySentence(for role: RoleDefinition) -> String {
+        switch role.id {
+        case "founder":   return "Arrancó este grupo"
+        case "admin":     return "Coordina decisiones"
+        case "host":      return "Organiza eventos"
+        case "treasurer": return "Lleva el dinero del fondo"
+        case "arbiter":   return "Resuelve apelaciones"
+        case "observer":  return "Observa decisiones"
+        default:          return role.humanLabel
+        }
+    }
+
+    // MARK: - Joined footer
+
+    private var joinedFooter: some View {
+        Text(joinedFormatted)
+            .font(.caption)
+            .foregroundStyle(Color(.tertiaryLabel))
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, RuulSpacing.md)
+    }
+
+    // MARK: - Section helpers
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color(.tertiaryLabel))
+            .padding(.leading, RuulSpacing.xxs)
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .background(Color(.separator))
+            .padding(.leading, RuulSpacing.xxl + RuulSpacing.md + RuulSpacing.md)
     }
 
     // MARK: - Derived
@@ -271,23 +410,10 @@ public struct MemberDetailView: View {
         memberWithProfile.avatarURL
     }
 
-    /// Roles to render, resolved against the group's role catalog.
-    /// Custom roles (`seat_owner`, `treasurer`, …) carried in
-    /// `rawRoles` are rendered with their catalog label; unknown role
-    /// ids fall back to a humanised version of the id so we never
-    /// leak raw jsonb keys to users.
-    private var rolesList: [RoleDefinition] {
-        let safe = liveRawRoles.isEmpty ? ["member"] : liveRawRoles
-        let catalog = group.effectiveRoles
-        return safe.map { id in
-            catalog[id] ?? RoleDefinition(id: id, label: nil, permissions: [], system: false)
-        }
-    }
-
     private func roleIcon(for roleId: String) -> String {
         switch roleId {
         case "founder":   return "crown.fill"
-        case "member":    return "person.fill"
+        case "admin":     return "person.crop.circle.badge.checkmark"
         case "host":      return "star.fill"
         case "treasurer": return "banknote"
         case "arbiter":   return "scale.3d"
@@ -298,6 +424,15 @@ public struct MemberDetailView: View {
 
     private var joinedFormatted: String {
         "Se unió el \(memberWithProfile.member.joinedAt.ruulLongDate)"
+    }
+
+    private func formatCents(_ cents: Int64) -> String {
+        let amount = Decimal(cents) / 100
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = "MXN"
+        nf.maximumFractionDigits = 0
+        return nf.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
     }
 }
 
