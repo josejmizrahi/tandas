@@ -21,22 +21,31 @@ public struct AssetBlockBuilder: BlockBuilder {
         viewer: BlockViewerContext,
         now: Date
     ) -> ResourceBlocks {
-        let name = source.metadata["name"]?.stringValue ?? "Activo"
+        let name      = source.metadata["name"]?.stringValue ?? "Activo"
+        let statusEs  = ResourceStatusLocalization.es(source.status)
+        let custodian = source.metadata["custodian_display_name"]?.stringValue
 
         return ResourceBlocks(
             identity: IdentityRibbon(
                 icon: "key.fill",
                 tint: .assets,
                 title: name,
-                subtitleSegments: ["Activo", source.status.capitalized]
+                // Subtitle: family only ("Activo" = asset noun).
+                // Redundant English status string ("Active") was here
+                // before; dropped to avoid the "Activo · Active" echo.
+                subtitleSegments: ["Activo"]
             ),
             state: StateHeadline(
-                headline: source.status.capitalized,
-                supportingFacts: [],
+                // Headline answers "¿qué está pasando ahora?". When a
+                // custodian is set, that's the load-bearing fact;
+                // status trails as supporting. Otherwise show the
+                // localized status as the calm anchor.
+                headline: custodian.map { "En custodia de \($0)" } ?? statusEs,
+                supportingFacts: custodian != nil ? [statusEs] : [],
                 primaryAction: nil,
                 urgency: .ambient
             ),
-            properties: makeProperties(source: source),
+            properties: makeProperties(statusEs: statusEs, custodian: custodian),
             capabilities: [],
             relations: [],
             activityHead: [],
@@ -46,11 +55,11 @@ public struct AssetBlockBuilder: BlockBuilder {
 
     // MARK: - Properties
 
-    private func makeProperties(source: ResourceRow) -> PropertiesBlock {
+    private func makeProperties(statusEs: String, custodian: String?) -> PropertiesBlock {
         var rows: [FactRow] = [
-            FactRow(id: "status", key: "Estado", value: source.status.capitalized)
+            FactRow(id: "status", key: "Estado", value: statusEs)
         ]
-        if let custodian = source.metadata["custodian_display_name"]?.stringValue {
+        if let custodian {
             rows.append(FactRow(id: "custodian", key: "Custodio", value: custodian))
         }
         return PropertiesBlock(rows: rows)

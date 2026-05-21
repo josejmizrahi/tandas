@@ -20,22 +20,31 @@ public struct RightBlockBuilder: BlockBuilder {
         viewer: BlockViewerContext,
         now: Date
     ) -> ResourceBlocks {
-        let name = source.metadata["name"]?.stringValue ?? "Derecho"
+        let name       = source.metadata["name"]?.stringValue ?? "Derecho"
+        let statusEs   = ResourceStatusLocalization.es(source.status)
+        let holderName = source.metadata["holder_display_name"]?.stringValue
 
         return ResourceBlocks(
             identity: IdentityRibbon(
                 icon: "person.badge.key.fill",
                 tint: .neutral,
                 title: name,
-                subtitleSegments: ["Derecho", source.status.capitalized]
+                // Subtitle: family only. Status lives in the headline +
+                // Estado property — repeating it here was a 3-way echo
+                // ("Derecho · Active" / "Active" hero / "Estado: Active").
+                subtitleSegments: ["Derecho"]
             ),
             state: StateHeadline(
-                headline: source.status.capitalized,
-                supportingFacts: [],
+                // Headline answers "¿qué está pasando ahora?". When a
+                // holder is set, that's the load-bearing fact; status
+                // trails as supporting. Otherwise show the localized
+                // status as the calm anchor.
+                headline: holderName.map { "Titular: \($0)" } ?? statusEs,
+                supportingFacts: holderName != nil ? [statusEs] : [],
                 primaryAction: nil,
                 urgency: .ambient
             ),
-            properties: makeProperties(source: source),
+            properties: makeProperties(statusEs: statusEs, holderName: holderName),
             capabilities: [],
             relations: [],
             activityHead: [],
@@ -45,11 +54,11 @@ public struct RightBlockBuilder: BlockBuilder {
 
     // MARK: - Properties
 
-    private func makeProperties(source: ResourceRow) -> PropertiesBlock {
+    private func makeProperties(statusEs: String, holderName: String?) -> PropertiesBlock {
         var rows: [FactRow] = [
-            FactRow(id: "status", key: "Estado", value: source.status.capitalized)
+            FactRow(id: "status", key: "Estado", value: statusEs)
         ]
-        if let holderName = source.metadata["holder_display_name"]?.stringValue {
+        if let holderName {
             rows.append(FactRow(id: "holder", key: "Titular", value: holderName))
         }
         return PropertiesBlock(rows: rows)

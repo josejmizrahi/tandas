@@ -36,7 +36,7 @@ struct ActivityFeedView: View {
             }
             .padding(RuulSpacing.lg)
             .background(
-                Color.ruulSurfaceSecondary,
+                Color.ruulSurface,
                 in: RoundedRectangle(cornerRadius: RuulRadius.md)
             )
         }

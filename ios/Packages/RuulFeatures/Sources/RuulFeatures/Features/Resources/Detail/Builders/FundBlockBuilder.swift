@@ -27,13 +27,17 @@ public struct FundBlockBuilder: BlockBuilder {
 
         let currency   = source.metadata["currency"]?.stringValue ?? "MXN"
         let balanceCts = source.metadata["balance_cents"]?.intValue
+        let hasBalance = balanceCts != nil
         let formatted  = balanceCts.map { formatCents($0, currency: currency) } ?? "—"
 
+        // Subtitle: family only when active. "Bloqueado" is load-bearing
+        // state worth surfacing here; the active default ("Fondo · Activo")
+        // would otherwise echo with the hero/properties.
         let identity = IdentityRibbon(
             icon: "banknote",
             tint: .funds,
             title: name,
-            subtitleSegments: ["Fondo", isLocked ? "Bloqueado" : source.status.capitalized]
+            subtitleSegments: isLocked ? ["Fondo", "Bloqueado"] : ["Fondo"]
         )
 
         let state: StateHeadline = {
@@ -45,8 +49,15 @@ public struct FundBlockBuilder: BlockBuilder {
                     urgency: .terminal
                 )
             }
+            // Pre-fix the hero was "Saldo —" when balance was unknown,
+            // which reads as broken. Split the two cases: when the
+            // balance is known, the hero IS the amount (the Money block
+            // below carries the "Saldo" label + ledger link). When
+            // unknown, the hero is a calm prompt; the Money block's
+            // em-dash + "Ver libro" already handles the empty state.
+            let headline = hasBalance ? formatted : "Aún sin movimientos"
             return StateHeadline(
-                headline: "Saldo \(formatted)",
+                headline: headline,
                 supportingFacts: [],
                 primaryAction: PrimaryAction(
                     label: "Registrar movimiento",
