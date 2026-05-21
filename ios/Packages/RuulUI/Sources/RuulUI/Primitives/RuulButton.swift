@@ -1,9 +1,21 @@
 import SwiftUI
 
-/// Primary button primitive.
+/// Thin wrapper around SwiftUI's native `Button` that maps a small,
+/// Ruul-specific Style/Size axis onto Apple-canonical button styles
+/// (`.borderedProminent`, `.bordered`, `.glass`, `.plain`) plus the
+/// `.destructive` role. Per Plan §2.5: keep this wrapper because the
+/// `isLoading` indicator + fixed-width hero behavior + role-binding
+/// consolidate ~5 lines per call site (and 150+ call sites is a real
+/// blast radius).
 ///
-/// Variants: `.primary`, `.secondary`, `.glass`, `.destructive`, `.plain`.
-/// Sizes: `.small`, `.medium`, `.large`.
+/// 2026-05-20 internals rewrite: previously the wrapper drew custom
+/// capsules (`Capsule().fill(Color.ruulAccent)`, glass overlays, red
+/// destructive fills) via a `StyleBackground` ViewModifier and a custom
+/// `.ruulPress` interactive style. All of that is gone — the button now
+/// renders with native `buttonStyle(...)`, `controlSize(...)`, role-
+/// based destructive styling, and `.tint(.accentColor)` inherited from
+/// the app root. Visual delta is large per call site (buttons read
+/// system-native now), zero source-level changes at the ~150 callers.
 public struct RuulButton: View {
     public enum Style: Sendable, Hashable { case primary, secondary, glass, destructive, plain }
     public enum Size: Sendable, Hashable { case small, medium, large }
@@ -35,93 +47,61 @@ public struct RuulButton: View {
     }
 
     public var body: some View {
-        Button(action: { if !isLoading { action() } }) {
-            label
-                .frame(maxWidth: fillsWidth ? .infinity : nil)
-                .frame(minHeight: heightForSize)
-                .padding(.horizontal, horizontalPadding)
-                .modifier(StyleBackground(style: style))
-                .foregroundStyle(foreground)
+        styledButton
+            .controlSize(controlSize)
+            .disabled(isLoading)
+    }
+
+    @ViewBuilder
+    private var styledButton: some View {
+        switch style {
+        case .primary:
+            base.buttonStyle(.borderedProminent)
+        case .secondary:
+            base.buttonStyle(.bordered)
+        case .glass:
+            base.buttonStyle(.glass)
+        case .destructive:
+            destructiveBase.buttonStyle(.borderedProminent)
+        case .plain:
+            base.buttonStyle(.plain)
         }
-        .buttonStyle(.ruulPress)
-        .disabled(isLoading)
+    }
+
+    private var base: some View {
+        Button(action: tap) {
+            label.frame(maxWidth: fillsWidth ? .infinity : nil)
+        }
+    }
+
+    private var destructiveBase: some View {
+        Button(role: .destructive, action: tap) {
+            label.frame(maxWidth: fillsWidth ? .infinity : nil)
+        }
+    }
+
+    private func tap() {
+        guard !isLoading else { return }
+        action()
     }
 
     @ViewBuilder
     private var label: some View {
         if isLoading {
             ProgressView()
-                .progressViewStyle(.circular)
                 .controlSize(.small)
-                .tint(foreground)
+        } else if let systemImage {
+            Label(title, systemImage: systemImage)
         } else {
-            HStack(spacing: RuulSpacing.xs) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title).font(textFont)
-            }
+            Text(title)
         }
     }
 
-    private var foreground: Color {
-        switch style {
-        case .primary:     return .ruulTextInverse
-        case .secondary:   return .ruulAccent
-        case .glass:       return .primary
-        case .destructive: return .ruulTextInverse
-        case .plain:       return .ruulAccent
-        }
-    }
-
-    private var textFont: Font {
+    private var controlSize: ControlSize {
         switch size {
-        case .small:  return .footnote
-        case .medium: return .subheadline
-        case .large:  return .body
-        }
-    }
-
-    private var heightForSize: CGFloat {
-        switch size {
-        case .small:  return 32
-        case .medium: return RuulSpacing.minTouchTarget
-        case .large:  return 56
-        }
-    }
-
-    private var horizontalPadding: CGFloat {
-        switch size {
-        case .small:  return RuulSpacing.sm
-        case .medium: return RuulSpacing.lg
-        case .large:  return RuulSpacing.xxl
-        }
-    }
-}
-
-private struct StyleBackground: ViewModifier {
-    let style: RuulButton.Style
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        switch style {
-        case .primary:
-            content
-                .background(Capsule().fill(Color.ruulAccent))
-        case .secondary:
-            content
-                .overlay(Capsule().stroke(Color.ruulBorderStrong, lineWidth: 1))
-        case .glass:
-            // `interactive: true` was observed to swallow taps on iOS 26.x
-            // when combined with a Button action. The press deformation is
-            // already provided by `.buttonStyle(.ruulPress)`, so dropping the
-            // interactive flag preserves the visual feedback while keeping
-            // the tap reliable. See EventDetailView nav button regression.
-            content
-                .ruulGlass(Capsule(), material: .regular)
-        case .destructive:
-            content
-                .background(Capsule().fill(Color.red))
-        case .plain:
-            content
+        case .small:  return .small
+        case .medium: return .regular
+        case .large:  return .large
         }
     }
 }
@@ -150,6 +130,6 @@ private struct StyleBackground: ViewModifier {
         }
         .padding(RuulSpacing.lg)
     }
-    .background(Color.ruulBackground)
+    .background(Color(.systemBackground))
 }
 #endif
