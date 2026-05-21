@@ -33,6 +33,49 @@ public final class AppState {
 
     private static let activeGroupKey = "ruul_active_group_id"
 
+    /// Inicio + Mis grupos scope per Wave 3 doctrine (2026-05-21) —
+    /// user-controlled "Todos los grupos" vs "single group" lens.
+    /// Drives both Inicio's feed filter AND MyGroupsTab's dual-mode
+    /// behavior (`.all` = list browser, `.group(id)` = that group's
+    /// home detail). Persisted across launches via UserDefaults.
+    public enum HomeScope: Sendable, Hashable, Codable {
+        case all
+        case group(UUID)
+
+        public var groupId: UUID? {
+            if case let .group(id) = self { return id }
+            return nil
+        }
+    }
+
+    /// Persistent global scope. Default `.all` (cross-group lens —
+    /// matches the social-app doctrine where the daily landing
+    /// aggregates by relevance, not by container).
+    public var homeScope: HomeScope = .all {
+        didSet {
+            persistHomeScope()
+        }
+    }
+
+    private static let homeScopeKey = "ruul_home_scope"
+
+    private func persistHomeScope() {
+        switch homeScope {
+        case .all:
+            UserDefaults.standard.removeObject(forKey: Self.homeScopeKey)
+        case .group(let id):
+            UserDefaults.standard.set(id.uuidString, forKey: Self.homeScopeKey)
+        }
+    }
+
+    private static func rehydratedHomeScope() -> HomeScope {
+        guard let raw = UserDefaults.standard.string(forKey: homeScopeKey),
+              let id = UUID(uuidString: raw) else {
+            return .all
+        }
+        return .group(id)
+    }
+
     /// Pending invite code from a Universal Link / custom URL scheme.
     /// When set, the onboarding root view routes to the invited flow.
     public var pendingInviteCode: String?
@@ -338,6 +381,7 @@ public final class AppState {
            let id = UUID(uuidString: raw) {
             self.activeGroupId = id
         }
+        self.homeScope = Self.rehydratedHomeScope()
     }
 
 
