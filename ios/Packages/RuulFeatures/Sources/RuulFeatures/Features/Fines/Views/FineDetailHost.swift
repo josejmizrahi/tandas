@@ -80,7 +80,7 @@ public struct FineDetailHost: View {
                 Task { await coordinator.startAppeal(reason: reason) }
             }
             .presentationDetents([.medium])
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.thinMaterial)
         }
         // Void fine sheet — admin destructive action surfaced through
         // the overflow `.delete` slot.
@@ -98,7 +98,7 @@ public struct FineDetailHost: View {
                     )
                 )
                 .presentationDetents([.medium])
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.thinMaterial)
             }
         }
     }

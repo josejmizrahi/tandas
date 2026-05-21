@@ -55,7 +55,7 @@ public struct ResourceDetailSheet: View {
                     groupVocabulary: typeLabel.lowercased()
                 )
                 .presentationDetents([.large])
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.thinMaterial)
             }
         }
         .onChange(of: ledgerSheetPresented) { _, presented in
@@ -70,7 +70,7 @@ public struct ResourceDetailSheet: View {
                     coordinator: rulesCoordinator
                 )
                 .presentationDetents([.large])
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.thinMaterial)
             }
         }
         .onChange(of: rulesSheetPresented) { _, presented in
