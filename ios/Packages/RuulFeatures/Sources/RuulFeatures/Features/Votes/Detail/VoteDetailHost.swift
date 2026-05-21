@@ -71,12 +71,14 @@ public struct VoteDetailHost: View {
         .sheet(isPresented: $showCastSheet) {
             voteCastPickerSheet
                 .presentationDetents([.medium])
+                .presentationBackground(.regularMaterial)
         }
         // Admin actions — opens from overflow `.edit` when finalize/cancel
         // is available. Closes after a successful action.
         .sheet(isPresented: $showAdminSheet) {
             voteAdminSheet
                 .presentationDetents([.medium])
+                .presentationBackground(.regularMaterial)
         }
         .alert("Finalizar votación", isPresented: $showFinalizeConfirm) {
             Button("Finalizar", role: .destructive) {
@@ -209,6 +211,7 @@ public struct VoteDetailHost: View {
             if alreadyVoted { showCastSheet = false }
         }
         .presentationDetents([.medium])
+        .presentationBackground(.regularMaterial)
     }
 
     /// Admin actions sheet — replaces the legacy bottom-bar admin row.
@@ -259,5 +262,6 @@ public struct VoteDetailHost: View {
             }
         }
         .presentationDetents([.medium])
+        .presentationBackground(.regularMaterial)
     }
 }

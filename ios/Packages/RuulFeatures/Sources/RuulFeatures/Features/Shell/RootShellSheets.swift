@@ -127,6 +127,7 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Event edit cover (item: state.activeEditEvent)
             .fullScreenCover(item: activeEditEventItem) { wrappedEvent in
                 eventEditScreen(wrappedEvent.event)
+                .presentationBackground(.thickMaterial)
             }
 
             // MARK: Scanner cover (item: state.activeScannerCoordinator)
@@ -138,6 +139,7 @@ public struct RootShellSheets: ViewModifier {
             .sheet(item: appealItem) { ctx in
                 voteOnAppealSheet(ctx)
                     .presentationDetents([.medium, .large])
+                    .presentationBackground(.regularMaterial)
             }
 
             // V2 Slice 4A: .editProfile cover removed. EditProfileSheet
@@ -271,6 +273,7 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Vote detail cover (.votePending inbox action)
             .fullScreenCover(item: voteDetailItem) { ctx in
                 voteDetailScreen(ctx)
+                .presentationBackground(.thickMaterial)
             }
 
             // MARK: Navigation-push routes (no sheet presentation)
@@ -420,22 +423,27 @@ private struct GroupHomeSheetContent: View {
             .fullScreenCover(isPresented: $showMembersAdminInvite) {
                 InviteMembersFromGroupView(group: group)
                     .environment(app)
+                .presentationBackground(.thickMaterial)
             }
             .fullScreenCover(isPresented: $showEditIdentity) {
                 EditGroupIdentitySheet(groupId: group.id)
                     .environment(app)
+                .presentationBackground(.thickMaterial)
             }
             .fullScreenCover(isPresented: $showRotateCode) {
                 RegenerateInviteCodeSheet(groupId: group.id)
                     .environment(app)
+                .presentationBackground(.thickMaterial)
             }
             .fullScreenCover(isPresented: $showInvite) {
                 InviteMembersFromGroupView(group: group)
                     .environment(app)
+                .presentationBackground(.thickMaterial)
             }
             .fullScreenCover(isPresented: $showLeave) {
                 LeaveGroupConfirmationSheet(group: group)
                     .environment(app)
+                .presentationBackground(.thickMaterial)
             }
             .confirmationDialog(
                 "¿Archivar \(group.name)?",
@@ -611,6 +619,7 @@ private struct MembersAdminViewWrapper: View {
         .fullScreenCover(isPresented: $showInvite) {
             InviteMembersFromGroupView(group: group)
                 .environment(app)
+            .presentationBackground(.thickMaterial)
         }
     }
 }
