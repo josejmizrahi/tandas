@@ -69,7 +69,7 @@ public struct EditEventView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 180)
-                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
                 } else {
                     defaultCover
                         .frame(maxWidth: .infinity)
@@ -196,7 +196,7 @@ public struct EditEventView: View {
                             RuulCoverView(cover)
                                 .frame(height: 80)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                                         .stroke(coordinator.draft.coverImageName == cover.id ? Color.ruulAccent : .clear, lineWidth: 3)
                                 )
                         }

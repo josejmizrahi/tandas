@@ -28,7 +28,7 @@ struct ShowcaseSection<Content: View>: View {
                 .padding(.top, RuulSpacing.xs)
         }
         .padding(RuulSpacing.lg)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large))
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
     }
 }
 #endif

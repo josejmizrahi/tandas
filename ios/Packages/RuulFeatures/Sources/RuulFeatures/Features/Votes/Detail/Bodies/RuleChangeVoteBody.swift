@@ -76,6 +76,6 @@ public struct RuleChangeVoteBody: View {
         }
         .padding(RuulSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous))
     }
 }

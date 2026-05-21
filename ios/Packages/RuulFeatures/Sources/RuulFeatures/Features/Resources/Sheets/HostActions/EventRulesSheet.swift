@@ -177,7 +177,7 @@ struct ResourceRulesBody: View {
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.md))
         .opacity(isInherited ? 0.85 : 1.0)
     }
 

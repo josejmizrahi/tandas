@@ -56,9 +56,9 @@ public struct EventCard: View {
                 bottomContentOverlay
             }
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }

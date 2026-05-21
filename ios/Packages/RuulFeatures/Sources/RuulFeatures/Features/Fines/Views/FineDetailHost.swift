@@ -42,16 +42,7 @@ public struct FineDetailHost: View {
     public var body: some View {
         Group {
             if let blocks {
-                UniversalResourceDetailView(
-                    blocks: blocks,
-                    supportedOverflowActions: supportedOverflowActions,
-                    navigationTitle: coordinator.fine.reason,
-                    onPrimaryAction: { Task { await dispatchPrimary() } },
-                    onOpenBlock: { id in openDestination(id) },
-                    onTapRelation: { _ in },
-                    onSeeMoreActivity: { activityHistoryPresented = true },
-                    onOverflowAction: { handleOverflow($0) }
-                )
+                ResourceDetailContent(config: makeConfig(blocks: blocks))
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -206,6 +197,65 @@ public struct FineDetailHost: View {
         case .edit, .archive, .addToCalendar, .walletPass, .report:
             break  // filtered out by supportedOverflowActions
         }
+    }
+
+    // MARK: - ResourceBlocks → ResourceConfig
+
+    /// Adapter from the fine's `ResourceBlocks` to the new
+    /// `ResourceConfig`. Inline primary action surfaces the legacy
+    /// `payFine` CTA; the destructive "Anular multa" lane (admin only)
+    /// lands in the toolbar menu when the governance gate allows it.
+    private func makeConfig(blocks: ResourceBlocks) -> ResourceConfig {
+        let accent = blocks.identity.tint.color
+        let primary = blocks.state.primaryAction
+        let actions: [ResourceAction] = {
+            guard let primary, primary.kind != .none else { return [] }
+            return [
+                ResourceAction(
+                    label: primary.label,
+                    icon: primary.symbol,
+                    tint: accent,
+                    handler: { Task { await dispatchPrimary() } }
+                )
+            ]
+        }()
+        var toolbar: [ToolbarMenuItem] = []
+        if canVoidFine {
+            toolbar.append(ToolbarMenuItem(label: "Anular multa", icon: "xmark.bin", role: .destructive) {
+                voidSheetPresented = true
+            })
+        }
+        return ResourceConfig(
+            identity: IdentityData(
+                iconSystemName: blocks.identity.icon,
+                name: blocks.identity.title,
+                typeLabel: "Multa",
+                metadata: blocks.identity.subtitleSegments,
+                badge: nil
+            ),
+            accent: accent,
+            hero: HeroData(
+                value: blocks.state.headline,
+                label: blocks.state.supportingFacts.joined(separator: " · "),
+                size: .title
+            ),
+            actions: actions,
+            sections: [],
+            activity: .static(blocks.activityHead.map(Self.mapActivityEntry)),
+            toolbarMenu: toolbar
+        )
+    }
+
+    private static func mapActivityEntry(_ entry: ActivityEntry) -> ActivityItem {
+        ActivityItem(
+            id: entry.id.uuidString,
+            title: entry.sentence,
+            subtitle: nil,
+            timestamp: .now,
+            icon: entry.icon,
+            kind: .neutral,
+            prebakedRelativeTime: entry.relativeTime
+        )
     }
 
     // MARK: - Governance gate

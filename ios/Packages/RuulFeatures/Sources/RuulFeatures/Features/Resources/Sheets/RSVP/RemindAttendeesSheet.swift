@@ -35,7 +35,7 @@ public struct RemindAttendeesSheet: View {
                     .foregroundStyle(Color.primary)
                     .padding(RuulSpacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+                    .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
                 Text("Esto avisa a las \(pendingCount) personas que aún no han respondido.")
                     .font(.caption)
                     .foregroundStyle(Color.secondary)

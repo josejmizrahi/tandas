@@ -78,9 +78,9 @@ public struct BuilderFieldRenderer: View {
                 TextEditor(text: stringBinding())
                     .frame(minHeight: 80)
                     .padding(RuulSpacing.sm)
-                    .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                    .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md))
                     .overlay(
-                        RoundedRectangle(cornerRadius: RuulRadius.medium)
+                        RoundedRectangle(cornerRadius: RuulRadius.md)
                             .stroke(Color(.separator), lineWidth: 1)
                     )
             }
@@ -111,9 +111,9 @@ public struct BuilderFieldRenderer: View {
                     .tint(Color.ruulAccent)
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium)
+                RoundedRectangle(cornerRadius: RuulRadius.md)
                     .stroke(Color(.separator), lineWidth: 1)
             )
 
@@ -227,11 +227,11 @@ public struct BuilderFieldRenderer: View {
             }
             .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .fill(Color.ruulSurface.opacity(0.5))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .stroke(Color(.separator), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
             )
         }

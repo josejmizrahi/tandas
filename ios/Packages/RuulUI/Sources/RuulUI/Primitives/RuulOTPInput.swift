@@ -101,13 +101,13 @@ private struct OTPSlot: View {
         }
         .frame(width: 46, height: 56)
         .ruulGlass(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous),
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous),
             material: .regular,
             tint: tintColor,
             interactive: false
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(strokeColor, lineWidth: 1.5)
         )
         .animation(.smooth, value: isFocused)

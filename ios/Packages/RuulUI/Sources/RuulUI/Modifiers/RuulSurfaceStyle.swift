@@ -24,7 +24,7 @@ public extension View {
     /// `.background(Color.ruulSurface, in: RoundedRectangle(...))`.
     func ruulCardSurface(
         _ style: RuulSurfaceStyle = .glass,
-        radius: CGFloat = RuulRadius.large
+        radius: CGFloat = RuulRadius.lg
     ) -> some View {
         modifier(RuulCardSurfaceModifier(style: style, radius: radius))
     }

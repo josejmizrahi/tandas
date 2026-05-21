@@ -62,10 +62,10 @@ public struct LocationAutocompletePicker: View {
                     .padding(RuulSpacing.sm)
                     .background(
                         Color.ruulSurface,
-                        in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                        RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                             .stroke(Color(.separator), lineWidth: 0.5)
                     )
                 }
@@ -97,7 +97,7 @@ public struct LocationAutocompletePicker: View {
             .accessibilityLabel("Quitar ubicación")
         }
         .padding(RuulSpacing.sm)
-        .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+        .background(Color.ruulBackgroundRecessed, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
     }
 
     private func select(_ suggestion: MKLocalSearchCompletion) async {

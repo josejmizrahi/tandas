@@ -73,7 +73,7 @@ public struct RuulTextField: View {
             // so the field still telegraphs interactive affordance.
             .background(
                 Color(.tertiarySystemFill),
-                in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
             )
             .overlay(focusRing)
             .animation(.smooth, value: isFocused)
@@ -138,7 +138,7 @@ public struct RuulTextField: View {
     /// comes from the soft fill + corner radius alone.
     @ViewBuilder
     private var focusRing: some View {
-        let shape = RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
         if error != nil {
             shape.stroke(Color.red, lineWidth: 1.5)
         } else if isFocused {

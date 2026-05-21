@@ -332,11 +332,11 @@ public struct RulesView: View {
             }
             .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }

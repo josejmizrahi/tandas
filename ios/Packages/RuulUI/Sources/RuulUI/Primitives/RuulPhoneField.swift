@@ -48,7 +48,7 @@ public struct RuulPhoneField: View {
             .padding(.vertical, RuulSpacing.md)
             .background(
                 Color(.tertiarySystemFill),
-                in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
             )
             .overlay(focusRing)
             .animation(.smooth, value: isFocused)
@@ -89,7 +89,7 @@ public struct RuulPhoneField: View {
     /// whatever ambient/material the parent is showing through.
     @ViewBuilder
     private var focusRing: some View {
-        let shape = RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
         if error != nil {
             shape.stroke(Color.red, lineWidth: 1.5)
         } else if isFocused {

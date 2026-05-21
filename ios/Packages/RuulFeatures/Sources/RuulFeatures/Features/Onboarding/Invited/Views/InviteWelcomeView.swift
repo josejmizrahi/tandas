@@ -121,7 +121,7 @@ public struct InviteWelcomeView: View {
             .padding(RuulSpacing.lg)
         }
         .aspectRatio(0.78, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
     }
 
     /// Meta line del poster card. Antes era genérico "12 miembros";

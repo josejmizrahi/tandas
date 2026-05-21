@@ -113,11 +113,11 @@ struct ResourcePickerField: View {
         }
         .padding(RuulSpacing.md)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color.red.opacity(0.3), lineWidth: 1)
         )
     }
@@ -135,11 +135,11 @@ struct ResourcePickerField: View {
         .padding(.vertical, RuulSpacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 1)
         )
     }

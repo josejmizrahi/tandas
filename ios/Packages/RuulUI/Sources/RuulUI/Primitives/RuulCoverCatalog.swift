@@ -122,7 +122,7 @@ public struct RuulCoverView: View {
             }
             decorationLayer
         }
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
     }
 
     /// 4x4 = 16 control points. Corners + edge midpoints stay locked; the four

@@ -12,7 +12,7 @@ extension View {
     /// up the detail screen's ambient palette tint instead of flat white.
     @ViewBuilder
     func cardBackground() -> some View {
-        let shape = RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
         self.background(.ultraThinMaterial, in: shape)
     }
 }

@@ -172,7 +172,7 @@ public struct PostCreateIntentScreen: View {
             .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
             .contentShape(Rectangle())
@@ -228,7 +228,7 @@ public struct PostCreateIntentScreen: View {
         }
         .padding(RuulSpacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(Color.red.opacity(0.08))
         )
     }

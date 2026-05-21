@@ -100,7 +100,7 @@ public struct CreateVoteSheet: View {
                 }
             }
             .padding(RuulSpacing.md)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
             .opacity(enabled ? 1.0 : 0.6)
         }
         .buttonStyle(.plain)

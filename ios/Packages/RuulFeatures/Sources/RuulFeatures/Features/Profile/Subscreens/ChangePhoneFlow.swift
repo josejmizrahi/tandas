@@ -34,7 +34,7 @@ public struct ChangePhoneFlow: View {
                 .textContentType(.telephoneNumber)
                 .keyboardType(.phonePad)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
             if let error { errorLabel(error) }
             Spacer()
             Button("Enviar código") { Task { await sendOTP() } }
@@ -54,7 +54,7 @@ public struct ChangePhoneFlow: View {
                 .textContentType(.oneTimeCode)
                 .keyboardType(.numberPad)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
             if let error { errorLabel(error) }
             Spacer()
             Button("Confirmar") { Task { await confirm() } }

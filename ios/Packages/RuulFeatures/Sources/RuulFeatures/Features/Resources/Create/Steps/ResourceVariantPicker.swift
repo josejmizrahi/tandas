@@ -92,7 +92,7 @@ struct ResourceVariantPicker: View {
             .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
             .contentShape(Rectangle())

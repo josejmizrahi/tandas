@@ -91,9 +91,9 @@ public struct EventRSVPStateView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, RuulSpacing.md)
             .background(Color.ruulSurface)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
@@ -117,9 +117,9 @@ public struct EventRSVPStateView: View {
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
         .background(Color.ruulSurface)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
@@ -245,9 +245,9 @@ public struct EventRSVPStateView: View {
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.md)
         .background(Color.ruulSurface)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
     }
@@ -284,9 +284,9 @@ public struct EventRSVPStateView: View {
         }
         .padding(RuulSpacing.md)
         .background(Color.ruulSurface)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
     }

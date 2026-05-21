@@ -66,7 +66,7 @@ public struct AppealFineSheet: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
     }
 
     private var trimmedReason: String {

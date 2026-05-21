@@ -108,11 +108,11 @@ public struct PresetPickerView: View {
             .padding(RuulSpacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 2 : 1)
             )

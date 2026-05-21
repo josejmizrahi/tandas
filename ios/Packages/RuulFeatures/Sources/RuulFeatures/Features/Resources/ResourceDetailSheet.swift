@@ -199,17 +199,7 @@ public struct ResourceDetailSheet: View {
     private var content: some View {
         if let group = parentGroup {
             if let blocks {
-                UniversalResourceDetailView(
-                    blocks: blocks,
-                    supportedOverflowActions: supportedOverflowActions(for: blocks),
-                    navigationTitle: displayName,
-                    onClose: { dismiss() },
-                    onPrimaryAction: { Task { await dispatchPrimary(group: group) } },
-                    onOpenBlock: { id in openBlockDestination(id, group: group) },
-                    onTapRelation: { _ in },
-                    onSeeMoreActivity: { activityHistoryPresented = true },
-                    onOverflowAction: { handleOverflow($0) }
-                )
+                ResourceDetailContent(config: makeConfig(blocks: blocks, group: group))
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -227,6 +217,89 @@ public struct ResourceDetailSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+
+    // MARK: - ResourceBlocks → ResourceConfig
+
+    /// Generic adapter that turns the polymorphic `ResourceBlocks`
+    /// produced by the type-specific builders into a `ResourceConfig`
+    /// the new universal detail can render. Covers fund/asset/space/
+    /// slot/right at once since each type's identity ribbon already
+    /// carries the right icon, family tint, and subtitle segments.
+    /// Capability sections are not yet mapped — empty for now; the
+    /// header + hero + activity already deliver the new layout.
+    private func makeConfig(blocks: ResourceBlocks, group: RuulCore.Group) -> ResourceConfig {
+        let live = liveResource ?? resource
+        let accent = blocks.identity.tint.color
+        let primary = blocks.state.primaryAction
+        let actions: [ResourceAction] = {
+            guard let primary, primary.kind != .none else { return [] }
+            return [
+                ResourceAction(
+                    label: primary.label,
+                    icon: primary.symbol,
+                    tint: accent,
+                    handler: { Task { await self.dispatchPrimary(group: group) } }
+                )
+            ]
+        }()
+        return ResourceConfig(
+            identity: IdentityData(
+                iconSystemName: blocks.identity.icon,
+                name: blocks.identity.title,
+                typeLabel: Self.typeLabel(for: live.resourceType),
+                metadata: blocks.identity.subtitleSegments,
+                badge: nil
+            ),
+            accent: accent,
+            hero: HeroData(
+                value: blocks.state.headline,
+                label: blocks.state.supportingFacts.joined(separator: " · "),
+                size: .title
+            ),
+            actions: actions,
+            sections: [],
+            activity: .static(blocks.activityHead.map(Self.mapActivityEntry)),
+            toolbarMenu: makeToolbarMenu()
+        )
+    }
+
+    private func makeToolbarMenu() -> [ToolbarMenuItem] {
+        [
+            ToolbarMenuItem(label: "Reglas", icon: "list.bullet.rectangle") {
+                rulesSheetPresented = true
+            },
+            ToolbarMenuItem(label: "Libro", icon: "book") {
+                ledgerSheetPresented = true
+            }
+        ]
+    }
+
+    private static func typeLabel(for type: ResourceType) -> String {
+        switch type {
+        case .event:   return "Evento"
+        case .fund:    return "Fondo"
+        case .asset:   return "Activo"
+        case .space:   return "Espacio"
+        case .slot:    return "Reserva"
+        case .right:   return "Derecho"
+        case .unknown: return ""
+        }
+    }
+
+    /// Mirrors the mapper used by `EventDetailHost` — keeps the
+    /// pre-formatted relative time so the new view's
+    /// RelativeDateTimeFormatter doesn't try to recompute from `.now`.
+    private static func mapActivityEntry(_ entry: ActivityEntry) -> ActivityItem {
+        ActivityItem(
+            id: entry.id.uuidString,
+            title: entry.sentence,
+            subtitle: nil,
+            timestamp: .now,
+            icon: entry.icon,
+            kind: .neutral,
+            prebakedRelativeTime: entry.relativeTime
+        )
     }
 
     /// Per-resource-type overflow allowlist. Today every non-event row

@@ -60,7 +60,7 @@ public struct ShareEventSheet: View {
                     .foregroundStyle(Color.ruulTextInverse)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, RuulSpacing.md)
-                    .background(Color.ruulAccent, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                    .background(Color.ruulAccent, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -80,10 +80,10 @@ public struct ShareEventSheet: View {
                         .padding(.vertical, RuulSpacing.md)
                         .background(
                             Color.ruulSurface,
-                            in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                            in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                                 .stroke(Color(.separator), lineWidth: 0.5)
                         )
                     }
@@ -98,7 +98,7 @@ public struct ShareEventSheet: View {
             qrImage
                 .frame(width: 220, height: 220)
                 .padding(RuulSpacing.md)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
 
             VStack(spacing: 2) {
                 Text(event.title)

@@ -40,7 +40,7 @@ struct TemplatesShowcaseView: View {
                 RuulTextField("Demo input", text: .constant(""))
             }
             .frame(height: 320)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.xl))
         }
     }
 }

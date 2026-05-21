@@ -107,11 +107,11 @@ struct MemberMultiPickerField: View {
         }
         .padding(RuulSpacing.md)
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color.red.opacity(0.3), lineWidth: 1)
         )
     }
@@ -124,11 +124,11 @@ struct MemberMultiPickerField: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 1)
         )
         if !binding.isEmpty {

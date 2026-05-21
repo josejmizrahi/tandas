@@ -125,7 +125,7 @@ struct TokensShowcaseView: View {
     private var radius: some View {
         ShowcaseSection("Radius") {
             HStack(spacing: RuulSpacing.sm) {
-                ForEach([("small", RuulRadius.small), ("medium", RuulRadius.medium), ("large", RuulRadius.large), ("extraLarge", RuulRadius.extraLarge)], id: \.0) { item in
+                ForEach([("small", RuulRadius.sm), ("medium", RuulRadius.md), ("large", RuulRadius.lg), ("extraLarge", RuulRadius.xl)], id: \.0) { item in
                     VStack {
                         RoundedRectangle(cornerRadius: item.1)
                             .fill(Color.ruulAccentMuted)

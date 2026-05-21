@@ -113,11 +113,11 @@ public struct OnboardingPathPickerView: View {
             .padding(RuulSpacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .fill(primary ? Color.primary : Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(primary ? Color.clear : Color(.separator), lineWidth: 1)
             )
         }

@@ -63,9 +63,9 @@ public struct MemberRemovalVoteBody: View {
             Spacer()
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color.red.opacity(0.25), lineWidth: 1)
         )
     }
@@ -82,7 +82,7 @@ public struct MemberRemovalVoteBody: View {
         }
         .padding(RuulSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.small, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous))
     }
 
     /// Extracts the member display name from `vote.title`. The convention

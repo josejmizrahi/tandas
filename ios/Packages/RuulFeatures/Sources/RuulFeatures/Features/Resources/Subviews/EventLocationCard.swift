@@ -29,7 +29,7 @@ public struct EventLocationCard: View {
                     .padding(RuulSpacing.md)
             }
             .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

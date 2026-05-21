@@ -168,10 +168,10 @@ public struct LinkResourcePickerSheet: View {
             .padding(RuulSpacing.md)
             .background(
                 Color.ruulBackgroundCanvas,
-                in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }

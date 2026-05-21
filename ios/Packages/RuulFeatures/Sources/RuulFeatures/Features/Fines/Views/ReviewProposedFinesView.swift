@@ -43,7 +43,7 @@ public struct ReviewProposedFinesView: View {
                         }
                         .padding(RuulSpacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+                        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
                     }
                     if !coordinator.proposed.isEmpty {
                         proposedSection
@@ -171,9 +171,9 @@ public struct ReviewProposedFinesView: View {
             }
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
     }

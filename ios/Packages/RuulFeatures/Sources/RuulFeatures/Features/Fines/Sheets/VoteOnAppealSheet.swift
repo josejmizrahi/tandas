@@ -76,7 +76,7 @@ public struct VoteOnAppealSheet: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
     }
 
     private var appealReasonCard: some View {
@@ -89,7 +89,7 @@ public struct VoteOnAppealSheet: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
     }
 
     /// P1 — UXJourney: "no muestra cuántos miembros votarán ni el

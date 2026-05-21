@@ -56,9 +56,9 @@ public struct EventRow: View {
             .padding(.vertical, RuulSpacing.sm)
             .padding(.horizontal, RuulSpacing.md)
             .background(Color.ruulSurface)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
         }
@@ -84,9 +84,9 @@ public struct EventRow: View {
             }
         }
         .frame(width: 64, height: 64)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
     }

@@ -140,11 +140,11 @@ public struct RulePresetsView: View {
             }
             .padding(RuulSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .stroke(isActive ? Color.ruulAccent : Color(.separator), lineWidth: 1)
             )
         }
@@ -210,11 +210,11 @@ public struct RulePresetsView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(Color.ruulSurface.opacity(0.6))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
     }

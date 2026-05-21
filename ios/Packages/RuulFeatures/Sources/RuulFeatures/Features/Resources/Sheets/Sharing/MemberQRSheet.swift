@@ -32,7 +32,7 @@ public struct MemberQRSheet: View {
                 qrImage
                     .frame(width: 240, height: 240)
                     .padding(RuulSpacing.md)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
                 Text(eventTitle)
                     .font(.headline)
                     .foregroundStyle(Color.primary)

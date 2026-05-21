@@ -95,7 +95,7 @@ public struct FineCard: View {
     }
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
     }
 
     private var statusRow: some View {

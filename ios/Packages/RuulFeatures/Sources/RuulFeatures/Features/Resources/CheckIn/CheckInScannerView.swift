@@ -78,11 +78,11 @@ public struct CheckInScannerView: View {
         }
         .padding(RuulSpacing.md)
         // DS v3 §13: header overlay sobre cámara — Liquid Glass real.
-        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous), material: .regular)
+        .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous), material: .regular)
     }
 
     private var scanFrame: some View {
-        RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
+        RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
             .strokeBorder(Color.white.opacity(0.6), lineWidth: 3)
             .frame(width: 240, height: 240)
             .background(Color.clear)
@@ -103,7 +103,7 @@ public struct CheckInScannerView: View {
                 }
                 .padding(RuulSpacing.sm)
                 // DS v3 §13: recent check-in chip overlay — Liquid Glass real.
-                .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous), material: .regular)
+                .ruulGlass(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous), material: .regular)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -149,7 +149,7 @@ public struct CheckInScannerView: View {
                 .foregroundStyle(Color.white)
         }
         .padding(RuulSpacing.xxl)
-        .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.extraLarge, style: .continuous))
+        .background(color.opacity(0.85), in: RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
         .transition(.scale.combined(with: .opacity))
         .animation(.smooth, value: coordinator.overlay)
     }

@@ -115,11 +115,11 @@ struct AddLedgerEntryDestination: View {
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .fill(isSelected ? Color.ruulAccentMuted : Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 1.5 : 0.5)
             )
@@ -191,11 +191,11 @@ struct AddLedgerEntryDestination: View {
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.sm)
             .background(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .fill(isSelected ? Color.ruulAccentMuted : Color.ruulSurface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .stroke(isSelected ? Color.ruulAccent : Color(.separator),
                             lineWidth: isSelected ? 1.5 : 0.5)
             )

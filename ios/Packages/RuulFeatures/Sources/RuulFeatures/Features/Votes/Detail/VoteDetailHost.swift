@@ -43,16 +43,7 @@ public struct VoteDetailHost: View {
     public var body: some View {
         Group {
             if let blocks {
-                UniversalResourceDetailView(
-                    blocks: blocks,
-                    supportedOverflowActions: supportedOverflowActions,
-                    navigationTitle: coordinator.vote.title,
-                    onPrimaryAction: { handlePrimaryAction() },
-                    onOpenBlock: { _ in },
-                    onTapRelation: { _ in },
-                    onSeeMoreActivity: { activityHistoryPresented = true },
-                    onOverflowAction: { handleOverflow($0) }
-                )
+                ResourceDetailContent(config: makeConfig(blocks: blocks))
             } else {
                 ZStack {
                     Color.ruulBackgroundCanvas.ignoresSafeArea()
@@ -160,6 +151,70 @@ public struct VoteDetailHost: View {
             set.insert(.edit)
         }
         return set
+    }
+
+    // MARK: - ResourceBlocks → ResourceConfig
+
+    /// Adapter from the vote's `ResourceBlocks` to the new
+    /// `ResourceConfig`. Mirrors the legacy primary-action +
+    /// admin-overflow routing — cast picker opens from the inline
+    /// action, finalize/cancel land in the toolbar menu when gated.
+    private func makeConfig(blocks: ResourceBlocks) -> ResourceConfig {
+        let accent = blocks.identity.tint.color
+        let primary = blocks.state.primaryAction
+        let actions: [ResourceAction] = {
+            guard let primary, primary.kind != .none else { return [] }
+            return [
+                ResourceAction(
+                    label: primary.label,
+                    icon: primary.symbol,
+                    tint: accent,
+                    handler: { handlePrimaryAction() }
+                )
+            ]
+        }()
+        var toolbar: [ToolbarMenuItem] = []
+        if coordinator.shouldShowFinalize {
+            toolbar.append(ToolbarMenuItem(label: "Finalizar votación", icon: "checkmark.seal") {
+                showFinalizeConfirm = true
+            })
+        }
+        if coordinator.shouldShowCancel {
+            toolbar.append(ToolbarMenuItem(label: "Cancelar votación", icon: "xmark.circle", role: .destructive) {
+                showCancelConfirm = true
+            })
+        }
+        return ResourceConfig(
+            identity: IdentityData(
+                iconSystemName: blocks.identity.icon,
+                name: blocks.identity.title,
+                typeLabel: "Votación",
+                metadata: blocks.identity.subtitleSegments,
+                badge: nil
+            ),
+            accent: accent,
+            hero: HeroData(
+                value: blocks.state.headline,
+                label: blocks.state.supportingFacts.joined(separator: " · "),
+                size: .title
+            ),
+            actions: actions,
+            sections: [],
+            activity: .static(blocks.activityHead.map(Self.mapActivityEntry)),
+            toolbarMenu: toolbar
+        )
+    }
+
+    private static func mapActivityEntry(_ entry: ActivityEntry) -> ActivityItem {
+        ActivityItem(
+            id: entry.id.uuidString,
+            title: entry.sentence,
+            subtitle: nil,
+            timestamp: .now,
+            icon: entry.icon,
+            kind: .neutral,
+            prebakedRelativeTime: entry.relativeTime
+        )
     }
 
     // MARK: - Primary action dispatch
