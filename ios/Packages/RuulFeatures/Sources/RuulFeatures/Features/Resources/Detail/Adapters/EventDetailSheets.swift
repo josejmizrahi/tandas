@@ -131,19 +131,20 @@ public struct EventDetailSheets: ViewModifier {
                     .presentationBackground(.ultraThinMaterial.opacity(0.5))
                 }
             }
-            // Ledger + Rules promoted to fullScreenCover per the sheet-on-
-            // sheet doctrine (2026-05-20): both surfaces host their own
-            // NavigationStack with the Add form as a push destination, so
-            // the form lands on the cover's opaque base rather than
-            // stacking translucent glass on translucent glass.
-            .fullScreenCover(isPresented: bindingForSheet(.ledger)) {
+            // Founder doctrine 2026-05-20 (reframe): detail = complete +
+            // opaque; primary CTA opens a transparent form sheet
+            // directly. The event timeline already shows movements
+            // inline; the "Registrar movimiento" menu item skips the
+            // intermediate Movimientos cover and presents the Add form
+            // sheet directly.
+            .sheet(isPresented: bindingForSheet(.ledger)) {
                 if let lc = b.ledgerCoordinator {
-                    ResourceLedgerSheet(
-                        isPresented: bindingForSheet(.ledger),
-                        coordinator: lc,
-                        groupVocabulary: b.group.eventVocabulary
-                    )
-                    .presentationBackground(.ultraThinMaterial)
+                    NavigationStack {
+                        AddLedgerEntryDestination(coordinator: lc)
+                    }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial.opacity(0.5))
                 }
             }
             .fullScreenCover(isPresented: bindingForSheet(.rules)) {

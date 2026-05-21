@@ -49,10 +49,10 @@ public struct FundBlockBuilder: BlockBuilder {
                 headline: "Saldo \(formatted)",
                 supportingFacts: [],
                 primaryAction: PrimaryAction(
-                    label: "Aportar",
+                    label: "Registrar movimiento",
                     symbol: "plus.circle",
                     style: .standard,
-                    kind: .openContribute          // routes to FundRepository.contribute
+                    kind: .openContribute          // routes to AddLedgerEntry sheet
                 ),
                 urgency: .ambient
             )
