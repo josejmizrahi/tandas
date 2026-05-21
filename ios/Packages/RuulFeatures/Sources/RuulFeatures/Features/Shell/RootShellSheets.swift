@@ -28,7 +28,7 @@ public struct RootShellSheets: ViewModifier {
                     onJoinGroup: { router.present(.joinGroup) }
                 )
                 .environment(app)
-
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: boolBinding(for: .createGroup)) {
                 CreateGroupSheet { _ in
@@ -36,37 +36,45 @@ public struct RootShellSheets: ViewModifier {
                     // RootShell.rebuildCoordinators fires reactively.
                 }
                 .environment(app)
-
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: boolBinding(for: .joinGroup)) {
                 JoinGroupSheet { _ in
                     // Same: group switch is reactive via activeGroupId.
                 }
                 .environment(app)
-
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: boolBinding(for: .inviteShare)) {
-                if let activeGroup = app.activeGroup {
-                    GroupHomeSheetContent(group: activeGroup, app: app, router: router)
+                Group {
+                    if let activeGroup = app.activeGroup {
+                        GroupHomeSheetContent(group: activeGroup, app: app, router: router)
+                    }
                 }
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: boolBinding(for: .groupRulesSettings)) {
-                if let group = app.activeGroup {
-                    RulePresetsView(coordinator: GroupRulesCoordinator(
-                        group: group,
-                        actorUserId: app.session?.user.id ?? UUID(),
-                        policyRepo: app.policyRepo
-                    ))
-                    .environment(app)
-
+                Group {
+                    if let group = app.activeGroup {
+                        RulePresetsView(coordinator: GroupRulesCoordinator(
+                            group: group,
+                            actorUserId: app.session?.user.id ?? UUID(),
+                            policyRepo: app.policyRepo
+                        ))
+                        .environment(app)
+                    }
                 }
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Group home cover (Nivel 1 group dashboard)
             .fullScreenCover(isPresented: boolBinding(for: .groupHome)) {
-                if let activeGroup = app.activeGroup {
-                    GroupHomeSheetContent(group: activeGroup, app: app, router: router)
+                Group {
+                    if let activeGroup = app.activeGroup {
+                        GroupHomeSheetContent(group: activeGroup, app: app, router: router)
+                    }
                 }
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // V2 Slice 4C: .acuerdos root cover removed. RulesView now
@@ -79,7 +87,7 @@ public struct RootShellSheets: ViewModifier {
                 Task { await router.state.refreshInboxes() }
             }) { ctx in
                 ruleEditSheet(ctx)
-
+                    .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Resource creation cover (value-less; "+" tab intercept)
@@ -89,9 +97,12 @@ public struct RootShellSheets: ViewModifier {
             // release defaults to legacy until founder smoke pass.
             // Flip live via `ResourceCreationFeatureFlag.isEnabled = ...`.
             .fullScreenCover(isPresented: boolBinding(for: .createCover)) {
-                if let group = app.activeGroup {
-                    resourceCreationCover(group: group)
+                Group {
+                    if let group = app.activeGroup {
+                        resourceCreationCover(group: group)
+                    }
                 }
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Event detail (item: state.activeEvent)
@@ -106,7 +117,7 @@ public struct RootShellSheets: ViewModifier {
                 }
             }) { wrappedEvent in
                 eventDetailScreen(wrappedEvent.event)
-
+                    .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Polymorphic resource detail (fund/asset/space/slot/right)
@@ -122,12 +133,13 @@ public struct RootShellSheets: ViewModifier {
                 ResourceDetailSheet(resource: wrappedResource.resource)
                     .environment(app)
                     .environment(router)
+                    .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Event edit cover (item: state.activeEditEvent)
             .fullScreenCover(item: activeEditEventItem) { wrappedEvent in
                 eventEditScreen(wrappedEvent.event)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Scanner cover (item: state.activeScannerCoordinator)
@@ -139,7 +151,8 @@ public struct RootShellSheets: ViewModifier {
             .sheet(item: appealItem) { ctx in
                 voteOnAppealSheet(ctx)
                     .presentationDetents([.medium, .large])
-                    .presentationBackground(.regularMaterial)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
 
             // V2 Slice 4A: .editProfile cover removed. EditProfileSheet
@@ -159,7 +172,7 @@ public struct RootShellSheets: ViewModifier {
                     onPickRuleChange: { router.present(.createRuleChange(nil)) },
                     onPickMemberRemoval: { router.present(.createMemberRemoval) }
                 )
-
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Create general proposal sheet
@@ -170,25 +183,27 @@ public struct RootShellSheets: ViewModifier {
                     _ = await (r, i)
                 }
             }) {
-                if let group = app.activeGroup,
-                   let member = currentGroupMember(in: group) {
-                    CreateGeneralProposalSheet(
-                        coordinator: CreateGeneralProposalCoordinator(
-                            group: group,
-                            member: member,
-                            voteRepo: app.voteRepo,
-                            governance: app.governance
-                        ),
-                        onCreated: { _ in
-                            Task {
-                                async let r: Void? = router.state.rulesCoordinator?.refresh()
-                                async let i: Void? = router.state.refreshInboxes()
-                                _ = await (r, i)
+                Group {
+                    if let group = app.activeGroup,
+                       let member = currentGroupMember(in: group) {
+                        CreateGeneralProposalSheet(
+                            coordinator: CreateGeneralProposalCoordinator(
+                                group: group,
+                                member: member,
+                                voteRepo: app.voteRepo,
+                                governance: app.governance
+                            ),
+                            onCreated: { _ in
+                                Task {
+                                    async let r: Void? = router.state.rulesCoordinator?.refresh()
+                                    async let i: Void? = router.state.refreshInboxes()
+                                    _ = await (r, i)
+                                }
                             }
-                        }
-                    )
-
+                        )
+                    }
                 }
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Create rule-change sheet (carries optional GroupRule)
@@ -199,27 +214,29 @@ public struct RootShellSheets: ViewModifier {
                     _ = await (r, i)
                 }
             }) { wrapper in
-                if let group = app.activeGroup,
-                   let member = currentGroupMember(in: group) {
-                    CreateRuleChangeSheet(
-                        coordinator: CreateRuleChangeCoordinator(
-                            group: group,
-                            member: member,
-                            availableRules: router.state.rulesCoordinator?.rules ?? [],
-                            voteRepo: app.voteRepo,
-                            governance: app.governance
-                        ),
-                        onCreated: { _ in
-                            Task {
-                                async let r: Void? = router.state.rulesCoordinator?.refresh()
-                                async let i: Void? = router.state.refreshInboxes()
-                                _ = await (r, i)
+                Group {
+                    if let group = app.activeGroup,
+                       let member = currentGroupMember(in: group) {
+                        CreateRuleChangeSheet(
+                            coordinator: CreateRuleChangeCoordinator(
+                                group: group,
+                                member: member,
+                                availableRules: router.state.rulesCoordinator?.rules ?? [],
+                                voteRepo: app.voteRepo,
+                                governance: app.governance
+                            ),
+                            onCreated: { _ in
+                                Task {
+                                    async let r: Void? = router.state.rulesCoordinator?.refresh()
+                                    async let i: Void? = router.state.refreshInboxes()
+                                    _ = await (r, i)
+                                }
                             }
-                        }
-                    )
-
+                        )
+                    }
+                    let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
                 }
-                let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Create member-removal sheet
@@ -229,18 +246,21 @@ public struct RootShellSheets: ViewModifier {
                     _ = await i
                 }
             }) {
-                if let group = app.activeGroup,
-                   let member = currentGroupMember(in: group) {
-                    CreateMemberRemovalSheet(
-                        coordinator: CreateMemberRemovalCoordinator(
-                            group: group,
-                            creatorMemberId: member.id,
-                            prefilledTarget: nil,
-                            voteRepo: app.voteRepo,
-                            groupsRepo: app.groupsRepo
+                Group {
+                    if let group = app.activeGroup,
+                       let member = currentGroupMember(in: group) {
+                        CreateMemberRemovalSheet(
+                            coordinator: CreateMemberRemovalCoordinator(
+                                group: group,
+                                creatorMemberId: member.id,
+                                prefilledTarget: nil,
+                                voteRepo: app.voteRepo,
+                                groupsRepo: app.groupsRepo
+                            )
                         )
-                    )
+                    }
                 }
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Fine detail cover (item: state.activeFine)
@@ -257,6 +277,7 @@ public struct RootShellSheets: ViewModifier {
                 }
             }) { wrappedFine in
                 fineDetailScreen(wrappedFine.fine)
+                    .presentationBackground(.ultraThinMaterial)
             }
 
             // V2 Slice 4D: .sanciones cover removed. MyFinesScreenHost
@@ -268,12 +289,13 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Past events cover (Home → "Ver historial")
             .fullScreenCover(isPresented: boolBinding(for: .past)) {
                 pastEventsScreen
+                    .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Vote detail cover (.votePending inbox action)
             .fullScreenCover(item: voteDetailItem) { ctx in
                 voteDetailScreen(ctx)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
 
             // MARK: Navigation-push routes (no sheet presentation)
@@ -423,27 +445,27 @@ private struct GroupHomeSheetContent: View {
             .fullScreenCover(isPresented: $showMembersAdminInvite) {
                 InviteMembersFromGroupView(group: group)
                     .environment(app)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: $showEditIdentity) {
                 EditGroupIdentitySheet(groupId: group.id)
                     .environment(app)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: $showRotateCode) {
                 RegenerateInviteCodeSheet(groupId: group.id)
                     .environment(app)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: $showInvite) {
                 InviteMembersFromGroupView(group: group)
                     .environment(app)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: $showLeave) {
                 LeaveGroupConfirmationSheet(group: group)
                     .environment(app)
-                .presentationBackground(.thickMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .confirmationDialog(
                 "¿Archivar \(group.name)?",
@@ -619,7 +641,7 @@ private struct MembersAdminViewWrapper: View {
         .fullScreenCover(isPresented: $showInvite) {
             InviteMembersFromGroupView(group: group)
                 .environment(app)
-            .presentationBackground(.thickMaterial)
+            .presentationBackground(.ultraThinMaterial)
         }
     }
 }

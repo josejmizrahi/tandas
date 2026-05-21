@@ -76,11 +76,7 @@ public struct VoteOnAppealSheet: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
     }
 
     private var appealReasonCard: some View {
@@ -93,11 +89,7 @@ public struct VoteOnAppealSheet: View {
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
     }
 
     /// P1 — UXJourney: "no muestra cuántos miembros votarán ni el
@@ -163,10 +155,6 @@ public struct VoteOnAppealSheet: View {
             .padding(.horizontal, RuulSpacing.md)
             .foregroundStyle(primary ? Color.ruulTextInverse : Color.primary)
             .background(primary ? Color.primary : Color.ruulSurface, in: Capsule())
-            .overlay(
-                primary ? nil :
-                Capsule().stroke(Color(.separator), lineWidth: 0.5)
-            )
         }
         .buttonStyle(.ruulPress)
     }

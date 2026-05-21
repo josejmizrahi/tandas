@@ -755,7 +755,8 @@ private struct DestinationPresenter: View {
         }
         .padding(RuulSpacing.xl)
         .presentationDetents([.medium])
-        .presentationBackground(.regularMaterial)
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial.opacity(0.5))
     }
 
     /// Copy shown for destinations that don't have a wired renderer

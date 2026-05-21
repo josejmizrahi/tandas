@@ -50,7 +50,8 @@ struct ResourceLedgerSheet: View {
                 coordinator: coordinator
             )
             .presentationDetents([.medium, .large])
-            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
     }
 
@@ -76,11 +77,7 @@ struct ResourceLedgerSheet: View {
         }
         .padding(RuulSpacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.large))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
     }
 
     // MARK: - Balance section
@@ -115,11 +112,7 @@ struct ResourceLedgerSheet: View {
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
     }
 
     // MARK: - Entries feed
@@ -188,11 +181,7 @@ struct ResourceLedgerSheet: View {
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
     }
 
     private var addEntryCTA: some View {

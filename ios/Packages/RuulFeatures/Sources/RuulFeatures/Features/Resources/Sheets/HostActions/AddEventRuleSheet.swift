@@ -129,11 +129,7 @@ struct AddResourceRuleSheet: View {
             }
             .padding(RuulSpacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         }
     }
 
