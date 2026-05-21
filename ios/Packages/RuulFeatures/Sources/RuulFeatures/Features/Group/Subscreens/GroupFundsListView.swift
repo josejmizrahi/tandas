@@ -2,11 +2,17 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// "Fondos" — group-scoped funds list, pushed from the GroupSpace
-/// "Fondos" tile. Reads `fund_balance_view` via
+/// "Otros fondos" — group-scoped funds list, pushed from the GroupSpace
+/// "Otros fondos" tile. Reads `fund_balance_view` via
 /// `FundRepository.listForGroup`. No reusable `FundCard` exists yet,
 /// so the row is composed inline using the canonical section card
 /// chrome (`Color.ruulSurface` + separator stroke).
+///
+/// SharedMoney Phase 3: the canonical shared pool is EXCLUDED here — it
+/// has its own `SharedMoneyCard` surface on the group home. We detect
+/// it by cross-referencing each fund's id against the shared pool
+/// summary's `sharedPoolId` (founder decision 9.1 option (c), zero
+/// schema change). Only protected/legacy funds remain in this list.
 @MainActor
 public struct GroupFundsListView: View {
     public let group: RuulCore.Group
@@ -42,9 +48,9 @@ public struct GroupFundsListView: View {
             onRetry: { await load() },
             empty: {
                 ContentUnavailableView {
-                    Label("Sin fondos", systemImage: "banknote")
+                    Label("No hay fondos separados", systemImage: "banknote")
                 } description: {
-                    Text("Crea un fondo común para coordinar aportes y gastos del grupo.")
+                    Text("Todo el dinero del grupo está en Dinero compartido.")
                 }
             },
             loaded: { rows in
@@ -60,7 +66,7 @@ public struct GroupFundsListView: View {
             }
         )
         .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
-        .navigationTitle("Fondos")
+        .navigationTitle("Otros fondos")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }
@@ -130,7 +136,13 @@ public struct GroupFundsListView: View {
             hasLoaded = true
         }
         do {
-            funds = try await app.fundRepo.listForGroup(group.id)
+            async let allFundsTask = app.fundRepo.listForGroup(group.id)
+            async let summaryTask = app.fundRepo.summaryForGroup(
+                group.id, preferredCurrency: group.currency
+            )
+            let allFunds = try await allFundsTask
+            let sharedPoolId = (try? await summaryTask)?.sharedPoolId
+            funds = allFunds.filter { $0.fundId != sharedPoolId }
         } catch {
             errorMessage = "No pudimos cargar los fondos."
         }

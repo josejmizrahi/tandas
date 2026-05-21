@@ -24,6 +24,15 @@ public struct GroupSpaceView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
+    /// Routes the two `SharedMoneyCard` CTAs to their group-scoped
+    /// sheets (SharedMoney Phase 3 § 5). Quick-action shape → `.medium`
+    /// default detent with `.large` available.
+    private enum SharedMoneySheet: Identifiable {
+        case contribute, recordExpense
+        var id: Self { self }
+    }
+    @State private var sharedMoneySheet: SharedMoneySheet?
+
     // Compose chips routing
     public var onCreateEvent: () -> Void
     public var onStartVote: () -> Void
@@ -116,6 +125,14 @@ public struct GroupSpaceView: View {
 
                     GroupComposeBar(chips: composeChips())
 
+                    if let summary = coordinator.sharedPoolSummary {
+                        SharedMoneyCard(
+                            summary: summary,
+                            onContribute: { sharedMoneySheet = .contribute },
+                            onRecordExpense: { sharedMoneySheet = .recordExpense }
+                        )
+                    }
+
                     if !coordinator.pendingActions.isEmpty {
                         GroupPendingsBlock(
                             items: coordinator.pendingActions,
@@ -140,6 +157,32 @@ public struct GroupSpaceView: View {
             }
             .scrollIndicators(.hidden)
             .refreshable { await coordinator.refresh() }
+            .sheet(item: $sharedMoneySheet) { which in
+                sharedMoneySheetContent(which, group: group)
+                    .presentationDetents([.medium, .large])
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sharedMoneySheetContent(
+        _ which: SharedMoneySheet,
+        group: RuulCore.Group
+    ) -> some View {
+        switch which {
+        case .contribute:
+            ContributeToSharedMoneySheet(
+                groupId: group.id,
+                currency: group.currency,
+                onDidContribute: { Task { await coordinator.refresh() } }
+            )
+        case .recordExpense:
+            RecordSharedExpenseSheet(
+                groupId: group.id,
+                currency: group.currency,
+                members: coordinator.allMembers,
+                onDidRecord: { Task { await coordinator.refresh() } }
+            )
         }
     }
 
@@ -160,7 +203,10 @@ public struct GroupSpaceView: View {
         let s = coordinator.summary
         let eventsCount = coordinator.upcomingEventsCount
         let finesCount = coordinator.groupFinesCount
-        let fundsCount = coordinator.groupFundsCount
+        // SharedMoney Phase 3: the canonical shared pool lives in the
+        // SharedMoneyCard above. This tile only counts OTHER (protected/
+        // legacy) funds and hides entirely when there are none.
+        let otherFundsCount = coordinator.otherFundsCount
 
         let finesAlert: String? = {
             guard let s, s.pendingFinesOutstandingCents > 0 else { return nil }
@@ -172,7 +218,7 @@ public struct GroupSpaceView: View {
             return fmt.string(from: NSNumber(value: amount)).map { "\($0) por pagar" } ?? "Por pagar"
         }()
 
-        return [
+        var tiles: [GroupSpacesGrid.Tile] = [
             .init(
                 id: "events",
                 label: "Eventos",
@@ -202,18 +248,25 @@ public struct GroupSpaceView: View {
                 secondary: finesCount == 1 ? "multa" : "multas",
                 alert: finesAlert,
                 action: { onOpenFines?() }
-            ),
-            .init(
-                id: "funds",
-                label: "Fondos",
-                systemImage: "banknote",
-                tint: Color.ruulPositive,
-                primary: "\(fundsCount)",
-                secondary: fundsCount == 1 ? "fondo activo" : "fondos activos",
-                alert: nil,
-                action: { onOpenFunds?() }
             )
         ]
+
+        if otherFundsCount > 0 {
+            tiles.append(
+                .init(
+                    id: "funds",
+                    label: "Otros fondos",
+                    systemImage: "banknote",
+                    tint: Color.ruulPositive,
+                    primary: "\(otherFundsCount)",
+                    secondary: otherFundsCount == 1 ? "fondo separado" : "fondos separados",
+                    alert: nil,
+                    action: { onOpenFunds?() }
+                )
+            )
+        }
+
+        return tiles
     }
 
     @ToolbarContentBuilder

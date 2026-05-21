@@ -151,6 +151,67 @@ struct FundRepositoryTests {
         #expect(after?.lockedReason == baseline?.lockedReason)
     }
 
+    // MARK: - SharedMoney Phase 3: summaryForGroup
+
+    @Test("summaryForGroup aggregates the group's shared pool snapshot")
+    func summaryAggregates() async throws {
+        let fundId = UUID()
+        let groupId = UUID()
+        let recipient = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(fundId: fundId, groupId: groupId)])
+
+        _ = try await repo.contribute(fundId: fundId, amountCents: 100_000, currency: nil, note: nil)
+        _ = try await repo.recordExpense(
+            fundId: fundId, amountCents: 30_000, toMemberId: recipient, currency: nil, note: nil
+        )
+
+        let summary = try await repo.summaryForGroup(groupId, preferredCurrency: nil)
+        #expect(summary?.sharedPoolId == fundId)
+        #expect(summary?.groupId == groupId)
+        #expect(summary?.inCents == 100_000)
+        #expect(summary?.outCents == 30_000)
+        #expect(summary?.balanceCents == 70_000)
+        #expect(summary?.entryCount == 2)
+        #expect(summary?.hasActivity == true)
+        #expect(summary?.isOverSpent == false)
+        #expect(summary?.lastActivityAt != nil)
+    }
+
+    @Test("summaryForGroup flags an over-spent pool as negative")
+    func summaryOverSpent() async throws {
+        let fundId = UUID()
+        let groupId = UUID()
+        let recipient = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(fundId: fundId, groupId: groupId)])
+
+        _ = try await repo.contribute(fundId: fundId, amountCents: 10_000, currency: nil, note: nil)
+        _ = try await repo.recordExpense(
+            fundId: fundId, amountCents: 25_000, toMemberId: recipient, currency: nil, note: nil
+        )
+
+        let summary = try await repo.summaryForGroup(groupId, preferredCurrency: nil)
+        #expect(summary?.balanceCents == -15_000)
+        #expect(summary?.isOverSpent == true)
+    }
+
+    @Test("summaryForGroup returns nil for a group with no funds")
+    func summaryNilWhenEmpty() async throws {
+        let repo = MockFundRepository(seed: [sampleFund(groupId: UUID())])
+        let summary = try await repo.summaryForGroup(UUID(), preferredCurrency: nil)
+        #expect(summary == nil)
+    }
+
+    @Test("summaryForGroup honors preferredCurrency selection")
+    func summaryPrefersCurrency() async throws {
+        let groupId = UUID()
+        let repo = MockFundRepository(seed: [
+            sampleFund(groupId: groupId, currency: "MXN"),
+            sampleFund(groupId: groupId, currency: "USD")
+        ])
+        let summary = try await repo.summaryForGroup(groupId, preferredCurrency: "USD")
+        #expect(summary?.currency == "USD")
+    }
+
     @Test("progressTowardsTarget computes ratio")
     func targetProgress() {
         let half = Fund(

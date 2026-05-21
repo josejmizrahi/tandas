@@ -30,6 +30,10 @@ public final class GroupHomeCoordinator {
     /// fetched in parallel with `refresh()`; never errors hard — empty
     /// stack is acceptable degradation.
     public var members: [MemberWithProfile] = []
+    /// Full membership (not capped at 8 like `members`). Drives the
+    /// payer/recipient pickers in `RecordSharedExpenseSheet`. Populated
+    /// alongside `members` in `loadMembers`.
+    public var allMembers: [MemberWithProfile] = []
     /// Recent items from `my_activity_v1` filtered to this group. Top
     /// 5, newest first. Populated only if `myActivityRepo` is wired.
     public var recentActivity: [MyActivityItem] = []
@@ -43,7 +47,24 @@ public final class GroupHomeCoordinator {
     /// drifted from `upcomingEvents`'s real filter.
     public var upcomingEventsCount: Int = 0
     public var groupFinesCount: Int = 0
-    public var groupFundsCount: Int = 0
+    /// Funds for this group (one row per fund+currency) — backs the
+    /// "Otros fondos" tile count, which excludes the canonical shared
+    /// pool (it has its own `SharedMoneyCard` surface).
+    public var groupFunds: [Fund] = []
+    /// Count of NON-shared-pool funds, distinct by `fundId`. The
+    /// "Otros fondos" tile uses this and hides entirely at 0 (founder
+    /// decision 2, 2026-05-21). Cross-references the shared pool via id
+    /// per founder decision 9.1 option (c) — zero schema change.
+    public var otherFundsCount: Int {
+        let sharedId = sharedPoolSummary?.sharedPoolId
+        let ids = Set(groupFunds.lazy.filter { $0.fundId != sharedId }.map { $0.fundId })
+        return ids.count
+    }
+    /// SharedMoney Phase 3 (mig 00361): the group's canonical shared
+    /// pool projection. Drives `SharedMoneyCard`. Loaded in parallel via
+    /// `fundRepo.summaryForGroup`; nil until the first successful load
+    /// (or when `fundRepo` isn't wired, e.g. lightweight previews).
+    public var sharedPoolSummary: SharedPoolSummary?
     public var isLoading: Bool = false
     public var error: CoordinatorError?
     /// True después de que `refresh()` completó al menos una vez. Permite
@@ -136,7 +157,8 @@ public final class GroupHomeCoordinator {
             async let activityTask: Void = loadRecentActivity()
             async let eventsCountTask: Void = loadUpcomingEventsCount()
             async let finesCountTask: Void = loadFinesCount()
-            async let fundsCountTask: Void = loadFundsCount()
+            async let fundsTask: Void = loadFunds()
+            async let sharedPoolTask: Void = loadSharedPoolSummary()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -144,7 +166,8 @@ public final class GroupHomeCoordinator {
             _ = await activityTask
             _ = await eventsCountTask
             _ = await finesCountTask
-            _ = await fundsCountTask
+            _ = await fundsTask
+            _ = await sharedPoolTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -174,6 +197,7 @@ public final class GroupHomeCoordinator {
     private func loadMembers() async -> [MemberWithProfile] {
         do {
             let all = try await groupsRepo.membersWithProfiles(of: groupId)
+            self.allMembers = all
             return Array(all.prefix(8))
         } catch {
             log.warning("group members load failed: \(error.localizedDescription, privacy: .public)")
@@ -210,13 +234,26 @@ public final class GroupHomeCoordinator {
         }
     }
 
-    private func loadFundsCount() async {
+    private func loadFunds() async {
         guard let repo = fundRepo else { return }
         do {
-            let funds = try await repo.listForGroup(groupId)
-            self.groupFundsCount = funds.count
+            self.groupFunds = try await repo.listForGroup(groupId)
         } catch {
-            log.warning("group funds count failed: \(error.localizedDescription, privacy: .public)")
+            log.warning("group funds load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Loads the canonical shared pool projection. Soft-fails — the
+    /// card simply stays hidden if the pool can't be read. Currency is
+    /// unknown at parallel-kickoff (group detail hasn't resolved yet);
+    /// for V1 single-currency the view emits exactly one row so
+    /// `preferredCurrency: nil` resolves to the group's currency.
+    private func loadSharedPoolSummary() async {
+        guard let repo = fundRepo else { return }
+        do {
+            self.sharedPoolSummary = try await repo.summaryForGroup(groupId, preferredCurrency: nil)
+        } catch {
+            log.warning("shared pool summary load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
