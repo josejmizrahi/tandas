@@ -22,22 +22,26 @@ final class PrimitiveSnapshotTests: XCTestCase {
 
     // MARK: - RuulButton
 
-    func test_RuulButton_primary_light() {
+    func test_RuulButton_primary_light() throws {
+        try skipOnCI()
         let view = RuulButton("Confirmar", style: .primary, fillsWidth: true) {}
         assertImage(view, size: buttonSize, scheme: .light)
     }
 
-    func test_RuulButton_primary_dark() {
+    func test_RuulButton_primary_dark() throws {
+        try skipOnCI()
         let view = RuulButton("Confirmar", style: .primary, fillsWidth: true) {}
         assertImage(view, size: buttonSize, scheme: .dark)
     }
 
-    func test_RuulButton_secondary_light() {
+    func test_RuulButton_secondary_light() throws {
+        try skipOnCI()
         let view = RuulButton("Cancelar", style: .secondary, fillsWidth: true) {}
         assertImage(view, size: buttonSize, scheme: .light)
     }
 
-    func test_RuulButton_destructive_dark() {
+    func test_RuulButton_destructive_dark() throws {
+        try skipOnCI()
         let view = RuulButton("Eliminar", style: .destructive, fillsWidth: true) {}
         assertImage(view, size: buttonSize, scheme: .dark)
     }
@@ -64,20 +68,23 @@ final class PrimitiveSnapshotTests: XCTestCase {
     }
 
     /// Skip a snapshot test when running on GitHub Actions.
-    /// MoneyView is the only primitive using `.monospacedDigit()`,
-    /// whose glyph rendering varies catastrophically across iOS 26
-    /// simulator SDK minors (CI macos-15 ships Xcode 26.3 / iOS 26.2;
-    /// engineer machines run 26.4+). The reference snapshots in this
-    /// repo were recorded on 26.4 and CI's 26.2 produces enough
-    /// per-pixel divergence (perceptual precision 0.0006 — single
-    /// pixels flip from full-white to full-black at glyph edges) that
-    /// no reasonable tolerance absorbs it without also hiding real
-    /// regressions.
+    /// Two primitive families render catastrophically differently
+    /// across iOS 26 simulator SDK minors (CI macos-15 ships Xcode
+    /// 26.3 / iOS 26.2; engineer machines run 26.4+):
+    ///   - `RuulMoneyView` via `.monospacedDigit()` — glyph edges flip
+    ///     full-white↔full-black (perceptual precision ~0.0006).
+    ///   - `RuulButton` via the iOS 26 Liquid Glass button styles
+    ///     (`.borderedProminent` / `.bordered` / `.glass`) — the
+    ///     material blur + tint composites differently enough that only
+    ///     ~33% of pixels match.
+    /// The reference snapshots in this repo were recorded on 26.4 and
+    /// CI's 26.2 produces divergence no reasonable tolerance absorbs
+    /// without also hiding real regressions.
     /// Local Xcode 26.4+ runs still execute these tests, so a real
-    /// regression in `RuulMoneyView` rendering is caught during dev.
-    /// When CI's macos image upgrades to Xcode ≥ 26.4 — currently
-    /// blocked on GitHub's macos-15 image — the snapshots will match
-    /// again and this skip can go away.
+    /// regression in the rendering is caught during dev. When CI's
+    /// macos image upgrades to Xcode ≥ 26.4 — currently blocked on
+    /// GitHub's macos-15 image — the snapshots match again and this
+    /// skip can go away.
     ///
     /// Detection: `#if CI` is set via `SWIFT_ACTIVE_COMPILATION_CONDITIONS`
     /// in the workflow's xcodebuild command. ProcessInfo + ENV does
