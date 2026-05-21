@@ -48,7 +48,7 @@ public struct EditEventView: View {
                 coverPickerSheet
                     .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
-                    .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                    .presentationBackground(.regularMaterial)
             }
         }
     }

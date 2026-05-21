@@ -63,7 +63,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .sheet(isPresented: bindingForSheet(.qr)) {
                 MemberQRSheet(
@@ -74,7 +74,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelEvent)) {
                 CancelEventSheet(isPresented: bindingForSheet(.cancelEvent)) { reason in
@@ -82,7 +82,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelAttendance)) {
                 CancelAttendanceSheet(
@@ -93,7 +93,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .sheet(isPresented: bindingForSheet(.remindAttendees)) {
                 RemindAttendeesSheet(
@@ -106,7 +106,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .sheet(isPresented: bindingForSheet(.closeEvent)) {
                 CloseEventSheet(
@@ -117,7 +117,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .sheet(isPresented: bindingForSheet(.manualFine)) {
                 if let mf = b.manualFineCoordinator {
@@ -128,7 +128,7 @@ public struct EventDetailSheets: ViewModifier {
                     )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
-                    .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                    .presentationBackground(.regularMaterial)
                 }
             }
             // Founder doctrine 2026-05-20 (reframe): detail = complete +
@@ -144,7 +144,7 @@ public struct EventDetailSheets: ViewModifier {
                     }
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
-                    .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                    .presentationBackground(.regularMaterial)
                 }
             }
             .fullScreenCover(isPresented: bindingForSheet(.rules)) {
@@ -153,7 +153,7 @@ public struct EventDetailSheets: ViewModifier {
                         isPresented: bindingForSheet(.rules),
                         coordinator: rc
                     )
-                    .presentationBackground(.ultraThinMaterial)
+                    .presentationBackground(.regularMaterial)
                 }
             }
             .sheet(isPresented: bindingForSheet(.attendees)) {
@@ -168,7 +168,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
             .fullScreenCover(item: b.attendeeRoute) { mwp in
                 NavigationStack {

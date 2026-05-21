@@ -204,7 +204,7 @@ public struct EventDetailHost: View {
                 Task { await refreshAndRebuild(coordinator: coordinator) }
             }
             .environment(app)
-            .presentationBackground(.ultraThinMaterial.opacity(0.5))
+            .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showLocationEditor) {
@@ -215,7 +215,7 @@ public struct EventDetailHost: View {
                 onSaved: { Task { await refreshAndRebuild(coordinator: coordinator) } }
             )
             .environment(app)
-            .presentationBackground(.ultraThinMaterial.opacity(0.5))
+            .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
         }
     }

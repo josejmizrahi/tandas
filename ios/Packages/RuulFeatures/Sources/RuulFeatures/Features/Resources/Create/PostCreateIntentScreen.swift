@@ -455,7 +455,7 @@ private struct PostCreateIntentScreenContainer: View {
                 resourceContext: resourceContext,
                 onClose: { presentedIntent = nil }
             )
-            .presentationBackground(.ultraThinMaterial.opacity(0.5))
+            .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
         }
     }
@@ -758,7 +758,7 @@ private struct DestinationPresenter: View {
         .padding(RuulSpacing.xl)
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
-        .presentationBackground(.ultraThinMaterial.opacity(0.5))
+        .presentationBackground(.regularMaterial)
     }
 
     /// Copy shown for destinations that don't have a wired renderer
