@@ -29,8 +29,9 @@ struct PropertiesBlockView: View {
                 }
             }
             .padding(.horizontal, RuulSpacing.lg)
+            .padding(.vertical, RuulSpacing.xs)
             .background(
-                Color.ruulSurfaceSecondary,
+                Color.ruulSurface,
                 in: RoundedRectangle(cornerRadius: RuulRadius.md)
             )
         }
