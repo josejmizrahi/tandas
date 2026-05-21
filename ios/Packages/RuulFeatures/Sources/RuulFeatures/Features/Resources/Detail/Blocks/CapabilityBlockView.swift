@@ -26,7 +26,7 @@ struct CapabilityBlockView: View {
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.vertical, RuulSpacing.md)
                 .background(
-                    Color.ruulSurfaceSecondary,
+                    Color.ruulSurface,
                     in: RoundedRectangle(cornerRadius: RuulRadius.md)
                 )
             }
@@ -46,7 +46,7 @@ struct CapabilityBlockView: View {
             }
             .padding(RuulSpacing.lg)
             .background(
-                Color.ruulSurfaceSecondary,
+                Color.ruulSurface,
                 in: RoundedRectangle(cornerRadius: RuulRadius.md)
             )
         }
