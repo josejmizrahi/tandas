@@ -130,10 +130,6 @@ struct AddResourceRuleSheet: View {
             .padding(RuulSpacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-            )
         }
     }
 

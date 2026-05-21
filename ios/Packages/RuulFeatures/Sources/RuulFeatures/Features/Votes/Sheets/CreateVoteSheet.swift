@@ -101,10 +101,6 @@ public struct CreateVoteSheet: View {
             }
             .padding(RuulSpacing.md)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-            )
             .opacity(enabled ? 1.0 : 0.6)
         }
         .buttonStyle(.ruulPress)

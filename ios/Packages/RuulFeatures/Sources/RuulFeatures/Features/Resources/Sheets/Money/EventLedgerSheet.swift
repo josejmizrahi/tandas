@@ -78,10 +78,6 @@ struct ResourceLedgerSheet: View {
         .padding(RuulSpacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        )
     }
 
     // MARK: - Balance section
@@ -117,10 +113,6 @@ struct ResourceLedgerSheet: View {
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        )
     }
 
     // MARK: - Entries feed
@@ -190,10 +182,6 @@ struct ResourceLedgerSheet: View {
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        )
     }
 
     private var addEntryCTA: some View {

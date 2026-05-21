@@ -185,10 +185,6 @@ struct ResourceRulesBody: View {
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.medium)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        )
         .opacity(isInherited ? 0.85 : 1.0)
     }
 

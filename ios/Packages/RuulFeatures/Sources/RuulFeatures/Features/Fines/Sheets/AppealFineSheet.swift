@@ -67,10 +67,6 @@ public struct AppealFineSheet: View {
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        )
     }
 
     private var trimmedReason: String {
