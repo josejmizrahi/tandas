@@ -60,7 +60,7 @@ public struct VoteOnAppealSheet: View {
 
     private var fineCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            RuulListSectionHeader("Multa apelada")
+            Text("Multa apelada").font(.footnote.weight(.semibold)).foregroundStyle(Color(.tertiaryLabel))
             HStack {
                 Text(fine.reason)
                     .font(.headline)
@@ -81,7 +81,7 @@ public struct VoteOnAppealSheet: View {
 
     private var appealReasonCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            RuulListSectionHeader("Argumento de \(appellantName)")
+            Text("Argumento de \(appellantName)").font(.footnote.weight(.semibold)).foregroundStyle(Color(.tertiaryLabel))
             Text(appeal.reason)
                 .font(.subheadline)
                 .foregroundStyle(Color.primary)

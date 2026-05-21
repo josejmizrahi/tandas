@@ -103,18 +103,20 @@ public struct ReviewProposedFinesView: View {
 
     private var proposedSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulListSectionHeader("Propuestas") {
-                HStack(spacing: RuulSpacing.sm) {
-                    Text("\(coordinator.proposed.count)")
-                        .font(.footnote.monospacedDigit().weight(.bold))
-                        .foregroundStyle(Color(.tertiaryLabel))
-                    Button("Oficializar todas") {
-                        Task { await coordinator.officializeAll() }
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(Color.primary)
-                    .disabled(coordinator.isMutating)
+            HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
+                Text("Propuestas")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                Spacer(minLength: 0)
+                Text("\(coordinator.proposed.count)")
+                    .font(.footnote.monospacedDigit().weight(.bold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                Button("Oficializar todas") {
+                    Task { await coordinator.officializeAll() }
                 }
+                .font(.footnote)
+                .foregroundStyle(Color.primary)
+                .disabled(coordinator.isMutating)
             }
             RuulSeparatedRows(items: coordinator.proposed) { fine in
                 proposedFineRow(fine)

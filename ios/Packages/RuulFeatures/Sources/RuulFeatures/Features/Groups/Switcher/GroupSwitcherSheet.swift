@@ -71,7 +71,15 @@ public struct GroupSwitcherSheet: View {
 
     private var groupsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulListSectionHeader("Tus grupos", count: app.groups.count)
+            HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
+                Text("Tus grupos")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                Spacer(minLength: 0)
+                Text("\(app.groups.count)")
+                    .font(.footnote.monospacedDigit().weight(.bold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
             RuulSeparatedRows(items: sortedGroups) { group in
                 groupRow(group)
             }
@@ -80,7 +88,7 @@ public struct GroupSwitcherSheet: View {
 
     private var actionsSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulListSectionHeader("Más opciones")
+            Text("Más opciones").font(.footnote.weight(.semibold)).foregroundStyle(Color(.tertiaryLabel))
             RuulSeparatedRows(items: SwitcherAction.allCases) { action in
                 actionRow(action)
             }

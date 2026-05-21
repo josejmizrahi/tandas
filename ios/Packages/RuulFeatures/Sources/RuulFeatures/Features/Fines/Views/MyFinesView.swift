@@ -226,7 +226,15 @@ public struct MyFinesView: View {
     @ViewBuilder
     private func section<Content: View>(title: String, count: Int, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            RuulListSectionHeader(title, count: count)
+            HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
+                Text(title)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                Spacer(minLength: 0)
+                Text("\(count)")
+                    .font(.footnote.monospacedDigit().weight(.bold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
             VStack(spacing: RuulSpacing.sm) { content() }
         }
     }
