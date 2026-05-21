@@ -37,6 +37,8 @@ public struct ResourceDetailSheet: View {
     @State private var ledgerCoordinator: ResourceLedgerCoordinator?
     @State private var rulesSheetPresented: Bool = false
     @State private var rulesCoordinator: ResourceRulesCoordinator?
+    /// "Ver más" tap on the Activity layer.
+    @State private var activityHistoryPresented: Bool = false
 
     public init(resource: ResourceRow) { self.resource = resource }
 
@@ -83,6 +85,16 @@ public struct ResourceDetailSheet: View {
             if presented && rulesCoordinator == nil {
                 rulesCoordinator = makeRulesCoordinator()
             }
+        }
+        .sheet(isPresented: $activityHistoryPresented) {
+            ResourceActivityHistorySheet(
+                groupId: resource.groupId,
+                resourceId: resource.id,
+                displayName: displayName
+            )
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -195,7 +207,7 @@ public struct ResourceDetailSheet: View {
                     onPrimaryAction: { Task { await dispatchPrimary(group: group) } },
                     onOpenBlock: { id in openBlockDestination(id, group: group) },
                     onTapRelation: { _ in },
-                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
+                    onSeeMoreActivity: { activityHistoryPresented = true },
                     onOverflowAction: { handleOverflow($0) }
                 )
             } else {

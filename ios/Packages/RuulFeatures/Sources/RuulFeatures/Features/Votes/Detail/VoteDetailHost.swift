@@ -33,6 +33,8 @@ public struct VoteDetailHost: View {
     /// Confirmation dialogs preserved from the legacy host.
     @State private var showFinalizeConfirm: Bool = false
     @State private var showCancelConfirm: Bool = false
+    /// "Ver más" tap on the Activity layer.
+    @State private var activityHistoryPresented: Bool = false
 
     public init(coordinator: VoteDetailCoordinator) {
         self.coordinator = coordinator
@@ -48,7 +50,7 @@ public struct VoteDetailHost: View {
                     onPrimaryAction: { handlePrimaryAction() },
                     onOpenBlock: { _ in },
                     onTapRelation: { _ in },
-                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
+                    onSeeMoreActivity: { activityHistoryPresented = true },
                     onOverflowAction: { handleOverflow($0) }
                 )
             } else {
@@ -97,6 +99,16 @@ public struct VoteDetailHost: View {
             Button("No cancelar", role: .cancel) {}
         } message: {
             Text("¿Cancelar este voto? Solo puedes cancelar si nadie ha votado aún.")
+        }
+        .sheet(isPresented: $activityHistoryPresented) {
+            ResourceActivityHistorySheet(
+                groupId: coordinator.vote.groupId,
+                resourceId: coordinator.vote.id,
+                displayName: coordinator.vote.title
+            )
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
         }
     }
 

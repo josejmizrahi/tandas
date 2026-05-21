@@ -87,6 +87,10 @@ public struct EventDetailHost: View {
     // Phase E: deep management sheets driven by openDestinationId routes
     @State private var showRotationParticipants: Bool = false
     @State private var showLocationEditor: Bool = false
+    /// "Ver más" tap on the Activity layer opens the full
+    /// `ResourceActivityHistorySheet` (wider window than the inline 5
+    /// entries).
+    @State private var showActivityHistory: Bool = false
 
     // One @State enum so individual bools don't pollute the storage map.
     @State private var sheet: Sheet?
@@ -162,7 +166,7 @@ public struct EventDetailHost: View {
                     onPrimaryAction: { Task { await dispatchPrimary(blocks: blocks, coordinator: coordinator) } },
                     onOpenBlock: { id in openDestination(id, coordinator: coordinator) },
                     onTapRelation: { card in openRelation(card) },
-                    onSeeMoreActivity: { /* TODO: dedicated activity history sheet */ },
+                    onSeeMoreActivity: { showActivityHistory = true },
                     onOverflowAction: { action in handleOverflow(action, coordinator: coordinator) }
                 )
             } else {
@@ -213,6 +217,16 @@ public struct EventDetailHost: View {
                 initialLocationName: coordinator.event.locationName,
                 viewerIsEventHost: coordinator.viewerIsHost,
                 onSaved: { Task { await refreshAndRebuild(coordinator: coordinator) } }
+            )
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showActivityHistory) {
+            ResourceActivityHistorySheet(
+                groupId: group.id,
+                resourceId: coordinator.event.id,
+                displayName: coordinator.event.title
             )
             .environment(app)
             .presentationBackground(.regularMaterial)
