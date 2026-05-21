@@ -350,7 +350,7 @@ private struct GroupHomeSheetContent: View {
                 onOpenVotes: {
                     router.openOpenVotes(OpenVotesRouteContext(id: group.id))
                 },
-                onOpenInbox: { router.selectTab(.inbox) },
+                onOpenInbox: { router.selectTab(.home) },
                 onOpenAcuerdos: { path.append(GroupNav.acuerdos) }
             )
             .navigationDestination(for: GroupNav.self) { dest in
