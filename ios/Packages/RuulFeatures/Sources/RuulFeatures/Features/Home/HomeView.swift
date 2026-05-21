@@ -92,11 +92,14 @@ public struct HomeView: View {
                 // 2026-05-20 restructure: replaces the deleted `.create`
                 // tab. Primary "+" action lives in Home's toolbar (Apple
                 // pattern — Reminders / Calendar / Mail all do this).
+                // `.glassProminent` per Ruul Glass Doctrine "floating
+                // action → ligero" (iOS 26 native).
                 Button {
                     router.presentCreate(hasActiveGroup: app.activeGroup != nil)
                 } label: {
                     Image(systemName: "plus")
                 }
+                .buttonStyle(.glassProminent)
                 .accessibilityLabel("Crear")
             }
         }
