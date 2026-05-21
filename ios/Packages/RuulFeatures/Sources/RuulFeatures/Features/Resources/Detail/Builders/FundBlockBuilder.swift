@@ -69,27 +69,22 @@ public struct FundBlockBuilder: BlockBuilder {
             )
         }()
 
-        let balanceBlock = CapabilityBlock(
-            id: "balance",
-            title: "Saldo",
-            icon: "banknote",
-            layoutKind: .balance,
-            payload: CapabilityBlock.Payload(
-                balance: CapabilityBlock.BalanceFields(
-                    primary: formatted,
-                    supporting: nil,    // Phase E: last-entry line from LedgerRepository
-                    delta: nil
-                )
-            ),
-            footerVerb: "Ver libro",
-            openDestinationId: "fund.ledger"
-        )
-
+        // Apple-Wallet redesign: the StateHero already owns the amount
+        // + "Registrar movimiento" primary action. The legacy `balance`
+        // CapabilityBlock duplicated the amount inside a separate card
+        // with a "Ver libro" footer that opened the same AddLedgerEntry
+        // sheet as the primary action — pure visual + functional
+        // redundancy. Dropped per founder review 2026-05-21.
+        //
+        // When richer Money block content arrives (last-entry preview,
+        // top contributors avatars), it will live INLINE in the hero as
+        // a supporting line — not as a separate card below it. The
+        // hero is the canonical money card per the doctrine.
         return ResourceBlocks(
             identity: identity,
             state: StateHeadlineResolver.normalize(state, fallback: name),
             properties: PropertiesBlock(rows: []),
-            capabilities: [balanceBlock],
+            capabilities: [],
             relations: [],
             activityHead: [],
             hasMoreActivity: false
