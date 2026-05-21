@@ -6,11 +6,14 @@ import RuulCore
 ///
 /// Three canonical sections (Ruul Canonical UX Doctrine §4, §7):
 ///   1. **Necesitan ti** — pendings sourced from `inboxCoordinator`
-///      (cross-group capable). Top 3 ActionCard rows + overflow.
-///   2. **Próximamente** — upcoming events + scheduled resources for
-///      the active group. Top 5 unified rows + overflow.
-///   3. **Hace poco** — recent past events (closed/cancelled) for the
-///      active group. Top 5 unified rows + overflow → history.
+///      (cross-group capable). Top 3 ActionCard rows.
+///   2. **Próximamente** — resource-driven feed of items with a real
+///      future temporal anchor. V1 only Event exposes `startsAt`;
+///      other resource types contribute their own "next happens at"
+///      as they ship temporal semantics (slot rotation, asset
+///      booking, fund deadline, right expiration). Top 5 rows.
+///   3. **Hace poco** — recently closed/cancelled resources
+///      (polymorphic). Top 5 rows + overflow → history.
 ///
 /// LargeTitle "Inicio" (Apple Reminders / Calendar convention).
 /// Drops the previous capability-aware emptyHero variant, the
@@ -286,61 +289,57 @@ public struct HomeView: View {
             .padding(.leading, RuulSpacing.s12)
     }
 
-    // MARK: - Upcoming feed (events + non-event resources)
+    // MARK: - Upcoming feed (resource-driven, time-anchored)
+
+    /// "Próximamente" is a **resource-driven** feed of items with a
+    /// real future temporal anchor. Per Ruul Canonical UX Doctrine §9
+    /// (Resource Experience): every resource type uses the same
+    /// structural layout, including how it participates in the
+    /// timeline. The semantic is "next happens at" per resource
+    /// type — events use `startsAt`; future non-event types will
+    /// contribute their own anchors as they ship temporal semantics:
+    ///
+    ///   - slot → next assigned date / rotation turn
+    ///   - asset → next booking / maintenance due
+    ///   - fund → next contribution deadline / scheduled payout
+    ///   - right → next exercise window / expiration
+    ///   - space → next reservation
+    ///
+    /// **V1 reality**: only `Event` exposes a temporal anchor today,
+    /// so the feed is sourced from `coordinator.upcomingEvents`.
+    /// Non-event resources without a "next happens at" projection
+    /// stay out of this section — they live in Group home / detail
+    /// surfaces. Sorting them by `createdAt` next to scheduled events
+    /// read as misleading on device (founder feedback 2026-05-20).
+    ///
+    /// TODO: introduce a polymorphic `ResourceTimelineProvider` /
+    /// `ResourceRow.nextHappensAt: Date?` projection once any
+    /// non-event type ships real schedule semantics. The feed
+    /// collapses every resource with a non-nil anchor chronologically
+    /// at that point — no special-casing here.
+    private var upcomingFeed: [UpcomingFeedItem] {
+        coordinator.upcomingEvents
+            .map { UpcomingFeedItem(id: $0.id, event: $0) }
+            .sorted { $0.sortDate < $1.sortDate }
+    }
 
     private struct UpcomingFeedItem: Identifiable {
         let id: UUID
-        let kind: Kind
-        let sortDate: Date
-        enum Kind {
-            case event(Event)
-            case resource(ResourceRow)
-        }
-    }
-
-    /// Cross-type feed: every upcoming event AND every other resource
-    /// (fund, asset, space, slot, right) collapsed into one chronological
-    /// stream. Events render with the same row chrome as every other
-    /// resource so the section reads as a single activity list.
-    private var upcomingFeed: [UpcomingFeedItem] {
-        let events = coordinator.upcomingEvents.map { event in
-            UpcomingFeedItem(
-                id: event.id,
-                kind: .event(event),
-                sortDate: event.startsAt
-            )
-        }
-        let resources = coordinator.upcomingResources.map { row in
-            UpcomingFeedItem(
-                id: row.id,
-                kind: .resource(row),
-                sortDate: row.createdAt
-            )
-        }
-        return (events + resources).sorted { $0.sortDate < $1.sortDate }
+        let event: Event
+        var sortDate: Date { event.startsAt }
     }
 
     @ViewBuilder
     private func activityRow(_ item: UpcomingFeedItem) -> some View {
-        switch item.kind {
-        case .event(let event):
-            let status = coordinator.myRSVPs[event.id]?.status
-            unifiedRow(
-                icon: ResourceTypeChrome.resolve(.event).symbol,
-                title: event.title,
-                meta: eventMetaLine(event),
-                trailing: rsvpTrailing(for: event, status: status),
-                onTap: { onOpenEvent(event) }
-            )
-        case .resource(let row):
-            unifiedRow(
-                icon: ResourceTypeChrome.resolve(row.resourceType).symbol,
-                title: displayNameFor(row),
-                meta: subtitleFor(row),
-                trailing: nil,
-                onTap: { openedResource = row }
-            )
-        }
+        let event = item.event
+        let status = coordinator.myRSVPs[event.id]?.status
+        unifiedRow(
+            icon: ResourceTypeChrome.resolve(.event).symbol,
+            title: event.title,
+            meta: eventMetaLine(event),
+            trailing: rsvpTrailing(for: event, status: status),
+            onTap: { onOpenEvent(event) }
+        )
     }
 
     /// Past resource row — same chrome as upcoming. `meta` reads
@@ -406,32 +405,6 @@ public struct HomeView: View {
     }
 
     // MARK: - Meta line helpers
-
-    private func subtitleFor(_ row: ResourceRow) -> String {
-        let type = row.resourceType.humanLabel
-        switch row.resourceType {
-        case .asset:
-            if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
-                return "\(type) · Prestado"
-            }
-            if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
-                return "\(type) · En custodia"
-            }
-            return "\(type) · Del grupo"
-        case .fund:
-            if let raw = row.metadata["locked_at"]?.stringValue, !raw.isEmpty {
-                return "\(type) · Bloqueado"
-            }
-            return type
-        case .space:
-            if let cap = row.metadata["capacity"]?.intValue {
-                return "\(type) · \(cap) cupos"
-            }
-            return type
-        default:
-            return type
-        }
-    }
 
     private func eventMetaLine(_ event: Event) -> String {
         if event.status == .cancelled { return "Cancelado" }
