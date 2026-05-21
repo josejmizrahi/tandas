@@ -23,7 +23,7 @@ public struct RuleRepealVoteBody: View {
 
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                    Text("RAZÓN")
+                    Text("Razón")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                     Text(desc)
@@ -75,7 +75,7 @@ public struct RuleRepealVoteBody: View {
 
     private var ruleCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text("ACUERDO")
+            Text("Acuerdo")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             Text(ruleTitle)

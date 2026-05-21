@@ -24,7 +24,7 @@ public struct MemberRemovalVoteBody: View {
 
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                    Text("RAZÓN")
+                    Text("Razón")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                     Text(desc)
@@ -72,7 +72,7 @@ public struct MemberRemovalVoteBody: View {
 
     private var memberCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Text("MIEMBRO")
+            Text("Miembro")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             Text(memberName)

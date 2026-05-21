@@ -143,7 +143,7 @@ public struct MemberDetailView: View {
     private var statsSection: some View {
         if summary?.isMember != false {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                RuulListSectionHeader("ACTIVIDAD")
+                RuulListSectionHeader("Actividad")
                 HStack(spacing: RuulSpacing.sm) {
                     statTile(value: attendanceDisplay, label: "Asistencia")
                     statTile(value: pendingFinesDisplay, label: "Por pagar")
@@ -195,7 +195,7 @@ public struct MemberDetailView: View {
                 .foregroundStyle(Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text(label.uppercased())
+            Text(label)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
                 .lineLimit(1)
@@ -214,7 +214,7 @@ public struct MemberDetailView: View {
     private var rolesSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack {
-                RuulListSectionHeader("ROLES EN ESTE GRUPO")
+                RuulListSectionHeader("Roles en este grupo")
                 Spacer()
                 if canManageRoles {
                     Button("Editar") { showRolesPicker = true }
@@ -232,7 +232,7 @@ public struct MemberDetailView: View {
 
     private var joinedSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulListSectionHeader("UNIÓN")
+            RuulListSectionHeader("Unión")
             infoRow(icon: "calendar", label: joinedFormatted)
         }
     }

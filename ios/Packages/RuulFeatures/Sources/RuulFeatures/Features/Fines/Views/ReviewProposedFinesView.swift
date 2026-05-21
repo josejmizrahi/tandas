@@ -32,7 +32,7 @@ public struct ReviewProposedFinesView: View {
                     header
                     if let err = coordinator.error {
                         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                            Text("ERROR AL CARGAR")
+                            Text("Error al cargar")
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(Color.red)
                             Text(err)
@@ -77,7 +77,7 @@ public struct ReviewProposedFinesView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("EVENTO")
+            Text("Evento")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             Text(coordinator.event.title)
@@ -103,7 +103,7 @@ public struct ReviewProposedFinesView: View {
 
     private var proposedSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            RuulListSectionHeader("PROPUESTAS") {
+            RuulListSectionHeader("Propuestas") {
                 HStack(spacing: RuulSpacing.sm) {
                     Text("\(coordinator.proposed.count)")
                         .font(.footnote.monospacedDigit().weight(.bold))
@@ -179,7 +179,7 @@ public struct ReviewProposedFinesView: View {
     private var resolvedSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.sm) {
             HStack {
-                Text("YA RESUELTAS")
+                Text("Ya resueltas")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 Spacer()

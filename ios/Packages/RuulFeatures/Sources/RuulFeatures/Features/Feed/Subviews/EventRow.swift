@@ -132,9 +132,9 @@ public struct EventRow: View {
     private var metaLine: String {
         var parts: [String] = []
         if originGroup == nil, let groupName, !groupName.isEmpty {
-            parts.append(groupName.uppercased())
+            parts.append(groupName)
         }
-        parts.append(dateLabel.uppercased())
+        parts.append(dateLabel)
         return parts.joined(separator: " · ")
     }
 
@@ -172,7 +172,7 @@ public struct EventRow: View {
             Circle()
                 .fill(Color.red)
                 .frame(width: 6, height: 6)
-            Text("EN VIVO")
+            Text("En vivo")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.red)
         }

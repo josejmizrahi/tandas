@@ -1,11 +1,9 @@
 import SwiftUI
 
-/// Canonical section header for lists: a tracked-uppercase label on
-/// the leading edge plus an optional trailing count. Mirrors Apple
-/// Settings / Luma section divider rhythm — `PENDIENTES   3`, `DINERO`,
-/// `MIS MULTAS   12`. Replaces the ad-hoc `HStack { Text("CAPS") +
-/// Spacer + Text(count) }` pattern duplicated across 10+ feature
-/// files.
+/// Canonical section header for lists: a small tertiary-label on the
+/// leading edge plus an optional trailing count. Mirrors Apple Settings
+/// section divider rhythm — `Pendientes   3`, `Dinero`,
+/// `Mis multas   12`. Sentence case per Fase1HumanLayerRules §1.5.
 ///
 /// Use as the first child of a section's VStack, above a
 /// `RuulSeparatedRows` or a single content card.
@@ -59,9 +57,9 @@ public struct RuulListSectionHeader: View {
 #if DEBUG
 #Preview("RuulListSectionHeader") {
     VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-        RuulListSectionHeader("PENDIENTES", count: 3)
-        RuulListSectionHeader("DINERO")
-        RuulListSectionHeader("MIS GRUPOS") {
+        RuulListSectionHeader("Pendientes", count: 3)
+        RuulListSectionHeader("Dinero")
+        RuulListSectionHeader("Mis grupos") {
             Image(systemName: "plus.circle.fill")
                 .foregroundStyle(Color.ruulAccent)
         }

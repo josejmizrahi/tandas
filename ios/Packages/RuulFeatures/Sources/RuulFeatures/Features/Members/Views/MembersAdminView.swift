@@ -128,7 +128,7 @@ public struct MembersAdminView: View {
             }
             Spacer()
             if row.member.isFounder {
-                Text("FUNDADOR")
+                Text("Fundador")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulAccent)
             }

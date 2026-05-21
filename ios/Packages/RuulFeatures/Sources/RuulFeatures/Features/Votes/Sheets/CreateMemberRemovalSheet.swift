@@ -74,7 +74,7 @@ public struct CreateMemberRemovalSheet: View {
 
     private var targetPicker: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("A QUIEN")
+            Text("A quién")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
 
@@ -137,7 +137,7 @@ public struct CreateMemberRemovalSheet: View {
 
     private var reasonInput: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("RAZON")
+            Text("Razón")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
 
@@ -158,7 +158,7 @@ public struct CreateMemberRemovalSheet: View {
 
     private var durationPicker: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("DURACION")
+            Text("Duración")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
 

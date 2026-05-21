@@ -51,11 +51,11 @@ public struct DevicesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RuulSpacing.xl) {
                 if let current = currentDevice {
-                    deviceSection(title: "ESTA SESIÓN") { row(current, isCurrent: true) }
+                    deviceSection(title: "Esta sesión") { row(current, isCurrent: true) }
                 }
                 let others = devices.filter { $0.id != currentDevice?.id }
                 if !others.isEmpty {
-                    deviceSection(title: "OTRAS SESIONES") {
+                    deviceSection(title: "Otras sesiones") {
                         VStack(spacing: 0) {
                             ForEach(others) { device in
                                 row(device, isCurrent: false)

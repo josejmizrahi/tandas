@@ -106,7 +106,7 @@ public struct MyFeedView: View {
 
     private func sectionHeader(section: MyFeedCoordinator.Section, count: Int) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(section.title.uppercased())
+            Text(section.title)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.secondary)
             Spacer()

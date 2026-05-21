@@ -216,7 +216,7 @@ public struct MyProfileView: View {
     // MARK: Sections
 
     private var identitySection: some View {
-        sectionContainer(title: "IDENTIDAD") {
+        sectionContainer(title: "Identidad") {
             navRow(
                 icon: "phone",
                 label: "Teléfono",
@@ -234,7 +234,7 @@ public struct MyProfileView: View {
     }
 
     private var preferencesSection: some View {
-        sectionContainer(title: "PREFERENCIAS") {
+        sectionContainer(title: "Preferencias") {
             navRow(
                 icon: "globe",
                 label: "Idioma",
@@ -252,7 +252,7 @@ public struct MyProfileView: View {
     }
 
     private var notificationsSection: some View {
-        sectionContainer(title: "NOTIFICACIONES") {
+        sectionContainer(title: "Notificaciones") {
             navRow(
                 icon: "bell.badge",
                 label: "Preferencias",
@@ -289,7 +289,7 @@ public struct MyProfileView: View {
     @ViewBuilder
     private var myGroupsSection: some View {
         if !app.groups.isEmpty {
-            sectionContainer(title: "MIS GRUPOS") {
+            sectionContainer(title: "Mis grupos") {
                 let visible = Array(app.groups.prefix(3))
                 ForEach(Array(visible.enumerated()), id: \.element.id) { idx, group in
                     if idx > 0 { divider }
@@ -336,7 +336,7 @@ public struct MyProfileView: View {
     }
 
     private var activitySection: some View {
-        sectionContainer(title: "TU ACTIVIDAD") {
+        sectionContainer(title: "Tu actividad") {
             navRow(icon: "creditcard", label: "Mis multas", trailing: { outstandingPill }, action: onOpenMyFines)
             if let onOpenMyLedger {
                 divider
@@ -350,7 +350,7 @@ public struct MyProfileView: View {
     }
 
     private var settingsSection: some View {
-        sectionContainer(title: "AJUSTES") {
+        sectionContainer(title: "Ajustes") {
             navRow(icon: "pencil", label: "Editar perfil", trailing: { EmptyView() }, action: onEditProfile)
         }
     }
@@ -362,7 +362,7 @@ public struct MyProfileView: View {
     /// with a remote-config surface when the flag graduates from
     /// internal-only to runtime production rollout.
     private var debugSection: some View {
-        sectionContainer(title: "DEBUG") {
+        sectionContainer(title: "Debug") {
             HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: "plus.app")
                     .font(.subheadline.weight(.medium))
@@ -420,7 +420,7 @@ public struct MyProfileView: View {
     @ViewBuilder
     private var dataAndAccountSection: some View {
         if let onExportData, let onDeleteAccount {
-            sectionContainer(title: "DATOS Y CUENTA") {
+            sectionContainer(title: "Datos y cuenta") {
                 navRow(
                     icon: "square.and.arrow.up",
                     label: "Exportar mis datos",
@@ -441,7 +441,7 @@ public struct MyProfileView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("APARIENCIA")
+            Text("Apariencia")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.leading, RuulSpacing.xxs)

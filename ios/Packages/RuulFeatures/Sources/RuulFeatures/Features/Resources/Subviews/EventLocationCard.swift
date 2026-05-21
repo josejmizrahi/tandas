@@ -68,7 +68,7 @@ public struct EventLocationCard: View {
                     .foregroundStyle(Color.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text("CÓMO LLEGAR")
+                Text("Cómo llegar")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
             }

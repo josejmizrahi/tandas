@@ -49,7 +49,6 @@ public struct FineCard: View {
                 Text(groupName)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextAccent)
-                    .textCase(.uppercase)
             }
             statusRow
             Divider().background(Color(.separator))
@@ -78,7 +77,6 @@ public struct FineCard: View {
                     Text(groupName)
                         .font(.caption)
                         .foregroundStyle(Color(.tertiaryLabel))
-                        .textCase(.uppercase)
                         .lineLimit(1)
                 }
             }
@@ -166,8 +164,8 @@ public struct FineCard: View {
         guard interval >= 0 else { return nil }
         let days = Int(interval / 86_400)
         let hours = Int(interval / 3600)
-        if days >= 1 { return "HACE \(days) D" }
-        if hours >= 1 { return "HACE \(hours) H" }
-        return "AHORA"
+        if days >= 1 { return "Hace \(days) d" }
+        if hours >= 1 { return "Hace \(hours) h" }
+        return "Ahora"
     }
 }

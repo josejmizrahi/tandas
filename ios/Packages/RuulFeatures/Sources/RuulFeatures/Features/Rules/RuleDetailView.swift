@@ -87,7 +87,7 @@ public struct RuleDetailView: View {
                 Circle()
                     .fill(rule.isLive ? Color.green : Color(.tertiaryLabel))
                     .frame(width: 8, height: 8)
-                Text(rule.isLive ? "ACTIVA" : "INACTIVA")
+                Text(rule.isLive ? "Activa" : "Inactiva")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.secondary)
             }
@@ -96,7 +96,7 @@ public struct RuleDetailView: View {
                 .foregroundStyle(Color.primary)
             if let amount = FineConsequenceParser.firstAmountMXN(in: rule.consequences), amount > 0 {
                 HStack {
-                    Text("MULTA")
+                    Text("Multa")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                     Spacer()
@@ -120,7 +120,7 @@ public struct RuleDetailView: View {
     // MARK: - Sections
 
     private var consequencesSection: some View {
-        sectionContainer(title: "QUÉ HACE") {
+        sectionContainer(title: "Qué hace") {
             if rule.consequences.isEmpty {
                 Text("Sin consecuencias configuradas.")
                     .font(.caption)
@@ -136,7 +136,7 @@ public struct RuleDetailView: View {
     }
 
     private var actionsSection: some View {
-        sectionContainer(title: "ACCIONES") {
+        sectionContainer(title: "Acciones") {
             VStack(spacing: RuulSpacing.xs) {
                 RuulButton(
                     "Editar regla",

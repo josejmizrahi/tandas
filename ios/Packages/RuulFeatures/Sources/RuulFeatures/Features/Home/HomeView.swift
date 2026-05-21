@@ -206,7 +206,7 @@ public struct HomeView: View {
             empty: { emptyHero },
             loaded: { _ in
                 VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                    RuulListSectionHeader("PRÓXIMO", count: upcomingFeed.count)
+                    RuulListSectionHeader("Próximo", count: upcomingFeed.count)
                     RuulSeparatedRows(items: upcomingFeed) { item in
                         activityRow(item)
                     }
@@ -348,7 +348,7 @@ public struct HomeView: View {
             return AnyView(
                 HStack(spacing: 4) {
                     Circle().fill(Color.red).frame(width: 6, height: 6)
-                    Text("EN VIVO")
+                    Text("En vivo")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.red)
                 }
@@ -480,7 +480,7 @@ public struct HomeView: View {
     private var pendingsSection: some View {
         if let coord = inboxCoordinator, !coord.actions.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                RuulListSectionHeader("POR HACER", count: coord.actions.count)
+                RuulListSectionHeader("Por hacer", count: coord.actions.count)
                 RuulSeparatedRows(items: Array(coord.actions.prefix(3))) { action in
                     ActionCard(
                         icon: pendingIcon(for: action.actionType),
@@ -544,7 +544,7 @@ public struct HomeView: View {
     private var groupMemorySection: some View {
         if groupMemory.hasAnyContent {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                Text("HISTORIAL DEL GRUPO")
+                Text("Historial del grupo")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
 
@@ -590,7 +590,7 @@ public struct HomeView: View {
                     .font(.caption)
                     .foregroundStyle(Color.secondary)
                     .accessibilityHidden(true)
-                Text(caption.uppercased())
+                Text(caption)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)

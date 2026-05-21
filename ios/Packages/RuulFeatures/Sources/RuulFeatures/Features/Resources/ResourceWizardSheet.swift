@@ -489,7 +489,7 @@ public struct ResourceWizardSheet: View {
         let compatible = coordinator.compatibleUniversalTemplates(shapeRegistry: app.ruleShapeRegistry)
         if !compatible.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                Text("PATRONES UNIVERSALES")
+                Text("Patrones universales")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 Text("Patrones de coordinación que sirven en muchos grupos. Elige los que apliquen — se activan en este \(coordinator.selectedBuilder?.displayName.lowercased() ?? "recurso") cuando lo crees.")
@@ -557,7 +557,7 @@ public struct ResourceWizardSheet: View {
             .filter { coordinator.isCapabilityEnabled($0.id) && grouped[$0.id] != nil }
         ForEach(orderedBlocks, id: \.id) { block in
             VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                Text(block.displayName.uppercased())
+                Text(block.displayName)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {
@@ -649,7 +649,7 @@ public struct ResourceWizardSheet: View {
 
     private func reviewFields(builder: any ResourceBuilder) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("DETALLES")
+            Text("Detalles")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             VStack(spacing: 0) {
@@ -684,7 +684,7 @@ public struct ResourceWizardSheet: View {
             .filter { coordinator.isCapabilityEnabled($0.id) }
         if !enabled.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("OPCIONES ACTIVAS")
+                Text("Opciones activas")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {
@@ -725,7 +725,7 @@ public struct ResourceWizardSheet: View {
         let allNames = (universalNames + capUniversalNames + legacyNames).sorted()
         if !allNames.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("ACUERDOS QUE APLICAN")
+                Text("Acuerdos que aplican")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 VStack(spacing: RuulSpacing.xs) {

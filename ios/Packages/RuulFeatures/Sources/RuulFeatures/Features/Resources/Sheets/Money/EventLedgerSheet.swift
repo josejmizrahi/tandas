@@ -59,7 +59,7 @@ struct ResourceLedgerSheet: View {
 
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("TOTAL REGISTRADO")
+            Text("Total registrado")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
@@ -84,7 +84,7 @@ struct ResourceLedgerSheet: View {
 
     private var balanceSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("BALANCE NETO")
+            Text("Balance neto")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             RuulSeparatedRows(items: coordinator.memberBalances) { balance in
@@ -128,7 +128,7 @@ struct ResourceLedgerSheet: View {
             .padding(.vertical, RuulSpacing.md)
         } else {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("HISTORIAL")
+                Text("Historial")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 RuulSeparatedRows(items: coordinator.entries) { entry in

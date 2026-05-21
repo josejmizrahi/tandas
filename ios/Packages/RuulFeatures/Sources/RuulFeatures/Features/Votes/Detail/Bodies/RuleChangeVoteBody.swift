@@ -29,7 +29,7 @@ public struct RuleChangeVoteBody: View {
             // Razón del cambio (description del vote).
             if let desc = coordinator.vote.description, !desc.isEmpty {
                 VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                    Text("RAZÓN")
+                    Text("Razón")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                     Text(desc)
@@ -41,7 +41,7 @@ public struct RuleChangeVoteBody: View {
 
             // Diff visual.
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                Text("CAMBIO PROPUESTO")
+                Text("Cambio propuesto")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 HStack(spacing: RuulSpacing.md) {
@@ -67,7 +67,7 @@ public struct RuleChangeVoteBody: View {
 
     private func amountChip(label: String, value: Int?, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label.uppercased())
+            Text(label)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             Text(value.map { "$\($0)" } ?? "—")

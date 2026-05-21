@@ -33,16 +33,16 @@ public struct ActionCard: View {
 
         var label: String {
             switch self {
-            case .low:    return "BAJA"
-            case .medium: return "MEDIA"
-            case .high:   return "ALTA"
-            case .urgent: return "URGENTE"
+            case .low:    return "Baja"
+            case .medium: return "Media"
+            case .high:   return "Alta"
+            case .urgent: return "Urgente"
             }
         }
     }
 
     private let icon: String
-    private let meta: String?              // uppercase tracked label above title
+    private let meta: String?              // small tracked label above the title
     private let title: String
     private let subtitle: String?
     private let priority: Priority
@@ -103,7 +103,7 @@ public struct ActionCard: View {
     private var contentColumn: some View {
         VStack(alignment: .leading, spacing: 2) {
             if let meta {
-                Text(meta.uppercased())
+                Text(meta)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextAccent)
                     .lineLimit(1)

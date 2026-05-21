@@ -20,7 +20,7 @@ import SwiftUI
 ///
 /// Usage:
 ///   ```swift
-///   RuulInfoCard("CUSTODIA") {
+///   RuulInfoCard("Custodia") {
 ///       RuulInfoRow(label: "Custodio", value: "Pedro")
 ///       RuulInfoDivider()
 ///       RuulInfoActionRow(label: "Asignar custodio",
@@ -146,7 +146,7 @@ public struct RuulInfoDivider: View {
 #if DEBUG
 #Preview("RuulInfoCard — info + actions") {
     VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-        RuulInfoCard("CUSTODIA") {
+        RuulInfoCard("Custodia") {
             RuulInfoRow(label: "Custodio", value: "Pedro Hernández")
             RuulInfoDivider()
             RuulInfoRow(label: "Desde", value: "8 May 2026")
@@ -162,7 +162,7 @@ public struct RuulInfoDivider: View {
                 isDestructive: true
             ) { }
         }
-        RuulInfoCard("INFORMACIÓN") {
+        RuulInfoCard("Información") {
             RuulInfoRow(label: "Fecha", value: "Lunes 19 de mayo")
             RuulInfoDivider()
             RuulInfoRow(label: "Hora", value: "16:00 – 19:00")

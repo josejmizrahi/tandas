@@ -72,12 +72,12 @@ public struct MyLedgerView: View {
     private var heroPair: some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             heroTile(
-                label: "HE PAGADO",
+                label: "He pagado",
                 amount: decimal(coordinator.totalPaidCents),
                 color: coordinator.totalPaidCents > 0 ? .negative : .neutral
             )
             heroTile(
-                label: "HE RECIBIDO",
+                label: "He recibido",
                 amount: decimal(coordinator.totalReceivedCents),
                 color: coordinator.totalReceivedCents > 0 ? .positive : .neutral
             )
@@ -137,7 +137,7 @@ public struct MyLedgerView: View {
     private var perGroupSection: some View {
         let active = coordinator.ledgers.filter { $0.paidCents > 0 || $0.receivedCents > 0 }
         if !active.isEmpty {
-            sectionContainer(title: "POR GRUPO", count: active.count) {
+            sectionContainer(title: "Por grupo", count: active.count) {
                 ForEach(Array(active.enumerated()), id: \.element.id) { idx, ledger in
                     perGroupRow(ledger)
                     if idx < active.count - 1 { rowDivider }
@@ -194,7 +194,7 @@ public struct MyLedgerView: View {
     private var recentSection: some View {
         let recent = Array(coordinator.allEntriesNewestFirst.prefix(20))
         if !recent.isEmpty {
-            sectionContainer(title: "MOVIMIENTOS RECIENTES", count: recent.count) {
+            sectionContainer(title: "Movimientos recientes", count: recent.count) {
                 ForEach(Array(recent.enumerated()), id: \.element.id) { idx, entry in
                     entryRow(entry)
                     if idx < recent.count - 1 { rowDivider }

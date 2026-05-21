@@ -356,7 +356,7 @@ public struct RulesView: View {
                         chip
                     }
                     if !rule.isLive {
-                        Text("INACTIVA")
+                        Text("Inactiva")
                             .font(.footnote)
                             .foregroundStyle(Color(.tertiaryLabel))
                     }
@@ -409,7 +409,7 @@ public struct RulesView: View {
                 Text(format(amount: amount))
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextAccent)
-                Text("MULTA")
+                Text("Multa")
                     .font(.footnote)
                     .foregroundStyle(Color(.tertiaryLabel))
             }

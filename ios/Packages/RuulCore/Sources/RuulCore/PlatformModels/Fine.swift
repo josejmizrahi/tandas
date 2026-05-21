@@ -133,11 +133,11 @@ public enum FineStatus: String, Codable, Sendable, Hashable, CaseIterable {
 
     public var displayLabel: String {
         switch self {
-        case .proposed:     return "PROPUESTA"
-        case .officialized: return "PENDIENTE"
-        case .paid:         return "PAGADA"
-        case .voided:       return "ANULADA"
-        case .inAppeal:     return "EN APELACIÓN"
+        case .proposed:     return "Propuesta"
+        case .officialized: return "Pendiente"
+        case .paid:         return "Pagada"
+        case .voided:       return "Anulada"
+        case .inAppeal:     return "En apelación"
         }
     }
 }

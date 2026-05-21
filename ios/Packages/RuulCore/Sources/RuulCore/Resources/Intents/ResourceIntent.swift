@@ -147,11 +147,11 @@ public enum IntentGroup: String, CaseIterable, Sendable, Hashable {
     /// Spanish header shown above the section in the menu.
     public var label: String {
         switch self {
-        case .actions:      return "ACCIONES"
-        case .money:        return "DINERO"
-        case .coordination: return "COORDINACIÓN"
-        case .governance:   return "GOBIERNO"
-        case .history:      return "HISTORIAL"
+        case .actions:      return "Acciones"
+        case .money:        return "Dinero"
+        case .coordination: return "Coordinación"
+        case .governance:   return "Gobierno"
+        case .history:      return "Historial"
         }
     }
 

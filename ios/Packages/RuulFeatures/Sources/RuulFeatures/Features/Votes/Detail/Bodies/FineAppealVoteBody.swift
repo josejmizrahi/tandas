@@ -61,7 +61,7 @@ public struct FineAppealVoteBody: View {
         } label: {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 HStack {
-                    Text("MULTA APELADA")
+                    Text("Multa apelada")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                     Spacer()
@@ -105,7 +105,7 @@ public struct FineAppealVoteBody: View {
     private var appealReasonCard: some View {
         if let reason = appealReason, !reason.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("ARGUMENTO DE APELACIÓN")
+                Text("Argumento de apelación")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 Text(reason)

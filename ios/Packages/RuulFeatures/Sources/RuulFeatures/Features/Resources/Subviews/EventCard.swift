@@ -156,12 +156,12 @@ public struct EventCard: View {
     private var dateDescription: String {
         let calendar = Calendar.current
         if calendar.isDateInToday(event.startsAt) {
-            return "HOY · \(event.startsAt.ruulShortTime)"
+            return "Hoy · \(event.startsAt.ruulShortTime)"
         }
         if calendar.isDateInTomorrow(event.startsAt) {
-            return "MAÑANA · \(event.startsAt.ruulShortTime)"
+            return "Mañana · \(event.startsAt.ruulShortTime)"
         }
-        return "\(event.startsAt.ruulShortDate.uppercased()) · \(event.startsAt.ruulShortTime)"
+        return "\(event.startsAt.ruulShortDate) · \(event.startsAt.ruulShortTime)"
     }
 
     private func overlayBadge(icon: String, text: String, tint: Color) -> some View {
@@ -183,7 +183,7 @@ public struct EventCard: View {
             Circle()
                 .fill(Color.white)
                 .frame(width: 6, height: 6)
-            Text("EN VIVO")
+            Text("En vivo")
                 .font(.footnote.weight(.semibold))
         }
         .foregroundStyle(Color.white)

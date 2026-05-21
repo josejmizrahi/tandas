@@ -57,19 +57,19 @@ struct ResourceRulesBody: View {
                 .padding(.vertical, RuulSpacing.md)
             } else {
                 scopeSection(
-                    title: "DE ESTE RECURSO",
+                    title: "De este recurso",
                     hint: "Específicos a este recurso. Sobrescriben las heredadas.",
                     rules: coordinator.resourceRules,
                     scope: .resource
                 )
                 scopeSection(
-                    title: "DE LA SERIE",
+                    title: "De la serie",
                     hint: "Aplican a todas las ocurrencias de esta recurrencia.",
                     rules: coordinator.seriesRules,
                     scope: .series
                 )
                 scopeSection(
-                    title: "DEL GRUPO",
+                    title: "Del grupo",
                     hint: "Defaults del grupo. Aplican salvo override más específico.",
                     rules: coordinator.groupRules,
                     scope: .group

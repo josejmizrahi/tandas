@@ -91,7 +91,7 @@ public struct MyFinesView: View {
     private var header: some View {
         if coordinator.totalOutstanding > 0 {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("PENDIENTE DE PAGO")
+                Text("Pendiente de pago")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 RuulMoneyView(
@@ -176,7 +176,7 @@ public struct MyFinesView: View {
     @ViewBuilder
     private var pendingSection: some View {
         if !filteredPending.isEmpty {
-            section(title: "POR RESOLVER", count: filteredPending.count) {
+            section(title: "Por resolver", count: filteredPending.count) {
                 RuulSeparatedRows(items: filteredPending) { fine in
                     FineCard(
                         fine: fine,
@@ -204,7 +204,7 @@ public struct MyFinesView: View {
     @ViewBuilder
     private var resolvedSection: some View {
         if !filteredResolved.isEmpty {
-            section(title: "HISTORIAL", count: filteredResolved.count) {
+            section(title: "Historial", count: filteredResolved.count) {
                 // Compact rows: el historial no necesita el chrome del
                 // pending card (status + divider + monto grande). Sólo
                 // nombre + grupo (si cross-group) + monto pequeño.

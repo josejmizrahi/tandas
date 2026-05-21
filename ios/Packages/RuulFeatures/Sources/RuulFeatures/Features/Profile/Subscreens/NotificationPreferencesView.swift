@@ -30,17 +30,17 @@ public struct NotificationPreferencesView: View {
 
     /// Beta-1 notification types agrupados por dominio (UXJourney P1 —
     /// antes era flat list de 6, ahora 3 secciones temáticas con header
-    /// tracked uppercase consistente con el rest of Profile/Group).
+    /// sentence-case consistente con el rest of Profile/Group).
     private static let groups: [PrefGroup] = [
-        PrefGroup(title: "VOTACIONES", types: [
+        PrefGroup(title: "Votaciones", types: [
             PrefType(key: "voteOpened",   label: "Votaciones abiertas", icon: "hand.raised"),
             PrefType(key: "voteResolved", label: "Resultados de voto",  icon: "checkmark.seal")
         ]),
-        PrefGroup(title: "MULTAS Y DINERO", types: [
+        PrefGroup(title: "Multas y dinero", types: [
             PrefType(key: "fineOfficialized", label: "Multas nuevas",      icon: "creditcard"),
             PrefType(key: "expenseReversed",  label: "Gastos reversados",  icon: "arrow.uturn.backward.circle")
         ]),
-        PrefGroup(title: "EVENTOS", types: [
+        PrefGroup(title: "Eventos", types: [
             PrefType(key: "eventCreated",       label: "Eventos nuevos",       icon: "calendar.badge.plus"),
             PrefType(key: "rsvpDeadlinePassed", label: "Recordatorios de RSVP", icon: "clock")
         ])

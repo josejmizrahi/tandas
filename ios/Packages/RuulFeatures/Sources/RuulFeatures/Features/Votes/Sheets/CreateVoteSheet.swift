@@ -55,7 +55,7 @@ public struct CreateVoteSheet: View {
                         onTap: { dismiss(); onPickMemberRemoval() }
                     )
 
-                    Text("PRÓXIMAMENTE")
+                    Text("Próximamente")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                         .padding(.top, RuulSpacing.lg)

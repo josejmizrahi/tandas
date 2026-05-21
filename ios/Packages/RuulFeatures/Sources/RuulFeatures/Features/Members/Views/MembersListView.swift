@@ -85,7 +85,7 @@ public struct MembersListView: View {
             }
             Spacer()
             if row.member.joinedVia == "placeholder" {
-                Text("PENDIENTE")
+                Text("Pendiente")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color.secondary)
                     .padding(.horizontal, RuulSpacing.xs)
@@ -96,7 +96,7 @@ public struct MembersListView: View {
                     )
                     .accessibilityLabel("Miembro pendiente de activación")
             } else if row.member.isFounder {
-                Text("FUNDADOR")
+                Text("Fundador")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color.ruulAccent)
             }
