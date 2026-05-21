@@ -16,6 +16,7 @@ import RuulCore
 ///   5. review     — confirmar y crear
 public struct ResourceWizardSheet: View {
     @Environment(AppState.self) private var app
+    @Environment(RootRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
 
     @State private var coordinator: ResourceWizardCoordinator
@@ -59,6 +60,16 @@ public struct ResourceWizardSheet: View {
             // framing 2026-05-11: the wizard's auto-on caps come from
             // the template, never from a Swift switch.
             await rebuildCoordinatorWithTemplate()
+
+            // Compose-chip prefill: when "Evento" / "Fondo" / etc. is
+            // tapped from the group home, the chip stashes the type on
+            // `router.state.pendingWizardResourceType`. Consume + clear
+            // it here so the wizard jumps straight to step 2 (fields)
+            // for that builder, skipping the type picker.
+            if let pending = router.state.pendingWizardResourceType {
+                router.state.pendingWizardResourceType = nil
+                coordinator.selectType(pending)
+            }
         }
     }
 

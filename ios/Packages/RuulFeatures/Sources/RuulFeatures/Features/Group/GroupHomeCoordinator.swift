@@ -12,6 +12,9 @@ public final class GroupHomeCoordinator {
     private let groupSummaryRepo: (any GroupSummaryRepository)?
     private let userActionRepo: (any UserActionRepository)?
     private let myActivityRepo: (any MyActivityRepository)?
+    private let eventRepo: (any EventRepository)?
+    private let fineRepo: (any FineRepository)?
+    private let fundRepo: (any FundRepository)?
     private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
@@ -33,6 +36,14 @@ public final class GroupHomeCoordinator {
     /// Pending UserActions for the current user in this group. Drives
     /// the PendingsBlock list. Loaded in parallel with summary.
     public var pendingActions: [UserAction] = []
+    /// Counts surfaced by the SpacesGrid tiles. Computed via the same
+    /// repos the tile destinations use (eventRepo / fineRepo /
+    /// fundRepo) so the tile count matches the list length — the old
+    /// GroupSummary path counted "resources WHERE status=open" which
+    /// drifted from `upcomingEvents`'s real filter.
+    public var upcomingEventsCount: Int = 0
+    public var groupFinesCount: Int = 0
+    public var groupFundsCount: Int = 0
     public var isLoading: Bool = false
     public var error: CoordinatorError?
     /// True después de que `refresh()` completó al menos una vez. Permite
@@ -93,6 +104,9 @@ public final class GroupHomeCoordinator {
         groupSummaryRepo: (any GroupSummaryRepository)? = nil,
         userActionRepo: (any UserActionRepository)? = nil,
         myActivityRepo: (any MyActivityRepository)? = nil,
+        eventRepo: (any EventRepository)? = nil,
+        fineRepo: (any FineRepository)? = nil,
+        fundRepo: (any FundRepository)? = nil,
         actorUserId: UUID? = nil
     ) {
         self.groupId = groupId
@@ -101,6 +115,9 @@ public final class GroupHomeCoordinator {
         self.groupSummaryRepo = groupSummaryRepo
         self.userActionRepo = userActionRepo
         self.myActivityRepo = myActivityRepo
+        self.eventRepo = eventRepo
+        self.fineRepo = fineRepo
+        self.fundRepo = fundRepo
         self.actorUserId = actorUserId
     }
 
@@ -117,11 +134,17 @@ public final class GroupHomeCoordinator {
             async let summaryTask: Void = loadSummary()
             async let pendingsTask: Void = loadPendingActions()
             async let activityTask: Void = loadRecentActivity()
+            async let eventsCountTask: Void = loadUpcomingEventsCount()
+            async let finesCountTask: Void = loadFinesCount()
+            async let fundsCountTask: Void = loadFundsCount()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
             _ = await pendingsTask
             _ = await activityTask
+            _ = await eventsCountTask
+            _ = await finesCountTask
+            _ = await fundsCountTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -164,6 +187,36 @@ public final class GroupHomeCoordinator {
             self.pendingActions = try await repo.pending(userId: userId, groupId: groupId)
         } catch {
             log.warning("group pending actions load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func loadUpcomingEventsCount() async {
+        guard let repo = eventRepo else { return }
+        do {
+            let events = try await repo.upcomingEvents(in: groupId, limit: 100)
+            self.upcomingEventsCount = events.count
+        } catch {
+            log.warning("group upcomingEvents count failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func loadFinesCount() async {
+        guard let repo = fineRepo, let userId = actorUserId else { return }
+        do {
+            let all = try await repo.myFines(userId: userId)
+            self.groupFinesCount = all.filter { $0.groupId == groupId }.count
+        } catch {
+            log.warning("group fines count failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func loadFundsCount() async {
+        guard let repo = fundRepo else { return }
+        do {
+            let funds = try await repo.listForGroup(groupId)
+            self.groupFundsCount = funds.count
+        } catch {
+            log.warning("group funds count failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

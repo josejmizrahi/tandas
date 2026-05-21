@@ -2,10 +2,11 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// 2×2 grid of "spaces" matching the snippet's SpaceCard: icon in a
-/// 32pt rounded square with linear gradient (tint→tint·0.7) + shadow,
-/// radial-gradient decoration in the top-right corner of the card,
-/// rounded mono primary stat, secondary text or red alert.
+/// 2x2 grid of spaces inside the canonical section card chrome
+/// (`Color.ruulSurface` + separator stroke + `RuulRadius.lg`). Each
+/// tile = tinted icon + label + primary count + secondary line. No
+/// gradients, no radial decoration — same chrome as every other
+/// section card in the app, no hardcoded sizes/kerning.
 @MainActor
 struct GroupSpacesGrid: View {
     struct Tile: Identifiable {
@@ -22,8 +23,8 @@ struct GroupSpacesGrid: View {
     let tiles: [Tile]
 
     private let columns = [
-        GridItem(.flexible(), spacing: RuulSpacing.sm + 2),
-        GridItem(.flexible(), spacing: RuulSpacing.sm + 2)
+        GridItem(.flexible(), spacing: RuulSpacing.sm),
+        GridItem(.flexible(), spacing: RuulSpacing.sm)
     ]
 
     var body: some View {
@@ -33,7 +34,7 @@ struct GroupSpacesGrid: View {
                 .foregroundStyle(Color(.tertiaryLabel))
                 .padding(.leading, RuulSpacing.xxs)
 
-            LazyVGrid(columns: columns, spacing: RuulSpacing.sm + 2) {
+            LazyVGrid(columns: columns, spacing: RuulSpacing.sm) {
                 ForEach(tiles) { tile in
                     Button(action: tile.action) { card(tile) }
                         .buttonStyle(.plain)
@@ -43,65 +44,44 @@ struct GroupSpacesGrid: View {
     }
 
     private func card(_ tile: Tile) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             Image(systemName: tile.systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.ruulTextInverse)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tile.tint)
                 .frame(width: 32, height: 32)
-                .background(
-                    LinearGradient(
-                        colors: [tile.tint, tile.tint.opacity(0.7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                )
-                .shadow(color: tile.tint.opacity(0.25), radius: 4, y: 2)
-                .padding(.bottom, RuulSpacing.xl)
+                .background(tile.tint.opacity(0.12), in: Circle())
+
+            Spacer(minLength: RuulSpacing.xs)
 
             Text(tile.label)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.primary)
-                .padding(.bottom, 3)
 
             Text(tile.primary)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .kerning(-0.4)
-                .monospacedDigit()
+                .font(.body.monospacedDigit().weight(.bold))
                 .foregroundStyle(Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
-            HStack(spacing: 4) {
-                if let alert = tile.alert {
-                    Text(alert)
-                        .foregroundStyle(Color.ruulNegative)
-                        .fontWeight(.semibold)
-                } else {
-                    Text(tile.secondary)
-                        .foregroundStyle(Color.secondary)
-                }
+            if let alert = tile.alert {
+                Text(alert)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.ruulNegative)
+                    .lineLimit(1)
+            } else {
+                Text(tile.secondary)
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+                    .lineLimit(1)
             }
-            .font(.caption)
-            .padding(.top, 2)
         }
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-        .padding(RuulSpacing.md + 2)
-        .background {
-            ZStack(alignment: .topTrailing) {
-                Color.ruulSurface
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [tile.tint.opacity(0.12), .clear],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 60
-                        )
-                    )
-                    .frame(width: 80, height: 80)
-                    .offset(x: 20, y: -20)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-        }
+        .frame(maxWidth: .infinity, minHeight: 116, alignment: .topLeading)
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg)
+                .stroke(Color(.separator), lineWidth: 0.5)
+        )
         .contentShape(Rectangle())
     }
 }

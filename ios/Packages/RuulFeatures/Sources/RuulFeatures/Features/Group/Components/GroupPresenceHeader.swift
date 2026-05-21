@@ -2,13 +2,11 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Top-of-page identity block for `GroupSpaceView`. Mirrors the snippet
-/// PresenceHeader: 72pt rounded-square avatar with the group's color
-/// ramp as a gradient + warm shadow, 30pt serif italic name, metadata
-/// row, large avatar stack.
-///
-/// The avatar shape is intentionally rounded-square (not circle) — it's
-/// "el escudo del grupo", a flag the group identifies with.
+/// Top-of-page identity block for `GroupSpaceView`. Native chrome:
+/// `RuulGroupAvatar` (circle, color ramp per category), name in
+/// `.title2.weight(.semibold)`, member-count caption, avatar stack
+/// that taps through to the members list. Mirrors the hero pattern
+/// from the previous `GroupHomeView`.
 @MainActor
 struct GroupPresenceHeader: View {
     let group: RuulCore.Group
@@ -16,20 +14,35 @@ struct GroupPresenceHeader: View {
     let members: [MemberWithProfile]
     var onTapMembers: (() -> Void)?
 
-    private var ramp: GroupColorRamp { group.category.ramp }
-
     var body: some View {
-        VStack(spacing: RuulSpacing.md) {
-            avatar
-            identity
+        VStack(spacing: RuulSpacing.sm) {
+            RuulGroupAvatar(
+                groupName: group.name,
+                initials: group.initials,
+                category: group.category,
+                imageURL: group.avatarUrl.flatMap(URL.init(string:)),
+                size: .xl
+            )
+
+            VStack(spacing: 2) {
+                Text(group.name)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                Text(metadataLabel)
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+            }
+
             if !members.isEmpty {
                 Button(action: { onTapMembers?() }) {
                     RuulAvatarStack(
                         people: members.map(personFromMember),
-                        size: .medium,
+                        size: .small,
                         maxVisible: 5
                     )
-                    .padding(.top, RuulSpacing.xs)
+                    .padding(.top, RuulSpacing.xxs)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -37,69 +50,19 @@ struct GroupPresenceHeader: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, RuulSpacing.lg)
+        .padding(.vertical, RuulSpacing.md)
     }
 
-    private var avatar: some View {
-        ZStack {
-            if let url = group.avatarUrl.flatMap(URL.init(string:)) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image): image.resizable().scaledToFill()
-                    default: gradientFill
-                    }
-                }
-            } else {
-                gradientFill
-                Text(group.initials)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(ramp.background)
-                    .kerning(-0.5)
+    private var metadataLabel: String {
+        let category = group.category.displayName
+        let countText: String = {
+            switch memberCount {
+            case 0: return "Sin miembros"
+            case 1: return "1 persona"
+            default: return "\(memberCount) personas"
             }
-        }
-        .frame(width: 72, height: 72)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .strokeBorder(Color.ruulBorderGlass, lineWidth: 1)
-        )
-        .shadow(color: ramp.accent.opacity(0.35), radius: 18, y: 8)
-    }
-
-    private var gradientFill: some View {
-        LinearGradient(
-            colors: [ramp.accent, ramp.foreground],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var identity: some View {
-        VStack(spacing: RuulSpacing.xxs) {
-            Text(group.name)
-                .font(.system(size: 30, weight: .semibold, design: .serif))
-                .italic()
-                .kerning(-0.5)
-                .foregroundStyle(Color.primary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-
-            HStack(spacing: RuulSpacing.xs) {
-                Text(group.category.displayName)
-                Text("·")
-                Text(memberCountLabel)
-            }
-            .font(.footnote)
-            .foregroundStyle(Color.secondary)
-        }
-    }
-
-    private var memberCountLabel: String {
-        switch memberCount {
-        case 0: "Sin miembros"
-        case 1: "1 persona"
-        default: "\(memberCount) personas"
-        }
+        }()
+        return "\(category) · \(countText)"
     }
 
     private func personFromMember(_ m: MemberWithProfile) -> RuulAvatarStack.Person {

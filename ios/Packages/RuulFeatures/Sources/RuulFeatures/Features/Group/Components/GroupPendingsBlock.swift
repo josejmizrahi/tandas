@@ -2,10 +2,10 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// "Pendiente del grupo" card matching the snippet's PendingCard:
-/// icon in gradient-tinted square (40pt), optional red badge dot for
-/// urgent priority, title + subtitle, CTA capsule on the trailing side
-/// labeled per action type ("Votar", "Confirmar", "Revisar", …).
+/// "Pendiente del grupo" — UserAction rows inside the canonical
+/// section card chrome (`Color.ruulSurface` + separator stroke).
+/// Each row = tinted icon + title + subtitle + CTA capsule. Urgent /
+/// high-priority items get a red badge dot. No gradients.
 @MainActor
 struct GroupPendingsBlock: View {
     let items: [UserAction]
@@ -28,8 +28,11 @@ struct GroupPendingsBlock: View {
                     }
                 }
             }
-            .background(Color.ruulSurface)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
         }
     }
 
@@ -55,29 +58,22 @@ struct GroupPendingsBlock: View {
             Button(Self.cta(for: item.actionType)) { onSelect(item) }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.ruulTextInverse)
-                .padding(.horizontal, RuulSpacing.sm + 1)
-                .padding(.vertical, RuulSpacing.xs - 1)
+                .padding(.horizontal, RuulSpacing.sm)
+                .padding(.vertical, RuulSpacing.xxs)
                 .background(Self.tint(for: item.actionType), in: Capsule())
                 .buttonStyle(.plain)
         }
-        .padding(RuulSpacing.md + 2)
+        .padding(RuulSpacing.md)
     }
 
     private func iconBadge(_ item: UserAction) -> some View {
         let tint = Self.tint(for: item.actionType)
         return ZStack(alignment: .topTrailing) {
             Image(systemName: Self.icon(for: item.actionType))
-                .font(.system(size: 17, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(tint)
                 .frame(width: 40, height: 40)
-                .background(
-                    LinearGradient(
-                        colors: [tint.opacity(0.18), tint.opacity(0.08)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                )
+                .background(tint.opacity(0.12), in: Circle())
 
             if item.priority == .urgent || item.priority == .high {
                 Circle()

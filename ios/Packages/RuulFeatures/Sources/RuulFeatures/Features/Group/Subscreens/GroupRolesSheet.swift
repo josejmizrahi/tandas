@@ -26,7 +26,9 @@ public struct GroupRolesSheet: View {
 
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "roles.catalog")
 
-    public init(groupId: UUID) { self.groupId = groupId }
+    public init(groupId: UUID) {
+        self.groupId = groupId
+    }
 
     private var group: RuulCore.Group? {
         app.groups.first(where: { $0.id == groupId })
@@ -46,7 +48,7 @@ public struct GroupRolesSheet: View {
 
     public var body: some View {
         content
-            .navigationTitle("Roles y permisos")
+            .navigationTitle("Tipos de rol")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

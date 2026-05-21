@@ -2,9 +2,9 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Compose chips wrapped in a warm-tinted card. Per the snippet:
-/// serif italic question, horizontal scroll of glass chips, each chip
-/// with a colored icon (per-action tint) + black label.
+/// Compose chips inside the canonical section card (Color.ruulSurface
+/// + separator stroke, RuulRadius.lg). Chips use the iOS 26 native
+/// `.buttonStyle(.glass)` so they pick up Liquid Glass automatically.
 @MainActor
 struct GroupComposeBar: View {
     struct Chip: Identifiable {
@@ -16,16 +16,13 @@ struct GroupComposeBar: View {
     }
 
     let chips: [Chip]
-    /// Group's color ramp — drives the warm tint of the card wrapper.
-    let ramp: GroupColorRamp
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-            Text("¿Qué quieres coordinar?")
-                .font(.system(size: 15, design: .serif))
-                .italic()
-                .foregroundStyle(Color.primary)
-                .padding(.horizontal, RuulSpacing.xxs)
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            Text("Coordinar")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color(.tertiaryLabel))
+                .padding(.leading, RuulSpacing.xxs)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: RuulSpacing.sm) {
@@ -33,44 +30,28 @@ struct GroupComposeBar: View {
                         chipButton(chip)
                     }
                 }
-                .padding(.horizontal, RuulSpacing.xxs)
+                .padding(RuulSpacing.md)
             }
-            .padding(.horizontal, -RuulSpacing.xxs)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
         }
-        .padding(RuulSpacing.md)
-        .background {
-            ZStack {
-                Color.ruulSurface
-                LinearGradient(
-                    colors: [ramp.accent.opacity(0.08), .clear, ramp.accent.opacity(0.04)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .strokeBorder(ramp.accent.opacity(0.18), lineWidth: 0.5)
-        )
     }
 
     private func chipButton(_ chip: Chip) -> some View {
         Button(action: chip.action) {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: chip.systemImage)
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(chip.tint)
                 Text(chip.label)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.primary)
             }
-            .padding(.horizontal, RuulSpacing.md)
-            .padding(.vertical, RuulSpacing.xs + 1)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .ruulGlass(Capsule(), material: .regular, interactive: true)
+        .buttonStyle(.glass)
         .sensoryFeedback(.selection, trigger: false)
     }
 }

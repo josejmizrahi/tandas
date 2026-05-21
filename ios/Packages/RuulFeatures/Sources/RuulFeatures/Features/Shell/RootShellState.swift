@@ -64,6 +64,13 @@ public final class RootShellState {
     /// the post-create intents that need a direct-action landing.
     public var pendingEventInitialAction: PendingEventInitialAction?
 
+    /// Pre-selected resource type for the next `ResourceWizardSheet`
+    /// open. Set when the user picks "Evento" / "Fondo" / etc. from a
+    /// compose chip — the wizard reads + clears this on appear and
+    /// auto-selects the matching builder, skipping the type picker
+    /// step. nil → wizard opens normally with the type picker.
+    public var pendingWizardResourceType: ResourceType?
+
     /// Active polymorphic resource shown in the detail cover. Set
     /// before pushing `.resourceDetail`. Used for fund/asset/space/
     /// slot/right whose detail UX is `ResourceDetailSheet` (which

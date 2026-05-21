@@ -338,19 +338,20 @@ private struct GroupHomeSheetContent: View {
             groupSummaryRepo: app.groupSummaryRepo,
             userActionRepo: app.userActionRepo,
             myActivityRepo: app.myActivityRepo,
+            eventRepo: app.eventRepo,
+            fineRepo: app.fineRepo,
+            fundRepo: app.fundRepo,
             actorUserId: app.session?.user.id
         )
         NavigationStack(path: $path) {
             GroupSpaceView(
                 coordinator: coord,
                 onCreateEvent: { router.present(.createCover) },
+                onStartVote: { router.present(.createVotePicker) },
                 onOpenDecisions: { path.append(GroupNav.acuerdos) },
                 onInviteMembers: { showInvite = true },
+                onShareInvite: { router.present(.inviteShare) },
                 onOpenEvents: {
-                    // No group-scoped events list yet — Home tab is the
-                    // event surface and already supports group filtering
-                    // (V2 Slice 4D HomeScope). Dismiss this sheet so the
-                    // user lands on the surface, not a stacked modal.
                     while router.state.contains(.groupHome) { router.state.dismissTop() }
                     router.selectTab(.home)
                 },
@@ -358,6 +359,7 @@ private struct GroupHomeSheetContent: View {
                     while router.state.contains(.groupHome) { router.state.dismissTop() }
                     router.requestOpenMyFines()
                 },
+                onOpenFunds: nil,
                 onOpenInbox: { router.selectTab(.home) },
                 onOpenMembers: {
                     path.append(
@@ -368,10 +370,7 @@ private struct GroupHomeSheetContent: View {
                 },
                 onOpenActivity: nil,
                 onSelectPending: { _ in router.selectTab(.home) },
-                onShareInvite: { router.present(.inviteShare) },
-                onEditIdentity: { showEditIdentity = true },
-                onRotateCode: { showRotateCode = true },
-                onArchiveGroup: { showArchiveConfirm = true },
+                onOpenAjustes: { showEditIdentity = true },
                 onConfirmLeave: { showLeave = true },
                 onLeaveGroup: {
                     Task {

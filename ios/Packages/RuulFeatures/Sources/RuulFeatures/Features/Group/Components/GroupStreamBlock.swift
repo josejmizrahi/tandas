@@ -45,20 +45,23 @@ struct GroupStreamBlock: View {
                     }
                 }
             }
-            .background(Color.ruulSurface)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
         }
     }
 
     private func row(_ item: MyActivityItem) -> some View {
-        HStack(alignment: .top, spacing: RuulSpacing.sm + 3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             RuulAvatar(
                 name: actorName,
                 imageURL: actor?.avatarUrl.flatMap(URL.init(string:)),
                 size: .small
             )
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 streamText(item)
                 Text(relativeTime(item.occurredAt))
                     .font(.caption2)
@@ -68,7 +71,7 @@ struct GroupStreamBlock: View {
 
             Spacer(minLength: 0)
         }
-        .padding(RuulSpacing.md + 1)
+        .padding(RuulSpacing.md)
     }
 
     private var actorName: String {
