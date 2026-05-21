@@ -287,7 +287,7 @@ public struct GroupHomeView: View {
         sectionContainer(title: "Acuerdos y gobernanza") {
             navRow(
                 icon: "puzzlepiece",
-                label: "Módulos activos",
+                label: "Funciones activas",
                 trailing: { trailingValue("\(coordinator.activeModules.count)") },
                 action: { onPickModules?() }
             )

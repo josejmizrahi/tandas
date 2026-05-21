@@ -27,7 +27,7 @@ public enum IntentDispatchError: LocalizedError, Sendable {
             return "No pudimos activar: \(ids). Inténtalo de nuevo."
         case .capabilitiesUnavailable(let ids):
             let list = ids.sorted().joined(separator: ", ")
-            return "Falta habilitar el módulo para: \(list)."
+            return "Falta habilitar la función para: \(list)."
         case .destinationNotImplemented(let label):
             return "\(label) llega en la siguiente iteración."
         }

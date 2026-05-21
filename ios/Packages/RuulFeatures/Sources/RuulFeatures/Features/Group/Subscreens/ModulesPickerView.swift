@@ -37,7 +37,7 @@ public struct ModulesPickerView: View {
             }
         }
         .background(Color.ruulBackground.ignoresSafeArea())
-        .navigationTitle("Módulos")
+        .navigationTitle("Funciones")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -89,7 +89,7 @@ public struct ModulesPickerView: View {
             _ = try await app.groupsRepo.setModule(groupId: groupId, slug: slug, enabled: newValue)
             await app.refreshProfileAndGroups()
         } catch {
-            self.error = "No pudimos cambiar el módulo."
+            self.error = "No pudimos cambiar la función."
         }
     }
 }

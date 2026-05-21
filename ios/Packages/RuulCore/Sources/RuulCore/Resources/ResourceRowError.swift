@@ -20,7 +20,7 @@ public enum ResourceRowError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .typeMismatch:                   return "Tipo de recurso inesperado."
+        case .typeMismatch:                   return "Tipo inesperado."
         case .missingMetadataKey(let key):    return "Falta información en el recurso (\(key))."
         case .metadataDecodeFailed(let detail): return "No se pudo leer el recurso (\(detail))."
         case .fetchFailed:                    return "No se pudo cargar la información."

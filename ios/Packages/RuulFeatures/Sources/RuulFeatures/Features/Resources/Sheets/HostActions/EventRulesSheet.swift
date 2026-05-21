@@ -245,7 +245,7 @@ struct ResourceRulesBody: View {
         case .membership: return "Para ti"
         case .resource:   return "Recurso"
         case .series:     return "Heredada · serie"
-        case .module:     return "Heredada · módulo"
+        case .module:     return "Heredada · función"
         case .group:      return "Heredada · grupo"
         }
     }

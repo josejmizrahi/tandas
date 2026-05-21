@@ -1087,7 +1087,7 @@ private struct WizardTypePicker: View {
         } else {
             tileContent(type: type, chrome: chrome, isImplemented: false)
                 .accessibilityLabel("\(type.humanLabel), próximamente")
-                .accessibilityHint("Este tipo de recurso aún no se puede crear.")
+                .accessibilityHint("Este recurso aún no se puede crear.")
                 .accessibilityAddTraits(.isStaticText)
                 .allowsHitTesting(false)
                 .opacity(0.50)

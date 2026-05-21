@@ -215,7 +215,7 @@ public struct RuleShapeRegistry: Sendable, Hashable {
             id: "alwaysTrue",
             kind: .condition,
             labelES: "Sin condiciones extra",
-            summaryES: "La regla aplica cada vez que se dispara el trigger.",
+            summaryES: "La regla aplica cada vez que pasa esto.",
             sortOrder: 10
         ),
         RuleShape(

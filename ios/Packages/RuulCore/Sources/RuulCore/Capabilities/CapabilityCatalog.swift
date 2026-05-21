@@ -670,7 +670,7 @@ public struct MoneyCapability: CapabilityDefinition {
 public struct LedgerCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.ledger }
-    public var displayName: String { "Ledger" }
+    public var displayName: String { "Movimientos" }
     public var summary: String { "Asientos contables atómicos." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }
@@ -772,7 +772,7 @@ public struct RulesCapability: CapabilityDefinition {
 public struct ConsequenceCapability: CapabilityDefinition {
     public init() {}
     public var id: String { CapabilityID.consequence }
-    public var displayName: String { "Consecuencias" }
+    public var displayName: String { "Qué pasa" }
     public var summary: String { "Las reglas pueden generar multas, advertencias o votos." }
     public var enabledResourceTypes: [ResourceType] { [.event, .slot, .fund] }
     public var requiredFields: [BuilderField] { [] }

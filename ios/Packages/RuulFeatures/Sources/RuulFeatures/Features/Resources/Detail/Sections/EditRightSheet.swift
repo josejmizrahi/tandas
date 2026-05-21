@@ -90,7 +90,7 @@ public struct EditRightSheet: View {
                         Text("Una ocurrencia").tag("occurrence")
                     }
                     TextField(
-                        "Capability gobernada (opcional)",
+                        "Función gobernada (opcional)",
                         text: $targetCapability,
                         prompt: Text("booking | voting | access | …")
                     )

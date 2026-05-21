@@ -122,7 +122,7 @@ public struct RuleDetailView: View {
     private var consequencesSection: some View {
         sectionContainer(title: "Qué hace") {
             if rule.consequences.isEmpty {
-                Text("Sin consecuencias configuradas.")
+                Text("Aún no hay nada configurado.")
                     .font(.caption)
                     .foregroundStyle(Color.secondary)
             } else {
@@ -212,7 +212,7 @@ public struct RuleDetailView: View {
     private func scopeLabel(_ rule: GroupRule) -> String {
         switch rule.scope {
         case .group:      return "Todo el grupo"
-        case .module:     return rule.moduleKey.map { "Módulo · \($0)" } ?? "Módulo"
+        case .module:     return rule.moduleKey.map { "Función · \($0)" } ?? "Función"
         case .series:     return "Toda la recurrencia"
         case .resource:   return "Esta instancia"
         case .membership: return "Por miembro"
