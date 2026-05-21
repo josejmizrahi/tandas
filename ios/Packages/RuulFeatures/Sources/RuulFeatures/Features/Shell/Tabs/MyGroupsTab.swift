@@ -50,9 +50,9 @@ public struct MyGroupsTab: View {
     private var content: some View {
         if app.groups.isEmpty {
             ContentUnavailableView {
-                Label("Aún no estás en ningún grupo", systemImage: "person.3")
+                Label("Empieza un grupo", systemImage: "person.3")
             } description: {
-                Text("Crea un grupo o únete con un código para empezar a coordinar.")
+                Text("Crea uno tuyo o únete con un código para coordinar con tus amigos.")
             } actions: {
                 Button("Crear grupo") { router.present(.createGroup) }
                     .buttonStyle(.borderedProminent)

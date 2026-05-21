@@ -226,9 +226,9 @@ public struct ActivityView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("Sin actividad todavía", systemImage: "clock.arrow.circlepath")
+            Label("Sin actividad reciente", systemImage: "clock.arrow.circlepath")
         } description: {
-            Text("Cuando pasen cosas en el grupo —eventos, RSVPs, multas, votaciones— aparecerán acá.")
+            Text("Acá aparece todo lo que pasa en el grupo.")
         }
         .padding(.top, RuulSpacing.s8)
     }

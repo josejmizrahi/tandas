@@ -20,9 +20,9 @@ public struct MembersListView: View {
                 onRetry: { await coordinator.refresh() },
                 empty: {
                     ContentUnavailableView {
-                        Label("Sin miembros activos", systemImage: "person.2")
+                        Label("Solo estás tú", systemImage: "person.2")
                     } description: {
-                        Text("Cuando alguien se una al grupo, aparecerá aquí.")
+                        Text("Comparte el código del grupo para invitar a tus amigos.")
                     }
                     .padding(RuulSpacing.lg)
                 },

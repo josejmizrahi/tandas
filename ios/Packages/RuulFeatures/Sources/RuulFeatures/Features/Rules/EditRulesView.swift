@@ -139,9 +139,9 @@ public struct EditRulesView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("Sin reglas", systemImage: "list.bullet.clipboard")
+            Label("Acuerdos del grupo", systemImage: "list.bullet.clipboard")
         } description: {
-            Text("Este grupo no tiene reglas configuradas.")
+            Text("Define quién hace qué, cuándo, y qué pasa si alguien no cumple.")
         }
     }
 

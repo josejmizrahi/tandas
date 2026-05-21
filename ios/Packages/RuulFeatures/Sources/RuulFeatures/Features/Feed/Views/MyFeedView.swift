@@ -154,9 +154,9 @@ public struct MyFeedView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("Todo tranquilo por ahora", systemImage: "calendar.badge.clock")
+            Label("Sin eventos próximos", systemImage: "calendar.badge.clock")
         } description: {
-            Text("Cuando alguno de tus grupos cree un evento, vas a verlo acá junto con los demás.")
+            Text("Cuando alguno de tus grupos proponga algo, va a aparecer acá.")
         }
         .padding(.top, RuulSpacing.s8)
     }

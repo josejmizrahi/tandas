@@ -57,9 +57,9 @@ public struct MyFinesView: View {
     /// multas y todas se pagaron (en `header`).
     private var emptyHero: some View {
         ContentUnavailableView {
-            Label("Sin multas", systemImage: "checkmark.circle.fill")
+            Label("Sin multas", systemImage: "checkmark.seal")
         } description: {
-            Text("No tienes multas en este momento. Sigue así.")
+            Text("Por ahora todos cumplieron los acuerdos. Si alguien falla, la regla aplica sola.")
         }
         .padding(.horizontal, RuulSpacing.lg)
         .frame(maxHeight: .infinity)

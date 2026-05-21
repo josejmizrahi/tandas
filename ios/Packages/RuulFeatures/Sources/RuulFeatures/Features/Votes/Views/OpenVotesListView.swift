@@ -28,9 +28,9 @@ public struct OpenVotesListView: View {
                     // while generic vote creation is gated. Appeal-driven
                     // votes still open from the fine flow.
                     ContentUnavailableView {
-                        Label("No hay votos abiertos", systemImage: "hand.raised")
+                        Label("Sin decisiones pendientes", systemImage: "checkmark.square")
                     } description: {
-                        Text("Cuando el grupo abra una votación, aparecerá acá.")
+                        Text("Cuando alguien proponga algo a votar, aparece acá.")
                     } actions: {
                         if BetaFeatureFlags.current.showGenericVoteCreation {
                             Button("Crear votación", action: onCreateVote)

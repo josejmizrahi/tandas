@@ -32,7 +32,7 @@ public struct PastResourcesView: View {
                     ContentUnavailableView {
                         Label("Sin eventos pasados", systemImage: "clock")
                     } description: {
-                        Text("Aquí aparecen los eventos cerrados o cancelados.")
+                        Text("Acá vas a ver el historial cuando termine la primera cena.")
                     }
                     .padding(RuulSpacing.lg)
                 },

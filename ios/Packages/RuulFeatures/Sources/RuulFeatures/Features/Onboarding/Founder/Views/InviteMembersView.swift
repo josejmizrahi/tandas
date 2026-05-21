@@ -60,7 +60,7 @@ public struct InviteMembersView: View {
             manualEntrySheet
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
         }
     }
 

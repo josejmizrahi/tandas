@@ -65,9 +65,9 @@ public struct MembersAdminView: View {
             onRetry: { await coordinator.refresh() },
             empty: {
                 ContentUnavailableView {
-                    Label("Sin miembros activos", systemImage: "person.2")
+                    Label("Solo estás tú", systemImage: "person.2")
                 } description: {
-                    Text("Invita miembros con el botón “+” para empezar.")
+                    Text("Comparte el código del grupo para invitar a tus amigos.")
                 }
                 .padding(RuulSpacing.lg)
             },

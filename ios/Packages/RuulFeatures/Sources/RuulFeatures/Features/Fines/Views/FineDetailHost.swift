@@ -81,7 +81,7 @@ public struct FineDetailHost: View {
             }
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial.opacity(0.5))
+            .presentationBackground(.regularMaterial)
         }
         // Void fine sheet — admin destructive action surfaced through
         // the overflow `.delete` slot.
@@ -100,7 +100,7 @@ public struct FineDetailHost: View {
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
         }
     }

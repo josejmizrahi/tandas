@@ -58,7 +58,7 @@ public struct ResourceDetailSheet: View {
                 }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                .presentationBackground(.regularMaterial)
             }
         }
         .onChange(of: ledgerSheetPresented) { _, presented in
@@ -76,7 +76,7 @@ public struct ResourceDetailSheet: View {
                     isPresented: $rulesSheetPresented,
                     coordinator: rulesCoordinator
                 )
-                .presentationBackground(.ultraThinMaterial)
+                .presentationBackground(.regularMaterial)
             }
         }
         .onChange(of: rulesSheetPresented) { _, presented in
