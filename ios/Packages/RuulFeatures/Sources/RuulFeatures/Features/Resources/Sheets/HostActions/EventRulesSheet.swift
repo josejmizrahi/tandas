@@ -87,7 +87,7 @@ struct ResourceRulesBody: View {
                 coordinator: coordinator
             )
             .presentationDetents([.medium, .large])
-            .presentationBackground(.ultraThinMaterial.opacity(0.7))
+            .presentationBackground(.ultraThinMaterial.opacity(0.5))
         }
         .fullScreenCover(item: $composerCoord) { coord in
             RuleComposerView(
@@ -183,7 +183,7 @@ struct ResourceRulesBody: View {
         }
         .padding(.horizontal, RuulSpacing.md)
         .padding(.vertical, RuulSpacing.sm)
-        .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: RuulRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.medium)
                 .stroke(Color(.separator), lineWidth: 0.5)
