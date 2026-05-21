@@ -46,6 +46,11 @@ public protocol FundRepository: Actor {
     /// uses direction-based balance math). `sourceEventId` (mig 00344)
     /// attributes the entry to a specific event. `clientId` (mig 00351)
     /// is an idempotency key — same semantics as `contribute`.
+    /// `paidByMemberId` (mig 00355) is the "en nombre de" annotation:
+    /// who actually fronted the cash, distinct from `toMemberId` (who
+    /// receives the reimbursement) and `recorded_by` (auth.uid(),
+    /// stamped server-side). Lands in `metadata.paid_by_member_id`.
+    /// Nil = registrar is implicitly the payer (legacy behavior).
     func recordExpense(
         fundId: UUID,
         amountCents: Int64,
@@ -53,7 +58,8 @@ public protocol FundRepository: Actor {
         currency: String?,
         note: String?,
         sourceEventId: UUID?,
-        clientId: UUID?
+        clientId: UUID?,
+        paidByMemberId: UUID?
     ) async throws -> LedgerEntry
 
     /// Admin-only soft lock. Emits `fundLocked`. Does NOT block writers
@@ -131,7 +137,8 @@ public actor MockFundRepository: FundRepository {
         currency: String?,
         note: String?,
         sourceEventId: UUID? = nil,
-        clientId: UUID? = nil
+        clientId: UUID? = nil,
+        paidByMemberId: UUID? = nil
     ) async throws -> LedgerEntry {
         guard let snapshot = funds[fundId]?.first else { throw FundError.notFound }
         if let clientId,
@@ -145,6 +152,7 @@ public actor MockFundRepository: FundRepository {
         if let note, !note.isEmpty { meta["note"] = .string(note) }
         if let sourceEventId { meta["source_event_id"] = .string(sourceEventId.uuidString.lowercased()) }
         if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
+        if let paidByMemberId { meta["paid_by_member_id"] = .string(paidByMemberId.uuidString.lowercased()) }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: fundId,
@@ -324,7 +332,8 @@ public actor LiveFundRepository: FundRepository {
         currency: String?,
         note: String?,
         sourceEventId: UUID? = nil,
-        clientId: UUID? = nil
+        clientId: UUID? = nil,
+        paidByMemberId: UUID? = nil
     ) async throws -> LedgerEntry {
         struct Params: Encodable {
             let p_fund_id: String
@@ -334,6 +343,7 @@ public actor LiveFundRepository: FundRepository {
             let p_note: String?
             let p_source_event_id: String?
             let p_client_id: String?
+            let p_paid_by_member_id: String?
         }
         do {
             return try await client
@@ -344,7 +354,8 @@ public actor LiveFundRepository: FundRepository {
                     p_currency: currency,
                     p_note: (note?.isEmpty ?? true) ? nil : note,
                     p_source_event_id: sourceEventId?.uuidString.lowercased(),
-                    p_client_id: clientId?.uuidString.lowercased()
+                    p_client_id: clientId?.uuidString.lowercased(),
+                    p_paid_by_member_id: paidByMemberId?.uuidString.lowercased()
                 ))
                 .execute()
                 .value

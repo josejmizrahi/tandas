@@ -5,19 +5,24 @@ import RuulUI
 /// Expense sheet — invoked from the fund detail view's secondary menu
 /// ("Registrar gasto"). Records a payout from the fund to a recipient
 /// member via `fundRepo.recordExpense` → `fund_record_expense` RPC
-/// (mig 00202).
+/// (mig 00202, paid_by added in mig 00355).
 ///
-/// Surface:
-///   - Recipient member picker (required — vendor expenses with no
-///     recipient are out of scope per the RPC's direction-based math)
-///   - Amount in pesos (typed in the fund's currency)
-///   - Optional note ("compra de bocadillos", "reembolso a Maria")
+/// Tri-role model (per ledger tri-role doctrine 2026-05-21):
+///   - `recorded_by` = auth.uid(), stamped server-side. Not user input.
+///   - `paid_by_member_id` = who fronted the cash. Defaults to the
+///     current user; user can pick any active group member ("Daniel
+///     registra que María pagó los bocadillos").
+///   - `to_member_id` = who receives the money out of the fund.
+///     Defaults to the same person as `paid_by` (the typical
+///     reimbursement case) — user can override.
 ///
 /// Submit path:
 ///   `FundRepository.recordExpense(fundId, amountCents, toMemberId,
-///   currency, note)` → `fund_record_expense` RPC →
-///   `record_ledger_entry` (type='expense', from=NULL, to=toMemberId,
-///   resource_id=fund) → `fund_balance_view` reflects the new balance.
+///   currency, note, sourceEventId, clientId, paidByMemberId)` →
+///   `fund_record_expense` RPC → `record_ledger_entry`
+///   (type='expense', from=NULL, to=toMemberId,
+///   metadata.paid_by_member_id=paidByMemberId, resource_id=fund) →
+///   `fund_balance_view` reflects the new balance.
 public struct RecordExpenseFromFundSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -35,7 +40,12 @@ public struct RecordExpenseFromFundSheet: View {
     /// the balance card.
     public let onDidRecord: () -> Void
 
+    @State private var paidByMemberId: UUID?
     @State private var toMemberId: UUID?
+    /// True once the user has manually picked a destinatario. Stops the
+    /// auto-mirror from `paidByMemberId` so explicit overrides stick
+    /// when the payer changes afterward.
+    @State private var toMemberManuallySet: Bool = false
     @State private var amountText: String = ""
     @State private var note: String = ""
     @State private var isSubmitting: Bool = false
@@ -76,21 +86,38 @@ public struct RecordExpenseFromFundSheet: View {
                     }
                 } footer: {
                     Text(sourceEventName != nil
-                         ? "El gasto sale del fondo y queda asociado a este evento. El destinatario recibe el cobro."
+                         ? "El gasto sale del fondo y queda asociado a este evento."
                          : "El gasto sale del fondo y se acredita al destinatario.")
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                 }
 
-                Section("Destinatario") {
-                    Picker("", selection: $toMemberId) {
+                Section {
+                    Picker("¿Quién pagó?", selection: $paidByMemberId) {
                         Text("Elige…").tag(Optional<UUID>.none)
                         ForEach(members) { m in
                             Text(m.displayName).tag(Optional(m.member.id))
                         }
                     }
                     .pickerStyle(.menu)
-                    .labelsHidden()
+                } footer: {
+                    Text("Por defecto eres tú. Cámbialo si alguien más lo pagó de su bolsa.")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                }
+
+                Section {
+                    Picker("Reembolsar a", selection: $toMemberId) {
+                        Text("Elige…").tag(Optional<UUID>.none)
+                        ForEach(members) { m in
+                            Text(m.displayName).tag(Optional(m.member.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } footer: {
+                    Text("Quién recibe el dinero del fondo. Por defecto la misma persona que pagó.")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
                 }
 
                 Section("Monto (\(currency))") {
@@ -117,10 +144,42 @@ public struct RecordExpenseFromFundSheet: View {
                     Button(isSubmitting ? "Registrando…" : "Registrar") {
                         Task { await submit() }
                     }
-                    .disabled(isSubmitting || toMemberId == nil || amountCents == nil)
+                    .disabled(isSubmitting
+                              || paidByMemberId == nil
+                              || toMemberId == nil
+                              || amountCents == nil)
+                }
+            }
+            .task(id: app.session?.user.id) {
+                seedDefaults()
+            }
+            .onChange(of: paidByMemberId) { _, newValue in
+                if !toMemberManuallySet { toMemberId = newValue }
+            }
+            .onChange(of: toMemberId) { oldValue, newValue in
+                // Detect a true user override — ignore the mirror writes
+                // that originate from the paidBy change above, since
+                // those land with newValue == paidByMemberId.
+                if newValue != nil && newValue != paidByMemberId {
+                    toMemberManuallySet = true
                 }
             }
         }
+    }
+
+    /// Seeds `paidByMemberId` (and the mirrored `toMemberId`) from the
+    /// session-resolved current member. Re-runs when the session id
+    /// changes — covers the rare race where the sheet opens before
+    /// `app.session` has hydrated.
+    @MainActor
+    private func seedDefaults() {
+        guard paidByMemberId == nil else { return }
+        guard let uid = app.session?.user.id,
+              let me = members.first(where: { $0.member.userId == uid })?.member.id else {
+            return
+        }
+        paidByMemberId = me
+        if !toMemberManuallySet { toMemberId = me }
     }
 
     private var amountCents: Int64? {
@@ -135,7 +194,9 @@ public struct RecordExpenseFromFundSheet: View {
 
     @MainActor
     private func submit() async {
-        guard let cents = amountCents, let toId = toMemberId else { return }
+        guard let cents = amountCents,
+              let toId = toMemberId,
+              let paidById = paidByMemberId else { return }
         isSubmitting = true
         errorMessage = nil
         defer { isSubmitting = false }
@@ -148,7 +209,8 @@ public struct RecordExpenseFromFundSheet: View {
                 currency: currency,
                 note: trimmedNote.isEmpty ? nil : trimmedNote,
                 sourceEventId: sourceEventId,
-                clientId: clientId
+                clientId: clientId,
+                paidByMemberId: paidById
             )
             onDidRecord()
             dismiss()
