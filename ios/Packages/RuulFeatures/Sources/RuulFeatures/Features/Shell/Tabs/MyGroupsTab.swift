@@ -2,7 +2,7 @@ import SwiftUI
 import RuulCore
 import RuulUI
 
-/// "Mis grupos" tab — Ruul Canonical UX Doctrine + Wave 3 scope
+/// "Grupo" tab — Ruul Canonical UX Doctrine + Wave 3 scope
 /// switcher (2026-05-21). Dual-mode driven by `app.homeScope`:
 ///
 ///   - `.all` (default) → browser view: list of every group the user
@@ -49,7 +49,7 @@ public struct MyGroupsTab: View {
            let group = app.groups.first(where: { $0.id == id }) {
             return group.name
         }
-        return "Mis grupos"
+        return "Grupo"
     }
 
     private var navDisplayMode: NavigationBarItem.TitleDisplayMode {

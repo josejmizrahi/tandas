@@ -52,7 +52,7 @@ public struct RootShell: View {
             .badge(inboxCoordinator?.actions.count ?? 0)
 
             MyGroupsTab()
-                .tabItem { Label("Mis grupos", systemImage: "person.3.fill") }
+                .tabItem { Label("Grupo", systemImage: "person.3.fill") }
                 .tag(RootTab.groups)
 
             ProfileTab(profile: profileCoordinator, myFines: myFinesCoordinator)
