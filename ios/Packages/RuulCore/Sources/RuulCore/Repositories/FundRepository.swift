@@ -23,6 +23,22 @@ public protocol FundRepository: Actor {
     /// groups, but multi-currency activity surfaces multiple rows.
     func get(_ fundId: UUID) async throws -> [Fund]
 
+    /// SharedMoney Phase 3 brick 1 (mig 00361): the canonical shared
+    /// pool's projection for a group. Returns nil ONLY in the defensive
+    /// case where the invariant "every active group has one shared
+    /// pool" has been violated (migs 00357 + 00359 normally prevent
+    /// this). V1 callers select the row matching `groups.currency`;
+    /// multi-currency UI (V1.5+) may take all rows by reading the view
+    /// directly.
+    ///
+    /// `preferredCurrency`: when supplied, picks the row matching that
+    /// currency. When nil, returns the first row (deterministic order
+    /// in single-currency V1).
+    func summaryForGroup(
+        _ groupId: UUID,
+        preferredCurrency: String?
+    ) async throws -> SharedPoolSummary?
+
     /// Records a contribution from the caller (member) to the fund.
     /// `currency` falls through to fund metadata then to MXN if nil.
     /// `note` lands in the ledger entry's metadata jsonb. `sourceEventId`
@@ -124,6 +140,36 @@ public actor MockFundRepository: FundRepository {
 
     public func get(_ fundId: UUID) async throws -> [Fund] {
         funds[fundId] ?? []
+    }
+
+    public func summaryForGroup(
+        _ groupId: UUID,
+        preferredCurrency: String? = nil
+    ) async throws -> SharedPoolSummary? {
+        // Mock derives the summary from the seeded Fund snapshot for
+        // the group. Test fixtures should seed exactly one fund per
+        // group (the implicit shared pool) for deterministic behavior
+        // — server-side resolution is authoritative.
+        let candidates = funds.values.flatMap { $0 }
+            .filter { $0.groupId == groupId }
+        guard !candidates.isEmpty else { return nil }
+        let pick: Fund
+        if let preferredCurrency,
+           let matching = candidates.first(where: { $0.currency == preferredCurrency }) {
+            pick = matching
+        } else {
+            pick = candidates[0]
+        }
+        return SharedPoolSummary(
+            groupId: groupId,
+            currency: pick.currency,
+            sharedPoolId: pick.fundId,
+            inCents: pick.inCents,
+            outCents: pick.outCents,
+            balanceCents: pick.balanceCents,
+            entryCount: pick.contributionCount + pick.expenseCount,
+            lastActivityAt: pick.lastActivityAt
+        )
     }
 
     public func contribute(
@@ -411,6 +457,29 @@ public actor LiveFundRepository: FundRepository {
                 .eq("fund_id", value: fundId.uuidString.lowercased())
                 .execute()
                 .value
+        } catch {
+            throw FundError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func summaryForGroup(
+        _ groupId: UUID,
+        preferredCurrency: String? = nil
+    ) async throws -> SharedPoolSummary? {
+        // Read all currency rows; V1 picks the one matching the
+        // group's currency, multi-currency V1.5+ may surface all.
+        do {
+            let rows: [SharedPoolSummary] = try await client
+                .from("group_money_summary_view")
+                .select()
+                .eq("group_id", value: groupId.uuidString.lowercased())
+                .execute()
+                .value
+            if let preferredCurrency,
+               let matching = rows.first(where: { $0.currency == preferredCurrency }) {
+                return matching
+            }
+            return rows.first
         } catch {
             throw FundError.rpcFailed(error.localizedDescription)
         }
