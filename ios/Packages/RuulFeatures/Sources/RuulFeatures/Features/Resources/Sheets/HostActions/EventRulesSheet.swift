@@ -49,11 +49,11 @@ struct ResourceRulesBody: View {
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else if coordinator.rules.isEmpty {
                 ContentUnavailableView {
-                    Label("Sin reglas aplicables", systemImage: "list.bullet.clipboard")
+                    Label("Sin acuerdos específicos", systemImage: "list.bullet.clipboard")
                 } description: {
                     Text(coordinator.canCreate
-                        ? "Agrega reglas que sólo apliquen a este recurso. Las del grupo seguirán aplicando."
-                        : "Sólo el anfitrión o un fundador pueden crear reglas específicas para este recurso.")
+                        ? "Agrega acuerdos que sólo apliquen a este evento. Los del grupo siguen aplicando."
+                        : "Sólo quien organiza o un fundador puede agregar acuerdos para este evento.")
                 }
                 .padding(.vertical, RuulSpacing.md)
             } else {

@@ -94,9 +94,9 @@ public struct ReviewProposedFinesView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("Nada que revisar", systemImage: "checkmark.circle.fill")
+            Label("Nada por revisar", systemImage: "checkmark.seal")
         } description: {
-            Text("No hay multas propuestas pendientes para este evento.")
+            Text("Por ahora nadie propuso multas. Si surge alguna, aparece acá antes de oficializarse.")
         }
         .padding(.top, RuulSpacing.lg)
     }

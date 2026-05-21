@@ -248,9 +248,9 @@ private struct FilteredInboxList: View {
                 onRetry: { await onRefresh() },
                 empty: {
                     ContentUnavailableView {
-                        Label("Sin pendientes", systemImage: "tray")
+                        Label("Estás al día", systemImage: "tray")
                     } description: {
-                        Text("No hay acciones en esta categoria.")
+                        Text("Cuando alguien necesite tu atención, llega acá.")
                     }
                 },
                 loaded: { actions in
@@ -341,9 +341,9 @@ private struct ResolvedInboxList: View {
                 phase: phase,
                 empty: {
                     ContentUnavailableView {
-                        Label("Sin resueltas", systemImage: "checkmark.circle")
+                        Label("Aún sin acciones resueltas", systemImage: "checkmark.circle")
                     } description: {
-                        Text("Cuando completes acciones aparecerán aquí.")
+                        Text("Cuando termines una acción, queda guardada acá.")
                     }
                 },
                 loaded: { actions in

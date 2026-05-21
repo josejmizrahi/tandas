@@ -62,9 +62,9 @@ public struct ActionInboxView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("Sin pendientes", systemImage: "tray")
+            Label("Estás al día", systemImage: "tray")
         } description: {
-            Text("No hay multas, apelaciones ni RSVPs por atender. Todo al corriente.")
+            Text("Cuando alguien necesite tu atención, llega acá.")
         }
     }
 

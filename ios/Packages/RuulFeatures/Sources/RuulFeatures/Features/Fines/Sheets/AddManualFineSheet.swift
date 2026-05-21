@@ -25,9 +25,9 @@ public struct AddManualFineSheet: View {
                 RuulLoadingState()
             } else if coordinator.members.isEmpty {
                 ContentUnavailableView {
-                    Label("Sin otros miembros", systemImage: "person.2")
+                    Label("Solo estás tú", systemImage: "person.2")
                 } description: {
-                    Text("No hay otros miembros en este grupo.")
+                    Text("Para multar manualmente necesitas a alguien más. Comparte el código del grupo.")
                 }
             } else {
                 memberPickerSection
