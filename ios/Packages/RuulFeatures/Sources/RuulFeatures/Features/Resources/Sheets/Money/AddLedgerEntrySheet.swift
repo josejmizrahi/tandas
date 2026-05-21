@@ -2,14 +2,15 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Push destination for recording a single ledger entry scoped to the
+/// Sheet content for recording a single ledger entry scoped to the
 /// parent resource. Backed by `ResourceLedgerCoordinator` — view binds
-/// form fields, dispatches `submit()`, and pops on success.
+/// form fields, dispatches `submit()`, and dismisses on success.
 ///
-/// Sheet-on-sheet doctrine (2026-05-20): the parent `ResourceLedgerSheet`
-/// is a fullScreenCover that hosts its own NavigationStack. This view
-/// is the push destination registered behind `LedgerAddRoute`, NOT a
-/// child sheet — Apple Wallet "Add Card" pattern.
+/// Doctrine 2026-05-20 (founder reframe of the sheet-on-sheet rule):
+/// detail pages are opaque/complete; the primary CTA opens a transparent
+/// form sheet directly from the detail — no intermediate "Movimientos"
+/// cover, no nested presentation. Hosts wrap this view in a
+/// `NavigationStack` so the toolbar buttons render correctly.
 ///
 /// Scope contract: the parent coordinator was built with the resource's
 /// id, so every write here lands as `ledger_entries.resource_id =
@@ -41,6 +42,9 @@ struct AddLedgerEntryDestination: View {
         .navigationTitle("Registrar movimiento")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancelar") { dismiss() }
+            }
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     Task {

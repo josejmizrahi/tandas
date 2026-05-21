@@ -49,7 +49,7 @@ public extension CapabilityResolver {
                 return .none
             }
             return PrimaryAction(
-                label: "Aportar",
+                label: "Registrar movimiento",
                 symbol: "plus.circle.fill",
                 style: .prominent,
                 kind: .openContribute

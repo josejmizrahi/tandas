@@ -47,22 +47,27 @@ public struct ResourceDetailSheet: View {
         }
         .task { await load() }
         .task { await redirectIfEvent() }
-        // Ledger + Rules promoted to fullScreenCover per the sheet-on-
-        // sheet doctrine (2026-05-20): both surfaces host their own
-        // NavigationStack with the Add form as a push destination.
-        .fullScreenCover(isPresented: $ledgerSheetPresented) {
+        // Founder doctrine 2026-05-20 (reframe): detail = complete +
+        // opaque; primary CTA opens a transparent form sheet directly.
+        // No intermediate "Movimientos" cover — the activity feed
+        // already lives inline on the detail via the block builders.
+        .sheet(isPresented: $ledgerSheetPresented) {
             if let ledgerCoordinator {
-                ResourceLedgerSheet(
-                    isPresented: $ledgerSheetPresented,
-                    coordinator: ledgerCoordinator,
-                    groupVocabulary: typeLabel.lowercased()
-                )
-                .presentationBackground(.ultraThinMaterial)
+                NavigationStack {
+                    AddLedgerEntryDestination(coordinator: ledgerCoordinator)
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial.opacity(0.5))
             }
         }
         .onChange(of: ledgerSheetPresented) { _, presented in
-            if presented && ledgerCoordinator == nil {
-                ledgerCoordinator = makeLedgerCoordinator()
+            if presented {
+                if ledgerCoordinator == nil {
+                    ledgerCoordinator = makeLedgerCoordinator()
+                }
+                ledgerCoordinator?.resetForm()
+                Task { await ledgerCoordinator?.load() }
             }
         }
         .fullScreenCover(isPresented: $rulesSheetPresented) {
