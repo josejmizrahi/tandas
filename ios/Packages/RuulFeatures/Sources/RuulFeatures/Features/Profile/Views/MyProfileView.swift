@@ -2,22 +2,27 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Tab "Yo" — Nivel 0 (Identity, cross-group). Shows the user's own
-/// profile and cross-group activity entry points only. No group-active
-/// state leaks into this view.
+/// Tab "Yo" — Nivel 0 (Identity, cross-group). Apple Settings-flat
+/// structure: LargeTitle "Yo" + grouped `List` of native `Section`s.
 ///
-/// Layout (V2 Slice 4G — Profile partition):
-///   Always visible:
-///     Hero (avatar + name + "Miembro de N grupos")
-///     Segmented control: Tú · Cuenta
-///   Tab "Tú" (default):
-///     MIS GRUPOS · TU ACTIVIDAD · AJUSTES · PREFERENCIAS · APARIENCIA · DEBUG
-///   Tab "Cuenta":
-///     IDENTIDAD (teléfono + correo) · NOTIFICACIONES · DATOS Y CUENTA · Cerrar sesión
+/// Layout (Wave 3 PR #4 — Settings-flat rebuild):
+///   - Profile hero (avatar + name + member count, no card chrome)
+///   - "Mis grupos" — up to 3 rows + "Ver todos" link
+///   - "Tu actividad" — multas / movimientos / timeline / historial
+///   - "Personal" — editar perfil
+///   - "Notificaciones" — preferencias / dispositivos
+///   - "Preferencias" — idioma / zona horaria
+///   - "Apariencia" — inline picker
+///   - "Cuenta" — teléfono / correo
+///   - "Datos y cuenta" — exportar / eliminar
+///   - Cerrar sesión
 ///
-/// Per V2 Plan §B.3: account-ops (identity, notifications, data, sign
-/// out) group under Cuenta; "you-as-a-person" surfaces (groups,
-/// activity, edit profile, display preferences, theme) live under Tú.
+/// Per Fase1HumanLayerRules + Ruul Canonical UX Doctrine §13 — Settings,
+/// Wallet, Reminders are the Apple references. Drops the previous Tú/
+/// Cuenta segmented picker (V2 Slice 4G) in favor of a flat scroll that
+/// matches `Settings.app`. The custom `sectionContainer`/`navRow` chrome
+/// is replaced with native `List` + `Section`, letting the OS provide
+/// background, separators, and corner clipping.
 public struct MyProfileView: View {
     @State var coordinator: ProfileCoordinator
     @Environment(AppState.self) private var app
@@ -52,23 +57,6 @@ public struct MyProfileView: View {
     /// release builds strip this state entirely via the section gate.
     @State private var legacyWizardPresented = false
     #endif
-
-    /// V2 Slice 4G — Profile sub-tab. Defaults to `.tú` so the user
-    /// sees themselves + their activity first; account-ops (phone,
-    /// email, notifications, data, sign out) live a tap away in
-    /// `.cuenta`.
-    public enum SubTab: Hashable, CaseIterable, Sendable {
-        case tú
-        case cuenta
-
-        public var label: String {
-            switch self {
-            case .tú:     return "Tú"
-            case .cuenta: return "Cuenta"
-            }
-        }
-    }
-    @State private var subTab: SubTab = .tú
 
     public init(
         coordinator: ProfileCoordinator,
@@ -116,19 +104,17 @@ public struct MyProfileView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.ruulBackground.ignoresSafeArea()
-            // Profile es scalar — no aplica `.empty`. AsyncContentView
-            // sin el builder `empty:` colapsa a `EmptyView` cuando el
-            // factory `LoadPhase.from` nunca dispara `.empty` (es el
-            // caso aquí: la API siempre devuelve un Profile o un error).
-            AsyncContentView(
-                phase: coordinator.phase,
-                onRetry: { await coordinator.refresh() },
-                loaded: { _ in loadedScroll }
-            )
-        }
-        .ruulAppToolbar(showsGroupAvatar: false)
+        // Profile es scalar — no aplica `.empty`. AsyncContentView sin
+        // el builder `empty:` colapsa a EmptyView cuando el factory
+        // `LoadPhase.from` nunca dispara `.empty` (la API siempre
+        // devuelve un Profile o un error).
+        AsyncContentView(
+            phase: coordinator.phase,
+            onRetry: { await coordinator.refresh() },
+            loaded: { _ in loadedList }
+        )
+        .navigationTitle("Yo")
+        .navigationBarTitleDisplayMode(.large)
         .task { await coordinator.refresh() }
         .confirmationDialog(
             "¿Salir de tu cuenta?",
@@ -142,68 +128,59 @@ public struct MyProfileView: View {
         }
     }
 
-    /// Scroll contenedor del Profile cargado. Extraído para que el
-    /// `loaded` builder de `AsyncContentView` quede declarativo.
-    private var loadedScroll: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
-                hero
-                // V2 Slice 4G sub-tab chrome. Two segments only — fits
-                // iPhone SE width with room to spare. Hero stays above
-                // so the user always sees who they are.
-                Picker("Sección del perfil", selection: $subTab) {
-                    ForEach(SubTab.allCases, id: \.self) { tab in
-                        Text(tab.label).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                switch subTab {
-                case .tú:
-                    myGroupsSection
-                    activitySection
-                    settingsSection
-                    preferencesSection
-                    appearanceSection
-                    #if DEBUG
-                    debugSection
-                    #endif
-                case .cuenta:
-                    identitySection
-                    notificationsSection
-                    dataAndAccountSection
-                    signOutButton
-                }
-            }
-            .padding(.horizontal, RuulSpacing.lg)
-            .padding(.top, RuulSpacing.xs)
-            .padding(.bottom, RuulSpacing.s12)
+    /// Apple Settings-flat list. `insetGrouped` matches Settings.app /
+    /// Wallet / Reminders' settings sheet visual identity. Sections
+    /// flow top to bottom following the founder doctrine's order.
+    private var loadedList: some View {
+        List {
+            profileHeader
+            myGroupsSection
+            activitySection
+            personalSection
+            notificationsSection
+            preferencesSection
+            appearanceSection
+            #if DEBUG
+            debugSection
+            #endif
+            accountSection
+            dataAndAccountSection
+            signOutSection
         }
-        .scrollIndicators(.hidden)
+        .listStyle(.insetGrouped)
         .refreshable { await coordinator.refresh() }
     }
 
-    // MARK: Hero (avatar + name + cross-group meta)
+    // MARK: - Profile hero (no card)
 
-    private var hero: some View {
-        HStack(spacing: RuulSpacing.md) {
-            RuulAvatar(
-                name: coordinator.profile?.displayName ?? "?",
-                imageURL: coordinator.profile?.avatarUrl.flatMap(URL.init(string:)),
-                size: .large
-            )
-            VStack(alignment: .leading, spacing: 2) {
-                Text(coordinator.profile?.displayName ?? "—")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                Text(membershipMeta)
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
+    /// Hero row at the top of the list. Wrapped in a `Section` with a
+    /// transparent row background + hidden separator so it visually
+    /// floats above the first card group — matching Apple's "Apple ID"
+    /// header at the top of Settings.app.
+    private var profileHeader: some View {
+        Section {
+            HStack(spacing: RuulSpacing.md) {
+                RuulAvatar(
+                    name: coordinator.profile?.displayName ?? "?",
+                    imageURL: coordinator.profile?.avatarUrl.flatMap(URL.init(string:)),
+                    size: .large
+                )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(coordinator.profile?.displayName ?? "—")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Text(membershipMeta)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.secondary)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .padding(.vertical, RuulSpacing.sm)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: RuulSpacing.sm, trailing: 0))
         }
-        .padding(.top, RuulSpacing.md)
     }
 
     private var membershipMeta: String {
@@ -213,96 +190,21 @@ public struct MyProfileView: View {
         return "Miembro de \(count) grupos"
     }
 
-    // MARK: Sections
+    // MARK: - Sections
 
-    private var identitySection: some View {
-        sectionContainer(title: "Identidad") {
-            navRow(
-                icon: "phone",
-                label: "Teléfono",
-                trailing: { trailingValue(coordinator.profile?.phone ?? "—") },
-                action: { onChangePhone?() }
-            )
-            divider
-            navRow(
-                icon: "envelope",
-                label: "Correo",
-                trailing: { trailingValue(app.session?.user.email ?? "—") },
-                action: { onChangeEmail?() }
-            )
-        }
-    }
-
-    private var preferencesSection: some View {
-        sectionContainer(title: "Preferencias") {
-            navRow(
-                icon: "globe",
-                label: "Idioma",
-                trailing: { trailingValue(localeLabel(coordinator.profile?.locale)) },
-                action: { onPickLanguage?() }
-            )
-            divider
-            navRow(
-                icon: "clock",
-                label: "Zona horaria",
-                trailing: { trailingValue(coordinator.profile?.timezone ?? "—") },
-                action: { onPickTimezone?() }
-            )
-        }
-    }
-
-    private var notificationsSection: some View {
-        sectionContainer(title: "Notificaciones") {
-            navRow(
-                icon: "bell.badge",
-                label: "Preferencias",
-                trailing: { EmptyView() },
-                action: { onOpenNotificationPreferences?() }
-            )
-            divider
-            navRow(
-                icon: "iphone.and.arrow.forward",
-                label: "Dispositivos",
-                trailing: { EmptyView() },
-                action: { onOpenDevices?() }
-            )
-        }
-    }
-
-    private func trailingValue(_ s: String) -> some View {
-        Text(s)
-            .font(.caption)
-            .foregroundStyle(Color.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
-    }
-
-    private func localeLabel(_ code: String?) -> String {
-        guard let code, let entry = LanguagePickerView.supported.first(where: { $0.code == code }) else { return "—" }
-        return entry.label
-    }
-
-    /// Lista los primeros 3 grupos del usuario con tap-to-switch + un
-    /// "Ver todos" cuando hay más. Antes el switcher estaba solo en el
-    /// header del Home, lo que para usuarios con 5+ grupos lo volvía
-    /// invisible. El active group queda marcado con dot accent.
+    /// Up to 3 group rows + "Ver todos" overflow. Quick-switch surface;
+    /// the dedicated "Mis grupos" tab is the drill-in to Group home.
     @ViewBuilder
     private var myGroupsSection: some View {
         if !app.groups.isEmpty {
-            sectionContainer(title: "Mis grupos") {
-                let visible = Array(app.groups.prefix(3))
-                ForEach(Array(visible.enumerated()), id: \.element.id) { idx, group in
-                    if idx > 0 { divider }
+            Section("Mis grupos") {
+                ForEach(app.groups.prefix(3), id: \.id) { group in
                     groupRow(group)
                 }
                 if app.groups.count > 3, let onOpenGroupSwitcher {
-                    divider
-                    navRow(
-                        icon: "ellipsis",
-                        label: "Ver todos (\(app.groups.count))",
-                        trailing: { EmptyView() },
-                        action: onOpenGroupSwitcher
-                    )
+                    Button(action: onOpenGroupSwitcher) {
+                        Label("Ver todos (\(app.groups.count))", systemImage: "ellipsis.circle")
+                    }
                 }
             }
         }
@@ -319,41 +221,136 @@ public struct MyProfileView: View {
             HStack(spacing: RuulSpacing.sm) {
                 RuulGroupAvatar(group: group, size: .md)
                 Text(group.name)
-                    .font(.subheadline)
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
                 Spacer()
                 if isActive {
-                    Circle().fill(Color.ruulAccent).frame(width: 8, height: 8)
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                 }
             }
-            .padding(RuulSpacing.md)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
         .accessibilityLabel(isActive ? "\(group.name), grupo activo" : "Cambiar a \(group.name)")
     }
 
     private var activitySection: some View {
-        sectionContainer(title: "Tu actividad") {
-            navRow(icon: "creditcard", label: "Mis multas", trailing: { outstandingPill }, action: onOpenMyFines)
+        Section("Tu actividad") {
+            actionRow(label: "Mis multas", systemImage: "creditcard", trailing: {
+                outstandingPill
+            }, action: onOpenMyFines)
             if let onOpenMyLedger {
-                divider
-                navRow(icon: "arrow.left.arrow.right", label: "Mis movimientos", trailing: { EmptyView() }, action: onOpenMyLedger)
+                actionRow(label: "Mis movimientos", systemImage: "arrow.left.arrow.right", action: onOpenMyLedger)
             }
-            divider
-            navRow(icon: "clock.badge.checkmark", label: "Mi línea de tiempo", trailing: { EmptyView() }, action: { onOpenTimeline?() })
-            divider
-            navRow(icon: "clock.arrow.circlepath", label: "Actividad del grupo", trailing: { EmptyView() }, action: onOpenHistory)
+            if let onOpenTimeline {
+                actionRow(label: "Mi línea de tiempo", systemImage: "clock.badge.checkmark", action: onOpenTimeline)
+            }
+            actionRow(label: "Actividad del grupo", systemImage: "clock.arrow.circlepath", action: onOpenHistory)
         }
     }
 
-    private var settingsSection: some View {
-        sectionContainer(title: "Ajustes") {
-            navRow(icon: "pencil", label: "Editar perfil", trailing: { EmptyView() }, action: onEditProfile)
+    private var personalSection: some View {
+        Section("Personal") {
+            actionRow(label: "Editar perfil", systemImage: "pencil", action: onEditProfile)
         }
     }
+
+    private var notificationsSection: some View {
+        Section("Notificaciones") {
+            actionRow(label: "Preferencias", systemImage: "bell.badge", action: { onOpenNotificationPreferences?() })
+            actionRow(label: "Dispositivos", systemImage: "iphone.and.arrow.forward", action: { onOpenDevices?() })
+        }
+    }
+
+    private var preferencesSection: some View {
+        Section("Preferencias") {
+            actionRow(
+                label: "Idioma",
+                systemImage: "globe",
+                value: localeLabel(coordinator.profile?.locale),
+                action: { onPickLanguage?() }
+            )
+            actionRow(
+                label: "Zona horaria",
+                systemImage: "clock",
+                value: coordinator.profile?.timezone ?? "—",
+                action: { onPickTimezone?() }
+            )
+        }
+    }
+
+    /// Inline picker matches Apple Settings → Display & Brightness →
+    /// Appearance. Native `Picker(.inline)` renders three Label rows
+    /// with a checkmark on the active option — system handles the
+    /// chrome and selection feedback. Drops the previous custom
+    /// 3-button gallery card.
+    private var appearanceSection: some View {
+        Section("Apariencia") {
+            Picker("Apariencia", selection: appearance) {
+                ForEach(AppearanceOption.allCases) { option in
+                    Label(option.label, systemImage: option.systemImage)
+                        .tag(option)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        }
+    }
+
+    private var accountSection: some View {
+        Section("Cuenta") {
+            actionRow(
+                label: "Teléfono",
+                systemImage: "phone",
+                value: coordinator.profile?.phone ?? "—",
+                action: { onChangePhone?() }
+            )
+            actionRow(
+                label: "Correo",
+                systemImage: "envelope",
+                value: app.session?.user.email ?? "—",
+                action: { onChangeEmail?() }
+            )
+        }
+    }
+
+    /// LFPDPPP/CCPA right-to-portability + right-to-erasure surface. Solo
+    /// se renderiza si el caller provee ambos callbacks (no tiene sentido
+    /// mostrar solo uno — son derechos ARCO pareados).
+    @ViewBuilder
+    private var dataAndAccountSection: some View {
+        if let onExportData, let onDeleteAccount {
+            Section("Datos y cuenta") {
+                actionRow(label: "Exportar mis datos", systemImage: "square.and.arrow.up", action: onExportData)
+                Button(role: .destructive, action: onDeleteAccount) {
+                    Label("Eliminar mi cuenta", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private var signOutSection: some View {
+        Section {
+            Button("Cerrar sesión", role: .destructive) {
+                showSignOutConfirm = true
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    // MARK: - Outstanding fines pill
+
+    @ViewBuilder
+    private var outstandingPill: some View {
+        if let amount = outstandingPillAmount, amount > 0 {
+            Text(amountFormatted(amount))
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(Color.orange)
+        }
+    }
+
+    // MARK: - Debug section (internal builds only)
 
     #if DEBUG
     /// Debug-only feature flag panel. Lets internal builds flip the new
@@ -361,31 +358,24 @@ public struct MyProfileView: View {
     /// Stripped from release builds entirely via `#if DEBUG`. Replace
     /// with a remote-config surface when the flag graduates from
     /// internal-only to runtime production rollout.
+    @ViewBuilder
     private var debugSection: some View {
-        sectionContainer(title: "Debug") {
-            HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: "plus.app")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.secondary)
-                    .frame(width: 24)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Flow nuevo de crear recurso")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.primary)
-                    Text("Type → Variant → Identity → Create → Intents. Apagado vuelve al wizard de 5 pasos.")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                        .multilineTextAlignment(.leading)
+        Section("Debug") {
+            Toggle(isOn: Binding(
+                get: { ResourceCreationFeatureFlag.isEnabled },
+                set: { ResourceCreationFeatureFlag.isEnabled = $0 }
+            )) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Flow nuevo de crear recurso")
+                        Text("Type → Variant → Identity → Create → Intents. Apagado vuelve al wizard de 5 pasos.")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "plus.app")
                 }
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { ResourceCreationFeatureFlag.isEnabled },
-                    set: { ResourceCreationFeatureFlag.isEnabled = $0 }
-                ))
-                .labelsHidden()
             }
-            .padding(.horizontal, RuulSpacing.md)
-            .padding(.vertical, RuulSpacing.sm)
             // "Demote ResourceWizardSheet to Governance → Advanced"
             // landing pad. Without this, power users that wanted to
             // poke at the legacy 5-step wizard had to flip the flag
@@ -394,10 +384,9 @@ public struct MyProfileView: View {
             // an active group (no-op otherwise) since the wizard's
             // first step assumes group scope.
             if app.activeGroup != nil {
-                navRow(
-                    icon: "wand.and.stars",
+                actionRow(
                     label: "Crear con opciones avanzadas",
-                    trailing: { EmptyView() },
+                    systemImage: "wand.and.stars",
                     action: { legacyWizardPresented = true }
                 )
             }
@@ -414,157 +403,59 @@ public struct MyProfileView: View {
     }
     #endif
 
-    /// LFPDPPP/CCPA right-to-portability + right-to-erasure surface. Solo
-    /// se renderiza si el caller provee ambos callbacks (no tiene sentido
-    /// mostrar solo uno — son derechos ARCO pareados).
+    // MARK: - Row helpers
+
+    /// Canonical row: tappable `Button` with a `Label` (icon + title)
+    /// leading, optional trailing value, and a tertiary chevron. List
+    /// provides the background, separator, and tappable feedback. Used
+    /// for both sheet-presenting rows and push destinations alike.
     @ViewBuilder
-    private var dataAndAccountSection: some View {
-        if let onExportData, let onDeleteAccount {
-            sectionContainer(title: "Datos y cuenta") {
-                navRow(
-                    icon: "square.and.arrow.up",
-                    label: "Exportar mis datos",
-                    trailing: { EmptyView() },
-                    action: onExportData
-                )
-                divider
-                navRow(
-                    icon: "trash",
-                    label: "Eliminar mi cuenta",
-                    trailing: { EmptyView() },
-                    action: onDeleteAccount,
-                    destructive: true
-                )
-            }
-        }
-    }
-
-    private var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("Apariencia")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(.tertiaryLabel))
-                .padding(.leading, RuulSpacing.xxs)
-            HStack(spacing: RuulSpacing.xs) {
-                ForEach(AppearanceOption.allCases) { option in
-                    Button {
-                        appearance.wrappedValue = option
-                    } label: {
-                        VStack(spacing: RuulSpacing.xxs) {
-                            Image(systemName: option.systemImage)
-                                .font(.title2.weight(.medium))
-                                .accessibilityHidden(true)
-                            Text(option.label)
-                                .font(.footnote)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, RuulSpacing.md)
-                        .foregroundStyle(
-                            appearance.wrappedValue == option
-                                ? Color.primary
-                                : Color.secondary
-                        )
-                        .background(
-                            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                                .fill(
-                                    appearance.wrappedValue == option
-                                        ? Color.ruulBackgroundRecessed
-                                        : Color.ruulSurface
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: RuulRadius.medium, style: .continuous)
-                                .stroke(
-                                    appearance.wrappedValue == option
-                                        ? Color.ruulBorderStrong
-                                        : Color(.separator),
-                                    lineWidth: 1
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .sensoryFeedback(.selection, trigger: appearance.wrappedValue)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var outstandingPill: some View {
-        if let amount = outstandingPillAmount, amount > 0 {
-            Text(amountFormatted(amount))
-                .font(.footnote.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.orange)
-        }
-    }
-
-    private var signOutButton: some View {
-        Button { showSignOutConfirm = true } label: {
-            Text("Cerrar sesión")
-                .font(.subheadline)
-                .foregroundStyle(Color.red)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
-        }
-        .buttonStyle(.ruulPress)
-    }
-
-    // MARK: Reusable section + row
-
-    @ViewBuilder
-    private func sectionContainer<Content: View>(title: String, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(title)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(.tertiaryLabel))
-                .padding(.leading, RuulSpacing.xxs)
-            VStack(spacing: 0) { content() }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.large, style: .continuous)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
-        }
-    }
-
-    private var divider: some View {
-        Divider().background(Color(.separator)).padding(.leading, 56)
-    }
-
-    @ViewBuilder
-    private func navRow<Trailing: View>(
-        icon: String,
+    private func actionRow<Trailing: View>(
         label: String,
+        systemImage: String,
         @ViewBuilder trailing: () -> Trailing,
-        action: @escaping () -> Void,
-        destructive: Bool = false
+        action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: icon)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(destructive ? Color.red : Color.secondary)
-                    .frame(width: 24)
-                    .accessibilityHidden(true)
-                Text(label)
-                    .font(.subheadline)
-                    .foregroundStyle(destructive ? Color.red : Color.primary)
-                Spacer()
+                Label(label, systemImage: systemImage)
+                    .foregroundStyle(Color.primary)
+                Spacer(minLength: RuulSpacing.xs)
                 trailing()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                     .accessibilityHidden(true)
             }
-            .padding(RuulSpacing.md)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+    }
+
+    private func actionRow(
+        label: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        actionRow(label: label, systemImage: systemImage, trailing: { EmptyView() }, action: action)
+    }
+
+    private func actionRow(
+        label: String,
+        systemImage: String,
+        value: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        actionRow(label: label, systemImage: systemImage, trailing: {
+            Text(value)
+                .foregroundStyle(Color.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }, action: action)
+    }
+
+    private func localeLabel(_ code: String?) -> String {
+        guard let code, let entry = LanguagePickerView.supported.first(where: { $0.code == code }) else { return "—" }
+        return entry.label
     }
 
     private func amountFormatted(_ amount: Decimal) -> String {
