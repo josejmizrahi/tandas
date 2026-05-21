@@ -60,7 +60,7 @@ struct StateHeroView: View {
         switch headline.urgency {
         case .urgent:    return AnyShapeStyle(Color.red.opacity(0.06))
         case .actionable: return AnyShapeStyle(tint.color.opacity(0.06))
-        case .ambient, .terminal: return AnyShapeStyle(Color.ruulSurfaceSecondary)
+        case .ambient, .terminal: return AnyShapeStyle(Color.ruulSurface)
         }
     }
 }
