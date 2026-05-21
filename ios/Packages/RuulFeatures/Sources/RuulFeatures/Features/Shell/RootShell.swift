@@ -42,31 +42,23 @@ public struct RootShell: View {
             HomeTab(
                 home: homeCoordinator,
                 // Per-group inbox: HomeView.pendingsSection only shows
-                // pendings for the currently active group. Cross-group
-                // inbox feeds the Inbox tab below.
+                // pendings for the currently active group. The cross-
+                // group inbox no longer has a dedicated tab (2026-05-20
+                // restructure per Ruul Canonical UX Doctrine).
                 inbox: homeInboxCoordinator
             )
             .tabItem { Label("Inicio", systemImage: "house.fill") }
             .tag(RootTab.home)
+            .badge(inboxCoordinator?.actions.count ?? 0)
 
-            InboxTab(inbox: inboxCoordinator)
-                .tabItem { Label("Pendientes", systemImage: "tray.fill") }
-                .tag(RootTab.inbox)
-                .badge(inboxCoordinator?.actions.count ?? 0)
-
-            CreateTabIntercept()
-                .tabItem { Label("Crear", systemImage: "plus.circle.fill") }
-                .tag(RootTab.create)
-
-            ActivityTab(activity: activityCoordinator)
-                .tabItem { Label("Historia", systemImage: "clock.arrow.circlepath") }
-                .tag(RootTab.activity)
+            MyGroupsTab()
+                .tabItem { Label("Mis grupos", systemImage: "person.3.fill") }
+                .tag(RootTab.groups)
 
             ProfileTab(profile: profileCoordinator, myFines: myFinesCoordinator)
-                .tabItem { Label("Perfil", systemImage: "person.crop.circle.fill") }
+                .tabItem { Label("Yo", systemImage: "person.crop.circle.fill") }
                 .tag(RootTab.profile)
         }
-        .tint(Color.ruulAccent)
         .tabBarMinimizeBehavior(.onScrollDown)
         .animation(.smooth, value: app.activeGroupId)
         .environment(router)

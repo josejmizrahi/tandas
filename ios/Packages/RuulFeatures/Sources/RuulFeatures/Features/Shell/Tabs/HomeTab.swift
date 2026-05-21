@@ -56,12 +56,10 @@ public struct HomeTab: View {
         switch action.actionType {
         case .finePending:
             if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
-                router.selectTab(.inbox)
                 router.openFine(fine)
             }
         case .fineVoided:
             if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
-                router.selectTab(.inbox)
                 router.openFine(fine)
             }
         case .fineProposalReview:

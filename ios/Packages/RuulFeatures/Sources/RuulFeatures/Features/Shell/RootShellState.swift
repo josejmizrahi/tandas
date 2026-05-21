@@ -134,13 +134,17 @@ public enum PendingEventInitialAction: Sendable, Hashable {
     case scanner
 }
 
-/// Tab inventory matching `AppShell.md` canonical 5-tab layout.
-/// Pass 2 renames .group → .inbox and .decisions → .activity.
+/// Tab inventory (3 tabs as of 2026-05-20 per Ruul Canonical UX Doctrine).
+/// Verb-based, resource-agnostic. Eliminated: `.inbox` (subsumed into Home's
+/// pendings section), `.create` (replaced by `+` toolbar item on Home that
+/// presents `.createCover` directly), `.activity` (push from Home or Group
+/// home subview).
 public enum RootTab: String, Sendable, Hashable, CaseIterable {
+    /// "Inicio" — cross-group today + pendings + recent activity.
     case home
-    case inbox
-    case create
-    case activity
+    /// "Mis grupos" — list of groups; tap drills into Group home.
+    case groups
+    /// "Yo" — profile + user-scoped settings.
     case profile
 }
 

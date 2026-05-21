@@ -90,10 +90,15 @@ public struct HomeView: View {
                     }
                     .accessibilityLabel("Invitar gente")
                 }
-                Button { router.selectTab(.profile) } label: {
-                    Image(systemName: "gearshape")
+                // 2026-05-20 restructure: replaces the deleted `.create`
+                // tab. Primary "+" action lives in Home's toolbar (Apple
+                // pattern — Reminders / Calendar / Mail all do this).
+                Button {
+                    router.presentCreate(hasActiveGroup: app.activeGroup != nil)
+                } label: {
+                    Image(systemName: "plus")
                 }
-                .accessibilityLabel("Ajustes")
+                .accessibilityLabel("Crear")
             }
         }
         .task {

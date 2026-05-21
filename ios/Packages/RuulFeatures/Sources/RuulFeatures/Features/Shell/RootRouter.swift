@@ -32,15 +32,20 @@ public final class RootRouter {
         state.selectedTab = tab
     }
 
-    /// Handles the raw tab selection from `TabView`, intercepting the
-    /// `.create` tap to present the wizard cover without actually moving
-    /// to a "create" tab (which has no content of its own).
+    /// Trampolines the raw `TabView` tap to `selectTab(_:)`. The legacy
+    /// 5-tab layout intercepted `.create` here to present the wizard
+    /// cover; the 3-tab layout (2026-05-20) replaces that with a `+`
+    /// toolbar item on Home that pushes `.createCover` directly, so this
+    /// method is just a thin trampoline now.
     public func handleTabSelection(_ tab: RootTab, hasActiveGroup: Bool) {
-        guard tab == .create else {
-            selectTab(tab)
-            return
-        }
-        // Intercept: don't change selectedTab, just present the cover.
+        selectTab(tab)
+    }
+
+    /// Single entry point used by Home's toolbar `+` button. Pushes the
+    /// wizard cover when the user has an active group; otherwise it
+    /// drops them into "Crear grupo" instead (preserves the previous
+    /// 5-tab `.create` intercept behavior).
+    public func presentCreate(hasActiveGroup: Bool) {
         if hasActiveGroup {
             present(.createCover)
         } else {
