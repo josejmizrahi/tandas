@@ -2,32 +2,61 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
+/// Tab "Inicio" — the user's daily landing per Wave 3 doctrine.
+///
+/// Three canonical sections (Ruul Canonical UX Doctrine §4, §7):
+///   1. **Necesitan ti** — pendings sourced from `inboxCoordinator`
+///      (cross-group capable). Top 3 ActionCard rows.
+///   2. **Próximamente** — resource-driven feed of items with a real
+///      future temporal anchor. V1 only Event exposes `startsAt`;
+///      other resource types contribute their own "next happens at"
+///      as they ship temporal semantics (slot rotation, asset
+///      booking, fund deadline, right expiration). Top 5 rows.
+///   3. **Hace poco** — recently closed/cancelled resources
+///      (polymorphic). Top 5 rows + overflow → history.
+///
+/// LargeTitle "Inicio" (Apple Reminders / Calendar convention).
+/// Drops the previous capability-aware emptyHero variant, the
+/// counter-card "Historial del grupo" tiles, and the dedicated
+/// "Ver historial" footer link — those reduce to native rows within
+/// the three canonical sections.
 public struct HomeView: View {
     @Bindable var coordinator: HomeCoordinator
     @Environment(AppState.self) private var app
     @Environment(RootRouter.self) private var router
-    /// Fase 4b: Inbox content vive embebido en Home como sección "Pendientes".
-    /// `nil` durante bootstrap (igual que homeCoordinator). El callback
-    /// dispatch al `handleInboxAction` del padre — mismo handler que antes.
+    /// Fase 4b: Inbox content vive embebido en Home como sección
+    /// "Necesitan ti". `nil` durante bootstrap (igual que
+    /// homeCoordinator). El callback dispatch al `handleInboxAction`
+    /// del padre — mismo handler que antes.
     public var inboxCoordinator: InboxCoordinator?
     public var onInboxActionTap: (UserAction) async -> Void = { _ in }
     public let userId: UUID
     public var onCreateEvent: () -> Void
     public var onOpenEvent: (Event) -> Void
     public var onOpenPastEvents: () -> Void
-    /// HISTORIAL DEL GRUPO "acuerdos alcanzados" tile tap. Abre la historia
-    /// completa (sin filtro — desde ahí el usuario filtra a "Votos"
-    /// con el chip). Default no-op para callsites pre-P1.
+    /// "Hace poco" tile tap. Default no-op para callsites pre-P1.
     public var onOpenGroupHistory: () -> Void = {}
     public var onInvitePeople: (() -> Void)? = nil
     /// Tap del GroupSwitcher pill — abre `GroupSwitcherSheet` desde Home.
     /// Per AppShell.md: el switcher es chrome persistente en Home/Inbox/Activity.
     public var onSwitchGroup: () -> Void = {}
     /// Bumped by the parent (MainTabView) after the wizard creates a
-    /// resource — drives the non-event-resources re-fetch via .task(id:).
+    /// resource — drives the past-events re-fetch via .task(id:).
     public var resourceRefreshToken: UUID
 
-    public init(coordinator: HomeCoordinator, inboxCoordinator: InboxCoordinator?, onInboxActionTap: @escaping (UserAction) async -> Void = { _ in }, userId: UUID, onCreateEvent: @escaping () -> Void, onOpenEvent: @escaping (Event) -> Void, onOpenPastEvents: @escaping () -> Void, onOpenGroupHistory: @escaping () -> Void = {}, onInvitePeople: (() -> Void)? = nil, onSwitchGroup: @escaping () -> Void = {}, resourceRefreshToken: UUID = UUID()) {
+    public init(
+        coordinator: HomeCoordinator,
+        inboxCoordinator: InboxCoordinator?,
+        onInboxActionTap: @escaping (UserAction) async -> Void = { _ in },
+        userId: UUID,
+        onCreateEvent: @escaping () -> Void,
+        onOpenEvent: @escaping (Event) -> Void,
+        onOpenPastEvents: @escaping () -> Void,
+        onOpenGroupHistory: @escaping () -> Void = {},
+        onInvitePeople: (() -> Void)? = nil,
+        onSwitchGroup: @escaping () -> Void = {},
+        resourceRefreshToken: UUID = UUID()
+    ) {
         self.coordinator = coordinator
         self.inboxCoordinator = inboxCoordinator
         self.onInboxActionTap = onInboxActionTap
@@ -42,46 +71,46 @@ public struct HomeView: View {
     }
 
     @State private var openedResource: ResourceRow?
-
-    @State private var groupMemory: GroupMemory = .empty
-
-    /// Lightweight aggregate the home renders to give the group a sense
-    /// of accumulated history — closes audit gap #10 (sin memoria/streaks/
-    /// totales). Each counter is best-effort: failures collapse the
-    /// section instead of surfacing an error, since the rest of the
-    /// home still works without it.
-    private struct GroupMemory: Equatable {
-        var pastEventsCount: Int
-        var resolvedVotesCount: Int
-
-        var hasAnyContent: Bool { pastEventsCount > 0 || resolvedVotesCount > 0 }
-
-        static let empty = GroupMemory(pastEventsCount: 0, resolvedVotesCount: 0)
-    }
+    /// Recent past resources (status: completed / cancelled) for
+    /// "Hace poco". Polymorphic `ResourceRow` lets us render any
+    /// closed resource type with the same chrome; tap opens
+    /// `ResourceDetailSheet` like every other row in Home.
+    @State private var recentPastResources: [ResourceRow] = []
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.s8) {
-                pendingsSection
-                upcomingFeedSection
-                groupMemorySection
-                pastEventsLink
+            VStack(alignment: .leading, spacing: RuulSpacing.xxl) {
+                necesitanTiSection
+                proximamenteSection
+                hacePocoSection
+                if isFullyEmpty {
+                    emptyHero
+                }
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.md)
             .padding(.bottom, RuulSpacing.s12)
         }
         .scrollIndicators(.hidden)
-        .contentMargins(RuulSpacing.md, for: .scrollIndicators)
         .scrollEdgeEffectStyle(.soft, for: .vertical)
         .refreshable {
             async let h: Void = coordinator.refresh(force: true)
             async let i: Void? = inboxCoordinator?.refresh()
-            async let m: Void = loadGroupMemory()
-            _ = await (h, i, m)
+            async let r: Void = loadRecentPastResources()
+            _ = await (h, i, r)
         }
-        .ruulAppToolbar()
+        .navigationTitle("Inicio")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
+            if let group = app.activeGroup {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onSwitchGroup) {
+                        RuulGroupAvatar(group: group, size: .lg)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cambiar grupo. Actual: \(group.name).")
+                }
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if let onInvitePeople {
                     Button(action: onInvitePeople) {
@@ -89,8 +118,7 @@ public struct HomeView: View {
                     }
                     .accessibilityLabel("Invitar gente")
                 }
-                // 2026-05-20 restructure: replaces the deleted `.create`
-                // tab. Primary "+" action lives in Home's toolbar (Apple
+                // Primary "+" action lives in Home's toolbar (Apple
                 // pattern — Reminders / Calendar / Mail all do this).
                 // `.glassProminent` per Ruul Glass Doctrine "floating
                 // action → ligero" (iOS 26 native).
@@ -109,16 +137,14 @@ public struct HomeView: View {
             _ = await (h, i)
         }
         .task(id: resourceRefreshToken) {
-            await loadGroupMemory()
+            await loadRecentPastResources()
         }
-        // Group switch (active group changes via the switcher) doesn't bump
-        // resourceRefreshToken, so without this second .task the @State
-        // stays bound to whatever group was active when the view first
-        // appeared — past events + resolved votes from the prior group
-        // bleed into the new one (or vanish if the prior group had none,
-        // which is exactly what hides the Memoria section silently).
+        // Group switch (active group changes via the switcher) doesn't
+        // bump resourceRefreshToken, so without this second .task the
+        // @State stays bound to whatever group was active when the view
+        // first appeared.
         .task(id: app.activeGroup?.id) {
-            await loadGroupMemory()
+            await loadRecentPastResources()
         }
         .fullScreenCover(item: $openedResource) { row in
             ResourceDetailSheet(resource: row)
@@ -127,157 +153,211 @@ public struct HomeView: View {
         }
     }
 
-    /// Loads the lightweight aggregates that back the "Memoria del grupo"
-    /// section. Two reads in parallel (past events + all votes), both
-    /// capped at sensible limits — the section labels show "200+" if we
-    /// hit the cap so users still get a useful signal for long-running
-    /// groups. Failures collapse the section instead of surfacing.
-    ///
-    /// Past-event count uses `resourceRepo` (polymorphic) filtered to
-    /// `.event` rows with terminal statuses ("completed" / "cancelled").
-    /// Date-bound precision is not needed here — it's a heuristic counter.
+    /// Loads the active group's recent past events for the "Hace poco"
+    /// section. Polymorphic resource repo filtered to `.event` rows
+    /// with terminal statuses. Failures collapse the section silently;
+    /// best-effort by design.
     @MainActor
-    private func loadGroupMemory() async {
+    private func loadRecentPastResources() async {
         guard let groupId = app.activeGroup?.id else {
-            groupMemory = .empty
+            recentPastResources = []
             return
         }
-        async let pastTask = (try? await app.resourceRepo.list(
+        // Pull past resources polymorphically. V1 fetches `.event`
+        // rows (closed/cancelled) — when other types adopt terminal
+        // statuses they can be added to the filter without touching
+        // the view chrome.
+        let rows = (try? await app.resourceRepo.list(
             in: groupId,
             types: [.event],
             statuses: ["completed", "cancelled"],
-            limit: 200
+            limit: 20
         )) ?? []
-        async let votesTask = (try? await app.voteRepo.votes(for: groupId)) ?? []
-        let past = await pastTask
-        let votes = await votesTask
-        groupMemory = GroupMemory(
-            pastEventsCount: past.count,
-            resolvedVotesCount: votes.filter { $0.status == .resolved }.count
-        )
+        recentPastResources = rows.sorted { $0.createdAt > $1.createdAt }
     }
 
-
-    // MARK: - Polymorphic upcoming feed
-
-    private struct UpcomingFeedItem: Identifiable {
-        let id: UUID
-        let kind: Kind
-        let sortDate: Date
-        enum Kind {
-            case event(Event)
-            case resource(ResourceRow)
-        }
-    }
-
-    /// Cross-type feed: every upcoming event AND every other resource
-    /// (fund, asset, space, slot, right) collapsed into one chronological
-    /// stream. No special "next event" hero — events render with the same
-    /// row chrome as every other resource so the home reads as a single
-    /// activity list per the canonical "una página universal sin importar
-    /// el resource type" doctrine.
-    private var upcomingFeed: [UpcomingFeedItem] {
-        let events = coordinator.upcomingEvents.map { event in
-            UpcomingFeedItem(
-                id: event.id,
-                kind: .event(event),
-                sortDate: event.startsAt
-            )
-        }
-        let resources = coordinator.upcomingResources.map { row in
-            UpcomingFeedItem(
-                id: row.id,
-                kind: .resource(row),
-                sortDate: row.createdAt
-            )
-        }
-        return (events + resources).sorted { $0.sortDate < $1.sortDate }
-    }
+    // MARK: - Section 1: Necesitan ti (pendings)
 
     @ViewBuilder
-    private var upcomingFeedSection: some View {
-        // AsyncContentView centraliza loading/error/refresh/empty/stale.
-        // El `loaded` builder recibe el `HomeFeed` agregado del coordinator
-        // pero la lista de filas que rendereamos sigue siendo `upcomingFeed`
-        // (mismo merge cronológico events + resources).
-        AsyncContentView(
-            phase: coordinator.phase,
-            onRetry: { await coordinator.refresh(force: true) },
-            empty: { emptyHero },
-            loaded: { _ in
-                VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                    RuulListSectionHeader("Próximo", count: upcomingFeed.count)
-                    RuulSeparatedRows(items: upcomingFeed) { item in
+    private var necesitanTiSection: some View {
+        if let coord = inboxCoordinator, !coord.actions.isEmpty {
+            sectionContainer(
+                title: "Necesitan ti",
+                count: coord.actions.count,
+                overflow: nil
+            ) {
+                RuulSeparatedRows(items: Array(coord.actions.prefix(3))) { action in
+                    ActionCard(
+                        icon: pendingIcon(for: action.actionType),
+                        meta: pendingMeta(for: action, coordinator: coord),
+                        title: action.title,
+                        subtitle: action.body,
+                        priority: pendingPriority(for: action.priority),
+                        timeRemaining: UserActionExpiry.remainingDescription(for: action),
+                        onTap: {
+                            Task { await onInboxActionTap(action) }
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Section 2: Próximamente
+
+    @ViewBuilder
+    private var proximamenteSection: some View {
+        let items = Array(upcomingFeed.prefix(5))
+        if !items.isEmpty {
+            sectionContainer(
+                title: "Próximamente",
+                count: upcomingFeed.count,
+                overflow: nil
+            ) {
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
+                        if idx > 0 { rowDivider }
                         activityRow(item)
                     }
                 }
             }
-        )
-        .frame(minHeight: 240, alignment: .top)
+        }
     }
 
-    /// Single row used for every feed entry — events and other resources
-    /// share the same chrome (40×40 circle SF symbol + title + meta line
-    /// + optional trailing pill + chevron). Per "no me gusta que event
-    /// tenga un diseño diferente que todo lo demás en home": events stop
-    /// drawing a cover thumbnail here; the icon comes from
-    /// `ResourceTypeChrome` like every other type.
+    // MARK: - Section 3: Hace poco
+
+    @ViewBuilder
+    private var hacePocoSection: some View {
+        let items = Array(recentPastResources.prefix(5))
+        if !items.isEmpty {
+            sectionContainer(
+                title: "Hace poco",
+                count: recentPastResources.count,
+                overflow: OverflowLink(label: "Ver historial", action: onOpenPastEvents)
+            ) {
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, row in
+                        if idx > 0 { rowDivider }
+                        pastResourceRow(row)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Section helpers
+
+    private struct OverflowLink {
+        let label: String
+        let action: () -> Void
+    }
+
+    @ViewBuilder
+    private func sectionContainer<Content: View>(
+        title: String,
+        count: Int?,
+        overflow: OverflowLink?,
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.md) {
+            HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                if let count, count > 0 {
+                    Text("\(count)")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(Color(.tertiaryLabel))
+                }
+                Spacer()
+                if let overflow {
+                    Button(action: overflow.action) {
+                        Text(overflow.label)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            content()
+        }
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .background(Color(.separator))
+            .padding(.leading, RuulSpacing.s12)
+    }
+
+    // MARK: - Upcoming feed (resource-driven, time-anchored)
+
+    /// "Próximamente" is a **resource-driven** feed of items with a
+    /// real future temporal anchor. Per Ruul Canonical UX Doctrine §9
+    /// (Resource Experience): every resource type uses the same
+    /// structural layout, including how it participates in the
+    /// timeline. The semantic is "next happens at" per resource
+    /// type — events use `startsAt`; future non-event types will
+    /// contribute their own anchors as they ship temporal semantics:
+    ///
+    ///   - slot → next assigned date / rotation turn
+    ///   - asset → next booking / maintenance due
+    ///   - fund → next contribution deadline / scheduled payout
+    ///   - right → next exercise window / expiration
+    ///   - space → next reservation
+    ///
+    /// **V1 reality**: only `Event` exposes a temporal anchor today,
+    /// so the feed is sourced from `coordinator.upcomingEvents`.
+    /// Non-event resources without a "next happens at" projection
+    /// stay out of this section — they live in Group home / detail
+    /// surfaces. Sorting them by `createdAt` next to scheduled events
+    /// read as misleading on device (founder feedback 2026-05-20).
+    ///
+    /// TODO: introduce a polymorphic `ResourceTimelineProvider` /
+    /// `ResourceRow.nextHappensAt: Date?` projection once any
+    /// non-event type ships real schedule semantics. The feed
+    /// collapses every resource with a non-nil anchor chronologically
+    /// at that point — no special-casing here.
+    private var upcomingFeed: [UpcomingFeedItem] {
+        coordinator.upcomingEvents
+            .map { UpcomingFeedItem(id: $0.id, event: $0) }
+            .sorted { $0.sortDate < $1.sortDate }
+    }
+
+    private struct UpcomingFeedItem: Identifiable {
+        let id: UUID
+        let event: Event
+        var sortDate: Date { event.startsAt }
+    }
+
     @ViewBuilder
     private func activityRow(_ item: UpcomingFeedItem) -> some View {
-        switch item.kind {
-        case .event(let event):
-            let status = coordinator.myRSVPs[event.id]?.status
-            unifiedRow(
-                icon: ResourceTypeChrome.resolve(.event).symbol,
-                title: event.title,
-                meta: eventMetaLine(event),
-                trailing: rsvpTrailing(for: event, status: status),
-                onTap: { onOpenEvent(event) }
-            )
-        case .resource(let row):
-            unifiedRow(
-                icon: ResourceTypeChrome.resolve(row.resourceType).symbol,
-                title: displayNameFor(row),
-                meta: subtitleFor(row),
-                trailing: nil,
-                onTap: { openedResource = row }
-            )
-        }
+        let event = item.event
+        let status = coordinator.myRSVPs[event.id]?.status
+        unifiedRow(
+            icon: ResourceTypeChrome.resolve(.event).symbol,
+            title: event.title,
+            meta: eventMetaLine(event),
+            trailing: rsvpTrailing(for: event, status: status),
+            onTap: { onOpenEvent(event) }
+        )
     }
 
-    /// Per-type one-liner under the resource name. Falls back to the
-    /// generic type label so a row is never bare. For assets specifically
-    /// it surfaces whatever state the metadata shortcut carries (loaned
-    /// out > current custodian > "Del grupo") so a glance at Home tells
-    /// the user who has it right now without opening the detail sheet.
-    private func subtitleFor(_ row: ResourceRow) -> String {
-        let type = row.resourceType.humanLabel
-        switch row.resourceType {
-        case .asset:
-            if let raw = row.metadata["checked_out_to"]?.stringValue, !raw.isEmpty {
-                return "\(type) · Prestado"
-            }
-            if let raw = row.metadata["custodian_id"]?.stringValue, !raw.isEmpty {
-                return "\(type) · En custodia"
-            }
-            return "\(type) · Del grupo"
-        case .fund:
-            if let raw = row.metadata["locked_at"]?.stringValue, !raw.isEmpty {
-                return "\(type) · Bloqueado"
-            }
-            return type
-        case .space:
-            // Capacity is the most useful one-liner shortcut — location_name
-            // is long-form and crowds the row. Falls back to the bare type
-            // label when no capacity is set.
-            if let cap = row.metadata["capacity"]?.intValue {
-                return "\(type) · \(cap) cupos"
-            }
-            return type
-        default:
-            return type
-        }
+    /// Past resource row — same chrome as upcoming. `meta` reads
+    /// "Cerrado · hace 3 días" / "Cancelado · hace 1 día" for events;
+    /// the type label for other types (when they ship terminal
+    /// statuses). Tap opens `ResourceDetailSheet` polymorphically.
+    @ViewBuilder
+    private func pastResourceRow(_ row: ResourceRow) -> some View {
+        unifiedRow(
+            icon: ResourceTypeChrome.resolve(row.resourceType).symbol,
+            title: displayNameFor(row),
+            meta: pastResourceMetaLine(row),
+            trailing: nil,
+            onTap: { openedResource = row }
+        )
     }
+
+    // MARK: - Row primitive
 
     private func unifiedRow(
         icon: String,
@@ -313,9 +393,10 @@ public struct HomeView: View {
                 if let trailing {
                     trailing
                 }
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
+                    .accessibilityHidden(true)
             }
             .padding(.vertical, RuulSpacing.sm)
             .contentShape(Rectangle())
@@ -323,9 +404,8 @@ public struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    /// Human meta for an event row. Same shape as a non-event row's type
-    /// label ("Fondo", "Activo") — kept to one terse line so the feed
-    /// rhythm stays even regardless of payload.
+    // MARK: - Meta line helpers
+
     private func eventMetaLine(_ event: Event) -> String {
         if event.status == .cancelled { return "Cancelado" }
         if event.status == .inProgress { return "En vivo" }
@@ -339,10 +419,16 @@ public struct HomeView: View {
         return "\(event.startsAt.ruulShortDate) · \(event.startsAt.ruulShortTime)"
     }
 
-    /// Trailing RSVP indicator — a small dot + label that mirrors the
-    /// status colors used on the detail page. Returns nil for `.pending`
-    /// (the chevron alone carries the affordance) and for events that
-    /// don't have a viewer RSVP yet.
+    /// Past resource meta — "Cerrado · hace 3 días" / "Cancelado ·
+    /// hace 1 día" for events. Falls back to the bare type label for
+    /// non-event resources (until they ship terminal statuses with
+    /// richer copy).
+    private func pastResourceMetaLine(_ row: ResourceRow) -> String {
+        let status = row.status.lowercased()
+        let prefix: String = status == "cancelled" ? "Cancelado" : "Cerrado"
+        return "\(prefix) · \(row.createdAt.ruulRelativeDescription)"
+    }
+
     private func rsvpTrailing(for event: Event, status: RSVPStatus?) -> AnyView? {
         if event.status == .inProgress {
             return AnyView(
@@ -359,9 +445,9 @@ public struct HomeView: View {
         let label: String
         switch status {
         case .going:      color = .green;     label = "Vas"
-        case .maybe:      color = .orange;      label = "Tal vez"
+        case .maybe:      color = .orange;    label = "Tal vez"
         case .declined:   color = Color(.tertiaryLabel); label = "No vas"
-        case .waitlisted: color = .orange;      label = "Lista"
+        case .waitlisted: color = .orange;    label = "Lista"
         case .pending:    return nil
         }
         return AnyView(
@@ -377,126 +463,7 @@ public struct HomeView: View {
         return row.resourceType.humanLabel
     }
 
-    /// Capability-aware empty state per OpenPlatform S2. Reads the active
-    /// group's modules and chooses copy + iconography that matches what
-    /// the group is set up to do.
-    private enum HomeEmptyVariant {
-        case events      // rsvp/check_in/basic_fines stack — "crea tu primer evento"
-        case asset       // slot/booking/asset stack — "agrega tu primer slot"
-        case fund        // fund/contribution stack — "agrega tu primer fondo"
-        case bare        // no modules — "personaliza el grupo"
-
-        var icon: String {
-            switch self {
-            case .events: return "calendar.badge.plus"
-            case .asset:  return "key.fill"
-            case .fund:   return "banknote"
-            case .bare:   return "square.dashed"
-            }
-        }
-
-        var title: String {
-            switch self {
-            case .events: return "Aún no hay eventos"
-            case .asset:  return "Aún no hay turnos disponibles"
-            case .fund:   return "Aún no hay aportaciones"
-            case .bare:   return "Tu grupo está listo"
-            }
-        }
-
-        var summary: String {
-            switch self {
-            case .events: return "Crea el primero — tu grupo lo verá en segundos."
-            case .asset:  return "Agrega una ventana de uso y reserva tu primer turno."
-            case .fund:   return "Define el fondo y empieza a recibir aportaciones."
-            case .bare:   return "Crea tu primer recurso para empezar a usarlo."
-            }
-        }
-
-        var ctaLabel: String {
-            switch self {
-            case .events: return "Crear evento"
-            case .asset:  return "Crear turno"
-            case .fund:   return "Crear fondo"
-            case .bare:   return "Crear recurso"
-            }
-        }
-    }
-
-    private var emptyHeroVariant: HomeEmptyVariant {
-        let modules = Set(app.activeGroup?.effectiveActiveModules ?? [])
-        if modules.contains("rsvp") || modules.contains("check_in") || modules.contains("basic_fines") {
-            return .events
-        }
-        if modules.contains("slot_assignment") {
-            return .asset
-        }
-        if modules.contains("common_fund") {
-            return .fund
-        }
-        return .bare
-    }
-
-    private var emptyHero: some View {
-        let variant = emptyHeroVariant
-        return VStack(spacing: RuulSpacing.lg) {
-            ZStack {
-                Circle()
-                    .fill(Color.ruulSurface)
-                    .frame(width: 80, height: 80)
-                Image(systemName: variant.icon)
-                    .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(Color.primary)
-                    .accessibilityHidden(true)
-            }
-            VStack(spacing: RuulSpacing.xs) {
-                Text(variant.title)
-                    .font(.title.weight(.semibold))
-                    .foregroundStyle(Color.primary)
-                Text(variant.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            RuulButton(variant.ctaLabel, systemImage: "plus", style: .primary, size: .large, action: onCreateEvent)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(RuulSpacing.xxl)
-        .ruulCardSurface(.glass, radius: RuulRadius.extraLarge)
-        .transition(.asymmetric(
-            insertion: .scale(scale: 0.95).combined(with: .opacity),
-            removal: .opacity
-        ))
-    }
-
-    // MARK: - Pendings — Fase 4b: Inbox content embedded como sección.
-    //
-    // Renders top 3 UserActions del `inboxCoordinator`. Tap dispatch al
-    // `onInboxActionTap` del padre (MainTabView.handleInboxAction). Cuando
-    // hay >3 pendings podemos agregar un "Ver todas" link en una iteración
-    // posterior — V1 corta a 3 para no canibalizar el hero del próximo evento.
-
-    @ViewBuilder
-    private var pendingsSection: some View {
-        if let coord = inboxCoordinator, !coord.actions.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                RuulListSectionHeader("Por hacer", count: coord.actions.count)
-                RuulSeparatedRows(items: Array(coord.actions.prefix(3))) { action in
-                    ActionCard(
-                        icon: pendingIcon(for: action.actionType),
-                        meta: pendingMeta(for: action, coordinator: coord),
-                        title: action.title,
-                        subtitle: action.body,
-                        priority: pendingPriority(for: action.priority),
-                        timeRemaining: UserActionExpiry.remainingDescription(for: action),
-                        onTap: {
-                            Task { await onInboxActionTap(action) }
-                        }
-                    )
-                }
-            }
-        }
-    }
+    // MARK: - Pendings helpers
 
     private func pendingIcon(for type: ActionType) -> String {
         switch type {
@@ -533,106 +500,30 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Memoria del grupo — accumulated aggregates that surface the
-    // group's history (eventos cerrados, decisiones resueltas). Hidden
-    // until at least one counter is non-zero, otherwise an empty group
-    // would render a permanent placeholder. Cap-label ("200+") when we
-    // hit the fetch limit so users see "more than we counted" instead
-    // of a misleading flat number.
+    // MARK: - Empty state
 
-    @ViewBuilder
-    private var groupMemorySection: some View {
-        if groupMemory.hasAnyContent {
-            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
-                Text("Historial del grupo")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
+    private var isFullyEmpty: Bool {
+        let pendingsEmpty = inboxCoordinator?.actions.isEmpty ?? true
+        let upcomingEmpty = upcomingFeed.isEmpty
+        let pastEmpty = recentPastResources.isEmpty
+        return pendingsEmpty && upcomingEmpty && pastEmpty
+    }
 
-                HStack(spacing: RuulSpacing.sm) {
-                    if groupMemory.pastEventsCount > 0 {
-                        memoryStatCard(
-                            value: memoryCountLabel(groupMemory.pastEventsCount, cap: 200),
-                            caption: "eventos juntos",
-                            icon: "calendar.badge.checkmark",
-                            action: onOpenPastEvents
-                        )
-                    }
-                    if groupMemory.resolvedVotesCount > 0 {
-                        memoryStatCard(
-                            value: memoryCountLabel(groupMemory.resolvedVotesCount, cap: 200),
-                            caption: "reglas alcanzadas",
-                            icon: "checkmark.seal",
-                            action: onOpenGroupHistory
-                        )
-                    }
-                }
+    /// Canonical empty per Fase1HumanLayerRules §3: title names what
+    /// the area IS, description reduces anxiety, single CTA. Replaces
+    /// the previous capability-aware variants — the active group's
+    /// modules are not visible at the empty-state point of decision.
+    private var emptyHero: some View {
+        ContentUnavailableView {
+            Label("Tu grupo está listo", systemImage: "sparkles")
+        } description: {
+            Text("Crea algo —un evento, un fondo, un activo— y aparece acá.")
+        } actions: {
+            Button("Crear") {
+                router.presentCreate(hasActiveGroup: app.activeGroup != nil)
             }
+            .buttonStyle(.borderedProminent)
         }
+        .padding(.top, RuulSpacing.s8)
     }
-
-    private func memoryCountLabel(_ count: Int, cap: Int) -> String {
-        count >= cap ? "\(cap)+" : "\(count)"
-    }
-
-    /// Stat card. Tappeable cuando hay un destino — antes era display-only
-    /// (UXJourney "MEMORIA tappeable"). Cards sin acción siguen rendering
-    /// igual pero sin Button wrap para no leaky el press affordance.
-    @ViewBuilder
-    private func memoryStatCard(
-        value: String,
-        caption: String,
-        icon: String,
-        action: (() -> Void)? = nil
-    ) -> some View {
-        let content = VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            HStack(spacing: RuulSpacing.xs) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-                    .accessibilityHidden(true)
-                Text(caption)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.secondary)
-                    .lineLimit(1)
-            }
-            Text(value)
-                .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(Color.primary)
-        }
-        .padding(RuulSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .ruulCardSurface(.glass, radius: RuulRadius.medium)
-
-        if let action {
-            Button(action: action) { content }
-                .buttonStyle(.ruulPress)
-        } else {
-            content
-        }
-    }
-
-    // MARK: - Past events link — Apple Sports style: subtle row, no chrome.
-
-    @ViewBuilder
-    private var pastEventsLink: some View {
-        if !coordinator.upcomingEvents.isEmpty {
-            Button(action: onOpenPastEvents) {
-                HStack(spacing: RuulSpacing.xs) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.footnote.weight(.semibold))
-                        .accessibilityHidden(true)
-                    Text("Ver historial")
-                        .font(.headline)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption.weight(.bold))
-                        .accessibilityHidden(true)
-                }
-                .foregroundStyle(Color.secondary)
-                .padding(.vertical, RuulSpacing.md)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
 }
