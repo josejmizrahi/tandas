@@ -33,6 +33,7 @@ identityPromoted       # verify-otp edge fn — emitted on anon→phone identity
 rightMetadataUpdated   # mig 00199 right atom — emitted by update_right_metadata RPC
 groupRolesChanged      # role write guards — emitted when groups.roles jsonb is updated
 memberCapabilityOverrideDeactivated  # mig_00286 — emitted on deactivate of member_capability_overrides row
+hostAssigned           # mig 20260519024039 rotating-host atom — emitted when a host is assigned to an event
 
 # Dot-notation atoms from mig 00314 placeholder-member workflow. CANNOT be
 # promoted to Swift enum cases as-is because the codegen parser only
