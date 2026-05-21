@@ -101,7 +101,15 @@ public struct EventRow: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let originGroup {
-                RuulOriginTag(group: originGroup)
+                HStack(spacing: 6) {
+                    RuulGroupAvatar(group: originGroup, size: .sm)
+                    Text(originGroup.name)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Grupo: \(originGroup.name)")
             }
             Text(metaLine)
                 .font(.footnote.weight(.semibold))

@@ -20,16 +20,6 @@ extension RuulGroupAvatar {
     }
 }
 
-extension RuulOriginTag {
-    public init(group: RuulCore.Group) {
-        self.init(
-            groupName: group.name,
-            initials: group.initials,
-            category: group.category
-        )
-    }
-}
-
 extension RuulGroupSwitcher {
     public init(activeGroup: RuulCore.Group, onTap: @escaping () -> Void) {
         self.init(
