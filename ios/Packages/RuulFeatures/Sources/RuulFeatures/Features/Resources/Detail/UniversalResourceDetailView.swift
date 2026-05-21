@@ -57,14 +57,22 @@ public struct UniversalResourceDetailView: View {
 
     public var body: some View {
         ScrollView {
+            // Layered Universal Detail (PR 2 of 7) — Identity / Context /
+            // (Participation + Coordination still inline as capability
+            //  blocks → PRs 3-4) / Activity. See
+            // `Plans/Active/Fase1ComponentMap.md` §"Universal Resource
+            // Detail — layered architecture".
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                IdentityRibbonView(ribbon: blocks.identity)
-                StateHeroView(
-                    headline: blocks.state,
-                    tint: blocks.identity.tint,
+                IdentityLayerView(
+                    identity: blocks.identity,
+                    state: blocks.state,
                     onPrimaryTap: onPrimaryAction
                 )
-                PropertiesBlockView(block: blocks.properties)
+                ContextLayerView(
+                    properties: blocks.properties,
+                    relations: blocks.relations,
+                    onTapRelation: onTapRelation
+                )
                 ForEach(BlockPriorityResolver.order(blocks.capabilities)) { block in
                     CapabilityBlockView(
                         block: block,
@@ -76,8 +84,7 @@ public struct UniversalResourceDetailView: View {
                         }
                     )
                 }
-                RelationsRailView(cards: blocks.relations, onTap: onTapRelation)
-                ActivityFeedView(
+                ActivityLayerView(
                     entries: blocks.activityHead,
                     hasMore: blocks.hasMoreActivity,
                     onSeeMore: onSeeMoreActivity
