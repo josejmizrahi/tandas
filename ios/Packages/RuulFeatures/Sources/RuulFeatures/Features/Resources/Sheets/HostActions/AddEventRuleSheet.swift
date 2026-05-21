@@ -2,36 +2,61 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Form for creating a single event-scoped rule. Renders every picker /
-/// input from `RuleShapeRegistry` — adding a new trigger or consequence
-/// is a server-side change (mig + INSERT into `public.rule_shapes`), no
-/// iOS release needed.
+/// Push destination for creating a single resource-scoped rule. Renders
+/// every picker / input from `RuleShapeRegistry` — adding a new trigger
+/// or consequence is a server-side change (mig + INSERT into
+/// `public.rule_shapes`), no iOS release needed.
 ///
 /// Founder principle: copy reads as "Si X → Y", never "trigger /
 /// consequence". The two top sections are labeled "CUÁNDO" and "ENTONCES"
 /// to land in the user's mental model.
-// File name kept for git continuity; the type is `AddResourceRuleSheet`
+///
+/// Sheet-on-sheet doctrine (2026-05-20): the parent `ResourceRulesSheet`
+/// is a fullScreenCover that hosts its own NavigationStack. This view is
+/// the push destination registered behind `RuleAddRoute`, NOT a child
+/// sheet — opaque base under the form so the glass treatment stays
+/// readable.
+// File name kept for git continuity; the type is `AddResourceRuleDestination`
 // — the form is polymorphic over Resource type, not specific to events.
-struct AddResourceRuleSheet: View {
-    @Binding var isPresented: Bool
+struct AddResourceRuleDestination: View {
     @Bindable var coordinator: ResourceRulesCoordinator
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ModalSheetTemplate(
-            title: "Nueva regla",
-            dismissAction: { isPresented = false }
-        ) {
-            nameSection
-            triggerSection
-            consequenceSection
-            previewSection
-            if let error = coordinator.error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(Color.red)
+        ScrollView {
+            VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                nameSection
+                triggerSection
+                consequenceSection
+                previewSection
+                if let error = coordinator.error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(Color.red)
+                }
             }
-            submitButton
-                .padding(.top, RuulSpacing.sm)
+            .padding(.horizontal, RuulSpacing.lg)
+            .padding(.top, RuulSpacing.md)
+            .padding(.bottom, RuulSpacing.lg)
+        }
+        .navigationTitle("Nueva regla")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    Task {
+                        let rule = await coordinator.submit()
+                        if rule != nil { dismiss() }
+                    }
+                } label: {
+                    if coordinator.isSubmitting {
+                        ProgressView()
+                    } else {
+                        Text("Crear")
+                    }
+                }
+                .disabled(!coordinator.canSubmit || coordinator.isSubmitting)
+            }
         }
     }
 
@@ -223,31 +248,12 @@ struct AddResourceRuleSheet: View {
         }
     }
 
-    // MARK: - Empty + CTA
+    // MARK: - Empty messages
 
     private func emptyShapeMessage(_ message: String) -> some View {
         Text(message)
             .font(.caption)
             .foregroundStyle(Color.secondary)
             .padding(.vertical, RuulSpacing.sm)
-    }
-
-    private var submitButton: some View {
-        let label: String = coordinator.isSubmitting ? "Guardando…" : "Crear regla"
-        return RuulButton(
-            label,
-            style: .primary,
-            size: .large,
-            isLoading: coordinator.isSubmitting,
-            fillsWidth: true
-        ) {
-            Task {
-                let rule = await coordinator.submit()
-                if rule != nil {
-                    isPresented = false
-                }
-            }
-        }
-        .disabled(!coordinator.canSubmit)
     }
 }

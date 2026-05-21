@@ -4,8 +4,10 @@ import RuulCore
 
 /// Money surface for a single event. Top: per-member balance summary +
 /// running total. Body: append-only feed of ledger entries scoped to
-/// `resource_id = event.id`. Footer CTA opens AddLedgerEntrySheet for a
-/// new entry.
+/// `resource_id = event.id`. Footer CTA pushes AddLedgerEntryDestination
+/// for a new entry — push, not nested sheet, per the sheet-on-sheet
+/// doctrine (2026-05-20): substantial sub-screens own a NavigationStack
+/// and add/edit forms push within it.
 ///
 /// The coordinator is owned by EventDetailView; this sheet only binds.
 // File name kept for git continuity; the type is `ResourceLedgerSheet`,
@@ -14,6 +16,8 @@ struct ResourceLedgerSheet: View {
     @Binding var isPresented: Bool
     @Bindable var coordinator: ResourceLedgerCoordinator
     let groupVocabulary: String
+
+    @State private var path: [LedgerAddRoute] = []
 
     public init(
         isPresented: Binding<Bool>,
@@ -26,33 +30,38 @@ struct ResourceLedgerSheet: View {
     }
 
     var body: some View {
-        ModalSheetTemplate(
-            title: "Movimientos",
-            dismissAction: { isPresented = false }
-        ) {
-            if coordinator.isLoading && coordinator.entries.isEmpty {
-                RuulLoadingState()
-                    .frame(maxWidth: .infinity, minHeight: 200)
-            } else {
-                summaryCard
-                if !coordinator.memberBalances.isEmpty {
-                    balanceSection
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                    if coordinator.isLoading && coordinator.entries.isEmpty {
+                        RuulLoadingState()
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                    } else {
+                        summaryCard
+                        if !coordinator.memberBalances.isEmpty {
+                            balanceSection
+                        }
+                        entriesSection
+                    }
+                    addEntryCTA
+                        .padding(.top, RuulSpacing.sm)
                 }
-                entriesSection
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.lg)
             }
-            addEntryCTA
-                .padding(.top, RuulSpacing.sm)
+            .navigationTitle("Movimientos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cerrar") { isPresented = false }
+                }
+            }
+            .navigationDestination(for: LedgerAddRoute.self) { _ in
+                AddLedgerEntryDestination(coordinator: coordinator)
+            }
         }
         .task { await coordinator.load() }
-        .sheet(isPresented: $coordinator.addSheetPresented) {
-            AddLedgerEntrySheet(
-                isPresented: $coordinator.addSheetPresented,
-                coordinator: coordinator
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial.opacity(0.5))
-        }
     }
 
     // MARK: - Summary
@@ -192,7 +201,7 @@ struct ResourceLedgerSheet: View {
             fillsWidth: true
         ) {
             coordinator.resetForm()
-            coordinator.addSheetPresented = true
+            path.append(LedgerAddRoute())
         }
     }
 
@@ -251,3 +260,8 @@ struct ResourceLedgerSheet: View {
         return "\(prefix)\(format(cents: abs(cents)))"
     }
 }
+
+/// Route value for the AddLedgerEntry push destination. Single-shape
+/// because the destination doesn't need any per-push parameters — the
+/// coordinator carries the form state.
+private struct LedgerAddRoute: Hashable {}

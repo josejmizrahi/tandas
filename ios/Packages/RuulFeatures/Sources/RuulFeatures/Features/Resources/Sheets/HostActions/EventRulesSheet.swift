@@ -23,12 +23,11 @@ import RuulCore
 
 // MARK: - Inline body
 
-/// Inline content for the Rules surface — the actual list + add CTA +
-/// sub-sheet wiring. Rendered both as the body of `ResourceRulesSheet`
-/// (when the viewer opens it from the ⋯ menu) and inline inside the
-/// resource detail's Reglas tab (`RulesSectionView`). Owns no
-/// presentation chrome; the caller is responsible for any wrapping
-/// container.
+/// Inline content for the Rules surface — the list + add CTA. Rendered
+/// by `ResourceRulesSheet` inside its own NavigationStack so the add
+/// path can push instead of opening a nested sheet (sheet-on-sheet
+/// doctrine 2026-05-20). Owns no nav chrome itself; the sheet wrapper
+/// supplies title + toolbar + push destinations.
 @MainActor
 struct ResourceRulesBody: View {
     @Bindable var coordinator: ResourceRulesCoordinator
@@ -40,6 +39,8 @@ struct ResourceRulesBody: View {
     /// templates can now be loaded inside the composer as starting points
     /// rather than being the only path.
     @State private var composerCoord: RuleComposerCoordinator?
+
+    let pushAddRoute: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.lg) {
@@ -81,15 +82,6 @@ struct ResourceRulesBody: View {
             }
         }
         .task { await coordinator.load() }
-        .sheet(isPresented: $coordinator.addSheetPresented) {
-            AddResourceRuleSheet(
-                isPresented: $coordinator.addSheetPresented,
-                coordinator: coordinator
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial.opacity(0.5))
-        }
         .fullScreenCover(item: $composerCoord) { coord in
             RuleComposerView(
                 coord: coord,
@@ -211,9 +203,10 @@ struct ResourceRulesBody: View {
         guard coordinator.canCreate else { return }
         guard let repo = app.ruleTemplateRepo,
               let group = app.groups.first(where: { $0.id == coordinator.groupId }) else {
-            // Legacy fallback — shape-based raw form on ResourceRulesCoordinator.
+            // Legacy fallback — push the shape-based raw form. Used in
+            // preview/mock or when the template repo isn't wired yet.
             coordinator.resetForm()
-            coordinator.addSheetPresented = true
+            pushAddRoute()
             return
         }
         // Templates surface as "starter examples" inside the composer,
@@ -266,15 +259,16 @@ struct ResourceRulesBody: View {
     }
 }
 
-// MARK: - Modal sheet wrapper
+// MARK: - Cover wrapper
 
-/// Modal-chrome wrapper around `ResourceRulesBody`. Today only the
-/// resource detail's ⋯ menu's "Reglas" path uses this — the Reglas tab
-/// renders the body inline via `RulesSectionView` so the user gets the
-/// list directly, no sub-sheet bounce.
+/// Cover-chrome wrapper around `ResourceRulesBody`. Hosts its own
+/// `NavigationStack` so the "Add rule" form is a push destination
+/// rather than a child sheet (sheet-on-sheet doctrine 2026-05-20).
 struct ResourceRulesSheet: View {
     @Binding var isPresented: Bool
     @Bindable var coordinator: ResourceRulesCoordinator
+
+    @State private var path: [RuleAddRoute] = []
 
     public init(
         isPresented: Binding<Bool>,
@@ -285,11 +279,31 @@ struct ResourceRulesSheet: View {
     }
 
     var body: some View {
-        ModalSheetTemplate(
-            title: "Reglas",
-            dismissAction: { isPresented = false }
-        ) {
-            ResourceRulesBody(coordinator: coordinator)
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: RuulSpacing.md) {
+                    ResourceRulesBody(coordinator: coordinator) {
+                        path.append(RuleAddRoute())
+                    }
+                }
+                .padding(.horizontal, RuulSpacing.lg)
+                .padding(.top, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.lg)
+            }
+            .navigationTitle("Reglas")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cerrar") { isPresented = false }
+                }
+            }
+            .navigationDestination(for: RuleAddRoute.self) { _ in
+                AddResourceRuleDestination(coordinator: coordinator)
+            }
         }
     }
 }
+
+/// Route value for the AddResourceRule push destination. Single-shape
+/// since the form pulls everything from the coordinator.
+private struct RuleAddRoute: Hashable {}

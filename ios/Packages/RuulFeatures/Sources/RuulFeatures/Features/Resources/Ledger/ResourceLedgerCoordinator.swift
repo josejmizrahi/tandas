@@ -92,7 +92,6 @@ public final class ResourceLedgerCoordinator {
     public private(set) var isLoading: Bool = true
     public private(set) var isSubmitting: Bool = false
     public private(set) var error: String?
-    public var addSheetPresented: Bool = false
 
     // Form state — flat fields the sheet binds to.
     public var formKind: EntryKind = .expense
