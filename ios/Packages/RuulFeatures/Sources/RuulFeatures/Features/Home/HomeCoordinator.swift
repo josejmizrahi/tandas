@@ -98,10 +98,31 @@ public final class HomeCoordinator {
     /// for realistic memberships.
     private var perGroupCache: [UUID: GroupSnapshot] = [:]
 
-    /// True when the user belongs to >1 group. HomeView uses this to decide
-    /// whether to render `RuulOriginTag` on rows + hero (per DS §4.6 — no tag
-    /// in single-group mode, redundant).
-    public var isCrossGroupsMode: Bool { allGroups.count > 1 }
+    /// Explicit Inicio scope (Wave 3 doctrine — user-controlled switcher).
+    /// `.all` = aggregate cross-group feed (Apple Mail "All Inboxes" pattern);
+    /// `.group(id)` = filter to that group only. Default `.all`.
+    public enum Scope: Sendable, Hashable {
+        case all
+        case group(UUID)
+
+        public var groupId: UUID? {
+            if case let .group(id) = self { return id }
+            return nil
+        }
+    }
+
+    /// Source of truth for which lens HomeView is showing. Mutated only by
+    /// `setScope(_:)` so refresh side effects stay in one place.
+    public private(set) var scope: Scope = .all
+
+    /// True when the visible feed should aggregate across groups: scope is
+    /// `.all` AND the user belongs to >1 group. Drives both the data path
+    /// (cross-group repo calls vs single-group) and the chrome (origin tag
+    /// on rows per DS §4.6).
+    public var isCrossGroupsMode: Bool {
+        guard case .all = scope else { return false }
+        return allGroups.count > 1
+    }
 
     public init(
         group: Group,
@@ -143,6 +164,31 @@ public final class HomeCoordinator {
     /// groupId isn't in `allGroups` (shouldn't happen in practice but safe).
     public func group(for event: Event) -> Group? {
         allGroups.first { $0.id == event.groupId }
+    }
+
+    /// Sets the explicit scope and refreshes. Used by HomeView's switcher
+    /// pill — `.all` flips the feed to cross-group aggregation (Apple
+    /// Mail "All Inboxes" pattern); `.group(id)` filters to that group
+    /// alone. When picking a specific group, we also align `self.group`
+    /// so the single-group code path in `refresh()` targets the right id
+    /// AND toolbar / create affordances default to that group.
+    public func setScope(_ newScope: Scope) async {
+        guard newScope != scope else { return }
+        scope = newScope
+
+        if case let .group(id) = newScope,
+           let g = allGroups.first(where: { $0.id == id }),
+           g.id != group.id {
+            // Reuses the per-group snapshot cache for instant rehydrate,
+            // and kicks its own background refresh. Returns early.
+            setActiveGroup(g, allGroups: allGroups)
+            return
+        }
+
+        // Force refresh — scope flip can swap cross-group ↔ single-group
+        // and the TTL guard at the top of refresh() would otherwise hold
+        // the stale feed.
+        await refresh(force: true)
     }
 
     /// Swaps the visible group without rebuilding the coordinator. Caches
