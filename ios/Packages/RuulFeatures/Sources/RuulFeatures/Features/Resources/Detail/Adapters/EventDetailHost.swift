@@ -1,6 +1,7 @@
 import SwiftUI
 import RuulUI
 import RuulCore
+import CoreLocation
 
 // MARK: - Phase E: EventDetailHost rewired to UniversalResourceDetailView
 
@@ -159,17 +160,15 @@ public struct EventDetailHost: View {
     @ViewBuilder
     private func hosted(coordinator: EventDetailCoordinator) -> some View {
         Group {
-            if let blocks {
-                UniversalResourceDetailView(
-                    blocks: blocks,
-                    supportedOverflowActions: Self.supportedOverflowActions,
-                    navigationTitle: coordinator.event.title,
-                    onClose: onClose,
-                    onPrimaryAction: { Task { await dispatchPrimary(blocks: blocks, coordinator: coordinator) } },
-                    onOpenBlock: { id in openDestination(id, coordinator: coordinator) },
-                    onTapRelation: { card in openRelation(card) },
-                    onSeeMoreActivity: { showActivityHistory = true },
-                    onOverflowAction: { action in handleOverflow(action, coordinator: coordinator) }
+            if blocks != nil {
+                ResourceDetailContent(
+                    config: .event(
+                        Self.makeEventInput(from: coordinator),
+                        onInvite: { sheet = .share },
+                        onEdit:   { onEditEvent(coordinator.event) },
+                        onRotateHost: { showRotationParticipants = true },
+                        onSeeAllAttendees: { sheet = .attendees }
+                    )
                 )
             } else {
                 bootView
@@ -515,4 +514,51 @@ public struct EventDetailHost: View {
     private static let supportedOverflowActions: Set<UniversalResourceDetailView.OverflowAction> = [
         .share, .edit, .addToCalendar, .walletPass
     ]
+
+    // MARK: - New universal detail adapter (ResourceDetailContent)
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.dateFormat = "d MMM"
+        return f
+    }()
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.timeStyle = .short
+        return f
+    }()
+
+    private static func makeEventInput(from coordinator: EventDetailCoordinator) -> EventInput {
+        let e = coordinator.event
+        return EventInput(
+            id: e.id.uuidString,
+            title: e.title,
+            dateLabel: dateFormatter.string(from: e.startsAt),
+            timeLabel: timeFormatter.string(from: e.startsAt),
+            dayLabel: dayLabel(for: e.startsAt),
+            durationMin: e.durationMinutes,
+            isHost: coordinator.viewerIsHost,
+            address: e.locationName ?? "",
+            coordinate: CLLocationCoordinate2D(
+                latitude: e.locationLat ?? 19.4326,
+                longitude: e.locationLng ?? -99.1332
+            ),
+            attendees: [],
+            activity: []
+        )
+    }
+
+    private static func dayLabel(for date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date)     { return "Hoy" }
+        if cal.isDateInTomorrow(date)  { return "Mañana" }
+        if cal.isDateInYesterday(date) { return "Ayer" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.dateFormat = "EEEE"
+        return f.string(from: date).capitalized
+    }
 }

@@ -26,4 +26,10 @@ public enum RuulSpacing {
 
     /// Apple HIG minimum touch target.
     public static let minTouchTarget: CGFloat = 44
+
+    /// 2pt — line-pair gap inside a single text block.
+    public static let s0_5: CGFloat = 2
+    /// 6pt — pill-internal padding when 4pt is too tight and 8pt too
+    /// airy (status pills, capsule meta badges).
+    public static let micro: CGFloat = 6
 }

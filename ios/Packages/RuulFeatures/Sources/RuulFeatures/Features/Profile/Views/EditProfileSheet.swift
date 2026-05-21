@@ -88,7 +88,7 @@ public struct EditProfileSheet: View {
                     Image(uiImage: pending)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
+                        .frame(width: 96, height: 96)
                         .clipShape(Circle())
                 } else {
                     RuulPersonAvatar(
@@ -101,17 +101,17 @@ public struct EditProfileSheet: View {
                 if coordinator.isUploadingAvatar {
                     Circle()
                         .fill(Color.black.opacity(0.35))
-                        .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
+                        .frame(width: 96, height: 96)
                     ProgressView()
                         .tint(Color.white)
                 }
 
                 Image(systemName: "camera.fill")
-                    .font(.system(size: RuulSize.iconSmall, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.ruulTextInverse)
                     .padding(RuulSpacing.xs)
                     .background(Color.primary, in: Circle())
-                    .offset(x: RuulSize.avatarXLarge * 0.35, y: RuulSize.avatarXLarge * 0.35)
+                    .offset(x: 96 * 0.35, y: 96 * 0.35)
             }
         }
         .buttonStyle(.plain)

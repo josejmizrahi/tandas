@@ -105,7 +105,7 @@ public struct FounderIdentityView: View {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: RuulSize.avatarXLarge, height: RuulSize.avatarXLarge)
+                        .frame(width: 96, height: 96)
                         .clipShape(Circle())
                 } else {
                     RuulAvatar(

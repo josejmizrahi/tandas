@@ -335,67 +335,77 @@ public struct ResourceDetailView: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Identity (siempre)
-                    IdentitySlot(data: config.identity, accent: config.accent)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-
-                    // Hero (opcional)
-                    if let hero = config.hero {
-                        HeroSlot(data: hero)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 12)
+            ResourceDetailContent(config: config)
+                .navigationTitle(config.identity.typeLabel)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cerrar") { dismiss() }
                     }
-
-                    // Actions (opcional)
-                    if !config.actions.isEmpty {
-                        ActionsSlot(actions: config.actions, accent: config.accent)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                    }
-
-                    // Sections (0..N)
-                    ForEach(config.sections) { section in
-                        SectionSlot(section: section, accent: config.accent)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                    }
-
-                    // Activity (opcional, siempre al final)
-                    if let activity = config.activity {
-                        ActivitySlot(source: activity, accent: config.accent)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                    }
-
-                    Color.clear.frame(height: 32)
-                }
-            }
-            .background(Color(.systemGroupedBackground))
-            .scrollDismissesKeyboard(.interactively)
-            .navigationTitle(config.identity.typeLabel)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cerrar") { dismiss() }
-                }
-                if !config.toolbarMenu.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            ForEach(config.toolbarMenu) { item in
-                                Button(role: item.role, action: item.handler) {
-                                    Label(item.label, systemImage: item.icon)
+                    if !config.toolbarMenu.isEmpty {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                ForEach(config.toolbarMenu) { item in
+                                    Button(role: item.role, action: item.handler) {
+                                        Label(item.label, systemImage: item.icon)
+                                    }
                                 }
+                            } label: {
+                                Image(systemName: "ellipsis")
                             }
-                        } label: {
-                            Image(systemName: "ellipsis")
                         }
                     }
                 }
+        }
+    }
+}
+
+/// Embeddable body — same content as `ResourceDetailView` but without the
+/// NavigationStack/toolbar wrapper. Use when the host already owns the
+/// navigation chrome (e.g. `EventDetailHost` wraps in its own `.ruulSheetToolbar`).
+public struct ResourceDetailContent: View {
+    let config: ResourceConfig
+
+    public init(config: ResourceConfig) {
+        self.config = config
+    }
+
+    public var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                IdentitySlot(data: config.identity, accent: config.accent)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+
+                if let hero = config.hero {
+                    HeroSlot(data: hero)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                }
+
+                if !config.actions.isEmpty {
+                    ActionsSlot(actions: config.actions, accent: config.accent)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                }
+
+                ForEach(config.sections) { section in
+                    SectionSlot(section: section, accent: config.accent)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                }
+
+                if let activity = config.activity {
+                    ActivitySlot(source: activity, accent: config.accent)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                }
+
+                Color.clear.frame(height: 32)
             }
         }
+        .background(Color(.systemGroupedBackground))
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 

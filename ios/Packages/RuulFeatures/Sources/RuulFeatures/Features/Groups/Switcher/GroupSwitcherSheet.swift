@@ -168,7 +168,7 @@ public struct GroupSwitcherSheet: View {
                 Image(systemName: action.icon)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.primary)
-                    .frame(width: RuulSize.avatarMedium, height: RuulSize.avatarMedium)
+                    .frame(width: 40, height: 40)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
