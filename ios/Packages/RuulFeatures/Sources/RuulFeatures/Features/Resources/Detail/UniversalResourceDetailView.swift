@@ -57,9 +57,9 @@ public struct UniversalResourceDetailView: View {
 
     public var body: some View {
         ScrollView {
-            // Layered Universal Detail (PR 2 of 7) — Identity / Context /
-            // (Participation + Coordination still inline as capability
-            //  blocks → PRs 3-4) / Activity. See
+            // Layered Universal Detail (PR 3 of 7) — Identity / Context /
+            // Participation / (Coordination still inline as the remaining
+            //  capability blocks → PR 4) / Activity. See
             // `Plans/Active/Fase1ComponentMap.md` §"Universal Resource
             // Detail — layered architecture".
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
@@ -73,7 +73,12 @@ public struct UniversalResourceDetailView: View {
                     relations: blocks.relations,
                     onTapRelation: onTapRelation
                 )
-                ForEach(BlockPriorityResolver.order(blocks.capabilities)) { block in
+                ParticipationLayerView(
+                    blocks: participationBlocks,
+                    tint: blocks.identity.tint,
+                    onOpen: onOpenBlock
+                )
+                ForEach(coordinationBlocks) { block in
                     CapabilityBlockView(
                         block: block,
                         tint: blocks.identity.tint,
@@ -110,6 +115,24 @@ public struct UniversalResourceDetailView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Layer partition (PR 3)
+
+    /// Capability blocks sorted by the canonical priority resolver,
+    /// then partitioned into the Participation layer (`rsvp`, `rotation`,
+    /// future members/custodians/beneficiaries) and the residual
+    /// Coordination subset that PR 4 will lift into its own layer.
+    private var orderedCapabilities: [CapabilityBlock] {
+        BlockPriorityResolver.order(blocks.capabilities)
+    }
+
+    private var participationBlocks: [CapabilityBlock] {
+        orderedCapabilities.filter(\.belongsToParticipationLayer)
+    }
+
+    private var coordinationBlocks: [CapabilityBlock] {
+        orderedCapabilities.filter { !$0.belongsToParticipationLayer }
     }
 
     /// Renders only the overflow items the host opted in to, so tapping
