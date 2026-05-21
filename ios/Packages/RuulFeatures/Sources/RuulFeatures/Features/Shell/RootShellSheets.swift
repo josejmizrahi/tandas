@@ -138,6 +138,7 @@ public struct RootShellSheets: ViewModifier {
             .sheet(item: appealItem) { ctx in
                 voteOnAppealSheet(ctx)
                     .presentationDetents([.medium, .large])
+                    .presentationBackground(.regularMaterial)
             }
 
             // V2 Slice 4A: .editProfile cover removed. EditProfileSheet
