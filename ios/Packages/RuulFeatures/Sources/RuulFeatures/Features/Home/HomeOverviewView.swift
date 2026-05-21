@@ -105,7 +105,7 @@ public struct HomeOverviewView: View {
                     )
                 }
 
-                Color.clear.frame(height: 96) // padding por tab bar
+                Color.clear.frame(height: RuulSpacing.s12) // padding por tab bar
             }
             .padding(.horizontal, RuulSpacing.s5)
         }
@@ -144,7 +144,7 @@ public struct HomeOverviewView: View {
                 .font(.caption)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .monospacedDigit()
-                .padding(.top, 4)
+                .padding(.top, RuulSpacing.s1)
         }
         .padding(.top, RuulSpacing.s3)
         .padding(.bottom, RuulSpacing.s4)
@@ -173,7 +173,7 @@ public struct HomeOverviewView: View {
             Button {
                 router.selectTab(.profile)
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: RuulSpacing.micro) {
                     RuulAvatar(name: app.profile?.displayName ?? "", size: .xs)
                     Text(displayName)
                         .font(.subheadline.weight(.medium))
@@ -240,8 +240,8 @@ private struct AttentionCard: View {
     var body: some View {
         VStack(spacing: RuulSpacing.s0) {
             HStack {
-                HStack(spacing: 6) {
-                    PulseDot(color: Color.ruulSemanticWarning, size: 6)
+                HStack(spacing: RuulSpacing.micro) {
+                    PulseDot(color: Color.ruulSemanticWarning)
                     Text("Necesita tu atención")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Color.ruulSemanticWarning)
@@ -253,8 +253,8 @@ private struct AttentionCard: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
                     .monospacedDigit()
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, RuulSpacing.s2)
+                    .padding(.vertical, RuulSpacing.s0_5)
                     .background(Color.ruulSemanticWarning, in: Capsule())
             }
             .padding(.bottom, RuulSpacing.s4)
@@ -269,28 +269,7 @@ private struct AttentionCard: View {
             }
         }
         .padding(RuulSpacing.s5)
-        .background {
-            ZStack {
-                Color.ruulSurface
-                LinearGradient(
-                    colors: [Color.ruulSemanticWarning.opacity(0.06), .clear],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [Color.ruulSemanticWarning.opacity(0.3), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 0.5
-                )
-        )
+        .ruulCardSurface(.solid, radius: RuulRadius.xl)
     }
 }
 
@@ -307,38 +286,32 @@ private struct AttentionRow: View {
             HStack(spacing: RuulSpacing.s4) {
                 Image(systemName: action.iconName)
                     .font(.subheadline.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(action.tintColor)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        LinearGradient(
-                            colors: [action.tintColor.opacity(0.18), action.tintColor.opacity(0.10)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous)
-                    )
+                    .frame(width: HomeMetrics.iconTile, height: HomeMetrics.iconTile)
+                    .background(action.tintColor.opacity(0.15),
+                                in: RoundedRectangle(cornerRadius: RuulRadius.sm,
+                                                     style: .continuous))
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text(action.title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.ruulTextPrimary)
                         .lineLimit(1)
 
-                    HStack(spacing: 4) {
-                        Text(action.urgencyText)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(action.urgencyColor)
-                            .monospacedDigit()
-                    }
+                    Text(action.urgencyText)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(action.urgencyColor)
+                        .monospacedDigit()
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: RuulSpacing.s2)
 
                 Text(action.ctaLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, RuulSpacing.s3)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, RuulSpacing.micro)
                     .background(action.tintColor, in: Capsule())
             }
             .padding(.vertical, RuulSpacing.s0_5)
@@ -400,15 +373,15 @@ private struct GroupCard: View {
             Text(group.category.displayName)
                 .font(.caption2)
                 .foregroundStyle(Color.ruulTextSecondary)
-                .padding(.top, 2)
+                .padding(.top, RuulSpacing.s0_5)
         }
-        .frame(width: 144, alignment: .leading)
+        .frame(width: HomeMetrics.groupCardWidth, alignment: .leading)
         .padding(RuulSpacing.s4)
-        .background(Color.ruulSurface)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous))
+        .ruulCardSurface(.solid, radius: RuulRadius.xl)
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.xl, style: .continuous)
-                .stroke(isActive ? Color.ruulAccent : Color.clear, lineWidth: 1.5)
+                .stroke(isActive ? Color.ruulAccent : Color.clear,
+                        lineWidth: HomeMetrics.activeStrokeWidth)
         )
         .overlay(alignment: .topTrailing) {
             if pending > 0 {
@@ -416,8 +389,8 @@ private struct GroupCard: View {
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.white)
                     .monospacedDigit()
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1.5)
+                    .padding(.horizontal, RuulSpacing.micro)
+                    .padding(.vertical, RuulSpacing.s0_5)
                     .background(Color.ruulSemanticError, in: Capsule())
                     .padding(RuulSpacing.s4)
             }
@@ -446,12 +419,12 @@ private struct UpcomingCard: View {
                 HStack(spacing: RuulSpacing.s4) {
                     DateTile(date: event.startsAt)
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                         Text(event.title)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.ruulTextPrimary)
                             .lineLimit(2)
-                        HStack(spacing: 4) {
+                        HStack(spacing: RuulSpacing.s1) {
                             Text(event.startsAt, format: .dateTime.hour().minute())
                                 .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
@@ -481,18 +454,17 @@ private struct UpcomingCard: View {
             }
         }
         .padding(RuulSpacing.s4)
-        .background(Color.ruulSurface)
-        .clipShape(RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+        .ruulCardSurface(.solid, radius: RuulRadius.lg)
     }
 
     @ViewBuilder
     private func rsvpButton(_ status: RSVPStatus, label: String, icon: String? = nil, tint: Color?) -> some View {
         Button { onRSVP(status) } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: RuulSpacing.s1) {
                 if let icon { Image(systemName: icon).font(.caption.weight(.bold)) }
                 Text(label).font(.subheadline.weight(.semibold))
             }
-            .frame(maxWidth: .infinity, minHeight: 32)
+            .frame(maxWidth: .infinity, minHeight: HomeMetrics.rsvpButtonMinHeight)
         }
         .buttonStyle(.glass)
         .tint(rsvp?.status == status ? (tint ?? Color.ruulAccent) : Color.ruulFillGlassStrong)
@@ -504,7 +476,7 @@ private struct DateTile: View {
     let date: Date
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: RuulSpacing.s0_5) {
             Text(date, format: .dateTime.month(.abbreviated))
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(Color.ruulSemanticError)
@@ -515,19 +487,8 @@ private struct DateTile: View {
                 .monospacedDigit()
                 .foregroundStyle(Color.ruulTextPrimary)
         }
-        .frame(width: 50, height: 50)
-        .background(
-            LinearGradient(
-                colors: [Color.ruulSemanticError.opacity(0.08), Color.ruulSemanticError.opacity(0.15)],
-                startPoint: .top,
-                endPoint: .bottom
-            ),
-            in: RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.sm, style: .continuous)
-                .strokeBorder(Color.ruulSemanticError.opacity(0.15), lineWidth: 0.5)
-        )
+        .frame(width: HomeMetrics.dateTile, height: HomeMetrics.dateTile)
+        .ruulCardSurface(.recessed, radius: RuulRadius.sm)
     }
 }
 
@@ -568,17 +529,21 @@ private struct SectionHeading: View {
 
 private struct PulseDot: View {
     let color: Color
-    let size: CGFloat
     @State private var phase: CGFloat = 0
+
+    /// Diameter of the inner dot; the outer halo pulses at ~2.4× this.
+    /// Sized to RuulSpacing.micro so the eye reads it as a subtle marker
+    /// (~6pt) inline with caption-weight type.
+    private var dotSize: CGFloat { RuulSpacing.micro }
 
     var body: some View {
         ZStack {
             Circle().fill(color.opacity(0.25))
-                .frame(width: size * 2.4, height: size * 2.4)
+                .frame(width: dotSize * 2.4, height: dotSize * 2.4)
                 .scaleEffect(0.6 + phase * 0.4)
                 .opacity(1 - phase)
             Circle().fill(color)
-                .frame(width: size, height: size)
+                .frame(width: dotSize, height: dotSize)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
@@ -586,6 +551,29 @@ private struct PulseDot: View {
             }
         }
     }
+}
+
+// MARK: - Layout intents
+
+/// Frame sizes that aren't expressible in semantic spacing/radius tokens
+/// (icon tile dimensions, fixed-width strip card). Centralised here so
+/// every magic number has a name and an intent, never repeated inline.
+private enum HomeMetrics {
+    /// Square icon "well" that backs an attention-row symbol. Matches the
+    /// iOS Settings-style icon dimension.
+    static let iconTile: CGFloat = 34
+    /// Calendar-tile in `UpcomingCard`. Square, ~50pt — Apple Calendar
+    /// "date pill" recipe.
+    static let dateTile: CGFloat = 50
+    /// Width of a single card inside the horizontal SpacesStrip — chosen
+    /// so 2.4 cards fit on a 393pt-wide device, enough peek for the
+    /// scroll affordance without losing card legibility.
+    static let groupCardWidth: CGFloat = 144
+    /// Stroke width of the "active group" highlight ring.
+    static let activeStrokeWidth: CGFloat = 1.5
+    /// Min height of the RSVP triplet buttons (Voy / Tal vez / No) so all
+    /// three line up at a comfortable tappable target.
+    static let rsvpButtonMinHeight: CGFloat = 32
 }
 
 // MARK: - UserAction → row shape
