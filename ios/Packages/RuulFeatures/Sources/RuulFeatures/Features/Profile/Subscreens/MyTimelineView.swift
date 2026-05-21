@@ -205,12 +205,12 @@ public struct MyTimelineView: View {
 
     private func dayLabel(_ date: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(date) { return "HOY" }
-        if cal.isDateInYesterday(date) { return "AYER" }
+        if cal.isDateInToday(date) { return "Hoy" }
+        if cal.isDateInYesterday(date) { return "Ayer" }
         let f = DateFormatter()
         f.locale = Locale(identifier: app.profile?.locale ?? "es-MX")
         f.dateFormat = "EEEE d 'de' MMMM"
-        return f.string(from: date).uppercased()
+        return f.string(from: date).capitalized
     }
 
     private func relativeTime(_ date: Date) -> String {

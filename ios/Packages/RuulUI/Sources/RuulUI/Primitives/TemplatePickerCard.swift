@@ -75,7 +75,7 @@ public struct TemplatePickerCard: View {
                         .font(.headline)
                         .foregroundStyle(Color.primary)
                     if isComingSoon {
-                        Text("PRÓXIMAMENTE")
+                        Text("Próximamente")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(Color(.tertiaryLabel))
                             .padding(.horizontal, RuulSpacing.xs)

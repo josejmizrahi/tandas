@@ -190,7 +190,7 @@ public struct EventRSVPStateView: View {
 
     private var maybeView: some View {
         confirmedCard(
-            statusLabel: "TAL VEZ",
+            statusLabel: "Tal vez",
             statusDot: .orange,
             title: "Por decidir",
             subtitle: "Confirma o cancela cuando puedas"
@@ -213,7 +213,7 @@ public struct EventRSVPStateView: View {
 
     private var waitlistedView: some View {
         confirmedCard(
-            statusLabel: "EN LISTA",
+            statusLabel: "En lista",
             statusDot: .orange,
             title: "En lista de espera",
             subtitle: "Te avisamos si se libera lugar"
@@ -231,7 +231,7 @@ public struct EventRSVPStateView: View {
             Circle()
                 .fill(Color.red)
                 .frame(width: 8, height: 8)
-            Text("NO VAS")
+            Text("No vas")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.primary)
             Spacer()

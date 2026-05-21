@@ -33,7 +33,7 @@ public struct VoidFineSheet: View {
     @ViewBuilder
     private var multaContextSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            RuulListSectionHeader("MULTA")
+            RuulListSectionHeader("Multa")
             VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.xs) {
                     Text(coordinator.targetMemberName)
@@ -69,7 +69,7 @@ public struct VoidFineSheet: View {
     @ViewBuilder
     private var reasonSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            RuulListSectionHeader("MOTIVO DEL ANULADO")
+            RuulListSectionHeader("Motivo del anulado")
             RuulTextField(
                 "Multa duplicada",
                 text: $coordinator.reason,

@@ -60,7 +60,7 @@ public struct EditRuleSheet: View {
         Form {
             Section { Text(rule.name).font(.title3.weight(.semibold)) }
 
-            Section("MULTA") { fineSection }
+            Section("Multa") { fineSection }
 
             if pending != nil {
                 Section {

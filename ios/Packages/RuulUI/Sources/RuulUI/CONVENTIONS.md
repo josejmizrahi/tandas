@@ -20,8 +20,8 @@ should update the row below.
 | Need                         | Use                                    |
 |------------------------------|----------------------------------------|
 | Repeating rows + separator   | `RuulSeparatedRows(items:) { row }` |
-| Section header (CAPS + count)| `RuulListSectionHeader("LABEL", count: n)` |
-| Section header w/ trailing   | `RuulListSectionHeader("LABEL") { trailing }` |
+| Section header + count       | `RuulListSectionHeader("Label", count: n)` |
+| Section header w/ trailing   | `RuulListSectionHeader("Label") { trailing }` |
 | Empty state                  | `ContentUnavailableView { Label("…", systemImage: "…") } description: { Text("…") } actions: { Button("CTA") { … } }` |
 | Error state                  | `ContentUnavailableView { Label("…", systemImage: "exclamationmark.triangle") } description: { Text(msg) } actions: { Button("Reintentar") { … } }` |
 | Loading state                | `RuulLoadingState()` |

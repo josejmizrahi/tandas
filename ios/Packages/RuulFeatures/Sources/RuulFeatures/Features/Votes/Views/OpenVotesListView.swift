@@ -44,7 +44,7 @@ public struct OpenVotesListView: View {
                         LazyVStack(alignment: .leading, spacing: RuulSpacing.lg) {
                             ForEach(coordinator.sectioned(), id: \.0) { section, votes in
                                 VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                                    Text(section.title.uppercased())
+                                    Text(section.title)
                                         .font(.footnote.weight(.semibold))
                                         .foregroundStyle(Color(.tertiaryLabel))
                                     RuulSeparatedRows(items: votes) { vote in

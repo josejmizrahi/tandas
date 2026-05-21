@@ -164,7 +164,7 @@ public struct RulePresetsView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text(title.uppercased())
+            Text(title)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             Text(subtitle)

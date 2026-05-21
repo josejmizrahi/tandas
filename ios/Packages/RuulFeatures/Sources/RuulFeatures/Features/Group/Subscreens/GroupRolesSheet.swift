@@ -104,7 +104,7 @@ public struct GroupRolesSheet: View {
                     }
                 } header: {
                     VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                        Text("PLANTILLAS RÁPIDAS")
+                        Text("Plantillas rápidas")
                             .font(.footnote.weight(.semibold))
                         Text("Crea un rol común en 1 tap con permisos pre-armados. Después puedes editarlos.")
                             .font(.caption)
@@ -224,7 +224,7 @@ public struct GroupRolesSheet: View {
             }
             Spacer(minLength: 0)
             if role.system {
-                Text("SISTEMA")
+                Text("Sistema")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color(.tertiaryLabel))
             }

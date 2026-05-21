@@ -145,7 +145,7 @@ public struct RuulMetricCard: View {
     ScrollView {
         VStack(spacing: RuulSpacing.sm) {
             RuulMetricCard(
-                label: "ASISTENCIA PROMEDIO",
+                label: "Asistencia promedio",
                 value: "87",
                 unitSuffix: "%",
                 trend: .up("+5% vs mes pasado"),
@@ -153,21 +153,21 @@ public struct RuulMetricCard: View {
             )
             HStack(spacing: RuulSpacing.sm) {
                 RuulMetricCard(
-                    label: "MULTAS DEL MES",
+                    label: "Multas del mes",
                     value: "1240",
                     unitPrefix: "$",
                     trend: .down("-15%"),
                     size: .compact
                 )
                 RuulMetricCard(
-                    label: "EVENTOS",
+                    label: "Eventos",
                     value: "4",
                     trend: .flat("igual"),
                     size: .compact
                 )
             }
             RuulMetricCard(
-                label: "MIEMBROS ACTIVOS",
+                label: "Miembros activos",
                 value: "12",
                 unitSuffix: " de 14",
                 size: .regular

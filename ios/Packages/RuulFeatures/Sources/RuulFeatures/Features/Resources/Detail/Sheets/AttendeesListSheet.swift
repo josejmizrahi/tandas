@@ -120,11 +120,11 @@ public struct AttendeesListSheet: View {
 
     private func label(for status: RSVPStatus) -> String {
         switch status {
-        case .going:      return "VAN"
-        case .maybe:      return "TAL VEZ"
-        case .declined:   return "NO VAN"
-        case .waitlisted: return "LISTA DE ESPERA"
-        case .pending:    return "PENDIENTES"
+        case .going:      return "Van"
+        case .maybe:      return "Tal vez"
+        case .declined:   return "No van"
+        case .waitlisted: return "Lista de espera"
+        case .pending:    return "Pendientes"
         }
     }
 }

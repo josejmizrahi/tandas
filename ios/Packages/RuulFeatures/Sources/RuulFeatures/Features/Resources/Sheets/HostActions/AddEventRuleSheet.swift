@@ -41,7 +41,7 @@ struct AddResourceRuleSheet: View {
         RuulTextField(
             "Late fee de esta cena",
             text: $coordinator.formName,
-            label: "NOMBRE",
+            label: "Nombre",
             isDisabled: coordinator.isSubmitting
         )
     }
@@ -50,7 +50,7 @@ struct AddResourceRuleSheet: View {
 
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("CUÁNDO")
+            Text("Cuándo")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             if coordinator.availableTriggers.isEmpty {
@@ -81,14 +81,14 @@ struct AddResourceRuleSheet: View {
             // under a fixed "ENTONCES" header. Avoids a one-row picker
             // that adds noise without choice.
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("ENTONCES → \(only.labelES.uppercased())")
+                Text("Entonces → \(only.labelES)")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 configFields(for: only)
             }
         } else if !coordinator.availableConsequences.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("ENTONCES")
+                Text("Entonces")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 RuulSeparatedRows(items: coordinator.availableConsequences) { shape in
@@ -203,7 +203,7 @@ struct AddResourceRuleSheet: View {
         RuulTextField(
             field.placeholder ?? "",
             text: bindingForField(key),
-            label: field.labelES.uppercased(),
+            label: field.labelES,
             style: textFieldStyle(for: field.kind),
             isDisabled: coordinator.isSubmitting
         )

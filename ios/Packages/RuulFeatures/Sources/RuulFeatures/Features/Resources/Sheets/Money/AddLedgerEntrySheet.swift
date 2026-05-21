@@ -39,7 +39,7 @@ struct AddLedgerEntrySheet: View {
 
     private var kindPickerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("TIPO DE MOVIMIENTO")
+            Text("Tipo de movimiento")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
             VStack(spacing: RuulSpacing.xs) {

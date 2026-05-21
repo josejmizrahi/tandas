@@ -152,7 +152,7 @@ private struct InboxActionRow: View {
                     .background(Color(.tertiarySystemFill), in: .circle)
                 VStack(alignment: .leading, spacing: 2) {
                     if let meta {
-                        Text(meta.uppercased())
+                        Text(meta)
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(.tint)
                             .lineLimit(1)

@@ -122,7 +122,7 @@ public struct EditEventView: View {
         // group has hosts". Phase 2 rotation capability will refine this.
         if coordinator.group.effectiveActiveModules.contains(GroupModule.rotatingHost.id) {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("HOST")
+                Text("Host")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 RuulCard(.tile) {
@@ -188,7 +188,7 @@ public struct EditEventView: View {
             dismissAction: { coverPickerPresented = false }
         ) {
             VStack(alignment: .leading, spacing: RuulSpacing.lg) {
-                Text("GALERÍA")
+                Text("Galería")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: RuulSpacing.sm) {

@@ -221,7 +221,7 @@ public struct GroupHomeView: View {
     /// 1. IDENTIDAD — quién es el grupo. Nombre + foto + código de
     ///    invitación (movido del hero para unificar settings).
     private var identitySection: some View {
-        sectionContainer(title: "IDENTIDAD") {
+        sectionContainer(title: "Identidad") {
             navRow(
                 icon: "pencil",
                 label: "Nombre y foto",
@@ -246,7 +246,7 @@ public struct GroupHomeView: View {
     /// 2. PERSONAS — miembros, invitar nuevos, roles personalizados.
     ///    Todo lo relacionado con humanos en este grupo.
     private var peopleSection: some View {
-        sectionContainer(title: "PERSONAS") {
+        sectionContainer(title: "Personas") {
             navRow(
                 icon: "person.2",
                 label: "Miembros",
@@ -284,7 +284,7 @@ public struct GroupHomeView: View {
     ///    - Gobernanza = quién puede decidir qué (GovernanceView)
     ///    - Estilo de gobernanza = preset de policy (RulePresetsView)
     private var rulesAndModulesSection: some View {
-        sectionContainer(title: "ACUERDOS Y GOBERNANZA") {
+        sectionContainer(title: "Acuerdos y gobernanza") {
             navRow(
                 icon: "puzzlepiece",
                 label: "Módulos activos",
@@ -310,7 +310,7 @@ public struct GroupHomeView: View {
     ///    para todo el ledger del grupo; timezone para cron de
     ///    notificaciones + display de fechas.
     private var moneyAndZoneSection: some View {
-        sectionContainer(title: "DINERO Y ZONA") {
+        sectionContainer(title: "Dinero y zona") {
             navRow(
                 icon: "dollarsign.circle",
                 label: "Moneda",
@@ -335,7 +335,7 @@ public struct GroupHomeView: View {
         let openVotes = coordinator.summary?.openVotesCount ?? 0
         let pendingActions = coordinator.summary?.pendingActionsCount ?? 0
         if openVotes > 0 || pendingActions > 0 {
-            sectionContainer(title: "PENDIENTES") {
+            sectionContainer(title: "Pendientes") {
                 if openVotes > 0 {
                     navRow(
                         icon: "hand.raised",
@@ -360,7 +360,7 @@ public struct GroupHomeView: View {
     }
 
     private var advancedSection: some View {
-        sectionContainer(title: "AVANZADO") {
+        sectionContainer(title: "Avanzado") {
             navRow(icon: "arrow.triangle.2.circlepath", label: "Rotar código de invitación", action: { onRotateCode?() })
             if let onArchiveGroup {
                 divider
@@ -392,7 +392,7 @@ public struct GroupHomeView: View {
     private var summarySection: some View {
         if let summary = coordinator.summary {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("RESUMEN")
+                Text("Resumen")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.leading, RuulSpacing.xxs)
@@ -432,7 +432,7 @@ public struct GroupHomeView: View {
                 .foregroundStyle(Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text(label.uppercased())
+            Text(label)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
                 .lineLimit(1)

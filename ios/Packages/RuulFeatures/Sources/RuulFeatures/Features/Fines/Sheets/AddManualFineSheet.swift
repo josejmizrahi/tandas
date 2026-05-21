@@ -50,7 +50,7 @@ public struct AddManualFineSheet: View {
 
     private var memberPickerSection: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            RuulListSectionHeader("¿A QUIÉN?")
+            RuulListSectionHeader("¿A quién?")
             RuulSeparatedRows(items: coordinator.members) { mwp in
                 memberRow(mwp)
             }
@@ -71,7 +71,7 @@ public struct AddManualFineSheet: View {
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     if mwp.member.isFounder {
-                        Text("FUNDADOR")
+                        Text("Fundador")
                             .font(.footnote)
                             .foregroundStyle(Color.ruulAccent)
                     }
@@ -104,7 +104,7 @@ public struct AddManualFineSheet: View {
         RuulTextField(
             "200",
             text: $coordinator.amountText,
-            label: "MONTO",
+            label: "Monto",
             style: .numeric,
             isDisabled: coordinator.isSubmitting
         )
@@ -116,7 +116,7 @@ public struct AddManualFineSheet: View {
         RuulTextField(
             "Llegó tarde sin avisar",
             text: $coordinator.reason,
-            label: "MOTIVO",
+            label: "Motivo",
             isDisabled: coordinator.isSubmitting
         )
     }
