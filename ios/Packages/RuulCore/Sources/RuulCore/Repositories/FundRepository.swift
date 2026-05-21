@@ -62,6 +62,40 @@ public protocol FundRepository: Actor {
         paidByMemberId: UUID?
     ) async throws -> LedgerEntry
 
+    /// SharedMoney Phase 2 (mig 00363): group-scoped expense entry point.
+    /// Caller supplies `groupId` only — the wrapper resolves the canonical
+    /// shared pool internally and delegates to `fund_record_expense`. iOS
+    /// no longer needs to know the shared pool's `fundId` for the default
+    /// "money lives in the group" flow. Protected funds (Phase 6) continue
+    /// using `recordExpense(fundId:…)` directly.
+    ///
+    /// `sourceResourceId` (mig 00356/00360) attributes the entry to a
+    /// specific event/asset/space/etc. — the generic context pointer that
+    /// supersedes the legacy `sourceEventId`. Other params mirror
+    /// `recordExpense`.
+    func recordSharedExpense(
+        groupId: UUID,
+        amountCents: Int64,
+        toMemberId: UUID,
+        currency: String?,
+        note: String?,
+        sourceResourceId: UUID?,
+        clientId: UUID?,
+        paidByMemberId: UUID?
+    ) async throws -> LedgerEntry
+
+    /// SharedMoney Phase 2 (mig 00363): group-scoped contribution entry
+    /// point. Symmetric counterpart of `recordSharedExpense` — resolves
+    /// the shared pool internally and delegates to `fund_contribute`.
+    func contributeToSharedMoney(
+        groupId: UUID,
+        amountCents: Int64,
+        currency: String?,
+        note: String?,
+        sourceResourceId: UUID?,
+        clientId: UUID?
+    ) async throws -> LedgerEntry
+
     /// Admin-only soft lock. Emits `fundLocked`. Does NOT block writers
     /// — lock-aware behavior is delegated to rules.
     func lock(fundId: UUID, reason: String?) async throws
@@ -165,6 +199,96 @@ public actor MockFundRepository: FundRepository {
         )
         entries.append(entry)
         rebuildSnapshot(for: fundId)
+        return entry
+    }
+
+    public func recordSharedExpense(
+        groupId: UUID,
+        amountCents: Int64,
+        toMemberId: UUID,
+        currency: String?,
+        note: String?,
+        sourceResourceId: UUID? = nil,
+        clientId: UUID? = nil,
+        paidByMemberId: UUID? = nil
+    ) async throws -> LedgerEntry {
+        // Mock shared-pool resolution: pick the first fund row tagged
+        // is_shared_pool, falling back to ANY fund row for the group so
+        // legacy test fixtures (pre-doctrine seeds) still work.
+        // Mock shared-pool resolution: pick any fund for the group. The
+        // is_shared_pool flag lives in resources.metadata server-side and
+        // isn't surfaced by fund_balance_view, so test fixtures should
+        // seed exactly one fund per group for deterministic behavior.
+        guard let snapshot = funds.values.flatMap({ $0 })
+            .first(where: { $0.groupId == groupId }) else {
+            throw FundError.notFound
+        }
+        if let clientId,
+           let existing = entries.first(where: {
+               $0.metadata["client_id"]?.stringValue == clientId.uuidString.lowercased()
+           }) {
+            return existing
+        }
+        let resolvedCurrency = currency ?? snapshot.currency
+        var meta: [String: JSONConfig] = [:]
+        if let note, !note.isEmpty { meta["note"] = .string(note) }
+        if let sourceResourceId { meta["source_resource_id"] = .string(sourceResourceId.uuidString.lowercased()) }
+        if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
+        if let paidByMemberId { meta["paid_by_member_id"] = .string(paidByMemberId.uuidString.lowercased()) }
+        let entry = LedgerEntry(
+            groupId: snapshot.groupId,
+            resourceId: snapshot.fundId,
+            type: LedgerEntry.Kind.expense,
+            amountCents: amountCents,
+            currency: resolvedCurrency,
+            fromMemberId: nil,
+            toMemberId: toMemberId,
+            metadata: .object(meta)
+        )
+        entries.append(entry)
+        rebuildSnapshot(for: snapshot.fundId)
+        return entry
+    }
+
+    public func contributeToSharedMoney(
+        groupId: UUID,
+        amountCents: Int64,
+        currency: String?,
+        note: String?,
+        sourceResourceId: UUID? = nil,
+        clientId: UUID? = nil
+    ) async throws -> LedgerEntry {
+        // Mock shared-pool resolution: pick any fund for the group. The
+        // is_shared_pool flag lives in resources.metadata server-side and
+        // isn't surfaced by fund_balance_view, so test fixtures should
+        // seed exactly one fund per group for deterministic behavior.
+        guard let snapshot = funds.values.flatMap({ $0 })
+            .first(where: { $0.groupId == groupId }) else {
+            throw FundError.notFound
+        }
+        if let clientId,
+           let existing = entries.first(where: {
+               $0.metadata["client_id"]?.stringValue == clientId.uuidString.lowercased()
+           }) {
+            return existing
+        }
+        let resolvedCurrency = currency ?? snapshot.currency
+        var meta: [String: JSONConfig] = [:]
+        if let note, !note.isEmpty { meta["note"] = .string(note) }
+        if let sourceResourceId { meta["source_resource_id"] = .string(sourceResourceId.uuidString.lowercased()) }
+        if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
+        let entry = LedgerEntry(
+            groupId: snapshot.groupId,
+            resourceId: snapshot.fundId,
+            type: LedgerEntry.Kind.contribution,
+            amountCents: amountCents,
+            currency: resolvedCurrency,
+            fromMemberId: UUID(),
+            toMemberId: nil,
+            metadata: .object(meta)
+        )
+        entries.append(entry)
+        rebuildSnapshot(for: snapshot.fundId)
         return entry
     }
 
@@ -356,6 +480,78 @@ public actor LiveFundRepository: FundRepository {
                     p_source_event_id: sourceEventId?.uuidString.lowercased(),
                     p_client_id: clientId?.uuidString.lowercased(),
                     p_paid_by_member_id: paidByMemberId?.uuidString.lowercased()
+                ))
+                .execute()
+                .value
+        } catch {
+            throw FundError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func recordSharedExpense(
+        groupId: UUID,
+        amountCents: Int64,
+        toMemberId: UUID,
+        currency: String?,
+        note: String?,
+        sourceResourceId: UUID? = nil,
+        clientId: UUID? = nil,
+        paidByMemberId: UUID? = nil
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_amount_cents: Int64
+            let p_to_member_id: String
+            let p_currency: String?
+            let p_note: String?
+            let p_source_resource_id: String?
+            let p_client_id: String?
+            let p_paid_by_member_id: String?
+        }
+        do {
+            return try await client
+                .rpc("record_shared_expense", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_amount_cents: amountCents,
+                    p_to_member_id: toMemberId.uuidString.lowercased(),
+                    p_currency: currency,
+                    p_note: (note?.isEmpty ?? true) ? nil : note,
+                    p_source_resource_id: sourceResourceId?.uuidString.lowercased(),
+                    p_client_id: clientId?.uuidString.lowercased(),
+                    p_paid_by_member_id: paidByMemberId?.uuidString.lowercased()
+                ))
+                .execute()
+                .value
+        } catch {
+            throw FundError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func contributeToSharedMoney(
+        groupId: UUID,
+        amountCents: Int64,
+        currency: String?,
+        note: String?,
+        sourceResourceId: UUID? = nil,
+        clientId: UUID? = nil
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_amount_cents: Int64
+            let p_currency: String?
+            let p_note: String?
+            let p_source_resource_id: String?
+            let p_client_id: String?
+        }
+        do {
+            return try await client
+                .rpc("contribute_to_shared_money", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_amount_cents: amountCents,
+                    p_currency: currency,
+                    p_note: (note?.isEmpty ?? true) ? nil : note,
+                    p_source_resource_id: sourceResourceId?.uuidString.lowercased(),
+                    p_client_id: clientId?.uuidString.lowercased()
                 ))
                 .execute()
                 .value
