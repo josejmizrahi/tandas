@@ -263,7 +263,7 @@ private enum ActivityChip: String, CaseIterable, Identifiable {
         case .all:        return "Todo"
         case .money:      return "Dinero"
         case .resources:  return "Recursos"
-        case .governance: return "Gobernanza"
+        case .governance: return "Decisiones"
         case .members:    return "Miembros"
         }
     }

@@ -962,7 +962,7 @@ private enum WizardCategory: String, CaseIterable, Identifiable {
         case .coordination: return "Coordinación"
         case .money:        return "Dinero"
         case .sharedThings: return "Cosas compartidas"
-        case .governance:   return "Gobernanza"
+        case .governance:   return "Decisiones"
         case .custom:       return "Custom"
         }
     }

@@ -300,9 +300,9 @@ public struct GroupHomeView: View {
                 )
             }
             divider
-            navRow(icon: "scale.3d", label: "Gobernanza", action: onOpenGovernance)
+            navRow(icon: "scale.3d", label: "Decisiones del grupo", action: onOpenGovernance)
             divider
-            navRow(icon: "list.bullet.clipboard", label: "Estilo de gobernanza", action: onOpenRulePresets)
+            navRow(icon: "list.bullet.clipboard", label: "Plantillas de reglas", action: onOpenRulePresets)
         }
     }
 

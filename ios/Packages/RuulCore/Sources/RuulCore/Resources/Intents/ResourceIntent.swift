@@ -150,7 +150,7 @@ public enum IntentGroup: String, CaseIterable, Sendable, Hashable {
         case .actions:      return "Acciones"
         case .money:        return "Dinero"
         case .coordination: return "Coordinación"
-        case .governance:   return "Gobierno"
+        case .governance:   return "Decisiones"
         case .history:      return "Historial"
         }
     }

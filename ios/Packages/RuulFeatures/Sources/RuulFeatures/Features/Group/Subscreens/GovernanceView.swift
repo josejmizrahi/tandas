@@ -49,7 +49,7 @@ public struct GovernanceView: View {
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
         }
-        .ruulSheetToolbar("Gobierno")
+        .ruulSheetToolbar("Decisiones del grupo")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(isSaving ? "Guardando…" : "Guardar") {
