@@ -26,7 +26,6 @@ struct TemplatesShowcaseView: View {
         ShowcaseSection("OnboardingScreenTemplate") {
             NavigationStack {
                 OnboardingScreenTemplate(
-                    mesh: .violet,
                     progress: 0.6,
                     title: "Demo",
                     subtitle: "Mesh background + step container.",

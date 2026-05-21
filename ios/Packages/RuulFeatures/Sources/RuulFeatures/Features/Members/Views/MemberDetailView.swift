@@ -74,7 +74,6 @@ public struct MemberDetailView: View {
             .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
-        .ruulAmbientScreen(palette: nil)
         .navigationTitle("Miembro")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showRolesPicker) {

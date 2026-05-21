@@ -21,11 +21,6 @@ public enum RuulSize {
     /// enough that the panel content peeks above the fold.
     public static let coverHero:      CGFloat = 400
 
-    // MARK: - Blur radii
-    /// Heavy ambient blur used by `RuulAmbientBackground` to smear a
-    /// resource palette into a continuous color field.
-    public static let blurAmbient:    CGFloat = 80
-
     // MARK: - Badges (small overlays on avatars/cards)
     public static let badgeSmall:     CGFloat = 24
     public static let badgeMedium:    CGFloat = 32

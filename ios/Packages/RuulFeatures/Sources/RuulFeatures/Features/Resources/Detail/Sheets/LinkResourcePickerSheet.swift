@@ -52,7 +52,6 @@ public struct LinkResourcePickerSheet: View {
                 empty: { emptyScrollContainer },
                 loaded: { rows in loadedScrollContainer(rows) }
             )
-            .ruulAmbientScreen(palette: nil)
             .task { await loadCandidates() }
             .ruulSheetToolbar("Vincular recurso")
         }

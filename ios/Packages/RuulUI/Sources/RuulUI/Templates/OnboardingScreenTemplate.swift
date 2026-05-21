@@ -3,7 +3,6 @@ import SwiftUI
 /// Full-screen template for an onboarding step. Combines mesh background +
 /// `OnboardingStepContainer` + optional skip toolbar item.
 public struct OnboardingScreenTemplate<Content: View>: View {
-    private let mesh: RuulMeshBackground.Variant
     private let progress: Double
     private let title: String
     private let subtitle: String?
@@ -14,7 +13,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
     private let content: () -> Content
 
     public init(
-        mesh: RuulMeshBackground.Variant = .cool,
         progress: Double,
         title: String,
         subtitle: String? = nil,
@@ -24,7 +22,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
         canContinue: Bool = true,
         @ViewBuilder content: @escaping () -> Content
     ) {
-        self.mesh = mesh
         self.progress = progress
         self.title = title
         self.subtitle = subtitle
@@ -63,7 +60,6 @@ public struct OnboardingScreenTemplate<Content: View>: View {
 #Preview("OnboardingScreenTemplate") {
     NavigationStack {
         OnboardingScreenTemplate(
-            mesh: .violet,
             progress: 0.6,
             title: "¿Cómo te llaman?",
             subtitle: "Así te van a ver tus grupos.",

@@ -49,7 +49,6 @@ public struct GovernanceView: View {
             .padding(.top, RuulSpacing.lg)
             .padding(.bottom, RuulSpacing.xxl)
         }
-        .ruulAmbientScreen(palette: nil)
         .ruulSheetToolbar("Gobierno")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

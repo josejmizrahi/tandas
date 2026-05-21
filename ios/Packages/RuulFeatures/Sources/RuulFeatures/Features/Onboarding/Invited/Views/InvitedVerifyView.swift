@@ -8,7 +8,6 @@ public struct InvitedVerifyView: View {
 
     public var body: some View {
         OnboardingScreenTemplate(
-            mesh: .aqua,
             progress: progressValue,
             title: "Confirma tu número",
             subtitle: "Para mandarte recordatorios y multas si aplica.",

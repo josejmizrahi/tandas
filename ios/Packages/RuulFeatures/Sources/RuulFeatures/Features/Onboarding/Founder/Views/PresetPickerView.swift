@@ -12,7 +12,6 @@ public struct PresetPickerView: View {
 
     public var body: some View {
         OnboardingScreenTemplate(
-            mesh: .cool,
             progress: progressValue,
             title: "¿Para qué será \(coord.draft.name.isEmpty ? "tu grupo" : coord.draft.name)?",
             subtitle: "Elige cómo arrancar. Puedes agregar más después.",

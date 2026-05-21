@@ -65,7 +65,6 @@ public struct GroupSwitcherSheet: View {
                 .padding(.top, RuulSpacing.md)
                 .padding(.bottom, RuulSpacing.xxl)
             }
-            .ruulAmbientScreen(palette: nil)
             .ruulSheetToolbar("Cambiar grupo")
         }
     }

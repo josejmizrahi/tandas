@@ -11,7 +11,6 @@ public struct InvitedOTPView: View {
 
     public var body: some View {
         OnboardingScreenTemplate(
-            mesh: .aqua,
             progress: progressValue,
             title: titleForChannel,
             subtitle: "Llega a \(PhoneFormatter.displayFormat(coord.phoneE164)). Pégalo aquí.",

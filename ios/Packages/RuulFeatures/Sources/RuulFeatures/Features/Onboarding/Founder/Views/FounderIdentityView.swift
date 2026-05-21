@@ -14,7 +14,6 @@ public struct FounderIdentityView: View {
     public var body: some View {
         @Bindable var bindable = coord
         OnboardingScreenTemplate(
-            mesh: .cool,
             progress: progressValue,
             title: "¿Cómo te llamas?",
             subtitle: "Así te van a ver tus grupos.",

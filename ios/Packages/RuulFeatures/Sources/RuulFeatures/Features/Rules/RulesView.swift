@@ -132,7 +132,6 @@ public struct RulesView: View {
             empty: { emptyScrollContainer },
             loaded: { rules in loadedScrollContainer(rules) }
         )
-        .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .fullScreenCover(item: $composerCoord) { coord in
             RuleComposerView(

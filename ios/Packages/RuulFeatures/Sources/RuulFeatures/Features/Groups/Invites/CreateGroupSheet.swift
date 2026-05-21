@@ -52,7 +52,6 @@ public struct CreateGroupSheet: View {
                 .padding(.bottom, RuulSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .ruulAmbientScreen(palette: nil)
             .ruulSheetToolbar("Nuevo grupo")
         }
     }

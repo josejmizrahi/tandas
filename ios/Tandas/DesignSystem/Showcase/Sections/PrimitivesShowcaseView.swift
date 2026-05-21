@@ -31,7 +31,6 @@ struct PrimitivesShowcaseView: View {
                 pickerSection
                 datePickerSection
                 iconBadgeSection
-                meshSection
                 presentationSection
                 templatePickerSection
                 actionCardSection
@@ -208,27 +207,6 @@ struct PrimitivesShowcaseView: View {
         }
     }
 
-    private var meshSection: some View {
-        ShowcaseSection("RuulMeshBackground", subtitle: "3 variants") {
-            HStack(spacing: RuulSpacing.sm) {
-                meshThumbnail(.cool, label: "cool")
-                meshThumbnail(.violet, label: "violet")
-                meshThumbnail(.aqua, label: "aqua")
-            }
-        }
-    }
-
-    private func meshThumbnail(_ variant: RuulMeshBackground.Variant, label: String) -> some View {
-        VStack {
-            ZStack {
-                RuulMeshBackground(variant)
-            }
-            .frame(width: 100, height: 80)
-            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.medium))
-            Text(label).font(.caption).foregroundStyle(Color(.tertiaryLabel))
-        }
-    }
-
     private var presentationSection: some View {
         ShowcaseSection(".sheet / .fullScreenCover") {
             VStack(spacing: RuulSpacing.xs) {
@@ -243,7 +221,7 @@ struct PrimitivesShowcaseView: View {
             }
             .fullScreenCover(isPresented: $coverPresented) {
                 ZStack {
-                    RuulMeshBackground(.violet)
+                    Color(.systemBackground).ignoresSafeArea()
                     VStack {
                         Text("Full screen").font(.largeTitle.weight(.bold)).foregroundStyle(Color.primary)
                         RuulButton("Close") { coverPresented = false }

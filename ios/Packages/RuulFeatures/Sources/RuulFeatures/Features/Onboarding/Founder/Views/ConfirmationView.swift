@@ -18,7 +18,7 @@ public struct ConfirmationView: View {
 
     public var body: some View {
         ZStack {
-            RuulMeshBackground(.violet)
+            Color(.systemBackground).ignoresSafeArea()
             VStack(spacing: RuulSpacing.xxl) {
                 Spacer()
                 hero

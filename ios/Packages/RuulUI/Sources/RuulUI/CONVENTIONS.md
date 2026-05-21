@@ -8,8 +8,7 @@ should update the row below.
 
 | Need                         | Use                                    |
 |------------------------------|----------------------------------------|
-| Screen with active group     | `.ruulAmbientScreen(palette: app.activeGroup.map { RuulCoverPalette.deterministicCover(for: $0.id).palette })` |
-| List/dashboard screen        | `.ruulAmbientScreen(palette: nil)` (canvas only) |
+| Screen background            | Use the native default (`Color(.systemBackground)` / `Color(.systemGroupedBackground)`). Mesh-gradient + ambient tints banned per Ruul Canonical UX Doctrine §4 (decision #4 — group color → avatars only). |
 | Sheet (edit / picker / quick action) | `.sheet(isPresented:) { ... }.presentationDetents([.medium, .large])` — swipe-down dismiss OK |
 | Takeover (wizard / OTP / camera) | `.fullScreenCover(isPresented:) { ... }` — no swipe-down |
 | Card body (default)          | `.ruulCardSurface(.glass)` — no chrome, paired with `RuulSeparatedRows` for separator |
@@ -27,14 +26,16 @@ should update the row below.
 | Error state                  | `ContentUnavailableView { Label("…", systemImage: "exclamationmark.triangle") } description: { Text(msg) } actions: { Button("Reintentar") { … } }` |
 | Loading state                | `RuulLoadingState()` |
 
-## Identity surfaces (cover hero, ambient)
+## Identity surfaces (cover hero)
 
 | Need                         | Use                                    |
 |------------------------------|----------------------------------------|
 | Resource detail cover        | `ResourceCoverHero(palette:height:...)` — pass `palette` + per-type `height` |
-| Full-screen ambient layer    | `RuulAmbientBackground(palette:style:)` — `.soft` for global, `.vivid` for hero-adjacent |
-| Per-group palette            | `RuulCoverPalette.deterministicCover(for: group.id).palette` (UUID-determined cover from catalog) |
 | Per-resource palette         | `ResourceAmbientPalette.resolve(for: ctx)` |
+
+Full-screen ambient backgrounds and mesh gradients are banned per
+Ruul Canonical UX Doctrine §4. Group color identity comes from
+avatars / dots / chips only — never the screen background.
 
 ## Inputs, buttons, badges
 
@@ -48,9 +49,6 @@ should update the row below.
 
 ## Don't
 
-- Don't put `.ruulAmbientScreen(palette: …)` inside a modal — the
-  modal's `.fullScreenCover` chrome already paints the canvas.
-  Adding another canvas layer just stacks.
 - Don't hand-roll section headers — use `RuulListSectionHeader`.
 - Don't hand-roll lists with `VStack { ForEach }` — use
   `RuulSeparatedRows` so spacing + hairline match every other list.
@@ -73,7 +71,7 @@ should update the row below.
 - **Color**: `Color.ruulBackgroundCanvas / .ruulSurface / .ruulText* /
   .ruulSeparator / .ruulFillGlass / .ruulOnImage* / etc.`
 - **Size**: `RuulSize.avatar* / .iconBadge* / .icon* / .heroBanner /
-  .heroLarge / .coverHero / .blurAmbient`
+  .heroLarge / .coverHero`
 - **Typography**: SwiftUI native — `.largeTitle/.title/.title2/.headline/
   .body/.subheadline/.footnote/.caption/.caption2` with optional
   `.weight(.semibold)` / `.monospaced()` / `.monospacedDigit()`. No custom

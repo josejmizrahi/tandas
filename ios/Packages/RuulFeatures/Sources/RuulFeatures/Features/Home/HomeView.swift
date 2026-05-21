@@ -80,7 +80,6 @@ public struct HomeView: View {
             async let m: Void = loadGroupMemory()
             _ = await (h, i, m)
         }
-        .ruulAmbientScreen(palette: nil)
         .ruulAppToolbar()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

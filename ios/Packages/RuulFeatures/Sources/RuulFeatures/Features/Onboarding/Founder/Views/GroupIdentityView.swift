@@ -11,7 +11,6 @@ public struct GroupIdentityView: View {
     public var body: some View {
         @Bindable var bindable = coord
         OnboardingScreenTemplate(
-            mesh: .cool,
             progress: progressValue,
             title: "Crea tu grupo",
             subtitle: "Tu grupo se vuelve vivo en cuanto le pongas nombre.",

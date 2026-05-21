@@ -23,12 +23,7 @@ public struct InviteWelcomeView: View {
     /// hasn't loaded yet so we never flash a black canvas.
     @ViewBuilder
     private var ambientBackground: some View {
-        if let preview = coord.preview {
-            let cover = RuulCoverCatalog.cover(named: preview.coverImageName)
-            RuulAmbientBackground(palette: cover.palette, style: .vivid)
-        } else {
-            RuulMeshBackground(.aqua)
-        }
+        Color(.systemBackground).ignoresSafeArea()
     }
 
     @ViewBuilder

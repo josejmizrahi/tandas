@@ -46,7 +46,6 @@ public struct MyLedgerView: View {
                 }
             }
         )
-        .ruulAmbientScreen(palette: nil)
         .task { await coordinator.refresh() }
         .navigationTitle("Mis movimientos")
         .navigationBarTitleDisplayMode(.large)
