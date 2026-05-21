@@ -21,7 +21,7 @@ public struct HomeTab: View {
     public var body: some View {
         NavigationStack {
             if let coord = homeCoordinator {
-                HomeView(
+                HomeOverviewView(
                     coordinator: coord,
                     inboxCoordinator: inboxCoordinator,
                     onInboxActionTap: { action in await handleInboxAction(action) },
