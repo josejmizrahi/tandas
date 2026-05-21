@@ -26,6 +26,20 @@ public struct AttendeesListSheet: View {
 
     public var body: some View {
         NavigationStack {
+            content
+                .ruulSheetToolbar("Asistentes")
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if rsvps.isEmpty {
+            ContentUnavailableView {
+                Label("Sin asistentes aún", systemImage: "person.2")
+            } description: {
+                Text("Cuando alguien confirme asistencia, aparecerá aquí.")
+            }
+        } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: RuulSpacing.xxl, pinnedViews: []) {
                     ForEach(RSVPStatus.allCases, id: \.self) { status in
@@ -36,7 +50,6 @@ public struct AttendeesListSheet: View {
                 .padding(.vertical, RuulSpacing.lg)
             }
             .scrollIndicators(.hidden)
-            .ruulSheetToolbar("Asistentes")
         }
     }
 
