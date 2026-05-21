@@ -51,6 +51,8 @@ public struct PendingClaimsView: View {
             .ruulSheetToolbar("Invitaciones pendientes")
             .sheet(item: $reviewing) { claim in
                 ClaimReviewView(token: nil, placeholderUid: claim.placeholderUid)
+                    .presentationBackground(.ultraThinMaterial.opacity(0.5))
+                    .presentationDragIndicator(.visible)
             }
         }
     }
