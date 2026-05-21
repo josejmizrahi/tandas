@@ -22,12 +22,25 @@ public struct MyGroupsTab: View {
 
     public init() {}
 
+    /// Drill-in destinations inside the group context view. Each row
+    /// becomes a `NavigationLink(value:)` that pushes the canonical
+    /// surface for that section.
+    public enum GroupSection: Hashable {
+        case personas
+        case movimientos
+        case acuerdos
+        case historia
+    }
+
     public var body: some View {
         NavigationStack {
             content
                 .navigationTitle(navTitle)
                 .navigationBarTitleDisplayMode(navDisplayMode)
                 .toolbar { toolbarContent }
+                .navigationDestination(for: GroupSection.self) { section in
+                    destinationView(for: section)
+                }
         }
     }
 
@@ -179,14 +192,13 @@ public struct MyGroupsTab: View {
                         .padding(.horizontal, 32)
                 }
 
-                // Sub-tabs placeholder — feature-flagged stub so the
-                // structure is visible during founder review without
-                // pretending to be functional yet.
+                // Drill-in subsections per doctrine §9. Each pushes
+                // the canonical surface for that aspect of the group.
                 VStack(spacing: 8) {
-                    placeholderRow(icon: "person.2", label: "Personas")
-                    placeholderRow(icon: "arrow.left.arrow.right", label: "Movimientos")
-                    placeholderRow(icon: "list.bullet.clipboard", label: "Acuerdos")
-                    placeholderRow(icon: "clock.arrow.circlepath", label: "Historia")
+                    sectionRow(value: .personas, icon: "person.2", label: "Personas")
+                    sectionRow(value: .movimientos, icon: "arrow.left.arrow.right", label: "Movimientos")
+                    sectionRow(value: .acuerdos, icon: "list.bullet.clipboard", label: "Acuerdos")
+                    sectionRow(value: .historia, icon: "clock.arrow.circlepath", label: "Historia")
                 }
                 .padding(.top, 24)
                 .padding(.horizontal, 16)
@@ -198,26 +210,91 @@ public struct MyGroupsTab: View {
         .scrollIndicators(.hidden)
     }
 
-    private func placeholderRow(icon: String, label: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .frame(width: 28)
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-            Spacer(minLength: 0)
-            Text("Pronto")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+    /// Drill-in subsection row with chevron — pushes the canonical
+    /// surface via the navigation stack's `navigationDestination`.
+    private func sectionRow(value: GroupSection, icon: String, label: String) -> some View {
+        NavigationLink(value: value) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28)
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
+        .buttonStyle(.plain)
+    }
+
+    /// Per-subsection destination. Coordinators constructed inline
+    /// from `app.*` repos; Rules reuses the cached `router.state.
+    /// rulesCoordinator` because RootShell.rebuildCoordinators is the
+    /// canonical builder (handles currentMember resolution + lifecycle).
+    @ViewBuilder
+    private func destinationView(for section: GroupSection) -> some View {
+        if let group = app.activeGroup {
+            switch section {
+            case .personas:
+                MembersListView(coordinator: MembersCoordinator(
+                    group: group,
+                    actorUserId: app.session?.user.id ?? UUID(),
+                    groupsRepo: app.groupsRepo
+                ))
+                .environment(app)
+
+            case .movimientos:
+                MyLedgerView(coordinator: MyLedgerCoordinator(
+                    userId: app.session?.user.id ?? UUID(),
+                    allGroups: [group],
+                    ledgerRepo: app.ledgerRepo,
+                    groupsRepo: app.groupsRepo
+                ))
+                .environment(app)
+
+            case .acuerdos:
+                if let coord = router.state.rulesCoordinator {
+                    RulesView(
+                        coordinator: coord,
+                        voteRepo: app.voteRepo,
+                        policyRepo: app.policyRepo,
+                        actorUserId: app.session?.user.id ?? UUID(),
+                        userActionRepo: app.userActionRepo,
+                        ruleTemplates: app.ruleTemplates,
+                        ruleTemplateRepo: app.ruleTemplateRepo
+                    )
+                    .environment(app)
+                } else {
+                    ProgressView()
+                }
+
+            case .historia:
+                ActivityView(coordinator: ActivityCoordinator(
+                    groupId: group.id,
+                    repo: app.systemEventRepo,
+                    groupsRepo: app.groupsRepo
+                ))
+                .environment(app)
+            }
+        } else {
+            // Defensive: should not happen since the parent gate
+            // requires `app.activeGroup` to be non-nil before showing
+            // the group context view at all.
+            ContentUnavailableView(
+                "No hay grupo activo",
+                systemImage: "exclamationmark.triangle"
+            )
+        }
     }
 
     // MARK: - Empty state (no groups at all)
