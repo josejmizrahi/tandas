@@ -579,7 +579,14 @@ private struct GroupSpaceScreen: View {
             }
         case .assetActionApproval, .slotPending,
              .contributionDue, .compensationDue:
-            router.openResource(id: action.referenceId)
+            // Polymorphic resources (asset/slot/fund): fetch the
+            // `ResourceRow` so the cover mounts `ResourceDetailSheet`
+            // via `router.openResource(_ row:)`. The legacy
+            // `openResource(id:)` pushes `.eventDetail` and is wrong
+            // for non-event types.
+            if let row = try? await app.resourceRepo.resource(action.referenceId) {
+                router.openResource(row)
+            }
         }
     }
 }

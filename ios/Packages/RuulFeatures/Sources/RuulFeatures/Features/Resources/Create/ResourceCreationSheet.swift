@@ -20,6 +20,7 @@ import RuulCore
 /// can present the PostCreateIntentScreen (Sprint 4 work).
 public struct ResourceCreationSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(RootRouter.self) private var router
 
     @State private var coordinator: ResourceCreationCoordinator
     public var onCreated: ((UUID) -> Void)?
@@ -100,6 +101,18 @@ public struct ResourceCreationSheet: View {
         .onChange(of: phaseKey) { _, _ in
             if case .postCreate(let resourceId, _) = coordinator.phase {
                 onCreated?(resourceId)
+            }
+        }
+        .task {
+            // Compose-chip prefill: when "Evento" / "Fondo" / etc. is
+            // tapped from the group home, the chip stashes the type on
+            // `router.state.pendingWizardResourceType`. Consume + clear
+            // it here so the sheet skips the type picker step and
+            // jumps straight to the variant/identity flow for that
+            // builder. Same mechanism as `ResourceWizardSheet`.
+            if let pending = router.state.pendingWizardResourceType {
+                router.state.pendingWizardResourceType = nil
+                coordinator.pickType(pending)
             }
         }
     }

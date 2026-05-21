@@ -32,95 +32,67 @@ public struct GovernanceView: View {
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "groups.governance")
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                modifyRulesCard
-                createVotesCard
-                removeMembersCard
-                modifyGovernanceCard
-                votingConfigCard
+        Form {
+            permissionSection(
+                title: "¿Quién modifica las reglas?",
+                subtitle: "Cambiar montos, agregar reglas, desactivarlas.",
+                selection: $rules.whoCanModifyRules,
+                options: [.founder, .anyMember, .majorityVote]
+            )
+            permissionSection(
+                title: "¿Quién inicia votaciones?",
+                subtitle: "Apelar multas, proponer cambios, decisiones del grupo.",
+                selection: $rules.whoCanCreateVotes,
+                options: [.founder, .anyMember]
+            )
+            permissionSection(
+                title: "¿Quién quita miembros?",
+                subtitle: "Sacar a alguien del grupo.",
+                selection: $rules.whoCanRemoveMembers,
+                options: [.founder, .majorityVote, .supermajorityVote]
+            )
+            permissionSection(
+                title: "¿Quién cambia esta configuración?",
+                subtitle: "Quién puede editar las preguntas de esta misma página.",
+                selection: $rules.whoCanModifyGovernance,
+                options: [.founder, .majorityVote, .supermajorityVote]
+            )
+
+            Section {
+                quorumRow
+                thresholdRow
+                durationRow
+                anonymousToggle
+            } header: {
+                Text("Configuración de votación")
+            } footer: {
                 if let error {
                     Text(error)
-                        .font(.caption)
-                        .foregroundStyle(Color.red)
+                        .foregroundStyle(Color.ruulNegative)
                 }
             }
-            .padding(.horizontal, RuulSpacing.lg)
-            .padding(.top, RuulSpacing.lg)
-            .padding(.bottom, RuulSpacing.xxl)
         }
-        .ruulSheetToolbar("Decisiones del grupo")
+        .navigationTitle("Cómo se aprueban votos")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(isSaving ? "Guardando…" : "Guardar") {
                     Task { await save() }
                 }
-                .foregroundStyle(hasChanges ? Color.ruulAccent : Color(.tertiaryLabel))
                 .disabled(!hasChanges || isSaving)
             }
         }
         .onAppear { hydrate() }
     }
 
-    // MARK: - Cards
-
-    private var modifyRulesCard: some View {
-        permissionCard(
-            title: "¿Quién modifica las reglas?",
-            subtitle: "Cambiar montos, agregar reglas, desactivarlas.",
-            selection: $rules.whoCanModifyRules,
-            options: [.founder, .anyMember, .majorityVote]
-        )
-    }
-
-    private var createVotesCard: some View {
-        permissionCard(
-            title: "¿Quién inicia votaciones?",
-            subtitle: "Apelar multas, proponer cambios, decisiones del grupo.",
-            selection: $rules.whoCanCreateVotes,
-            options: [.founder, .anyMember]
-        )
-    }
-
-    private var removeMembersCard: some View {
-        permissionCard(
-            title: "¿Quién quita miembros?",
-            subtitle: "Sacar a alguien del grupo.",
-            selection: $rules.whoCanRemoveMembers,
-            options: [.founder, .majorityVote, .supermajorityVote]
-        )
-    }
-
-    private var modifyGovernanceCard: some View {
-        permissionCard(
-            title: "¿Quién cambia este gobierno?",
-            subtitle: "Quién puede editar las preguntas de esta misma página.",
-            selection: $rules.whoCanModifyGovernance,
-            options: [.founder, .majorityVote, .supermajorityVote]
-        )
-    }
-
-    private var votingConfigCard: some View {
-        GroupBox("Configuración de votación") {
-            VStack(alignment: .leading, spacing: RuulSpacing.md) {
-                quorumRow
-                thresholdRow
-                durationRow
-                anonymousToggle
-            }
-        }
-    }
-
     private var quorumRow: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Quórum")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text("\(rules.votingQuorumPercent)%")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextAccent)
+                    .foregroundStyle(Color.secondary)
+                    .monospacedDigit()
             }
             Slider(
                 value: Binding(
@@ -130,8 +102,7 @@ public struct GovernanceView: View {
                 in: 25...100,
                 step: 5
             )
-            .tint(Color.ruulAccent)
-            Text("Mínimo del grupo que debe votar para que la votación cuente.")
+            Text("Mínimo del grupo que debe votar para que cuente.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
         }
@@ -141,12 +112,10 @@ public struct GovernanceView: View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
                 Text("Mayoría requerida")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text("\(rules.votingThresholdPercent)%")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextAccent)
+                    .foregroundStyle(Color.secondary)
+                    .monospacedDigit()
             }
             Slider(
                 value: Binding(
@@ -156,7 +125,6 @@ public struct GovernanceView: View {
                 in: 50...75,
                 step: 5
             )
-            .tint(Color.ruulAccent)
             Text("% de votos a favor para aprobar.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
@@ -165,19 +133,20 @@ public struct GovernanceView: View {
 
     private var durationRow: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            HStack {
-                Text("Duración")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.primary)
-                Spacer()
-                Stepper("\(rules.votingDurationHours) hrs",
-                        value: $rules.votingDurationHours,
-                        in: 24...168,
-                        step: 24)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.ruulTextAccent)
+            Stepper(
+                value: $rules.votingDurationHours,
+                in: 24...168,
+                step: 24
+            ) {
+                HStack {
+                    Text("Duración")
+                    Spacer()
+                    Text("\(rules.votingDurationHours) hrs")
+                        .foregroundStyle(Color.secondary)
+                        .monospacedDigit()
+                }
             }
-            Text("Cuánto tiempo está abierta una votación antes de cerrarse.")
+            Text("Tiempo abierta antes de cerrarse.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
         }
@@ -185,12 +154,7 @@ public struct GovernanceView: View {
 
     private var anonymousToggle: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-            Toggle(isOn: $rules.votesAreAnonymous) {
-                Text("Votos anónimos")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.primary)
-            }
-            .tint(Color.ruulAccent)
+            Toggle("Votos anónimos", isOn: $rules.votesAreAnonymous)
             Text("Solo los conteos agregados son visibles. Recomendado.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
@@ -199,27 +163,25 @@ public struct GovernanceView: View {
 
     // MARK: - Helpers
 
-    private func permissionCard(
+    private func permissionSection(
         title: String,
         subtitle: String,
         selection: Binding<PermissionLevel>,
         options: [PermissionLevel]
     ) -> some View {
-        GroupBox(title) {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Picker(selection: selection) {
-                    ForEach(options, id: \.self) { level in
-                        Text(label(for: level)).tag(level)
-                    }
-                } label: {
-                    EmptyView()
+        Section {
+            Picker(selection: selection) {
+                ForEach(options, id: \.self) { level in
+                    Text(label(for: level)).tag(level)
                 }
-                .pickerStyle(.segmented)
+            } label: {
+                EmptyView()
             }
+            .pickerStyle(.segmented)
+        } header: {
+            Text(title)
+        } footer: {
+            Text(subtitle)
         }
     }
 
