@@ -1,44 +1,6 @@
 import SwiftUI
 import RuulCore
 
-/// Thin indeterminate progress bar — discreet refresh indicator overlay.
-///
-/// Se renderiza arriba de una lista existente cuando el usuario hace
-/// pull-to-refresh o el coordinator dispara un refresh programático.
-/// La data anterior permanece visible debajo; solo el bar comunica
-/// "trabajando".
-///
-/// Diseño: 2pt de alto, accent color, animación slide L→R infinita.
-/// Respeta safe area top (la barra aparece debajo del status bar).
-public struct RuulInlineProgress: View {
-    @State private var phase: CGFloat = -1
-
-    public init() {}
-
-    public var body: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            ZStack(alignment: .leading) {
-                Rectangle()
-                    .fill(Color.ruulAccent.opacity(0.12))
-                Rectangle()
-                    .fill(Color.ruulAccent)
-                    .frame(width: width * 0.30)
-                    .offset(x: width * phase)
-            }
-        }
-        .frame(height: 2)
-        .clipped()
-        .accessibilityLabel("Actualizando")
-        .accessibilityAddTraits(.updatesFrequently)
-        .onAppear {
-            withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
-                phase = 1.5
-            }
-        }
-    }
-}
-
 /// Banner compacto mostrado arriba de `loaded(value)` cuando un refresh
 /// falla pero todavía tenemos datos previos visibles. Comunica el error
 /// sin tapar el contenido. Tap → retry.
@@ -94,17 +56,6 @@ public struct ErrorBanner: View {
 }
 
 #if DEBUG
-#Preview("RuulInlineProgress") {
-    VStack(spacing: RuulSpacing.xl) {
-        RuulInlineProgress()
-            .frame(width: 320)
-        Text("Lista de ejemplo")
-            .font(.subheadline)
-    }
-    .padding()
-    .background(Color.ruulBackground)
-}
-
 #Preview("ErrorBanner") {
     VStack(spacing: RuulSpacing.lg) {
         ErrorBanner(

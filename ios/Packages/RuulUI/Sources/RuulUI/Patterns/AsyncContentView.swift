@@ -11,7 +11,7 @@ import RuulCore
 /// |--------------------------------------------|----------------------------------------|
 /// | `.idle`                                    | `Color.clear` (placeholder neutral)    |
 /// | `.loading`                                 | `ProgressView()` con debounce 250ms    |
-/// | `.refreshing(value)`                       | `loaded(value)` + `RuulInlineProgress` |
+/// | `.refreshing(value)`                       | `loaded(value)` + linear `ProgressView` |
 /// | `.loaded(value)`                           | `loaded(value)`                        |
 /// | `.empty`                                   | `empty()` (default: `EmptyView`)       |
 /// | `.failed(err, previous: nil)`              | `ContentUnavailableView` + retry CTA   |
@@ -86,7 +86,11 @@ public struct AsyncContentView<Value: Sendable, LoadedContent: View, EmptyConten
                 .ruulLoadingDebounce()
             case .refreshing(let value):
                 loaded(value)
-                    .overlay(alignment: .top) { RuulInlineProgress() }
+                    .overlay(alignment: .top) {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                            .accessibilityLabel("Actualizando")
+                    }
             case .loaded(let value):
                 loaded(value)
             case .empty:
