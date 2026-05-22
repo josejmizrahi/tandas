@@ -92,7 +92,8 @@ public extension ResourceConfig {
         onRSVPConfirm: @escaping () -> Void = {},
         onRSVPCancel: @escaping () -> Void = {},
         onAddToCalendar: @escaping () -> Void = {},
-        toolbarMenu: [ToolbarMenuItem] = []
+        toolbarMenu: [ToolbarMenuItem] = [],
+        moneyContext: MoneyContext? = nil
     ) -> ResourceConfig {
         let accent = ResourceFamilyTint.events.color
 
@@ -196,7 +197,8 @@ public extension ResourceConfig {
             actions: actions,
             sections: sections,
             activity: .static(event.activity),
-            toolbarMenu: toolbarMenu
+            toolbarMenu: toolbarMenu,
+            moneyContext: moneyContext
         )
     }
 }

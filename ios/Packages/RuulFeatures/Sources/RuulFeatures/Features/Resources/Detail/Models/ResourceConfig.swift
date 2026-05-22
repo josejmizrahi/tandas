@@ -14,6 +14,7 @@
 import SwiftUI
 import MapKit
 import CoreLocation
+import RuulCore
 import RuulUI
 
 // MARK: ════════════════════════════════════════════════════════════════════
@@ -37,6 +38,16 @@ public struct ResourceConfig {
     /// 2026-05-20 §3 — "no orphan resources").
     public let groupContext: GroupContextData?
 
+    /// SharedMoney Phase 4: when non-nil, the detail renders a
+    /// `ResourceMoneySlot` after sections showing what the group has
+    /// spent / contributed attributed to this resource via
+    /// `ledger_entries.source_resource_id`. Polymorphic across resource
+    /// types (event/asset/space/etc.) — the slot only needs the
+    /// `(groupId, resourceId, currency, members)` tuple. Resources
+    /// without a money story (e.g. internal bookkeeping rows) leave it
+    /// nil and the slot is omitted.
+    public let moneyContext: MoneyContext?
+
     public init(
         identity: IdentityData,
         accent: Color,
@@ -45,7 +56,8 @@ public struct ResourceConfig {
         sections: [ResourceSection] = [],
         activity: ActivitySource? = nil,
         toolbarMenu: [ToolbarMenuItem] = [],
-        groupContext: GroupContextData? = nil
+        groupContext: GroupContextData? = nil,
+        moneyContext: MoneyContext? = nil
     ) {
         self.identity = identity
         self.accent = accent
@@ -55,6 +67,41 @@ public struct ResourceConfig {
         self.activity = activity
         self.toolbarMenu = toolbarMenu
         self.groupContext = groupContext
+        self.moneyContext = moneyContext
+    }
+}
+
+// MARK: - Money context
+
+/// Carries the (group + resource + currency + members) tuple the
+/// universal Money Block needs to load `resource_money_view` and present
+/// the group-scoped sheets pre-filled with `sourceResource`. See doctrine
+/// `doctrine_in_kind_contributions.md` — capital contributions land here
+/// too (not just reimbursable expenses).
+public struct MoneyContext {
+    public let groupId: UUID
+    public let resourceId: UUID
+    public let resourceName: String
+    public let currency: String
+    public let members: [MemberWithProfile]
+    /// Called after a successful contribute / record-expense so the
+    /// host can refresh its own state (activity feed, related counters).
+    public let onDidChange: () -> Void
+
+    public init(
+        groupId: UUID,
+        resourceId: UUID,
+        resourceName: String,
+        currency: String,
+        members: [MemberWithProfile],
+        onDidChange: @escaping () -> Void = {}
+    ) {
+        self.groupId = groupId
+        self.resourceId = resourceId
+        self.resourceName = resourceName
+        self.currency = currency
+        self.members = members
+        self.onDidChange = onDidChange
     }
 }
 

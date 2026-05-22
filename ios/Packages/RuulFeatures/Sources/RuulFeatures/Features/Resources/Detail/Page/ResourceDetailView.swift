@@ -132,6 +132,12 @@ public struct ResourceDetailContent: View {
                         .padding(.top, RuulSpacing.s5)
                 }
 
+                if let moneyCtx = config.moneyContext {
+                    ResourceMoneySlot(context: moneyCtx)
+                        .padding(.horizontal, RuulSpacing.s5)
+                        .padding(.top, RuulSpacing.s5)
+                }
+
                 if let activity = config.activity {
                     ActivitySlot(source: activity, accent: config.accent)
                         .padding(.horizontal, RuulSpacing.s5)

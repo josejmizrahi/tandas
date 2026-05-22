@@ -176,7 +176,20 @@ public struct EventDetailHost: View {
                             onRSVPConfirm: { Task { await coordinator.setRSVP(.going) } },
                             onRSVPCancel: { sheet = .cancelAttendance },
                             onAddToCalendar: { addToCalendarViaPresenter() },
-                            toolbarMenu: makeToolbarMenu(coordinator: coordinator)
+                            toolbarMenu: makeToolbarMenu(coordinator: coordinator),
+                            // SharedMoney Phase 4: render the universal
+                            // Money Block under sections. Reads
+                            // resource_money_view filtered to this
+                            // event's id; CTAs open the group-scoped
+                            // sheets pre-filled with sourceResource.
+                            moneyContext: MoneyContext(
+                                groupId: group.id,
+                                resourceId: coordinator.event.id,
+                                resourceName: coordinator.event.title,
+                                currency: group.currency,
+                                members: Array(memberDirectory.values),
+                                onDidChange: { Task { await coordinator.refresh() } }
+                            )
                         ),
                         creatorName: creatorDisplayName(for: coordinator.event)
                     )
