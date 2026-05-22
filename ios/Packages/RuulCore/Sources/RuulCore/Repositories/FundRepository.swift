@@ -39,6 +39,26 @@ public protocol FundRepository: Actor {
         preferredCurrency: String?
     ) async throws -> SharedPoolSummary?
 
+    /// SharedMoney Phase 4 (mig 00362): per-resource money projection.
+    /// Aggregates ledger entries tagged with `source_resource_id`
+    /// matching `resourceId`. Used by the resource detail Money Block
+    /// (events first, then assets/spaces) to render "Gastos de este
+    /// evento" without ever creating a per-event fund.
+    ///
+    /// Returns nil when the resource has zero attributed activity —
+    /// the view only emits rows for resources with at least one
+    /// expense/contribution. UI handles the empty state with a calm
+    /// "Aún no hay movimientos asociados a este {evento|recurso}"
+    /// prompt + the "Registrar gasto" CTA.
+    ///
+    /// `preferredCurrency` mirrors `summaryForGroup` semantics: V1
+    /// passes the group currency; multi-currency UI (V1.5+) may read
+    /// the view directly for all rows.
+    func summaryForResource(
+        _ resourceId: UUID,
+        preferredCurrency: String?
+    ) async throws -> ResourceMoneySummary?
+
     /// Records a contribution from the caller (member) to the fund.
     /// `currency` falls through to fund metadata then to MXN if nil.
     /// `note` lands in the ledger entry's metadata jsonb. `sourceEventId`
@@ -169,6 +189,64 @@ public actor MockFundRepository: FundRepository {
             balanceCents: pick.balanceCents,
             entryCount: pick.contributionCount + pick.expenseCount,
             lastActivityAt: pick.lastActivityAt
+        )
+    }
+
+    public func summaryForResource(
+        _ resourceId: UUID,
+        preferredCurrency: String? = nil
+    ) async throws -> ResourceMoneySummary? {
+        // Mock derives the per-resource summary by scanning the Mock's
+        // in-memory `entries` for matches on metadata.source_resource_id.
+        // The Mock writes that key in `recordSharedExpense` /
+        // `contributeToSharedMoney` (Phase 2). Mirrors the server-side
+        // `resource_money_view` math (mig 00362): expense + contribution
+        // types only; other types excluded.
+        let matches = entries.filter { entry in
+            guard entry.type == LedgerEntry.Kind.expense
+                  || entry.type == LedgerEntry.Kind.contribution else { return false }
+            return entry.metadata["source_resource_id"]?.stringValue
+                == resourceId.uuidString.lowercased()
+        }
+        guard !matches.isEmpty else { return nil }
+        // Currency pick: prefer requested, else fall back to the most
+        // common currency in the matches (deterministic for V1 single
+        // currency — every match has the same).
+        let currency = preferredCurrency
+            ?? matches.first?.currency
+            ?? "MXN"
+        let scoped = matches.filter { $0.currency == currency }
+        guard !scoped.isEmpty else { return nil }
+
+        let spent = scoped
+            .filter { $0.type == LedgerEntry.Kind.expense }
+            .map(\.amountCents).reduce(0, +)
+        let contributed = scoped
+            .filter { $0.type == LedgerEntry.Kind.contribution }
+            .map(\.amountCents).reduce(0, +)
+        let payers = Set(scoped.compactMap {
+            $0.metadata["paid_by_member_id"]?.stringValue
+        })
+        let lastActivity = scoped.map(\.occurredAt).max()
+        // Latest recorded_by — most-recent entry's recorder.
+        let latestRecorder = scoped
+            .sorted { $0.occurredAt > $1.occurredAt }
+            .first?.recordedBy
+
+        // groupId of the first match — all matches share the same group
+        // since RPC validates source_resource_id is in the fund's group.
+        let groupId = scoped[0].groupId
+
+        return ResourceMoneySummary(
+            groupId: groupId,
+            sourceResourceId: resourceId,
+            currency: currency,
+            spentCents: spent,
+            contributedCents: contributed,
+            entryCount: Int64(scoped.count),
+            lastActivityAt: lastActivity,
+            payerCount: Int64(payers.count),
+            latestRecordedBy: latestRecorder
         )
     }
 
@@ -473,6 +551,32 @@ public actor LiveFundRepository: FundRepository {
                 .from("group_money_summary_view")
                 .select()
                 .eq("group_id", value: groupId.uuidString.lowercased())
+                .execute()
+                .value
+            if let preferredCurrency,
+               let matching = rows.first(where: { $0.currency == preferredCurrency }) {
+                return matching
+            }
+            return rows.first
+        } catch {
+            throw FundError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func summaryForResource(
+        _ resourceId: UUID,
+        preferredCurrency: String? = nil
+    ) async throws -> ResourceMoneySummary? {
+        // Read all currency rows for this source_resource_id; V1 picks
+        // the one matching the group's currency. The view (mig 00362)
+        // only emits rows for resources with at least one attributed
+        // entry, so a missing result == "no movements yet" — caller
+        // renders the empty-state copy.
+        do {
+            let rows: [ResourceMoneySummary] = try await client
+                .from("resource_money_view")
+                .select()
+                .eq("source_resource_id", value: resourceId.uuidString.lowercased())
                 .execute()
                 .value
             if let preferredCurrency,
