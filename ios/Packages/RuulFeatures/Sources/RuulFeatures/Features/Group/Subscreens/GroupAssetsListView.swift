@@ -75,13 +75,12 @@ public struct GroupAssetsListView: View {
             onOpenAsset(asset)
         } label: {
             HStack(spacing: RuulSpacing.md) {
-                Image(systemName: "shippingbox")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(GroupColorRamp.purple.accent)
-                    .frame(width: 36, height: 36)
-                    .background(GroupColorRamp.purple.accent.opacity(0.12), in: Circle())
+                ColoredIconBadge(
+                    systemName: "shippingbox",
+                    tint: GroupColorRamp.purple.accent
+                )
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text(assetName(asset))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary)

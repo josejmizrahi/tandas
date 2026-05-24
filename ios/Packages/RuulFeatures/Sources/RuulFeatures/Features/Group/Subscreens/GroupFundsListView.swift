@@ -76,13 +76,12 @@ public struct GroupFundsListView: View {
             onOpenFund(fund)
         } label: {
             HStack(spacing: RuulSpacing.md) {
-                Image(systemName: "banknote")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.ruulPositive)
-                    .frame(width: 36, height: 36)
-                    .background(Color.ruulPositive.opacity(0.12), in: Circle())
+                ColoredIconBadge(
+                    systemName: "banknote",
+                    tint: Color.ruulPositive
+                )
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     Text(fund.name)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.primary)

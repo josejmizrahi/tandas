@@ -161,7 +161,7 @@ struct ResourceMoneySlot: View {
     @ViewBuilder
     private var footer: some View {
         if let s = summary, s.hasActivity {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                 if s.contributedCents > 0 {
                     Text("Aportado: \(formatted(s.contributedCents))")
                         .font(.caption)

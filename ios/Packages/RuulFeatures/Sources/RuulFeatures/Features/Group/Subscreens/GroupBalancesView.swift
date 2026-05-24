@@ -83,16 +83,12 @@ public struct GroupBalancesView: View {
         let name = isMe ? "Tú" : (memberName(for: row.memberId) ?? "Miembro")
         let amount = Decimal(abs(row.netCents)) / 100
         return HStack(spacing: RuulSpacing.md) {
-            Image(systemName: row.isOwed ? "arrow.down.left.circle.fill" : "arrow.up.right.circle.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(row.isOwed ? Color.ruulPositive : Color.ruulNegative)
-                .frame(width: 36, height: 36)
-                .background(
-                    (row.isOwed ? Color.ruulPositive : Color.ruulNegative).opacity(0.12),
-                    in: Circle()
-                )
+            ColoredIconBadge(
+                systemName: row.isOwed ? "arrow.down.left.circle.fill" : "arrow.up.right.circle.fill",
+                tint: row.isOwed ? Color.ruulPositive : Color.ruulNegative
+            )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                 Text(name)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.primary)
