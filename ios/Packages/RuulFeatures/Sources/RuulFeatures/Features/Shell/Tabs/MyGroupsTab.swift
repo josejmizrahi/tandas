@@ -48,6 +48,7 @@ public struct MyGroupsTab: View {
         case eventos
         case multas
         case fondos
+        case activos
         // Ajustes hierarchy
         case ajustes
         case roles            // assignments: members grouped by role
@@ -224,6 +225,19 @@ public struct MyGroupsTab: View {
                                 router.openResource(row)
                             }
                         }
+                    }
+                )
+                .environment(app)
+
+            case .activos:
+                GroupAssetsListView(
+                    group: group,
+                    onOpenAsset: { asset in
+                        // Asset already IS a ResourceRow — no fetch needed.
+                        // Routes through the universal ResourceDetailSheet
+                        // which mounts the Money Block via makeGenericConfig
+                        // (Phase 4 brick C.1).
+                        router.openResource(asset)
                     }
                 )
                 .environment(app)
@@ -487,6 +501,7 @@ private struct GroupSpaceScreen: View {
                     onOpenEvents:     { path.append(MyGroupsTab.GroupDestination.eventos) },
                     onOpenFines:      { path.append(MyGroupsTab.GroupDestination.multas) },
                     onOpenFunds:      { path.append(MyGroupsTab.GroupDestination.fondos) },
+                    onOpenAssets:     { path.append(MyGroupsTab.GroupDestination.activos) },
                     onOpenInbox:      { router.selectTab(.home) },
                     onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
                     onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
@@ -518,6 +533,7 @@ private struct GroupSpaceScreen: View {
                     eventRepo: app.eventRepo,
                     fineRepo: app.fineRepo,
                     fundRepo: app.fundRepo,
+                    resourceRepo: app.resourceRepo,
                     actorUserId: app.session?.user.id
                 )
             }

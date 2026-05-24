@@ -341,6 +341,7 @@ private struct GroupHomeSheetContent: View {
             eventRepo: app.eventRepo,
             fineRepo: app.fineRepo,
             fundRepo: app.fundRepo,
+            resourceRepo: app.resourceRepo,
             actorUserId: app.session?.user.id
         )
         NavigationStack(path: $path) {
@@ -360,6 +361,7 @@ private struct GroupHomeSheetContent: View {
                     router.requestOpenMyFines()
                 },
                 onOpenFunds: nil,
+                onOpenAssets: nil,
                 onOpenInbox: { router.selectTab(.home) },
                 onOpenMembers: {
                     path.append(

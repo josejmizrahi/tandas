@@ -336,8 +336,46 @@ public struct ResourceDetailSheet: View {
             actions: actions,
             sections: [],
             activity: .static(blocks.activityHead.map(Self.mapActivityEntry)),
-            toolbarMenu: makeToolbarMenu()
+            toolbarMenu: makeToolbarMenu(),
+            moneyContext: makeMoneyContextIfApplicable(
+                live: live,
+                blocks: blocks,
+                group: group
+            )
         )
+    }
+
+    /// SharedMoney Phase 4 brick C: surface the universal Money Block
+    /// on resource types that benefit from per-resource money attribution
+    /// — assets (warehouse / vehicle / inversión per
+    /// `doctrine_in_kind_contributions.md`) and events that fall through
+    /// to the generic shell (e.g. deeplinks that bypass EventDetailHost).
+    ///
+    /// Skipped types:
+    /// - `.fund`  → has its own makeFundConfig; the fund IS the money.
+    /// - `.space` → has its own makeSpaceConfig; will be wired in a
+    ///              follow-up brick.
+    /// - `.slot` / `.right` / `.unknown` → no money story today;
+    ///              `source_resource_id` queries return nil and the
+    ///              block would be a confusing empty state.
+    private func makeMoneyContextIfApplicable(
+        live: ResourceRow,
+        blocks: ResourceBlocks,
+        group: RuulCore.Group
+    ) -> MoneyContext? {
+        switch live.resourceType {
+        case .asset, .event:
+            return MoneyContext(
+                groupId: group.id,
+                resourceId: live.id,
+                resourceName: blocks.identity.title,
+                currency: group.currency,
+                members: Array(memberDirectory.values),
+                onDidChange: { Task { await refreshResource() } }
+            )
+        case .fund, .space, .slot, .right, .unknown:
+            return nil
+        }
     }
 
     /// Fund adapter — feeds the boceto's `.fund(_:)` factory so the user

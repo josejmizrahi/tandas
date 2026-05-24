@@ -15,6 +15,7 @@ public final class GroupHomeCoordinator {
     private let eventRepo: (any EventRepository)?
     private let fineRepo: (any FineRepository)?
     private let fundRepo: (any FundRepository)?
+    private let resourceRepo: (any ResourceRepository)?
     private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
@@ -65,6 +66,13 @@ public final class GroupHomeCoordinator {
     /// `fundRepo.summaryForGroup`; nil until the first successful load
     /// (or when `fundRepo` isn't wired, e.g. lightweight previews).
     public var sharedPoolSummary: SharedPoolSummary?
+    /// SharedMoney Phase 4 brick C.2: active assets in this group
+    /// (resource_type = 'asset', status != archived). Backs the
+    /// "Activos" tile count. Loaded in parallel via `resourceRepo.list`;
+    /// empty until first successful load (or if `resourceRepo` isn't
+    /// wired). The tile hides entirely when this is empty.
+    public var groupAssets: [ResourceRow] = []
+    public var groupAssetsCount: Int { groupAssets.count }
     public var isLoading: Bool = false
     public var error: CoordinatorError?
     /// True después de que `refresh()` completó al menos una vez. Permite
@@ -128,6 +136,7 @@ public final class GroupHomeCoordinator {
         eventRepo: (any EventRepository)? = nil,
         fineRepo: (any FineRepository)? = nil,
         fundRepo: (any FundRepository)? = nil,
+        resourceRepo: (any ResourceRepository)? = nil,
         actorUserId: UUID? = nil
     ) {
         self.groupId = groupId
@@ -139,6 +148,7 @@ public final class GroupHomeCoordinator {
         self.eventRepo = eventRepo
         self.fineRepo = fineRepo
         self.fundRepo = fundRepo
+        self.resourceRepo = resourceRepo
         self.actorUserId = actorUserId
     }
 
@@ -159,6 +169,7 @@ public final class GroupHomeCoordinator {
             async let finesCountTask: Void = loadFinesCount()
             async let fundsTask: Void = loadFunds()
             async let sharedPoolTask: Void = loadSharedPoolSummary()
+            async let assetsTask: Void = loadAssets()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -168,6 +179,7 @@ public final class GroupHomeCoordinator {
             _ = await finesCountTask
             _ = await fundsTask
             _ = await sharedPoolTask
+            _ = await assetsTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -240,6 +252,25 @@ public final class GroupHomeCoordinator {
             self.groupFunds = try await repo.listForGroup(groupId)
         } catch {
             log.warning("group funds load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Loads active assets in the group (resource_type='asset'). Soft-
+    /// fails — the tile simply doesn't appear if the repo isn't wired
+    /// or the call errors. Limit 100 mirrors `loadUpcomingEventsCount`'s
+    /// posture; groups with >100 assets won't surface a precise count
+    /// but the tile still shows "100+".
+    private func loadAssets() async {
+        guard let repo = resourceRepo else { return }
+        do {
+            self.groupAssets = try await repo.list(
+                in: groupId,
+                types: [.asset],
+                statuses: nil,
+                limit: 100
+            )
+        } catch {
+            log.warning("group assets load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

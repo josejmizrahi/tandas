@@ -44,6 +44,7 @@ public struct GroupSpaceView: View {
     public var onOpenEvents: (() -> Void)?
     public var onOpenFines: (() -> Void)?
     public var onOpenFunds: (() -> Void)?
+    public var onOpenAssets: (() -> Void)?
     public var onOpenInbox: (() -> Void)?
 
     // Header + stream
@@ -68,6 +69,7 @@ public struct GroupSpaceView: View {
         onOpenEvents: (() -> Void)? = nil,
         onOpenFines: (() -> Void)? = nil,
         onOpenFunds: (() -> Void)? = nil,
+        onOpenAssets: (() -> Void)? = nil,
         onOpenInbox: (() -> Void)? = nil,
         onOpenMembers: (() -> Void)? = nil,
         onOpenActivity: (() -> Void)? = nil,
@@ -85,6 +87,7 @@ public struct GroupSpaceView: View {
         self.onOpenEvents = onOpenEvents
         self.onOpenFines = onOpenFines
         self.onOpenFunds = onOpenFunds
+        self.onOpenAssets = onOpenAssets
         self.onOpenInbox = onOpenInbox
         self.onOpenMembers = onOpenMembers
         self.onOpenActivity = onOpenActivity
@@ -262,6 +265,26 @@ public struct GroupSpaceView: View {
                     secondary: otherFundsCount == 1 ? "fondo separado" : "fondos separados",
                     alert: nil,
                     action: { onOpenFunds?() }
+                )
+            )
+        }
+
+        // SharedMoney Phase 4 brick C.2: "Activos" tile — group's
+        // physical/financial assets (nave industrial, vehículo,
+        // inversión per AssetVariants). Hides at 0 to keep the grid
+        // tight; appears as soon as the first asset is created.
+        let assetsCount = coordinator.groupAssetsCount
+        if assetsCount > 0 {
+            tiles.append(
+                .init(
+                    id: "assets",
+                    label: "Activos",
+                    systemImage: "shippingbox",
+                    tint: GroupColorRamp.purple.accent,
+                    primary: "\(assetsCount)",
+                    secondary: assetsCount == 1 ? "activo" : "activos",
+                    alert: nil,
+                    action: { onOpenAssets?() }
                 )
             )
         }
