@@ -128,6 +128,11 @@ public protocol FundRepository: Actor {
     /// specific event/asset/space/etc. — the generic context pointer that
     /// supersedes the legacy `sourceEventId`. Other params mirror
     /// `recordExpense`.
+    ///
+    /// `participants` (mig 00367, P4): when non-empty, stamps
+    /// `metadata.participants` so UI surfaces can compute per-share =
+    /// amount/N. V1 doesn't auto-generate per-participant IOUs; users
+    /// settle manually via the existing settle-up flow.
     func recordSharedExpense(
         groupId: UUID,
         amountCents: Int64,
@@ -136,7 +141,8 @@ public protocol FundRepository: Actor {
         note: String?,
         sourceResourceId: UUID?,
         clientId: UUID?,
-        paidByMemberId: UUID?
+        paidByMemberId: UUID?,
+        participants: [UUID]
     ) async throws -> LedgerEntry
 
     /// SharedMoney Phase 2 (mig 00363): group-scoped contribution entry
@@ -403,11 +409,9 @@ public actor MockFundRepository: FundRepository {
         note: String?,
         sourceResourceId: UUID? = nil,
         clientId: UUID? = nil,
-        paidByMemberId: UUID? = nil
+        paidByMemberId: UUID? = nil,
+        participants: [UUID] = []
     ) async throws -> LedgerEntry {
-        // Mock shared-pool resolution: pick the first fund row tagged
-        // is_shared_pool, falling back to ANY fund row for the group so
-        // legacy test fixtures (pre-doctrine seeds) still work.
         // Mock shared-pool resolution: pick any fund for the group. The
         // is_shared_pool flag lives in resources.metadata server-side and
         // isn't surfaced by fund_balance_view, so test fixtures should
@@ -428,6 +432,9 @@ public actor MockFundRepository: FundRepository {
         if let sourceResourceId { meta["source_resource_id"] = .string(sourceResourceId.uuidString.lowercased()) }
         if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
         if let paidByMemberId { meta["paid_by_member_id"] = .string(paidByMemberId.uuidString.lowercased()) }
+        if !participants.isEmpty {
+            meta["participants"] = .array(participants.map { .string($0.uuidString.lowercased()) })
+        }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: snapshot.fundId,
@@ -797,7 +804,8 @@ public actor LiveFundRepository: FundRepository {
         note: String?,
         sourceResourceId: UUID? = nil,
         clientId: UUID? = nil,
-        paidByMemberId: UUID? = nil
+        paidByMemberId: UUID? = nil,
+        participants: [UUID] = []
     ) async throws -> LedgerEntry {
         struct Params: Encodable {
             let p_group_id: String
@@ -808,6 +816,7 @@ public actor LiveFundRepository: FundRepository {
             let p_source_resource_id: String?
             let p_client_id: String?
             let p_paid_by_member_id: String?
+            let p_participants: [String]?
         }
         do {
             return try await client
@@ -819,7 +828,10 @@ public actor LiveFundRepository: FundRepository {
                     p_note: (note?.isEmpty ?? true) ? nil : note,
                     p_source_resource_id: sourceResourceId?.uuidString.lowercased(),
                     p_client_id: clientId?.uuidString.lowercased(),
-                    p_paid_by_member_id: paidByMemberId?.uuidString.lowercased()
+                    p_paid_by_member_id: paidByMemberId?.uuidString.lowercased(),
+                    p_participants: participants.isEmpty
+                        ? nil
+                        : participants.map { $0.uuidString.lowercased() }
                 ))
                 .execute()
                 .value

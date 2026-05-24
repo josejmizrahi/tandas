@@ -46,6 +46,12 @@ public struct RecordSharedExpenseSheet: View {
     @State private var toMemberManuallySet: Bool = false
     @State private var amountText: String = ""
     @State private var note: String = ""
+    /// P4 (mig 00367): members who share this expense. Empty = no
+    /// split (legacy 1-on-1 reimbursement flow). When non-empty,
+    /// stamps `metadata.participants` and the UI surfaces the per-
+    /// share = amount/N hint. V1 doesn't auto-generate IOUs from this
+    /// list — users still settle manually via the existing flow.
+    @State private var participantIds: Set<UUID> = []
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
     /// Stable idempotency key (mig 00351). Generated per sheet open,
@@ -114,6 +120,38 @@ public struct RecordSharedExpenseSheet: View {
                 Section("Monto (\(currency))") {
                     TextField("0", text: $amountText)
                         .keyboardType(.decimalPad)
+                }
+
+                // P4 (mig 00367): multi-select participants. Empty list
+                // = no split (legacy 1-on-1 path). Each tap toggles
+                // membership; the footer surfaces the live per-share
+                // when at least 2 are selected.
+                Section {
+                    ForEach(members) { m in
+                        Button {
+                            toggleParticipant(m.member.id)
+                        } label: {
+                            HStack {
+                                Text(m.displayName)
+                                    .font(.body)
+                                    .foregroundStyle(Color.primary)
+                                Spacer()
+                                if participantIds.contains(m.member.id) {
+                                    Image(systemName: "checkmark")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Color.ruulAccent)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Dividir entre")
+                } footer: {
+                    Text(splitFooter)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
                 }
 
                 Section("Nota (opcional)") {
@@ -196,12 +234,46 @@ public struct RecordSharedExpenseSheet: View {
                 note: trimmedNote.isEmpty ? nil : trimmedNote,
                 sourceResourceId: sourceResource?.id,
                 clientId: clientId,
-                paidByMemberId: paidById
+                paidByMemberId: paidById,
+                participants: Array(participantIds)
             )
             onDidRecord()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// P4: toggle membership in the participants set. Tap behavior
+    /// mirrors Apple-native selection lists (Files / Mail).
+    private func toggleParticipant(_ memberId: UUID) {
+        if participantIds.contains(memberId) {
+            participantIds.remove(memberId)
+        } else {
+            participantIds.insert(memberId)
+        }
+    }
+
+    /// P4: live per-share = amount / N copy. Switches based on the
+    /// selection cardinality so the section doesn't shout at the user
+    /// before they pick anything.
+    private var splitFooter: String {
+        let count = participantIds.count
+        if count == 0 {
+            return "Si fue un gasto compartido, selecciona quiénes participan. Cada uno será responsable de su parte."
+        }
+        if count == 1 {
+            return "Solo 1 participante seleccionado. Selecciona 2 o más para dividir el gasto."
+        }
+        guard let cents = amountCents else {
+            return "\(count) participantes. Ingresa el monto para ver cuánto le toca a cada uno."
+        }
+        let share = Decimal(cents) / Decimal(count) / 100
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.maximumFractionDigits = 0
+        let formatted = f.string(from: share as NSDecimalNumber) ?? "\(currency) \(Int(truncating: share as NSDecimalNumber))"
+        return "\(count) participantes · cada uno: \(formatted)"
     }
 }

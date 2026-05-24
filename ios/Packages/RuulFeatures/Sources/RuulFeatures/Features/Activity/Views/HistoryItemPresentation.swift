@@ -489,6 +489,20 @@ public struct HistoryItemPresentation {
 
         switch kind {
         case "expense":
+            // P4: if participants array is present + ≥2 entries, surface
+            // the split context. Otherwise fall back to the tri-role
+            // "pagado por" enrichment.
+            let participantsCount: Int? = {
+                if case let .array(items) = payload["participants"] {
+                    return items.count >= 2 ? items.count : nil
+                }
+                return nil
+            }()
+            if let n = participantsCount {
+                return amount.isEmpty
+                    ? "\(effectiveActor) registró un gasto compartido entre \(n) personas"
+                    : "\(effectiveActor) registró \(amount) entre \(n) personas"
+            }
             if let paidById = payload["paid_by_member_id"]?.stringValue,
                let paidByUUID = UUID(uuidString: paidById),
                let paidByName = resolveMemberName?(paidByUUID),
