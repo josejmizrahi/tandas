@@ -11,3 +11,17 @@ pre-commit:
       run: |
         deno run -A scripts/codegen/gen-types.ts
         git add ios/Tandas/Platform/Models/Generated supabase/functions/_shared/types
+
+    # FASE 1 Foundations Lock — no hex / no Color(red:…) / no Font.custom
+    # in feature layer. RuulUI + RuulCore (GroupColorRamp / RuulCoverCatalog)
+    # are the only places allowed to encode raw color values.
+    no-hex-colors-in-features:
+      glob: "ios/Packages/RuulFeatures/**/*.swift"
+      run: |
+        if grep -nE '(Color\(red:|Color\(hex:|UIColor\(red:|Font\.custom\(|0x[0-9A-Fa-f]{6})' {staged_files} 2>/dev/null; then
+          echo ""
+          echo "Foundations Lock violation: hex color or Font.custom found in RuulFeatures."
+          echo "Use Color.ruul* tokens or native (Color(.systemBackground), .primary, .accentColor, Font.system)."
+          echo "See Plans/Active/Fase1FoundationsLock.md."
+          exit 1
+        fi

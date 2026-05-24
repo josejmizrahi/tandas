@@ -1,347 +1,56 @@
 import SwiftUI
 
-/// Color tokens for the ruul design system.
-///
-/// All tokens resolve dynamically via `Color(uiColor: UIColor { trait in ... })`
-/// against the runtime `userInterfaceStyle` and `accessibilityContrast` traits.
-/// Use these tokens through `@Environment(\.ruulColors)` (preferred for views
-/// that need to react to scheme changes) or via the static accessors
-/// (`Color.ruulAccentPrimary`, etc.) for convenience.
-public struct RuulColors: Sendable {
-
-    // MARK: Backgrounds
-
-    public let backgroundCanvas: Color
-    public let backgroundElevated: Color
-    public let backgroundRecessed: Color
-
-    // MARK: Surfaces (glass tints, applied on top of system materials)
-
-    public let surfaceGlassThin: Color
-    public let surfaceGlassRegular: Color
-    public let surfaceGlassThick: Color
-
-    // MARK: Mesh gradient sets
-
-    public let meshCool: [Color]
-    public let meshViolet: [Color]
-    public let meshAqua: [Color]
-
-    // MARK: Text
-
-    public let textPrimary: Color
-    public let textSecondary: Color
-    public let textTertiary: Color
-    public let textInverse: Color
-    public let textAccent: Color
-
-    // MARK: Accent
-
-    public let accentPrimary: Color
-    public let accentSecondary: Color
-    public let accentSubtle: Color
-
-    // MARK: Semantic
-
-    public let semanticSuccess: Color
-    public let semanticWarning: Color
-    public let semanticError: Color
-    public let semanticInfo: Color
-
-    // MARK: Borders
-
-    public let borderSubtle: Color
-    public let borderDefault: Color
-    public let borderStrong: Color
-    public let borderGlass: Color
-
-    // MARK: Shadow tints (used by RuulElevation)
-
-    public let shadowSm: Color
-    public let shadowMd: Color
-    public let shadowLg: Color
-}
-
-// MARK: - Default palette (resolved per scheme + contrast)
-
-public extension RuulColors {
-    static let `default` = RuulColors(
-        backgroundCanvas:    .ruulDynamic(light: Hex.lightCanvas, dark: Hex.darkCanvas, lightHighContrast: Hex.lightCanvasHC, darkHighContrast: Hex.darkCanvasHC),
-        backgroundElevated:  .ruulDynamic(light: Hex.lightElevated, dark: Hex.darkElevated, lightHighContrast: Hex.lightElevatedHC, darkHighContrast: Hex.darkElevatedHC),
-        backgroundRecessed:  .ruulDynamic(light: Hex.lightRecessed, dark: Hex.darkRecessed, lightHighContrast: Hex.lightRecessedHC, darkHighContrast: Hex.darkRecessedHC),
-
-        surfaceGlassThin:    .ruulDynamic(light: Hex.lightGlassThin, dark: Hex.darkGlassThin, lightHighContrast: Hex.lightGlassThinHC, darkHighContrast: Hex.darkGlassThinHC),
-        surfaceGlassRegular: .ruulDynamic(light: Hex.lightGlassRegular, dark: Hex.darkGlassRegular, lightHighContrast: Hex.lightGlassRegularHC, darkHighContrast: Hex.darkGlassRegularHC),
-        surfaceGlassThick:   .ruulDynamic(light: Hex.lightGlassThick, dark: Hex.darkGlassThick, lightHighContrast: Hex.lightGlassThickHC, darkHighContrast: Hex.darkGlassThickHC),
-
-        meshCool:    Hex.meshCool.map(Color.init(hex:)),
-        meshViolet:  Hex.meshViolet.map(Color.init(hex:)),
-        meshAqua:    Hex.meshAqua.map(Color.init(hex:)),
-
-        textPrimary:   .ruulDynamic(light: Hex.lightTextPrimary, dark: Hex.darkTextPrimary, lightHighContrast: Hex.lightTextPrimaryHC, darkHighContrast: Hex.darkTextPrimaryHC),
-        textSecondary: .ruulDynamic(light: Hex.lightTextSecondary, dark: Hex.darkTextSecondary, lightHighContrast: Hex.lightTextSecondaryHC, darkHighContrast: Hex.darkTextSecondaryHC),
-        textTertiary:  .ruulDynamic(light: Hex.lightTextTertiary, dark: Hex.darkTextTertiary, lightHighContrast: Hex.lightTextSecondaryHC, darkHighContrast: Hex.darkTextSecondaryHC),
-        textInverse:   .ruulDynamic(light: Hex.lightTextInverse, dark: Hex.darkTextInverse, lightHighContrast: Hex.lightTextInverse, darkHighContrast: Hex.darkTextInverse),
-        textAccent:    .ruulDynamic(light: Hex.lightTextAccent, dark: Hex.darkTextAccent, lightHighContrast: Hex.lightTextAccentHC, darkHighContrast: Hex.darkTextAccentHC),
-
-        accentPrimary:   .ruulDynamic(light: Hex.lightAccentPrimary, dark: Hex.darkAccentPrimary, lightHighContrast: Hex.lightAccentPrimaryHC, darkHighContrast: Hex.darkAccentPrimaryHC),
-        accentSecondary: .ruulDynamic(light: Hex.lightAccentSecondary, dark: Hex.darkAccentSecondary, lightHighContrast: Hex.lightAccentSecondaryHC, darkHighContrast: Hex.darkAccentSecondaryHC),
-        accentSubtle:    .ruulDynamicAlpha(light: Hex.lightAccentPrimary, lightAlpha: 0.10, dark: Hex.darkAccentPrimary, darkAlpha: 0.15, lightHighContrastAlpha: 0.20, darkHighContrastAlpha: 0.25),
-
-        semanticSuccess: .ruulDynamic(light: Hex.lightSuccess, dark: Hex.darkSuccess, lightHighContrast: Hex.lightSuccessHC, darkHighContrast: Hex.darkSuccessHC),
-        semanticWarning: .ruulDynamic(light: Hex.lightWarning, dark: Hex.darkWarning, lightHighContrast: Hex.lightWarningHC, darkHighContrast: Hex.darkWarningHC),
-        semanticError:   .ruulDynamic(light: Hex.lightError, dark: Hex.darkError, lightHighContrast: Hex.lightErrorHC, darkHighContrast: Hex.darkErrorHC),
-        semanticInfo:    .ruulDynamic(light: Hex.lightInfo, dark: Hex.darkInfo, lightHighContrast: Hex.lightInfoHC, darkHighContrast: Hex.darkInfoHC),
-
-        borderSubtle:  .ruulDynamicAlpha(light: 0x0F172A, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.06, lightHighContrastAlpha: 0.16, darkHighContrastAlpha: 0.16),
-        borderDefault: .ruulDynamicAlpha(light: 0x0F172A, lightAlpha: 0.10, dark: 0xFFFFFF, darkAlpha: 0.10, lightHighContrastAlpha: 0.24, darkHighContrastAlpha: 0.24),
-        borderStrong:  .ruulDynamicAlpha(light: 0x0F172A, lightAlpha: 0.16, dark: 0xFFFFFF, darkAlpha: 0.16, lightHighContrastAlpha: 0.36, darkHighContrastAlpha: 0.36),
-        borderGlass:   .ruulDynamicAlpha(light: 0xFFFFFF, lightAlpha: 0.70, dark: 0xFFFFFF, darkAlpha: 0.16, lightHighContrastAlpha: 0.80, darkHighContrastAlpha: 0.30),
-
-        shadowSm: .ruulDynamicAlpha(light: 0x0F172A, lightAlpha: 0.04, dark: 0x000000, darkAlpha: 0.30, lightHighContrastAlpha: 0.08, darkHighContrastAlpha: 0.40),
-        shadowMd: .ruulDynamicAlpha(light: 0x0F172A, lightAlpha: 0.08, dark: 0x000000, darkAlpha: 0.40, lightHighContrastAlpha: 0.14, darkHighContrastAlpha: 0.50),
-        shadowLg: .ruulDynamicAlpha(light: 0x0F172A, lightAlpha: 0.12, dark: 0x000000, darkAlpha: 0.50, lightHighContrastAlpha: 0.20, darkHighContrastAlpha: 0.60)
-    )
-}
-
-// MARK: - Hex constants (single source of truth, easy to tune)
-
-private enum Hex {
-    // Light — neutral off-white canvas. Subtle enough that pure-white
-    // cards / chrome still read distinct, but not pure-white itself
-    // (cards on canvas screens now use the canvas tone as their fill,
-    // so the bg needs to be a touch off-pure so the cards stay
-    // perceivable via the soft shadow alone). The previous warm-cream
-    // (#F6F4EF) read as too peachy; this is a near-neutral off-white.
-    static let lightCanvas: UInt32 = 0xFAFAF9
-    static let lightElevated: UInt32 = 0xFFFFFF
-    static let lightRecessed: UInt32 = 0xEFEFEE
-    static let lightCanvasHC: UInt32 = 0xFFFFFF
-    static let lightElevatedHC: UInt32 = 0xFFFFFF
-    static let lightRecessedHC: UInt32 = 0xE0E0E0
-
-    static let lightGlassThin: UInt32 = 0xFFFFFF
-    static let lightGlassRegular: UInt32 = 0xFFFFFF
-    static let lightGlassThick: UInt32 = 0xFFFFFF
-    static let lightGlassThinHC: UInt32 = 0xFFFFFF
-    static let lightGlassRegularHC: UInt32 = 0xFFFFFF
-    static let lightGlassThickHC: UInt32 = 0xFFFFFF
-
-    static let lightTextPrimary: UInt32 = 0x000000
-    static let lightTextSecondary: UInt32 = 0x6B6B6F
-    static let lightTextTertiary: UInt32 = 0xA1A1A6
-    static let lightTextInverse: UInt32 = 0xFFFFFF
-    // textAccent now mirrors textPrimary — Apple Sports doesn't use a brand
-    // accent color for inline text; emphasis comes from weight + size.
-    static let lightTextAccent: UInt32 = 0x000000
-    static let lightTextPrimaryHC: UInt32 = 0x000000
-    static let lightTextSecondaryHC: UInt32 = 0x3A3A3C
-    static let lightTextAccentHC: UInt32 = 0x000000
-
-    // Apple Sports — fully monochrome accent. App chrome (FAB, focus rings,
-    // primary buttons) is pure black in light mode. Color identity lives in
-    // event covers (saturated mesh gradients) and semantic states.
-    static let lightAccentPrimary: UInt32 = 0x000000
-    static let lightAccentSecondary: UInt32 = 0x1C1C1E
-    static let lightAccentPrimaryHC: UInt32 = 0x000000
-    static let lightAccentSecondaryHC: UInt32 = 0x000000
-
-    static let lightSuccess: UInt32 = 0x10B981
-    static let lightWarning: UInt32 = 0xF59E0B
-    static let lightError: UInt32 = 0xEF4444
-    static let lightInfo: UInt32 = 0x3B82F6
-    static let lightSuccessHC: UInt32 = 0x047857
-    static let lightWarningHC: UInt32 = 0xB45309
-    static let lightErrorHC: UInt32 = 0xB91C1C
-    static let lightInfoHC: UInt32 = 0x1D4ED8
-
-    // Dark — neutral near-black canvas, mirrors the light side's
-    // near-neutral off-white. Subtle enough that elevated chrome
-    // (#1C1C1C) and recessed (#080808) still read distinct.
-    static let darkCanvas: UInt32 = 0x0F0F0F
-    static let darkElevated: UInt32 = 0x1C1C1C
-    static let darkRecessed: UInt32 = 0x080808
-    static let darkCanvasHC: UInt32 = 0x000000
-    static let darkElevatedHC: UInt32 = 0x121212
-    static let darkRecessedHC: UInt32 = 0x000000
-
-    static let darkGlassThin: UInt32 = 0xFFFFFF
-    static let darkGlassRegular: UInt32 = 0xFFFFFF
-    static let darkGlassThick: UInt32 = 0xFFFFFF
-    static let darkGlassThinHC: UInt32 = 0xFFFFFF
-    static let darkGlassRegularHC: UInt32 = 0xFFFFFF
-    static let darkGlassThickHC: UInt32 = 0xFFFFFF
-
-    static let darkTextPrimary: UInt32 = 0xFFFFFF
-    static let darkTextSecondary: UInt32 = 0x9A9A9F
-    static let darkTextTertiary: UInt32 = 0x636367
-    static let darkTextInverse: UInt32 = 0x000000
-    // textAccent mirrors textPrimary in dark too — pure white inline emphasis.
-    static let darkTextAccent: UInt32 = 0xFFFFFF
-    static let darkTextPrimaryHC: UInt32 = 0xFFFFFF
-    static let darkTextSecondaryHC: UInt32 = 0xD1D1D6
-    static let darkTextAccentHC: UInt32 = 0xFFFFFF
-
-    // Apple Sports — fully monochrome accent in dark mode too. Pure white
-    // for FAB / primary buttons / focus rings on the near-OLED background.
-    static let darkAccentPrimary: UInt32 = 0xFFFFFF
-    static let darkAccentSecondary: UInt32 = 0xE5E5E7
-    static let darkAccentPrimaryHC: UInt32 = 0xFFFFFF
-    static let darkAccentSecondaryHC: UInt32 = 0xFFFFFF
-
-    static let darkSuccess: UInt32 = 0x34D399
-    static let darkWarning: UInt32 = 0xFBBF24
-    static let darkError: UInt32 = 0xF87171
-    static let darkInfo: UInt32 = 0x60A5FA
-    static let darkSuccessHC: UInt32 = 0x6EE7B7
-    static let darkWarningHC: UInt32 = 0xFCD34D
-    static let darkErrorHC: UInt32 = 0xFCA5A5
-    static let darkInfoHC: UInt32 = 0x93C5FD
-
-    // Monochrome meshes — very subtle near-canvas variations, Luma/Apple-Sports
-    // aesthetic. No violet, blue, or color tint. The 9 stops cluster tightly
-    // around a near-canvas value so MeshGradient renders almost flat with
-    // gentle illumination, not a colored gradient.
-    static let meshCool: [UInt32] = [
-        0xF7F8FA, 0xF2F4F7, 0xF6F8FB, 0xF0F2F5, 0xF4F6F9, 0xEDEFF3, 0xF1F3F6, 0xEAECEF, 0xF5F7FA
-    ]
-    static let meshViolet: [UInt32] = [
-        0xF8F8F9, 0xF3F3F4, 0xF7F7F8, 0xF1F1F2, 0xF5F5F6, 0xEEEEEF, 0xF2F2F3, 0xEBEBEC, 0xF6F6F7
-    ]
-    static let meshAqua: [UInt32] = [
-        0xF7F8F8, 0xF2F4F4, 0xF6F7F7, 0xF0F2F2, 0xF4F6F6, 0xEDEFEF, 0xF1F3F3, 0xEAECEC, 0xF5F7F7
-    ]
-}
-
-// MARK: - Color helpers
+// MARK: - Static color accessors
+//
+// Bridge from legacy `Color.ruul*` names to native system colors. New code
+// should prefer `Color(.systemBackground)` / `.primary` / `.accentColor`
+// directly; these aliases exist because ~400 call-sites still use them and
+// the migration runs gradually.
 
 public extension Color {
-    init(hex: UInt32) {
-        let r = Double((hex >> 16) & 0xFF) / 255.0
-        let g = Double((hex >> 8) & 0xFF) / 255.0
-        let b = Double(hex & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b)
-    }
 
-    init(hex: UInt32, alpha: Double) {
-        let r = Double((hex >> 16) & 0xFF) / 255.0
-        let g = Double((hex >> 8) & 0xFF) / 255.0
-        let b = Double(hex & 0xFF) / 255.0
-        self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
-    }
+    // Backgrounds — Apple's three-tier system: page / row / grouped backdrop.
+    static var ruulBackgroundCanvas: Color   { Color(.systemBackground) }
+    static var ruulBackgroundElevated: Color { Color(.secondarySystemBackground) }
+    static var ruulBackgroundRecessed: Color { Color(.systemGroupedBackground) }
 
-    /// Resolve a different hex per scheme + contrast at runtime via UIKit traits.
-    static func ruulDynamic(
-        light: UInt32,
-        dark: UInt32,
-        lightHighContrast: UInt32,
-        darkHighContrast: UInt32
-    ) -> Color {
-        Color(uiColor: UIColor { trait in
-            let isHighContrast = trait.accessibilityContrast == .high
-            switch (trait.userInterfaceStyle, isHighContrast) {
-            case (.dark, true):  return UIColor(rgb: darkHighContrast)
-            case (.dark, false): return UIColor(rgb: dark)
-            case (_, true):      return UIColor(rgb: lightHighContrast)
-            default:             return UIColor(rgb: light)
-            }
-        })
-    }
-
-    /// Same shape but with per-mode alpha (used for borders, shadows, subtle tints).
-    static func ruulDynamicAlpha(
-        light: UInt32,
-        lightAlpha: Double,
-        dark: UInt32,
-        darkAlpha: Double,
-        lightHighContrastAlpha: Double,
-        darkHighContrastAlpha: Double
-    ) -> Color {
-        Color(uiColor: UIColor { trait in
-            let isHighContrast = trait.accessibilityContrast == .high
-            switch (trait.userInterfaceStyle, isHighContrast) {
-            case (.dark, true):  return UIColor(rgb: dark, alpha: darkHighContrastAlpha)
-            case (.dark, false): return UIColor(rgb: dark, alpha: darkAlpha)
-            case (_, true):      return UIColor(rgb: light, alpha: lightHighContrastAlpha)
-            default:             return UIColor(rgb: light, alpha: lightAlpha)
-            }
-        })
-    }
-}
-
-private extension UIColor {
-    convenience init(rgb: UInt32, alpha: Double = 1.0) {
-        let r = CGFloat((rgb >> 16) & 0xFF) / 255.0
-        let g = CGFloat((rgb >> 8) & 0xFF) / 255.0
-        let b = CGFloat(rgb & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b, alpha: CGFloat(alpha))
-    }
-}
-
-// MARK: - Static accessors (convenience for views that don't need env reactivity)
-
-public extension Color {
-    /// Bridged to system backgrounds per Plan §4.2. `Canvas` = the
-    /// page-level background (`.systemBackground`); `Elevated` = row
-    /// fill on inset-grouped lists (`.secondarySystemBackground`);
-    /// `Recessed` = the grouped-list backdrop (`.systemGroupedBackground`).
-    /// These adapt to dark mode and high-contrast trait natively.
-    static var ruulBackgroundCanvas: Color    { Color(.systemBackground) }
-    static var ruulBackgroundElevated: Color  { Color(.secondarySystemBackground) }
-    static var ruulBackgroundRecessed: Color  { Color(.systemGroupedBackground) }
-
-    /// Glass fill tints. Apple's recipe is `.glassEffect()` over content,
-    /// not a flat color — these stay as bridges to `Color(.tertiarySystemFill)`
-    /// so legacy call sites compile while we migrate to `.glassEffect()`.
+    // Glass-tint fills. Apple's recipe is `.glassEffect()` over content; these
+    // bridge to a tertiary system fill while the migration to `.glassEffect()`
+    // runs.
     static var ruulSurfaceGlassThin: Color    { Color(.tertiarySystemFill) }
     static var ruulSurfaceGlassRegular: Color { Color(.tertiarySystemFill) }
     static var ruulSurfaceGlassThick: Color   { Color(.tertiarySystemFill) }
 
-    static var ruulTextPrimary: Color    { RuulColors.default.textPrimary }
-    static var ruulTextSecondary: Color  { RuulColors.default.textSecondary }
-    static var ruulTextTertiary: Color   { RuulColors.default.textTertiary }
-    /// White over a tinted button label. With `.borderedProminent` and
-    /// `.tint(.accentColor)` SwiftUI handles inverse text automatically,
-    /// but call sites that pre-date that pattern still reach for this
-    /// token. Bridged to `Color.white` so the visual stays correct on
-    /// any tint backdrop.
-    static var ruulTextInverse: Color    { .white }
-    /// Foreground color for "accent-tinted text" (links, prominent
-    /// labels). Bridged to `Color.accentColor` so the new system accent
-    /// (deep unsaturated blue, per doctrine #3) drives every accent-y
-    /// label without per-site changes.
-    static var ruulTextAccent: Color     { .accentColor }
+    // Text — bridges to the system label hierarchy (adapts to dark + HC).
+    static var ruulTextPrimary: Color   { Color(.label) }
+    static var ruulTextSecondary: Color { Color(.secondaryLabel) }
+    static var ruulTextTertiary: Color  { Color(.tertiaryLabel) }
+    /// White over a tinted button label. Bridged to `Color.white`.
+    static var ruulTextInverse: Color   { .white }
+    /// Foreground for accent-tinted text. Bridged to `Color.accentColor`.
+    static var ruulTextAccent: Color    { .accentColor }
 
-    /// Bridged to `Color.accentColor` (Asset Catalog `AccentColor` set).
-    /// Per doctrine decision #3 — one accent color, period. Single
-    /// source of truth for the tint of every primary affordance.
+    // Accent — single source of truth is the app's Asset Catalog AccentColor.
     static var ruulAccentPrimary: Color   { .accentColor }
-    /// Bridged to `.secondary` per doctrine #3 (`accentSecondary` was a
-    /// rainbow brand var; collapsed to the system's secondary content).
     static var ruulAccentSecondary: Color { .secondary }
-    /// Inline accent tint at 15% opacity — the canonical pattern for
-    /// chip/tag fills derived from the system accent.
     static var ruulAccentSubtle: Color    { Color.accentColor.opacity(0.15) }
 
-    static var ruulSemanticSuccess: Color { RuulColors.default.semanticSuccess }
-    static var ruulSemanticWarning: Color { RuulColors.default.semanticWarning }
-    static var ruulSemanticError: Color   { RuulColors.default.semanticError }
-    static var ruulSemanticInfo: Color    { RuulColors.default.semanticInfo }
+    // Semantic — bridges to system semantic colors (adapt natively).
+    static var ruulSemanticSuccess: Color { Color(.systemGreen) }
+    static var ruulSemanticWarning: Color { Color(.systemOrange) }
+    static var ruulSemanticError: Color   { Color(.systemRed) }
+    static var ruulSemanticInfo: Color    { Color(.systemBlue) }
 
-    /// All border tokens bridge to `Color(.separator)` per Plan §4.2:
-    /// Apple uses materials + separators (not borders) for visual
-    /// grouping. Subtle/Default/Strong/Glass variants collapse to the
-    /// single system separator color — it already adapts to dark mode
-    /// and high-contrast. Where the visual delta really matters, the
-    /// canonical pattern is moving the contained content into a
-    /// `Section` inside a `List` (which gets separators for free).
-    static var ruulBorderSubtle: Color   { Color(.separator) }
-    static var ruulBorderDefault: Color  { Color(.separator) }
-    static var ruulBorderStrong: Color   { Color(.separator) }
-    static var ruulBorderGlass: Color    { Color(.separator) }
+    // Borders — all bridge to `.separator`. Apple uses materials + separators
+    // for visual grouping. Where contrast really matters, the canonical
+    // pattern is moving content into a `Section` inside a `List` (which gets
+    // separators for free).
+    static var ruulBorderSubtle: Color  { Color(.separator) }
+    static var ruulBorderDefault: Color { Color(.separator) }
+    static var ruulBorderStrong: Color  { Color(.separator) }
+    static var ruulBorderGlass: Color   { Color(.separator) }
 
-    /// Modal scrim / dimming overlay (Color.black.opacity(0.35) replacement).
-    /// Adapts: stronger in light mode (so dim is visible) vs dark mode.
+    /// Modal scrim. Stronger in light mode (so the dim is visible) vs dark.
     static var ruulOverlayDim: Color {
         Color(uiColor: UIColor { trait in
             trait.userInterfaceStyle == .dark
@@ -350,68 +59,50 @@ public extension Color {
         })
     }
 
-    /// Decorative highlight overlay used for soft inner glows on textured
-    /// surfaces (mesh covers, etc). Subtle white wash.
+    /// Soft inner glow for textured surfaces.
     static var ruulOverlayHighlight: Color {
         Color(uiColor: UIColor { trait in
             UIColor(white: 1.0, alpha: trait.userInterfaceStyle == .dark ? 0.10 : 0.18)
         })
     }
 
-    // MARK: - On-image content (text/icons over photo or vibrant cover)
+    // MARK: - On-image content (always white/translucent, no scheme adapt)
     //
-    // These tokens DON'T adapt to scheme — they always read against a saturated
-    // image backdrop, so the content is always white/translucent-white. Use
-    // these instead of bare Color.white when overlaying text/badges on photos.
+    // These read against a saturated image backdrop, so they don't adapt to
+    // scheme. Use these instead of bare `Color.white` when overlaying text or
+    // badges on photos.
 
-    /// Primary text on top of image/cover (always white).
-    static var ruulOnImage: Color { Color(uiColor: UIColor(white: 1.0, alpha: 1.0)) }
-
-    /// Secondary text on top of image/cover (white at 85%).
+    /// Primary text over image/cover.
+    static var ruulOnImage: Color          { Color(uiColor: UIColor(white: 1.0, alpha: 1.0)) }
+    /// Secondary text over image/cover.
     static var ruulOnImageSecondary: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.85)) }
-
-    /// Translucent black badge background over an image (for "Cerrado", etc.).
-    static var ruulImageBadge: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.55)) }
-
-    /// Translucent white pill background over an image (for RSVP status pills).
-    static var ruulImagePill: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.22)) }
-
+    /// Translucent black badge over an image.
+    static var ruulImageBadge: Color       { Color(uiColor: UIColor(white: 0.0, alpha: 0.55)) }
+    /// Translucent white pill over an image.
+    static var ruulImagePill: Color        { Color(uiColor: UIColor(white: 1.0, alpha: 0.22)) }
     /// Translucent white border for pills over images.
-    static var ruulImagePillBorder: Color { Color(uiColor: UIColor(white: 1.0, alpha: 0.30)) }
-
-    /// Solid white pill background over an image — the high-contrast
-    /// "ready to commit" affordance (Tripsy invite-accept pattern).
-    /// Always opaque white regardless of theme; pair with
-    /// `ruulOnImageInverse` (black) for the label.
-    static var ruulImagePillSolid: Color { Color(uiColor: UIColor.white) }
-
-    /// Vignette gradient mid-stop (20% black) for image-content readability.
-    static var ruulImageVignetteMid: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.20)) }
-
-    /// Vignette gradient bottom-stop (78% black).
+    static var ruulImagePillBorder: Color  { Color(uiColor: UIColor(white: 1.0, alpha: 0.30)) }
+    /// Solid white pill over an image (high-contrast affordance).
+    static var ruulImagePillSolid: Color   { Color(uiColor: .white) }
+    /// Vignette gradient mid-stop.
+    static var ruulImageVignetteMid: Color  { Color(uiColor: UIColor(white: 0.0, alpha: 0.20)) }
+    /// Vignette gradient bottom-stop.
     static var ruulImageVignetteDeep: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.78)) }
+    /// Drop shadow under text on images.
+    static var ruulImageTextShadow: Color   { Color(uiColor: UIColor(white: 0.0, alpha: 0.18)) }
+    /// Camera viewfinder background.
+    static var ruulCameraBackground: Color  { Color(uiColor: .black) }
+    /// Text colored to contrast a solid white pill over an image.
+    static var ruulOnImageInverse: Color    { Color(uiColor: .black) }
 
-    /// Drop shadow under text on images (~18% black).
-    static var ruulImageTextShadow: Color { Color(uiColor: UIColor(white: 0.0, alpha: 0.18)) }
-
-    /// Camera viewfinder background — always pure black for contrast.
-    static var ruulCameraBackground: Color { Color(uiColor: UIColor.black) }
-
-    /// Text/icon colored to contrast a SOLID white pill placed over an image
-    /// (always black, regardless of scheme — the pill is always white).
-    static var ruulOnImageInverse: Color { Color(uiColor: UIColor.black) }
-
-    // MARK: - Glass-quiet fills (Luma input pattern)
+    // MARK: - Glass-quiet fills (input pattern)
     //
-    // Theme-adaptive soft fill that reads as "barely-there" against
-    // any underlying surface — almost invisible over a glass sheet,
-    // just enough shape on a solid bg. Used for input fields, soft
-    // chips, and any control that should pick up the ambient/material
-    // tint of its parent rather than imposing its own opaque fill.
+    // Theme-adaptive soft fill that reads as "barely-there" against any
+    // underlying surface — almost invisible over a glass sheet, just enough
+    // shape on a solid background. Used for input fields and soft chips that
+    // should pick up the ambient/material tint of their parent.
 
-    /// Default rest-state fill for inputs / soft chips on any surface.
-    /// 6% primary-text tint — adapts: light mode → faint black wash,
-    /// dark mode → faint white wash.
+    /// Rest-state fill for inputs / soft chips. 6% primary-text tint.
     static var ruulFillGlass: Color {
         Color(uiColor: UIColor { trait in
             trait.userInterfaceStyle == .dark
@@ -420,13 +111,27 @@ public extension Color {
         })
     }
 
-    /// Slightly stronger glass fill for hover / pressed / selected
-    /// variants of the soft chip pattern. 10% primary-text tint.
+    /// Hover / pressed / selected variant.
     static var ruulFillGlassStrong: Color {
         Color(uiColor: UIColor { trait in
             trait.userInterfaceStyle == .dark
                 ? UIColor(white: 1.0, alpha: 0.12)
                 : UIColor(white: 0.0, alpha: 0.10)
         })
+    }
+}
+
+// MARK: - Hex helper
+//
+// Used by `RuulCoverCatalog` to encode the cover gradient palette and by
+// `GroupColorRamp` for the per-group accent ramps. Not for use in feature
+// views — see Lefthook `no-hex-colors` guard.
+
+public extension Color {
+    init(hex: UInt32) {
+        let r = Double((hex >> 16) & 0xFF) / 255.0
+        let g = Double((hex >> 8) & 0xFF) / 255.0
+        let b = Double(hex & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b)
     }
 }
