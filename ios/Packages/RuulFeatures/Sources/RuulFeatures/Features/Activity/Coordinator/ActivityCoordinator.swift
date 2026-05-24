@@ -18,6 +18,7 @@ public final class ActivityCoordinator {
     public let groupId: UUID
     private let repo: any SystemEventRepository
     private let groupsRepo: (any GroupsRepository)?
+    private let resourceRepo: (any ResourceRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "history")
 
     private static let pageSize = 50
@@ -39,15 +40,23 @@ public final class ActivityCoordinator {
     /// renders with "Alguien" until the load completes (one round
     /// trip to `membersWithProfiles`).
     public var memberDirectoryByMemberId: [UUID: MemberWithProfile] = [:]
+    /// P5 (audit gap): resources keyed by id so `.ledgerEntryCreated`
+    /// can resolve `payload.source_resource_id` → name in the feed
+    /// ("Daniel registró $500 para Cena Shabbat"). Empty until first
+    /// successful `loadResources()`; missing names degrade silently
+    /// (the suffix just doesn't appear).
+    public var resourceDirectoryById: [UUID: ResourceRow] = [:]
 
     public init(
         groupId: UUID,
         repo: any SystemEventRepository,
-        groupsRepo: (any GroupsRepository)? = nil
+        groupsRepo: (any GroupsRepository)? = nil,
+        resourceRepo: (any ResourceRepository)? = nil
     ) {
         self.groupId = groupId
         self.repo = repo
         self.groupsRepo = groupsRepo
+        self.resourceRepo = resourceRepo
         self.filter = SystemEventFilter(groupId: groupId)
     }
 
@@ -60,8 +69,9 @@ public final class ActivityCoordinator {
         // del coordinator es events, así que `hasLoaded` se marca al final
         // independiente de membersTask.
         async let membersTask: Void = loadMembers()
+        async let resourcesTask: Void = loadResources()
         async let eventsTask: Void = loadMore()
-        _ = await (membersTask, eventsTask)
+        _ = await (membersTask, resourcesTask, eventsTask)
         hasLoaded = true
     }
 
@@ -75,6 +85,25 @@ public final class ActivityCoordinator {
             isLoading: isLoading,
             error: error
         )
+    }
+
+    /// P5 (audit gap): one-shot resource load. Pulls every active
+    /// resource type the group uses so `.ledgerEntryCreated` entries
+    /// with `source_resource_id` can render the suffix "para X". 200
+    /// is generous — most groups have <50 resources. Soft-fails.
+    private func loadResources() async {
+        guard resourceDirectoryById.isEmpty, let repo = resourceRepo else { return }
+        do {
+            let rows = try await repo.list(
+                in: groupId,
+                types: ResourceType.allCases,
+                statuses: nil,
+                limit: 200
+            )
+            resourceDirectoryById = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
+        } catch {
+            log.warning("loadResources failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     /// One-shot members load. Failures degrade silently (feed still
@@ -115,6 +144,17 @@ public final class ActivityCoordinator {
     /// directory (member left the group, or directory not yet loaded).
     public func memberName(forMemberId memberId: UUID) -> String? {
         memberDirectoryByMemberId[memberId]?.displayName
+    }
+
+    /// P5: resolves a resource id to its display name (from metadata.
+    /// name when present). Used to surface "para Cena Shabbat" suffix
+    /// in `.ledgerEntryCreated` titles when payload carries
+    /// `source_resource_id`. Returns nil when the resource isn't in
+    /// the loaded directory (archived, in another group, or just not
+    /// yet hydrated) — caller drops the suffix gracefully.
+    public func resourceName(forResourceId resourceId: UUID) -> String? {
+        guard let row = resourceDirectoryById[resourceId] else { return nil }
+        return row.metadata["name"]?.stringValue
     }
 
     public func loadMore() async {

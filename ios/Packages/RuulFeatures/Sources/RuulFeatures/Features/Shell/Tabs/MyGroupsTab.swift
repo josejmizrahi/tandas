@@ -319,7 +319,8 @@ public struct MyGroupsTab: View {
                 ActivityView(coordinator: ActivityCoordinator(
                     groupId: group.id,
                     repo: app.systemEventRepo,
-                    groupsRepo: app.groupsRepo
+                    groupsRepo: app.groupsRepo,
+                    resourceRepo: app.resourceRepo
                 ))
                 .environment(app)
 

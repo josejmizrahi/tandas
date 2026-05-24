@@ -208,7 +208,10 @@ public struct RootShell: View {
             repo: app.systemEventRepo,
             // Slice 11: pass groupsRepo so the feed can render actor
             // names ("Jose creó un derecho") instead of "Alguien".
-            groupsRepo: app.groupsRepo
+            groupsRepo: app.groupsRepo,
+            // P5: pass resourceRepo so ledger entries with
+            // source_resource_id render the "para X" suffix.
+            resourceRepo: app.resourceRepo
         )
         shellState.activityCoordinator = activityCoordinator
 

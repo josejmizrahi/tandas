@@ -189,7 +189,11 @@ public struct ActivityView: View {
                     // member ids (paid_by_member_id, from_member_id)
                     // to display names so ledger atoms render as
                     // "Daniel registró $500 pagado por María" etc.
-                    resolveMemberName: { coordinator.memberName(forMemberId: $0) }
+                    resolveMemberName: { coordinator.memberName(forMemberId: $0) },
+                    // P5: resource id → name so the feed surfaces
+                    // "para Cena Shabbat" suffix when the payload
+                    // carries source_resource_id.
+                    resolveResourceName: { coordinator.resourceName(forResourceId: $0) }
                 )
                 Button { detailEvent = ev } label: {
                     RuulTimelineItem(

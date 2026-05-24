@@ -19,15 +19,16 @@ public struct HistoryItemPresentation {
         return f.localizedString(for: date, relativeTo: .now)
     }
 
-    /// P2 (mig 00366): when caller provides `resolveMemberName`, the
-    /// `.ledgerEntryCreated` case unpacks the payload's
-    /// `paid_by_member_id` and surfaces "pagado por X" when the payer
-    /// differs from the actor. Backwards-compat: callers that don't
-    /// pass the closure get the prior generic copy.
+    /// P2 (mig 00366) + P5: when callers provide `resolveMemberName`
+    /// and/or `resolveResourceName`, the `.ledgerEntryCreated` case
+    /// renders the tri-role context ("pagado por X") + the source-
+    /// resource context ("para Cena Shabbat"). Backwards-compat —
+    /// callers without the closures still get the legacy generic copy.
     public init(
         event: SystemEvent,
         memberName: String? = nil,
-        resolveMemberName: ((UUID) -> String?)? = nil
+        resolveMemberName: ((UUID) -> String?)? = nil,
+        resolveResourceName: ((UUID) -> String?)? = nil
     ) {
         let actor = memberName ?? "Alguien"
         switch event.eventType {
@@ -240,13 +241,15 @@ public struct HistoryItemPresentation {
             self.tone = .neutral
         case .ledgerEntryCreated:
             self.icon = "dollarsign.circle"
-            // P2 enrichment: unpack payload to surface tri-role context
-            // when present. Falls back to generic copy when the payload
-            // doesn't carry the new keys (legacy entries pre-mig 00366).
+            // P2 + P5 enrichment: unpack payload to surface tri-role
+            // context (paid_by) + source resource ("para X") + in-kind
+            // hint when present. Falls back to generic copy when the
+            // payload lacks the keys (legacy entries pre-mig 00366).
             self.title = Self.composeLedgerTitle(
                 actor: actor,
                 payload: event.payload,
-                resolveMemberName: resolveMemberName
+                resolveMemberName: resolveMemberName,
+                resolveResourceName: resolveResourceName
             )
             self.tone = .neutral
         case .warningEmitted:
@@ -468,13 +471,27 @@ public struct HistoryItemPresentation {
     private static func composeLedgerTitle(
         actor: String,
         payload: JSONConfig,
-        resolveMemberName: ((UUID) -> String?)?
+        resolveMemberName: ((UUID) -> String?)?,
+        resolveResourceName: ((UUID) -> String?)?
     ) -> String {
         let kind = payload["type"]?.stringValue ?? ""
         let amount = formatAmount(
             cents: payload["amount_cents"]?.intValue,
             currency: payload["currency"]?.stringValue
         )
+        // P5: "para {resource}" suffix when the entry was attributed
+        // to a specific event/asset/space. Empty when no source or
+        // when the directory hasn't loaded the resource yet.
+        let resourceSuffix: String = {
+            guard let resolve = resolveResourceName,
+                  let s = payload["source_resource_id"]?.stringValue,
+                  let uuid = UUID(uuidString: s),
+                  let name = resolve(uuid)
+            else { return "" }
+            return " para \(name)"
+        }()
+        // P6: in-kind is encoded directly into the contribution
+        // variant's wording ("aportó en especie") — no separate suffix.
 
         // Resolve a richer actor when the generic `memberName` came in
         // as "Alguien". The trigger emits payload.from_member_id for
@@ -487,6 +504,7 @@ public struct HistoryItemPresentation {
         )
         let effectiveActor = (actor == "Alguien" ? payloadActor : actor) ?? actor
 
+        let base: String
         switch kind {
         case "expense":
             // P4: if participants array is present + ≥2 entries, surface
@@ -499,42 +517,49 @@ public struct HistoryItemPresentation {
                 return nil
             }()
             if let n = participantsCount {
-                return amount.isEmpty
+                base = amount.isEmpty
                     ? "\(effectiveActor) registró un gasto compartido entre \(n) personas"
                     : "\(effectiveActor) registró \(amount) entre \(n) personas"
-            }
-            if let paidById = payload["paid_by_member_id"]?.stringValue,
-               let paidByUUID = UUID(uuidString: paidById),
-               let paidByName = resolveMemberName?(paidByUUID),
-               paidByName != effectiveActor {
-                return amount.isEmpty
+            } else if let paidById = payload["paid_by_member_id"]?.stringValue,
+                      let paidByUUID = UUID(uuidString: paidById),
+                      let paidByName = resolveMemberName?(paidByUUID),
+                      paidByName != effectiveActor {
+                base = amount.isEmpty
                     ? "\(effectiveActor) registró un gasto pagado por \(paidByName)"
                     : "\(effectiveActor) registró un gasto de \(amount) pagado por \(paidByName)"
+            } else {
+                base = amount.isEmpty
+                    ? "\(effectiveActor) registró un gasto"
+                    : "\(effectiveActor) registró un gasto de \(amount)"
             }
-            return amount.isEmpty
-                ? "\(effectiveActor) registró un gasto"
-                : "\(effectiveActor) registró un gasto de \(amount)"
         case "contribution":
+            // P6: in-kind hint is built directly into the contribution
+            // variant via the "en especie" wording — no extra suffix
+            // needed, the language carries the meaning.
             let inKind = payload["in_kind"]?.boolValue == true
             if inKind {
-                return amount.isEmpty
+                base = amount.isEmpty
                     ? "\(effectiveActor) aportó en especie"
                     : "\(effectiveActor) aportó en especie por \(amount)"
+            } else {
+                base = amount.isEmpty
+                    ? "\(effectiveActor) aportó al dinero compartido"
+                    : "\(effectiveActor) aportó \(amount)"
             }
-            return amount.isEmpty
-                ? "\(effectiveActor) aportó al dinero compartido"
-                : "\(effectiveActor) aportó \(amount)"
         case "settlement":
-            return amount.isEmpty
+            base = amount.isEmpty
                 ? "\(effectiveActor) registró un pago"
                 : "\(effectiveActor) registró un pago de \(amount)"
         case "payout":
-            return amount.isEmpty
+            base = amount.isEmpty
                 ? "\(effectiveActor) recibió un pago del fondo"
                 : "\(effectiveActor) recibió \(amount) del fondo"
         default:
-            return "\(effectiveActor) registró un movimiento de dinero"
+            base = "\(effectiveActor) registró un movimiento de dinero"
         }
+        // P5: append "para X" when payload carries a resolvable
+        // source resource. Empty suffix when no source / not loaded.
+        return base + resourceSuffix
     }
 
     /// Resolves an actor display name from the payload's member ids
