@@ -525,7 +525,7 @@ public struct HomeView: View {
             }
             .buttonStyle(.borderedProminent)
         }
-        .padding(.top, RuulSpacing.s8)
+        .padding(.top, 40)
     }
 
     // MARK: - Helpers (icons, meta, RSVP trailing, display name)

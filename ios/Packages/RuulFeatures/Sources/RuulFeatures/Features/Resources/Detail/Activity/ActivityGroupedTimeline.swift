@@ -17,14 +17,14 @@ struct ActivityGroupedTimeline: View {
     var body: some View {
         VStack(spacing: 14) {
             ForEach(groups, id: \.label) { group in
-                VStack(alignment: .leading, spacing: RuulSpacing.s0) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text(group.label)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulTextSecondary)
-                        .padding(.horizontal, RuulSpacing.s1)
+                        .padding(.horizontal, RuulSpacing.xxs)
                         .padding(.bottom, RuulSpacing.micro)
 
-                    VStack(spacing: RuulSpacing.s0) {
+                    VStack(spacing: 0) {
                         ForEach(Array(group.items.enumerated()), id: \.element.id) { i, item in
                             ActivityRowView(item: item, accent: accent)
                             if i < group.items.count - 1 {
@@ -87,7 +87,7 @@ struct ActivityRowView: View {
     let accent: Color
 
     var body: some View {
-        HStack(alignment: .top, spacing: RuulSpacing.s3) {
+        HStack(alignment: .top, spacing: RuulSpacing.sm) {
             Group {
                 if let icon = item.icon {
                     Image(systemName: icon)
@@ -118,7 +118,7 @@ struct ActivityRowView: View {
                 .padding(.top, RuulSpacing.s0_5)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, RuulSpacing.s3)
+        .padding(.vertical, RuulSpacing.sm)
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {

@@ -37,10 +37,10 @@ struct MapSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SectionHeader(title: title)
 
-            VStack(alignment: .leading, spacing: RuulSpacing.s0) {
+            VStack(alignment: .leading, spacing: 0) {
                 Map(position: $cameraPosition, interactionModes: []) {
                     Marker(location.title ?? "Ubicación", coordinate: location.coordinate)
                         .tint(accent)
@@ -64,7 +64,7 @@ struct MapSection: View {
                         .foregroundStyle(Color.ruulTextSecondary)
                         .lineLimit(3)
 
-                    HStack(spacing: RuulSpacing.s2) {
+                    HStack(spacing: RuulSpacing.xs) {
                         Button(action: openInAppleMaps) {
                             Label("Abrir en Mapas", systemImage: "arrow.up.right.square")
                                 .font(.subheadline.weight(.semibold))
@@ -84,7 +84,7 @@ struct MapSection: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, RuulSpacing.s3)
+                .padding(.vertical, RuulSpacing.sm)
             }
             .background(Color.ruulSurface)
             .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))

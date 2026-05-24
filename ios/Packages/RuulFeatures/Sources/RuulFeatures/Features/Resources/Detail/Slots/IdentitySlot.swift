@@ -16,7 +16,7 @@ struct IdentitySlot: View {
     let accent: Color
 
     var body: some View {
-        HStack(spacing: RuulSpacing.s3) {
+        HStack(spacing: RuulSpacing.sm) {
             RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                 .fill(accent.opacity(0.15))
                 .frame(width: 56, height: 56)
@@ -75,7 +75,7 @@ struct BadgeView: View {
         Text(badge.text)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(badge.color)
-            .padding(.horizontal, RuulSpacing.s2)
+            .padding(.horizontal, RuulSpacing.xs)
             .padding(.vertical, RuulSpacing.s0_5)
             .background(badge.color.opacity(0.15), in: Capsule())
     }

@@ -103,45 +103,45 @@ public struct ResourceDetailContent: View {
 
     public var body: some View {
         ScrollView {
-            VStack(spacing: RuulSpacing.s0) {
+            VStack(spacing: 0) {
                 IdentitySlot(data: config.identity, accent: config.accent)
-                    .padding(.horizontal, RuulSpacing.s5)
-                    .padding(.top, RuulSpacing.s2)
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.xs)
 
                 if let ctx = config.groupContext {
                     GroupContextSlot(data: ctx)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s3)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.sm)
                 }
 
                 if let hero = config.hero {
                     HeroSlot(data: hero)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s3)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.sm)
                 }
 
                 if !config.actions.isEmpty {
                     ActionsSlot(actions: config.actions, accent: config.accent)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s4)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.md)
                 }
 
                 ForEach(config.sections) { section in
                     SectionSlot(section: section, accent: config.accent)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                 }
 
                 if let moneyCtx = config.moneyContext {
                     ResourceMoneySlot(context: moneyCtx)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                 }
 
                 if let activity = config.activity {
                     ActivitySlot(source: activity, accent: config.accent)
-                        .padding(.horizontal, RuulSpacing.s5)
-                        .padding(.top, RuulSpacing.s5)
+                        .padding(.horizontal, RuulSpacing.lg)
+                        .padding(.top, RuulSpacing.lg)
                 }
 
                 Color.clear.frame(height: 32)

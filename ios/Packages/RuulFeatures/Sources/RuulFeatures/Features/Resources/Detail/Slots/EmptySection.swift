@@ -19,7 +19,7 @@ struct EmptySection: View {
     let description: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SectionHeader(title: title)
 
             ContentUnavailableView(
@@ -41,7 +41,7 @@ struct CustomSection: View {
     let content: AnyView
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             if let title { SectionHeader(title: title) }
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -63,6 +63,6 @@ struct SectionHeader: View {
         Text(title)
             .font(.subheadline)
             .foregroundStyle(Color.ruulTextSecondary)
-            .padding(.horizontal, RuulSpacing.s1)
+            .padding(.horizontal, RuulSpacing.xxs)
     }
 }

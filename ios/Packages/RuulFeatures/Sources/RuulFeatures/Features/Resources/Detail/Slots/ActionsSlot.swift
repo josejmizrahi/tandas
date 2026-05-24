@@ -30,7 +30,7 @@ struct ActionsSlot: View {
     let accent: Color
 
     var body: some View {
-        HStack(spacing: RuulSpacing.s2) {
+        HStack(spacing: RuulSpacing.xs) {
             ForEach(actions) { action in
                 ActionButton(action: action)
             }

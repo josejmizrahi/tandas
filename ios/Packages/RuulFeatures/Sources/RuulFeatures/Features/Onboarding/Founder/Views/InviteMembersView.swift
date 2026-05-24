@@ -171,7 +171,7 @@ public struct InviteMembersView: View {
             Text("Por invitar (\(coord.pendingInvites.count))")
                 .font(.footnote)
                 .foregroundStyle(Color.secondary)
-            VStack(spacing: RuulSpacing.s0) {
+            VStack(spacing: 0) {
                 ForEach(coord.pendingInvites) { pending in
                     HStack {
                         VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {

@@ -43,7 +43,7 @@ public struct EditEventView: View {
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.md)
-                .padding(.bottom, RuulSpacing.s10)
+                .padding(.bottom, 64)
             }
             .ruulSheetToolbar("Editar evento")
             .safeAreaInset(edge: .bottom) {

@@ -117,7 +117,7 @@ public struct SignInView: View {
                     }
                 }
                 .padding(.horizontal, RuulSpacing.lg)
-                .padding(.top, RuulSpacing.s8)
+                .padding(.top, 40)
                 .padding(.bottom, RuulSpacing.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

@@ -50,7 +50,7 @@ struct GroupContextSlot: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
             }
-            .padding(.horizontal, RuulSpacing.s3)
+            .padding(.horizontal, RuulSpacing.sm)
             .padding(.vertical, 10)
             .contentShape(Rectangle())
         }

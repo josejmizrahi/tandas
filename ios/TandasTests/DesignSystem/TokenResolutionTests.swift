@@ -49,10 +49,10 @@ struct TokenResolutionTests {
     @Test("Spacing follows 4pt grid")
     func spacingIsOnGrid() {
         let values: [CGFloat] = [
-            RuulSpacing.s0, RuulSpacing.s1, RuulSpacing.s2, RuulSpacing.s3,
-            RuulSpacing.s4, RuulSpacing.s5, RuulSpacing.s6, RuulSpacing.s7,
-            RuulSpacing.s8, RuulSpacing.s9, RuulSpacing.s10, RuulSpacing.s11,
-            RuulSpacing.s12
+            0, RuulSpacing.xxs, RuulSpacing.xs, RuulSpacing.sm,
+            RuulSpacing.md, RuulSpacing.lg, RuulSpacing.xl, RuulSpacing.xxl,
+            40, RuulSpacing.xxxl, 64, 80,
+            RuulSpacing.tabBarBottomSafeArea
         ]
         for v in values {
             #expect(v.truncatingRemainder(dividingBy: 4) == 0)

@@ -47,7 +47,7 @@ public struct MyFeedView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)
-            .padding(.bottom, RuulSpacing.s12)
+            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
         .refreshable { await coordinator.refresh() }
@@ -63,7 +63,7 @@ public struct MyFeedView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)
-            .padding(.bottom, RuulSpacing.s12)
+            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
         .refreshable { await coordinator.refresh() }
@@ -158,7 +158,7 @@ public struct MyFeedView: View {
         } description: {
             Text("Cuando alguno de tus grupos proponga algo, va a aparecer acá.")
         }
-        .padding(.top, RuulSpacing.s8)
+        .padding(.top, 40)
     }
 
     // Nota: la antigua `errorBanner(_:)` local quedó obsoleta — el

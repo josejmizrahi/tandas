@@ -69,7 +69,7 @@ public struct HomeOverviewView: View {
 
     public var body: some View {
         ScrollView {
-            LazyVStack(spacing: RuulSpacing.s0) {
+            LazyVStack(spacing: 0) {
                 greetingHeader
 
                 // P9: cross-group obligations roll-up. The card hides
@@ -122,9 +122,9 @@ public struct HomeOverviewView: View {
                     )
                 }
 
-                Color.clear.frame(height: RuulSpacing.s12) // padding por tab bar
+                Color.clear.frame(height: RuulSpacing.tabBarBottomSafeArea) // padding por tab bar
             }
-            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
         }
         .background(Color.ruulBackgroundRecessed)
         .scrollEdgeEffectStyle(.soft, for: .all)
@@ -152,7 +152,7 @@ public struct HomeOverviewView: View {
     @ViewBuilder
     private var greetingHeader: some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: RuulSpacing.s0) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(greetingLine)
                     .font(.largeTitle.weight(.bold))
                 Text(displayName)
@@ -162,13 +162,13 @@ public struct HomeOverviewView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
-            Spacer(minLength: RuulSpacing.s3)
+            Spacer(minLength: RuulSpacing.sm)
             Text(Date.now, format: .dateTime.weekday(.wide))
                 .font(.subheadline)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .textCase(.lowercase)
         }
-        .padding(.top, RuulSpacing.s2)
+        .padding(.top, RuulSpacing.xs)
     }
 
     /// Returns the friendliest form of the profile name we can render
@@ -383,7 +383,7 @@ private struct SpacesStrip: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: RuulSpacing.s4) {
+            LazyHStack(spacing: RuulSpacing.md) {
                 ForEach(groups, id: \.id) { group in
                     Button { onSelect(group) } label: {
                         GroupCard(
@@ -395,12 +395,12 @@ private struct SpacesStrip: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, RuulSpacing.s5)
+            .padding(.horizontal, RuulSpacing.lg)
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.paging)
-        .padding(.horizontal, -RuulSpacing.s5)
-        .padding(.bottom, RuulSpacing.s3)
+        .padding(.horizontal, -RuulSpacing.lg)
+        .padding(.bottom, RuulSpacing.sm)
     }
 }
 
@@ -416,9 +416,9 @@ private struct GroupCard: View {
         // signal. The repeated `category.displayName` was visual noise —
         // every group in the same template flavour echoed the same
         // phrase, so it dropped.
-        VStack(alignment: .leading, spacing: RuulSpacing.s0) {
+        VStack(alignment: .leading, spacing: 0) {
             RuulGroupAvatar(groupName: group.name, category: group.category, size: .lg)
-                .padding(.bottom, RuulSpacing.s3)
+                .padding(.bottom, RuulSpacing.sm)
 
             Text(group.name)
                 .font(.subheadline.weight(.semibold))
@@ -460,9 +460,9 @@ private struct UpcomingCard: View {
     let onRSVP: (RSVPStatus) -> Void
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             Button(action: onTap) {
-                HStack(spacing: RuulSpacing.s4) {
+                HStack(spacing: RuulSpacing.md) {
                     DateTile(date: event.startsAt)
 
                     VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
@@ -474,7 +474,7 @@ private struct UpcomingCard: View {
                         // on one line, venue uses first comma-segment so
                         // "Altezza Bosques, Camino a Tecamachalco 98"
                         // reads as "Altezza Bosques" — no mid-word cut.
-                        HStack(spacing: RuulSpacing.s1) {
+                        HStack(spacing: RuulSpacing.xxs) {
                             Text(event.startsAt, format: .dateTime.hour().minute())
                                 .font(.caption)
                                 .foregroundStyle(Color.ruulTextSecondary)
@@ -498,7 +498,7 @@ private struct UpcomingCard: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: RuulSpacing.s3) {
+            HStack(spacing: RuulSpacing.sm) {
                 rsvpButton(.going, label: "Voy", icon: "checkmark", tint: .ruulSemanticSuccess)
                 rsvpButton(.maybe, label: "Tal vez", tint: nil)
                 rsvpButton(.declined, label: "No", tint: .ruulSemanticError)
@@ -534,7 +534,7 @@ private struct UpcomingCard: View {
     private func rsvpButton(_ status: RSVPStatus, label: String, icon: String? = nil, tint: Color?) -> some View {
         let isSelected = rsvp?.status == status
         Button { onRSVP(status) } label: {
-            HStack(spacing: RuulSpacing.s1) {
+            HStack(spacing: RuulSpacing.xxs) {
                 if let icon { Image(systemName: icon).font(.caption.weight(.bold)) }
                 Text(label).font(.subheadline.weight(.semibold))
             }
@@ -620,7 +620,7 @@ private struct SectionHeading: View {
             }
         }
         .padding(.leading, RuulSpacing.xxs)
-        .padding(.top, RuulSpacing.s5)
+        .padding(.top, RuulSpacing.lg)
         .padding(.bottom, RuulSpacing.xs)
     }
 }

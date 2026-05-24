@@ -20,11 +20,11 @@ struct AvatarsSection: View {
     let onTapMore: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SectionHeader(title: title)
 
             Button(action: { onTapMore?() }) {
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     if people.isEmpty {
                         HStack(spacing: -10) {
                             ForEach(0..<3, id: \.self) { _ in
@@ -69,7 +69,7 @@ struct AvatarsSection: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, RuulSpacing.s3)
+                .padding(.vertical, RuulSpacing.sm)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }

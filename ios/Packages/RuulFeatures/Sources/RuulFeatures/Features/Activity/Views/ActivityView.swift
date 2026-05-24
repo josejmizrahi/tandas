@@ -250,7 +250,7 @@ public struct ActivityView: View {
                 }
             }
         }
-        .padding(.top, RuulSpacing.s8)
+        .padding(.top, 40)
     }
 
 }

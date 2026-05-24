@@ -59,7 +59,7 @@ public struct EditRulesView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.md)
-            .padding(.bottom, RuulSpacing.s12)
+            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
         .refreshable { await coordinator.refresh() }

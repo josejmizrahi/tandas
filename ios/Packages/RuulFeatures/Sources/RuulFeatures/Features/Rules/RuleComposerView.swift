@@ -50,7 +50,7 @@ public struct RuleComposerView: View {
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.top, RuulSpacing.md)
-                .padding(.bottom, RuulSpacing.s12)
+                .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
             }
             .scrollIndicators(.hidden)
             .navigationTitle(coord.editingRuleId == nil ? "Componer regla" : "Editar regla")

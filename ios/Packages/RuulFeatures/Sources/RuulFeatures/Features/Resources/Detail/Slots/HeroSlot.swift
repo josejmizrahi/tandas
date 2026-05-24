@@ -31,9 +31,9 @@ struct HeroSlot: View {
                 .multilineTextAlignment(.center)
 
             if let subRow = data.subRow, !subRow.isEmpty {
-                HStack(spacing: RuulSpacing.s5) {
+                HStack(spacing: RuulSpacing.lg) {
                     ForEach(subRow) { pair in
-                        HStack(spacing: RuulSpacing.s1) {
+                        HStack(spacing: RuulSpacing.xxs) {
                             Text(pair.label)
                                 .foregroundStyle(Color.ruulTextSecondary)
                             Text(pair.value)
@@ -46,7 +46,7 @@ struct HeroSlot: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, RuulSpacing.s2)
+        .padding(.vertical, RuulSpacing.xs)
     }
 
     /// Maps the hero `size` enum onto the app's native typography scale —

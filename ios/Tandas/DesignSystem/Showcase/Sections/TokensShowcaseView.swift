@@ -109,7 +109,7 @@ struct TokensShowcaseView: View {
     private var spacing: some View {
         ShowcaseSection("Spacing", subtitle: "4pt grid") {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach([("xxs", RuulSpacing.xxs), ("xs", RuulSpacing.xs), ("sm", RuulSpacing.sm), ("md", RuulSpacing.md), ("lg", RuulSpacing.lg), ("xl", RuulSpacing.xl), ("xxl", RuulSpacing.xxl), ("s8", RuulSpacing.s8), ("xxxl", RuulSpacing.xxxl), ("s10", RuulSpacing.s10)], id: \.0) { item in
+                ForEach([("xxs", RuulSpacing.xxs), ("xs", RuulSpacing.xs), ("sm", RuulSpacing.sm), ("md", RuulSpacing.md), ("lg", RuulSpacing.lg), ("xl", RuulSpacing.xl), ("xxl", RuulSpacing.xxl), ("s8", 40), ("xxxl", RuulSpacing.xxxl), ("s10", 64)], id: \.0) { item in
                     HStack {
                         Text(item.0).font(.caption).frame(width: 36, alignment: .leading)
                         Rectangle()

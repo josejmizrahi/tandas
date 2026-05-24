@@ -59,7 +59,7 @@ public struct ReviewProposedFinesView: View {
                     // in prod build.
                 }
                 .padding(.horizontal, RuulSpacing.lg)
-                .padding(.bottom, RuulSpacing.s12)
+                .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
             }
             .scrollIndicators(.hidden)
             .refreshable { await coordinator.refresh() }

@@ -351,7 +351,7 @@ private struct ResolvedInboxList: View {
                         }
                         .padding(.horizontal, RuulSpacing.lg)
                         .padding(.top, RuulSpacing.md)
-                        .padding(.bottom, RuulSpacing.s12)
+                        .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
                     }
                     .scrollIndicators(.hidden)
                 }
@@ -362,7 +362,7 @@ private struct ResolvedInboxList: View {
     @ViewBuilder
     private func resolvedRow(_ action: UserAction) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: RuulSpacing.s1) {
+            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
                 Text(action.title)
                     .font(.footnote)
                     .foregroundStyle(.primary)

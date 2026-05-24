@@ -32,7 +32,7 @@ struct ActivityStaticView: View {
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SectionHeader(title: "Actividad")
             if items.isEmpty {
                 ActivityEmptyView()
@@ -56,7 +56,7 @@ struct ActivityPaginatedView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SectionHeader(title: "Actividad")
 
             switch viewModel.phase {
@@ -84,7 +84,7 @@ struct ActivityPaginatedView: View {
             ActivityGroupedTimeline(items: viewModel.items, accent: accent)
 
             if viewModel.hasMore {
-                HStack(spacing: RuulSpacing.s2) {
+                HStack(spacing: RuulSpacing.xs) {
                     if viewModel.phase == .loadingMore {
                         ProgressView().controlSize(.small)
                         Text("Cargando más…")
@@ -95,18 +95,18 @@ struct ActivityPaginatedView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, RuulSpacing.s3)
+                .padding(.vertical, RuulSpacing.sm)
             }
 
             if case .error(let msg) = viewModel.phase, !viewModel.items.isEmpty {
-                HStack(spacing: RuulSpacing.s2) {
+                HStack(spacing: RuulSpacing.xs) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.ruulSemanticWarning)
                     Text(msg).font(.footnote).foregroundStyle(Color.ruulTextSecondary)
                     Button("Reintentar") { viewModel.loadMore() }
                         .font(.footnote.weight(.semibold))
                         .tint(accent)
                 }
-                .padding(.vertical, RuulSpacing.s2)
+                .padding(.vertical, RuulSpacing.xs)
             }
         }
     }

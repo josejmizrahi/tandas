@@ -29,7 +29,7 @@ struct ActivityErrorView: View {
     let retry: () -> Void
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s4) {
+        VStack(spacing: RuulSpacing.md) {
             ContentUnavailableView {
                 Label {
                     Text("No pudimos cargar la actividad")
@@ -50,7 +50,7 @@ struct ActivityErrorView: View {
             }
             .buttonStyle(.glass)
             .tint(accent)
-            .padding(.bottom, RuulSpacing.s6)
+            .padding(.bottom, RuulSpacing.xl)
         }
         .frame(maxWidth: .infinity)
         .background(Color.ruulSurface)
@@ -62,9 +62,9 @@ struct ActivitySkeletonView: View {
     @State private var phase: CGFloat = -1
 
     var body: some View {
-        VStack(spacing: RuulSpacing.s0) {
+        VStack(spacing: 0) {
             ForEach(0..<3, id: \.self) { i in
-                HStack(spacing: RuulSpacing.s3) {
+                HStack(spacing: RuulSpacing.sm) {
                     Circle().fill(Color.ruulSurfaceGlassThin).frame(width: 8, height: 8)
                     VStack(alignment: .leading, spacing: RuulSpacing.micro) {
                         RoundedRectangle(cornerRadius: 4)
@@ -76,7 +76,7 @@ struct ActivitySkeletonView: View {
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 14).padding(.vertical, RuulSpacing.s3)
+                .padding(.horizontal, 14).padding(.vertical, RuulSpacing.sm)
                 if i < 2 { Divider().padding(.leading, 36) }
             }
         }

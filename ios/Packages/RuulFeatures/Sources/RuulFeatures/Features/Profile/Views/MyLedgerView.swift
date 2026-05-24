@@ -61,7 +61,7 @@ public struct MyLedgerView: View {
             }
             .padding(.horizontal, RuulSpacing.lg)
             .padding(.top, RuulSpacing.xs)
-            .padding(.bottom, RuulSpacing.s12)
+            .padding(.bottom, RuulSpacing.tabBarBottomSafeArea)
         }
         .scrollIndicators(.hidden)
         .refreshable { await coordinator.refresh() }

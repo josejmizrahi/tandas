@@ -41,10 +41,10 @@ struct RowsSection: View {
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.s2) {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             SectionHeader(title: title)
 
-            VStack(spacing: RuulSpacing.s0) {
+            VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     RowView(item: item, accent: accent)
                     if index < items.count - 1 {
@@ -86,7 +86,7 @@ struct RowView: View {
                         .multilineTextAlignment(.trailing)
                         .lineLimit(2)
                 case .link(let value):
-                    HStack(spacing: RuulSpacing.s1) {
+                    HStack(spacing: RuulSpacing.xxs) {
                         Text(value)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(accent)
@@ -102,7 +102,7 @@ struct RowView: View {
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, RuulSpacing.s3)
+            .padding(.vertical, RuulSpacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
