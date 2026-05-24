@@ -66,6 +66,19 @@ public protocol AssetLifecycleRepository: Actor {
         notes: String?
     ) async throws -> UUID
 
+    /// SharedMoney P1 (asset valuation ↔ contribution link): reads the
+    /// MOST RECENT row from `asset_valuation_view` for this asset.
+    /// Used by `ContributeToSharedMoneySheet` when the user toggles
+    /// in-kind on a contribution against an asset — the amount field
+    /// auto-pre-fills from this valuation so the warehouse case
+    /// ("aporté el terreno valorado en $5M") has a single source of
+    /// truth.
+    ///
+    /// Returns nil when the asset has no valuation history yet (the
+    /// `valuation` capability is optional). Sheet falls back to manual
+    /// entry in that case.
+    func latestValuation(asset assetId: UUID) async throws -> AssetValuation?
+
     /// Transfers ownership to a member, or back to the group (nil).
     /// Updates metadata.owner_id + emits `assetTransferred`. Custody is
     /// independent and unchanged by this call.
@@ -184,6 +197,22 @@ public actor MockAssetLifecycleRepository: AssetLifecycleRepository {
         if let err = nextError { nextError = nil; throw err }
         valuations.append((assetId, valueCents, currency))
         return UUID()
+    }
+    public func latestValuation(asset assetId: UUID) async throws -> AssetValuation? {
+        if let err = nextError { nextError = nil; throw err }
+        // Mock walks the append-only log backwards for the asset's
+        // most-recent entry. Real impl reads the view ordered desc.
+        guard let row = valuations.last(where: { $0.0 == assetId }) else { return nil }
+        return AssetValuation(
+            assetId: row.0,
+            groupId: UUID(),
+            valueCents: row.1,
+            currency: row.2 ?? "MXN",
+            source: nil,
+            notes: nil,
+            recordedByUserId: nil,
+            recordedAt: .now
+        )
     }
     public func transferAsset(asset assetId: UUID, to memberId: UUID?, notes: String?) async throws {
         if let err = nextError { nextError = nil; throw err }
@@ -344,6 +373,25 @@ public actor LiveAssetLifecycleRepository: AssetLifecycleRepository {
             return id
         } catch {
             throw mapError(error, default: "record_valuation failed")
+        }
+    }
+
+    public func latestValuation(asset assetId: UUID) async throws -> AssetValuation? {
+        // Reads `asset_valuation_view` ordered by recorded_at desc.
+        // The view is an atom log (one row per record_valuation call),
+        // so the first row = the latest valuation.
+        do {
+            let rows: [AssetValuation] = try await client
+                .from("asset_valuation_view")
+                .select()
+                .eq("asset_id", value: assetId.uuidString.lowercased())
+                .order("recorded_at", ascending: false)
+                .limit(1)
+                .execute()
+                .value
+            return rows.first
+        } catch {
+            throw mapError(error, default: "asset_valuation_view read failed")
         }
     }
 

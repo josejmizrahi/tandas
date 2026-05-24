@@ -45,6 +45,16 @@ public struct ContributeToSharedMoneySheet: View {
     @State private var isInKind: Bool = false
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
+    /// SharedMoney P1 (asset valuation ↔ contribution link): when the
+    /// in-kind toggle turns on AND `sourceResource` is an asset with
+    /// recorded valuation history, we fetch the latest row and pre-fill
+    /// `amountText`. Avoids the warehouse-case double-entry where the
+    /// user has to type the same number in `RecordValuationSheet` and
+    /// again here. nil when no valuation exists / fetch hasn't run yet.
+    @State private var prefilledValuation: AssetValuation?
+    /// Tracks whether `amountText` matches the auto-prefilled value so
+    /// we know not to overwrite it once the user starts typing manually.
+    @State private var amountIsAutoPrefilled: Bool = false
     /// Stable idempotency key (mig 00351). Generated once per sheet
     /// open; re-taps after a network error reuse it so the server
     /// returns the existing ledger row instead of duplicating.
@@ -79,9 +89,26 @@ public struct ContributeToSharedMoneySheet: View {
                         .foregroundStyle(Color.secondary)
                 }
 
-                Section("Monto (\(currency))") {
+                Section {
                     TextField("0", text: $amountText)
                         .keyboardType(.decimalPad)
+                        .onChange(of: amountText) { _, _ in
+                            // User edited → stop tracking auto-prefill
+                            // so we don't overwrite their input later.
+                            amountIsAutoPrefilled = false
+                        }
+                } header: {
+                    Text("Monto (\(currency))")
+                } footer: {
+                    // SharedMoney P1: when the in-kind amount was
+                    // populated from the asset's latest valuation,
+                    // surface the provenance so the user understands
+                    // why a number appeared automatically.
+                    if amountIsAutoPrefilled, prefilledValuation != nil {
+                        Text("Tomado de la valuación actual del activo.")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
                 }
 
                 // Only meaningful when aporting against a specific
@@ -91,6 +118,9 @@ public struct ContributeToSharedMoneySheet: View {
                 if sourceResource != nil {
                     Section {
                         Toggle("Aporte en especie", isOn: $isInKind)
+                            .onChange(of: isInKind) { _, newValue in
+                                Task { await applyValuationPrefillIfNeeded(turnedOn: newValue) }
+                            }
                     } footer: {
                         Text(isInKind
                              ? "El monto representa el valor estimado del aporte no monetario (terreno, equipo, etc.)."
@@ -122,7 +152,57 @@ public struct ContributeToSharedMoneySheet: View {
                     .disabled(isSubmitting || amountCents == nil)
                 }
             }
+            // SharedMoney P1: kick off a single best-effort valuation
+            // fetch when the sheet opens so the toggle's prefill is
+            // instant on first tap. The asset might not have a
+            // valuation history — in that case the lookup just
+            // returns nil and the toggle works as before.
+            .task { await preloadValuationIfApplicable() }
         }
+    }
+
+    /// SharedMoney P1: when the in-kind toggle flips on, populate the
+    /// amount field from the asset's latest valuation if available.
+    /// Only overwrites the amount when the user hasn't typed anything
+    /// (empty) — once they edit, their value wins. Toggling off does
+    /// NOT clear what's there; the user may have edited the prefill
+    /// or typed cash equivalently.
+    @MainActor
+    private func applyValuationPrefillIfNeeded(turnedOn: Bool) async {
+        guard turnedOn else { return }
+        if prefilledValuation == nil {
+            await preloadValuationIfApplicable()
+        }
+        guard let valuation = prefilledValuation else { return }
+        let trimmed = amountText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || amountIsAutoPrefilled {
+            let pesos = Decimal(valuation.valueCents) / 100
+            amountText = formatPlainDecimal(pesos)
+            amountIsAutoPrefilled = true
+        }
+    }
+
+    /// Best-effort one-shot fetch of the asset's latest valuation
+    /// (sourceResource may not be an asset — non-asset rows simply
+    /// return nil and the prefill never fires).
+    @MainActor
+    private func preloadValuationIfApplicable() async {
+        guard let source = sourceResource else { return }
+        if prefilledValuation != nil { return }
+        let resourceId = source.id
+        let repo = app.assetLifecycleRepo
+        prefilledValuation = try? await repo.latestValuation(asset: resourceId)
+    }
+
+    /// Format a Decimal as "1234.56" without thousands separators so
+    /// the text field can re-parse it via the same logic as user input.
+    private func formatPlainDecimal(_ value: Decimal) -> String {
+        let f = NumberFormatter()
+        f.usesGroupingSeparator = false
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        f.decimalSeparator = "."
+        return f.string(from: value as NSDecimalNumber) ?? "\(value)"
     }
 
     private var amountCents: Int64? {
@@ -152,10 +232,40 @@ public struct ContributeToSharedMoneySheet: View {
                 clientId: clientId,
                 inKind: isInKind
             )
+            // SharedMoney P1 brick 3: when the user records an in-kind
+            // contribution against an asset, also append a valuation
+            // atom so the asset's recorded valuation stays in sync.
+            // Best-effort — failures don't roll back the contribution.
+            // Skipped when amount matches the prefill (no semantic
+            // change) or when the resource isn't an asset (the call
+            // will fail RLS / not-found, which we silently swallow).
+            await syncValuationIfApplicable(cents: cents)
+
             onDidContribute()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// SharedMoney P1 brick 3 — write-back path. When an in-kind
+    /// contribution targets an asset whose valuation differs from the
+    /// amount recorded, append a fresh valuation atom so the asset's
+    /// next reader sees the canonical number.
+    @MainActor
+    private func syncValuationIfApplicable(cents: Int64) async {
+        guard isInKind, let source = sourceResource else { return }
+        // Skip the redundant write when the amount already matches
+        // the prefilled valuation — no semantic change to record.
+        if let prior = prefilledValuation, prior.valueCents == cents {
+            return
+        }
+        _ = try? await app.assetLifecycleRepo.recordValuation(
+            asset: source.id,
+            valueCents: cents,
+            currency: currency,
+            source: "contribution",
+            notes: "Sincronizado desde aportación en especie"
+        )
     }
 }
