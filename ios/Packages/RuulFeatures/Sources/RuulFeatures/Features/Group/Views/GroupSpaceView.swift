@@ -131,22 +131,17 @@ public struct GroupSpaceView: View {
 
                     GroupComposeBar(chips: composeChips())
 
+                    // SharedMoney P8: shared pool + viewer's "Te deben/
+                    // Debes" merged into one consolidated "Dinero" card.
+                    // The obligation strip is hidden internally when
+                    // the viewer is settled (netCents == 0).
                     if let summary = coordinator.sharedPoolSummary {
                         SharedMoneyCard(
                             summary: summary,
+                            viewerObligation: coordinator.viewerBalance,
                             onContribute: { sharedMoneySheet = .contribute },
-                            onRecordExpense: { sharedMoneySheet = .recordExpense }
-                        )
-                    }
-
-                    // SharedMoney P3: viewer's net "Te deben / Debes"
-                    // card. Hidden when settled (netCents == 0) — no
-                    // noise on the steady state.
-                    if let balance = coordinator.viewerBalance,
-                       !balance.isSettled {
-                        GroupObligationsCard(
-                            balance: balance,
-                            onOpenDetail: { onOpenBalances?() }
+                            onRecordExpense: { sharedMoneySheet = .recordExpense },
+                            onOpenObligation: { onOpenBalances?() }
                         )
                     }
 

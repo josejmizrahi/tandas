@@ -23,8 +23,14 @@ import RuulCore
 @MainActor
 struct SharedMoneyCard: View {
     let summary: SharedPoolSummary
+    /// Viewer's net position in this group. When non-nil and not
+    /// settled, an inline "Te deben / Debes" strip renders below the
+    /// footer — formerly its own `GroupObligationsCard`, merged here
+    /// (P8) so the group home has one consolidated "Dinero" card.
+    let viewerObligation: MemberGroupBalance?
     let onContribute: () -> Void
     let onRecordExpense: () -> Void
+    let onOpenObligation: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
@@ -52,6 +58,10 @@ struct SharedMoneyCard: View {
             Text(footerText)
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
+
+            if let obligation = viewerObligation, !obligation.isSettled {
+                obligationStrip(obligation)
+            }
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -60,6 +70,38 @@ struct SharedMoneyCard: View {
             RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
+    }
+
+    @ViewBuilder
+    private func obligationStrip(_ obligation: MemberGroupBalance) -> some View {
+        Divider()
+        Button {
+            onOpenObligation?()
+        } label: {
+            HStack(spacing: RuulSpacing.xs) {
+                Image(systemName: obligation.isOwed
+                      ? "arrow.down.left.circle.fill"
+                      : "arrow.up.right.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(obligation.isOwed ? Color.ruulPositive : Color.ruulNegative)
+                Text(obligation.isOwed ? "Te deben" : "Debes")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                RuulMoneyView(
+                    amount: Decimal(abs(obligation.netCents)) / 100,
+                    currency: obligation.currency,
+                    size: .small,
+                    color: obligation.isOwed ? .positive : .negative
+                )
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(onOpenObligation == nil)
     }
 
     private var balanceAmount: Decimal {
@@ -87,7 +129,9 @@ struct SharedMoneyCard: View {
                 inCents: 0, outCents: 0, balanceCents: 0,
                 entryCount: 0, lastActivityAt: nil
             ),
-            onContribute: {}, onRecordExpense: {}
+            viewerObligation: nil,
+            onContribute: {}, onRecordExpense: {},
+            onOpenObligation: nil
         )
         SharedMoneyCard(
             summary: SharedPoolSummary(
@@ -95,7 +139,12 @@ struct SharedMoneyCard: View {
                 inCents: 500_000, outCents: 80_000, balanceCents: 420_000,
                 entryCount: 7, lastActivityAt: Date().addingTimeInterval(-3 * 86_400)
             ),
-            onContribute: {}, onRecordExpense: {}
+            viewerObligation: MemberGroupBalance(
+                groupId: base, memberId: UUID(), currency: "MXN",
+                sentCents: 30_000, receivedCents: 0, netCents: 30_000
+            ),
+            onContribute: {}, onRecordExpense: {},
+            onOpenObligation: {}
         )
         SharedMoneyCard(
             summary: SharedPoolSummary(
@@ -103,7 +152,9 @@ struct SharedMoneyCard: View {
                 inCents: 100_000, outCents: 250_000, balanceCents: -150_000,
                 entryCount: 5, lastActivityAt: Date().addingTimeInterval(-86_400)
             ),
-            onContribute: {}, onRecordExpense: {}
+            viewerObligation: nil,
+            onContribute: {}, onRecordExpense: {},
+            onOpenObligation: nil
         )
     }
     .padding(RuulSpacing.lg)

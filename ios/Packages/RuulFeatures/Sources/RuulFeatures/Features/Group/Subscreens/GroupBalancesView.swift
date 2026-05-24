@@ -3,7 +3,9 @@ import RuulUI
 import RuulCore
 
 /// SharedMoney P3: "Balances" subscreen — full list of every member's
-/// net position in the group, pushed from `GroupObligationsCard`'s tap.
+/// net position in the group, pushed from the inline "Te deben / Debes"
+/// strip inside `SharedMoneyCard` (merged from the old
+/// `GroupObligationsCard` in P8).
 ///
 /// Each row shows the member's display name + their `netCents`. Sorted
 /// by absolute net descending so the largest debtors/creditors lead.
