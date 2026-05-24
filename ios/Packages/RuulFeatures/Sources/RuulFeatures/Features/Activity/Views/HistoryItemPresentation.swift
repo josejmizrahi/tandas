@@ -19,7 +19,16 @@ public struct HistoryItemPresentation {
         return f.localizedString(for: date, relativeTo: .now)
     }
 
-    public init(event: SystemEvent, memberName: String? = nil) {
+    /// P2 (mig 00366): when caller provides `resolveMemberName`, the
+    /// `.ledgerEntryCreated` case unpacks the payload's
+    /// `paid_by_member_id` and surfaces "pagado por X" when the payer
+    /// differs from the actor. Backwards-compat: callers that don't
+    /// pass the closure get the prior generic copy.
+    public init(
+        event: SystemEvent,
+        memberName: String? = nil,
+        resolveMemberName: ((UUID) -> String?)? = nil
+    ) {
         let actor = memberName ?? "Alguien"
         switch event.eventType {
         case .eventCreated:
@@ -231,7 +240,14 @@ public struct HistoryItemPresentation {
             self.tone = .neutral
         case .ledgerEntryCreated:
             self.icon = "dollarsign.circle"
-            self.title = "\(actor) registró un movimiento de dinero"
+            // P2 enrichment: unpack payload to surface tri-role context
+            // when present. Falls back to generic copy when the payload
+            // doesn't carry the new keys (legacy entries pre-mig 00366).
+            self.title = Self.composeLedgerTitle(
+                actor: actor,
+                payload: event.payload,
+                resolveMemberName: resolveMemberName
+            )
             self.tone = .neutral
         case .warningEmitted:
             self.icon = "exclamationmark.triangle"
@@ -432,5 +448,114 @@ public struct HistoryItemPresentation {
 
         self.subtitle = nil
         self.timestamp = Self.relativeString(for: event.occurredAt)
+    }
+
+    // MARK: - Ledger entry title composition (P2, mig 00366)
+
+    /// Builds the human-readable title for `.ledgerEntryCreated` by
+    /// unpacking the tri-role payload added in mig 00366. Falls back
+    /// gracefully when the payload lacks the new keys (legacy entries
+    /// emitted pre-mig still render as "X registró un movimiento de
+    /// dinero").
+    ///
+    /// Shape variants:
+    /// - expense + paid_by → "X registró un gasto de $Y pagado por Z"
+    /// - expense + no paid_by → "X registró un gasto de $Y"
+    /// - contribution + in_kind → "X aportó en especie por $Y"
+    /// - contribution → "X aportó $Y"
+    /// - settlement → "X registró un pago de $Y"
+    /// - payout → "X recibió un pago de $Y del fondo"
+    private static func composeLedgerTitle(
+        actor: String,
+        payload: JSONConfig,
+        resolveMemberName: ((UUID) -> String?)?
+    ) -> String {
+        let kind = payload["type"]?.stringValue ?? ""
+        let amount = formatAmount(
+            cents: payload["amount_cents"]?.intValue,
+            currency: payload["currency"]?.stringValue
+        )
+
+        // Resolve a richer actor when the generic `memberName` came in
+        // as "Alguien". The trigger emits payload.from_member_id for
+        // contributions (the contributor IS the actor) and
+        // payload.paid_by_member_id for expenses (when present).
+        let payloadActor = resolveActorFromPayload(
+            payload: payload,
+            kind: kind,
+            resolveMemberName: resolveMemberName
+        )
+        let effectiveActor = (actor == "Alguien" ? payloadActor : actor) ?? actor
+
+        switch kind {
+        case "expense":
+            if let paidById = payload["paid_by_member_id"]?.stringValue,
+               let paidByUUID = UUID(uuidString: paidById),
+               let paidByName = resolveMemberName?(paidByUUID),
+               paidByName != effectiveActor {
+                return amount.isEmpty
+                    ? "\(effectiveActor) registró un gasto pagado por \(paidByName)"
+                    : "\(effectiveActor) registró un gasto de \(amount) pagado por \(paidByName)"
+            }
+            return amount.isEmpty
+                ? "\(effectiveActor) registró un gasto"
+                : "\(effectiveActor) registró un gasto de \(amount)"
+        case "contribution":
+            let inKind = payload["in_kind"]?.boolValue == true
+            if inKind {
+                return amount.isEmpty
+                    ? "\(effectiveActor) aportó en especie"
+                    : "\(effectiveActor) aportó en especie por \(amount)"
+            }
+            return amount.isEmpty
+                ? "\(effectiveActor) aportó al dinero compartido"
+                : "\(effectiveActor) aportó \(amount)"
+        case "settlement":
+            return amount.isEmpty
+                ? "\(effectiveActor) registró un pago"
+                : "\(effectiveActor) registró un pago de \(amount)"
+        case "payout":
+            return amount.isEmpty
+                ? "\(effectiveActor) recibió un pago del fondo"
+                : "\(effectiveActor) recibió \(amount) del fondo"
+        default:
+            return "\(effectiveActor) registró un movimiento de dinero"
+        }
+    }
+
+    /// Resolves an actor display name from the payload's member ids
+    /// (from_member_id for contributions, paid_by_member_id for
+    /// expenses). Returns nil if neither resolves — caller keeps the
+    /// "Alguien" fallback.
+    private static func resolveActorFromPayload(
+        payload: JSONConfig,
+        kind: String,
+        resolveMemberName: ((UUID) -> String?)?
+    ) -> String? {
+        guard let resolve = resolveMemberName else { return nil }
+        let candidateIdStrings: [String?] = (kind == "expense")
+            ? [payload["paid_by_member_id"]?.stringValue,
+               payload["from_member_id"]?.stringValue]
+            : [payload["from_member_id"]?.stringValue,
+               payload["paid_by_member_id"]?.stringValue]
+        for s in candidateIdStrings {
+            if let s, let uuid = UUID(uuidString: s), let name = resolve(uuid) {
+                return name
+            }
+        }
+        return nil
+    }
+
+    /// Formats `(cents, currency)` into a localized currency string.
+    /// Returns empty string when either input is missing — caller
+    /// falls back to the no-amount copy variant.
+    private static func formatAmount(cents: Int?, currency: String?) -> String {
+        guard let cents, let currency else { return "" }
+        let amount = Decimal(cents) / 100
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.maximumFractionDigits = 0
+        return f.string(from: amount as NSDecimalNumber) ?? ""
     }
 }

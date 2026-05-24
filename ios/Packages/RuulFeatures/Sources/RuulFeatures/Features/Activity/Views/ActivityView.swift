@@ -184,7 +184,12 @@ public struct ActivityView: View {
             ForEach(Array(visibleEvents.enumerated()), id: \.element.id) { index, ev in
                 let presentation = HistoryItemPresentation(
                     event: ev,
-                    memberName: coordinator.actorName(for: ev)
+                    memberName: coordinator.actorName(for: ev),
+                    // P2 (mig 00366): resolver maps payload-embedded
+                    // member ids (paid_by_member_id, from_member_id)
+                    // to display names so ledger atoms render as
+                    // "Daniel registró $500 pagado por María" etc.
+                    resolveMemberName: { coordinator.memberName(forMemberId: $0) }
                 )
                 Button { detailEvent = ev } label: {
                     RuulTimelineItem(

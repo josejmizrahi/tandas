@@ -108,6 +108,15 @@ public final class ActivityCoordinator {
         return memberDirectoryByMemberId[memberId]?.avatarURL
     }
 
+    /// P2 (mig 00366): resolves any group_members.id to its display
+    /// name. Used by `HistoryItemPresentation.ledgerEntryCreated` to
+    /// surface "pagado por X" when the payload's paid_by_member_id
+    /// differs from the actor. Returns nil when the id isn't in the
+    /// directory (member left the group, or directory not yet loaded).
+    public func memberName(forMemberId memberId: UUID) -> String? {
+        memberDirectoryByMemberId[memberId]?.displayName
+    }
+
     public func loadMore() async {
         guard !isLoading, hasMore else { return }
         isLoading = true
