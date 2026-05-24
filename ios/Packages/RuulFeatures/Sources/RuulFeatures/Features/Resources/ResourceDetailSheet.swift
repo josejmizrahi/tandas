@@ -618,7 +618,12 @@ public struct ResourceDetailSheet: View {
                 proposedBy: proposedBy,
                 proposedAt: live.createdAt,
                 onTapGroup: { dismiss() }
-            )
+            ),
+            // SharedMoney Phase 4 brick C: preserve moneyContext through
+            // the wrapper. Without this, makeGenericConfig (asset/event)
+            // populates the slot but the wrapper drops it silently —
+            // the Money Block never renders on any sheet-routed detail.
+            moneyContext: config.moneyContext
         )
     }
 

@@ -664,7 +664,12 @@ public struct EventDetailHost: View {
                 proposedBy: creatorName,
                 proposedAt: coordinator?.event.createdAt,
                 onTapGroup: onClose
-            )
+            ),
+            // SharedMoney Phase 4 brick C fix: preserve moneyContext
+            // through the enrich() wrapper. Without this the .event(...)
+            // factory's moneyContext was being dropped before reaching
+            // ResourceDetailContent — Money Block never rendered.
+            moneyContext: config.moneyContext
         )
     }
 
