@@ -59,6 +59,25 @@ public protocol FundRepository: Actor {
         preferredCurrency: String?
     ) async throws -> ResourceMoneySummary?
 
+    /// SharedMoney Phase 4.5: per-member contribution breakdown for a
+    /// source resource. Returns one row per `from_member_id` who has
+    /// contributed via entries tagged with `source_resource_id`. Sums
+    /// `amount_cents` over `type='contribution'` only (reimbursements
+    /// are pool→member outflows, not capital injection — see the
+    /// in-kind doctrine). Used to render "Tú $X (40%) · Socio $Y (60%)"
+    /// inside the Resource Money Block; the percentage is derived
+    /// client-side from the row totals.
+    ///
+    /// `preferredCurrency` filters to a single currency for V1 single-
+    /// currency groups. Pass `nil` to get all currencies (V1.5+).
+    ///
+    /// Returns an empty array when the resource has zero contribution
+    /// activity. Order is undefined — UI sorts by amount descending.
+    func breakdownForResource(
+        _ resourceId: UUID,
+        preferredCurrency: String?
+    ) async throws -> [ResourceMemberContribution]
+
     /// Records a contribution from the caller (member) to the fund.
     /// `currency` falls through to fund metadata then to MXN if nil.
     /// `note` lands in the ledger entry's metadata jsonb. `sourceEventId`
@@ -123,13 +142,18 @@ public protocol FundRepository: Actor {
     /// SharedMoney Phase 2 (mig 00363): group-scoped contribution entry
     /// point. Symmetric counterpart of `recordSharedExpense` — resolves
     /// the shared pool internally and delegates to `fund_contribute`.
+    /// `inKind` (mig 00364, Phase 4.5) stamps `metadata.in_kind=true`
+    /// when set — distinguishes capital-in-kind aportes (terreno,
+    /// equipo) from cash. Passive annotation today; future surfaces
+    /// can break the breakdown down by kind.
     func contributeToSharedMoney(
         groupId: UUID,
         amountCents: Int64,
         currency: String?,
         note: String?,
         sourceResourceId: UUID?,
-        clientId: UUID?
+        clientId: UUID?,
+        inKind: Bool
     ) async throws -> LedgerEntry
 
     /// Admin-only soft lock. Emits `fundLocked`. Does NOT block writers
@@ -248,6 +272,43 @@ public actor MockFundRepository: FundRepository {
             payerCount: Int64(payers.count),
             latestRecordedBy: latestRecorder
         )
+    }
+
+    public func breakdownForResource(
+        _ resourceId: UUID,
+        preferredCurrency: String? = nil
+    ) async throws -> [ResourceMemberContribution] {
+        // Mock aggregates from in-memory entries matching
+        // `(source_resource_id, type='contribution')` grouped by
+        // from_member_id. Mirrors the Live impl's policy: only
+        // contribution-typed entries with a non-null from_member_id
+        // count toward member capital.
+        let matches = entries.filter { entry in
+            guard entry.type == LedgerEntry.Kind.contribution else { return false }
+            guard entry.fromMemberId != nil else { return false }
+            return entry.metadata["source_resource_id"]?.stringValue
+                == resourceId.uuidString.lowercased()
+        }
+        guard !matches.isEmpty else { return [] }
+        let currency = preferredCurrency
+            ?? matches.first?.currency
+            ?? "MXN"
+        let scoped = matches.filter { $0.currency == currency }
+        guard !scoped.isEmpty else { return [] }
+
+        var totals: [UUID: (Int64, Int)] = [:]
+        for entry in scoped {
+            guard let m = entry.fromMemberId else { continue }
+            let cur = totals[m] ?? (0, 0)
+            totals[m] = (cur.0 + entry.amountCents, cur.1 + 1)
+        }
+        return totals.map { (m, agg) in
+            ResourceMemberContribution(
+                memberId: m,
+                contributedCents: agg.0,
+                entryCount: agg.1
+            )
+        }
     }
 
     public func contribute(
@@ -380,7 +441,8 @@ public actor MockFundRepository: FundRepository {
         currency: String?,
         note: String?,
         sourceResourceId: UUID? = nil,
-        clientId: UUID? = nil
+        clientId: UUID? = nil,
+        inKind: Bool = false
     ) async throws -> LedgerEntry {
         // Mock shared-pool resolution: pick any fund for the group. The
         // is_shared_pool flag lives in resources.metadata server-side and
@@ -401,6 +463,7 @@ public actor MockFundRepository: FundRepository {
         if let note, !note.isEmpty { meta["note"] = .string(note) }
         if let sourceResourceId { meta["source_resource_id"] = .string(sourceResourceId.uuidString.lowercased()) }
         if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
+        if inKind { meta["in_kind"] = .bool(true) }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: snapshot.fundId,
@@ -589,6 +652,54 @@ public actor LiveFundRepository: FundRepository {
         }
     }
 
+    public func breakdownForResource(
+        _ resourceId: UUID,
+        preferredCurrency: String? = nil
+    ) async throws -> [ResourceMemberContribution] {
+        // Phase 4.5 brick A: client-side aggregation from raw
+        // ledger_entries. No backend view needed — query the rows
+        // filtered to (source_resource_id, type='contribution'),
+        // optionally currency, then group by from_member_id in Swift.
+        // Scale: a project resource (warehouse, viaje) accumulates
+        // tens of entries, not thousands, so 500 is a generous cap.
+        struct RawEntry: Decodable {
+            let from_member_id: UUID?
+            let amount_cents: Int64
+            let currency: String
+        }
+        do {
+            var query = client
+                .from("ledger_entries")
+                .select("from_member_id,amount_cents,currency")
+                .eq("source_resource_id", value: resourceId.uuidString.lowercased())
+                .eq("type", value: LedgerEntry.Kind.contribution)
+                .not("from_member_id", operator: .is, value: "null")
+            if let preferredCurrency {
+                query = query.eq("currency", value: preferredCurrency)
+            }
+            let rows: [RawEntry] = try await query
+                .limit(500)
+                .execute()
+                .value
+
+            var totals: [UUID: (Int64, Int)] = [:]
+            for r in rows {
+                guard let m = r.from_member_id else { continue }
+                let cur = totals[m] ?? (0, 0)
+                totals[m] = (cur.0 + r.amount_cents, cur.1 + 1)
+            }
+            return totals.map { (m, agg) in
+                ResourceMemberContribution(
+                    memberId: m,
+                    contributedCents: agg.0,
+                    entryCount: agg.1
+                )
+            }
+        } catch {
+            throw FundError.rpcFailed(error.localizedDescription)
+        }
+    }
+
     public func contribute(
         fundId: UUID,
         amountCents: Int64,
@@ -706,7 +817,8 @@ public actor LiveFundRepository: FundRepository {
         currency: String?,
         note: String?,
         sourceResourceId: UUID? = nil,
-        clientId: UUID? = nil
+        clientId: UUID? = nil,
+        inKind: Bool = false
     ) async throws -> LedgerEntry {
         struct Params: Encodable {
             let p_group_id: String
@@ -715,6 +827,7 @@ public actor LiveFundRepository: FundRepository {
             let p_note: String?
             let p_source_resource_id: String?
             let p_client_id: String?
+            let p_in_kind: Bool
         }
         do {
             return try await client
@@ -724,7 +837,8 @@ public actor LiveFundRepository: FundRepository {
                     p_currency: currency,
                     p_note: (note?.isEmpty ?? true) ? nil : note,
                     p_source_resource_id: sourceResourceId?.uuidString.lowercased(),
-                    p_client_id: clientId?.uuidString.lowercased()
+                    p_client_id: clientId?.uuidString.lowercased(),
+                    p_in_kind: inKind
                 ))
                 .execute()
                 .value

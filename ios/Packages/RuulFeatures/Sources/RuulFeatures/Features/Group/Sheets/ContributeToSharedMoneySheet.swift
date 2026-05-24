@@ -36,6 +36,13 @@ public struct ContributeToSharedMoneySheet: View {
 
     @State private var amountText: String = ""
     @State private var note: String = ""
+    /// SharedMoney Phase 4.5 (mig 00364): when on, stamps the entry as
+    /// in-kind contribution (terreno, equipo, donated valuable) — the
+    /// amount is the agreed valuation, not cash that hit the pool.
+    /// Distinguishes capital contributions from cash deposits for the
+    /// per-member breakdown surface. Hidden when no sourceResource is
+    /// attached (cash-only pool flow doesn't need the distinction).
+    @State private var isInKind: Bool = false
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
     /// Stable idempotency key (mig 00351). Generated once per sheet
@@ -75,6 +82,22 @@ public struct ContributeToSharedMoneySheet: View {
                 Section("Monto (\(currency))") {
                     TextField("0", text: $amountText)
                         .keyboardType(.decimalPad)
+                }
+
+                // Only meaningful when aporting against a specific
+                // resource (warehouse, vehicle, viaje) — cash to the
+                // pool itself doesn't need the cash-vs-in-kind
+                // distinction. Hidden when sourceResource is nil.
+                if sourceResource != nil {
+                    Section {
+                        Toggle("Aporte en especie", isOn: $isInKind)
+                    } footer: {
+                        Text(isInKind
+                             ? "El monto representa el valor estimado del aporte no monetario (terreno, equipo, etc.)."
+                             : "El monto entró en efectivo al recurso. Activa si aportaste algo con valor (no dinero).")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
                 }
 
                 Section("Nota (opcional)") {
@@ -126,7 +149,8 @@ public struct ContributeToSharedMoneySheet: View {
                 currency: currency,
                 note: trimmedNote.isEmpty ? nil : trimmedNote,
                 sourceResourceId: sourceResource?.id,
-                clientId: clientId
+                clientId: clientId,
+                inKind: isInKind
             )
             onDidContribute()
             dismiss()

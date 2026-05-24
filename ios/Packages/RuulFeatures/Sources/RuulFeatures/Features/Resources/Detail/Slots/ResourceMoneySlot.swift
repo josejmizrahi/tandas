@@ -31,6 +31,7 @@ struct ResourceMoneySlot: View {
     @Environment(AppState.self) private var app
 
     @State private var summary: ResourceMoneySummary?
+    @State private var breakdown: [ResourceMemberContribution] = []
     @State private var isLoading: Bool = true
     @State private var presentedSheet: SharedMoneySheet?
     @State private var refreshTick: Int = 0
@@ -69,6 +70,8 @@ struct ResourceMoneySlot: View {
             }
 
             footer
+
+            breakdownView
         }
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,6 +159,49 @@ struct ResourceMoneySlot: View {
         }
     }
 
+    /// Phase 4.5 brick B: per-member breakdown rendered below the
+    /// summary footer. Sorted by `contributedCents` descending — the
+    /// largest backer leads. Hidden when fewer than 2 members have
+    /// contributed (one-person breakdown is redundant with the global
+    /// "Aportado" total). The current user's row is labeled "Tú" to
+    /// echo the `SharedMoneyCard` convention.
+    @ViewBuilder
+    private var breakdownView: some View {
+        let sorted = sortedBreakdown
+        if sorted.count >= 2 {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Quién aportó")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.secondary)
+                    .padding(.top, RuulSpacing.xs)
+                ForEach(sorted) { row in
+                    breakdownRow(row, total: totalContributed)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func breakdownRow(
+        _ row: ResourceMemberContribution,
+        total: Int64
+    ) -> some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Text(memberLabel(for: row.memberId))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+            Spacer(minLength: RuulSpacing.xs)
+            Text(formatted(row.contributedCents))
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(Color.primary)
+            Text(percentLabel(row.contributedCents, total: total))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(Color.secondary)
+                .frame(minWidth: 36, alignment: .trailing)
+        }
+    }
+
     // MARK: - Derived state
 
     private var netAmount: Decimal {
@@ -183,20 +229,61 @@ struct ResourceMoneySlot: View {
         return "Movimientos balanceados"
     }
 
+    private var sortedBreakdown: [ResourceMemberContribution] {
+        breakdown.sorted { $0.contributedCents > $1.contributedCents }
+    }
+
+    private var totalContributed: Int64 {
+        breakdown.map(\.contributedCents).reduce(0, +)
+    }
+
+    /// Maps a `group_members.id` to its display name from
+    /// `context.members`. When the row belongs to the current viewer,
+    /// renders as "Tú" — same convention used in SharedMoneyCard /
+    /// RecordSharedExpenseSheet so the user recognizes themselves
+    /// at a glance.
+    private func memberLabel(for memberId: UUID) -> String {
+        let viewerMemberId = context.members
+            .first(where: { $0.member.userId == app.session?.user.id })?
+            .member.id
+        if memberId == viewerMemberId { return "Tú" }
+        return context.members
+            .first(where: { $0.member.id == memberId })?
+            .displayName ?? "Miembro"
+    }
+
+    private func percentLabel(_ value: Int64, total: Int64) -> String {
+        guard total > 0 else { return "—" }
+        let pct = Int(round(Double(value) * 100.0 / Double(total)))
+        return "\(pct)%"
+    }
+
     // MARK: - Side effects
 
     @MainActor
     private func load() async {
-        do {
-            summary = try await app.fundRepo.summaryForResource(
-                context.resourceId,
-                preferredCurrency: context.currency
+        // Load summary + per-member breakdown in parallel. Both
+        // soft-fail to the empty state — the slot is ambient context,
+        // not a hard dependency of the host. Capture Sendable values
+        // (UUID, String) up front so Swift 6 strict concurrency
+        // doesn't flag MoneyContext (non-Sendable closures inside).
+        let resourceId = context.resourceId
+        let currency = context.currency
+        let repo = app.fundRepo
+        async let summaryTask: ResourceMoneySummary? = {
+            try? await repo.summaryForResource(
+                resourceId,
+                preferredCurrency: currency
             )
-        } catch {
-            // Fall back silently to the empty state — the slot is
-            // ambient context, not a hard dependency of the host.
-            summary = nil
-        }
+        }()
+        async let breakdownTask: [ResourceMemberContribution] = {
+            (try? await repo.breakdownForResource(
+                resourceId,
+                preferredCurrency: currency
+            )) ?? []
+        }()
+        summary = await summaryTask
+        breakdown = await breakdownTask
         isLoading = false
     }
 
