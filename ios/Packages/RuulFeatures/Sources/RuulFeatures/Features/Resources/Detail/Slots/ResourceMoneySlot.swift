@@ -37,11 +37,12 @@ struct ResourceMoneySlot: View {
     @State private var refreshTick: Int = 0
 
     enum SharedMoneySheet: Identifiable {
-        case record, contribute
+        case record, contribute, settle
         var id: String {
             switch self {
             case .record:     return "record"
             case .contribute: return "contribute"
+            case .settle:     return "settle"
             }
         }
     }
@@ -66,6 +67,18 @@ struct ResourceMoneySlot: View {
                 }
                 RuulButton("Registrar gasto", style: .secondary, size: .medium) {
                     presentedSheet = .record
+                }
+            }
+
+            // Phase 5: settle-up CTA appears once there's at least
+            // one contributor — before that there's nothing to settle.
+            // V1 simple model: settlement is a peer-to-peer payment
+            // (records a `settlement` ledger entry) and DOES NOT alter
+            // the resource's contribution breakdown (capital stays
+            // attributed to whoever fronted it; the cash just moves).
+            if !breakdown.isEmpty {
+                RuulButton("Registrar pago", style: .plain, size: .small) {
+                    presentedSheet = .settle
                 }
             }
 
@@ -98,6 +111,19 @@ struct ResourceMoneySlot: View {
                     currency: context.currency,
                     sourceResource: (id: context.resourceId, name: context.resourceName),
                     onDidContribute: handleDidChange
+                )
+                .presentationDetents([.medium, .large])
+            case .settle:
+                // Phase 5: peer-to-peer settlement. Suggested
+                // recipient = the largest contributor (most likely
+                // the person others owe). Caller can override.
+                SettlementSheet(
+                    groupId: context.groupId,
+                    resourceId: context.resourceId,
+                    currency: context.currency,
+                    members: context.members,
+                    suggestedToMemberId: sortedBreakdown.first?.memberId,
+                    onDidSettle: handleDidChange
                 )
                 .presentationDetents([.medium, .large])
             }

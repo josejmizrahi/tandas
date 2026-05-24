@@ -162,6 +162,14 @@ public protocol FundRepository: Actor {
 
     /// Admin-only lock release. Emits `fundUnlocked`.
     func unlock(fundId: UUID) async throws
+
+    /// SharedMoney Phase 6 (mig 00365): admin-only, idempotent.
+    /// Promotes a fund to "protected" status by stamping
+    /// `metadata.is_protected_fund=true`. Raises on the shared pool
+    /// (XOR with is_shared_pool, mig 00358 CHECK). Used by the
+    /// "Marcar como fondo separado" action on a fund's detail page
+    /// when the user wants this fund out of the canonical surface.
+    func markProtected(fundId: UUID) async throws
 }
 
 // MARK: - Mock
@@ -531,6 +539,15 @@ public actor MockFundRepository: FundRepository {
         funds[fundId] = [cleared]
     }
 
+    public func markProtected(fundId: UUID) async throws {
+        // Mock no-op: the Fund projection doesn't carry the
+        // is_protected_fund flag client-side (it lives in
+        // resources.metadata server-side). Real implementations call
+        // the RPC; the Mock just verifies the fund exists so callers
+        // can rely on `notFound` semantics in tests.
+        guard funds[fundId]?.first != nil else { throw FundError.notFound }
+    }
+
     /// Test helper: install a snapshot so view code can render without
     /// needing the real projection.
     public func stub(_ snapshot: Fund) {
@@ -869,6 +886,19 @@ public actor LiveFundRepository: FundRepository {
         do {
             try await client
                 .rpc("fund_unlock", params: Params(
+                    p_fund_id: fundId.uuidString.lowercased()
+                ))
+                .execute()
+        } catch {
+            throw FundError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func markProtected(fundId: UUID) async throws {
+        struct Params: Encodable { let p_fund_id: String }
+        do {
+            try await client
+                .rpc("mark_fund_protected", params: Params(
                     p_fund_id: fundId.uuidString.lowercased()
                 ))
                 .execute()

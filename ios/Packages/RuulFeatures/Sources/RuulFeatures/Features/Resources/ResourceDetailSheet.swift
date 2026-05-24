@@ -492,10 +492,48 @@ public struct ResourceDetailSheet: View {
             items.append(ToolbarMenuItem(label: "Editar fondo", icon: "pencil") {
                 fundEditPresented = true
             })
+            // SharedMoney Phase 6 (mig 00365): admin-only action to
+            // promote this fund to "protected" status — moves it out
+            // of the canonical surface into the "Otros fondos /
+            // Fondos separados" advanced area. Hidden on the shared
+            // pool (the RPC would raise) and on already-protected
+            // funds (idempotent but the affordance would be noisy).
+            if shouldShowMarkProtected(for: live) {
+                items.append(ToolbarMenuItem(label: "Marcar como fondo separado", icon: "lock") {
+                    Task { await markCurrentFundProtected() }
+                })
+            }
         case .asset, .slot, .right, .event, .unknown:
             break
         }
         return items
+    }
+
+    /// Phase 6 visibility filter: only show the action on non-shared,
+    /// non-already-protected funds. Reads server-stamped metadata
+    /// flags (`is_shared_pool`, `is_protected_fund`).
+    private func shouldShowMarkProtected(for row: ResourceRow) -> Bool {
+        guard row.resourceType == .fund else { return false }
+        let isShared = (row.metadata["is_shared_pool"]?.boolValue == true)
+            || (row.metadata["is_shared_pool"]?.stringValue == "true")
+        let isProtected = (row.metadata["is_protected_fund"]?.boolValue == true)
+            || (row.metadata["is_protected_fund"]?.stringValue == "true")
+        return !isShared && !isProtected
+    }
+
+    @MainActor
+    private func markCurrentFundProtected() async {
+        let live = liveResource ?? resource
+        do {
+            try await app.fundRepo.markProtected(fundId: live.id)
+            // Refresh the row so the toolbar item disappears (the
+            // visibility filter now sees is_protected_fund=true).
+            await refreshResource()
+        } catch {
+            // Silent failure for V1 — the action is admin-rare and
+            // the toolbar item simply won't disappear if the RPC
+            // erred. A future revision can surface an alert.
+        }
     }
 
     private static func typeLabel(for type: ResourceType) -> String {
