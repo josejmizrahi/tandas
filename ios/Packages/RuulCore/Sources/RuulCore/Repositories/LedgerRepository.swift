@@ -57,6 +57,18 @@ public protocol LedgerRepository: Actor {
     /// "Tu posición" card on GroupSpaceView + the
     /// `GroupBalancesView` subscreen ("Te deben / Debes").
     func balancesForGroup(_ groupId: UUID) async throws -> [MemberGroupBalance]
+
+    /// SharedMoney P9: returns the viewer's own balance rows across
+    /// every group in `groupIds`. Powers the cross-group obligations
+    /// roll-up on the Home tab. Implementation walks
+    /// `group_members` → `member_balances_per_group` filtered to the
+    /// viewer's `user_id`. Returns only rows where the viewer is a
+    /// member of the given group AND has non-zero history (the view
+    /// only emits rows for members with at least one ledger entry).
+    func myBalancesAcrossGroups(
+        userId: UUID,
+        groupIds: [UUID]
+    ) async throws -> [MemberGroupBalance]
 }
 
 // MARK: - Mock
@@ -133,6 +145,17 @@ public actor MockLedgerRepository: LedgerRepository {
         )
         entries.append(entry)
         return entry
+    }
+
+    public func myBalancesAcrossGroups(
+        userId: UUID,
+        groupIds: [UUID]
+    ) async throws -> [MemberGroupBalance] {
+        // Mock doesn't model user→member membership, so the in-memory
+        // implementation can't filter to "the viewer's row". Returns
+        // empty — previews + tests just hide the card. The Live path
+        // does the real two-query walk.
+        []
     }
 
     public func balancesForGroup(_ groupId: UUID) async throws -> [MemberGroupBalance] {
@@ -335,6 +358,42 @@ public actor LiveLedgerRepository: LedgerRepository {
                 .from("member_balances_per_group")
                 .select()
                 .eq("group_id", value: groupId.uuidString.lowercased())
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func myBalancesAcrossGroups(
+        userId: UUID,
+        groupIds: [UUID]
+    ) async throws -> [MemberGroupBalance] {
+        guard !groupIds.isEmpty else { return [] }
+        do {
+            // Step 1: resolve the viewer's `group_members.id` per group.
+            // RLS allows reading own membership rows.
+            struct MembershipRow: Decodable {
+                let id: UUID
+            }
+            let groupIdStrings = groupIds.map { $0.uuidString.lowercased() }
+            let memberships: [MembershipRow] = try await client
+                .from("group_members")
+                .select("id")
+                .eq("user_id", value: userId.uuidString.lowercased())
+                .in("group_id", values: groupIdStrings)
+                .execute()
+                .value
+            let memberIds = memberships.map { $0.id.uuidString.lowercased() }
+            guard !memberIds.isEmpty else { return [] }
+
+            // Step 2: read balance rows for those member ids. The view's
+            // composite key already includes group_id so no extra
+            // disambiguation is needed.
+            return try await client
+                .from("member_balances_per_group")
+                .select()
+                .in("member_id", values: memberIds)
                 .execute()
                 .value
         } catch {

@@ -135,16 +135,21 @@ public struct RootShell: View {
         // survives — on second+ visits to a group, the swap is instant
         // (rehydrated from snapshot) with a background refresh. Only the
         // first build per session shows the loading skeleton.
+        // P9: pass the full `app.groups` list (not just `[group]`) so
+        // HomeCoordinator can fetch the viewer's balances across every
+        // group they belong to. The convenience init already falls back
+        // to `[group]` when the list is empty (first-launch races).
         if let existing = homeCoordinator, existing.userId == userId {
-            existing.setActiveGroup(group, allGroups: [group])
+            existing.setActiveGroup(group, allGroups: app.groups)
         } else {
             homeCoordinator = HomeCoordinator(
                 group: group,
-                allGroups: [group],
+                allGroups: app.groups,
                 userId: userId,
                 eventRepo: app.eventRepo,
                 rsvpRepo: app.rsvpRepo,
-                resourceRepo: app.resourceRepo
+                resourceRepo: app.resourceRepo,
+                ledgerRepo: app.ledgerRepo
             )
         }
         shellState.homeCoordinator = homeCoordinator

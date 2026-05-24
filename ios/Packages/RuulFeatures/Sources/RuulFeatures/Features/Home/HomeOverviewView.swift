@@ -72,6 +72,23 @@ public struct HomeOverviewView: View {
             LazyVStack(spacing: RuulSpacing.s0) {
                 greetingHeader
 
+                // P9: cross-group obligations roll-up. The card hides
+                // internally when every position is settled, so the
+                // common steady-state Home stays uncluttered.
+                if !coordinator.crossGroupBalances.isEmpty {
+                    SectionHeading("Dinero")
+                    CrossGroupMoneyCard(
+                        balances: coordinator.crossGroupBalances,
+                        groupName: { gid in
+                            coordinator.allGroups.first(where: { $0.id == gid })?.name ?? "Grupo"
+                        },
+                        onOpenGroup: { gid in
+                            app.activeGroupId = gid
+                            router.selectTab(.groups)
+                        }
+                    )
+                }
+
                 if let actions = inboxCoordinator?.actions, !actions.isEmpty {
                     SectionHeading("Necesita tu atención")
                     AttentionCard(

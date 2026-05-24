@@ -35,6 +35,11 @@ public final class HomeCoordinator {
     public private(set) var error: CoordinatorError?
     public private(set) var lastRefreshedAt: Date?
 
+    /// P9: viewer's own balance rows across every group in `allGroups`.
+    /// Empty when the ledger repo is absent (tests) or the user has no
+    /// activity. Populated alongside the main feed in `refresh()`.
+    public private(set) var crossGroupBalances: [MemberGroupBalance] = []
+
     /// Adapter para `AsyncContentView`. Se evalúa loaded cuando hay
     /// **cualquier** feed item (event o resource) y empty cuando ambos
     /// están vacíos. `hasLoaded` deriva del snapshot cache — si la
@@ -77,6 +82,10 @@ public final class HomeCoordinator {
     private let eventRepo: any EventRepository
     private let rsvpRepo: any RSVPRepository
     private let resourceRepo: any ResourceRepository
+    /// Optional — production wires `app.ledgerRepo`, tests/previews can
+    /// omit it. When nil, `crossGroupBalances` stays empty and the
+    /// Home roll-up card hides.
+    private let ledgerRepo: (any LedgerRepository)?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "home")
 
     private let cacheTTL: TimeInterval = 5 * 60
@@ -130,7 +139,8 @@ public final class HomeCoordinator {
         userId: UUID,
         eventRepo: any EventRepository,
         rsvpRepo: any RSVPRepository,
-        resourceRepo: any ResourceRepository
+        resourceRepo: any ResourceRepository,
+        ledgerRepo: (any LedgerRepository)? = nil
     ) {
         self.group = group
         self.allGroups = allGroups.isEmpty ? [group] : allGroups
@@ -138,6 +148,7 @@ public final class HomeCoordinator {
         self.eventRepo = eventRepo
         self.rsvpRepo = rsvpRepo
         self.resourceRepo = resourceRepo
+        self.ledgerRepo = ledgerRepo
     }
 
     /// Convenience init — single-group mode (back-compat for tests/previews).
@@ -156,7 +167,8 @@ public final class HomeCoordinator {
             userId: userId,
             eventRepo: eventRepo,
             rsvpRepo: rsvpRepo,
-            resourceRepo: resourceRepo
+            resourceRepo: resourceRepo,
+            ledgerRepo: nil
         )
     }
 
@@ -306,14 +318,28 @@ public final class HomeCoordinator {
             fetchedRows.append(contentsOf: rows)
         }
 
+        // P9: viewer's balances across every group. Soft-fails to an
+        // empty array — the Home roll-up card hides on its own when
+        // the list is empty / fully settled. Production-only path
+        // (Mock returns []), so tests don't need to seed ledger state.
+        var fetchedBalances: [MemberGroupBalance] = []
+        if let ledgerRepo {
+            fetchedBalances = (try? await ledgerRepo.myBalancesAcrossGroups(
+                userId: userId,
+                groupIds: refreshingAllGroupIds
+            )) ?? []
+        }
+
         // Skip the cache write when the events fetch failed — otherwise
         // the TTL guard at the top would short-circuit subsequent
         // refreshes and keep the user stuck with empty arrays.
         guard eventsFetchSucceeded else {
-            // Still paint the (possibly empty) resources fetch when the
-            // user is on this group, since that fetch did succeed.
+            // Still paint the (possibly empty) resources + balances
+            // fetch when the user is on this group, since those fetches
+            // did succeed.
             if refreshingGroupId == group.id {
                 upcomingResources = fetchedRows
+                crossGroupBalances = fetchedBalances
             }
             return
         }
@@ -342,6 +368,7 @@ public final class HomeCoordinator {
             myRSVPs[nxt.id] = rsvp
         }
         upcomingResources = fetchedRows
+        crossGroupBalances = fetchedBalances
         lastRefreshedAt = now
     }
 
