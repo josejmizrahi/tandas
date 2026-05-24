@@ -16,6 +16,7 @@ public final class GroupHomeCoordinator {
     private let fineRepo: (any FineRepository)?
     private let fundRepo: (any FundRepository)?
     private let resourceRepo: (any ResourceRepository)?
+    private let ledgerRepo: (any LedgerRepository)?
     private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
@@ -73,6 +74,25 @@ public final class GroupHomeCoordinator {
     /// wired). The tile hides entirely when this is empty.
     public var groupAssets: [ResourceRow] = []
     public var groupAssetsCount: Int { groupAssets.count }
+    /// SharedMoney P3 (mig 00136): all members' net positions in this
+    /// group, derived from `member_balances_per_group`. Drives the
+    /// "Tu posición" card on GroupSpaceView + `GroupBalancesView`
+    /// subscreen. Empty until first load (or when `ledgerRepo`/
+    /// `actorUserId` isn't wired).
+    public var groupBalances: [MemberGroupBalance] = []
+    /// The viewer's own balance for the group's currency, derived from
+    /// `groupBalances` once `group` + `actorUserId` resolve. nil when
+    /// the user has no entries yet (settled). UI hides the card in
+    /// that case.
+    public var viewerBalance: MemberGroupBalance? {
+        guard let group, let userId = actorUserId else { return nil }
+        // Map user_id → group_members.id via the loaded members list.
+        guard let myMemberId = allMembers
+            .first(where: { $0.member.userId == userId })?.member.id else { return nil }
+        return groupBalances.first(where: {
+            $0.memberId == myMemberId && $0.currency == group.currency
+        })
+    }
     public var isLoading: Bool = false
     public var error: CoordinatorError?
     /// True después de que `refresh()` completó al menos una vez. Permite
@@ -137,6 +157,7 @@ public final class GroupHomeCoordinator {
         fineRepo: (any FineRepository)? = nil,
         fundRepo: (any FundRepository)? = nil,
         resourceRepo: (any ResourceRepository)? = nil,
+        ledgerRepo: (any LedgerRepository)? = nil,
         actorUserId: UUID? = nil
     ) {
         self.groupId = groupId
@@ -149,6 +170,7 @@ public final class GroupHomeCoordinator {
         self.fineRepo = fineRepo
         self.fundRepo = fundRepo
         self.resourceRepo = resourceRepo
+        self.ledgerRepo = ledgerRepo
         self.actorUserId = actorUserId
     }
 
@@ -170,6 +192,7 @@ public final class GroupHomeCoordinator {
             async let fundsTask: Void = loadFunds()
             async let sharedPoolTask: Void = loadSharedPoolSummary()
             async let assetsTask: Void = loadAssets()
+            async let balancesTask: Void = loadBalances()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -180,6 +203,7 @@ public final class GroupHomeCoordinator {
             _ = await fundsTask
             _ = await sharedPoolTask
             _ = await assetsTask
+            _ = await balancesTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -252,6 +276,18 @@ public final class GroupHomeCoordinator {
             self.groupFunds = try await repo.listForGroup(groupId)
         } catch {
             log.warning("group funds load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// P3 (mig 00136): per-member net balances in the group. Soft-fails —
+    /// the card simply stays hidden if the read errors. Read is small
+    /// (one row per (member, currency)) so no pagination needed.
+    private func loadBalances() async {
+        guard let repo = ledgerRepo else { return }
+        do {
+            self.groupBalances = try await repo.balancesForGroup(groupId)
+        } catch {
+            log.warning("group balances load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

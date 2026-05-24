@@ -49,6 +49,7 @@ public struct MyGroupsTab: View {
         case multas
         case fondos
         case activos
+        case balances
         // Ajustes hierarchy
         case ajustes
         case roles            // assignments: members grouped by role
@@ -241,6 +242,14 @@ public struct MyGroupsTab: View {
                     }
                 )
                 .environment(app)
+
+            case .balances:
+                // SharedMoney P3: full per-member "Te deben / Debes"
+                // surface. The view loads its own members snapshot so
+                // it works whether reached via this nav stack or via
+                // a deeplink that bypasses the group coordinator.
+                GroupBalancesView(group: group)
+                    .environment(app)
 
             case .ajustes:
                 GroupAjustesView(
@@ -502,6 +511,7 @@ private struct GroupSpaceScreen: View {
                     onOpenFines:      { path.append(MyGroupsTab.GroupDestination.multas) },
                     onOpenFunds:      { path.append(MyGroupsTab.GroupDestination.fondos) },
                     onOpenAssets:     { path.append(MyGroupsTab.GroupDestination.activos) },
+                    onOpenBalances:   { path.append(MyGroupsTab.GroupDestination.balances) },
                     onOpenInbox:      { router.selectTab(.home) },
                     onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
                     onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
@@ -534,6 +544,7 @@ private struct GroupSpaceScreen: View {
                     fineRepo: app.fineRepo,
                     fundRepo: app.fundRepo,
                     resourceRepo: app.resourceRepo,
+                    ledgerRepo: app.ledgerRepo,
                     actorUserId: app.session?.user.id
                 )
             }

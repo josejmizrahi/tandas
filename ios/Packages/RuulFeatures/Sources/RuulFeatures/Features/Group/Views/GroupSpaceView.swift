@@ -45,6 +45,7 @@ public struct GroupSpaceView: View {
     public var onOpenFines: (() -> Void)?
     public var onOpenFunds: (() -> Void)?
     public var onOpenAssets: (() -> Void)?
+    public var onOpenBalances: (() -> Void)?
     public var onOpenInbox: (() -> Void)?
 
     // Header + stream
@@ -70,6 +71,7 @@ public struct GroupSpaceView: View {
         onOpenFines: (() -> Void)? = nil,
         onOpenFunds: (() -> Void)? = nil,
         onOpenAssets: (() -> Void)? = nil,
+        onOpenBalances: (() -> Void)? = nil,
         onOpenInbox: (() -> Void)? = nil,
         onOpenMembers: (() -> Void)? = nil,
         onOpenActivity: (() -> Void)? = nil,
@@ -88,6 +90,7 @@ public struct GroupSpaceView: View {
         self.onOpenFines = onOpenFines
         self.onOpenFunds = onOpenFunds
         self.onOpenAssets = onOpenAssets
+        self.onOpenBalances = onOpenBalances
         self.onOpenInbox = onOpenInbox
         self.onOpenMembers = onOpenMembers
         self.onOpenActivity = onOpenActivity
@@ -133,6 +136,17 @@ public struct GroupSpaceView: View {
                             summary: summary,
                             onContribute: { sharedMoneySheet = .contribute },
                             onRecordExpense: { sharedMoneySheet = .recordExpense }
+                        )
+                    }
+
+                    // SharedMoney P3: viewer's net "Te deben / Debes"
+                    // card. Hidden when settled (netCents == 0) — no
+                    // noise on the steady state.
+                    if let balance = coordinator.viewerBalance,
+                       !balance.isSettled {
+                        GroupObligationsCard(
+                            balance: balance,
+                            onOpenDetail: { onOpenBalances?() }
                         )
                     }
 

@@ -342,6 +342,7 @@ private struct GroupHomeSheetContent: View {
             fineRepo: app.fineRepo,
             fundRepo: app.fundRepo,
             resourceRepo: app.resourceRepo,
+            ledgerRepo: app.ledgerRepo,
             actorUserId: app.session?.user.id
         )
         NavigationStack(path: $path) {
@@ -362,6 +363,7 @@ private struct GroupHomeSheetContent: View {
                 },
                 onOpenFunds: nil,
                 onOpenAssets: nil,
+                onOpenBalances: nil,
                 onOpenInbox: { router.selectTab(.home) },
                 onOpenMembers: {
                     path.append(

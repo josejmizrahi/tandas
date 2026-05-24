@@ -51,6 +51,12 @@ public protocol LedgerRepository: Actor {
         resourceId: UUID?,
         note: String?
     ) async throws -> LedgerEntry
+
+    /// SharedMoney P3: per-(member, currency) net positions in a group,
+    /// derived from `member_balances_per_group` (mig 00136). Powers the
+    /// "Tu posición" card on GroupSpaceView + the
+    /// `GroupBalancesView` subscreen ("Te deben / Debes").
+    func balancesForGroup(_ groupId: UUID) async throws -> [MemberGroupBalance]
 }
 
 // MARK: - Mock
@@ -127,6 +133,40 @@ public actor MockLedgerRepository: LedgerRepository {
         )
         entries.append(entry)
         return entry
+    }
+
+    public func balancesForGroup(_ groupId: UUID) async throws -> [MemberGroupBalance] {
+        // Mock aggregates from in-memory entries by (member_id,
+        // currency). Mirrors the server view's math: sent = sum where
+        // member is `from_member_id`, received = sum where member is
+        // `to_member_id`, net = received - sent.
+        var sent: [String: Int64] = [:]
+        var received: [String: Int64] = [:]
+        for e in entries where e.groupId == groupId {
+            if let m = e.fromMemberId {
+                sent["\(m.uuidString)|\(e.currency)", default: 0] += e.amountCents
+            }
+            if let m = e.toMemberId {
+                received["\(m.uuidString)|\(e.currency)", default: 0] += e.amountCents
+            }
+        }
+        let keys = Set(sent.keys).union(received.keys)
+        return keys.compactMap { key -> MemberGroupBalance? in
+            let parts = key.split(separator: "|")
+            guard parts.count == 2,
+                  let memberId = UUID(uuidString: String(parts[0])) else { return nil }
+            let currency = String(parts[1])
+            let s = sent[key] ?? 0
+            let r = received[key] ?? 0
+            return MemberGroupBalance(
+                groupId: groupId,
+                memberId: memberId,
+                currency: currency,
+                sentCents: s,
+                receivedCents: r,
+                netCents: r - s
+            )
+        }
     }
 }
 
@@ -282,6 +322,19 @@ public actor LiveLedgerRepository: LedgerRepository {
                     p_resource_id: resourceId?.uuidString.lowercased(),
                     p_note: note?.isEmpty == true ? nil : note
                 ))
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func balancesForGroup(_ groupId: UUID) async throws -> [MemberGroupBalance] {
+        do {
+            return try await client
+                .from("member_balances_per_group")
+                .select()
+                .eq("group_id", value: groupId.uuidString.lowercased())
                 .execute()
                 .value
         } catch {
