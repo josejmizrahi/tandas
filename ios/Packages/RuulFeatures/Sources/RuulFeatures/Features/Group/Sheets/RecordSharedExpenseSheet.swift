@@ -103,48 +103,27 @@ public struct RecordSharedExpenseSheet: View {
                         .foregroundStyle(Color.secondary)
                 }
 
-                Section {
-                    Picker("Reembolsar a", selection: $toMemberId) {
-                        Text("Elige…").tag(Optional<UUID>.none)
-                        ForEach(members) { m in
-                            Text(m.displayName).tag(Optional(m.member.id))
-                        }
-                    }
-                    .pickerStyle(.menu)
-                } footer: {
-                    Text("Quién recibe el dinero del fondo. Por defecto la misma persona que pagó.")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                }
-
                 Section("Monto (\(currency))") {
                     TextField("0", text: $amountText)
                         .keyboardType(.decimalPad)
                 }
 
                 // P4 (mig 00367): multi-select participants. Empty list
-                // = no split (legacy 1-on-1 path). Each tap toggles
-                // membership; the footer surfaces the live per-share
-                // when at least 2 are selected.
+                // = no split (legacy 1-on-1 path). Native `Toggle` rows
+                // are taller than custom Button rows but match Apple
+                // selection-list ergonomics (Settings/Files).
                 Section {
                     ForEach(members) { m in
-                        Button {
-                            toggleParticipant(m.member.id)
-                        } label: {
-                            HStack {
-                                Text(m.displayName)
-                                    .font(.body)
-                                    .foregroundStyle(Color.primary)
-                                Spacer()
-                                if participantIds.contains(m.member.id) {
-                                    Image(systemName: "checkmark")
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(Color.ruulAccent)
+                        Toggle(
+                            m.displayName,
+                            isOn: Binding(
+                                get: { participantIds.contains(m.member.id) },
+                                set: { isOn in
+                                    if isOn { participantIds.insert(m.member.id) }
+                                    else { participantIds.remove(m.member.id) }
                                 }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                            )
+                        )
                     }
                 } header: {
                     Text("Dividir entre")
@@ -157,6 +136,24 @@ public struct RecordSharedExpenseSheet: View {
                 Section("Nota (opcional)") {
                     TextField("ej: Bocadillos para la junta", text: $note, axis: .vertical)
                         .lineLimit(2...4)
+                }
+
+                // "Reembolsar a" is collapsed by default — auto-mirror
+                // to `paidByMemberId` covers the 95% case. Only power
+                // users who need a different destinatario open this.
+                Section {
+                    DisclosureGroup("Más opciones") {
+                        Picker("Reembolsar a", selection: $toMemberId) {
+                            Text("Elige…").tag(Optional<UUID>.none)
+                            ForEach(members) { m in
+                                Text(m.displayName).tag(Optional(m.member.id))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        Text("Quién recibe el dinero del fondo. Por defecto la misma persona que pagó.")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                    }
                 }
 
                 if let errorMessage {
@@ -241,16 +238,6 @@ public struct RecordSharedExpenseSheet: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    /// P4: toggle membership in the participants set. Tap behavior
-    /// mirrors Apple-native selection lists (Files / Mail).
-    private func toggleParticipant(_ memberId: UUID) {
-        if participantIds.contains(memberId) {
-            participantIds.remove(memberId)
-        } else {
-            participantIds.insert(memberId)
         }
     }
 
