@@ -142,7 +142,9 @@ public protocol FundRepository: Actor {
         sourceResourceId: UUID?,
         clientId: UUID?,
         paidByMemberId: UUID?,
-        participants: [UUID]
+        participants: [UUID],
+        splitMode: SplitMode?,
+        splitBreakdown: [SplitBreakdown]?
     ) async throws -> LedgerEntry
 
     /// SharedMoney Phase 2 (mig 00363): group-scoped contribution entry
@@ -410,7 +412,9 @@ public actor MockFundRepository: FundRepository {
         sourceResourceId: UUID? = nil,
         clientId: UUID? = nil,
         paidByMemberId: UUID? = nil,
-        participants: [UUID] = []
+        participants: [UUID] = [],
+        splitMode: SplitMode? = nil,
+        splitBreakdown: [SplitBreakdown]? = nil
     ) async throws -> LedgerEntry {
         // Mock shared-pool resolution: pick any fund for the group. The
         // is_shared_pool flag lives in resources.metadata server-side and
@@ -434,6 +438,17 @@ public actor MockFundRepository: FundRepository {
         if let paidByMemberId { meta["paid_by_member_id"] = .string(paidByMemberId.uuidString.lowercased()) }
         if !participants.isEmpty {
             meta["participants"] = .array(participants.map { .string($0.uuidString.lowercased()) })
+        }
+        if let splitMode {
+            meta["split_mode"] = .string(splitMode.rawValue)
+        }
+        if let splitBreakdown, !splitBreakdown.isEmpty {
+            meta["split_breakdown"] = .array(splitBreakdown.map { row in
+                .object([
+                    "member_id":   .string(row.memberId.uuidString.lowercased()),
+                    "share_cents": .int(Int(row.shareCents))
+                ])
+            })
         }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
@@ -805,8 +820,14 @@ public actor LiveFundRepository: FundRepository {
         sourceResourceId: UUID? = nil,
         clientId: UUID? = nil,
         paidByMemberId: UUID? = nil,
-        participants: [UUID] = []
+        participants: [UUID] = [],
+        splitMode: SplitMode? = nil,
+        splitBreakdown: [SplitBreakdown]? = nil
     ) async throws -> LedgerEntry {
+        struct BreakdownRow: Encodable {
+            let member_id: String
+            let share_cents: Int64
+        }
         struct Params: Encodable {
             let p_group_id: String
             let p_amount_cents: Int64
@@ -817,6 +838,8 @@ public actor LiveFundRepository: FundRepository {
             let p_client_id: String?
             let p_paid_by_member_id: String?
             let p_participants: [String]?
+            let p_split_mode: String?
+            let p_split_breakdown: [BreakdownRow]?
         }
         do {
             return try await client
@@ -831,7 +854,16 @@ public actor LiveFundRepository: FundRepository {
                     p_paid_by_member_id: paidByMemberId?.uuidString.lowercased(),
                     p_participants: participants.isEmpty
                         ? nil
-                        : participants.map { $0.uuidString.lowercased() }
+                        : participants.map { $0.uuidString.lowercased() },
+                    p_split_mode: splitMode?.rawValue,
+                    p_split_breakdown: splitBreakdown.flatMap { rows in
+                        rows.isEmpty ? nil : rows.map {
+                            BreakdownRow(
+                                member_id: $0.memberId.uuidString.lowercased(),
+                                share_cents: $0.shareCents
+                            )
+                        }
+                    }
                 ))
                 .execute()
                 .value
