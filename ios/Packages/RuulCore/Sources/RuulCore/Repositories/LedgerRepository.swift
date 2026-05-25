@@ -80,6 +80,16 @@ public protocol LedgerRepository: Actor {
         reason: String?,
         clientId: UUID
     ) async throws -> LedgerEntry
+
+    /// Mig 00372: in-place edit of the entry's note field. The atom
+    /// log stays immutable for math (amount/from/to/type) — only the
+    /// descriptive note is mutable. Updates both `ledger_entries` and
+    /// the originating `system_events.payload` so the activity feed
+    /// reflects the new text on next refresh. Pass nil/empty to clear.
+    func updateEntryNote(
+        entryId: UUID,
+        note: String?
+    ) async throws -> LedgerEntry
 }
 
 // MARK: - Mock
@@ -167,6 +177,42 @@ public actor MockLedgerRepository: LedgerRepository {
         // empty — previews + tests just hide the card. The Live path
         // does the real two-query walk.
         []
+    }
+
+    public func updateEntryNote(
+        entryId: UUID,
+        note: String?
+    ) async throws -> LedgerEntry {
+        guard let idx = entries.firstIndex(where: { $0.id == entryId }) else {
+            throw LedgerError.rpcFailed("entry not found")
+        }
+        var meta: [String: JSONConfig] = {
+            if case .object(let dict) = entries[idx].metadata { return dict }
+            return [:]
+        }()
+        let trimmed = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            meta.removeValue(forKey: "note")
+        } else {
+            meta["note"] = .string(trimmed)
+        }
+        let original = entries[idx]
+        let updated = LedgerEntry(
+            id: original.id,
+            groupId: original.groupId,
+            resourceId: original.resourceId,
+            type: original.type,
+            amountCents: original.amountCents,
+            currency: original.currency,
+            fromMemberId: original.fromMemberId,
+            toMemberId: original.toMemberId,
+            metadata: .object(meta),
+            occurredAt: original.occurredAt,
+            recordedAt: original.recordedAt,
+            recordedBy: original.recordedBy
+        )
+        entries[idx] = updated
+        return updated
     }
 
     public func reverseEntry(
@@ -427,6 +473,29 @@ public actor LiveLedgerRepository: LedgerRepository {
                     p_entry_id: entryId.uuidString.lowercased(),
                     p_reason: (reason?.isEmpty == false) ? reason : nil,
                     p_client_id: clientId.uuidString.lowercased()
+                ))
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func updateEntryNote(
+        entryId: UUID,
+        note: String?
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_entry_id: String
+            let p_note: String?
+        }
+        let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = (trimmed?.isEmpty ?? true) ? nil : trimmed
+        do {
+            return try await client
+                .rpc("update_ledger_entry_note", params: Params(
+                    p_entry_id: entryId.uuidString.lowercased(),
+                    p_note: cleaned
                 ))
                 .execute()
                 .value

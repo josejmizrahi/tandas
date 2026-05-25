@@ -17,6 +17,12 @@ public struct ActivityView: View {
     /// buttons or by `performReverse` completion.
     @State private var entryToReverse: PendingReversal?
     @State private var reverseError: String?
+    /// Mig 00372: the entry whose note the user is editing. Drives the
+    /// "Editar nota" sheet.
+    @State private var entryEditingNote: NoteEditingTarget?
+    @State private var noteEditDraft: String = ""
+    @State private var isSavingNote: Bool = false
+    @State private var noteEditError: String?
     /// Optional: cuando set, el `SystemEventDetailView` muestra un CTA
     /// "Ver detalle" que routea al destination real (multa / voto /
     /// evento / regla). El forwarding pasa por `ActivityTabView` →
@@ -29,6 +35,13 @@ public struct ActivityView: View {
     private struct PendingReversal: Identifiable {
         let event: SystemEvent
         let entryId: UUID
+        var id: UUID { event.id }
+    }
+
+    private struct NoteEditingTarget: Identifiable {
+        let event: SystemEvent
+        let entryId: UUID
+        let initialNote: String
         var id: UUID { event.id }
     }
 
@@ -73,6 +86,13 @@ public struct ActivityView: View {
                 event: ev,
                 memberName: nil,
                 dismiss: { detailEvent = nil },
+                resolveMemberName: { coordinator.memberName(forMemberId: $0) },
+                resolveCurrentUserMemberId: {
+                    guard let uid = app.session?.user.id else { return nil }
+                    return coordinator.memberDirectoryByMemberId.values
+                        .first(where: { $0.member.userId == uid })?
+                        .member.id
+                },
                 onOpenRelated: onOpenRelated.map { handler in
                     { event in
                         // Dismiss la sheet primero — el padre setea el route
@@ -117,6 +137,45 @@ public struct ActivityView: View {
             Button("OK", role: .cancel) { reverseError = nil }
         } message: { message in
             Text(message)
+        }
+        .sheet(item: $entryEditingNote) { target in
+            noteEditSheet(target: target)
+        }
+    }
+
+    @ViewBuilder
+    private func noteEditSheet(target: NoteEditingTarget) -> some View {
+        NavigationStack {
+            Form {
+                Section("Nota") {
+                    TextField("ej: Bocadillos para la junta", text: $noteEditDraft, axis: .vertical)
+                        .lineLimit(2...6)
+                }
+                if let noteEditError {
+                    Section {
+                        Text(noteEditError)
+                            .font(.caption)
+                            .foregroundStyle(Color.red)
+                    }
+                }
+            }
+            .navigationTitle("Editar nota")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") {
+                        entryEditingNote = nil
+                        noteEditError = nil
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSavingNote ? "Guardando…" : "Guardar") {
+                        Task { await performNoteEdit(target: target) }
+                    }
+                    .disabled(isSavingNote || noteEditDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                              == target.initialNote.trimmingCharacters(in: .whitespacesAndNewlines))
+                }
+            }
         }
     }
 
@@ -165,6 +224,26 @@ public struct ActivityView: View {
             await coordinator.refresh()
         } catch {
             reverseError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func performNoteEdit(target: NoteEditingTarget) async {
+        isSavingNote = true
+        noteEditError = nil
+        defer { isSavingNote = false }
+        let trimmed = noteEditDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            _ = try await app.ledgerRepo.updateEntryNote(
+                entryId: target.entryId,
+                note: trimmed.isEmpty ? nil : trimmed
+            )
+            entryEditingNote = nil
+            // mig 00372 also updates `system_events.payload.note` so
+            // the row title/subtitle reflects the edit on next refresh.
+            await coordinator.refresh()
+        } catch {
+            noteEditError = error.localizedDescription
         }
     }
 
@@ -317,6 +396,16 @@ public struct ActivityView: View {
                     // viewer recorded → "Revertir". Appends an opposing
                     // settlement entry; balances roll back.
                     if let entryId = reversibleEntryId(for: ev) {
+                        Button {
+                            entryEditingNote = NoteEditingTarget(
+                                event: ev,
+                                entryId: entryId,
+                                initialNote: ev.payload["note"]?.stringValue ?? ""
+                            )
+                            noteEditDraft = ev.payload["note"]?.stringValue ?? ""
+                        } label: {
+                            Label("Editar nota", systemImage: "pencil")
+                        }
                         Button(role: .destructive) {
                             entryToReverse = PendingReversal(event: ev, entryId: entryId)
                         } label: {
