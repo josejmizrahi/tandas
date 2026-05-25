@@ -554,6 +554,7 @@ private struct GroupSpaceScreen: View {
                     onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
                     onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
                     onOpenTransactions: { path.append(MyGroupsTab.GroupDestination.transacciones) },
+                    onOpenEventsHistory: { path.append(MyGroupsTab.GroupDestination.eventos) },
                     onOpenAjustes:    { path.append(MyGroupsTab.GroupDestination.ajustes) },
                     onConfirmLeave:   { showLeave = true },
                     onLeaveGroup: {

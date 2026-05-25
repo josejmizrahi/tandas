@@ -29,6 +29,7 @@ struct GroupClusterStream: View {
     let onOpenEvent: (Event) -> Void
     var onSeeAllActivity: (() -> Void)?
     var onSeeAllMoney: (() -> Void)?
+    var onSeeAllUpcoming: (() -> Void)?
     let onRegisterExpense: () -> Void
     let onContribute: () -> Void
     let onSettle: () -> Void
@@ -39,7 +40,11 @@ struct GroupClusterStream: View {
                 AttentionCluster(items: attention, onSelect: onSelectPending)
             }
             if !upcoming.isEmpty {
-                UpcomingCluster(events: upcoming, onOpenEvent: onOpenEvent)
+                UpcomingCluster(
+                    events: upcoming,
+                    onOpenEvent: onOpenEvent,
+                    onSeeAll: onSeeAllUpcoming
+                )
             }
             if !recentMoney.isEmpty {
                 RecentMoneyCluster(

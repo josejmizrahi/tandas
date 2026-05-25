@@ -49,6 +49,7 @@ public struct GroupSpaceView: View {
     public var onOpenMembers: (() -> Void)?
     public var onOpenActivity: (() -> Void)?
     public var onOpenTransactions: (() -> Void)?
+    public var onOpenEventsHistory: (() -> Void)?
 
     // Toolbar
     public var onOpenAjustes: (() -> Void)?
@@ -66,6 +67,7 @@ public struct GroupSpaceView: View {
         onOpenMembers: (() -> Void)? = nil,
         onOpenActivity: (() -> Void)? = nil,
         onOpenTransactions: (() -> Void)? = nil,
+        onOpenEventsHistory: (() -> Void)? = nil,
         onOpenAjustes: (() -> Void)? = nil,
         onConfirmLeave: (() -> Void)? = nil,
         onLeaveGroup: @escaping () -> Void
@@ -80,6 +82,7 @@ public struct GroupSpaceView: View {
         self.onOpenMembers = onOpenMembers
         self.onOpenActivity = onOpenActivity
         self.onOpenTransactions = onOpenTransactions
+        self.onOpenEventsHistory = onOpenEventsHistory
         self.onOpenAjustes = onOpenAjustes
         self.onConfirmLeave = onConfirmLeave
         self.onLeaveGroup = onLeaveGroup
@@ -131,6 +134,7 @@ public struct GroupSpaceView: View {
                             onOpenEvent: onOpenEvent,
                             onSeeAllActivity: onOpenActivity,
                             onSeeAllMoney: onOpenTransactions,
+                            onSeeAllUpcoming: onOpenEventsHistory,
                             onRegisterExpense: { sharedMoneySheet = .recordExpense },
                             onContribute: { sharedMoneySheet = .contribute },
                             onSettle: { sharedMoneySheet = .settle }

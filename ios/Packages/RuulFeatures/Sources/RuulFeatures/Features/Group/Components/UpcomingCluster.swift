@@ -10,6 +10,7 @@ import RuulCore
 struct UpcomingCluster: View {
     let events: [Event]
     let onOpenEvent: (Event) -> Void
+    var onSeeAll: (() -> Void)?
 
     private var visible: [Event] {
         Array(events.prefix(5))
@@ -17,10 +18,18 @@ struct UpcomingCluster: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            Text("Próximo")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(.tertiaryLabel))
-                .padding(.leading, RuulSpacing.xxs)
+            HStack {
+                Text("Próximo")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                Spacer()
+                if let onSeeAll {
+                    Button("Ver todo", action: onSeeAll)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.ruulAccent)
+                }
+            }
+            .padding(.horizontal, RuulSpacing.xxs)
 
             VStack(spacing: 0) {
                 ForEach(visible) { event in
