@@ -81,11 +81,20 @@ public actor LiveVoteCastRepository: VoteCastRepository {
         // Post-mig 00163: vote_casts is append-only. Multiple rows per
         // (vote, member) are expected (pending pre-seed + each cast).
         // Order by created_at DESC so the latest row wins.
+        //
+        // RLS on vote_casts already restricts SELECT to the caller's own
+        // rows (anonymity). We DON'T filter by `member_id` client-side
+        // because `userMemberId` is read from a cached member directory
+        // that can lag behind auth state (just-joined races, anon→phone
+        // upgrade, refresh in flight). Pre-fix a stale/missing entry
+        // caused `myCast` to return nil after a successful cast, leaving
+        // `alreadyVoted = false` and the "Emitir voto" action visible.
+        // `_ = userMemberId` keeps the protocol signature stable.
+        _ = userMemberId
         let rows: [VoteCast] = try await client
             .from("vote_casts")
             .select("*")
-            .eq("vote_id",   value: voteId.uuidString.lowercased())
-            .eq("member_id", value: userMemberId.uuidString.lowercased())
+            .eq("vote_id", value: voteId.uuidString.lowercased())
             .order("created_at", ascending: false)
             .limit(1)
             .execute()
