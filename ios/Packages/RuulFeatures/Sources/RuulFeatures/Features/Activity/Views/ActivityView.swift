@@ -122,22 +122,32 @@ public struct ActivityView: View {
 
     /// Returns the ledger_entries.id when `event` is a reversible
     /// ledger atom — i.e., a `ledgerEntryCreated` whose `recorded_by`
-    /// matches the current viewer. V1 authorization mirrors the RPC
-    /// (mig 00368): only the original recorder can reverse. Returns
-    /// nil for any other case so the contextMenu hides the action.
+    /// matches the current viewer AND has not already been reversed
+    /// AND is not itself a reverse. V1 authorization mirrors the RPC
+    /// (mig 00368): only the original recorder can reverse.
     private func reversibleEntryId(for event: SystemEvent) -> UUID? {
         guard event.eventType == .ledgerEntryCreated else { return nil }
         guard let viewerId = app.session?.user.id else { return nil }
         let recordedBy = event.payload["recorded_by"]?.stringValue?.lowercased()
         guard recordedBy == viewerId.uuidString.lowercased() else { return nil }
-        // Reverse entries can't themselves be reversed (RPC enforces).
-        // Their payload would have `reversed_ledger_entry_id`, but the
-        // atom emit trigger doesn't surface that key yet — V2 polish
-        // gates the menu pre-emptively instead of relying on the RPC
-        // error.
         guard let raw = event.payload["entry_id"]?.stringValue,
               let id = UUID(uuidString: raw) else { return nil }
+        // Already-reversed originals + the reverses themselves are
+        // both inert (RPC rejects them anyway — this just hides the
+        // menu so users don't see a dead action).
+        if coordinator.reversedEntryIds.contains(id) { return nil }
+        if coordinator.reverseEntryIds.contains(id) { return nil }
         return id
+    }
+
+    /// True when this ledger event represents an entry the user has
+    /// already reversed. Drives muted styling + the "Revertido" badge
+    /// on the original row so the pair reads as one logical action.
+    private func isReversedOriginal(_ event: SystemEvent) -> Bool {
+        guard event.eventType == .ledgerEntryCreated,
+              let raw = event.payload["entry_id"]?.stringValue,
+              let id = UUID(uuidString: raw) else { return false }
+        return coordinator.reversedEntryIds.contains(id)
     }
 
     @MainActor
@@ -286,6 +296,20 @@ public struct ActivityView: View {
                         actorName: coordinator.actorName(for: ev),
                         actorAvatarURL: coordinator.actorAvatarURL(for: ev)
                     )
+                    .opacity(isReversedOriginal(ev) ? 0.55 : 1)
+                    .overlay(alignment: .topTrailing) {
+                        if isReversedOriginal(ev) {
+                            Text("Revertido")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Color.secondary)
+                                .padding(.horizontal, RuulSpacing.xs)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.ruulSurface))
+                                .overlay(Capsule().stroke(Color(.separator), lineWidth: 0.5))
+                                .padding(.top, RuulSpacing.xs)
+                                .padding(.trailing, RuulSpacing.xs)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
                 .contextMenu {

@@ -47,6 +47,16 @@ public final class ActivityCoordinator {
     /// (the suffix just doesn't appear).
     public var resourceDirectoryById: [UUID: ResourceRow] = [:]
 
+    /// Edit foundation (mig 00368/00369): the set of ledger_entry ids
+    /// that have BEEN reversed (originals whose pair landed). Used by
+    /// the feed to render "Revertido" badges + suppress the contextMenu
+    /// on rows that can't be reversed again.
+    public private(set) var reversedEntryIds: Set<UUID> = []
+    /// The set of ledger_entry ids that ARE reverses (settlement rows
+    /// emitted by `reverse_ledger_entry`). Used to hide their own
+    /// "Revertir" action — reverses aren't themselves reversible.
+    public private(set) var reverseEntryIds: Set<UUID> = []
+
     public init(
         groupId: UUID,
         repo: any SystemEventRepository,
@@ -163,6 +173,7 @@ public final class ActivityCoordinator {
         defer {
             isLoading = false
             hasLoaded = true
+            rebuildReversalIndex()
         }
         do {
             let page = try await repo.query(filter: filter, limit: Self.pageSize, offset: events.count)
@@ -172,6 +183,32 @@ public final class ActivityCoordinator {
             log.error("loadMore failed: \(error.localizedDescription, privacy: .public)")
             self.error = CoordinatorError.from(error, fallback: "No pudimos cargar la historia")
         }
+    }
+
+    /// Walks the loaded `events`, classifying each `ledgerEntryCreated`
+    /// row into its reversal status:
+    ///   - row carries `reversed_ledger_entry_id` → it IS a reverse
+    ///   - row's `entry_id` matches some other row's
+    ///     `reversed_ledger_entry_id` → it has BEEN reversed
+    /// The two sets are mutually exclusive in practice (mig 00368 RPC
+    /// rejects double-reverses and meta-reverses).
+    ///
+    /// Called from `loadMore()`'s defer block so the index is fresh on
+    /// every page load. Cheap — single pass over `events`.
+    private func rebuildReversalIndex() {
+        var reversed: Set<UUID> = []
+        var reverses: Set<UUID> = []
+        for ev in events where ev.eventType == .ledgerEntryCreated {
+            guard let entryIdStr = ev.payload["entry_id"]?.stringValue,
+                  let entryId = UUID(uuidString: entryIdStr) else { continue }
+            if let revStr = ev.payload["reversed_ledger_entry_id"]?.stringValue,
+               let originalId = UUID(uuidString: revStr) {
+                reverses.insert(entryId)
+                reversed.insert(originalId)
+            }
+        }
+        reversedEntryIds = reversed
+        reverseEntryIds = reverses
     }
 
     public func clearError() { error = nil }
