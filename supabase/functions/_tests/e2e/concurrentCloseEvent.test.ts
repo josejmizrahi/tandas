@@ -67,9 +67,11 @@ Deno.test("close_event race: two parallel calls → exactly one eventClosed atom
     if (!eventId) throw new Error(`create_event_v2 returned no id: ${JSON.stringify(createResult)}`);
 
     await bob.client.rpc("set_rsvp_v2", { p_event_id: eventId, p_status: "going" });
-    await alice.client.rpc("check_in_attendee", {
+    await alice.client.rpc("check_in_v2", {
       p_event_id:   eventId,
       p_user_id:    bob.userId,
+      p_method:    "manual",
+      p_location_verified: false,
       p_arrived_at: new Date(startsAt.getTime() + 75 * 60_000).toISOString(),
     });
 

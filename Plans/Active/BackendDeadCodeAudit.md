@@ -98,15 +98,15 @@ Pueden tener caller que mi grep no detectó (deeplinks, dynamic strings, admin t
 | `emit-deadline-events` | Sin cron actual. ¿Reemplazada por `emit-event-reminder-events`? |
 | `auto-generate-events` | Sin cron. ¿Disparada manualmente por admin? ¿Reemplazada por templates? |
 
-## Inconsistencia Detectada
+## Inconsistencia Detectada — Resuelta 2026-05-25
 
-Edge function source code contiene esta línea:
+Inicialmente reportado: edge function source llamaba `.rpc("check_in_attendee", ...)`
+y la función ya no existía en DB (renamed a `check_in_v2` en mig 00158).
 
-```
-.rpc("check_in_attendee", ...)
-```
-
-Pero en DB la función se llama `check_in_v2`. Si el edge fn intenta llamarla en runtime, **falla con "function not found"**. Buscar y reemplazar en source de edge fn antes del próximo deploy.
+Re-auditoría: los 4 matches estaban en `supabase/functions/_tests/e2e/`, no en
+edge fns de runtime. **No era bug de producción.** Eran tests rotos desde la
+mig 00158. Migrados a `check_in_v2` con su firma completa (`p_method`,
+`p_location_verified`) en PR-08.
 
 ## Función Live — No tocar
 

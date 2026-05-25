@@ -86,12 +86,14 @@ Deno.test("dinner happy path — late check-in → fine → grace → officializ
     if (bobRsvpErr) throw new Error(`set_rsvp_v2 bob: ${bobRsvpErr.message}`);
 
     const arrivedAt = new Date(startsAt.getTime() + 75 * 60_000);
-    const { error: checkInErr } = await alice.client.rpc("check_in_attendee", {
+    const { error: checkInErr } = await alice.client.rpc("check_in_v2", {
       p_event_id:  eventId,
       p_user_id:   bob.userId,
+      p_method:    "manual",
+      p_location_verified: false,
       p_arrived_at: arrivedAt.toISOString(),
     });
-    if (checkInErr) throw new Error(`check_in_attendee bob: ${checkInErr.message}`);
+    if (checkInErr) throw new Error(`check_in_v2 bob: ${checkInErr.message}`);
 
     // Emit checkInRecorded system_event manually (this is what the iOS
     // app does after a successful check-in).

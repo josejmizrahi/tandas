@@ -72,6 +72,6 @@ COMMIT;
 --     decline_placeholder_claim, request_data_export, request_data_rectification,
 --     claim_pending_outbox
 --
--- Bug to fix in edge function source (NOT in this migration):
---   • One edge fn calls `.rpc("check_in_attendee", …)` but DB has only
---     `check_in_v2`. Source-edit required before next deploy.
+-- Note: original audit flagged `.rpc("check_in_attendee")` as a production
+-- edge-fn bug. Re-checked — all 4 matches were in `_tests/e2e/`, not in
+-- runtime edge fns. Migrated tests to `check_in_v2` in PR-08 (see audit doc).
