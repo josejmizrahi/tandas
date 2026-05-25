@@ -391,12 +391,19 @@ public struct RulesView: View {
         case .group:
             return nil
         case .module:
-            let label = rule.moduleKey.map { "Función · \($0)" } ?? "Función"
+            // Map the moduleKey slug ("basic_fines") to its human name
+            // ("Multas básicas") via the registry — never leak the slug
+            // into the chip per identity_context_doctrine §5 vocab ban.
+            let humanName: String? = rule.moduleKey
+                .flatMap { key in
+                    ModuleRegistry.v1Fallback.modules.first(where: { $0.id == key })?.name
+                }
+            let label = humanName ?? "Función"
             return ScopeBadge(label: label, icon: "puzzlepiece", tint: .secondary)
         case .series:
             return ScopeBadge(label: "Toda la recurrencia", icon: "repeat", tint: .blue)
         case .resource:
-            return ScopeBadge(label: "Esta instancia", icon: "scope", tint: .blue)
+            return ScopeBadge(label: "Sólo este recurso", icon: "scope", tint: .blue)
         case .membership:
             return ScopeBadge(label: "Por miembro", icon: "person", tint: .orange)
         }
