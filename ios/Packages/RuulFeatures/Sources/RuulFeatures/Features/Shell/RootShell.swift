@@ -240,7 +240,14 @@ public struct RootShell: View {
         )
     }
 
-    /// Fetch member+profile pairs once and cache by userId.
+    /// Fetch member+profile pairs once and cache by userId. Writes the
+    /// same snapshot to `shellState.memberDirectory` so callers reading
+    /// through `router.state.memberDirectory` (`currentGroupMember`,
+    /// `VoteOnAppealSheet`, `ruleEditSheet`) get the live directory
+    /// instead of the empty default. Pre-fix the shellState copy was
+    /// never populated, which caused every create-vote fullScreenCover
+    /// to fall through its `if let member` guard and render blank
+    /// against the `.regularMaterial` backdrop.
     @MainActor
     private func refreshMemberDirectory(for groupId: UUID) async {
         guard let rows = try? await app.groupsRepo.membersWithProfiles(of: groupId) else { return }
@@ -249,6 +256,7 @@ public struct RootShell: View {
             directory[row.member.userId] = row
         }
         memberDirectory = directory
+        shellState.memberDirectory = directory
     }
 
     // MARK: - Deep link handling
