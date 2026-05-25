@@ -341,6 +341,21 @@ public struct RootShellSheets: ViewModifier {
             // branches above.
     }
 
+    /// Pops `from` off the route stack, waits for SwiftUI's fullScreenCover
+    /// dismiss animation to settle, then pushes `to`. Required when a
+    /// picker sheet (e.g. CreateVoteSheet) hands off to a second cover
+    /// presented from the same view chain — presenting synchronously
+    /// while the previous cover is still dismissing renders the new
+    /// cover blank.
+    static func handoff(from current: RootRoute, to next: RootRoute, router: RootRouter) {
+        Task { @MainActor in
+            while router.state.contains(current) {
+                router.state.dismissTop()
+            }
+            try? await Task.sleep(for: .milliseconds(400))
+            router.present(next)
+        }
+    }
 }
 
 // MARK: - GroupHomeSheetContent

@@ -87,13 +87,18 @@ public protocol FundRepository: Actor {
     /// idempotency key — sheets hold a stable UUID in `@State` so a
     /// re-tap after a network error reuses the same key and the backend
     /// returns the existing row instead of inserting a duplicate.
+    /// Money UX Consolidation 2026-05-24 (PR-B): added `inKind` so
+    /// fund-targeted contributions can stamp the in-kind flag the
+    /// shared-pool path already supported (mig 00364). Callers that
+    /// don't care pass `inKind: false`.
     func contribute(
         fundId: UUID,
         amountCents: Int64,
         currency: String?,
         note: String?,
         sourceEventId: UUID?,
-        clientId: UUID?
+        clientId: UUID?,
+        inKind: Bool
     ) async throws -> LedgerEntry
 
     /// Records an expense FROM the fund TO a recipient member. Vendor
@@ -106,6 +111,13 @@ public protocol FundRepository: Actor {
     /// receives the reimbursement) and `recorded_by` (auth.uid(),
     /// stamped server-side). Lands in `metadata.paid_by_member_id`.
     /// Nil = registrar is implicitly the payer (legacy behavior).
+    ///
+    /// Money UX Consolidation 2026-05-24 (PR-B): added `participants`,
+    /// `splitMode`, `splitBreakdown`, `sourceResourceId` so fund-targeted
+    /// expenses get the same Splitwise + source-attribution surface the
+    /// shared-pool RPC already had (mig 00367 + 00370). Callers that
+    /// don't split pass `participants: []`, `splitMode: nil`,
+    /// `splitBreakdown: nil`.
     func recordExpense(
         fundId: UUID,
         amountCents: Int64,
@@ -114,7 +126,11 @@ public protocol FundRepository: Actor {
         note: String?,
         sourceEventId: UUID?,
         clientId: UUID?,
-        paidByMemberId: UUID?
+        paidByMemberId: UUID?,
+        participants: [UUID],
+        splitMode: SplitMode?,
+        splitBreakdown: [SplitBreakdown]?,
+        sourceResourceId: UUID?
     ) async throws -> LedgerEntry
 
     /// SharedMoney Phase 2 (mig 00363): group-scoped expense entry point.
@@ -333,7 +349,8 @@ public actor MockFundRepository: FundRepository {
         currency: String?,
         note: String?,
         sourceEventId: UUID? = nil,
-        clientId: UUID? = nil
+        clientId: UUID? = nil,
+        inKind: Bool = false
     ) async throws -> LedgerEntry {
         guard let snapshot = funds[fundId]?.first else { throw FundError.notFound }
         // Mirror the server-side V1-01 dedup: if clientId already exists
@@ -350,6 +367,7 @@ public actor MockFundRepository: FundRepository {
         if let note, !note.isEmpty { meta["note"] = .string(note) }
         if let sourceEventId { meta["source_event_id"] = .string(sourceEventId.uuidString.lowercased()) }
         if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
+        if inKind { meta["in_kind"] = .bool(true) }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: fundId,
@@ -373,7 +391,11 @@ public actor MockFundRepository: FundRepository {
         note: String?,
         sourceEventId: UUID? = nil,
         clientId: UUID? = nil,
-        paidByMemberId: UUID? = nil
+        paidByMemberId: UUID? = nil,
+        participants: [UUID] = [],
+        splitMode: SplitMode? = nil,
+        splitBreakdown: [SplitBreakdown]? = nil,
+        sourceResourceId: UUID? = nil
     ) async throws -> LedgerEntry {
         guard let snapshot = funds[fundId]?.first else { throw FundError.notFound }
         if let clientId,
@@ -386,8 +408,23 @@ public actor MockFundRepository: FundRepository {
         var meta: [String: JSONConfig] = [:]
         if let note, !note.isEmpty { meta["note"] = .string(note) }
         if let sourceEventId { meta["source_event_id"] = .string(sourceEventId.uuidString.lowercased()) }
+        if let sourceResourceId { meta["source_resource_id"] = .string(sourceResourceId.uuidString.lowercased()) }
         if let clientId { meta["client_id"] = .string(clientId.uuidString.lowercased()) }
         if let paidByMemberId { meta["paid_by_member_id"] = .string(paidByMemberId.uuidString.lowercased()) }
+        if !participants.isEmpty {
+            meta["participants"] = .array(participants.map { .string($0.uuidString.lowercased()) })
+        }
+        if let splitMode {
+            meta["split_mode"] = .string(splitMode.rawValue)
+        }
+        if let splitBreakdown, !splitBreakdown.isEmpty {
+            meta["split_breakdown"] = .array(splitBreakdown.map { row in
+                .object([
+                    "member_id":   .string(row.memberId.uuidString.lowercased()),
+                    "share_cents": .int(Int(row.shareCents))
+                ])
+            })
+        }
         let entry = LedgerEntry(
             groupId: snapshot.groupId,
             resourceId: fundId,
@@ -745,7 +782,8 @@ public actor LiveFundRepository: FundRepository {
         currency: String?,
         note: String?,
         sourceEventId: UUID? = nil,
-        clientId: UUID? = nil
+        clientId: UUID? = nil,
+        inKind: Bool = false
     ) async throws -> LedgerEntry {
         struct Params: Encodable {
             let p_fund_id: String
@@ -754,6 +792,7 @@ public actor LiveFundRepository: FundRepository {
             let p_note: String?
             let p_source_event_id: String?
             let p_client_id: String?
+            let p_in_kind: Bool?
         }
         do {
             return try await client
@@ -763,7 +802,8 @@ public actor LiveFundRepository: FundRepository {
                     p_currency: currency,
                     p_note: (note?.isEmpty ?? true) ? nil : note,
                     p_source_event_id: sourceEventId?.uuidString.lowercased(),
-                    p_client_id: clientId?.uuidString.lowercased()
+                    p_client_id: clientId?.uuidString.lowercased(),
+                    p_in_kind: inKind ? true : nil
                 ))
                 .execute()
                 .value
@@ -780,8 +820,16 @@ public actor LiveFundRepository: FundRepository {
         note: String?,
         sourceEventId: UUID? = nil,
         clientId: UUID? = nil,
-        paidByMemberId: UUID? = nil
+        paidByMemberId: UUID? = nil,
+        participants: [UUID] = [],
+        splitMode: SplitMode? = nil,
+        splitBreakdown: [SplitBreakdown]? = nil,
+        sourceResourceId: UUID? = nil
     ) async throws -> LedgerEntry {
+        struct BreakdownRow: Encodable {
+            let member_id: String
+            let share_cents: Int64
+        }
         struct Params: Encodable {
             let p_fund_id: String
             let p_amount_cents: Int64
@@ -791,6 +839,10 @@ public actor LiveFundRepository: FundRepository {
             let p_source_event_id: String?
             let p_client_id: String?
             let p_paid_by_member_id: String?
+            let p_source_resource_id: String?
+            let p_participants: [String]?
+            let p_split_mode: String?
+            let p_split_breakdown: [BreakdownRow]?
         }
         do {
             return try await client
@@ -802,7 +854,20 @@ public actor LiveFundRepository: FundRepository {
                     p_note: (note?.isEmpty ?? true) ? nil : note,
                     p_source_event_id: sourceEventId?.uuidString.lowercased(),
                     p_client_id: clientId?.uuidString.lowercased(),
-                    p_paid_by_member_id: paidByMemberId?.uuidString.lowercased()
+                    p_paid_by_member_id: paidByMemberId?.uuidString.lowercased(),
+                    p_source_resource_id: sourceResourceId?.uuidString.lowercased(),
+                    p_participants: participants.isEmpty
+                        ? nil
+                        : participants.map { $0.uuidString.lowercased() },
+                    p_split_mode: splitMode?.rawValue,
+                    p_split_breakdown: splitBreakdown.flatMap { rows in
+                        rows.isEmpty ? nil : rows.map {
+                            BreakdownRow(
+                                member_id: $0.memberId.uuidString.lowercased(),
+                                share_cents: $0.shareCents
+                            )
+                        }
+                    }
                 ))
                 .execute()
                 .value

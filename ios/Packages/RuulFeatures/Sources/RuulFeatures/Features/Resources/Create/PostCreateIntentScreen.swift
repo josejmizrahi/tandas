@@ -712,21 +712,25 @@ private struct DestinationPresenter: View {
         let currency = ctx.metadata["currency"]?.stringValue ?? "MXN"
         switch prefill {
         case .credit, nil:
-            // Credit = aportación. Nil treated as credit because the
-            // standard "money in" verb is the more common entry point;
-            // callers wanting a debit explicitly pass .debit.
-            ContributeToFundSheet(
-                fundId: resourceId,
-                fundName: name,
+            // Money UX Consolidation PR-B (2026-05-24): post-create
+            // ledger flow uses the unified shared sheet with
+            // `targetFundId` set so the form gets the in-kind toggle +
+            // valuation prefill the legacy `ContributeToFundSheet`
+            // lacked. Behaviour for the shared-pool flow is unchanged.
+            ContributeToSharedMoneySheet(
+                groupId: groupId,
                 currency: currency,
+                targetFundId: resourceId,
+                targetFundName: name,
                 onDidContribute: onClose
             )
         case .debit:
-            RecordExpenseFromFundSheet(
-                fundId: resourceId,
-                fundName: name,
+            RecordSharedExpenseSheet(
+                groupId: groupId,
                 currency: currency,
                 members: ctx.members,
+                targetFundId: resourceId,
+                targetFundName: name,
                 onDidRecord: onClose
             )
         }

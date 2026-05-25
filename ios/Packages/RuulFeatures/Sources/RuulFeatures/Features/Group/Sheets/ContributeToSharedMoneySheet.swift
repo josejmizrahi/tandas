@@ -30,6 +30,14 @@ public struct ContributeToSharedMoneySheet: View {
     /// (event/asset/space) via mig 00360 `p_source_resource_id`. Phase 4
     /// passes this from the resource Money Block; Phase 3 leaves it nil.
     public let sourceResource: (id: UUID, name: String)?
+    /// Money UX Consolidation PR-B (2026-05-24): when set, the
+    /// contribution lands directly on that fund via `fund_contribute`
+    /// instead of the canonical shared pool via
+    /// `contribute_to_shared_money`. Used for protected/legacy funds
+    /// (the surface that was `ContributeToFundSheet` before the
+    /// consolidation). nil → shared-pool path (default).
+    public let targetFundId: UUID?
+    public let targetFundName: String?
     /// Called after a successful contribute so the caller can refresh
     /// the shared pool summary.
     public let onDidContribute: () -> Void
@@ -64,11 +72,15 @@ public struct ContributeToSharedMoneySheet: View {
         groupId: UUID,
         currency: String,
         sourceResource: (id: UUID, name: String)? = nil,
+        targetFundId: UUID? = nil,
+        targetFundName: String? = nil,
         onDidContribute: @escaping () -> Void
     ) {
         self.groupId = groupId
         self.currency = currency
         self.sourceResource = sourceResource
+        self.targetFundId = targetFundId
+        self.targetFundName = targetFundName
         self.onDidContribute = onDidContribute
     }
 
@@ -223,15 +235,30 @@ public struct ContributeToSharedMoneySheet: View {
         defer { isSubmitting = false }
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            _ = try await app.fundRepo.contributeToSharedMoney(
-                groupId: groupId,
-                amountCents: cents,
-                currency: currency,
-                note: trimmedNote.isEmpty ? nil : trimmedNote,
-                sourceResourceId: sourceResource?.id,
-                clientId: clientId,
-                inKind: isInKind
-            )
+            if let targetFundId {
+                // Money UX Consolidation PR-B: protected / legacy fund
+                // target — write directly to that fund via fund_contribute
+                // instead of resolving the shared pool.
+                _ = try await app.fundRepo.contribute(
+                    fundId: targetFundId,
+                    amountCents: cents,
+                    currency: currency,
+                    note: trimmedNote.isEmpty ? nil : trimmedNote,
+                    sourceEventId: nil,
+                    clientId: clientId,
+                    inKind: isInKind
+                )
+            } else {
+                _ = try await app.fundRepo.contributeToSharedMoney(
+                    groupId: groupId,
+                    amountCents: cents,
+                    currency: currency,
+                    note: trimmedNote.isEmpty ? nil : trimmedNote,
+                    sourceResourceId: sourceResource?.id,
+                    clientId: clientId,
+                    inKind: isInKind
+                )
+            }
             // SharedMoney P1 brick 3: when the user records an in-kind
             // contribution against an asset, also append a valuation
             // atom so the asset's recorded valuation stays in sync.

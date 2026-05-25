@@ -25,6 +25,13 @@ public struct RecordSharedExpenseSheet: View {
     /// When set, the entry is attributed to a specific resource
     /// (event/asset/space) via mig 00360 `p_source_resource_id`.
     public let sourceResource: (id: UUID, name: String)?
+    /// Money UX Consolidation PR-B (2026-05-24): when set, the expense
+    /// lands directly on that fund via `fund_record_expense` instead
+    /// of the shared pool via `record_shared_expense`. Used for
+    /// protected/legacy funds (the surface that was
+    /// `RecordExpenseFromFundSheet` before the consolidation).
+    public let targetFundId: UUID?
+    public let targetFundName: String?
     public let onDidRecord: () -> Void
 
     @State private var paidByMemberId: UUID?
@@ -53,12 +60,16 @@ public struct RecordSharedExpenseSheet: View {
         currency: String,
         members: [MemberWithProfile],
         sourceResource: (id: UUID, name: String)? = nil,
+        targetFundId: UUID? = nil,
+        targetFundName: String? = nil,
         onDidRecord: @escaping () -> Void
     ) {
         self.groupId = groupId
         self.currency = currency
         self.members = members
         self.sourceResource = sourceResource
+        self.targetFundId = targetFundId
+        self.targetFundName = targetFundName
         self.onDidRecord = onDidRecord
     }
 
@@ -458,19 +469,42 @@ public struct RecordSharedExpenseSheet: View {
         // member ids that owe a share).
         let participantList = breakdown.map(\.memberId)
         do {
-            _ = try await app.fundRepo.recordSharedExpense(
-                groupId: groupId,
-                amountCents: cents,
-                toMemberId: toId,
-                currency: currency,
-                note: trimmedNote.isEmpty ? nil : trimmedNote,
-                sourceResourceId: sourceResource?.id,
-                clientId: clientId,
-                paidByMemberId: paidById,
-                participants: participantList,
-                splitMode: splitMode,
-                splitBreakdown: breakdown
-            )
+            if let targetFundId {
+                // Money UX Consolidation PR-B: protected / legacy fund
+                // target — write directly to that fund via
+                // `fund_record_expense` instead of resolving the shared
+                // pool. Splits + paid_by + source_resource_id all
+                // forwarded so the legacy surface gets parity with the
+                // Phase 3 shared sheet.
+                _ = try await app.fundRepo.recordExpense(
+                    fundId: targetFundId,
+                    amountCents: cents,
+                    toMemberId: toId,
+                    currency: currency,
+                    note: trimmedNote.isEmpty ? nil : trimmedNote,
+                    sourceEventId: nil,
+                    clientId: clientId,
+                    paidByMemberId: paidById,
+                    participants: participantList,
+                    splitMode: splitMode,
+                    splitBreakdown: breakdown,
+                    sourceResourceId: sourceResource?.id
+                )
+            } else {
+                _ = try await app.fundRepo.recordSharedExpense(
+                    groupId: groupId,
+                    amountCents: cents,
+                    toMemberId: toId,
+                    currency: currency,
+                    note: trimmedNote.isEmpty ? nil : trimmedNote,
+                    sourceResourceId: sourceResource?.id,
+                    clientId: clientId,
+                    paidByMemberId: paidById,
+                    participants: participantList,
+                    splitMode: splitMode,
+                    splitBreakdown: breakdown
+                )
+            }
             onDidRecord()
             dismiss()
         } catch {
