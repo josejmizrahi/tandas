@@ -7,20 +7,20 @@ import RuulCore
 /// inside `SharedMoneyCard` and from anywhere else the user wants the
 /// full money picture for the group.
 ///
-/// Sections:
+/// Sections (top → bottom):
 ///   - Per-member nets (the "Te deben / Debes" breakdown)
-///   - Other funds (legacy / protected) footer link — keeps the
-///     shared-money doctrine ("ONE pool por defecto") on top while
-///     surfacing exception funds without giving them peer status.
+///   - Liquidar ahora — greedy settlement suggestions involving the
+///     current viewer (paired debtor ↔ creditor amounts). Each tap
+///     opens `SettlementSheet` pre-filled with the pair.
+///   - Movimientos recientes — last 15 ledger entries for the group,
+///     with `Para X` association when the entry was attributed to a
+///     specific resource (event/asset/fund) via `source_resource_id`.
+///   - Otros fondos (legacy/protected) footer link.
 ///
-/// Each balance row shows the member's display name + their `netCents`.
-/// Sorted by absolute net descending so the largest debtors/creditors
-/// lead. Current viewer's row is labeled "Tú" (consistent with the
-/// Money Block's per-member breakdown convention).
-///
-/// V1 simple — no pairwise "X le debe a Y" breakdown. The view's net
-/// per member is the canonical answer; Splitwise-style settlement
-/// routing is a future brick.
+/// V1 simple — the suggestions are a greedy "pair largest debtor with
+/// largest creditor" algorithm, not full multi-currency optimum
+/// matching. Splitwise-style global optimization is deferred to a
+/// future brick (would shorten chains but adds backend support).
 @MainActor
 public struct GroupBalancesView: View {
     public let group: RuulCore.Group
@@ -33,13 +33,34 @@ public struct GroupBalancesView: View {
     @State private var members: [MemberWithProfile] = []
     @State private var balances: [MemberGroupBalance] = []
     @State private var otherFundsCount: Int = 0
+    @State private var recentEntries: [LedgerEntry] = []
+    @State private var resourceNamesById: [UUID: String] = [:]
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var hasLoaded = false
+    @State private var settlementContext: SettlementContext?
 
     public init(group: RuulCore.Group, onOpenOtherFunds: (() -> Void)? = nil) {
         self.group = group
         self.onOpenOtherFunds = onOpenOtherFunds
+    }
+
+    /// Identifiable wrapper for the `.sheet(item:)` presentation of
+    /// the settlement sheet. Carries the pre-filled (from, to, amount)
+    /// from a tapped suggestion.
+    private struct SettlementContext: Identifiable {
+        let id = UUID()
+        let toMemberId: UUID
+        let amountCents: Int64
+    }
+
+    /// One greedy settlement suggestion: `from` owes `amountCents` to
+    /// `to`. Built by `settlementSuggestions()` from the per-member nets.
+    private struct SettlementSuggestion: Identifiable {
+        let id = UUID()
+        let fromMemberId: UUID
+        let toMemberId: UUID
+        let amountCents: Int64
     }
 
     private var phase: LoadPhase<[MemberGroupBalance]> {
@@ -79,6 +100,8 @@ public struct GroupBalancesView: View {
                         ForEach(rows) { row in
                             balanceRow(row)
                         }
+                        settlementSuggestionsSection
+                        recentMovementsSection
                         otherFundsFooter
                     }
                     .padding(RuulSpacing.lg)
@@ -90,10 +113,234 @@ public struct GroupBalancesView: View {
         .navigationTitle("Dinero del grupo")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .sheet(item: $settlementContext) { ctx in
+            SettlementSheet(
+                groupId: group.id,
+                resourceId: nil,
+                currency: group.currency,
+                members: members,
+                suggestedToMemberId: ctx.toMemberId,
+                onDidSettle: { Task { await load() } }
+            )
+            .environment(app)
+            .presentationDetents([.medium, .large])
+            .presentationBackground(.regularMaterial)
+        }
     }
 
-    /// Footer link that pushes the legacy "Otros fondos" list. Hidden
-    /// when there are no other funds or no nav callback was provided.
+    // MARK: - Liquidar ahora
+
+    /// Suggestions that involve the current viewer either as debtor or
+    /// creditor. Each row is tappable and opens the `SettlementSheet`
+    /// pre-filled with the suggested counterpart + amount.
+    @ViewBuilder
+    private var settlementSuggestionsSection: some View {
+        let suggestions = viewerSuggestions
+        if !suggestions.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Liquidar ahora")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .padding(.top, RuulSpacing.md)
+                ForEach(suggestions) { s in
+                    settlementSuggestionRow(s)
+                }
+            }
+        }
+    }
+
+    private func settlementSuggestionRow(_ s: SettlementSuggestion) -> some View {
+        let viewerIsPayer = (s.fromMemberId == myMemberId)
+        let counterpartId = viewerIsPayer ? s.toMemberId : s.fromMemberId
+        let counterpartName = memberName(for: counterpartId) ?? "Miembro"
+        let verb = viewerIsPayer ? "Pagale a" : "Cobrale a"
+        let amount = Decimal(s.amountCents) / 100
+        return Button {
+            // Only the payer can record the settlement (it writes
+            // `from_member = me, to_member = creditor`). When the
+            // viewer is the creditor we still open the sheet so they
+            // can confirm the receipt direction; the sheet itself
+            // gates the picker.
+            settlementContext = SettlementContext(
+                toMemberId: counterpartId,
+                amountCents: s.amountCents
+            )
+        } label: {
+            HStack(spacing: RuulSpacing.md) {
+                ColoredIconBadge(
+                    systemName: viewerIsPayer ? "arrow.up.right.circle.fill" : "arrow.down.left.circle.fill",
+                    tint: viewerIsPayer ? Color.ruulNegative : Color.ruulPositive
+                )
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
+                    Text("\(verb) \(counterpartName)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Text("Liquidación sugerida")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                }
+                Spacer(minLength: 0)
+                RuulMoneyView(
+                    amount: amount,
+                    currency: group.currency,
+                    size: .medium,
+                    color: viewerIsPayer ? .negative : .positive
+                )
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.secondary)
+            }
+            .padding(RuulSpacing.md)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Greedy pair-largest-debtor-with-largest-creditor algorithm
+    /// filtered to suggestions that include the current viewer. Returns
+    /// at most 3 rows so the section stays compact; the rest fall out
+    /// implicitly after subsequent settlements update balances.
+    private var viewerSuggestions: [SettlementSuggestion] {
+        guard let me = myMemberId else { return [] }
+        let all = settlementSuggestions(balances: visibleRows)
+        return Array(all.filter { $0.fromMemberId == me || $0.toMemberId == me }.prefix(3))
+    }
+
+    /// Pure function: pair off largest debtor with largest creditor
+    /// until one side runs out. Doesn't mutate `balances` — works on a
+    /// local copy of the nets.
+    private func settlementSuggestions(balances rows: [MemberGroupBalance]) -> [SettlementSuggestion] {
+        var creditors = rows.filter { $0.netCents > 0 }
+            .sorted { $0.netCents > $1.netCents }
+        var debtors = rows.filter { $0.netCents < 0 }
+            .sorted { $0.netCents < $1.netCents }
+        var out: [SettlementSuggestion] = []
+        while let c = creditors.first, let d = debtors.first {
+            let amount = min(c.netCents, -d.netCents)
+            if amount <= 0 { break }
+            out.append(SettlementSuggestion(
+                fromMemberId: d.memberId,
+                toMemberId: c.memberId,
+                amountCents: amount
+            ))
+            // Recompute remainders. We need a way to construct an
+            // updated MemberGroupBalance — easiest path is to drop the
+            // settled side(s) and re-enqueue with reduced amount.
+            let cRemaining = c.netCents - amount
+            let dRemaining = d.netCents + amount  // closer to zero
+            creditors.removeFirst()
+            debtors.removeFirst()
+            if cRemaining > 0 {
+                creditors.insert(c.with(netCents: cRemaining), at: 0)
+            }
+            if dRemaining < 0 {
+                debtors.insert(d.with(netCents: dRemaining), at: 0)
+            }
+        }
+        return out
+    }
+
+    // MARK: - Movimientos recientes
+
+    @ViewBuilder
+    private var recentMovementsSection: some View {
+        if !recentEntries.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                Text("Movimientos recientes")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .padding(.top, RuulSpacing.md)
+                ForEach(recentEntries) { entry in
+                    movementRow(entry)
+                }
+            }
+        }
+    }
+
+    private func movementRow(_ entry: LedgerEntry) -> some View {
+        let amount = Decimal(entry.amountCents) / 100
+        let formatted = amount.formatted(.currency(code: entry.currency))
+        let icon = movementIcon(entry)
+        let primary = movementLabel(entry)
+        let secondary = movementSubtitle(entry)
+        return HStack(spacing: RuulSpacing.md) {
+            ColoredIconBadge(systemName: icon, tint: Color.ruulAccent)
+            VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
+                Text(primary)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                if let secondary {
+                    Text(secondary)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            Text(formatted)
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(Color.primary)
+        }
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg)
+                .stroke(Color(.separator), lineWidth: 0.5)
+        )
+    }
+
+    private func movementIcon(_ entry: LedgerEntry) -> String {
+        switch entry.type {
+        case LedgerEntry.Kind.contribution, LedgerEntry.Kind.reimbursement, LedgerEntry.Kind.finePaid:
+            return "arrow.down.circle"
+        case LedgerEntry.Kind.expense, LedgerEntry.Kind.payout, LedgerEntry.Kind.fineIssued:
+            return "arrow.up.circle"
+        case LedgerEntry.Kind.settlement:
+            return "arrow.left.arrow.right.circle"
+        default:
+            return "circle"
+        }
+    }
+
+    private func movementLabel(_ entry: LedgerEntry) -> String {
+        if let note = entry.note { return note }
+        switch entry.type {
+        case LedgerEntry.Kind.contribution:  return "Aporte"
+        case LedgerEntry.Kind.expense:       return "Gasto"
+        case LedgerEntry.Kind.payout:        return "Pago del grupo"
+        case LedgerEntry.Kind.settlement:    return "Liquidación"
+        case LedgerEntry.Kind.reimbursement: return "Reembolso"
+        case LedgerEntry.Kind.fineIssued:    return "Multa emitida"
+        case LedgerEntry.Kind.finePaid:      return "Multa pagada"
+        default:                             return entry.type.capitalized
+        }
+    }
+
+    /// Secondary line: "Para X" when the entry was attributed to a
+    /// resource (event/asset/space/fund), plus a "Compartido entre N"
+    /// suffix when the entry has a split breakdown. nil keeps the row
+    /// compact.
+    private func movementSubtitle(_ entry: LedgerEntry) -> String? {
+        var parts: [String] = []
+        if let resourceId = entry.sourceResourceId,
+           let name = resourceNamesById[resourceId] {
+            parts.append("Para \(name)")
+        }
+        if let count = entry.participantCount {
+            parts.append("Compartido entre \(count)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    // MARK: - Otros fondos footer
+
     @ViewBuilder
     private var otherFundsFooter: some View {
         if otherFundsCount > 0, let onOpenOtherFunds {
@@ -184,20 +431,40 @@ public struct GroupBalancesView: View {
             isLoading = false
             hasLoaded = true
         }
-        // Load members + balances + other-funds count in parallel.
-        // Members + other-funds are best-effort: if either fails, rows
-        // still render with the "Miembro" fallback label and the
-        // footer link is hidden.
+        // Load members + balances + entries + other-funds count in
+        // parallel. Members + other-funds + entries are best-effort.
         async let membersTask = (try? await app.groupsRepo.membersWithProfiles(of: group.id)) ?? []
         async let balancesTask = app.ledgerRepo.balancesForGroup(group.id)
+        async let entriesTask = (try? await app.ledgerRepo.list(groupId: group.id, limit: 15)) ?? []
         async let otherFundsTask = otherFundsCountForGroup()
         do {
             members = await membersTask
             balances = try await balancesTask
+            recentEntries = await entriesTask
             otherFundsCount = await otherFundsTask
+            await loadResourceNames()
         } catch {
             errorMessage = "No pudimos cargar los balances."
         }
+    }
+
+    /// Resolve resource names for the entries' `source_resource_id`
+    /// values so the "Para X" subtitle can render. Looks up one
+    /// `ResourceRepository.resource(_:)` per distinct id; failures
+    /// soft-skip — the row falls back to its primary label.
+    private func loadResourceNames() async {
+        let ids = Set(recentEntries.compactMap { $0.sourceResourceId })
+        guard !ids.isEmpty else { return }
+        var resolved: [UUID: String] = resourceNamesById
+        for id in ids where resolved[id] == nil {
+            if let row = try? await app.resourceRepo.resource(id) {
+                let name = row.metadata["name"]?.stringValue
+                    ?? row.metadata["title"]?.stringValue
+                    ?? row.resourceType.humanLabel
+                resolved[id] = name
+            }
+        }
+        resourceNamesById = resolved
     }
 
     /// Count of legacy / protected funds for this group — the canonical
@@ -212,5 +479,23 @@ public struct GroupBalancesView: View {
         let allFunds = await allFundsTask
         let sharedPoolId = await sharedPoolTask
         return allFunds.filter { $0.fundId != sharedPoolId }.count
+    }
+}
+
+// MARK: - MemberGroupBalance helpers
+
+private extension MemberGroupBalance {
+    /// Returns a copy with the given netCents — used by the greedy
+    /// settlement algorithm to recompute remainders without mutating
+    /// the stored array.
+    func with(netCents newNet: Int64) -> MemberGroupBalance {
+        MemberGroupBalance(
+            groupId: groupId,
+            memberId: memberId,
+            currency: currency,
+            sentCents: sentCents,
+            receivedCents: receivedCents,
+            netCents: newNet
+        )
     }
 }
