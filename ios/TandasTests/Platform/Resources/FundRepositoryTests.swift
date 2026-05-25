@@ -252,4 +252,243 @@ struct FundRepositoryTests {
         )
         #expect(untargeted.progressTowardsTarget == nil)
     }
+
+    // MARK: - SharedMoney Phase 2+4: recordSharedExpense
+
+    @Test("recordSharedExpense stamps split_mode + split_breakdown in metadata")
+    func sharedExpenseStampsSplit() async throws {
+        let groupId = UUID()
+        let payer = UUID()
+        let memberA = UUID()
+        let memberB = UUID()
+        let recipient = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(groupId: groupId)])
+        _ = try await repo.contribute(fundId: try #require(await repo.listForGroup(groupId).first?.fundId),
+                                      amountCents: 100_000, currency: nil, note: nil)
+
+        let entry = try await repo.recordSharedExpense(
+            groupId: groupId,
+            amountCents: 50_000,
+            toMemberId: recipient,
+            currency: nil,
+            note: "Cena",
+            paidByMemberId: payer,
+            participants: [memberA, memberB],
+            splitMode: .equal,
+            splitBreakdown: [
+                SplitBreakdown(memberId: memberA, shareCents: 25_000),
+                SplitBreakdown(memberId: memberB, shareCents: 25_000),
+            ]
+        )
+        #expect(entry.type == LedgerEntry.Kind.expense)
+        #expect(entry.amountCents == 50_000)
+        #expect(entry.toMemberId == recipient)
+        #expect(entry.splitMode == .equal)
+        #expect(entry.splitBreakdown.count == 2)
+        #expect(entry.participants == [memberA, memberB])
+        #expect(entry.paidByMemberId == payer)
+        #expect(entry.note == "Cena")
+        #expect(entry.participantCount == 2)
+        #expect(entry.isShared == true)
+    }
+
+    @Test("recordSharedExpense is idempotent on clientId")
+    func sharedExpenseIdempotent() async throws {
+        let groupId = UUID()
+        let recipient = UUID()
+        let cid = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(groupId: groupId)])
+
+        let first = try await repo.recordSharedExpense(
+            groupId: groupId, amountCents: 30_000, toMemberId: recipient,
+            currency: nil, note: nil, clientId: cid
+        )
+        let second = try await repo.recordSharedExpense(
+            groupId: groupId, amountCents: 30_000, toMemberId: recipient,
+            currency: nil, note: nil, clientId: cid
+        )
+        #expect(first.id == second.id)
+    }
+
+    @Test("recordSharedExpense throws when group has no shared pool")
+    func sharedExpenseNoPool() async throws {
+        let repo = MockFundRepository(seed: [])
+        await #expect(throws: FundError.notFound) {
+            _ = try await repo.recordSharedExpense(
+                groupId: UUID(), amountCents: 1_000, toMemberId: UUID(),
+                currency: nil, note: nil
+            )
+        }
+    }
+
+    @Test("recordSharedExpense without split stamps only the basic metadata")
+    func sharedExpenseNoSplit() async throws {
+        let groupId = UUID()
+        let recipient = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(groupId: groupId)])
+
+        let entry = try await repo.recordSharedExpense(
+            groupId: groupId, amountCents: 20_000, toMemberId: recipient,
+            currency: nil, note: nil
+        )
+        #expect(entry.splitMode == nil)
+        #expect(entry.splitBreakdown.isEmpty)
+        #expect(entry.participants.isEmpty)
+        #expect(entry.isShared == false)
+        #expect(entry.participantCount == nil)
+    }
+
+    // MARK: - SharedMoney Phase 4.5: contributeToSharedMoney (in-kind)
+
+    @Test("contributeToSharedMoney stamps in_kind=true when flagged")
+    func contributeInKind() async throws {
+        let groupId = UUID()
+        let resourceId = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(groupId: groupId)])
+
+        let entry = try await repo.contributeToSharedMoney(
+            groupId: groupId, amountCents: 5_000_00,
+            currency: nil, note: "Terreno aportado",
+            sourceResourceId: resourceId,
+            inKind: true
+        )
+        #expect(entry.type == LedgerEntry.Kind.contribution)
+        #expect(entry.isInKind == true)
+        #expect(entry.sourceResourceId == resourceId)
+        #expect(entry.note == "Terreno aportado")
+    }
+
+    @Test("contributeToSharedMoney omits in_kind when false")
+    func contributeNotInKind() async throws {
+        let groupId = UUID()
+        let repo = MockFundRepository(seed: [sampleFund(groupId: groupId)])
+
+        let entry = try await repo.contributeToSharedMoney(
+            groupId: groupId, amountCents: 10_000,
+            currency: nil, note: nil,
+            inKind: false
+        )
+        #expect(entry.isInKind == false)
+    }
+
+    // MARK: - SharedMoney Phase 4.5: breakdownForResource
+
+    @Test("breakdownForResource aggregates contributions by from_member")
+    func breakdownAggregatesByMember() async throws {
+        let groupId = UUID()
+        let fundId = UUID()
+        let resourceId = UUID()
+        let memberA = UUID()
+        let memberB = UUID()
+        let seedEntries: [LedgerEntry] = [
+            LedgerEntry(
+                groupId: groupId, resourceId: fundId,
+                type: LedgerEntry.Kind.contribution,
+                amountCents: 60_000, currency: "MXN",
+                fromMemberId: memberA,
+                metadata: .object(["source_resource_id": .string(resourceId.uuidString.lowercased())])
+            ),
+            LedgerEntry(
+                groupId: groupId, resourceId: fundId,
+                type: LedgerEntry.Kind.contribution,
+                amountCents: 40_000, currency: "MXN",
+                fromMemberId: memberA,
+                metadata: .object(["source_resource_id": .string(resourceId.uuidString.lowercased())])
+            ),
+            LedgerEntry(
+                groupId: groupId, resourceId: fundId,
+                type: LedgerEntry.Kind.contribution,
+                amountCents: 30_000, currency: "MXN",
+                fromMemberId: memberB,
+                metadata: .object(["source_resource_id": .string(resourceId.uuidString.lowercased())])
+            ),
+        ]
+        let repo = MockFundRepository(
+            seed: [sampleFund(fundId: fundId, groupId: groupId)],
+            entries: seedEntries
+        )
+
+        let breakdown = try await repo.breakdownForResource(resourceId, preferredCurrency: "MXN")
+        #expect(breakdown.count == 2)
+        let aRow = try #require(breakdown.first(where: { $0.memberId == memberA }))
+        let bRow = try #require(breakdown.first(where: { $0.memberId == memberB }))
+        #expect(aRow.contributedCents == 100_000)
+        #expect(aRow.entryCount == 2)
+        #expect(bRow.contributedCents == 30_000)
+        #expect(bRow.entryCount == 1)
+    }
+
+    @Test("breakdownForResource excludes expenses (contribution-only)")
+    func breakdownExcludesExpenses() async throws {
+        let groupId = UUID()
+        let fundId = UUID()
+        let resourceId = UUID()
+        let memberA = UUID()
+        let seedEntries: [LedgerEntry] = [
+            LedgerEntry(
+                groupId: groupId, resourceId: fundId,
+                type: LedgerEntry.Kind.expense,
+                amountCents: 50_000, currency: "MXN",
+                fromMemberId: memberA,  // doesn't matter: expense type filtered out
+                metadata: .object(["source_resource_id": .string(resourceId.uuidString.lowercased())])
+            ),
+        ]
+        let repo = MockFundRepository(
+            seed: [sampleFund(fundId: fundId, groupId: groupId)],
+            entries: seedEntries
+        )
+
+        let breakdown = try await repo.breakdownForResource(resourceId, preferredCurrency: "MXN")
+        #expect(breakdown.isEmpty)
+    }
+
+    @Test("breakdownForResource returns empty when resource has no contributions")
+    func breakdownEmpty() async throws {
+        let repo = MockFundRepository(seed: [sampleFund(groupId: UUID())])
+        let breakdown = try await repo.breakdownForResource(UUID())
+        #expect(breakdown.isEmpty)
+    }
+
+    // MARK: - SharedMoney Phase 4: summaryForResource
+
+    @Test("summaryForResource folds spent + contributed for a resource")
+    func summaryForResourceMath() async throws {
+        let groupId = UUID()
+        let fundId = UUID()
+        let resourceId = UUID()
+        let memberA = UUID()
+        let seedEntries: [LedgerEntry] = [
+            LedgerEntry(
+                groupId: groupId, resourceId: fundId,
+                type: LedgerEntry.Kind.contribution,
+                amountCents: 70_000, currency: "MXN",
+                fromMemberId: memberA,
+                metadata: .object(["source_resource_id": .string(resourceId.uuidString.lowercased())])
+            ),
+            LedgerEntry(
+                groupId: groupId, resourceId: fundId,
+                type: LedgerEntry.Kind.expense,
+                amountCents: 20_000, currency: "MXN",
+                toMemberId: memberA,
+                metadata: .object(["source_resource_id": .string(resourceId.uuidString.lowercased())])
+            ),
+        ]
+        let repo = MockFundRepository(
+            seed: [sampleFund(fundId: fundId, groupId: groupId)],
+            entries: seedEntries
+        )
+
+        let summary = try #require(try await repo.summaryForResource(resourceId, preferredCurrency: "MXN"))
+        #expect(summary.contributedCents == 70_000)
+        #expect(summary.spentCents == 20_000)
+        #expect(summary.netCents == 50_000)
+        #expect(summary.entryCount == 2)
+    }
+
+    @Test("summaryForResource is nil when the resource has no money entries")
+    func summaryForResourceNil() async throws {
+        let repo = MockFundRepository(seed: [sampleFund(groupId: UUID())])
+        let summary = try await repo.summaryForResource(UUID())
+        #expect(summary == nil)
+    }
 }
