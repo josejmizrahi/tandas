@@ -837,21 +837,90 @@ public struct ResourceDetailSheet: View {
         if live.resourceType == .event {
             blocks = built
         } else {
-            let feed = await ActivityFeedLoader.load(
+            // Asset gets extra capability blocks (valuación / mantenimiento
+            // abierto) loaded from projections — the synchronous builder
+            // can't issue async fetches, so we layer them on here in
+            // parallel with the activity feed.
+            async let feedTask = ActivityFeedLoader.load(
                 app: app,
                 groupId: live.groupId,
                 resourceId: live.id
             )
+            async let assetCapsTask: [CapabilityBlock] = {
+                guard live.resourceType == .asset else { return [] }
+                return await assetCapabilityBlocks(for: live)
+            }()
+            let feed = await feedTask
+            let assetCaps = await assetCapsTask
             blocks = ResourceBlocks(
                 identity: built.identity,
                 state: built.state,
                 properties: built.properties,
-                capabilities: built.capabilities,
+                capabilities: built.capabilities + assetCaps,
                 relations: built.relations,
                 activityHead: feed.entries,
                 hasMoreActivity: feed.hasMore
             )
         }
+    }
+
+    /// Builds the two universal asset capability blocks from system-event
+    /// projections (mig 00201): the latest valuation and the count of
+    /// open maintenance items. Empty when neither projection has data —
+    /// the detail keeps its compact shape instead of showing zeroed
+    /// placeholders. Soft-fails: any projection error returns no blocks.
+    private func assetCapabilityBlocks(for asset: ResourceRow) async -> [CapabilityBlock] {
+        async let valuationTask = AssetProjectionsRepository.latestValuation(
+            client: app.systemEventRepo,
+            assetId: asset.id,
+            groupId: asset.groupId
+        )
+        async let openCountTask = AssetProjectionsRepository.openMaintenanceCount(
+            repo: app.systemEventRepo,
+            assetId: asset.id,
+            groupId: asset.groupId
+        )
+        let valuation = await valuationTask
+        let openCount = await openCountTask
+
+        var blocks: [CapabilityBlock] = []
+        if let v = valuation {
+            blocks.append(
+                CapabilityBlock(
+                    id: "asset_valuation",
+                    title: "Valuación",
+                    icon: "chart.line.uptrend.xyaxis",
+                    layoutKind: .balance,
+                    payload: .init(
+                        balance: .init(
+                            primary: AssetMoneyFormatter.format(
+                                cents: v.valueCents, currency: v.currency
+                            ),
+                            supporting: "Registrada \(v.recordedAt.ruulRelative)",
+                            delta: nil
+                        )
+                    )
+                )
+            )
+        }
+        if openCount > 0 {
+            blocks.append(
+                CapabilityBlock(
+                    id: "asset_maintenance_open",
+                    title: "Mantenimiento abierto",
+                    icon: "wrench.and.screwdriver",
+                    layoutKind: .summaryFacts,
+                    payload: .init(facts: [
+                        FactRow(
+                            id: "open_count",
+                            key: openCount == 1 ? "Pendiente" : "Pendientes",
+                            value: "\(openCount)"
+                        )
+                    ])
+                )
+            )
+        }
+        return blocks
     }
 
     /// Identity-only placeholder for events that somehow reach this
