@@ -176,9 +176,9 @@ private extension MemberRole {
 
     var footer: String? {
         switch self {
-        case .founder:   return "Identidad del grupo. No se transfiere."
-        case .admin:     return "Capacidad operativa. Puede asignarse a varios miembros."
-        case .host:      return "Rol contextual — anfitrión del próximo evento."
+        case .founder:   return "Arrancó el grupo. No se transfiere."
+        case .admin:     return "Coordinan decisiones del grupo. Puede haber varios."
+        case .host:      return "Anfitrión del próximo evento."
         default:         return nil
         }
     }
