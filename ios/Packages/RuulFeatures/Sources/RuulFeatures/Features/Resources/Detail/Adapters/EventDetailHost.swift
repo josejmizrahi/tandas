@@ -106,7 +106,14 @@ public struct EventDetailHost: View {
     @State private var didFireInitialSheet: Bool = false
 
     public enum Sheet: Identifiable, Hashable {
-        case share, qr, cancelEvent, cancelAttendance, remindAttendees, closeEvent, manualFine, ledger, rules, attendees
+        case share, qr, cancelEvent, cancelAttendance, remindAttendees, closeEvent, manualFine
+        // Money UX Consolidation PR-D (2026-05-24): replace the legacy
+        // `.ledger` (which mounted AddLedgerEntryDestination) with a
+        // picker + three canonical form sheets. `.ledger` stays as an
+        // alias that redirects to `.movementPicker` for back-compat
+        // with callers that haven't migrated.
+        case ledger, movementPicker, movementContribute, movementExpense, movementSettle
+        case rules, attendees
         public var id: Self { self }
     }
 

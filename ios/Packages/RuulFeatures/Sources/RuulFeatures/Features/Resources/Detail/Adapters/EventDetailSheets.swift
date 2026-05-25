@@ -131,21 +131,66 @@ public struct EventDetailSheets: ViewModifier {
                     .presentationBackground(.regularMaterial)
                 }
             }
-            // Founder doctrine 2026-05-20 (reframe): detail = complete +
-            // opaque; primary CTA opens a transparent form sheet
-            // directly. The event timeline already shows movements
-            // inline; the "Registrar movimiento" menu item skips the
-            // intermediate Movimientos cover and presents the Add form
-            // sheet directly.
-            .sheet(isPresented: bindingForSheet(.ledger)) {
-                if let lc = b.ledgerCoordinator {
-                    NavigationStack {
-                        AddLedgerEntryDestination(coordinator: lc)
-                    }
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(.regularMaterial)
+            // Money UX Consolidation PR-D (2026-05-24): `.ledger`
+            // legacy entry redirects to the unified
+            // `.movementPicker`. Coordinator still hydrates so any
+            // secondary view that reads its entries keeps working.
+            .onChange(of: b.sheet.wrappedValue) { _, current in
+                if current == .ledger {
+                    b.sheet.wrappedValue = .movementPicker
                 }
+            }
+            .sheet(isPresented: bindingForSheet(.movementPicker)) {
+                RegisterMovementSheet { kind in
+                    switch kind {
+                    case .contribution: b.sheet.wrappedValue = .movementContribute
+                    case .expense:      b.sheet.wrappedValue = .movementExpense
+                    case .settlement:   b.sheet.wrappedValue = .movementSettle
+                    }
+                }
+                .presentationBackground(.regularMaterial)
+            }
+            .sheet(isPresented: bindingForSheet(.movementContribute)) {
+                ContributeToSharedMoneySheet(
+                    groupId: b.group.id,
+                    currency: b.group.currency,
+                    sourceResource: (id: b.coordinator.event.id, name: b.coordinator.event.title),
+                    onDidContribute: {
+                        Task { await b.coordinator.refresh() }
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.regularMaterial)
+            }
+            .sheet(isPresented: bindingForSheet(.movementExpense)) {
+                RecordSharedExpenseSheet(
+                    groupId: b.group.id,
+                    currency: b.group.currency,
+                    members: Array(b.memberDirectory.values),
+                    sourceResource: (id: b.coordinator.event.id, name: b.coordinator.event.title),
+                    onDidRecord: {
+                        Task { await b.coordinator.refresh() }
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.regularMaterial)
+            }
+            .sheet(isPresented: bindingForSheet(.movementSettle)) {
+                SettlementSheet(
+                    groupId: b.group.id,
+                    resourceId: b.coordinator.event.id,
+                    currency: b.group.currency,
+                    members: Array(b.memberDirectory.values),
+                    suggestedToMemberId: nil,
+                    onDidSettle: {
+                        Task { await b.coordinator.refresh() }
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.regularMaterial)
             }
             .fullScreenCover(isPresented: bindingForSheet(.rules)) {
                 if let rc = b.rulesCoordinator {
