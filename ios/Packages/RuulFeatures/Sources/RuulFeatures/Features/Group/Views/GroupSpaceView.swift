@@ -2,62 +2,54 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Group "space" — the persistent home for a community. Replaces
-/// the V2 Slice 4F `GroupHomeView` (Settings-style tab pair: Personas
-/// / Cómo decidimos) with a single layered scroll using the canonical
-/// section card chrome (`Color.ruulSurface` + separator stroke).
+/// Group "space" — the persistent home for a community.
 ///
-///   1. Presence header (RuulGroupAvatar + name + member count + stack)
-///   2. Compose bar (chips: Evento · Decidir · Invitar)
-///   3. Pendings block (UserActions + CTA capsules)
-///   4. Spaces grid (Eventos · Decisiones · Multas · Inbox)
-///   5. Activity stream (current user's recent actions in this group)
+/// PR-1 (2026-05-25) pivots to the situational-stream doctrine
+/// (`doctrine_group_space_situational`): the home renders
+/// `GroupPresenceHeader` → `GroupComposeBar` → `GroupClusterStream`
+/// (o `EmptyGroupHero` cuando todos los clusters están vacíos). Se
+/// borraron el antiguo `GroupSpacesGrid`, el `SharedMoneyCard` como
+/// superficie top, y los destinos peer por tipo (Eventos / Multas /
+/// Fondos / Activos / Balances) — la navegación ahora ocurre directo
+/// desde las filas de los clusters.
 ///
-/// Sub-screens previously gated behind the "Personas" / "Cómo
-/// decidimos" tabs now live behind:
+/// Sub-screens reachable from here:
 ///   - Avatar stack → MembersList (`onOpenMembers`)
-///   - "Decisiones" tile / chip → Acuerdos (`onOpenDecisions`)
-///   - "⋯" menu → Edit / Advanced / Leave
+///   - UpcomingCluster row → Event detail (`onOpenEvent`)
+///   - AttentionCluster row → `onSelectPending` → router dispatch
+///   - Compose chips (Crear / Votar / Invitar / Compartir) → router
+///   - JustHappenedCluster "Ver todo" → Activity
+///   - "⋯" menu → Compartir invitación / Ajustes / Salir
 @MainActor
 public struct GroupSpaceView: View {
     @State var coordinator: GroupHomeCoordinator
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    /// Money UX Consolidation 2026-05-24: routes the single
-    /// "Registrar movimiento" CTA on `SharedMoneyCard`. Picker is the
-    /// initial state; selecting a kind transitions to the matching
-    /// form sheet (re-using the existing Phase 3 sheets). Settlement
-    /// is `RegisterMovementSheet.Kind.settlement` → `SettlementSheet`.
+    /// El `+` de "Dinero reciente" salta directo al sheet
+    /// correspondiente — sin pasar por un picker intermedio
+    /// (founder decision 2026-05-25).
     private enum SharedMoneySheet: Identifiable {
-        case picker, contribute, recordExpense, settle
+        case contribute, recordExpense, settle
         var id: Self { self }
     }
     @State private var sharedMoneySheet: SharedMoneySheet?
 
-    // Compose chips routing
+    // Compose chips
     public var onCreateEvent: () -> Void
     public var onStartVote: () -> Void
-    public var onOpenDecisions: () -> Void
     public var onInviteMembers: () -> Void
     public var onShareInvite: () -> Void
 
-    // Spaces grid
-    public var onOpenEvents: (() -> Void)?
-    public var onOpenFines: (() -> Void)?
-    public var onOpenFunds: (() -> Void)?
-    public var onOpenAssets: (() -> Void)?
-    public var onOpenBalances: (() -> Void)?
-    public var onOpenInbox: (() -> Void)?
+    // Cluster row routing
+    public var onOpenEvent: (Event) -> Void
+    public var onSelectPending: (UserAction) -> Void
 
     // Header + stream
     public var onOpenMembers: (() -> Void)?
     public var onOpenActivity: (() -> Void)?
 
-    // Pendings
-    public var onSelectPending: (UserAction) -> Void
-
-    // Toolbar menu — single entry into the unified Ajustes del grupo
+    // Toolbar
     public var onOpenAjustes: (() -> Void)?
     public var onConfirmLeave: (() -> Void)?
     public var onLeaveGroup: () -> Void
@@ -66,18 +58,12 @@ public struct GroupSpaceView: View {
         coordinator: GroupHomeCoordinator,
         onCreateEvent: @escaping () -> Void,
         onStartVote: @escaping () -> Void,
-        onOpenDecisions: @escaping () -> Void,
         onInviteMembers: @escaping () -> Void,
         onShareInvite: @escaping () -> Void,
-        onOpenEvents: (() -> Void)? = nil,
-        onOpenFines: (() -> Void)? = nil,
-        onOpenFunds: (() -> Void)? = nil,
-        onOpenAssets: (() -> Void)? = nil,
-        onOpenBalances: (() -> Void)? = nil,
-        onOpenInbox: (() -> Void)? = nil,
+        onOpenEvent: @escaping (Event) -> Void,
+        onSelectPending: @escaping (UserAction) -> Void,
         onOpenMembers: (() -> Void)? = nil,
         onOpenActivity: (() -> Void)? = nil,
-        onSelectPending: @escaping (UserAction) -> Void,
         onOpenAjustes: (() -> Void)? = nil,
         onConfirmLeave: (() -> Void)? = nil,
         onLeaveGroup: @escaping () -> Void
@@ -85,18 +71,12 @@ public struct GroupSpaceView: View {
         self._coordinator = State(initialValue: coordinator)
         self.onCreateEvent = onCreateEvent
         self.onStartVote = onStartVote
-        self.onOpenDecisions = onOpenDecisions
         self.onInviteMembers = onInviteMembers
         self.onShareInvite = onShareInvite
-        self.onOpenEvents = onOpenEvents
-        self.onOpenFines = onOpenFines
-        self.onOpenFunds = onOpenFunds
-        self.onOpenAssets = onOpenAssets
-        self.onOpenBalances = onOpenBalances
-        self.onOpenInbox = onOpenInbox
+        self.onOpenEvent = onOpenEvent
+        self.onSelectPending = onSelectPending
         self.onOpenMembers = onOpenMembers
         self.onOpenActivity = onOpenActivity
-        self.onSelectPending = onSelectPending
         self.onOpenAjustes = onOpenAjustes
         self.onConfirmLeave = onConfirmLeave
         self.onLeaveGroup = onLeaveGroup
@@ -104,10 +84,6 @@ public struct GroupSpaceView: View {
 
     public var body: some View {
         ZStack {
-            // Apple Settings / Luma pattern: subtle gray page bg so the
-            // `Color.ruulSurface` cards read as bright white-ish tiles
-            // against it. Using `ruulBackground` (systemBackground) made
-            // the cards look darker than the page, inverting the intent.
             Color.ruulBackgroundRecessed.ignoresSafeArea()
             AsyncContentView(
                 phase: coordinator.phase,
@@ -133,37 +109,29 @@ public struct GroupSpaceView: View {
 
                     GroupComposeBar(chips: composeChips())
 
-                    // SharedMoney P8: shared pool + viewer's "Te deben/
-                    // Debes" merged into one consolidated "Dinero" card.
-                    // The obligation strip is hidden internally when
-                    // the viewer is settled (netCents == 0).
-                    if let summary = coordinator.sharedPoolSummary {
-                        SharedMoneyCard(
-                            summary: summary,
-                            viewerObligation: coordinator.viewerBalance,
-                            onRegisterMovement: { sharedMoneySheet = .picker },
-                            onOpenDetail: { onOpenBalances?() }
+                    if isEmpty {
+                        EmptyGroupHero(
+                            onInvite: onInviteMembers,
+                            onCreate: onCreateEvent
                         )
-                    }
-
-                    if !coordinator.pendingActions.isEmpty {
-                        GroupPendingsBlock(
-                            items: coordinator.pendingActions,
-                            onSelect: onSelectPending
-                        )
-                    }
-
-                    GroupSpacesGrid(tiles: spaceTiles(currency: group.currency))
-
-                    if !coordinator.recentActivity.isEmpty {
-                        GroupStreamBlock(
-                            items: coordinator.recentActivity,
+                    } else {
+                        GroupClusterStream(
+                            attention: coordinator.pendingActions,
+                            upcoming: coordinator.upcomingEvents,
+                            recentMoney: coordinator.recentMoneyEntries,
+                            recentActivity: coordinator.recentActivity,
                             actor: app.profile,
                             locale: app.profile?.locale ?? "es-MX",
-                            onSeeAll: onOpenActivity
+                            members: coordinator.allMembers,
+                            currency: group.currency,
+                            onSelectPending: onSelectPending,
+                            onOpenEvent: onOpenEvent,
+                            onSeeAllActivity: onOpenActivity,
+                            onRegisterExpense: { sharedMoneySheet = .recordExpense },
+                            onContribute: { sharedMoneySheet = .contribute },
+                            onSettle: { sharedMoneySheet = .settle }
                         )
                     }
-
                 }
                 .padding(.horizontal, RuulSpacing.lg)
                 .padding(.bottom, RuulSpacing.xl)
@@ -177,24 +145,22 @@ public struct GroupSpaceView: View {
         }
     }
 
+    /// Todos los clusters vacíos → render `EmptyGroupHero` debajo del
+    /// PresenceHeader + ComposeBar. Regla de la doctrina: si no hay
+    /// vida, no inventes estructura.
+    private var isEmpty: Bool {
+        coordinator.pendingActions.isEmpty
+            && coordinator.upcomingEvents.isEmpty
+            && coordinator.recentMoneyEntries.isEmpty
+            && coordinator.recentActivity.isEmpty
+    }
+
     @ViewBuilder
     private func sharedMoneySheetContent(
         _ which: SharedMoneySheet,
         group: RuulCore.Group
     ) -> some View {
         switch which {
-        case .picker:
-            RegisterMovementSheet { kind in
-                // dismiss-then-present: flip the binding to the matching
-                // sheet state so the form re-mounts as a fresh sheet.
-                // SwiftUI handles the sheet swap once the dismiss has
-                // committed (sheet item observed via @State).
-                switch kind {
-                case .contribution: sharedMoneySheet = .contribute
-                case .expense:      sharedMoneySheet = .recordExpense
-                case .settlement:   sharedMoneySheet = .settle
-                }
-            }
         case .contribute:
             ContributeToSharedMoneySheet(
                 groupId: group.id,
@@ -222,107 +188,52 @@ public struct GroupSpaceView: View {
 
     private func composeChips() -> [GroupComposeBar.Chip] {
         [
-            .init(id: "create",  label: "Crear",    systemImage: "plus.circle.fill",
-                  tint: Color.ruulWarning,             action: onCreateEvent),
-            .init(id: "vote",    label: "Votar",    systemImage: "checkmark.square",
-                  tint: GroupColorRamp.blue.accent,    action: onStartVote),
-            .init(id: "invite",  label: "Invitar",  systemImage: "person.badge.plus",
-                  tint: GroupColorRamp.purple.accent,  action: onInviteMembers),
-            .init(id: "share",   label: "Compartir", systemImage: "square.and.arrow.up",
-                  tint: GroupColorRamp.teal.accent,    action: onShareInvite)
-        ]
-    }
-
-    private func spaceTiles(currency: String) -> [GroupSpacesGrid.Tile] {
-        let s = coordinator.summary
-        let eventsCount = coordinator.upcomingEventsCount
-        let finesCount = coordinator.groupFinesCount
-        // SharedMoney Phase 3: the canonical shared pool lives in the
-        // SharedMoneyCard above. This tile only counts OTHER (protected/
-        // legacy) funds and hides entirely when there are none.
-        let otherFundsCount = coordinator.otherFundsCount
-
-        let finesAlert: String? = {
-            guard let s, s.pendingFinesOutstandingCents > 0 else { return nil }
-            let fmt = NumberFormatter()
-            fmt.numberStyle = .currency
-            fmt.currencyCode = currency
-            fmt.maximumFractionDigits = 0
-            let amount = Double(s.pendingFinesOutstandingCents) / 100.0
-            return fmt.string(from: NSNumber(value: amount)).map { "\($0) por pagar" } ?? "Por pagar"
-        }()
-
-        var tiles: [GroupSpacesGrid.Tile] = [
             .init(
-                id: "events",
-                label: "Eventos",
-                systemImage: "calendar",
+                id: "create",
+                label: "Crear",
+                systemImage: "plus.circle.fill",
                 tint: Color.ruulWarning,
-                primary: "\(eventsCount)",
-                secondary: eventsCount == 1 ? "próximo" : "próximos",
-                alert: nil,
-                action: { onOpenEvents?() }
+                action: onCreateEvent
             ),
             .init(
-                id: "decisions",
-                label: "Decisiones",
+                id: "vote",
+                label: "Votar",
                 systemImage: "checkmark.square",
                 tint: GroupColorRamp.blue.accent,
-                primary: "\(s?.openVotesCount ?? 0)",
-                secondary: (s?.openVotesCount ?? 0) == 1 ? "voto abierto" : "votos abiertos",
-                alert: nil,
-                action: onOpenDecisions
+                action: onStartVote
             ),
             .init(
-                id: "fines",
-                label: "Multas",
-                systemImage: "exclamationmark.triangle.fill",
-                tint: Color.ruulNegative,
-                primary: "\(finesCount)",
-                secondary: finesCount == 1 ? "multa" : "multas",
-                alert: finesAlert,
-                action: { onOpenFines?() }
+                id: "invite",
+                label: "Invitar",
+                systemImage: "person.badge.plus",
+                tint: GroupColorRamp.purple.accent,
+                action: onInviteMembers
+            ),
+            .init(
+                id: "share",
+                label: "Compartir",
+                systemImage: "square.and.arrow.up",
+                tint: GroupColorRamp.teal.accent,
+                action: onShareInvite
             )
         ]
-
-        // 2026-05-24: "Otros fondos" no longer appears as a peer tile
-        // in the spaces grid. The shared-money doctrine treats the pool
-        // as the primary money surface and legacy/protected funds as the
-        // exception — they're now discovered inside the "Dinero del
-        // grupo" detail (footer link) so the grid stays focused on the
-        // canonical verbs (Eventos / Decisiones / Multas / Activos).
-        _ = otherFundsCount
-
-        // SharedMoney Phase 4 brick C.2: "Activos" tile — group's
-        // physical/financial assets (nave industrial, vehículo,
-        // inversión per AssetVariants). Hides at 0 to keep the grid
-        // tight; appears as soon as the first asset is created.
-        let assetsCount = coordinator.groupAssetsCount
-        if assetsCount > 0 {
-            tiles.append(
-                .init(
-                    id: "assets",
-                    label: "Activos",
-                    systemImage: "shippingbox",
-                    tint: GroupColorRamp.purple.accent,
-                    primary: "\(assetsCount)",
-                    secondary: assetsCount == 1 ? "activo" : "activos",
-                    alert: nil,
-                    action: { onOpenAssets?() }
-                )
-            )
-        }
-
-        return tiles
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Button("Compartir invitación", systemImage: "square.and.arrow.up", action: onShareInvite)
+                Button(
+                    "Compartir invitación",
+                    systemImage: "square.and.arrow.up",
+                    action: onShareInvite
+                )
                 if let onOpenAjustes {
-                    Button("Ajustes del grupo", systemImage: "gearshape", action: onOpenAjustes)
+                    Button(
+                        "Ajustes del grupo",
+                        systemImage: "gearshape",
+                        action: onOpenAjustes
+                    )
                 }
                 Divider()
                 Button(
@@ -336,5 +247,4 @@ public struct GroupSpaceView: View {
             }
         }
     }
-
 }

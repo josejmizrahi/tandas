@@ -542,30 +542,16 @@ private struct GroupSpaceScreen: View {
             if let coordinator {
                 GroupSpaceView(
                     coordinator: coordinator,
-                    onCreateEvent: {
-                        // Open the universal ResourceCreationSheet so
-                        // founders can pick between event/asset/fund/
-                        // space/slot/right. Pre-2026-05-24 this branch
-                        // pre-selected `.event` and skipped the picker,
-                        // making every other type unreachable from the
-                        // group home.
-                        router.present(.createCover)
-                    },
+                    onCreateEvent: { router.present(.createCover) },
                     onStartVote:      { router.present(.createVotePicker) },
-                    onOpenDecisions:  { path.append(MyGroupsTab.GroupDestination.decisiones) },
                     onInviteMembers:  { showInvite = true },
                     onShareInvite:    { router.present(.inviteShare) },
-                    onOpenEvents:     { path.append(MyGroupsTab.GroupDestination.eventos) },
-                    onOpenFines:      { path.append(MyGroupsTab.GroupDestination.multas) },
-                    onOpenFunds:      { path.append(MyGroupsTab.GroupDestination.fondos) },
-                    onOpenAssets:     { path.append(MyGroupsTab.GroupDestination.activos) },
-                    onOpenBalances:   { path.append(MyGroupsTab.GroupDestination.balances) },
-                    onOpenInbox:      { router.selectTab(.home) },
-                    onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
-                    onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
+                    onOpenEvent:      { event in router.openEvent(event) },
                     onSelectPending:  { action in
                         Task { await handleInboxAction(action) }
                     },
+                    onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
+                    onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
                     onOpenAjustes:    { path.append(MyGroupsTab.GroupDestination.ajustes) },
                     onConfirmLeave:   { showLeave = true },
                     onLeaveGroup: {

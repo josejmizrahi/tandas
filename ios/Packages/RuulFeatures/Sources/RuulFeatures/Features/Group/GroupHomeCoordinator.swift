@@ -89,6 +89,17 @@ public final class GroupHomeCoordinator {
     /// subscreen. Empty until first load (or when `ledgerRepo`/
     /// `actorUserId` isn't wired).
     public var groupBalances: [MemberGroupBalance] = []
+
+    /// Upcoming events in the group, ordered ascending by `startsAt`.
+    /// Drives the "Próximo" cluster on GroupSpaceView. V1 cluster is
+    /// event-only (slot/booking/deadline are V1.5+); the cluster will
+    /// extend polymorphically when those types ship.
+    public var upcomingEvents: [Event] = []
+
+    /// Recent ledger entries for the group, newest first. Drives the
+    /// "Dinero reciente" cluster on GroupSpaceView. Polymorphic via
+    /// `resourceId` + `metadata` — the cluster renders any type.
+    public var recentMoneyEntries: [LedgerEntry] = []
     /// The viewer's own balance for the group's currency, derived from
     /// `groupBalances` once `group` + `actorUserId` resolve. nil when
     /// the user has no entries yet (settled). UI hides the card in
@@ -216,6 +227,7 @@ public final class GroupHomeCoordinator {
             async let sharedPoolTask: Void = loadSharedPoolSummary()
             async let assetsTask: Void = loadAssets()
             async let balancesTask: Void = loadBalances()
+            async let recentMoneyTask: Void = loadRecentMoney()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -227,6 +239,7 @@ public final class GroupHomeCoordinator {
             _ = await sharedPoolTask
             _ = await assetsTask
             _ = await balancesTask
+            _ = await recentMoneyTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -277,9 +290,24 @@ public final class GroupHomeCoordinator {
         guard let repo = eventRepo else { return }
         do {
             let events = try await repo.upcomingEvents(in: groupId, limit: 100)
+            self.upcomingEvents = events
             self.upcomingEventsCount = events.count
         } catch {
-            log.warning("group upcomingEvents count failed: \(error.localizedDescription, privacy: .public)")
+            log.warning("group upcomingEvents load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Loads the most recent ledger entries for this group. Drives the
+    /// "Dinero reciente" cluster. Soft-fails — empty list is a valid
+    /// rendering state (the cluster auto-hides per situational-stream
+    /// doctrine when there's nothing to show).
+    private func loadRecentMoney() async {
+        guard let repo = ledgerRepo else { return }
+        do {
+            let entries = try await repo.list(groupId: groupId, limit: 20)
+            self.recentMoneyEntries = entries
+        } catch {
+            log.warning("group recent money load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

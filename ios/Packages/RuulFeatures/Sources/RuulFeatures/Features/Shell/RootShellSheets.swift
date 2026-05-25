@@ -425,21 +425,10 @@ private struct GroupHomeSheetContent: View {
                 coordinator: coord,
                 onCreateEvent: { router.present(.createCover) },
                 onStartVote: { router.present(.createVotePicker) },
-                onOpenDecisions: { path.append(GroupNav.acuerdos) },
                 onInviteMembers: { showInvite = true },
                 onShareInvite: { router.present(.inviteShare) },
-                onOpenEvents: {
-                    while router.state.contains(.groupHome) { router.state.dismissTop() }
-                    router.selectTab(.home)
-                },
-                onOpenFines: {
-                    while router.state.contains(.groupHome) { router.state.dismissTop() }
-                    router.requestOpenMyFines()
-                },
-                onOpenFunds: nil,
-                onOpenAssets: nil,
-                onOpenBalances: nil,
-                onOpenInbox: { router.selectTab(.home) },
+                onOpenEvent: { event in router.openEvent(event) },
+                onSelectPending: { _ in router.selectTab(.home) },
                 onOpenMembers: {
                     path.append(
                         coord.isCurrentUserAdmin
@@ -448,7 +437,6 @@ private struct GroupHomeSheetContent: View {
                     )
                 },
                 onOpenActivity: nil,
-                onSelectPending: { _ in router.selectTab(.home) },
                 onOpenAjustes: { showEditIdentity = true },
                 onConfirmLeave: { showLeave = true },
                 onLeaveGroup: {
