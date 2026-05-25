@@ -86,13 +86,7 @@ struct ResourceMoneySlot: View {
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {
             case .picker:
-                RegisterMovementSheet { kind in
-                    switch kind {
-                    case .contribution: presentedSheet = .contribute
-                    case .expense:      presentedSheet = .record
-                    case .settlement:   presentedSheet = .settle
-                    }
-                }
+                RegisterMovementSheet(onPick: routePickedKind)
             case .record:
                 RecordSharedExpenseSheet(
                     groupId: context.groupId,
@@ -315,6 +309,14 @@ struct ResourceMoneySlot: View {
         // refresh its own activity feed / related counters.
         refreshTick &+= 1
         context.onDidChange()
+    }
+
+    private func routePickedKind(_ kind: RegisterMovementSheet.Kind) {
+        switch kind {
+        case .contribution: presentedSheet = .contribute
+        case .expense:      presentedSheet = .record
+        case .settlement:   presentedSheet = .settle
+        }
     }
 
     // MARK: - Formatting
