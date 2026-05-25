@@ -523,7 +523,7 @@ public struct HomeView: View {
             Button("Crear") {
                 router.presentCreate(hasActiveGroup: app.activeGroup != nil)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
         }
         .padding(.top, 40)
     }

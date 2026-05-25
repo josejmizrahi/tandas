@@ -34,7 +34,7 @@ public struct OpenVotesListView: View {
                     } actions: {
                         if BetaFeatureFlags.current.showGenericVoteCreation {
                             Button("Crear votación", action: onCreateVote)
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(.glassProminent)
                         }
                     }
                     .padding(.top, 64)

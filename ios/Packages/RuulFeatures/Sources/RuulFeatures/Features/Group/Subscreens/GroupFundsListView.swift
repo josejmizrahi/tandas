@@ -60,7 +60,7 @@ public struct GroupFundsListView: View {
                 } actions: {
                     if let onCreate {
                         Button("Crear fondo", action: onCreate)
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.glassProminent)
                     }
                 }
             },

@@ -526,7 +526,7 @@ public struct MyGroupsTab: View {
             Text("Crea uno tuyo o únete con un código para coordinar con tus amigos.")
         } actions: {
             Button("Crear grupo") { router.present(.createGroup) }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
             Button("Unirme con código") { router.present(.joinGroup) }
         }
     }

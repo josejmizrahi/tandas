@@ -384,7 +384,7 @@ public struct VoteDetailHost: View {
                                 .frame(maxWidth: .infinity)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .tint(Color.ruulAccent)
                     .disabled(coordinator.isFinalizingManually)
                 }
@@ -396,7 +396,7 @@ public struct VoteDetailHost: View {
                         Text("Cancelar votación")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.glass)
                     .disabled(coordinator.isCancellingVote)
                 }
                 Spacer(minLength: 0)

@@ -91,7 +91,7 @@ public struct PendingClaimsView: View {
                 .foregroundStyle(Color.secondary)
             HStack(spacing: RuulSpacing.sm) {
                 Button("Revisar") { reviewing = claim }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.glass)
                     .disabled(workingUid == claim.placeholderUid)
                 Spacer()
                 Button(action: { accept(claim) }) {
@@ -101,7 +101,7 @@ public struct PendingClaimsView: View {
                         Text("Aceptar")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(workingUid != nil)
             }
         }

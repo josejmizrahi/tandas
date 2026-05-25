@@ -104,7 +104,7 @@ public struct ClaimReviewView: View {
             Button(action: accept) {
                 if isWorking { ProgressView() } else { Text("Aceptar y entrar") }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .controlSize(.large)
             .frame(maxWidth: .infinity)
             .disabled(isWorking)

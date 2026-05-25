@@ -56,13 +56,13 @@ public struct RuulButton: View {
     private var styledButton: some View {
         switch style {
         case .primary:
-            base.buttonStyle(.borderedProminent)
+            base.buttonStyle(.glassProminent)
         case .secondary:
-            base.buttonStyle(.bordered)
+            base.buttonStyle(.glass)
         case .glass:
             base.buttonStyle(.glass)
         case .destructive:
-            destructiveBase.buttonStyle(.borderedProminent)
+            destructiveBase.buttonStyle(.glassProminent)
         case .plain:
             base.buttonStyle(.plain)
         }

@@ -38,7 +38,7 @@ public struct ChangePhoneFlow: View {
             if let error { errorLabel(error) }
             Spacer()
             Button("Enviar código") { Task { await sendOTP() } }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(sending || newPhone.isEmpty)
         }
         .padding(RuulSpacing.lg)
@@ -58,7 +58,7 @@ public struct ChangePhoneFlow: View {
             if let error { errorLabel(error) }
             Spacer()
             Button("Confirmar") { Task { await confirm() } }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(sending || otp.count < 4)
         }
         .padding(RuulSpacing.lg)

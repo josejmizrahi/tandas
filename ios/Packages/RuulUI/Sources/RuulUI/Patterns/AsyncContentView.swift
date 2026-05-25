@@ -37,7 +37,7 @@ import RuulCore
 ///             Text("Crea el primero para empezar.")
 ///         } actions: {
 ///             Button("Crear") { ... }
-///                 .buttonStyle(.borderedProminent)
+///                 .buttonStyle(.glassProminent)
 ///         }
 ///     },
 ///     loaded: { rules in

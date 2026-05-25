@@ -266,11 +266,11 @@ public struct ActivityView: View {
         let action = { withAnimation(.smooth) { selectedChip = chip } }
         if chip == selectedChip {
             Button(chip.label, action: action)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.small)
         } else {
             Button(chip.label, action: action)
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
         }
     }

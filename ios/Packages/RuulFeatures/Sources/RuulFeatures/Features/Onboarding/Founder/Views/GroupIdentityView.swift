@@ -58,7 +58,7 @@ public struct GroupIdentityView: View {
             HStack(spacing: RuulSpacing.xs) {
                 ForEach(Self.suggestions, id: \.self) { name in
                     Button(name) { coord.draft.name = name }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.glass)
                         .controlSize(.small)
                 }
             }

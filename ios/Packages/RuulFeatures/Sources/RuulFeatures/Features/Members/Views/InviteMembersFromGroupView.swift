@@ -95,7 +95,7 @@ public struct InviteMembersFromGroupView: View {
                     .padding(RuulSpacing.md)
                     .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
                 Button("Enviar") { Task { await sendInvite() } }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .disabled(sending || newPhone.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             // Placeholder member: cuenta para turnos/RSVP/fines/votos antes
@@ -113,7 +113,7 @@ public struct InviteMembersFromGroupView: View {
                         Label("De mis contactos", systemImage: "person.crop.circle.badge.plus")
                             .font(.footnote)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
 
                     Button {
                         clearPrefill()
@@ -122,7 +122,7 @@ public struct InviteMembersFromGroupView: View {
                         Label("Manual", systemImage: "square.and.pencil")
                             .font(.footnote)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.glass)
                 }
                 .padding(.top, RuulSpacing.xs)
 

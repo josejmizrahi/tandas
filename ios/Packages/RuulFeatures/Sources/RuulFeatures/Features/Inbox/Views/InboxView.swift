@@ -165,11 +165,11 @@ public struct InboxView: View {
         }
         if chip == selectedChip {
             Button(action: action) { label }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.small)
         } else {
             Button(action: action) { label }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
         }
     }

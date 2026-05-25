@@ -50,7 +50,7 @@ public struct RegenerateInviteCodeSheet: View {
                     Text("Rotar código")
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .disabled(rotating)
         }
     }
@@ -70,11 +70,11 @@ public struct RegenerateInviteCodeSheet: View {
                 ShareLink(item: "Únete a mi grupo: \(code)") {
                     Label("Compartir", systemImage: "square.and.arrow.up")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
             }
             Spacer()
             Button("Listo") { dismiss() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
         }
     }
 

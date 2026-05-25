@@ -62,7 +62,7 @@ public struct LeaveGroupConfirmationSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.secondary)
             Button("Entendido") { dismiss() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
         }
     }
 
@@ -84,7 +84,7 @@ public struct LeaveGroupConfirmationSheet: View {
                     Text("Salir del grupo")
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .tint(Color.red)
             .disabled(leaving)
         }

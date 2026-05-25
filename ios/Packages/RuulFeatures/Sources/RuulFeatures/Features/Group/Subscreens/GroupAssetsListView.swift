@@ -59,7 +59,7 @@ public struct GroupAssetsListView: View {
                 } actions: {
                     if let onCreate {
                         Button("Crear activo", action: onCreate)
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.glassProminent)
                     }
                 }
             },
