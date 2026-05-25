@@ -69,6 +69,17 @@ public protocol LedgerRepository: Actor {
         userId: UUID,
         groupIds: [UUID]
     ) async throws -> [MemberGroupBalance]
+
+    /// Edit foundation (mig 00368): appends a settlement-shaped
+    /// "undo" entry that neutralizes the original on every projection.
+    /// Caller must be the original `recorded_by`. Idempotent via
+    /// `clientId` (stamped into `metadata.client_id`). Returns the
+    /// inserted reverse entry — callers should reload affected views.
+    func reverseEntry(
+        entryId: UUID,
+        reason: String?,
+        clientId: UUID
+    ) async throws -> LedgerEntry
 }
 
 // MARK: - Mock
@@ -156,6 +167,41 @@ public actor MockLedgerRepository: LedgerRepository {
         // empty — previews + tests just hide the card. The Live path
         // does the real two-query walk.
         []
+    }
+
+    public func reverseEntry(
+        entryId: UUID,
+        reason: String?,
+        clientId: UUID
+    ) async throws -> LedgerEntry {
+        // Mock: append a settlement-shaped entry with the same
+        // metadata convention so the in-memory store reflects the
+        // reversal. The math holds because MockLedgerRepository's
+        // `balancesForGroup` sums by from/to across all types — the
+        // flipped from/to cancels the original.
+        guard let original = entries.first(where: { $0.id == entryId }) else {
+            throw LedgerError.rpcFailed("entry not found")
+        }
+        var meta: [String: JSONConfig] = [
+            "reversed_ledger_entry_id": .string(entryId.uuidString.lowercased()),
+            "reversed_original_type": .string(original.type),
+            "client_id": .string(clientId.uuidString.lowercased())
+        ]
+        if let reason, !reason.isEmpty {
+            meta["reason"] = .string(reason)
+        }
+        let reverse = LedgerEntry(
+            groupId: original.groupId,
+            resourceId: original.resourceId,
+            type: "settlement",
+            amountCents: original.amountCents,
+            currency: original.currency,
+            fromMemberId: original.toMemberId,
+            toMemberId: original.fromMemberId,
+            metadata: .object(meta)
+        )
+        entries.append(reverse)
+        return reverse
     }
 
     public func balancesForGroup(_ groupId: UUID) async throws -> [MemberGroupBalance] {
@@ -358,6 +404,30 @@ public actor LiveLedgerRepository: LedgerRepository {
                 .from("member_balances_per_group")
                 .select()
                 .eq("group_id", value: groupId.uuidString.lowercased())
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func reverseEntry(
+        entryId: UUID,
+        reason: String?,
+        clientId: UUID
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_entry_id: String
+            let p_reason: String?
+            let p_client_id: String
+        }
+        do {
+            return try await client
+                .rpc("reverse_ledger_entry", params: Params(
+                    p_entry_id: entryId.uuidString.lowercased(),
+                    p_reason: (reason?.isEmpty == false) ? reason : nil,
+                    p_client_id: clientId.uuidString.lowercased()
+                ))
                 .execute()
                 .value
         } catch {

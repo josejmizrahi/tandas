@@ -12,11 +12,25 @@ public struct ActivityView: View {
     @State private var detailEvent: SystemEvent?
     @State private var showFilters: Bool = false
     @State private var selectedChip: ActivityChip = .all
+    /// Edit foundation (mig 00368): the row whose reverse the user is
+    /// about to confirm. Set by the contextMenu, cleared by the alert
+    /// buttons or by `performReverse` completion.
+    @State private var entryToReverse: PendingReversal?
+    @State private var reverseError: String?
     /// Optional: cuando set, el `SystemEventDetailView` muestra un CTA
     /// "Ver detalle" que routea al destination real (multa / voto /
     /// evento / regla). El forwarding pasa por `ActivityTabView` →
     /// `MainTabView.routeFromHistoryEvent(_:)`.
     public var onOpenRelated: ((SystemEvent) -> Void)? = nil
+
+    /// Identifiable wrapper for the `.alert(presenting:)` API — captures
+    /// the SystemEvent + extracted ledger_entry_id so the alert closure
+    /// has everything it needs without re-parsing the payload.
+    private struct PendingReversal: Identifiable {
+        let event: SystemEvent
+        let entryId: UUID
+        var id: UUID { event.id }
+    }
 
     public init(coordinator: ActivityCoordinator, onOpenRelated: ((SystemEvent) -> Void)? = nil) {
         self._coordinator = State(initialValue: coordinator)
@@ -76,6 +90,71 @@ public struct ActivityView: View {
                 showFilters = false
             }
 
+        }
+        .alert(
+            "¿Revertir esta operación?",
+            isPresented: Binding(
+                get: { entryToReverse != nil },
+                set: { if !$0 { entryToReverse = nil } }
+            ),
+            presenting: entryToReverse
+        ) { pending in
+            Button("Revertir", role: .destructive) {
+                Task { await performReverse(pending) }
+            }
+            Button("Cancelar", role: .cancel) { entryToReverse = nil }
+        } message: { _ in
+            Text("Quedará en el historial y los saldos vuelven al estado anterior. No se borra nada.")
+        }
+        .alert(
+            "No se pudo revertir",
+            isPresented: Binding(
+                get: { reverseError != nil },
+                set: { if !$0 { reverseError = nil } }
+            ),
+            presenting: reverseError
+        ) { _ in
+            Button("OK", role: .cancel) { reverseError = nil }
+        } message: { message in
+            Text(message)
+        }
+    }
+
+    /// Returns the ledger_entries.id when `event` is a reversible
+    /// ledger atom — i.e., a `ledgerEntryCreated` whose `recorded_by`
+    /// matches the current viewer. V1 authorization mirrors the RPC
+    /// (mig 00368): only the original recorder can reverse. Returns
+    /// nil for any other case so the contextMenu hides the action.
+    private func reversibleEntryId(for event: SystemEvent) -> UUID? {
+        guard event.eventType == .ledgerEntryCreated else { return nil }
+        guard let viewerId = app.session?.user.id else { return nil }
+        let recordedBy = event.payload["recorded_by"]?.stringValue?.lowercased()
+        guard recordedBy == viewerId.uuidString.lowercased() else { return nil }
+        // Reverse entries can't themselves be reversed (RPC enforces).
+        // Their payload would have `reversed_ledger_entry_id`, but the
+        // atom emit trigger doesn't surface that key yet — V2 polish
+        // gates the menu pre-emptively instead of relying on the RPC
+        // error.
+        guard let raw = event.payload["entry_id"]?.stringValue,
+              let id = UUID(uuidString: raw) else { return nil }
+        return id
+    }
+
+    @MainActor
+    private func performReverse(_ pending: PendingReversal) async {
+        entryToReverse = nil
+        do {
+            _ = try await app.ledgerRepo.reverseEntry(
+                entryId: pending.entryId,
+                reason: nil,
+                clientId: UUID()
+            )
+            // The new settlement entry surfaces on next refresh, and
+            // any open Money Block / SharedMoneyCard re-reads on its
+            // own `.task` cycle.
+            await coordinator.refresh()
+        } catch {
+            reverseError = error.localizedDescription
         }
     }
 
@@ -209,6 +288,18 @@ public struct ActivityView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .contextMenu {
+                    // Edit foundation: long-press on a ledger entry the
+                    // viewer recorded → "Revertir". Appends an opposing
+                    // settlement entry; balances roll back.
+                    if let entryId = reversibleEntryId(for: ev) {
+                        Button(role: .destructive) {
+                            entryToReverse = PendingReversal(event: ev, entryId: entryId)
+                        } label: {
+                            Label("Revertir operación", systemImage: "arrow.uturn.backward")
+                        }
+                    }
+                }
                 .scrollTransition(.animated.threshold(.visible(0.2))) { content, phase in
                     content
                         .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
