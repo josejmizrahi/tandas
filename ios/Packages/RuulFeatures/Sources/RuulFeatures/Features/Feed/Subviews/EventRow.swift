@@ -120,6 +120,16 @@ public struct EventRow: View {
                 .foregroundStyle(Color.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
+            if event.seriesId != nil {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.caption2.weight(.semibold))
+                    Text("Recurrente")
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(Color.secondary)
+            }
             if let location = event.locationName, !location.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "mappin")

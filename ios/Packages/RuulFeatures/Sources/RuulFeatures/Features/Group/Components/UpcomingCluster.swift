@@ -61,10 +61,18 @@ private struct UpcomingRow: View {
                 DateTile(date: event.startsAt)
 
                 VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
-                    Text(event.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.ruulTextPrimary)
-                        .lineLimit(2)
+                    HStack(spacing: RuulSpacing.xxs) {
+                        Text(event.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.ruulTextPrimary)
+                            .lineLimit(2)
+                        if event.seriesId != nil {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Color.ruulTextTertiary)
+                                .accessibilityLabel("Recurrente")
+                        }
+                    }
 
                     HStack(spacing: RuulSpacing.xxs) {
                         Text(event.startsAt, format: .dateTime.hour().minute())
