@@ -395,7 +395,7 @@ public struct ResourceDetailSheet: View {
             ActivityItem(
                 id: entry.id.uuidString,
                 title: Self.ledgerTitle(for: entry),
-                subtitle: Self.formatLedgerAmount(entry, currency: currency),
+                subtitle: Self.ledgerSubtitle(for: entry, currency: currency),
                 timestamp: entry.occurredAt,
                 icon: Self.ledgerIcon(for: entry),
                 kind: entry.amountCents >= 0 ? .positive : .negative,
@@ -614,6 +614,16 @@ public struct ResourceDetailSheet: View {
         let amount = Decimal(entry.amountCents) / 100
         let formatted = amount.formatted(.currency(code: currency))
         return entry.amountCents >= 0 ? "+\(formatted)" : formatted  // negatives carry their own sign
+    }
+
+    /// Subtitle for a ledger row: amount + " · Compartido entre N" when
+    /// the entry was split (mig 00370). Falls back to plain amount when
+    /// the entry has no split metadata, so legacy and protected-fund
+    /// rows render unchanged.
+    private static func ledgerSubtitle(for entry: LedgerEntry, currency: String) -> String {
+        let amount = formatLedgerAmount(entry, currency: currency)
+        guard let count = entry.participantCount else { return amount }
+        return "\(amount) · Compartido entre \(count)"
     }
 
     /// Avatar tint comes from `ResourceFamilyTint.persons` to stay

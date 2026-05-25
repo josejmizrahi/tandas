@@ -484,8 +484,7 @@ public struct HistoryItemPresentation {
         // when the directory hasn't loaded the resource yet.
         let resourceSuffix: String = {
             guard let resolve = resolveResourceName,
-                  let s = payload["source_resource_id"]?.stringValue,
-                  let uuid = UUID(uuidString: s),
+                  let uuid = payload.ledgerSourceResourceId,
                   let name = resolve(uuid)
             else { return "" }
             return " para \(name)"
@@ -510,18 +509,11 @@ public struct HistoryItemPresentation {
             // P4: if participants array is present + ≥2 entries, surface
             // the split context. Otherwise fall back to the tri-role
             // "pagado por" enrichment.
-            let participantsCount: Int? = {
-                if case let .array(items) = payload["participants"] {
-                    return items.count >= 2 ? items.count : nil
-                }
-                return nil
-            }()
-            if let n = participantsCount {
+            if let n = payload.ledgerParticipantCount {
                 base = amount.isEmpty
                     ? "\(effectiveActor) registró un gasto compartido entre \(n) personas"
                     : "\(effectiveActor) registró \(amount) entre \(n) personas"
-            } else if let paidById = payload["paid_by_member_id"]?.stringValue,
-                      let paidByUUID = UUID(uuidString: paidById),
+            } else if let paidByUUID = payload.ledgerPaidByMemberId,
                       let paidByName = resolveMemberName?(paidByUUID),
                       paidByName != effectiveActor {
                 base = amount.isEmpty
@@ -536,8 +528,7 @@ public struct HistoryItemPresentation {
             // P6: in-kind hint is built directly into the contribution
             // variant via the "en especie" wording — no extra suffix
             // needed, the language carries the meaning.
-            let inKind = payload["in_kind"]?.boolValue == true
-            if inKind {
+            if payload.ledgerIsInKind {
                 base = amount.isEmpty
                     ? "\(effectiveActor) aportó en especie"
                     : "\(effectiveActor) aportó en especie por \(amount)"

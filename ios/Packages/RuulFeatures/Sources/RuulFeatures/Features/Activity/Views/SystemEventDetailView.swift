@@ -157,21 +157,12 @@ public struct SystemEventDetailView: View {
     /// Per-member rows decoded from `payload.split_breakdown`. Empty
     /// when the entry has no split metadata (legacy entries, fines,
     /// settlements, etc.).
-    private var splitBreakdown: [(memberId: UUID, shareCents: Int64)] {
-        guard case .array(let rows) = event.payload["split_breakdown"] ?? .null else {
-            return []
-        }
-        return rows.compactMap { row -> (UUID, Int64)? in
-            guard case .object(let dict) = row,
-                  let memberStr = dict["member_id"]?.stringValue,
-                  let memberId = UUID(uuidString: memberStr),
-                  let cents = dict["share_cents"]?.intValue else { return nil }
-            return (memberId, Int64(cents))
-        }
+    private var splitBreakdown: [SplitBreakdown] {
+        event.payload.ledgerSplitBreakdown
     }
 
     private var splitMode: SplitMode? {
-        event.payload["split_mode"]?.stringValue.flatMap(SplitMode.init(rawValue:))
+        event.payload.ledgerSplitMode
     }
 
     private var totalCents: Int64 {
