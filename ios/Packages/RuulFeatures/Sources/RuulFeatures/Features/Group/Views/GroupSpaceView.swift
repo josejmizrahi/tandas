@@ -24,11 +24,13 @@ public struct GroupSpaceView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    /// Routes the two `SharedMoneyCard` CTAs to their group-scoped
-    /// sheets (SharedMoney Phase 3 § 5). Quick-action shape → `.medium`
-    /// default detent with `.large` available.
+    /// Money UX Consolidation 2026-05-24: routes the single
+    /// "Registrar movimiento" CTA on `SharedMoneyCard`. Picker is the
+    /// initial state; selecting a kind transitions to the matching
+    /// form sheet (re-using the existing Phase 3 sheets). Settlement
+    /// is `RegisterMovementSheet.Kind.settlement` → `SettlementSheet`.
     private enum SharedMoneySheet: Identifiable {
-        case contribute, recordExpense
+        case picker, contribute, recordExpense, settle
         var id: Self { self }
     }
     @State private var sharedMoneySheet: SharedMoneySheet?
@@ -139,8 +141,7 @@ public struct GroupSpaceView: View {
                         SharedMoneyCard(
                             summary: summary,
                             viewerObligation: coordinator.viewerBalance,
-                            onContribute: { sharedMoneySheet = .contribute },
-                            onRecordExpense: { sharedMoneySheet = .recordExpense },
+                            onRegisterMovement: { sharedMoneySheet = .picker },
                             onOpenDetail: { onOpenBalances?() }
                         )
                     }
@@ -182,6 +183,18 @@ public struct GroupSpaceView: View {
         group: RuulCore.Group
     ) -> some View {
         switch which {
+        case .picker:
+            RegisterMovementSheet { kind in
+                // dismiss-then-present: flip the binding to the matching
+                // sheet state so the form re-mounts as a fresh sheet.
+                // SwiftUI handles the sheet swap once the dismiss has
+                // committed (sheet item observed via @State).
+                switch kind {
+                case .contribution: sharedMoneySheet = .contribute
+                case .expense:      sharedMoneySheet = .recordExpense
+                case .settlement:   sharedMoneySheet = .settle
+                }
+            }
         case .contribute:
             ContributeToSharedMoneySheet(
                 groupId: group.id,
@@ -194,6 +207,15 @@ public struct GroupSpaceView: View {
                 currency: group.currency,
                 members: coordinator.allMembers,
                 onDidRecord: { Task { await coordinator.refresh() } }
+            )
+        case .settle:
+            SettlementSheet(
+                groupId: group.id,
+                resourceId: nil,
+                currency: group.currency,
+                members: coordinator.allMembers,
+                suggestedToMemberId: nil,
+                onDidSettle: { Task { await coordinator.refresh() } }
             )
         }
     }

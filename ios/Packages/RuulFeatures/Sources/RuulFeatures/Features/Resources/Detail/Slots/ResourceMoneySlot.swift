@@ -37,9 +37,10 @@ struct ResourceMoneySlot: View {
     @State private var refreshTick: Int = 0
 
     enum SharedMoneySheet: Identifiable {
-        case record, contribute, settle
+        case picker, record, contribute, settle
         var id: String {
             switch self {
+            case .picker:     return "picker"
             case .record:     return "record"
             case .contribute: return "contribute"
             case .settle:     return "settle"
@@ -61,25 +62,13 @@ struct ResourceMoneySlot: View {
                 }
             }
 
-            HStack(spacing: RuulSpacing.sm) {
-                RuulButton("Aportar", style: .secondary, size: .medium) {
-                    presentedSheet = .contribute
-                }
-                RuulButton("Registrar gasto", style: .secondary, size: .medium) {
-                    presentedSheet = .record
-                }
-            }
-
-            // Phase 5: settle-up CTA appears once there's at least
-            // one contributor — before that there's nothing to settle.
-            // V1 simple model: settlement is a peer-to-peer payment
-            // (records a `settlement` ledger entry) and DOES NOT alter
-            // the resource's contribution breakdown (capital stays
-            // attributed to whoever fronted it; the cash just moves).
-            if !breakdown.isEmpty {
-                RuulButton("Registrar pago", style: .plain, size: .small) {
-                    presentedSheet = .settle
-                }
+            RuulButton(
+                "Registrar movimiento",
+                style: .secondary,
+                size: .medium,
+                fillsWidth: true
+            ) {
+                presentedSheet = .picker
             }
 
             footer
@@ -96,6 +85,14 @@ struct ResourceMoneySlot: View {
         .task(id: refreshTick) { await load() }
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {
+            case .picker:
+                RegisterMovementSheet { kind in
+                    switch kind {
+                    case .contribution: presentedSheet = .contribute
+                    case .expense:      presentedSheet = .record
+                    case .settlement:   presentedSheet = .settle
+                    }
+                }
             case .record:
                 RecordSharedExpenseSheet(
                     groupId: context.groupId,

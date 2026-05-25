@@ -28,8 +28,12 @@ struct SharedMoneyCard: View {
     /// footer — formerly its own `GroupObligationsCard`, merged here
     /// (P8) so the group home has one consolidated "Dinero" card.
     let viewerObligation: MemberGroupBalance?
-    let onContribute: () -> Void
-    let onRecordExpense: () -> Void
+    /// Money UX Consolidation 2026-05-24: single "Registrar movimiento"
+    /// CTA. Replaces the dual `onContribute` / `onRecordExpense` CTAs
+    /// per founder feedback — the host presents a `RegisterMovementSheet`
+    /// picker, then routes to the matching form sheet based on the
+    /// chosen kind.
+    let onRegisterMovement: () -> Void
     /// Opens the canonical "Dinero del grupo" detail surface (saldos
     /// per-miembro + "Otros fondos" footer). Used by BOTH the
     /// obligation strip (when the viewer has a non-zero net) and the
@@ -55,10 +59,13 @@ struct SharedMoneyCard: View {
                     .foregroundStyle(Color.secondary)
             }
 
-            HStack(spacing: RuulSpacing.sm) {
-                RuulButton("Aportar", style: .secondary, size: .medium, action: onContribute)
-                RuulButton("Registrar gasto", style: .secondary, size: .medium, action: onRecordExpense)
-            }
+            RuulButton(
+                "Registrar movimiento",
+                style: .secondary,
+                size: .medium,
+                fillsWidth: true,
+                action: onRegisterMovement
+            )
 
             Text(footerText)
                 .font(.caption)
@@ -162,7 +169,7 @@ struct SharedMoneyCard: View {
                 entryCount: 0, lastActivityAt: nil
             ),
             viewerObligation: nil,
-            onContribute: {}, onRecordExpense: {},
+            onRegisterMovement: {},
             onOpenDetail: {}
         )
         SharedMoneyCard(
@@ -175,7 +182,7 @@ struct SharedMoneyCard: View {
                 groupId: base, memberId: UUID(), currency: "MXN",
                 sentCents: 30_000, receivedCents: 0, netCents: 30_000
             ),
-            onContribute: {}, onRecordExpense: {},
+            onRegisterMovement: {},
             onOpenDetail: {}
         )
         SharedMoneyCard(
@@ -185,7 +192,7 @@ struct SharedMoneyCard: View {
                 entryCount: 5, lastActivityAt: Date().addingTimeInterval(-86_400)
             ),
             viewerObligation: nil,
-            onContribute: {}, onRecordExpense: {},
+            onRegisterMovement: {},
             onOpenDetail: {}
         )
     }
