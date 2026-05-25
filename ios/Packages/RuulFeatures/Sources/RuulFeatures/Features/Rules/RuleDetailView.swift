@@ -34,6 +34,10 @@ public struct RuleDetailView: View {
     }
 
     @State private var paramsCoordinator: EditRuleParamsCoordinator?
+    /// Doctrine v2 §5 — activity feed obligatoria. System events
+    /// filtered by this rule's id (proposals, changes, applications).
+    @State private var recentEvents: [SystemEvent] = []
+    @State private var memberDirectory: [UUID: MemberWithProfile] = [:]
 
     /// Looks up the `RuleBuilderTemplate` for this rule by matching `rule.slug`
     /// to `template.id`. Returns nil when the rule has no slug or the template
@@ -51,6 +55,27 @@ public struct RuleDetailView: View {
                 EditRuleParamsSheet(coordinator: coord)
                     .environment(app)
             }
+            .task {
+                await loadMemberDirectory()
+                await loadActivity()
+            }
+    }
+
+    @MainActor
+    private func loadMemberDirectory() async {
+        guard memberDirectory.isEmpty else { return }
+        let rows = (try? await app.groupsRepo.membersWithProfiles(of: rule.groupId)) ?? []
+        memberDirectory = Dictionary(uniqueKeysWithValues: rows.map { ($0.member.id, $0) })
+    }
+
+    @MainActor
+    private func loadActivity() async {
+        let events = (try? await app.systemEventRepo.query(
+            filter: SystemEventFilter(groupId: rule.groupId, resourceId: rule.id),
+            limit: 5,
+            offset: 0
+        )) ?? []
+        recentEvents = events
     }
 
     // MARK: - Config
@@ -67,7 +92,7 @@ public struct RuleDetailView: View {
                 canEditRule: canEditRules,
                 canEditParams: canEditParams,
                 editParamsBlockedReason: editParamsBlockedReason,
-                activity: []
+                activity: SystemEventToActivityItem.map(recentEvents, members: memberDirectory)
             ),
             onEdit: onEdit,
             onEditParams: { openParamsEditor() },

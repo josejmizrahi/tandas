@@ -16,6 +16,10 @@ public struct SlotDetailView: View {
     @State private var isBooking = false
     @State private var actionError: String?
     @State private var actionInfo: String?
+    /// Doctrine v2 §5 — activity feed obligatoria. Top 5 `system_events`
+    /// where `resource_id == slot.id`. Soft-fails to empty (auto-hides
+    /// the section in the universal shell).
+    @State private var recentEvents: [SystemEvent] = []
 
     public init(slot: ResourceRow, asset: ResourceRow) {
         self.slot = slot
@@ -33,7 +37,10 @@ public struct SlotDetailView: View {
                     members: members.filter { $0.id != currentMemberId }
                 ) { _ in Task { await refresh() } }
             }
-            .task { await loadMembers() }
+            .task {
+                await loadMembers()
+                await loadActivity()
+            }
             .navigationTitle("Turno")
             .navigationBarTitleDisplayMode(.inline)
             .alert(
@@ -62,12 +69,17 @@ public struct SlotDetailView: View {
                 titularPerson: titularPersonForDetail,
                 canAssign: canAssign,
                 canBook: canBook,
-                canRequestSwap: canRequestSwap
+                canRequestSwap: canRequestSwap,
+                activity: SystemEventToActivityItem.map(recentEvents, members: memberDirectory)
             ),
             onBook: { Task { await book() } },
             onAssign: { showAssignSheet = true },
             onRequestSwap: { showSwapSheet = true }
         )
+    }
+
+    private var memberDirectory: [UUID: MemberWithProfile] {
+        Dictionary(uniqueKeysWithValues: members.map { ($0.member.id, $0) })
     }
 
     // MARK: - Derived
@@ -177,6 +189,16 @@ public struct SlotDetailView: View {
         } catch {
             actionError = error.localizedDescription
         }
+    }
+
+    @MainActor
+    private func loadActivity() async {
+        let events = (try? await appState.systemEventRepo.query(
+            filter: SystemEventFilter(groupId: slot.groupId, resourceId: slot.id),
+            limit: 5,
+            offset: 0
+        )) ?? []
+        recentEvents = events
     }
 
     private func initials(_ name: String) -> String {
