@@ -102,7 +102,20 @@ import CoreLocation
         amountFormatted: "$200.00",
         statusLabel: "Pendiente",
         createdAtLabel: "Hoy · 21 may",
-        issuedByName: "Jose",
+        finedPerson: Person(
+            id: "linda",
+            name: "Linda",
+            initials: "L",
+            color: .blue,
+            imageURL: nil
+        ),
+        issuerPerson: Person(
+            id: "jose",
+            name: "Jose",
+            initials: "J",
+            color: .green,
+            imageURL: nil
+        ),
         canPay: true,
         canAppeal: true,
         appealStatusLabel: nil,

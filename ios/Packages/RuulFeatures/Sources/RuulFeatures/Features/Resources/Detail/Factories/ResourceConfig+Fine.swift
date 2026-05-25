@@ -17,7 +17,12 @@ public struct FineInput {
     public let amountFormatted: String
     public let statusLabel: String
     public let createdAtLabel: String
-    public let issuedByName: String?
+    /// Doctrine v2 §3 (PresenceBlock): fines used to show only the
+    /// issuer as a text row. Now we render the fined person + (when
+    /// different) the issuer as PresenceBlock-style avatar rows so
+    /// the surface stops feeling like a citation notice.
+    public let finedPerson: Person?
+    public let issuerPerson: Person?
     public let canPay: Bool
     public let canAppeal: Bool
     public let appealStatusLabel: String?
@@ -29,7 +34,8 @@ public struct FineInput {
         amountFormatted: String,
         statusLabel: String,
         createdAtLabel: String,
-        issuedByName: String?,
+        finedPerson: Person? = nil,
+        issuerPerson: Person? = nil,
         canPay: Bool,
         canAppeal: Bool,
         appealStatusLabel: String?,
@@ -40,7 +46,8 @@ public struct FineInput {
         self.amountFormatted = amountFormatted
         self.statusLabel = statusLabel
         self.createdAtLabel = createdAtLabel
-        self.issuedByName = issuedByName
+        self.finedPerson = finedPerson
+        self.issuerPerson = issuerPerson
         self.canPay = canPay
         self.canAppeal = canAppeal
         self.appealStatusLabel = appealStatusLabel
@@ -73,16 +80,27 @@ public extension ResourceConfig {
         if fine.canAppeal {
             actions.append(ResourceAction(label: "Apelar", icon: "exclamationmark.bubble", handler: onAppeal))
         }
-        var detailRows: [RowItem] = [
+        var sections: [ResourceSection] = []
+        if let fined = fine.finedPerson {
+            sections.append(.avatars(
+                title: "A quién",
+                people: [fined],
+                emptyText: nil,
+                onTapMore: nil
+            ))
+        }
+        if let issuer = fine.issuerPerson, issuer.id != fine.finedPerson?.id {
+            sections.append(.avatars(
+                title: "Quién la puso",
+                people: [issuer],
+                emptyText: nil,
+                onTapMore: nil
+            ))
+        }
+        sections.append(.rows(title: "Detalles", items: [
             RowItem(icon: "doc.text", label: "Razón",   value: .text(fine.reason)),
             RowItem(icon: "calendar", label: "Emitida", value: .text(fine.createdAtLabel))
-        ]
-        if let issuer = fine.issuedByName {
-            detailRows.append(RowItem(icon: "person", label: "Emisor", value: .text(issuer)))
-        }
-        var sections: [ResourceSection] = [
-            .rows(title: "Detalles", items: detailRows)
-        ]
+        ]))
         if let appealLabel = fine.appealStatusLabel {
             sections.append(.rows(title: "Apelación", items: [
                 RowItem(icon: "exclamationmark.bubble", label: "Estado", value: .text(appealLabel))

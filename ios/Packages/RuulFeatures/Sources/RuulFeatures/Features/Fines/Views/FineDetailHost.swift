@@ -183,6 +183,30 @@ public struct FineDetailHost: View {
 
     // MARK: - ResourceBlocks → ResourceConfig
 
+    /// Resolves an auth user id into a `Person` for the avatar slots
+    /// (Doctrine v2 §3 PresenceBlock — fines now surface fined +
+    /// issuer as avatar rows instead of a text "Emisor" row).
+    /// Returns nil when the directory hasn't loaded yet or the user
+    /// isn't a current member of the group.
+    private func makePerson(forUserId userId: UUID) -> Person? {
+        guard let mw = membersByUserId[userId] else { return nil }
+        let name = mw.displayName
+        return Person(
+            id: mw.member.id.uuidString,
+            name: name,
+            initials: Self.personInitials(name),
+            color: ResourceFamilyTint.persons.color,
+            imageURL: mw.avatarURL
+        )
+    }
+
+    private static func personInitials(_ name: String) -> String {
+        let parts = name.split(separator: " ")
+        let first = parts.first.flatMap { $0.first.map(String.init) } ?? ""
+        let last = parts.dropFirst().last.flatMap { $0.first.map(String.init) } ?? ""
+        return (first + last).uppercased()
+    }
+
     /// Builds the `FineInput` the new `.fine(_:)` factory expects from
     /// the live coordinator state. Amount as display hero, status as
     /// label, pay/appeal inline, void in toolbar menu (admin gated).
@@ -198,15 +222,14 @@ public struct FineDetailHost: View {
             guard coordinator.existingAppeal != nil else { return nil }
             return f.status == .inAppeal ? "En curso" : "Resuelta"
         }()
-        let issuerName = f.issuedBy
-            .flatMap { membersByUserId[$0]?.profile?.displayName }
         let input = FineInput(
             id: f.id.uuidString,
             reason: f.reason,
             amountFormatted: f.amountFormatted,
             statusLabel: f.status.displayLabel,
             createdAtLabel: Self.relativeAgo(f.createdAt),
-            issuedByName: issuerName,
+            finedPerson: makePerson(forUserId: f.userId),
+            issuerPerson: f.issuedBy.flatMap { makePerson(forUserId: $0) },
             canPay: canPay,
             canAppeal: canAppeal,
             appealStatusLabel: appealStatusLabel,
