@@ -45,6 +45,11 @@ public struct GroupBalancesView: View {
     @State private var balances: [MemberGroupBalance] = []
     @State private var otherFunds: [Fund] = []
     @State private var recentEntries: [LedgerEntry] = []
+    /// Money UX 2026-05-24 (hero pass): the canonical shared-pool
+    /// summary, loaded so the hub can render the same large balance
+    /// the SharedMoneyCard on the home shows — gives the detail
+    /// surface a visual anchor instead of opening on the balances list.
+    @State private var sharedPoolSummary: SharedPoolSummary?
     @State private var resourceNamesById: [UUID: String] = [:]
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -128,15 +133,16 @@ public struct GroupBalancesView: View {
             },
             loaded: { rows in
                 ScrollView {
-                    LazyVStack(spacing: RuulSpacing.sm) {
-                        ForEach(rows) { row in
-                            balanceRow(row)
-                        }
+                    LazyVStack(alignment: .leading, spacing: RuulSpacing.xl) {
+                        heroBlock
+                        balancesSection(rows: rows)
                         settlementSuggestionsSection
                         recentMovementsSection
                         otherFundsSection
                     }
-                    .padding(RuulSpacing.lg)
+                    .padding(.horizontal, RuulSpacing.lg)
+                    .padding(.top, RuulSpacing.md)
+                    .padding(.bottom, RuulSpacing.xl)
                 }
                 .refreshable { await load() }
             }
@@ -280,6 +286,125 @@ public struct GroupBalancesView: View {
 
     // MARK: - Liquidar (dashboard preview)
 
+    // MARK: - Hero block (Money UX 2026-05-24 — Apple minimal pass)
+
+    /// Renders the same hero amount the `SharedMoneyCard` shows on
+    /// home, so opening the hub doesn't lose the visual anchor. Hidden
+    /// until the shared-pool summary loads to avoid a flash of zero.
+    @ViewBuilder
+    private var heroBlock: some View {
+        if let s = sharedPoolSummary {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(formatHero(s.balanceCents))
+                        .font(.system(size: 40, weight: .regular, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(s.isOverSpent ? Color.ruulNegative : Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(s.currency)
+                        .font(.body)
+                        .foregroundStyle(Color.secondary)
+                }
+                Text(heroFooter(s))
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func formatHero(_ cents: Int64) -> String {
+        let amount = Decimal(cents) / 100
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = group.currency
+        f.currencySymbol = "$"
+        f.maximumFractionDigits = 0
+        f.locale = Locale(identifier: "es_MX")
+        return f.string(from: amount as NSDecimalNumber) ?? "$\(cents / 100)"
+    }
+
+    private func heroFooter(_ s: SharedPoolSummary) -> String {
+        if s.isOverSpent {
+            return "Saldo negativo — más gastos que aportes"
+        }
+        guard s.hasActivity, let last = s.lastActivityAt else {
+            return "Sin movimientos todavía"
+        }
+        return "Última actividad \(last.ruulRelative)"
+    }
+
+    // MARK: - Balances (member nets) — Apple minimal 1-line rows
+
+    @ViewBuilder
+    private func balancesSection(rows: [MemberGroupBalance]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader("Saldos por miembro")
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
+                    if idx > 0 { rowDivider }
+                    minimalBalanceRow(row)
+                }
+            }
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
+        }
+    }
+
+    /// One-line balance row in Splitwise / Apple style: name on the
+    /// left, signed monospaced amount on the right (+ green for owed
+    /// to viewer's net, − red for the inverse). No icon badge, no
+    /// secondary line — direction is conveyed by sign + color.
+    private func minimalBalanceRow(_ row: MemberGroupBalance) -> some View {
+        let isMe = (row.memberId == myMemberId)
+        let name = isMe ? "Tú" : (memberName(for: row.memberId) ?? "Miembro")
+        let prefix = row.isOwed ? "+" : "−"
+        let amount = Decimal(abs(row.netCents)) / 100
+        let formatted = amount.formatted(.currency(code: row.currency))
+        return HStack(spacing: RuulSpacing.sm) {
+            Text(name)
+                .font(.body)
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Text(prefix + formatted)
+                .font(.body.monospacedDigit().weight(.medium))
+                .foregroundStyle(row.isOwed ? Color.ruulPositive : Color.ruulNegative)
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .padding(.leading, RuulSpacing.md)
+    }
+
+    /// Section header — uppercase tracked footnote, Apple Settings /
+    /// Wallet style. Replaces the prior `.footnote.semibold.tertiary`
+    /// inline labels each section was duplicating.
+    private func sectionHeader(_ title: String, trailing: String? = nil) -> some View {
+        HStack {
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Spacer(minLength: 0)
+            if let trailing {
+                Text(trailing)
+                    .font(.caption2)
+                    .foregroundStyle(Color.secondary)
+            }
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.bottom, RuulSpacing.xs)
+    }
+
     /// Dashboard preview of the greedy settlement plan: shows up to 2
     /// suggestions involving the viewer (the actionable ones). Full
     /// plan — including pairs between other members — lives behind the
@@ -294,18 +419,12 @@ public struct GroupBalancesView: View {
         }
         if !all.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                HStack {
-                    Text("Liquidar")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color(.tertiaryLabel))
-                    Spacer(minLength: 0)
-                    Text(all.count == 1
-                         ? "1 pago para quedar al día"
-                         : "\(all.count) pagos para quedar al día")
-                        .font(.caption2)
-                        .foregroundStyle(Color.secondary)
-                }
-                .padding(.top, RuulSpacing.md)
+                sectionHeader(
+                    "Liquidar",
+                    trailing: all.count == 1
+                        ? "1 pago para quedar al día"
+                        : "\(all.count) pagos para quedar al día"
+                )
                 ForEach(Array(viewerInvolved.prefix(2))) { s in
                     settlementSuggestionRow(s)
                 }
@@ -314,6 +433,7 @@ public struct GroupBalancesView: View {
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                         .padding(.vertical, RuulSpacing.sm)
+                        .padding(.horizontal, RuulSpacing.md)
                 }
                 if let onOpenSettlementPlan {
                     sectionLink("Ver plan completo", action: onOpenSettlementPlan)
@@ -465,10 +585,7 @@ public struct GroupBalancesView: View {
     private var recentMovementsSection: some View {
         if !recentEntries.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Movimientos recientes")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .padding(.top, RuulSpacing.md)
+                sectionHeader("Movimientos recientes")
                 // Dashboard preview: top 5 only. Full filterable list
                 // lives behind "Ver todas →" → GroupTransactionsView.
                 ForEach(Array(recentEntries.prefix(5))) { entry in
@@ -613,7 +730,9 @@ public struct GroupBalancesView: View {
                 HStack {
                     Text("Otros fondos")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color(.tertiaryLabel))
+                        .foregroundStyle(Color.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
                     Spacer(minLength: 0)
                     if let onCreateFund {
                         Button(action: onCreateFund) {
@@ -625,12 +744,14 @@ public struct GroupBalancesView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.top, RuulSpacing.md)
+                .padding(.horizontal, RuulSpacing.md)
+                .padding(.bottom, RuulSpacing.xs)
 
                 if otherFunds.isEmpty {
                     Text("No hay fondos separados. Todo el dinero está en el pool compartido.")
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
+                        .padding(.horizontal, RuulSpacing.md)
                         .padding(.vertical, RuulSpacing.sm)
                 } else {
                     ForEach(otherFunds, id: \.id) { fund in
@@ -761,11 +882,15 @@ public struct GroupBalancesView: View {
         async let balancesTask = app.ledgerRepo.balancesForGroup(group.id)
         async let entriesTask = (try? await app.ledgerRepo.list(groupId: group.id, limit: 15)) ?? []
         async let otherFundsTask = otherFundsForGroup()
+        async let summaryTask = (try? await app.fundRepo.summaryForGroup(
+            group.id, preferredCurrency: group.currency
+        )) ?? nil
         do {
             members = await membersTask
             balances = try await balancesTask
             recentEntries = await entriesTask
             otherFunds = await otherFundsTask
+            sharedPoolSummary = await summaryTask
             await loadResourceNames()
         } catch {
             errorMessage = "No pudimos cargar los balances."
