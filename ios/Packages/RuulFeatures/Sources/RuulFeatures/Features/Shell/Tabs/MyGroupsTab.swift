@@ -562,7 +562,8 @@ private struct GroupSpaceScreen: View {
                     fundRepo: app.fundRepo,
                     resourceRepo: app.resourceRepo,
                     ledgerRepo: app.ledgerRepo,
-                    actorUserId: app.session?.user.id
+                    actorUserId: app.session?.user.id,
+                    changeFeed: app.multiDeviceChangeFeed
                 )
             }
         }

@@ -20,6 +20,15 @@ public final class GroupHomeCoordinator {
     private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
+    /// Multi-device change-feed subscription. Mirrors the
+    /// `InboxCoordinator` pattern (RootShell L157-178): when another
+    /// device resolves a UserAction, this coordinator's
+    /// `pendingActions` reloads so the group home doesn't drift from
+    /// the home tab's inbox. Pre-2026-05-24 this coordinator was the
+    /// only one of the three pending sources without a change-feed
+    /// subscription, producing visible inconsistency cross-tab.
+    nonisolated(unsafe) private var changeFeedTask: Task<Void, Never>?
+
     public var group: Group?
     public var memberCount: Int = 0
     public var myRole: String?          // "founder" | "member" | "admin"
@@ -158,7 +167,8 @@ public final class GroupHomeCoordinator {
         fundRepo: (any FundRepository)? = nil,
         resourceRepo: (any ResourceRepository)? = nil,
         ledgerRepo: (any LedgerRepository)? = nil,
-        actorUserId: UUID? = nil
+        actorUserId: UUID? = nil,
+        changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
         self.groupId = groupId
         self.groupsRepo = groupsRepo
@@ -172,7 +182,20 @@ public final class GroupHomeCoordinator {
         self.resourceRepo = resourceRepo
         self.ledgerRepo = ledgerRepo
         self.actorUserId = actorUserId
+        if let feed = changeFeed {
+            self.changeFeedTask = Task { [weak self] in
+                for await change in feed.changes {
+                    if Task.isCancelled { return }
+                    guard let self else { return }
+                    if change.table == .userAction {
+                        await self.loadPendingActions()
+                    }
+                }
+            }
+        }
     }
+
+    deinit { changeFeedTask?.cancel() }
 
     public func refresh() async {
         isLoading = true
