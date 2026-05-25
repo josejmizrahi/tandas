@@ -554,6 +554,13 @@ private struct GroupSpaceScreen: View {
                     onSelectPending:  { action in
                         Task { await handleInboxAction(action) }
                     },
+                    onOpenInUseResource: { resourceId in
+                        Task {
+                            if let row = try? await app.resourceRepo.resource(resourceId) {
+                                router.openResource(row)
+                            }
+                        }
+                    },
                     onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
                     onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
                     onOpenTransactions: { path.append(MyGroupsTab.GroupDestination.transacciones) },

@@ -100,6 +100,12 @@ public final class GroupHomeCoordinator {
     /// "Dinero reciente" cluster on GroupSpaceView. Polymorphic via
     /// `resourceId` + `metadata` — the cluster renders any type.
     public var recentMoneyEntries: [LedgerEntry] = []
+
+    /// Resources currently in use in the group — assets with a
+    /// custodian, spaces with a checked-in member. Drives the "En uso"
+    /// cluster on GroupSpaceView. Slot in-use is intentionally not
+    /// surfaced (semantics ambiguous per founder rule 2026-05-24).
+    public var inUseItems: [InUseProjection] = []
     /// The viewer's own balance for the group's currency, derived from
     /// `groupBalances` once `group` + `actorUserId` resolve. nil when
     /// the user has no entries yet (settled). UI hides the card in
@@ -228,6 +234,7 @@ public final class GroupHomeCoordinator {
             async let assetsTask: Void = loadAssets()
             async let balancesTask: Void = loadBalances()
             async let recentMoneyTask: Void = loadRecentMoney()
+            async let inUseTask: Void = loadInUse()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -240,6 +247,7 @@ public final class GroupHomeCoordinator {
             _ = await assetsTask
             _ = await balancesTask
             _ = await recentMoneyTask
+            _ = await inUseTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -308,6 +316,19 @@ public final class GroupHomeCoordinator {
             self.recentMoneyEntries = entries
         } catch {
             log.warning("group recent money load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Loads "in use right now" projections via the polymorphic
+    /// `inUseInGroup` repo method. Drives the "En uso" cluster.
+    /// Soft-fails — empty list is the doctrine-correct rendering
+    /// state (cluster auto-hides when nothing is in use).
+    private func loadInUse() async {
+        guard let repo = resourceRepo else { return }
+        do {
+            self.inUseItems = try await repo.inUseInGroup(groupId)
+        } catch {
+            log.warning("group in-use load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

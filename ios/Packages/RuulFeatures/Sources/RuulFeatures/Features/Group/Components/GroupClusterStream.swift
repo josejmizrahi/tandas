@@ -11,13 +11,14 @@ import RuulCore
 ///   1. Necesita atención
 ///   2. Próximo (PR-1: event-only)
 ///   3. Dinero reciente (con compose `+` contextual)
-///   4. En uso — DEFERRED a PR-2 (status semantics ambiguity)
+///   4. En uso (asset custody + space occupancy; slot deferred)
 ///   5. Acabó de pasar
 @MainActor
 struct GroupClusterStream: View {
     let attention: [UserAction]
     let upcoming: [Event]
     let recentMoney: [LedgerEntry]
+    let inUse: [InUseProjection]
     let recentActivity: [MyActivityItem]
 
     let actor: Profile?
@@ -27,6 +28,7 @@ struct GroupClusterStream: View {
 
     let onSelectPending: (UserAction) -> Void
     let onOpenEvent: (Event) -> Void
+    let onOpenInUseResource: (UUID) -> Void
     var onSeeAllActivity: (() -> Void)?
     var onSeeAllMoney: (() -> Void)?
     var onSeeAllUpcoming: (() -> Void)?
@@ -56,6 +58,14 @@ struct GroupClusterStream: View {
                     onContribute: onContribute,
                     onSettle: onSettle,
                     onSeeAll: onSeeAllMoney
+                )
+            }
+            if !inUse.isEmpty {
+                InUseCluster(
+                    items: inUse,
+                    members: members,
+                    locale: locale,
+                    onOpenResource: onOpenInUseResource
                 )
             }
             if !recentActivity.isEmpty {

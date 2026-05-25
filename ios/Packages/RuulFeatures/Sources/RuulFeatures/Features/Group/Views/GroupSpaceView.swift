@@ -44,6 +44,7 @@ public struct GroupSpaceView: View {
     // Cluster row routing
     public var onOpenEvent: (Event) -> Void
     public var onSelectPending: (UserAction) -> Void
+    public var onOpenInUseResource: (UUID) -> Void
 
     // Header + stream
     public var onOpenMembers: (() -> Void)?
@@ -64,6 +65,7 @@ public struct GroupSpaceView: View {
         onShareInvite: @escaping () -> Void,
         onOpenEvent: @escaping (Event) -> Void,
         onSelectPending: @escaping (UserAction) -> Void,
+        onOpenInUseResource: @escaping (UUID) -> Void = { _ in },
         onOpenMembers: (() -> Void)? = nil,
         onOpenActivity: (() -> Void)? = nil,
         onOpenTransactions: (() -> Void)? = nil,
@@ -79,6 +81,7 @@ public struct GroupSpaceView: View {
         self.onShareInvite = onShareInvite
         self.onOpenEvent = onOpenEvent
         self.onSelectPending = onSelectPending
+        self.onOpenInUseResource = onOpenInUseResource
         self.onOpenMembers = onOpenMembers
         self.onOpenActivity = onOpenActivity
         self.onOpenTransactions = onOpenTransactions
@@ -125,6 +128,7 @@ public struct GroupSpaceView: View {
                             attention: coordinator.pendingActions,
                             upcoming: coordinator.upcomingEvents,
                             recentMoney: coordinator.recentMoneyEntries,
+                            inUse: coordinator.inUseItems,
                             recentActivity: coordinator.recentActivity,
                             actor: app.profile,
                             locale: app.profile?.locale ?? "es-MX",
@@ -132,6 +136,7 @@ public struct GroupSpaceView: View {
                             currency: group.currency,
                             onSelectPending: onSelectPending,
                             onOpenEvent: onOpenEvent,
+                            onOpenInUseResource: onOpenInUseResource,
                             onSeeAllActivity: onOpenActivity,
                             onSeeAllMoney: onOpenTransactions,
                             onSeeAllUpcoming: onOpenEventsHistory,
@@ -160,6 +165,7 @@ public struct GroupSpaceView: View {
         coordinator.pendingActions.isEmpty
             && coordinator.upcomingEvents.isEmpty
             && coordinator.recentMoneyEntries.isEmpty
+            && coordinator.inUseItems.isEmpty
             && coordinator.recentActivity.isEmpty
     }
 
