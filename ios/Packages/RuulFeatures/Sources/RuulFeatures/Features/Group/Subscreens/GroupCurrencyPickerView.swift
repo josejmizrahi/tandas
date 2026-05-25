@@ -64,7 +64,7 @@ public struct GroupCurrencyPickerView: View {
                     }
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .ruulCardSurface(.solid)
             .padding(RuulSpacing.lg)
             if let error {
                 Text(error)

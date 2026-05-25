@@ -131,11 +131,7 @@ private struct ResourceTile: View {
                     .foregroundStyle(Color(.tertiaryLabel))
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .ruulCardSurface(.solid)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

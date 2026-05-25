@@ -35,7 +35,7 @@ public struct ChangeEmailFlow: View {
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                .ruulCardSurface(.solid, radius: RuulRadius.md)
             if let error {
                 Text(error).font(.footnote).foregroundStyle(Color.red)
             }
@@ -57,7 +57,7 @@ public struct ChangeEmailFlow: View {
                 .textContentType(.oneTimeCode)
                 .keyboardType(.numberPad)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                .ruulCardSurface(.solid, radius: RuulRadius.md)
             if let error {
                 Text(error).font(.footnote).foregroundStyle(Color.red)
             }

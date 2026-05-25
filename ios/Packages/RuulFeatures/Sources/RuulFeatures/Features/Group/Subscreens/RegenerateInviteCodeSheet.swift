@@ -66,7 +66,7 @@ public struct RegenerateInviteCodeSheet: View {
                     .foregroundStyle(Color.primary)
                     .padding(RuulSpacing.md)
                     .frame(maxWidth: .infinity)
-                    .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                    .ruulCardSurface(.solid, radius: RuulRadius.md)
                 ShareLink(item: "Únete a mi grupo: \(code)") {
                     Label("Compartir", systemImage: "square.and.arrow.up")
                 }

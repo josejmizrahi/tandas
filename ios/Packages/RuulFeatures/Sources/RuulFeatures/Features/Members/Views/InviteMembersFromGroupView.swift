@@ -79,7 +79,7 @@ public struct InviteMembersFromGroupView: View {
                 }
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+            .ruulCardSurface(.solid, radius: RuulRadius.md)
         }
     }
 
@@ -93,7 +93,7 @@ public struct InviteMembersFromGroupView: View {
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                     .padding(RuulSpacing.md)
-                    .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                    .ruulCardSurface(.solid, radius: RuulRadius.md)
                 Button("Enviar") { Task { await sendInvite() } }
                     .buttonStyle(.glassProminent)
                     .disabled(sending || newPhone.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -181,7 +181,7 @@ public struct InviteMembersFromGroupView: View {
                     }
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+            .ruulCardSurface(.solid, radius: RuulRadius.md)
         }
     }
 

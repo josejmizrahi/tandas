@@ -86,13 +86,13 @@ public struct AddPlaceholderSheet: View {
                 .textContentType(.name)
                 .textInputAutocapitalization(.words)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                .ruulCardSurface(.solid, radius: RuulRadius.md)
 
             TextField("Teléfono (+52...)", text: $phone)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
                 .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+                .ruulCardSurface(.solid, radius: RuulRadius.md)
         }
     }
 
@@ -106,7 +106,7 @@ public struct AddPlaceholderSheet: View {
                 .foregroundStyle(Color.secondary)
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+        .ruulCardSurface(.solid, radius: RuulRadius.md)
     }
 
     private var duplicateCard: some View {
@@ -119,7 +119,7 @@ public struct AddPlaceholderSheet: View {
                 .foregroundStyle(Color.secondary)
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+        .ruulCardSurface(.solid, radius: RuulRadius.md)
     }
 
     private var canSubmit: Bool {

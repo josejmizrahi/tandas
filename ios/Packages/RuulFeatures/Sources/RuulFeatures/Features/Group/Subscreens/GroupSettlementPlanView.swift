@@ -109,11 +109,7 @@ public struct GroupSettlementPlanView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .ruulCardSurface(.solid)
     }
 
     private var emptyState: some View {
@@ -175,11 +171,7 @@ public struct GroupSettlementPlanView: View {
                     .foregroundStyle(Color.secondary)
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .ruulCardSurface(.solid)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -145,7 +145,7 @@ public struct EditEventView: View {
             }
             .padding(.vertical, RuulSpacing.sm)
             .padding(.horizontal, RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .ruulCardSurface(.solid)
         }
     }
 
@@ -176,7 +176,7 @@ public struct EditEventView: View {
                 }
                 .padding(.vertical, RuulSpacing.sm)
                 .padding(.horizontal, RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .ruulCardSurface(.solid)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -220,7 +220,7 @@ public struct EditEventView: View {
                 }
                 .padding(.vertical, RuulSpacing.sm)
                 .padding(.horizontal, RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .ruulCardSurface(.solid)
             }
         }
     }
@@ -254,7 +254,7 @@ public struct EditEventView: View {
                 }
                 .padding(.vertical, RuulSpacing.sm)
                 .padding(.horizontal, RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .ruulCardSurface(.solid)
             }
         }
     }
@@ -291,7 +291,7 @@ public struct EditEventView: View {
                 )
                 .padding(.vertical, RuulSpacing.sm)
                 .padding(.horizontal, RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .ruulCardSurface(.solid)
             }
         }
     }
@@ -309,7 +309,7 @@ public struct EditEventView: View {
             .lineLimit(3...8)
             .padding(.vertical, RuulSpacing.sm)
             .padding(.horizontal, RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .ruulCardSurface(.solid)
         }
     }
 

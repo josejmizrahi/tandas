@@ -51,7 +51,7 @@ public struct LanguagePickerView: View {
                     }
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+            .ruulCardSurface(.solid)
             .padding(RuulSpacing.lg)
 
             if let error {

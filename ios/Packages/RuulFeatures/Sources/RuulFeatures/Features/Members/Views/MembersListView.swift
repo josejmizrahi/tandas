@@ -49,7 +49,7 @@ public struct MembersListView: View {
                                 }
                             }
                         }
-                        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+                        .ruulCardSurface(.solid)
                         .padding(RuulSpacing.lg)
                     }
                     .refreshable { await coordinator.refresh() }

@@ -294,11 +294,7 @@ private struct AttentionCard: View {
                 }
             }
         }
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .ruulCardSurface(.solid)
     }
 }
 
@@ -435,7 +431,7 @@ private struct GroupCard: View {
         }
         .frame(width: HomeMetrics.groupCardWidth, alignment: .leading)
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .ruulCardSurface(.solid)
         .overlay(
             RoundedRectangle(cornerRadius: RuulRadius.lg)
                 .stroke(isActive ? Color.ruulAccent : Color(.separator),
@@ -505,11 +501,7 @@ private struct UpcomingCard: View {
             }
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .ruulCardSurface(.solid)
     }
 
     /// Takes a free-form address (e.g. "Altezza Bosques, Camino a
@@ -577,11 +569,7 @@ private struct DateTile: View {
                 .foregroundStyle(Color.ruulTextPrimary)
         }
         .frame(width: HomeMetrics.dateTile, height: HomeMetrics.dateTile)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .ruulCardSurface(.solid, radius: RuulRadius.md)
     }
 }
 

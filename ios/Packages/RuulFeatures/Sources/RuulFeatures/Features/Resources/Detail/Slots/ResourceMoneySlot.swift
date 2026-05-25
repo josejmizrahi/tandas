@@ -78,10 +78,6 @@ struct ResourceMoneySlot: View {
         .padding(RuulSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ruulCardSurface(.solid)
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
         .task(id: refreshTick) { await load() }
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {

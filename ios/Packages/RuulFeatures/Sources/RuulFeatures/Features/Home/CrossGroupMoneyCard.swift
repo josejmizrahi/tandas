@@ -85,11 +85,7 @@ struct CrossGroupMoneyCard: View {
             }
             .padding(RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .ruulCardSurface(.solid)
         }
     }
 

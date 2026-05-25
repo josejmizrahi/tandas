@@ -75,7 +75,7 @@ public struct ClaimReviewView: View {
                 metricRow(systemImage: "calendar", label: "Eventos registrados", value: summary.eventCount)
             }
             .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+            .ruulCardSurface(.solid, radius: RuulRadius.md)
         } else if placeholderUid == nil {
             // Token-only path with no preloaded summary — we'd need a fetch
             // by token endpoint to preview. Skip the summary; accept still

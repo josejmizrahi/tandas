@@ -347,11 +347,7 @@ public struct GroupBalancesView: View {
                     minimalBalanceRow(row)
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .ruulCardSurface(.solid)
         }
     }
 
@@ -441,11 +437,7 @@ public struct GroupBalancesView: View {
                         }
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
+                .ruulCardSurface(.solid)
                 if let onOpenSettlementPlan {
                     sectionLink("Ver plan completo", action: onOpenSettlementPlan)
                         .padding(.top, RuulSpacing.xs)
@@ -599,11 +591,7 @@ public struct GroupBalancesView: View {
                         movementRow(entry)
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
+                .ruulCardSurface(.solid)
                 if let onOpenAllTransactions {
                     sectionLink("Ver todas las transacciones", action: onOpenAllTransactions)
                         .padding(.top, RuulSpacing.xs)
@@ -754,11 +742,7 @@ public struct GroupBalancesView: View {
                         }
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
+                .ruulCardSurface(.solid)
             }
         }
     }
@@ -872,11 +856,7 @@ public struct GroupBalancesView: View {
             )
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .ruulCardSurface(.solid)
     }
 
     private var myMemberId: UUID? {

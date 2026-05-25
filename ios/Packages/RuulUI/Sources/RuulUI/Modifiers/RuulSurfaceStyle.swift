@@ -38,8 +38,17 @@ private struct RuulCardSurfaceModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch style {
         case .solid:
+            // 2026-05-25: hairline stroke baked into the primitive so
+            // every elevated card across the app shares the exact same
+            // recipe — fill + 0.5pt separator — without callers needing
+            // to remember the overlay. Matches the Apple Settings /
+            // Wallet card chrome.
             content
                 .background(Color.ruulSurface, in: shapeFor(radius))
+                .overlay(
+                    shapeFor(radius)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
         case .glass:
             // 2026-05-15: dropped card chrome entirely — no fill, no
             // shadow, no border. The "contorno gris" complaint and the

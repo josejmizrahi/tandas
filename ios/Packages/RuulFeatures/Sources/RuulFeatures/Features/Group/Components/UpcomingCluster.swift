@@ -41,11 +41,7 @@ struct UpcomingCluster: View {
                     }
                 }
             }
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .ruulCardSurface(.solid)
         }
     }
 }
@@ -134,10 +130,6 @@ private struct DateTile: View {
                 .foregroundStyle(Color.ruulTextPrimary)
         }
         .frame(width: 50, height: 50)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.md)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .ruulCardSurface(.solid, radius: RuulRadius.md)
     }
 }

@@ -64,10 +64,6 @@ struct SharedMoneyCard: View {
         .padding(RuulSpacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ruulCardSurface(.solid)
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
     }
 
     // MARK: - Label

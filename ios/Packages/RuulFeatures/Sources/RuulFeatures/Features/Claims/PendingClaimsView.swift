@@ -106,7 +106,7 @@ public struct PendingClaimsView: View {
             }
         }
         .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.md))
+        .ruulCardSurface(.solid, radius: RuulRadius.md)
     }
 
     private func accept(_ claim: PendingPlaceholderClaim) {

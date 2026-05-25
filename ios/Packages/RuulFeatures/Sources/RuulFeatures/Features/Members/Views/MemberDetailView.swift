@@ -274,11 +274,7 @@ public struct MemberDetailView: View {
                         participationRow(symbol: line.symbol, text: line.text)
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
+                .ruulCardSurface(.solid)
             }
         }
     }
@@ -369,11 +365,7 @@ public struct MemberDetailView: View {
                         )
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
+                .ruulCardSurface(.solid)
             }
         }
     }
@@ -421,11 +413,7 @@ public struct MemberDetailView: View {
                         activityRow(event)
                     }
                 }
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
+                .ruulCardSurface(.solid)
             }
         }
     }
