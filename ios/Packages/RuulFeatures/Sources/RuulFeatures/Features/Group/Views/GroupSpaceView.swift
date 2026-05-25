@@ -6,12 +6,13 @@ import RuulCore
 ///
 /// PR-1 (2026-05-25) pivots to the situational-stream doctrine
 /// (`doctrine_group_space_situational`): the home renders
-/// `GroupPresenceHeader` → `GroupComposeBar` → `GroupClusterStream`
-/// (o `EmptyGroupHero` cuando todos los clusters están vacíos). Se
-/// borraron el antiguo `GroupSpacesGrid`, el `SharedMoneyCard` como
-/// superficie top, y los destinos peer por tipo (Eventos / Multas /
-/// Fondos / Activos / Balances) — la navegación ahora ocurre directo
-/// desde las filas de los clusters.
+/// `GroupPresenceHeader` → `GroupClusterStream` (o `EmptyGroupHero`
+/// cuando todos los clusters están vacíos). Se borraron el antiguo
+/// `GroupSpacesGrid`, el `SharedMoneyCard` como superficie top, el
+/// chip-bar `GroupComposeBar` (movido a toolbar "+" en V3 fix), y los
+/// destinos peer por tipo (Eventos / Multas / Fondos / Activos /
+/// Balances) — la navegación ahora ocurre directo desde las filas de
+/// los clusters.
 ///
 /// Sub-screens reachable from here:
 ///   - Avatar stack → MembersList (`onOpenMembers`)

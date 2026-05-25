@@ -601,7 +601,7 @@ private struct SectionHeading: View {
     }
 
     var body: some View {
-        // Group-page recipe (GroupPendingsBlock / GroupStreamBlock /
+        // Group-page recipe (GroupPendingsBlock /
         // GroupSpacesGrid): `.footnote.weight(.semibold)` in
         // `tertiaryLabel`, leading-inset `RuulSpacing.xxs` (4pt) so the
         // title aligns with the card body, not the screen edge.
