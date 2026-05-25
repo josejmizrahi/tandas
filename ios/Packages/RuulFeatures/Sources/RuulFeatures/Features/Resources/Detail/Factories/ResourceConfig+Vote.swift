@@ -32,7 +32,33 @@ public struct VoteInput {
     public let quorumPercent: Int
     public let thresholdPercent: Int
     public let viewerAlreadyVoted: Bool
+    /// Doctrine v2 §3 (Presence): vote_casts RLS only exposes the
+    /// viewer's own ballot — we can't list every voter client-side
+    /// without backend changes. Surfacing the viewer's own cast (with
+    /// avatar + choice + time) as a presence row is the honest
+    /// minimum: at least one person becomes visible in a surface that
+    /// was 100% aggregate counts. nil → section auto-hides.
+    public let viewerVote: ViewerVote?
     public let activity: [ActivityItem]
+
+    public struct ViewerVote {
+        public let choice: VoteChoice
+        public let castAt: Date?
+        public let viewerName: String
+        public let viewerAvatarURL: URL?
+
+        public init(
+            choice: VoteChoice,
+            castAt: Date?,
+            viewerName: String,
+            viewerAvatarURL: URL?
+        ) {
+            self.choice = choice
+            self.castAt = castAt
+            self.viewerName = viewerName
+            self.viewerAvatarURL = viewerAvatarURL
+        }
+    }
 
     public init(
         id: String,
@@ -51,6 +77,7 @@ public struct VoteInput {
         quorumPercent: Int,
         thresholdPercent: Int,
         viewerAlreadyVoted: Bool,
+        viewerVote: ViewerVote? = nil,
         activity: [ActivityItem]
     ) {
         self.id = id
@@ -69,6 +96,7 @@ public struct VoteInput {
         self.quorumPercent = quorumPercent
         self.thresholdPercent = thresholdPercent
         self.viewerAlreadyVoted = viewerAlreadyVoted
+        self.viewerVote = viewerVote
         self.activity = activity
     }
 }
@@ -111,6 +139,13 @@ public extension ResourceConfig {
                 content: AnyView(VoteProgressBlock(input: vote))
             ))
         }
+        if let viewerVote = vote.viewerVote, viewerVote.choice != .pending {
+            sections.append(.custom(
+                id: "viewer-vote",
+                title: "Tu voto",
+                content: AnyView(ViewerVoteRow(viewerVote: viewerVote))
+            ))
+        }
         sections.append(.rows(title: "Reglas de decisión", items: [
             RowItem(icon: "checkmark.shield", label: "Quórum",            value: .text("\(vote.quorumPercent)%")),
             RowItem(icon: "scale.3d",         label: "Mayoría requerida", value: .text("\(vote.thresholdPercent)%"))
@@ -134,6 +169,85 @@ public extension ResourceConfig {
             activity: .static(vote.activity),
             toolbarMenu: toolbarMenu
         )
+    }
+}
+
+// MARK: - ViewerVoteRow
+
+/// Renders the viewer's own ballot as a presence row inside the vote
+/// detail. Doctrine v2 §3 — at minimum the surface should make one
+/// person visible (the viewer). Aggregate counts above remain the only
+/// view of other voters' choices, per RLS.
+@MainActor
+private struct ViewerVoteRow: View {
+    let viewerVote: VoteInput.ViewerVote
+
+    var body: some View {
+        HStack(spacing: RuulSpacing.md) {
+            RuulAvatar(
+                name: viewerVote.viewerName,
+                imageURL: viewerVote.viewerAvatarURL,
+                size: .small
+            )
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(viewerVote.viewerName) · \(choicePhrase)")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.primary)
+                if let castAt = viewerVote.castAt {
+                    Text(relativeTime(castAt))
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .monospacedDigit()
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: choiceIcon)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(choiceTint)
+        }
+        .padding(RuulSpacing.md)
+        .background(
+            Color.ruulSurface,
+            in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+                .stroke(Color(.separator), lineWidth: 0.5)
+        )
+    }
+
+    private var choicePhrase: String {
+        switch viewerVote.choice {
+        case .inFavor:   return "votaste a favor"
+        case .against:   return "votaste en contra"
+        case .abstained: return "te abstuviste"
+        case .pending:   return ""
+        }
+    }
+
+    private var choiceIcon: String {
+        switch viewerVote.choice {
+        case .inFavor:   return "checkmark.circle.fill"
+        case .against:   return "xmark.circle.fill"
+        case .abstained: return "minus.circle.fill"
+        case .pending:   return "circle"
+        }
+    }
+
+    private var choiceTint: Color {
+        switch viewerVote.choice {
+        case .inFavor:   return .ruulSemanticSuccess
+        case .against:   return .ruulSemanticError
+        case .abstained: return Color(.tertiaryLabel)
+        case .pending:   return Color(.tertiaryLabel)
+        }
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .short
+        f.locale = Locale(identifier: "es_MX")
+        return f.localizedString(for: date, relativeTo: .now)
     }
 }
 

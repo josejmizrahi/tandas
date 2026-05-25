@@ -148,6 +148,25 @@ public struct VoteDetailHost: View {
 
     // MARK: - ResourceBlocks → ResourceConfig
 
+    /// Resolves the viewer's own ballot into a `ViewerVote` so the
+    /// factory can render a presence row. RLS hides every other
+    /// member's cast, so this is the honest minimum visible-people
+    /// surface (PR #6 of Doctrine v2 backlog). Returns nil when the
+    /// viewer hasn't cast yet (cell stays hidden until they vote).
+    private func viewerVoteForFactory() -> VoteInput.ViewerVote? {
+        guard let cast = coordinator.myCast, cast.choice != .pending else {
+            return nil
+        }
+        let name = app.profile?.displayName ?? "Tú"
+        let avatarURL: URL? = app.profile?.avatarUrl.flatMap(URL.init(string:))
+        return VoteInput.ViewerVote(
+            choice: cast.choice,
+            castAt: cast.castAt,
+            viewerName: name,
+            viewerAvatarURL: avatarURL
+        )
+    }
+
     /// Builds the `VoteInput` the new `.vote(_:)` factory expects from
     /// the live coordinator state. Renders the tally section + decision
     /// rules + inline cast action with the legacy admin finalize/cancel
@@ -172,6 +191,7 @@ public struct VoteDetailHost: View {
             quorumPercent:    v.quorumPercent,
             thresholdPercent: v.thresholdPercent,
             viewerAlreadyVoted: coordinator.alreadyVoted,
+            viewerVote: viewerVoteForFactory(),
             activity: blocks.activityHead.map(Self.mapActivityEntry)
         )
         var toolbar: [ToolbarMenuItem] = []
