@@ -46,6 +46,12 @@ public struct GroupBalancesView: View {
     @State private var errorMessage: String?
     @State private var hasLoaded = false
     @State private var settlementContext: SettlementContext?
+    @State private var entryToReverse: UUID?
+    @State private var entryEditingNote: NoteEditTarget?
+    @State private var noteEditDraft: String = ""
+    @State private var isSavingNote: Bool = false
+    @State private var noteEditError: String?
+    @State private var reverseError: String?
 
     public init(
         group: RuulCore.Group,
@@ -55,6 +61,12 @@ public struct GroupBalancesView: View {
         self.group = group
         self.onOpenFund = onOpenFund
         self.onCreateFund = onCreateFund
+    }
+
+    private struct NoteEditTarget: Identifiable {
+        let id = UUID()
+        let entryId: UUID
+        let initialNote: String
     }
 
     /// Identifiable wrapper for the `.sheet(item:)` presentation of
@@ -138,6 +150,124 @@ public struct GroupBalancesView: View {
             .presentationDetents([.medium, .large])
             .presentationBackground(.regularMaterial)
         }
+        .confirmationDialog(
+            "¿Revertir esta operación?",
+            isPresented: Binding(
+                get: { entryToReverse != nil },
+                set: { if !$0 { entryToReverse = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Revertir", role: .destructive) {
+                if let id = entryToReverse {
+                    Task { await performReverse(entryId: id) }
+                }
+            }
+            Button("Cancelar", role: .cancel) { entryToReverse = nil }
+        } message: {
+            Text("Se creará un movimiento de signo opuesto para cancelar el original. Los miembros verán el ajuste en la lista.")
+        }
+        .sheet(item: $entryEditingNote, onDismiss: {
+            noteEditDraft = ""
+            noteEditError = nil
+        }) { target in
+            noteEditSheet(target: target)
+        }
+        .alert("No pudimos revertir", isPresented: Binding(
+            get: { reverseError != nil },
+            set: { if !$0 { reverseError = nil } }
+        )) {
+            Button("OK", role: .cancel) { reverseError = nil }
+        } message: {
+            Text(reverseError ?? "")
+        }
+    }
+
+    /// Sheet form for `update_ledger_entry_note` (mig 00372). Same shape
+    /// the Activity feed uses — kept inline here so the hub stays a
+    /// single-file surface and the user doesn't need to leave the
+    /// money screen to fix a typo on a transaction note.
+    @ViewBuilder
+    private func noteEditSheet(target: NoteEditTarget) -> some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Descripción", text: $noteEditDraft, axis: .vertical)
+                        .lineLimit(2...6)
+                }
+                if let err = noteEditError {
+                    Section { Text(err).foregroundStyle(.red) }
+                }
+            }
+            .ruulSheetToolbar("Editar nota") {
+                entryEditingNote = nil
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSavingNote ? "Guardando…" : "Guardar") {
+                        Task { await performNoteEdit(target: target) }
+                    }
+                    .disabled(
+                        isSavingNote
+                        || noteEditDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            == target.initialNote.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                }
+            }
+        }
+        .task {
+            // Seed the draft on first present; .task fires once per
+            // sheet instance so re-opens don't clobber an in-progress
+            // edit on a different row.
+            if noteEditDraft.isEmpty {
+                noteEditDraft = target.initialNote
+            }
+        }
+    }
+
+    @MainActor
+    private func performReverse(entryId: UUID) async {
+        entryToReverse = nil
+        do {
+            _ = try await app.ledgerRepo.reverseEntry(
+                entryId: entryId,
+                reason: nil,
+                clientId: UUID()
+            )
+            await load()
+        } catch {
+            reverseError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func performNoteEdit(target: NoteEditTarget) async {
+        isSavingNote = true
+        noteEditError = nil
+        defer { isSavingNote = false }
+        let trimmed = noteEditDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            _ = try await app.ledgerRepo.updateEntryNote(
+                entryId: target.entryId,
+                note: trimmed.isEmpty ? nil : trimmed
+            )
+            entryEditingNote = nil
+            await load()
+        } catch {
+            noteEditError = error.localizedDescription
+        }
+    }
+
+    /// Authorization mirrors `reverse_ledger_entry` RPC (mig 00368):
+    /// only the original `recorded_by` can reverse. Returns the row's
+    /// id only when the viewer matches AND the entry isn't itself a
+    /// reverse (`metadata.reversed_ledger_entry_id` absent).
+    private func reversibleId(_ entry: LedgerEntry) -> UUID? {
+        guard entry.recordedBy == app.session?.user.id else { return nil }
+        if entry.metadata["reversed_ledger_entry_id"]?.stringValue != nil {
+            return nil
+        }
+        return entry.id
     }
 
     // MARK: - Liquidar ahora
@@ -281,6 +411,8 @@ public struct GroupBalancesView: View {
         let icon = movementIcon(entry)
         let primary = movementLabel(entry)
         let secondary = movementSubtitle(entry)
+        let canEditNote = entry.recordedBy == app.session?.user.id
+        let reversibleId = reversibleId(entry)
         return HStack(spacing: RuulSpacing.md) {
             ColoredIconBadge(systemName: icon, tint: Color.ruulAccent)
             VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
@@ -306,6 +438,25 @@ public struct GroupBalancesView: View {
             RoundedRectangle(cornerRadius: RuulRadius.lg)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
+        .contextMenu {
+            if canEditNote {
+                Button {
+                    entryEditingNote = NoteEditTarget(
+                        entryId: entry.id,
+                        initialNote: entry.note ?? ""
+                    )
+                } label: {
+                    Label("Editar nota", systemImage: "pencil")
+                }
+            }
+            if let id = reversibleId {
+                Button(role: .destructive) {
+                    entryToReverse = id
+                } label: {
+                    Label("Revertir operación", systemImage: "arrow.uturn.backward.circle")
+                }
+            }
+        }
     }
 
     private func movementIcon(_ entry: LedgerEntry) -> String {
