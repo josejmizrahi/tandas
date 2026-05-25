@@ -418,25 +418,37 @@ public struct GroupBalancesView: View {
             $0.fromMemberId == myMemberId || $0.toMemberId == myMemberId
         }
         if !all.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            VStack(alignment: .leading, spacing: 0) {
                 sectionHeader(
                     "Liquidar",
                     trailing: all.count == 1
                         ? "1 pago para quedar al día"
                         : "\(all.count) pagos para quedar al día"
                 )
-                ForEach(Array(viewerInvolved.prefix(2))) { s in
-                    settlementSuggestionRow(s)
+                let displayed = Array(viewerInvolved.prefix(2))
+                VStack(spacing: 0) {
+                    if displayed.isEmpty {
+                        Text("Tú estás al día. Ver el plan completo para ver pagos entre otros miembros.")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, RuulSpacing.md)
+                            .padding(.vertical, RuulSpacing.sm)
+                    } else {
+                        ForEach(Array(displayed.enumerated()), id: \.element.id) { idx, s in
+                            if idx > 0 { rowDivider }
+                            settlementSuggestionRow(s)
+                        }
+                    }
                 }
-                if viewerInvolved.isEmpty {
-                    Text("Tú estás al día. Ver el plan completo para ver pagos entre otros miembros.")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                        .padding(.vertical, RuulSpacing.sm)
-                        .padding(.horizontal, RuulSpacing.md)
-                }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
                 if let onOpenSettlementPlan {
                     sectionLink("Ver plan completo", action: onOpenSettlementPlan)
+                        .padding(.top, RuulSpacing.xs)
                 }
             }
         }
@@ -495,12 +507,8 @@ public struct GroupBalancesView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.secondary)
             }
-            .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -537,12 +545,8 @@ public struct GroupBalancesView: View {
                 color: .neutral
             )
         }
-        .padding(RuulSpacing.md)
-        .background(Color.ruulSurface.opacity(0.6), in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
-        )
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
     }
 
     /// Pure function: pair off largest debtor with largest creditor
@@ -584,15 +588,25 @@ public struct GroupBalancesView: View {
     @ViewBuilder
     private var recentMovementsSection: some View {
         if !recentEntries.isEmpty {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("Movimientos recientes")
                 // Dashboard preview: top 5 only. Full filterable list
                 // lives behind "Ver todas →" → GroupTransactionsView.
-                ForEach(Array(recentEntries.prefix(5))) { entry in
-                    movementRow(entry)
+                let displayed = Array(recentEntries.prefix(5))
+                VStack(spacing: 0) {
+                    ForEach(Array(displayed.enumerated()), id: \.element.id) { idx, entry in
+                        if idx > 0 { rowDivider }
+                        movementRow(entry)
+                    }
                 }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
                 if let onOpenAllTransactions {
                     sectionLink("Ver todas las transacciones", action: onOpenAllTransactions)
+                        .padding(.top, RuulSpacing.xs)
                 }
             }
         }
@@ -646,12 +660,9 @@ public struct GroupBalancesView: View {
                 .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(Color.primary)
         }
-        .padding(RuulSpacing.md)
-        .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: RuulRadius.lg)
-                .stroke(Color(.separator), lineWidth: 0.5)
-        )
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
+        .contentShape(Rectangle())
         .contextMenu {
             if canEditNote {
                 Button {
@@ -726,40 +737,52 @@ public struct GroupBalancesView: View {
     @ViewBuilder
     private var otherFundsSection: some View {
         if !otherFunds.isEmpty || onCreateFund != nil {
-            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                HStack {
-                    Text("Otros fondos")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.secondary)
-                        .textCase(.uppercase)
-                        .tracking(0.5)
-                    Spacer(minLength: 0)
-                    if let onCreateFund {
-                        Button(action: onCreateFund) {
-                            Label("Crear", systemImage: "plus.circle.fill")
-                                .labelStyle(.titleAndIcon)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Color.ruulAccent)
+            VStack(alignment: .leading, spacing: 0) {
+                otherFundsHeader
+                VStack(spacing: 0) {
+                    if otherFunds.isEmpty {
+                        Text("No hay fondos separados. Todo el dinero está en el pool compartido.")
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, RuulSpacing.md)
+                            .padding(.vertical, RuulSpacing.sm)
+                    } else {
+                        ForEach(Array(otherFunds.enumerated()), id: \.element.id) { idx, fund in
+                            if idx > 0 { rowDivider }
+                            otherFundRow(fund)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, RuulSpacing.md)
-                .padding(.bottom, RuulSpacing.xs)
-
-                if otherFunds.isEmpty {
-                    Text("No hay fondos separados. Todo el dinero está en el pool compartido.")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
-                        .padding(.horizontal, RuulSpacing.md)
-                        .padding(.vertical, RuulSpacing.sm)
-                } else {
-                    ForEach(otherFunds, id: \.id) { fund in
-                        otherFundRow(fund)
-                    }
-                }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
             }
         }
+    }
+
+    private var otherFundsHeader: some View {
+        HStack {
+            Text("Otros fondos")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Spacer(minLength: 0)
+            if let onCreateFund {
+                Button(action: onCreateFund) {
+                    Label("Crear", systemImage: "plus.circle.fill")
+                        .labelStyle(.titleAndIcon)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.ruulAccent)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.bottom, RuulSpacing.xs)
     }
 
     @ViewBuilder
@@ -793,12 +816,8 @@ public struct GroupBalancesView: View {
                         .foregroundStyle(Color.secondary)
                 }
             }
-            .padding(RuulSpacing.md)
-            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.lg)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
