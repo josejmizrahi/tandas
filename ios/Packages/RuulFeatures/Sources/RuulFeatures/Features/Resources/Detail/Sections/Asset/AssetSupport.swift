@@ -447,3 +447,130 @@ struct CreateSlotSheet: View {
         }
     }
 }
+
+/// Assigns custody of the asset to a specific group member. Emits a
+/// `custodyAssigned` system event via `AssetLifecycleRepository.assignCustody`.
+/// Reachable from the asset detail toolbar menu.
+struct AssignCustodySheet: View {
+    let asset: ResourceRow
+    let members: [MemberWithProfile]
+    let onSubmitted: () -> Void
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedMemberId: UUID?
+    @State private var notes: String = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Custodio") {
+                    Picker("Miembro", selection: $selectedMemberId) {
+                        Text("Selecciona…").tag(UUID?.none)
+                        ForEach(members) { m in
+                            Text(m.displayName).tag(UUID?.some(m.id))
+                        }
+                    }
+                }
+                Section("Notas (opcional)") {
+                    TextField("Por qué este custodio", text: $notes, axis: .vertical)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .ruulSheetToolbar("Asignar custodia")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Asignar") { Task { await submit() } }
+                        .disabled(isSubmitting || selectedMemberId == nil)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func submit() async {
+        guard let custodian = selectedMemberId else { return }
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            try await app.assetLifecycleRepo.assignCustody(
+                asset: asset.id,
+                to: custodian,
+                notes: notes.isEmpty ? nil : notes
+            )
+            onSubmitted()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+/// Releases the current custody assignment on the asset. Emits a
+/// `custodyReleased` system event. Confirm-only — the current custodian
+/// is implicit (server-side), no member picker needed.
+struct ReleaseCustodySheet: View {
+    let asset: ResourceRow
+    let onSubmitted: () -> Void
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var notes: String = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    private var currentCustodian: String? {
+        asset.metadata["custodian_display_name"]?.stringValue
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    if let name = currentCustodian {
+                        Text("Liberar la custodia de \(name).")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.primary)
+                    } else {
+                        Text("Este activo no tiene custodio asignado.")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
+                Section("Notas (opcional)") {
+                    TextField("Por qué se libera", text: $notes, axis: .vertical)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .ruulSheetToolbar("Liberar custodia")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Liberar") { Task { await submit() } }
+                        .disabled(isSubmitting)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func submit() async {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            try await app.assetLifecycleRepo.releaseCustody(
+                asset: asset.id,
+                notes: notes.isEmpty ? nil : notes
+            )
+            onSubmitted()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}

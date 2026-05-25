@@ -78,6 +78,8 @@ public struct ResourceDetailSheet: View {
     @State private var reportDamagePresented: Bool = false
     @State private var checkOutAssetPresented: Bool = false
     @State private var recordValuationPresented: Bool = false
+    @State private var assignCustodyPresented: Bool = false
+    @State private var releaseCustodyPresented: Bool = false
 
     public init(resource: ResourceRow) { self.resource = resource }
 
@@ -209,6 +211,25 @@ public struct ResourceDetailSheet: View {
             .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $assignCustodyPresented) {
+            AssignCustodySheet(
+                asset: liveResource ?? resource,
+                members: Array(memberDirectory.values)
+            ) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $releaseCustodyPresented) {
+            ReleaseCustodySheet(asset: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
     }
 
     /// Toolbar trailing menu with asset-specific actions. Hidden when
@@ -239,6 +260,19 @@ public struct ResourceDetailSheet: View {
                         recordValuationPresented = true
                     } label: {
                         Label("Registrar valuación", systemImage: "chart.line.uptrend.xyaxis")
+                    }
+                    Divider()
+                    Button {
+                        assignCustodyPresented = true
+                    } label: {
+                        Label("Asignar custodia", systemImage: "person.text.rectangle")
+                    }
+                    if assetHasCustodian {
+                        Button {
+                            releaseCustodyPresented = true
+                        } label: {
+                            Label("Liberar custodia", systemImage: "person.crop.rectangle.badge.xmark")
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -1158,6 +1192,15 @@ public struct ResourceDetailSheet: View {
         if case let .string(name) = resource.metadata["name"]  { return name }
         if case let .string(title) = resource.metadata["title"] { return title }
         return typeLabel
+    }
+
+    /// True when the asset has a custodian assigned right now — drives
+    /// the "Liberar custodia" menu item visibility. Reads the same
+    /// `custodian_display_name` field `AssetBlockBuilder` uses for the
+    /// state hero so the menu stays in sync with the visible state.
+    private var assetHasCustodian: Bool {
+        let live = liveResource ?? resource
+        return live.metadata["custodian_display_name"]?.stringValue?.isEmpty == false
     }
 
     private var typeLabel: String {
