@@ -50,6 +50,12 @@ public struct MyGroupsTab: View {
         case fondos
         case activos
         case balances
+        // Money UX Consolidation 2026-05-24 — split the hub into
+        // dashboard + drill-downs. Balances stays as the dashboard;
+        // these two are the "Ver todas →" / "Ver plan completo →"
+        // destinations.
+        case transacciones
+        case liquidacion
         // Ajustes hierarchy
         case ajustes
         case roles            // assignments: members grouped by role
@@ -272,9 +278,23 @@ public struct MyGroupsTab: View {
                     onCreateFund: {
                         router.state.pendingWizardResourceType = .fund
                         router.present(.createCover)
+                    },
+                    onOpenAllTransactions: {
+                        navPath.append(MyGroupsTab.GroupDestination.transacciones)
+                    },
+                    onOpenSettlementPlan: {
+                        navPath.append(MyGroupsTab.GroupDestination.liquidacion)
                     }
                 )
                 .environment(app)
+
+            case .transacciones:
+                GroupTransactionsView(group: group)
+                    .environment(app)
+
+            case .liquidacion:
+                GroupSettlementPlanView(group: group)
+                    .environment(app)
 
             case .ajustes:
                 GroupAjustesView(

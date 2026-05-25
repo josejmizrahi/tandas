@@ -34,6 +34,10 @@ public struct GroupBalancesView: View {
     /// Callback to launch the fund-creation flow (resource wizard
     /// pre-selected to `.fund`). Nil → "Crear fondo" CTA hidden.
     public let onCreateFund: (() -> Void)?
+    /// Push the full transactions list. Nil → footer link hidden.
+    public let onOpenAllTransactions: (() -> Void)?
+    /// Push the full settlement plan. Nil → footer link hidden.
+    public let onOpenSettlementPlan: (() -> Void)?
 
     @Environment(AppState.self) private var app
 
@@ -56,11 +60,15 @@ public struct GroupBalancesView: View {
     public init(
         group: RuulCore.Group,
         onOpenFund: ((Fund) -> Void)? = nil,
-        onCreateFund: (() -> Void)? = nil
+        onCreateFund: (() -> Void)? = nil,
+        onOpenAllTransactions: (() -> Void)? = nil,
+        onOpenSettlementPlan: (() -> Void)? = nil
     ) {
         self.group = group
         self.onOpenFund = onOpenFund
         self.onCreateFund = onCreateFund
+        self.onOpenAllTransactions = onOpenAllTransactions
+        self.onOpenSettlementPlan = onOpenSettlementPlan
     }
 
     private struct NoteEditTarget: Identifiable {
@@ -270,22 +278,24 @@ public struct GroupBalancesView: View {
         return entry.id
     }
 
-    // MARK: - Liquidar ahora
+    // MARK: - Liquidar (dashboard preview)
 
-    /// Settlement suggestions section — PR-E (2026-05-24): shows the
-    /// FULL settlement plan for the group (greedy pairing), not only
-    /// suggestions involving the viewer. Rows where the viewer is
-    /// either payer or recipient are tappable and open `SettlementSheet`
-    /// pre-filled. Rows between two other members render as informational
-    /// so the founder can see "how money flows" across the group — the
-    /// 'cómo se relaciona' clarity they asked for.
+    /// Dashboard preview of the greedy settlement plan: shows up to 2
+    /// suggestions involving the viewer (the actionable ones). Full
+    /// plan — including pairs between other members — lives behind the
+    /// "Ver plan completo →" link in `GroupSettlementPlanView`. Refactor
+    /// 2026-05-24: hub is dashboard-style with previews + drill-down
+    /// per founder feedback "la pagina está hecha un desastre".
     @ViewBuilder
     private var settlementSuggestionsSection: some View {
         let all = settlementSuggestions(balances: visibleRows)
+        let viewerInvolved = all.filter {
+            $0.fromMemberId == myMemberId || $0.toMemberId == myMemberId
+        }
         if !all.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
                 HStack {
-                    Text("Liquidar ahora")
+                    Text("Liquidar")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                     Spacer(minLength: 0)
@@ -296,14 +306,17 @@ public struct GroupBalancesView: View {
                         .foregroundStyle(Color.secondary)
                 }
                 .padding(.top, RuulSpacing.md)
-                ForEach(Array(all.prefix(5))) { s in
+                ForEach(Array(viewerInvolved.prefix(2))) { s in
                     settlementSuggestionRow(s)
                 }
-                if all.count > 5 {
-                    Text("+ \(all.count - 5) más")
+                if viewerInvolved.isEmpty {
+                    Text("Tú estás al día. Ver el plan completo para ver pagos entre otros miembros.")
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
-                        .padding(.leading, RuulSpacing.md)
+                        .padding(.vertical, RuulSpacing.sm)
+                }
+                if let onOpenSettlementPlan {
+                    sectionLink("Ver plan completo", action: onOpenSettlementPlan)
                 }
             }
         }
@@ -456,11 +469,37 @@ public struct GroupBalancesView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                     .padding(.top, RuulSpacing.md)
-                ForEach(recentEntries) { entry in
+                // Dashboard preview: top 5 only. Full filterable list
+                // lives behind "Ver todas →" → GroupTransactionsView.
+                ForEach(Array(recentEntries.prefix(5))) { entry in
                     movementRow(entry)
+                }
+                if let onOpenAllTransactions {
+                    sectionLink("Ver todas las transacciones", action: onOpenAllTransactions)
                 }
             }
         }
+    }
+
+    /// Reusable section footer link ("Ver todas …"). Styled as a flat
+    /// row matching the section cards' tone so the dashboard reads as
+    /// one continuous surface.
+    private func sectionLink(_ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: RuulSpacing.xs) {
+                Text(label)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.ruulAccent)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.ruulAccent)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.xs)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func movementRow(_ entry: LedgerEntry) -> some View {
