@@ -18,9 +18,16 @@ public struct VoteInput {
     public let statusLabel: String        // "Abierta", "Resuelta · Aprobada", "Cancelada"
     public let voteTypeLabel: String       // "Apelación de multa", "Cambio de regla", etc.
     public let timingLabel: String         // "Cierra en 2 d", "Cerró hace 1 d"
+    /// Live deadline used by the metric tile's countdown. nil → metric
+    /// tile renders without countdown (resolved / appeal-style votes).
+    public let closesAt: Date?
+    /// True when the vote is still accepting ballots. Drives whether the
+    /// metric tile renders at all (closed votes get the static rows path).
+    public let isOpen: Bool
     public let inFavor: Int
     public let against: Int
     public let abstained: Int
+    public let pending: Int
     public let totalEligible: Int
     public let quorumPercent: Int
     public let thresholdPercent: Int
@@ -34,9 +41,12 @@ public struct VoteInput {
         statusLabel: String,
         voteTypeLabel: String,
         timingLabel: String,
+        closesAt: Date?,
+        isOpen: Bool,
         inFavor: Int,
         against: Int,
         abstained: Int,
+        pending: Int,
         totalEligible: Int,
         quorumPercent: Int,
         thresholdPercent: Int,
@@ -49,9 +59,12 @@ public struct VoteInput {
         self.statusLabel = statusLabel
         self.voteTypeLabel = voteTypeLabel
         self.timingLabel = timingLabel
+        self.closesAt = closesAt
+        self.isOpen = isOpen
         self.inFavor = inFavor
         self.against = against
         self.abstained = abstained
+        self.pending = pending
         self.totalEligible = totalEligible
         self.quorumPercent = quorumPercent
         self.thresholdPercent = thresholdPercent
@@ -66,11 +79,21 @@ public extension ResourceConfig {
 
     // MARK: Votación
 
-    /// Renders a Vote with results breakdown (a-favor / en-contra /
-    /// abstención / total elegibles) plus the decision rules section
-    /// (quórum + mayoría). The cast picker opens via `onCast` from the
-    /// inline action; admin finalize/cancel land in `toolbarMenu` and
-    /// stay gated by the host.
+    /// Renders a Vote with a visual "Progreso" block (quorum ring +
+    /// live countdown + animated tally bar with threshold tick) plus
+    /// the decision rules section (quórum + mayoría). The cast picker
+    /// opens via `onCast` from the inline action; admin finalize/cancel
+    /// land in `toolbarMenu` and stay gated by the host.
+    ///
+    /// Closed votes drop the metric tile (countdown would be misleading)
+    /// but keep the tally bar so the final split stays legible.
+    ///
+    /// `@MainActor` because the factory now embeds a SwiftUI view
+    /// (`VoteProgressBlock`) into a `ResourceSection.custom(content:)`.
+    /// Constructing an `AnyView` from a non-Sendable `VoteInput` requires
+    /// isolation; every call site (`VoteDetailHost.makeConfig`) is already
+    /// MainActor-bound so the annotation matches reality.
+    @MainActor
     static func vote(
         _ vote: VoteInput,
         onCast: @escaping () -> Void = {},
@@ -82,12 +105,11 @@ public extension ResourceConfig {
         ]
         var sections: [ResourceSection] = []
         if vote.totalEligible > 0 {
-            sections.append(.rows(title: "Resultados", items: [
-                RowItem(icon: "hand.thumbsup",   label: "A favor",        value: .text("\(vote.inFavor)")),
-                RowItem(icon: "hand.thumbsdown", label: "En contra",      value: .text("\(vote.against)")),
-                RowItem(icon: "minus.circle",    label: "Abstención",     value: .text("\(vote.abstained)")),
-                RowItem(icon: "person.3",        label: "Total elegibles",value: .text("\(vote.totalEligible)"))
-            ]))
+            sections.append(.custom(
+                id: "vote-progress",
+                title: "Progreso",
+                content: AnyView(VoteProgressBlock(input: vote))
+            ))
         }
         sections.append(.rows(title: "Reglas de decisión", items: [
             RowItem(icon: "checkmark.shield", label: "Quórum",            value: .text("\(vote.quorumPercent)%")),
@@ -112,5 +134,53 @@ public extension ResourceConfig {
             activity: .static(vote.activity),
             toolbarMenu: toolbarMenu
         )
+    }
+}
+
+// MARK: - VoteProgressBlock
+
+/// Visual progress block embedded inside the universal resource detail
+/// when rendering a vote. Composes:
+///   - `VoteMetricsTile` (open votes only): micro quorum ring + live
+///     countdown with urgent stroke under 6h to `closesAt`.
+///   - `VoteCountsBar` with threshold tick: animated 6pt capsule
+///     showing inFavor / against / pending split + the cutoff
+///     in-favor needs to clear to pass.
+///
+/// Resolved / cancelled votes hide the tile (countdown is misleading)
+/// and drop the threshold tick (the result is final). The bar still
+/// renders so the final breakdown stays legible.
+private struct VoteProgressBlock: View {
+    let input: VoteInput
+
+    private var castCount: Int { input.inFavor + input.against + input.abstained }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            if input.isOpen, let closesAt = input.closesAt {
+                VoteMetricsTile(
+                    closesAt: closesAt,
+                    quorumPercent: input.quorumPercent,
+                    totalEligible: input.totalEligible,
+                    castCount: castCount
+                )
+            }
+            VoteCountsBar(
+                counts: VoteCounts(
+                    inFavor: input.inFavor,
+                    against: input.against,
+                    abstained: input.abstained,
+                    pending: input.pending,
+                    totalEligible: input.totalEligible,
+                    resolution: nil
+                ),
+                thresholdPercent: input.isOpen ? input.thresholdPercent : nil
+            )
+            .padding(RuulSpacing.md)
+            .background(
+                Color.ruulSurface,
+                in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
+            )
+        }
     }
 }

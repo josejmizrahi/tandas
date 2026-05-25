@@ -2,36 +2,38 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Compact metric tile rendered above the cast picker on `VoteCastSection`.
-/// Surfaces the two signals every voter needs before they act: how close
-/// the vote is to quorum, and how much time is left before it closes.
+/// Compact metric tile shown wherever a live vote surfaces — cast picker,
+/// universal resource detail, anywhere we want voters to feel quorum + time.
+///
+/// Surfaces the two signals a voter actually acts on: how close the vote
+/// is to quorum, and how much time is left before it closes.
 ///
 /// Apple Sports minimal — flat surface, monospaced digits, no filled
 /// backgrounds. Two restrained nods to Liquid Glass:
-///   - a 22pt micro quorum ring (status indicator beside the count, not
-///     a hero gauge);
+///   - a 22pt micro quorum ring (status indicator, not a hero gauge);
 ///   - a red-tinted hairline stroke when fewer than 6h remain to
 ///     `closesAt`, so urgency is felt without shouting.
 ///
-/// The tile renders only when the vote is OPEN. Once resolved /
-/// cancelled / quorum-failed, the host's `VoteResolvedView` carries the
-/// final result and a running countdown would mislead.
+/// Initializer takes primitives instead of the full `Vote` model so any
+/// surface (list row preview, universal detail factory, cast sheet) can
+/// compose it without dragging the full model through its data flow.
 struct VoteMetricsTile: View {
-    let vote: Vote
-    let counts: VoteCounts?
-
-    private var castCount: Int {
-        guard let counts else { return 0 }
-        return counts.inFavor + counts.against + counts.abstained
-    }
+    /// When the vote closes. Drives the countdown + urgent stroke.
+    let closesAt: Date
+    /// Quorum threshold (0-100). Determines how many cast ballots are
+    /// needed for the ring to fill.
+    let quorumPercent: Int
+    /// Members eligible to vote (denominator). 0 ⇒ ring stays empty.
+    let totalEligible: Int
+    /// Sum of in-favor + against + abstained (numerator). Pending
+    /// ballots don't count toward quorum.
+    let castCount: Int
 
     /// Number of ballots required to satisfy quorum given
     /// `totalEligible` and `quorumPercent`. Minimum of 1 so a 0-eligible
-    /// edge case still renders sensibly (the tile would be hidden in
-    /// practice but we never want a divide-by-zero in the math).
+    /// edge case still renders sensibly.
     private var requiredForQuorum: Int {
-        let eligible = counts?.totalEligible ?? 0
-        let raw = Double(eligible) * Double(vote.quorumPercent) / 100.0
+        let raw = Double(totalEligible) * Double(quorumPercent) / 100.0
         return max(Int(raw.rounded(.up)), 1)
     }
 
@@ -46,7 +48,7 @@ struct VoteMetricsTile: View {
     /// True when the vote closes inside the next 6h (and isn't already
     /// closed). Drives the urgent stroke + red countdown tint.
     private var isUrgent: Bool {
-        let remaining = vote.closesAt.timeIntervalSinceNow
+        let remaining = closesAt.timeIntervalSinceNow
         return remaining > 0 && remaining < 6 * 3600
     }
 
@@ -97,8 +99,8 @@ struct VoteMetricsTile: View {
             Text("Cierra en")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(Color.secondary)
-            if vote.closesAt > .now {
-                Text(timerInterval: .now ... vote.closesAt, countsDown: true)
+            if closesAt > .now {
+                Text(timerInterval: .now ... closesAt, countsDown: true)
                     .font(.subheadline.monospacedDigit().weight(.semibold))
                     .foregroundStyle(isUrgent ? Color.ruulNegative : Color.primary)
                     .multilineTextAlignment(.trailing)
@@ -112,7 +114,7 @@ struct VoteMetricsTile: View {
 
     private var accessibilityLabel: String {
         let quorum = "Quórum \(castCount) de \(requiredForQuorum)"
-        let remaining = vote.closesAt.timeIntervalSinceNow
+        let remaining = closesAt.timeIntervalSinceNow
         if remaining <= 0 {
             return "\(quorum). Votación cerrada."
         }
@@ -125,7 +127,7 @@ struct VoteMetricsTile: View {
 /// 22pt quorum ring. Stroked circle with the active arc starting at
 /// 12 o'clock. Tint shifts from accent → positive once participation
 /// reaches 100% of the required quorum count.
-private struct QuorumRing: View {
+struct QuorumRing: View {
     let progress: Double
 
     var body: some View {

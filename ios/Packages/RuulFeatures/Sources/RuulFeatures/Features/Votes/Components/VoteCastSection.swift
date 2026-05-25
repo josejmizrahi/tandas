@@ -22,7 +22,12 @@ public struct VoteCastSection: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
             if !coordinator.voteIsClosed {
-                VoteMetricsTile(vote: coordinator.vote, counts: coordinator.counts)
+                VoteMetricsTile(
+                    closesAt: coordinator.vote.closesAt,
+                    quorumPercent: coordinator.vote.quorumPercent,
+                    totalEligible: coordinator.counts?.totalEligible ?? 0,
+                    castCount: castCount(coordinator.counts)
+                )
             }
 
             stateView
@@ -35,6 +40,11 @@ public struct VoteCastSection: View {
                 )
             }
         }
+    }
+
+    private func castCount(_ counts: VoteCounts?) -> Int {
+        guard let counts else { return 0 }
+        return counts.inFavor + counts.against + counts.abstained
     }
 
     @ViewBuilder

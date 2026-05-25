@@ -85,42 +85,56 @@ public struct OpenVotesListView: View {
 
     private func voteRow(_ vote: Vote) -> some View {
         let alreadyCast = coordinator.hasCast(vote.id)
-        return HStack(spacing: RuulSpacing.sm) {
-            voteTypeIcon(vote.voteType)
-                .font(.headline.weight(.medium))
-                .foregroundStyle(alreadyCast ? Color(.tertiaryLabel) : Color.ruulAccent)
-                .frame(width: 32, height: 32)
-                .background(Color.ruulSurface, in: Circle())
-                .accessibilityHidden(true)
+        return VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            HStack(spacing: RuulSpacing.sm) {
+                voteTypeIcon(vote.voteType)
+                    .font(.headline.weight(.medium))
+                    .foregroundStyle(alreadyCast ? Color(.tertiaryLabel) : Color.ruulAccent)
+                    .frame(width: 32, height: 32)
+                    .background(Color.ruulSurface, in: Circle())
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(vote.title)
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(2)
-                HStack(spacing: RuulSpacing.xs) {
-                    if alreadyCast {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Color.green)
-                            .accessibilityHidden(true)
-                        Text("Ya votaste")
-                            .font(.caption)
-                            .foregroundStyle(Color.secondary)
-                        Text("·")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(vote.title)
+                        .font(.headline)
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(2)
+                    HStack(spacing: RuulSpacing.xs) {
+                        if alreadyCast {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Color.green)
+                                .accessibilityHidden(true)
+                            Text("Ya votaste")
+                                .font(.caption)
+                                .foregroundStyle(Color.secondary)
+                            Text("·")
+                                .font(.caption)
+                                .foregroundStyle(Color(.tertiaryLabel))
+                        }
+                        Text("Cierra \(vote.closesAt.ruulRelativeDescription)")
                             .font(.caption)
                             .foregroundStyle(Color(.tertiaryLabel))
                     }
-                    Text("Cierra \(vote.closesAt.ruulRelativeDescription)")
-                        .font(.caption)
-                        .foregroundStyle(Color(.tertiaryLabel))
                 }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .accessibilityHidden(true)
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Color(.tertiaryLabel))
-                .accessibilityHidden(true)
+
+            // Inline live-progress preview — quorum ring + 4pt tally bar
+            // so the scroller sees the heat of every open vote at a
+            // glance, not just a row of titles.
+            if let counts = vote.counts, counts.totalEligible > 0 {
+                VoteRowProgressStrip(
+                    closesAt: vote.closesAt,
+                    quorumPercent: vote.quorumPercent,
+                    thresholdPercent: vote.thresholdPercent,
+                    counts: counts
+                )
+            }
         }
         .padding(RuulSpacing.md)
         .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
