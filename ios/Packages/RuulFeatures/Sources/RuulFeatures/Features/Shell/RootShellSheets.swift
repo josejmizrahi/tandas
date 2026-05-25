@@ -168,10 +168,18 @@ public struct RootShellSheets: ViewModifier {
             // MARK: Create-vote picker sheet
             .fullScreenCover(isPresented: boolBinding(for: .createVotePicker)) {
                 CreateVoteSheet(
-                    onPickGeneralProposal: { router.present(.createGeneralProposal) },
-                    onPickRuleChange: { router.present(.createRuleChange(nil)) },
-                    onPickMemberRemoval: { router.present(.createMemberRemoval) },
-                    onPickRuleRepeal: { router.present(.createRuleRepeal(nil)) }
+                    onPickGeneralProposal: { [router = router] in
+                        Self.handoff(from: .createVotePicker, to: .createGeneralProposal, router: router)
+                    },
+                    onPickRuleChange: { [router = router] in
+                        Self.handoff(from: .createVotePicker, to: .createRuleChange(nil), router: router)
+                    },
+                    onPickMemberRemoval: { [router = router] in
+                        Self.handoff(from: .createVotePicker, to: .createMemberRemoval, router: router)
+                    },
+                    onPickRuleRepeal: { [router = router] in
+                        Self.handoff(from: .createVotePicker, to: .createRuleRepeal(nil), router: router)
+                    }
                 )
                 .presentationBackground(.regularMaterial)
             }
