@@ -70,27 +70,27 @@ public struct HistoryItemPresentation {
             self.tone = .warning
         case .slotAssigned:
             self.icon = "ticket"
-            self.title = "\(actor) recibió un cupo"
+            self.title = "\(actor) recibió un turno"
             self.tone = .info
         case .slotDeclined:
             self.icon = "ticket"
-            self.title = "\(actor) rechazó un cupo"
+            self.title = "\(actor) declinó un turno"
             self.tone = .neutral
         case .slotExpired:
             self.icon = "ticket"
-            self.title = "Un cupo expiró"
+            self.title = "Un turno se pasó sin asignar"
             self.tone = .warning
         case .fineOfficialized:
             self.icon = "creditcard.fill"
-            self.title = "Se oficializó una multa"
+            self.title = "Una multa quedó pendiente"
             self.tone = .warning
         case .fineVoided:
             self.icon = "xmark.circle"
-            self.title = "Se anuló una multa"
+            self.title = "Se canceló una multa"
             self.tone = .neutral
         case .finePaid:
             self.icon = "creditcard.and.123"
-            self.title = "\(actor) pagó una multa"
+            self.title = "\(actor) cerró su multa"
             self.tone = .positive
         case .fineReminderSent:
             self.icon = "bell.badge"
@@ -102,15 +102,15 @@ public struct HistoryItemPresentation {
             self.tone = .info
         case .appealResolved:
             self.icon = "scales.tighten"
-            self.title = "Se resolvió una apelación"
+            self.title = "La apelación llegó a un veredicto"
             self.tone = .neutral
         case .voteOpened:
             self.icon = "hand.raised.fill"
-            self.title = "Se abrió una votación"
+            self.title = "Se abrió una decisión"
             self.tone = .info
         case .voteCast:
             self.icon = "hand.raised"
-            self.title = "\(actor) emitió su voto"
+            self.title = "\(actor) ya votó"
             self.tone = .neutral
         case .voteResolved:
             // Specialize for ledger_review failed → expense reversed.
@@ -128,7 +128,7 @@ public struct HistoryItemPresentation {
                 self.tone = .positive
             } else {
                 self.icon = "hand.thumbsup.fill"
-                self.title = "Se cerró una votación"
+                self.title = "El grupo cerró una decisión"
                 self.tone = .positive
             }
         case .fundDeposit:
@@ -137,11 +137,11 @@ public struct HistoryItemPresentation {
             self.tone = .positive
         case .fundThresholdReached:
             self.icon = "trophy.fill"
-            self.title = "El fondo alcanzó la meta"
+            self.title = "El fondo llegó a su meta"
             self.tone = .positive
         case .positionChanged:
             self.icon = "arrow.2.circlepath"
-            self.title = "Cambió la rotación"
+            self.title = "Le tocó a otra persona"
             self.tone = .neutral
         case .memberJoined:
             self.icon = "person.crop.circle.badge.plus"
@@ -153,23 +153,23 @@ public struct HistoryItemPresentation {
             self.tone = .neutral
         case .slotSwapRequested:
             self.icon = "arrow.left.arrow.right"
-            self.title = "\(actor) pidió cambiar un cupo"
+            self.title = "\(actor) pidió intercambiar un turno"
             self.tone = .info
         case .slotSwapApproved:
             self.icon = "arrow.left.arrow.right.circle.fill"
-            self.title = "Se aprobó un cambio de cupo"
+            self.title = "El intercambio del turno quedó"
             self.tone = .positive
         case .bookingCreated:
             self.icon = "calendar.badge.plus"
-            self.title = "\(actor) reservó un cupo"
+            self.title = "\(actor) reservó un turno"
             self.tone = .info
         case .bookingCancelled:
             self.icon = "calendar.badge.minus"
-            self.title = "\(actor) canceló una reserva"
+            self.title = "\(actor) liberó una reserva"
             self.tone = .neutral
         case .bookingExpired:
             self.icon = "calendar.badge.exclamationmark"
-            self.title = "Una reserva expiró"
+            self.title = "Una reserva venció"
             self.tone = .warning
         case .assetCreated:
             self.icon = "house.fill"
@@ -189,7 +189,7 @@ public struct HistoryItemPresentation {
             self.tone = .neutral
         case .pendingChangeApplied:
             self.icon = "checkmark.seal"
-            self.title = "Se aplicó un cambio aprobado"
+            self.title = "El grupo aprobó un cambio y ya quedó"
             self.tone = .positive
         case .inviteCodeRotated:
             self.icon = "link.badge.plus"
@@ -229,15 +229,15 @@ public struct HistoryItemPresentation {
             self.tone = .neutral
         case .capabilityToggled:
             self.icon = "switch.2"
-            self.title = "\(actor) cambió una capacidad"
+            self.title = "\(actor) ajustó una función del grupo"
             self.tone = .neutral
         case .capabilityConfigUpdated:
             self.icon = "slider.horizontal.3"
-            self.title = "\(actor) editó la configuración de una capacidad"
+            self.title = "\(actor) ajustó una función del grupo"
             self.tone = .neutral
         case .memberCapabilityOverridden:
             self.icon = "person.fill.questionmark"
-            self.title = "\(actor) aplicó una excepción de miembro"
+            self.title = "\(actor) hizo una excepción para alguien"
             self.tone = .neutral
         case .ledgerEntryCreated:
             self.icon = "dollarsign.circle"
