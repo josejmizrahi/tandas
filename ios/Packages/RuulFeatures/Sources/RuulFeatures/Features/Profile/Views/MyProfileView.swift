@@ -37,7 +37,7 @@ public struct MyProfileView: View {
     public let onOpenHistory: () -> Void
     public let onEditProfile: () -> Void
     public let onSignOut: () -> Void
-    public var onOpenMyLedger: (() -> Void)? = nil
+    public var onOpenMyMovements: (() -> Void)? = nil
     public var onOpenTimeline: (() -> Void)? = nil
 
     /// Cross-group outstanding fines pill (read from MyFinesCoordinator).
@@ -69,7 +69,7 @@ public struct MyProfileView: View {
         onOpenHistory: @escaping () -> Void,
         onEditProfile: @escaping () -> Void,
         onSignOut: @escaping () -> Void,
-        onOpenMyLedger: (() -> Void)? = nil,
+        onOpenMyMovements: (() -> Void)? = nil,
         onOpenTimeline: (() -> Void)? = nil,
         outstandingPillAmount: Decimal? = nil,
         onChangePhone: (() -> Void)? = nil,
@@ -87,7 +87,7 @@ public struct MyProfileView: View {
         self.onOpenHistory = onOpenHistory
         self.onEditProfile = onEditProfile
         self.onSignOut = onSignOut
-        self.onOpenMyLedger = onOpenMyLedger
+        self.onOpenMyMovements = onOpenMyMovements
         self.onOpenTimeline = onOpenTimeline
         self.outstandingPillAmount = outstandingPillAmount
         self.onChangePhone = onChangePhone
@@ -250,8 +250,8 @@ public struct MyProfileView: View {
             actionRow(label: "Mis multas", systemImage: "creditcard", trailing: {
                 outstandingPill
             }, action: onOpenMyFines)
-            if let onOpenMyLedger {
-                actionRow(label: "Mis movimientos", systemImage: "arrow.left.arrow.right", action: onOpenMyLedger)
+            if let onOpenMyMovements {
+                actionRow(label: "Mis movimientos", systemImage: "arrow.left.arrow.right", action: onOpenMyMovements)
             }
             if let onOpenTimeline {
                 actionRow(label: "Mi línea de tiempo", systemImage: "clock.badge.checkmark", action: onOpenTimeline)

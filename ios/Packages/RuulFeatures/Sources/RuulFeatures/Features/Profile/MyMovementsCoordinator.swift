@@ -3,7 +3,7 @@ import Observation
 import OSLog
 import RuulCore
 
-/// Cross-group personal ledger surface. Loads every `ledger_entries` row
+/// Cross-group personal movements surface. Loads every `ledger_entries` row
 /// where the current user is the `from_member` or `to_member` across all
 /// groups they belong to, then projects per-group + global aggregates.
 ///
@@ -13,8 +13,8 @@ import RuulCore
 /// walking `app.groups` and fetching `membersWithProfiles` per group —
 /// the cached directory pattern used everywhere else in the app.
 @Observable @MainActor
-public final class MyLedgerCoordinator {
-    public struct GroupLedger: Identifiable, Hashable, Sendable {
+public final class MyMovementsCoordinator {
+    public struct GroupMovements: Identifiable, Hashable, Sendable {
         public let group: RuulCore.Group
         public let myMemberId: UUID
         public let entries: [LedgerEntry]
@@ -28,18 +28,18 @@ public final class MyLedgerCoordinator {
     public let userId: UUID
     public let allGroups: [RuulCore.Group]
 
-    public private(set) var ledgers: [GroupLedger] = []
+    public private(set) var groupMovements: [GroupMovements] = []
     public private(set) var isLoading: Bool = true
     public private(set) var error: String?
     /// True después de que `refresh()` corrió al menos una vez. Permite
     /// que `LoadPhase.fromCollection` distinga "primera carga" (sin
-    /// ledgers todavía) de "loaded empty" (el usuario no tiene
+    /// groupMovements todavía) de "loaded empty" (el usuario no tiene
     /// movimientos en ningún grupo).
     public private(set) var hasLoaded: Bool = false
 
     private let ledgerRepo: any LedgerRepository
     private let groupsRepo: any GroupsRepository
-    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "my.ledger")
+    private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "my.movements")
 
     public init(
         userId: UUID,
@@ -63,7 +63,7 @@ public final class MyLedgerCoordinator {
             hasLoaded = true
         }
 
-        var collected: [GroupLedger] = []
+        var collected: [GroupMovements] = []
         for group in allGroups {
             do {
                 let members = try await groupsRepo.membersWithProfiles(of: group.id)
@@ -72,7 +72,7 @@ public final class MyLedgerCoordinator {
                 }
                 let entries = try await ledgerRepo.listForMember(myMember.member.id, limit: 500)
                 let (paid, received) = Self.totals(for: entries, myMemberId: myMember.member.id)
-                collected.append(GroupLedger(
+                collected.append(GroupMovements(
                     group: group,
                     myMemberId: myMember.member.id,
                     entries: entries,
@@ -80,11 +80,11 @@ public final class MyLedgerCoordinator {
                     receivedCents: received
                 ))
             } catch {
-                log.warning("ledger refresh failed for \(group.id): \(error.localizedDescription)")
+                log.warning("movements refresh failed for \(group.id): \(error.localizedDescription)")
             }
         }
         // Most active group first.
-        ledgers = collected.sorted { ($0.paidCents + $0.receivedCents) > ($1.paidCents + $1.receivedCents) }
+        groupMovements = collected.sorted { ($0.paidCents + $0.receivedCents) > ($1.paidCents + $1.receivedCents) }
     }
 
     /// Sums money that left vs reached the given member, expressed in
@@ -112,12 +112,12 @@ public final class MyLedgerCoordinator {
         return (paid, received)
     }
 
-    /// Adapter para `AsyncContentView`. El primary signal son `ledgers`;
+    /// Adapter para `AsyncContentView`. El primary signal son `groupMovements`;
     /// el view luego branches en `hasAnyActivity` dentro del builder
-    /// `loaded` para distinguir "ledgers cargados pero nadie movió plata"
-    /// vs "ledgers con totales reales". `error` (String legacy) se eleva
+    /// `loaded` para distinguir "groupMovements cargados pero nadie movió plata"
+    /// vs "groupMovements con totales reales". `error` (String legacy) se eleva
     /// a `CoordinatorError` con el message conservado.
-    public var phase: LoadPhase<[GroupLedger]> {
+    public var phase: LoadPhase<[GroupMovements]> {
         let coordError: CoordinatorError? = error.map { msg in
             CoordinatorError(
                 title: "Sin acceso",
@@ -126,7 +126,7 @@ public final class MyLedgerCoordinator {
             )
         }
         return LoadPhase.fromCollection(
-            value: ledgers,
+            value: groupMovements,
             hasLoaded: hasLoaded,
             isLoading: isLoading,
             error: coordError
@@ -136,11 +136,11 @@ public final class MyLedgerCoordinator {
     // MARK: - Aggregates
 
     public var totalPaidCents: Int64 {
-        ledgers.reduce(into: Int64(0)) { $0 += $1.paidCents }
+        groupMovements.reduce(into: Int64(0)) { $0 += $1.paidCents }
     }
 
     public var totalReceivedCents: Int64 {
-        ledgers.reduce(into: Int64(0)) { $0 += $1.receivedCents }
+        groupMovements.reduce(into: Int64(0)) { $0 += $1.receivedCents }
     }
 
     public var netCents: Int64 { totalReceivedCents - totalPaidCents }
@@ -151,18 +151,18 @@ public final class MyLedgerCoordinator {
 
     /// Flat, newest-first stream across all groups for the "recent" list.
     public var allEntriesNewestFirst: [LedgerEntry] {
-        ledgers.flatMap(\.entries).sorted { $0.occurredAt > $1.occurredAt }
+        groupMovements.flatMap(\.entries).sorted { $0.occurredAt > $1.occurredAt }
     }
 
     public func group(for entry: LedgerEntry) -> RuulCore.Group? {
-        ledgers.first(where: { $0.group.id == entry.groupId })?.group
+        groupMovements.first(where: { $0.group.id == entry.groupId })?.group
     }
 
     /// Stable classification an entry's polarity for the current user.
     /// Returned as `(amountCents, sign)` so the row view can color the
     /// number without re-running the from/to checks.
     public func direction(of entry: LedgerEntry) -> Direction {
-        guard let myId = ledgers.first(where: { $0.group.id == entry.groupId })?.myMemberId else {
+        guard let myId = groupMovements.first(where: { $0.group.id == entry.groupId })?.myMemberId else {
             return .neutral
         }
         if entry.fromMemberId == myId && entry.toMemberId == myId { return .neutral }

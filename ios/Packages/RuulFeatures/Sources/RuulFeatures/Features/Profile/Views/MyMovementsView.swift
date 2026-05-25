@@ -20,11 +20,11 @@ import RuulCore
 ///   │  + $200 Aportación   · Cena jueves  │
 ///   │  − $500 Pago         · Cena pasada  │
 ///   └─────────────────────────────────────┘
-public struct MyLedgerView: View {
-    @Bindable var coordinator: MyLedgerCoordinator
+public struct MyMovementsView: View {
+    @Bindable var coordinator: MyMovementsCoordinator
     @Environment(AppState.self) private var app
 
-    public init(coordinator: MyLedgerCoordinator) {
+    public init(coordinator: MyMovementsCoordinator) {
         self.coordinator = coordinator
     }
 
@@ -34,7 +34,7 @@ public struct MyLedgerView: View {
             onRetry: { await coordinator.refresh() },
             empty: { emptyState },
             loaded: { _ in
-                // Branch interno: si los ledgers cargaron pero nadie
+                // Branch interno: si los groupMovements cargaron pero nadie
                 // movió plata, mostramos el mismo emptyState (mirror del
                 // patrón `hasAnyActivity` original). Si hay totales,
                 // renderizamos el contenido real con su scroll +
@@ -135,31 +135,31 @@ public struct MyLedgerView: View {
 
     @ViewBuilder
     private var perGroupSection: some View {
-        let active = coordinator.ledgers.filter { $0.paidCents > 0 || $0.receivedCents > 0 }
+        let active = coordinator.groupMovements.filter { $0.paidCents > 0 || $0.receivedCents > 0 }
         if !active.isEmpty {
             sectionContainer(title: "Por grupo", count: active.count) {
-                ForEach(Array(active.enumerated()), id: \.element.id) { idx, ledger in
-                    perGroupRow(ledger)
+                ForEach(Array(active.enumerated()), id: \.element.id) { idx, movements in
+                    perGroupRow(movements)
                     if idx < active.count - 1 { rowDivider }
                 }
             }
         }
     }
 
-    private func perGroupRow(_ ledger: MyLedgerCoordinator.GroupLedger) -> some View {
+    private func perGroupRow(_ movements: MyMovementsCoordinator.GroupMovements) -> some View {
         HStack(spacing: RuulSpacing.sm) {
             RuulGroupAvatar(
-                groupName: ledger.group.name,
-                initials: ledger.group.initials,
-                category: ledger.group.category,
+                groupName: movements.group.name,
+                initials: movements.group.initials,
+                category: movements.group.category,
                 size: .lg
             )
             VStack(alignment: .leading, spacing: 2) {
-                Text(ledger.group.name)
+                Text(movements.group.name)
                     .font(.subheadline)
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
-                Text(perGroupSubtitle(ledger))
+                Text(perGroupSubtitle(movements))
                     .font(.caption)
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)
@@ -167,13 +167,13 @@ public struct MyLedgerView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 RuulMoneyView(
-                    amount: decimal(abs(ledger.netCents)),
+                    amount: decimal(abs(movements.netCents)),
                     currency: "MXN",
                     size: .small,
                     showSign: false,
-                    color: ledger.netCents >= 0 ? .positive : .negative
+                    color: movements.netCents >= 0 ? .positive : .negative
                 )
-                Text(ledger.netCents >= 0 ? "neto a favor" : "neto a deber")
+                Text(movements.netCents >= 0 ? "neto a favor" : "neto a deber")
                     .font(.footnote)
                     .foregroundStyle(Color(.tertiaryLabel))
             }
@@ -182,9 +182,9 @@ public struct MyLedgerView: View {
         .padding(.vertical, RuulSpacing.sm)
     }
 
-    private func perGroupSubtitle(_ ledger: MyLedgerCoordinator.GroupLedger) -> String {
-        let paid = formatCents(ledger.paidCents)
-        let recv = formatCents(ledger.receivedCents)
+    private func perGroupSubtitle(_ movements: MyMovementsCoordinator.GroupMovements) -> String {
+        let paid = formatCents(movements.paidCents)
+        let recv = formatCents(movements.receivedCents)
         return "Pagaste \(paid) · Recibiste \(recv)"
     }
 
