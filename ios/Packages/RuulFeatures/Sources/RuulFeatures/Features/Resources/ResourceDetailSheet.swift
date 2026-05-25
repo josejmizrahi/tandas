@@ -35,6 +35,19 @@ public struct ResourceDetailSheet: View {
     @State private var resourceActions: [UserAction] = []
     @State private var ledgerSheetPresented: Bool = false
     @State private var ledgerCoordinator: ResourceLedgerCoordinator?
+    /// Money UX Consolidation 2026-05-24 PR-D: routes the canonical
+    /// `Registrar movimiento` picker + the three shared form sheets
+    /// (Aporte / Gasto / Liquidación) so the resource detail uses the
+    /// SAME flow as `SharedMoneyCard` / `ResourceMoneySlot`. The legacy
+    /// `AddLedgerEntryDestination` stays alive for any caller that
+    /// still flips `ledgerSheetPresented`, but the primary paths now
+    /// land here.
+    @State private var moneySheet: MoneySheet?
+
+    private enum MoneySheet: Identifiable {
+        case picker, contribute, record, settle
+        var id: Self { self }
+    }
     @State private var rulesSheetPresented: Bool = false
     @State private var rulesCoordinator: ResourceRulesCoordinator?
     /// "Ver más" tap on the Activity layer.
@@ -95,25 +108,22 @@ public struct ResourceDetailSheet: View {
         // opaque; primary CTA opens a transparent form sheet directly.
         // No intermediate "Movimientos" cover — the activity feed
         // already lives inline on the detail via the block builders.
-        .sheet(isPresented: $ledgerSheetPresented) {
-            if let ledgerCoordinator {
-                NavigationStack {
-                    AddLedgerEntryDestination(coordinator: ledgerCoordinator)
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
-            }
+        .sheet(item: $moneySheet) { sheet in
+            moneySheetContent(sheet)
         }
         .onChange(of: ledgerSheetPresented) { _, presented in
             if presented {
+                // Legacy entry path — flip the unified picker open so
+                // callers that still set `ledgerSheetPresented = true`
+                // land in the consolidated flow. Coordinator lazy-load
+                // is preserved for the (rare) sub-views that read
+                // `ledgerCoordinator.entries` directly.
                 if ledgerCoordinator == nil {
                     ledgerCoordinator = makeLedgerCoordinator()
                 }
-                // Do NOT call resetForm() here — `presentLedgerForm(kind:)`
-                // already reset + assigned the right entry kind. Calling
-                // it again would clobber Aportar back to `.expense`.
                 Task { await ledgerCoordinator?.load() }
+                moneySheet = .picker
+                ledgerSheetPresented = false
             }
         }
         .fullScreenCover(isPresented: $rulesSheetPresented) {
@@ -230,6 +240,60 @@ public struct ResourceDetailSheet: View {
             .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
         }
+    }
+
+    /// Money UX Consolidation 2026-05-24 PR-D: dispatch for the
+    /// unified `RegisterMovementSheet` flow on a resource detail. The
+    /// three children mount with `sourceResource = (id, name)` so the
+    /// ledger entry is attributed to this resource automatically.
+    @ViewBuilder
+    private func moneySheetContent(_ sheet: MoneySheet) -> some View {
+        let live = liveResource ?? resource
+        let groupId = live.groupId
+        let resourceContext = (id: live.id, name: displayName)
+        let memberList = Array(memberDirectory.values)
+        switch sheet {
+        case .picker:
+            RegisterMovementSheet { kind in
+                switch kind {
+                case .contribution: moneySheet = .contribute
+                case .expense:      moneySheet = .record
+                case .settlement:   moneySheet = .settle
+                }
+            }
+        case .contribute:
+            ContributeToSharedMoneySheet(
+                groupId: groupId,
+                currency: groupCurrency,
+                sourceResource: resourceContext,
+                onDidContribute: { Task { await refreshResource() } }
+            )
+            .presentationDetents([.medium, .large])
+        case .record:
+            RecordSharedExpenseSheet(
+                groupId: groupId,
+                currency: groupCurrency,
+                members: memberList,
+                sourceResource: resourceContext,
+                onDidRecord: { Task { await refreshResource() } }
+            )
+            .presentationDetents([.medium, .large])
+        case .settle:
+            SettlementSheet(
+                groupId: groupId,
+                resourceId: live.id,
+                currency: groupCurrency,
+                members: memberList,
+                suggestedToMemberId: nil,
+                onDidSettle: { Task { await refreshResource() } }
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    /// Currency string for this resource's group. Falls back to MXN.
+    private var groupCurrency: String {
+        parentGroup?.currency ?? "MXN"
     }
 
     /// Toolbar trailing menu with asset-specific actions. Hidden when
