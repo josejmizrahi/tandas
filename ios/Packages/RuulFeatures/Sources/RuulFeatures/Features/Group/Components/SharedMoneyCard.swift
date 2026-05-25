@@ -2,62 +2,55 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// SharedMoney Phase 3 (brick 2): the group's canonical shared pool
-/// surfaced high in `GroupSpaceView` — balance + two quick-action CTAs.
+/// The group's canonical "Dinero del grupo" card on `GroupSpaceView`.
 ///
-/// Composed entirely from existing RuulUI primitives
-/// (`RuulMoneyView`, `RuulButton`) inside the canonical section card
-/// chrome (`.ruulCardSurface(.solid)` + hairline stroke), per
-/// `feedback_dont_touch_ruului_base.md`. No new RuulUI primitive.
+/// Rewritten 2026-05-24 (Money UX — Apple minimal pass): the previous
+/// shape stacked a section header, a `.title` balance, a footer
+/// caption, a divider, and two CTAs vertically inside the same card
+/// — it read busy. This version follows the Apple Wallet / Finance
+/// card pattern instead:
 ///
-/// Always rendered (even at $0 balance) so the layout doesn't shift as
-/// pendings/activity come and go. Three visual states keyed off the
-/// `SharedPoolSummary` helpers:
-///   - empty   (`!hasActivity`)  → "$0", footer "Aún sin movimientos"
-///   - positive (`balance >= 0`) → neutral money, footer last activity
-///   - negative (`isOverSpent`)  → red money, footer over-spent notice
+///   • a micro label at the top sets context without competing with
+///     the amount,
+///   • a HUGE balance using the system rounded face + monospaced
+///     digits is the only thing the eye lands on first,
+///   • a single caption ("Última actividad …" / "El grupo debe …")
+///     adds tone without chrome,
+///   • obligation / detail navigation is a single tappable strip
+///     instead of a button — preserves discoverability without
+///     adding visual weight,
+///   • the lone CTA at the bottom is the unified "Registrar
+///     movimiento" entry (Money UX Consolidation 2026-05-24).
 ///
-/// `RuulMoneyView` exposes only neutral/positive/negative tones (no
-/// `.warning`), so an over-spent pool uses `.negative` — the closest
-/// existing semantic — rather than adding a primitive variant.
+/// Composes at the feature layer using existing RuulUI tokens — no
+/// new primitives, no hardcoded colors. Big amount uses `Color.primary`
+/// or `Color.ruulNegative` (over-spent) to stay token-aligned.
 @MainActor
 struct SharedMoneyCard: View {
     let summary: SharedPoolSummary
-    /// Viewer's net position in this group. When non-nil and not
-    /// settled, an inline "Te deben / Debes" strip renders below the
-    /// footer — formerly its own `GroupObligationsCard`, merged here
-    /// (P8) so the group home has one consolidated "Dinero" card.
+    /// Viewer's net position. When non-nil and not settled, an inline
+    /// row replaces the generic "Ver detalle" link so the obligation
+    /// is the first thing the viewer sees after the amount.
     let viewerObligation: MemberGroupBalance?
     /// Money UX Consolidation 2026-05-24: single "Registrar movimiento"
-    /// CTA. Replaces the dual `onContribute` / `onRecordExpense` CTAs
-    /// per founder feedback — the host presents a `RegisterMovementSheet`
-    /// picker, then routes to the matching form sheet based on the
-    /// chosen kind.
+    /// entry that opens `RegisterMovementSheet`. Replaces the prior
+    /// dual Aportar / Registrar gasto CTAs.
     let onRegisterMovement: () -> Void
-    /// Opens the canonical "Dinero del grupo" detail surface (saldos
-    /// per-miembro + "Otros fondos" footer). Used by BOTH the
-    /// obligation strip (when the viewer has a non-zero net) and the
-    /// always-visible "Ver detalle" footer link (when they don't) —
-    /// every user gets one consistent entry into the money hub.
+    /// Opens the canonical "Dinero del grupo" detail surface. Used by
+    /// both the obligation strip (when present) and the always-shown
+    /// "Ver detalle →" link.
     let onOpenDetail: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RuulSpacing.md) {
-            Text("Dinero compartido")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Color.primary)
+        VStack(alignment: .leading, spacing: 0) {
+            label
+            amount
+                .padding(.top, 6)
+            footer
+                .padding(.top, RuulSpacing.xxs)
 
-            VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
-                RuulMoneyView(
-                    amount: balanceAmount,
-                    currency: summary.currency,
-                    size: .large,
-                    color: summary.isOverSpent ? .negative : .neutral
-                )
-                Text("Saldo disponible")
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-            }
+            secondaryRow
+                .padding(.top, RuulSpacing.md)
 
             RuulButton(
                 "Registrar movimiento",
@@ -66,18 +59,9 @@ struct SharedMoneyCard: View {
                 fillsWidth: true,
                 action: onRegisterMovement
             )
-
-            Text(footerText)
-                .font(.caption)
-                .foregroundStyle(Color.secondary)
-
-            if let obligation = viewerObligation, !obligation.isSettled {
-                obligationStrip(obligation)
-            } else if onOpenDetail != nil {
-                seeDetailLink
-            }
+            .padding(.top, RuulSpacing.md)
         }
-        .padding(RuulSpacing.md)
+        .padding(RuulSpacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ruulCardSurface(.solid)
         .overlay(
@@ -86,117 +70,196 @@ struct SharedMoneyCard: View {
         )
     }
 
+    // MARK: - Label
+
+    private var label: some View {
+        Text("Dinero del grupo")
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(Color.secondary)
+            .textCase(.uppercase)
+            .tracking(0.6)
+    }
+
+    // MARK: - Hero amount
+
+    /// Apple-style large numeral. Composed at feature level (not via
+    /// `RuulMoneyView`) because `.title` from RuulMoneyView is too
+    /// small for the hero role — the card's whole job is to make the
+    /// balance the first thing the eye lands on. Currency code lives
+    /// to the side as a subtle suffix so the number breathes.
+    private var amount: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(formattedAmount)
+                .font(.system(size: 40, weight: .regular, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(amountColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(summary.currency)
+                .font(.body)
+                .foregroundStyle(Color.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibleAmount)
+    }
+
+    // MARK: - Footer
+
+    private var footer: some View {
+        Text(footerText)
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+    }
+
+    // MARK: - Secondary row (obligation strip OR detail link)
+
     @ViewBuilder
+    private var secondaryRow: some View {
+        if let obligation = viewerObligation, !obligation.isSettled {
+            obligationStrip(obligation)
+        } else if onOpenDetail != nil {
+            seeDetailLink
+        }
+    }
+
     private func obligationStrip(_ obligation: MemberGroupBalance) -> some View {
-        Divider()
         Button {
             onOpenDetail?()
         } label: {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: obligation.isOwed
-                      ? "arrow.down.left.circle.fill"
-                      : "arrow.up.right.circle.fill")
-                    .font(.subheadline.weight(.semibold))
+                      ? "arrow.down.left"
+                      : "arrow.up.right")
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(obligation.isOwed ? Color.ruulPositive : Color.ruulNegative)
                 Text(obligation.isOwed ? "Te deben" : "Debes")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.primary)
-                RuulMoneyView(
-                    amount: Decimal(abs(obligation.netCents)) / 100,
-                    currency: obligation.currency,
-                    size: .small,
-                    color: obligation.isOwed ? .positive : .negative
-                )
+                Text(formatted(obligation.netCents))
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(obligation.isOwed ? Color.ruulPositive : Color.ruulNegative)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.secondary)
             }
+            .padding(.vertical, RuulSpacing.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(onOpenDetail == nil)
     }
 
-    /// Footer link rendered when the viewer has no outstanding net
-    /// (so the obligation strip is hidden). Keeps a consistent entry
-    /// point into the "Dinero del grupo" hub regardless of obligation
-    /// state — without it, settled users had no path to the detail
-    /// surface other than the legacy "Otros fondos" tile.
-    @ViewBuilder
     private var seeDetailLink: some View {
-        Divider()
         Button {
             onOpenDetail?()
         } label: {
             HStack(spacing: RuulSpacing.xs) {
-                Text("Ver dinero del grupo")
-                    .font(.subheadline.weight(.semibold))
+                Text("Ver detalle")
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.primary)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.secondary)
             }
+            .padding(.vertical, RuulSpacing.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private var balanceAmount: Decimal {
+    // MARK: - Derived
+
+    private var balanceDecimal: Decimal {
         Decimal(summary.balanceCents) / 100
+    }
+
+    /// Currency-formatted amount WITHOUT the code (we render `MXN` as
+    /// a separate caption to the right so the number stands alone).
+    /// Locale is `es_MX` by default; for non-MXN groups the formatter
+    /// still produces a sensible "$4,300" — the visible code clarifies.
+    private var formattedAmount: String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = summary.currency
+        f.currencySymbol = "$"
+        f.maximumFractionDigits = 0
+        f.locale = Locale(identifier: "es_MX")
+        return f.string(from: balanceDecimal as NSDecimalNumber) ?? "$\(summary.balanceCents / 100)"
+    }
+
+    private var amountColor: Color {
+        summary.isOverSpent ? Color.ruulNegative : Color.primary
     }
 
     private var footerText: String {
         if summary.isOverSpent {
-            return "El fondo está en saldo negativo"
+            return "El grupo está gastando más de lo aportado"
         }
         guard summary.hasActivity, let last = summary.lastActivityAt else {
             return "Aún sin movimientos"
         }
-        return "Última actividad: \(last.ruulRelative)"
+        return "Última actividad \(last.ruulRelative)"
+    }
+
+    private var accessibleAmount: String {
+        "\(formattedAmount) \(summary.currency)"
+    }
+
+    private func formatted(_ cents: Int64) -> String {
+        let amount = Decimal(abs(cents)) / 100
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = summary.currency
+        f.currencySymbol = "$"
+        f.maximumFractionDigits = 0
+        f.locale = Locale(identifier: "es_MX")
+        return f.string(from: amount as NSDecimalNumber) ?? "$\(abs(cents) / 100)"
     }
 }
 
 #if DEBUG
-#Preview("SharedMoneyCard") {
+#Preview("SharedMoneyCard — Apple minimal") {
     let base = UUID()
-    return VStack(spacing: RuulSpacing.lg) {
-        SharedMoneyCard(
-            summary: SharedPoolSummary(
-                groupId: base, currency: "MXN", sharedPoolId: UUID(),
-                inCents: 0, outCents: 0, balanceCents: 0,
-                entryCount: 0, lastActivityAt: nil
-            ),
-            viewerObligation: nil,
-            onRegisterMovement: {},
-            onOpenDetail: {}
-        )
-        SharedMoneyCard(
-            summary: SharedPoolSummary(
-                groupId: base, currency: "MXN", sharedPoolId: UUID(),
-                inCents: 500_000, outCents: 80_000, balanceCents: 420_000,
-                entryCount: 7, lastActivityAt: Date().addingTimeInterval(-3 * 86_400)
-            ),
-            viewerObligation: MemberGroupBalance(
-                groupId: base, memberId: UUID(), currency: "MXN",
-                sentCents: 30_000, receivedCents: 0, netCents: 30_000
-            ),
-            onRegisterMovement: {},
-            onOpenDetail: {}
-        )
-        SharedMoneyCard(
-            summary: SharedPoolSummary(
-                groupId: base, currency: "MXN", sharedPoolId: UUID(),
-                inCents: 100_000, outCents: 250_000, balanceCents: -150_000,
-                entryCount: 5, lastActivityAt: Date().addingTimeInterval(-86_400)
-            ),
-            viewerObligation: nil,
-            onRegisterMovement: {},
-            onOpenDetail: {}
-        )
+    return ScrollView {
+        VStack(spacing: RuulSpacing.lg) {
+            SharedMoneyCard(
+                summary: SharedPoolSummary(
+                    groupId: base, currency: "MXN", sharedPoolId: UUID(),
+                    inCents: 0, outCents: 0, balanceCents: 0,
+                    entryCount: 0, lastActivityAt: nil
+                ),
+                viewerObligation: nil,
+                onRegisterMovement: {},
+                onOpenDetail: {}
+            )
+            SharedMoneyCard(
+                summary: SharedPoolSummary(
+                    groupId: base, currency: "MXN", sharedPoolId: UUID(),
+                    inCents: 500_000, outCents: 80_000, balanceCents: 420_000,
+                    entryCount: 7, lastActivityAt: Date().addingTimeInterval(-3 * 86_400)
+                ),
+                viewerObligation: MemberGroupBalance(
+                    groupId: base, memberId: UUID(), currency: "MXN",
+                    sentCents: 30_000, receivedCents: 0, netCents: 30_000
+                ),
+                onRegisterMovement: {},
+                onOpenDetail: {}
+            )
+            SharedMoneyCard(
+                summary: SharedPoolSummary(
+                    groupId: base, currency: "MXN", sharedPoolId: UUID(),
+                    inCents: 100_000, outCents: 250_000, balanceCents: -150_000,
+                    entryCount: 5, lastActivityAt: Date().addingTimeInterval(-86_400)
+                ),
+                viewerObligation: nil,
+                onRegisterMovement: {},
+                onOpenDetail: {}
+            )
+        }
+        .padding(RuulSpacing.lg)
     }
-    .padding(RuulSpacing.lg)
     .background(Color.ruulBackgroundRecessed)
 }
 #endif

@@ -2,24 +2,37 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// UI section compartida por todos los body components del VoteDetailView.
-/// Tres estados mutuamente exclusivos:
-///   - voteIsClosed: muestra resultado final (VoteResolvedView).
-///   - alreadyVoted: muestra el ballot del caller (VoteAlreadyCastView).
-///   - default: muestra los 3 botones in_favor / against / abstained.
+/// UI section shared by every vote body. Three mutually exclusive states:
+///   - `voteIsClosed` → final result (`VoteResolvedView`).
+///   - `alreadyVoted` → the viewer's ballot (`VoteAlreadyCastView`).
+///   - default       → the three-choice cast buttons.
 ///
-/// Counts se renderizan abajo solo si el voto NO es anonymous, o si el
-/// caller ya votó (transparencia post-cast).
+/// V2 (2026-05-24, Option B redesign): adds a `VoteMetricsTile` above the
+/// ballot when the vote is open — micro quorum ring + live countdown,
+/// urgent stroke under 6h. Counts bar gains a threshold tick so the
+/// voter sees where "in favor" needs to land to pass. Cast buttons
+/// adopt the iOS 26 `.glass` button style + selection haptic so the
+/// act of casting feels material, not procedural.
+///
+/// Counts render below only when the vote is NOT anonymous, or the
+/// caller has already cast — same transparency contract as before.
 public struct VoteCastSection: View {
     @Bindable var coordinator: VoteDetailCoordinator
 
     public var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
+            if !coordinator.voteIsClosed {
+                VoteMetricsTile(vote: coordinator.vote, counts: coordinator.counts)
+            }
+
             stateView
 
             if let counts = coordinator.counts,
                !coordinator.vote.isAnonymous || coordinator.alreadyVoted {
-                VoteCountsBar(counts: counts)
+                VoteCountsBar(
+                    counts: counts,
+                    thresholdPercent: coordinator.voteIsClosed ? nil : coordinator.vote.thresholdPercent
+                )
             }
         }
     }
@@ -40,6 +53,7 @@ public struct VoteCastSection: View {
 
 private struct VoteCastButtons: View {
     @Bindable var coordinator: VoteDetailCoordinator
+    @State private var hapticTrigger: VoteChoice?
 
     public var body: some View {
         VStack(spacing: RuulSpacing.xs) {
@@ -49,28 +63,34 @@ private struct VoteCastButtons: View {
         }
         .disabled(coordinator.isCasting)
         .opacity(coordinator.isCasting ? 0.5 : 1.0)
+        .sensoryFeedback(.selection, trigger: hapticTrigger)
     }
 
     private func castButton(_ choice: VoteChoice, label: String, systemImage: String, tint: Color) -> some View {
         Button {
+            hapticTrigger = choice
             Task { await coordinator.cast(choice) }
         } label: {
-            HStack(spacing: RuulSpacing.xs) {
+            HStack(spacing: RuulSpacing.sm) {
                 Image(systemName: systemImage)
+                    .font(.title3)
                     .foregroundStyle(tint)
                     .accessibilityHidden(true)
                 Text(label)
                     .font(.headline)
+                    .foregroundStyle(Color.primary)
                 Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .accessibilityHidden(true)
             }
-            .padding(RuulSpacing.md)
-            .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
-                    .stroke(Color(.separator), lineWidth: 0.5)
-            )
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glass)
         .accessibilityLabel(label)
     }
 }
