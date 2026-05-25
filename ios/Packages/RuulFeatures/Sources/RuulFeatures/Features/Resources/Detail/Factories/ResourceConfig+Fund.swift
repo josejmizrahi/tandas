@@ -56,14 +56,19 @@ public extension ResourceConfig {
         onSeeParticipants: @escaping () -> Void = {},
         activityLoader: ActivityLoader? = nil
     ) -> ResourceConfig {
+        // Doctrine v2 §4 + §7: vocabulary purge. "Movimientos" /
+        // "Saldo" / "Aportado" / "Retirado" / "Libro" all read as
+        // accounting language. Replaced with people-talk equivalents
+        // ("Lo último de dinero", "El grupo tiene", "Han aportado",
+        // "Han sacado", "Ver todo").
         let movementsSection: ResourceSection = fund.movements.isEmpty
             ? .empty(
-                title: "Movimientos",
+                title: "Lo último de dinero",
                 icon: "tray",
-                message: "Sin movimientos aún",
-                description: "Registra el primero para empezar a ver el historial."
+                message: "Aún no ha pasado nada con este dinero",
+                description: "Aporta o registra un gasto para empezar."
             )
-            : .rows(title: "Movimientos", items: fund.movements.prefix(5).map { item in
+            : .rows(title: "Lo último de dinero", items: fund.movements.prefix(5).map { item in
                 RowItem(
                     icon: item.icon,
                     label: item.title,
@@ -82,22 +87,22 @@ public extension ResourceConfig {
             accent: accent,
             hero: HeroData(
                 value: fund.balance.formatted(.currency(code: "MXN")),
-                label: "Saldo en MXN",
+                label: "El grupo tiene",
                 size: .display,
                 subRow: [
-                    HeroPair("Aportado", fund.contributed.formatted(.currency(code: "MXN"))),
-                    HeroPair("Retirado", fund.withdrawn.formatted(.currency(code: "MXN")))
+                    HeroPair("Han aportado", fund.contributed.formatted(.currency(code: "MXN"))),
+                    HeroPair("Han sacado",   fund.withdrawn.formatted(.currency(code: "MXN")))
                 ]
             ),
             actions: [
                 ResourceAction(label: "Aportar", icon: "arrow.down", tint: .ruulSemanticSuccess, handler: onContribute),
-                ResourceAction(label: "Retirar", icon: "arrow.up", tint: .ruulSemanticError, handler: onWithdraw),
-                ResourceAction(label: "Libro", handler: onSeeLedger)
+                ResourceAction(label: "Sacar",   icon: "arrow.up",   tint: .ruulSemanticError,   handler: onWithdraw),
+                ResourceAction(label: "Ver todo", handler: onSeeLedger)
             ],
             sections: [
                 movementsSection,
                 .avatars(
-                    title: "Participantes",
+                    title: "Quienes participan",
                     people: fund.participants,
                     emptyText: nil,
                     onTapMore: onSeeParticipants
@@ -105,9 +110,9 @@ public extension ResourceConfig {
             ],
             activity: activityLoader.map { .paginated($0) } ?? .static(fund.movements),
             toolbarMenu: [
-                ToolbarMenuItem(label: "Exportar libro", icon: "square.and.arrow.up", handler: {}),
-                ToolbarMenuItem(label: "Editar fondo", icon: "pencil", handler: {}),
-                ToolbarMenuItem(label: "Cerrar fondo", icon: "lock", role: .destructive, handler: {})
+                ToolbarMenuItem(label: "Exportar historia", icon: "square.and.arrow.up", handler: {}),
+                ToolbarMenuItem(label: "Editar fondo",      icon: "pencil",              handler: {}),
+                ToolbarMenuItem(label: "Cerrar este fondo", icon: "lock", role: .destructive, handler: {})
             ]
         )
     }
