@@ -210,6 +210,10 @@ public struct RootShellSheets: ViewModifier {
                                 }
                             }
                         )
+                    } else {
+                        VoteSheetLoadingFallback(
+                            onClose: { router.state.dismissTop() }
+                        )
                     }
                 }
                 .presentationBackground(.regularMaterial)
@@ -241,6 +245,10 @@ public struct RootShellSheets: ViewModifier {
                                     _ = await (r, i)
                                 }
                             }
+                        )
+                    } else {
+                        VoteSheetLoadingFallback(
+                            onClose: { router.state.dismissTop() }
                         )
                     }
                     let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
@@ -278,6 +286,10 @@ public struct RootShellSheets: ViewModifier {
                                 }
                             }
                         )
+                    } else {
+                        VoteSheetLoadingFallback(
+                            onClose: { router.state.dismissTop() }
+                        )
                     }
                 }
                 .presentationBackground(.regularMaterial)
@@ -301,6 +313,10 @@ public struct RootShellSheets: ViewModifier {
                                 voteRepo: app.voteRepo,
                                 groupsRepo: app.groupsRepo
                             )
+                        )
+                    } else {
+                        VoteSheetLoadingFallback(
+                            onClose: { router.state.dismissTop() }
                         )
                     }
                 }
@@ -698,6 +714,34 @@ struct MyFinesScreenHost: View {
             changeFeed: app.multiDeviceChangeFeed
         )
         FineDetailHost(coordinator: fineCoord, onViewAppeal: nil)
+    }
+}
+
+// MARK: - VoteSheetLoadingFallback
+
+/// Fallback rendered inside any create-vote `fullScreenCover` when
+/// `app.activeGroup` is nil or `currentGroupMember(in:)` returns nil
+/// (member directory hasn't loaded yet, or the viewer isn't a member).
+/// Without this branch the `Group {}` body would be empty and SwiftUI
+/// would render only the `.regularMaterial` background — the
+/// "pantalla blanca" the user reported.
+@MainActor
+private struct VoteSheetLoadingFallback: View {
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView {
+                Label("Preparando votación", systemImage: "hourglass")
+            } description: {
+                Text("Estamos cargando tu membresía. Cierra y vuelve a intentarlo en un segundo.")
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar", action: onClose)
+                }
+            }
+        }
     }
 }
 
