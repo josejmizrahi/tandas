@@ -53,6 +53,10 @@ public struct MemberDetailView: View {
     /// picker completes so the responsibilities section reflects the
     /// new state without waiting for a parent refetch.
     @State private var liveRawRoles: [String]
+    /// Doctrine §4 Activity: visible history is the trust signal.
+    /// Top 5 system_events where this member is the actor. Empty
+    /// until the first load; section auto-hides when empty.
+    @State private var recentActivity: [SystemEvent] = []
 
     public init(
         memberWithProfile: MemberWithProfile,
@@ -82,6 +86,7 @@ public struct MemberDetailView: View {
                 }
                 participationCard
                 responsibilitiesCard
+                activityCard
                 joinedFooter
             }
             .padding(.horizontal, RuulSpacing.screenPadding)
@@ -126,7 +131,10 @@ public struct MemberDetailView: View {
             )
             .environment(app)
         }
-        .task { await loadSummary() }
+        .task {
+            await loadSummary()
+            await loadRecentActivity()
+        }
     }
 
     /// Carga stats via get_member_summary RPC. Best-effort: cualquier
@@ -142,6 +150,22 @@ public struct MemberDetailView: View {
         if let s = try? await repo.memberSummary(groupId: group.id, userId: userId) {
             await MainActor.run { summary = s }
         }
+    }
+
+    /// Doctrine §4 Activity: load this member's last 5 system_events
+    /// in this group via `systemEventRepo.query` with a memberId
+    /// filter. Soft-fails — empty list auto-hides the section.
+    private func loadRecentActivity() async {
+        let repo = app.systemEventRepo
+        let events = (try? await repo.query(
+            filter: SystemEventFilter(
+                groupId: group.id,
+                memberId: memberWithProfile.member.id
+            ),
+            limit: 5,
+            offset: 0
+        )) ?? []
+        await MainActor.run { recentActivity = events }
     }
 
     // MARK: - Layer 1: Identity header (compact)
@@ -377,6 +401,59 @@ public struct MemberDetailView: View {
         case "observer":  return "Observa decisiones"
         default:          return role.humanLabel
         }
+    }
+
+    // MARK: - Layer 2: Activity card (doctrine §4)
+
+    /// Visible history is the canonical trust signal per identity-
+    /// context-doctrine §4: "Activity — most important section. Trust
+    /// emerges from visible history." Renders the last 5
+    /// `system_events` where this member is the actor, via
+    /// `HistoryItemPresentation`. Auto-hides when empty.
+    @ViewBuilder
+    private var activityCard: some View {
+        if !recentActivity.isEmpty {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                sectionHeader("Lo que ha hecho aquí")
+                VStack(spacing: 0) {
+                    ForEach(Array(recentActivity.enumerated()), id: \.element.id) { idx, event in
+                        if idx > 0 { rowDivider }
+                        activityRow(event)
+                    }
+                }
+                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RuulRadius.lg, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
+            }
+        }
+    }
+
+    private func activityRow(_ event: SystemEvent) -> some View {
+        let presentation = HistoryItemPresentation(
+            event: event,
+            memberName: displayName
+        )
+        return HStack(spacing: RuulSpacing.md) {
+            Image(systemName: presentation.icon)
+                .font(.subheadline)
+                .foregroundStyle(Color.secondary)
+                .frame(width: RuulSpacing.xxl, alignment: .center)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(presentation.title)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(2)
+                Text(presentation.timestamp)
+                    .font(.caption2)
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .monospacedDigit()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RuulSpacing.md)
     }
 
     // MARK: - Joined footer
