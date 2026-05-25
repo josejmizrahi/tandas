@@ -80,7 +80,7 @@ public struct GroupSettlementPlanView: View {
             )
             .environment(app)
             .presentationDetents([.medium, .large])
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
         }
     }
 

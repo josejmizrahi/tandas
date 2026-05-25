@@ -240,7 +240,7 @@ public struct EventDetailHost: View {
                 Task { await refreshAndRebuild(coordinator: coordinator) }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showLocationEditor) {
@@ -251,7 +251,7 @@ public struct EventDetailHost: View {
                 onSaved: { Task { await refreshAndRebuild(coordinator: coordinator) } }
             )
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showActivityHistory) {
@@ -261,7 +261,7 @@ public struct EventDetailHost: View {
                 displayName: coordinator.event.title
             )
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
     }

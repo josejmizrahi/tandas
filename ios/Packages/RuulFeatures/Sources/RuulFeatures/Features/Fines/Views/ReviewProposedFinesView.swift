@@ -71,7 +71,7 @@ public struct ReviewProposedFinesView: View {
             voidSheet
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
         }
     }
 

@@ -84,7 +84,7 @@ public struct FineDetailHost: View {
             }
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
         }
         // Void fine sheet — admin destructive action surfaced through
         // the overflow `.delete` slot.
@@ -103,7 +103,7 @@ public struct FineDetailHost: View {
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
         }
         .sheet(isPresented: $activityHistoryPresented) {
@@ -113,7 +113,7 @@ public struct FineDetailHost: View {
                 displayName: coordinator.fine.reason
             )
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
     }

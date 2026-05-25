@@ -63,13 +63,13 @@ public struct EditEventView: View {
                 coverPickerSheet
                     .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: $hostPickerPresented) {
                 hostPickerSheet
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
         }
     }

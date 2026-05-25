@@ -63,7 +63,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.qr)) {
                 MemberQRSheet(
@@ -74,7 +74,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelEvent)) {
                 CancelEventSheet(isPresented: bindingForSheet(.cancelEvent)) { reason in
@@ -82,7 +82,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelAttendance)) {
                 CancelAttendanceSheet(
@@ -93,7 +93,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.remindAttendees)) {
                 RemindAttendeesSheet(
@@ -106,7 +106,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.closeEvent)) {
                 CloseEventSheet(
@@ -117,7 +117,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.manualFine)) {
                 if let mf = b.manualFineCoordinator {
@@ -128,7 +128,7 @@ public struct EventDetailSheets: ViewModifier {
                     )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
                 }
             }
             // Money UX Consolidation PR-D (2026-05-24): `.ledger`
@@ -148,7 +148,7 @@ public struct EventDetailSheets: ViewModifier {
                     case .settlement:   b.sheet.wrappedValue = .movementSettle
                     }
                 }
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.movementContribute)) {
                 ContributeToSharedMoneySheet(
@@ -161,7 +161,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.movementExpense)) {
                 RecordSharedExpenseSheet(
@@ -175,7 +175,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.movementSettle)) {
                 SettlementSheet(
@@ -190,7 +190,7 @@ public struct EventDetailSheets: ViewModifier {
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(isPresented: bindingForSheet(.rules)) {
                 if let rc = b.rulesCoordinator {
@@ -198,7 +198,7 @@ public struct EventDetailSheets: ViewModifier {
                         isPresented: bindingForSheet(.rules),
                         coordinator: rc
                     )
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
                 }
             }
             .sheet(isPresented: bindingForSheet(.attendees)) {
@@ -213,7 +213,7 @@ public struct EventDetailSheets: ViewModifier {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
             .fullScreenCover(item: b.attendeeRoute) { mwp in
                 NavigationStack {

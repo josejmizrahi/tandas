@@ -162,7 +162,7 @@ public struct GroupBalancesView: View {
             )
             .environment(app)
             .presentationDetents([.medium, .large])
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
         }
         .confirmationDialog(
             "¿Revertir esta operación?",

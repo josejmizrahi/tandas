@@ -132,7 +132,7 @@ public struct ResourceDetailSheet: View {
                     isPresented: $rulesSheetPresented,
                     coordinator: rulesCoordinator
                 )
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
             }
         }
         .onChange(of: rulesSheetPresented) { _, presented in
@@ -147,7 +147,7 @@ public struct ResourceDetailSheet: View {
                 displayName: displayName
             )
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         // MARK: Space-specific covers — present above the resource detail
@@ -156,13 +156,13 @@ public struct ResourceDetailSheet: View {
         .sheet(isPresented: $spaceReservePresented) {
             SpaceReserveSheet(resourceName: displayName)
                 .environment(app)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $spaceCalendarPresented) {
             SpaceCalendarSheet(resource: liveResource ?? resource)
                 .environment(app)
-                .presentationBackground(.regularMaterial)
+                .presentationBackground(.ultraThinMaterial)
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $spaceEditPresented) {
@@ -170,7 +170,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $fundEditPresented) {
@@ -178,7 +178,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         // MARK: Asset action sheets — only mounted for resource_type=asset
@@ -191,7 +191,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $reportDamagePresented) {
@@ -199,7 +199,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $checkOutAssetPresented) {
@@ -210,7 +210,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $recordValuationPresented) {
@@ -218,7 +218,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $assignCustodyPresented) {
@@ -229,7 +229,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $releaseCustodyPresented) {
@@ -237,7 +237,7 @@ public struct ResourceDetailSheet: View {
                 Task { await refreshResource() }
             }
             .environment(app)
-            .presentationBackground(.regularMaterial)
+            .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
     }

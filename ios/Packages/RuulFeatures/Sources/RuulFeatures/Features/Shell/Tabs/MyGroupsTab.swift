@@ -91,28 +91,28 @@ public struct MyGroupsTab: View {
             if let g = scopedGroup {
                 EditGroupIdentitySheet(groupId: g.id)
                     .environment(app)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
         }
         .fullScreenCover(isPresented: $showRotateCode) {
             if let g = scopedGroup {
                 RegenerateInviteCodeSheet(groupId: g.id)
                     .environment(app)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
         }
         .fullScreenCover(isPresented: $showInvite) {
             if let g = scopedGroup {
                 InviteMembersFromGroupView(group: g)
                     .environment(app)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
         }
         .fullScreenCover(isPresented: $showLeave) {
             if let g = scopedGroup {
                 LeaveGroupConfirmationSheet(group: g)
                     .environment(app)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
         }
         .confirmationDialog(

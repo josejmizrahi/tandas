@@ -95,7 +95,7 @@ extension RootShellSheets {
             // detail was up. See activeEditEventItem binding.
             .fullScreenCover(item: activeEditEventItem) { wrappedEvent in
                 eventEditScreen(wrappedEvent.event)
-                    .presentationBackground(.regularMaterial)
+                    .presentationBackground(.ultraThinMaterial)
             }
         )
     }
