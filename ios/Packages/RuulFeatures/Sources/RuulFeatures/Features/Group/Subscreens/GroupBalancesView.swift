@@ -272,37 +272,66 @@ public struct GroupBalancesView: View {
 
     // MARK: - Liquidar ahora
 
-    /// Suggestions that involve the current viewer either as debtor or
-    /// creditor. Each row is tappable and opens the `SettlementSheet`
-    /// pre-filled with the suggested counterpart + amount.
+    /// Settlement suggestions section — PR-E (2026-05-24): shows the
+    /// FULL settlement plan for the group (greedy pairing), not only
+    /// suggestions involving the viewer. Rows where the viewer is
+    /// either payer or recipient are tappable and open `SettlementSheet`
+    /// pre-filled. Rows between two other members render as informational
+    /// so the founder can see "how money flows" across the group — the
+    /// 'cómo se relaciona' clarity they asked for.
     @ViewBuilder
     private var settlementSuggestionsSection: some View {
-        let suggestions = viewerSuggestions
-        if !suggestions.isEmpty {
+        let all = settlementSuggestions(balances: visibleRows)
+        if !all.isEmpty {
             VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-                Text("Liquidar ahora")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .padding(.top, RuulSpacing.md)
-                ForEach(suggestions) { s in
+                HStack {
+                    Text("Liquidar ahora")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                    Spacer(minLength: 0)
+                    Text(all.count == 1
+                         ? "1 pago para quedar al día"
+                         : "\(all.count) pagos para quedar al día")
+                        .font(.caption2)
+                        .foregroundStyle(Color.secondary)
+                }
+                .padding(.top, RuulSpacing.md)
+                ForEach(Array(all.prefix(5))) { s in
                     settlementSuggestionRow(s)
+                }
+                if all.count > 5 {
+                    Text("+ \(all.count - 5) más")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .padding(.leading, RuulSpacing.md)
                 }
             }
         }
     }
 
+    @ViewBuilder
     private func settlementSuggestionRow(_ s: SettlementSuggestion) -> some View {
         let viewerIsPayer = (s.fromMemberId == myMemberId)
+        let viewerIsCreditor = (s.toMemberId == myMemberId)
+        let viewerInvolved = viewerIsPayer || viewerIsCreditor
+        if viewerInvolved {
+            settlementActionableRow(s, viewerIsPayer: viewerIsPayer)
+        } else {
+            settlementInfoRow(s)
+        }
+    }
+
+    /// Tappable row for suggestions that involve the viewer. Opens the
+    /// `SettlementSheet` pre-filled with the counterpart + amount.
+    private func settlementActionableRow(
+        _ s: SettlementSuggestion,
+        viewerIsPayer: Bool
+    ) -> some View {
         let counterpartId = viewerIsPayer ? s.toMemberId : s.fromMemberId
         let counterpartName = memberName(for: counterpartId) ?? "Miembro"
         let verb = viewerIsPayer ? "Pagale a" : "Cobrale a"
         let amount = Decimal(s.amountCents) / 100
         return Button {
-            // Only the payer can record the settlement (it writes
-            // `from_member = me, to_member = creditor`). When the
-            // viewer is the creditor we still open the sheet so they
-            // can confirm the receipt direction; the sheet itself
-            // gates the picker.
             settlementContext = SettlementContext(
                 toMemberId: counterpartId,
                 amountCents: s.amountCents
@@ -344,14 +373,43 @@ public struct GroupBalancesView: View {
         .buttonStyle(.plain)
     }
 
-    /// Greedy pair-largest-debtor-with-largest-creditor algorithm
-    /// filtered to suggestions that include the current viewer. Returns
-    /// at most 3 rows so the section stays compact; the rest fall out
-    /// implicitly after subsequent settlements update balances.
-    private var viewerSuggestions: [SettlementSuggestion] {
-        guard let me = myMemberId else { return [] }
-        let all = settlementSuggestions(balances: visibleRows)
-        return Array(all.filter { $0.fromMemberId == me || $0.toMemberId == me }.prefix(3))
+    /// Informational row for suggestions between two other members.
+    /// Not tappable (viewer can't record a settlement on their behalf)
+    /// but shows the recommended flow so the founder sees the full
+    /// payment plan — answers 'cómo se relaciona el dinero entre
+    /// miembros'. Visually muted so the actionable rows still stand out.
+    private func settlementInfoRow(_ s: SettlementSuggestion) -> some View {
+        let payerName = memberName(for: s.fromMemberId) ?? "Miembro"
+        let creditorName = memberName(for: s.toMemberId) ?? "Miembro"
+        let amount = Decimal(s.amountCents) / 100
+        return HStack(spacing: RuulSpacing.md) {
+            ColoredIconBadge(
+                systemName: "arrow.right.circle",
+                tint: Color.secondary
+            )
+            VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
+                Text("\(payerName) → \(creditorName)")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.secondary)
+                    .lineLimit(1)
+                Text("Liquidación entre miembros")
+                    .font(.caption)
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+            Spacer(minLength: 0)
+            RuulMoneyView(
+                amount: amount,
+                currency: group.currency,
+                size: .small,
+                color: .neutral
+            )
+        }
+        .padding(RuulSpacing.md)
+        .background(Color.ruulSurface.opacity(0.6), in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: RuulRadius.lg)
+                .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
+        )
     }
 
     /// Pure function: pair off largest debtor with largest creditor
