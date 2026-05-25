@@ -141,7 +141,7 @@ public struct GroupSpaceView: View {
                             viewerObligation: coordinator.viewerBalance,
                             onContribute: { sharedMoneySheet = .contribute },
                             onRecordExpense: { sharedMoneySheet = .recordExpense },
-                            onOpenObligation: { onOpenBalances?() }
+                            onOpenDetail: { onOpenBalances?() }
                         )
                     }
 
@@ -263,20 +263,13 @@ public struct GroupSpaceView: View {
             )
         ]
 
-        if otherFundsCount > 0 {
-            tiles.append(
-                .init(
-                    id: "funds",
-                    label: "Otros fondos",
-                    systemImage: "banknote",
-                    tint: Color.ruulPositive,
-                    primary: "\(otherFundsCount)",
-                    secondary: otherFundsCount == 1 ? "fondo separado" : "fondos separados",
-                    alert: nil,
-                    action: { onOpenFunds?() }
-                )
-            )
-        }
+        // 2026-05-24: "Otros fondos" no longer appears as a peer tile
+        // in the spaces grid. The shared-money doctrine treats the pool
+        // as the primary money surface and legacy/protected funds as the
+        // exception — they're now discovered inside the "Dinero del
+        // grupo" detail (footer link) so the grid stays focused on the
+        // canonical verbs (Eventos / Decisiones / Multas / Activos).
+        _ = otherFundsCount
 
         // SharedMoney Phase 4 brick C.2: "Activos" tile — group's
         // physical/financial assets (nave industrial, vehículo,

@@ -30,7 +30,12 @@ struct SharedMoneyCard: View {
     let viewerObligation: MemberGroupBalance?
     let onContribute: () -> Void
     let onRecordExpense: () -> Void
-    let onOpenObligation: (() -> Void)?
+    /// Opens the canonical "Dinero del grupo" detail surface (saldos
+    /// per-miembro + "Otros fondos" footer). Used by BOTH the
+    /// obligation strip (when the viewer has a non-zero net) and the
+    /// always-visible "Ver detalle" footer link (when they don't) —
+    /// every user gets one consistent entry into the money hub.
+    let onOpenDetail: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.md) {
@@ -61,6 +66,8 @@ struct SharedMoneyCard: View {
 
             if let obligation = viewerObligation, !obligation.isSettled {
                 obligationStrip(obligation)
+            } else if onOpenDetail != nil {
+                seeDetailLink
             }
         }
         .padding(RuulSpacing.md)
@@ -76,7 +83,7 @@ struct SharedMoneyCard: View {
     private func obligationStrip(_ obligation: MemberGroupBalance) -> some View {
         Divider()
         Button {
-            onOpenObligation?()
+            onOpenDetail?()
         } label: {
             HStack(spacing: RuulSpacing.xs) {
                 Image(systemName: obligation.isOwed
@@ -101,7 +108,32 @@ struct SharedMoneyCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(onOpenObligation == nil)
+        .disabled(onOpenDetail == nil)
+    }
+
+    /// Footer link rendered when the viewer has no outstanding net
+    /// (so the obligation strip is hidden). Keeps a consistent entry
+    /// point into the "Dinero del grupo" hub regardless of obligation
+    /// state — without it, settled users had no path to the detail
+    /// surface other than the legacy "Otros fondos" tile.
+    @ViewBuilder
+    private var seeDetailLink: some View {
+        Divider()
+        Button {
+            onOpenDetail?()
+        } label: {
+            HStack(spacing: RuulSpacing.xs) {
+                Text("Ver dinero del grupo")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var balanceAmount: Decimal {
@@ -131,7 +163,7 @@ struct SharedMoneyCard: View {
             ),
             viewerObligation: nil,
             onContribute: {}, onRecordExpense: {},
-            onOpenObligation: nil
+            onOpenDetail: {}
         )
         SharedMoneyCard(
             summary: SharedPoolSummary(
@@ -144,7 +176,7 @@ struct SharedMoneyCard: View {
                 sentCents: 30_000, receivedCents: 0, netCents: 30_000
             ),
             onContribute: {}, onRecordExpense: {},
-            onOpenObligation: {}
+            onOpenDetail: {}
         )
         SharedMoneyCard(
             summary: SharedPoolSummary(
@@ -154,7 +186,7 @@ struct SharedMoneyCard: View {
             ),
             viewerObligation: nil,
             onContribute: {}, onRecordExpense: {},
-            onOpenObligation: nil
+            onOpenDetail: {}
         )
     }
     .padding(RuulSpacing.lg)
