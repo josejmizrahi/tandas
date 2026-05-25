@@ -19,6 +19,7 @@ struct RecentMoneyCluster: View {
     var onRegisterExpense: () -> Void
     var onContribute: () -> Void
     var onSettle: () -> Void
+    var onSeeAll: (() -> Void)?
 
     private var visible: [LedgerEntry] {
         Array(entries.prefix(5))
@@ -26,11 +27,16 @@ struct RecentMoneyCluster: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
-            HStack {
+            HStack(spacing: RuulSpacing.sm) {
                 Text("Dinero reciente")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
                 Spacer()
+                if let onSeeAll {
+                    Button("Ver todo", action: onSeeAll)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.ruulAccent)
+                }
                 composeMenu
             }
             .padding(.horizontal, RuulSpacing.xxs)

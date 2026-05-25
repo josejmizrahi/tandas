@@ -553,6 +553,7 @@ private struct GroupSpaceScreen: View {
                     },
                     onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
                     onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
+                    onOpenTransactions: { path.append(MyGroupsTab.GroupDestination.transacciones) },
                     onOpenAjustes:    { path.append(MyGroupsTab.GroupDestination.ajustes) },
                     onConfirmLeave:   { showLeave = true },
                     onLeaveGroup: {

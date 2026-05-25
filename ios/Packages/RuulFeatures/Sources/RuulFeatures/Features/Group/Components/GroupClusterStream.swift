@@ -28,6 +28,7 @@ struct GroupClusterStream: View {
     let onSelectPending: (UserAction) -> Void
     let onOpenEvent: (Event) -> Void
     var onSeeAllActivity: (() -> Void)?
+    var onSeeAllMoney: (() -> Void)?
     let onRegisterExpense: () -> Void
     let onContribute: () -> Void
     let onSettle: () -> Void
@@ -48,7 +49,8 @@ struct GroupClusterStream: View {
                     locale: locale,
                     onRegisterExpense: onRegisterExpense,
                     onContribute: onContribute,
-                    onSettle: onSettle
+                    onSettle: onSettle,
+                    onSeeAll: onSeeAllMoney
                 )
             }
             if !recentActivity.isEmpty {

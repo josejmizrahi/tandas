@@ -48,6 +48,7 @@ public struct GroupSpaceView: View {
     // Header + stream
     public var onOpenMembers: (() -> Void)?
     public var onOpenActivity: (() -> Void)?
+    public var onOpenTransactions: (() -> Void)?
 
     // Toolbar
     public var onOpenAjustes: (() -> Void)?
@@ -64,6 +65,7 @@ public struct GroupSpaceView: View {
         onSelectPending: @escaping (UserAction) -> Void,
         onOpenMembers: (() -> Void)? = nil,
         onOpenActivity: (() -> Void)? = nil,
+        onOpenTransactions: (() -> Void)? = nil,
         onOpenAjustes: (() -> Void)? = nil,
         onConfirmLeave: (() -> Void)? = nil,
         onLeaveGroup: @escaping () -> Void
@@ -77,6 +79,7 @@ public struct GroupSpaceView: View {
         self.onSelectPending = onSelectPending
         self.onOpenMembers = onOpenMembers
         self.onOpenActivity = onOpenActivity
+        self.onOpenTransactions = onOpenTransactions
         self.onOpenAjustes = onOpenAjustes
         self.onConfirmLeave = onConfirmLeave
         self.onLeaveGroup = onLeaveGroup
@@ -127,6 +130,7 @@ public struct GroupSpaceView: View {
                             onSelectPending: onSelectPending,
                             onOpenEvent: onOpenEvent,
                             onSeeAllActivity: onOpenActivity,
+                            onSeeAllMoney: onOpenTransactions,
                             onRegisterExpense: { sharedMoneySheet = .recordExpense },
                             onContribute: { sharedMoneySheet = .contribute },
                             onSettle: { sharedMoneySheet = .settle }
@@ -228,6 +232,13 @@ public struct GroupSpaceView: View {
                     systemImage: "square.and.arrow.up",
                     action: onShareInvite
                 )
+                if let onOpenActivity {
+                    Button(
+                        "Actividad del grupo",
+                        systemImage: "clock.arrow.circlepath",
+                        action: onOpenActivity
+                    )
+                }
                 if let onOpenAjustes {
                     Button(
                         "Ajustes del grupo",
