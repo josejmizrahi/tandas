@@ -187,6 +187,7 @@ public enum RootRoute: Sendable, Hashable {
     case createVotePicker
     case createGeneralProposal
     case createRuleChange(GroupRule?)
+    case createRuleRepeal(GroupRule?)
     case createMemberRemoval    // CreateMemberRemovalSheet
     // .editProfile removed in V2 Slice 4A — now a ProfileTab-local sheet.
     // .membersList + .membersAdmin removed in V2 Slice 4B — orphaned

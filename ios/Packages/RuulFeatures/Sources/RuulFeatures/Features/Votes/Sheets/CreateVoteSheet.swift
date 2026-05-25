@@ -2,22 +2,27 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Picker de vote_type. V1 enabled = generalProposal + ruleChange + memberRemoval.
-/// Los otros 4 visibles pero disabled con badge "próximamente".
+/// Picker de vote_type. V1 enabled = generalProposal + ruleChange +
+/// memberRemoval + ruleRepeal. Los otros 3 (fundWithdrawal, roleAssignment,
+/// slotDispute) siguen visibles pero disabled con badge "próximamente"
+/// hasta que tengan coordinator + sheet.
 /// Tap en enabled → push corresponding sheet.
 public struct CreateVoteSheet: View {
     public var onPickGeneralProposal: () -> Void
     public var onPickRuleChange: () -> Void
     public var onPickMemberRemoval: () -> Void
+    public var onPickRuleRepeal: () -> Void
 
     public init(
         onPickGeneralProposal: @escaping () -> Void,
         onPickRuleChange: @escaping () -> Void,
-        onPickMemberRemoval: @escaping () -> Void = {}
+        onPickMemberRemoval: @escaping () -> Void = {},
+        onPickRuleRepeal: @escaping () -> Void = {}
     ) {
         self.onPickGeneralProposal = onPickGeneralProposal
         self.onPickRuleChange = onPickRuleChange
         self.onPickMemberRemoval = onPickMemberRemoval
+        self.onPickRuleRepeal = onPickRuleRepeal
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -55,12 +60,19 @@ public struct CreateVoteSheet: View {
                         onTap: { dismiss(); onPickMemberRemoval() }
                     )
 
+                    voteTypeCard(
+                        title: "Archivar regla",
+                        subtitle: "Quitar una regla del grupo si el voto pasa.",
+                        icon: "trash",
+                        enabled: true,
+                        onTap: { dismiss(); onPickRuleRepeal() }
+                    )
+
                     Text("Próximamente")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color(.tertiaryLabel))
                         .padding(.top, RuulSpacing.lg)
 
-                    voteTypeCard(title: "Archivar regla",       subtitle: "Quitar una regla del grupo.",            icon: "trash",                              enabled: false, onTap: {})
                     voteTypeCard(title: "Retirar fondos",       subtitle: "Aprobar un retiro del fondo común.",     icon: "banknote",                           enabled: false, onTap: {})
                     voteTypeCard(title: "Asignar rol",          subtitle: "Promover a alguien a treasurer/etc.",    icon: "person.badge.shield.checkmark",      enabled: false, onTap: {})
                     voteTypeCard(title: "Disputa de slot",      subtitle: "Resolver disputa sobre un boleto/cupo.", icon: "ticket",                              enabled: false, onTap: {})

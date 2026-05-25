@@ -217,4 +217,25 @@ extension RootShellSheets {
             }
         )
     }
+
+    /// Item binding for `.createRuleRepeal(GroupRule?)`. Mirrors the
+    /// rule-change binding shape.
+    var createRuleRepealItem: Binding<IdentifiableRuleRepealWrapper?> {
+        Binding(
+            get: {
+                guard let match = router.state.activeRoutes.last(where: { if case .createRuleRepeal = $0 { return true }; return false }) else { return nil }
+                if case .createRuleRepeal(let rule) = match {
+                    return IdentifiableRuleRepealWrapper(rule: rule)
+                }
+                return nil
+            },
+            set: { newValue in
+                if newValue == nil {
+                    while router.state.activeRoutes.contains(where: { if case .createRuleRepeal = $0 { return true }; return false }) {
+                        router.state.dismissTop()
+                    }
+                }
+            }
+        )
+    }
 }

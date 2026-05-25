@@ -170,7 +170,8 @@ public struct RootShellSheets: ViewModifier {
                 CreateVoteSheet(
                     onPickGeneralProposal: { router.present(.createGeneralProposal) },
                     onPickRuleChange: { router.present(.createRuleChange(nil)) },
-                    onPickMemberRemoval: { router.present(.createMemberRemoval) }
+                    onPickMemberRemoval: { router.present(.createMemberRemoval) },
+                    onPickRuleRepeal: { router.present(.createRuleRepeal(nil)) }
                 )
                 .presentationBackground(.regularMaterial)
             }
@@ -235,6 +236,41 @@ public struct RootShellSheets: ViewModifier {
                         )
                     }
                     let _ = wrapper // silence unused-variable warning; wrapper.rule available if needed
+                }
+                .presentationBackground(.regularMaterial)
+            }
+
+            // MARK: Create rule-repeal sheet (vote to archive a rule)
+            .fullScreenCover(item: createRuleRepealItem, onDismiss: {
+                Task {
+                    async let r: Void? = router.state.rulesCoordinator?.refresh()
+                    async let i: Void? = router.state.refreshInboxes()
+                    _ = await (r, i)
+                }
+            }) { wrapper in
+                Group {
+                    if let group = app.activeGroup,
+                       let member = currentGroupMember(in: group) {
+                        let coord = CreateRuleRepealCoordinator(
+                            group: group,
+                            member: member,
+                            availableRules: router.state.rulesCoordinator?.rules ?? [],
+                            voteRepo: app.voteRepo,
+                            governance: app.governance
+                        )
+                        // Preselect the rule when the route carried one.
+                        let _ = { coord.selectedRule = wrapper.rule }()
+                        CreateRuleRepealSheet(
+                            coordinator: coord,
+                            onCreated: { _ in
+                                Task {
+                                    async let r: Void? = router.state.rulesCoordinator?.refresh()
+                                    async let i: Void? = router.state.refreshInboxes()
+                                    _ = await (r, i)
+                                }
+                            }
+                        )
+                    }
                 }
                 .presentationBackground(.regularMaterial)
             }
@@ -573,6 +609,20 @@ internal struct IdentifiableScannerWrapper: Identifiable, Hashable {
 /// `sheet(item:)` has an `Identifiable` handle. Uses a stable UUID so
 /// SwiftUI treats each presentation as a distinct sheet.
 internal struct IdentifiableRuleChangeWrapper: Identifiable, Hashable {
+    let rule: GroupRule?
+    let id: UUID = UUID()
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.rule?.id == rhs.rule?.id
+    }
+    func hash(into hasher: inout Hasher) { hasher.combine(rule?.id) }
+}
+
+/// Mirror of `IdentifiableRuleChangeWrapper` for `.createRuleRepeal`.
+/// Same shape; distinct type so the two covers don't conflate. Carries
+/// an optional preselected rule (nil when reached from the create-vote
+/// picker; populated when a future deep-link wires "archive this rule"
+/// from a rule detail screen).
+internal struct IdentifiableRuleRepealWrapper: Identifiable, Hashable {
     let rule: GroupRule?
     let id: UUID = UUID()
     static func == (lhs: Self, rhs: Self) -> Bool {
