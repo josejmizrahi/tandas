@@ -69,12 +69,23 @@ public struct ResourceDetailSheet: View {
     @State private var spaceEditPresented: Bool = false
     @State private var fundEditPresented: Bool = false
 
+    // Asset action sheets (2026-05-24 wire). The sheets themselves
+    // live in `AssetSupport.swift` and call `AssetLifecycleRepository`
+    // directly; this view only owns the presentation bindings + the
+    // toolbar menu that opens them. Surfaces only when
+    // `resource.resourceType == .asset`.
+    @State private var logMaintenancePresented: Bool = false
+    @State private var reportDamagePresented: Bool = false
+    @State private var checkOutAssetPresented: Bool = false
+    @State private var recordValuationPresented: Bool = false
+
     public init(resource: ResourceRow) { self.resource = resource }
 
     public var body: some View {
         NavigationStack {
             content
                 .ruulSheetToolbar(displayName, onClose: { dismiss() })
+                .toolbar { assetActionsToolbar }
         }
         .task { await load() }
         .task { await redirectIfEvent() }
@@ -157,6 +168,83 @@ public struct ResourceDetailSheet: View {
             .environment(app)
             .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
+        }
+        // MARK: Asset action sheets — only mounted for resource_type=asset
+        // but cheap enough to declare unconditionally (each `.sheet`
+        // sleeps until its binding flips). The `onSubmitted` of each
+        // sheet refreshes the polymorphic row so the asset detail
+        // reflects the new state without a manual reopen.
+        .sheet(isPresented: $logMaintenancePresented) {
+            LogMaintenanceSheet(asset: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $reportDamagePresented) {
+            ReportDamageSheet(asset: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $checkOutAssetPresented) {
+            CheckOutAssetSheet(
+                asset: liveResource ?? resource,
+                members: Array(memberDirectory.values)
+            ) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $recordValuationPresented) {
+            RecordValuationSheet(asset: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.regularMaterial)
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// Toolbar trailing menu with asset-specific actions. Hidden when
+    /// the resource isn't an asset so other types keep their original
+    /// toolbar shape (Cancelar only). Each menu item flips a sheet
+    /// binding; the sheet handles the RPC + atom emission.
+    @ToolbarContentBuilder
+    private var assetActionsToolbar: some ToolbarContent {
+        if resource.resourceType == .asset {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        logMaintenancePresented = true
+                    } label: {
+                        Label("Marcar mantenimiento", systemImage: "wrench.and.screwdriver")
+                    }
+                    Button {
+                        reportDamagePresented = true
+                    } label: {
+                        Label("Reportar daño", systemImage: "exclamationmark.triangle")
+                    }
+                    Button {
+                        checkOutAssetPresented = true
+                    } label: {
+                        Label("Prestar activo", systemImage: "arrow.up.right.square")
+                    }
+                    Button {
+                        recordValuationPresented = true
+                    } label: {
+                        Label("Registrar valuación", systemImage: "chart.line.uptrend.xyaxis")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Acciones del activo")
+            }
         }
     }
 
