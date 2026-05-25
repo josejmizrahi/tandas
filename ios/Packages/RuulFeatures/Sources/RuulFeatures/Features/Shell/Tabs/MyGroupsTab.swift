@@ -252,16 +252,27 @@ public struct MyGroupsTab: View {
                 .environment(app)
 
             case .balances:
-                // SharedMoney P3: full per-member "Te deben / Debes"
-                // surface. The view loads its own members snapshot so
-                // it works whether reached via this nav stack or via
-                // a deeplink that bypasses the group coordinator.
-                // 2026-05-24: consolidation — `onOpenOtherFunds`
-                // surfaces legacy funds in-place so the user finds
-                // them without a separate tile in the spaces grid.
+                // SharedMoney P3 / Money UX Consolidation PR-A
+                // (2026-05-24): "Dinero del grupo" hub now lists
+                // legacy/protected funds INLINE (not via a separate
+                // GroupFundsListView screen) — answers founder's
+                // "porque tenemos dos vistas diferentes?". The
+                // .fondos NavigationPath destination is kept as a
+                // deeplink/back-compat path but no primary surface
+                // links to it anymore.
                 GroupBalancesView(
                     group: group,
-                    onOpenOtherFunds: { navPath.append(MyGroupsTab.GroupDestination.fondos) }
+                    onOpenFund: { fund in
+                        Task {
+                            if let row = try? await app.resourceRepo.resource(fund.fundId) {
+                                router.openResource(row)
+                            }
+                        }
+                    },
+                    onCreateFund: {
+                        router.state.pendingWizardResourceType = .fund
+                        router.present(.createCover)
+                    }
                 )
                 .environment(app)
 

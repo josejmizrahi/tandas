@@ -15,7 +15,10 @@ import RuulCore
 ///   - Movimientos recientes — last 15 ledger entries for the group,
 ///     with `Para X` association when the entry was attributed to a
 ///     specific resource (event/asset/fund) via `source_resource_id`.
-///   - Otros fondos (legacy/protected) footer link.
+///   - Otros fondos — INLINE list (Money UX Consolidation PR-A,
+///     2026-05-24). Legacy `GroupFundsListView` separate screen is no
+///     longer in the primary flow; fund rows render here and tap
+///     opens the fund resource detail directly.
 ///
 /// V1 simple — the suggestions are a greedy "pair largest debtor with
 /// largest creditor" algorithm, not full multi-currency optimum
@@ -24,15 +27,19 @@ import RuulCore
 @MainActor
 public struct GroupBalancesView: View {
     public let group: RuulCore.Group
-    /// Optional callback that pushes the legacy "Otros fondos" list.
-    /// Nil → the footer link is hidden (no funds OR no nav available).
-    public let onOpenOtherFunds: (() -> Void)?
+    /// Callback that opens a fund detail. Routed by the host (typically
+    /// MyGroupsTab via `router.openResource`) so this view stays
+    /// presentation-only. Nil → fund rows render as labels without tap.
+    public let onOpenFund: ((Fund) -> Void)?
+    /// Callback to launch the fund-creation flow (resource wizard
+    /// pre-selected to `.fund`). Nil → "Crear fondo" CTA hidden.
+    public let onCreateFund: (() -> Void)?
 
     @Environment(AppState.self) private var app
 
     @State private var members: [MemberWithProfile] = []
     @State private var balances: [MemberGroupBalance] = []
-    @State private var otherFundsCount: Int = 0
+    @State private var otherFunds: [Fund] = []
     @State private var recentEntries: [LedgerEntry] = []
     @State private var resourceNamesById: [UUID: String] = [:]
     @State private var isLoading = true
@@ -40,9 +47,14 @@ public struct GroupBalancesView: View {
     @State private var hasLoaded = false
     @State private var settlementContext: SettlementContext?
 
-    public init(group: RuulCore.Group, onOpenOtherFunds: (() -> Void)? = nil) {
+    public init(
+        group: RuulCore.Group,
+        onOpenFund: ((Fund) -> Void)? = nil,
+        onCreateFund: (() -> Void)? = nil
+    ) {
         self.group = group
-        self.onOpenOtherFunds = onOpenOtherFunds
+        self.onOpenFund = onOpenFund
+        self.onCreateFund = onCreateFund
     }
 
     /// Identifiable wrapper for the `.sheet(item:)` presentation of
@@ -102,7 +114,7 @@ public struct GroupBalancesView: View {
                         }
                         settlementSuggestionsSection
                         recentMovementsSection
-                        otherFundsFooter
+                        otherFundsSection
                     }
                     .padding(RuulSpacing.lg)
                 }
@@ -339,43 +351,107 @@ public struct GroupBalancesView: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    // MARK: - Otros fondos footer
+    // MARK: - Otros fondos (inline section — PR-A Money UX Consolidation)
+
+    /// Inline section that lists legacy / protected funds (everything
+    /// except the shared pool). Replaces the previous footer-link →
+    /// separate-screen flow so the user sees ALL the group's money
+    /// surfaces on one scroll. Hidden when the group has no other
+    /// funds AND no fund-creation callback is wired.
+    @ViewBuilder
+    private var otherFundsSection: some View {
+        if !otherFunds.isEmpty || onCreateFund != nil {
+            VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+                HStack {
+                    Text("Otros fondos")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                    Spacer(minLength: 0)
+                    if let onCreateFund {
+                        Button(action: onCreateFund) {
+                            Label("Crear", systemImage: "plus.circle.fill")
+                                .labelStyle(.titleAndIcon)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color.ruulAccent)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.top, RuulSpacing.md)
+
+                if otherFunds.isEmpty {
+                    Text("No hay fondos separados. Todo el dinero está en el pool compartido.")
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .padding(.vertical, RuulSpacing.sm)
+                } else {
+                    ForEach(otherFunds, id: \.id) { fund in
+                        otherFundRow(fund)
+                    }
+                }
+            }
+        }
+    }
 
     @ViewBuilder
-    private var otherFundsFooter: some View {
-        if otherFundsCount > 0, let onOpenOtherFunds {
-            Button(action: onOpenOtherFunds) {
-                HStack(spacing: RuulSpacing.md) {
-                    ColoredIconBadge(
-                        systemName: "banknote",
-                        tint: Color.ruulPositive
-                    )
-                    VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
-                        Text("Otros fondos")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.primary)
-                        Text(otherFundsCount == 1
-                             ? "1 fondo separado"
-                             : "\(otherFundsCount) fondos separados")
-                            .font(.caption)
-                            .foregroundStyle(Color.secondary)
-                    }
-                    Spacer(minLength: 0)
+    private func otherFundRow(_ fund: Fund) -> some View {
+        let formatted = formatCurrency(fund.balanceCents, currency: fund.currency)
+        Button {
+            onOpenFund?(fund)
+        } label: {
+            HStack(spacing: RuulSpacing.md) {
+                ColoredIconBadge(
+                    systemName: "banknote",
+                    tint: Color.ruulPositive
+                )
+                VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
+                    Text(fund.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Text(otherFundSubtitle(fund))
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Text(formatted)
+                    .font(.body.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(fund.balanceCents >= 0 ? Color.primary : Color.ruulNegative)
+                if onOpenFund != nil {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.secondary)
                 }
-                .padding(RuulSpacing.md)
-                .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
-                .overlay(
-                    RoundedRectangle(cornerRadius: RuulRadius.lg)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .padding(.top, RuulSpacing.md)
+            .padding(RuulSpacing.md)
+            .background(Color.ruulSurface, in: RoundedRectangle(cornerRadius: RuulRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: RuulRadius.lg)
+                    .stroke(Color(.separator), lineWidth: 0.5)
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(onOpenFund == nil)
+    }
+
+    private func otherFundSubtitle(_ fund: Fund) -> String {
+        let contribs = fund.contributionCount
+        let expenses = fund.expenseCount
+        switch (contribs, expenses) {
+        case (0, 0): return "Sin movimientos"
+        default:     return "\(contribs) aportes · \(expenses) gastos"
+        }
+    }
+
+    private func formatCurrency(_ cents: Int64, currency: String) -> String {
+        let units = Double(cents) / 100.0
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = currency
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: units)) ?? "\(currency) \(Int(units))"
     }
 
     private func balanceRow(_ row: MemberGroupBalance) -> some View {
@@ -431,17 +507,17 @@ public struct GroupBalancesView: View {
             isLoading = false
             hasLoaded = true
         }
-        // Load members + balances + entries + other-funds count in
-        // parallel. Members + other-funds + entries are best-effort.
+        // Load members + balances + entries + other-funds in parallel.
+        // Members + other-funds + entries are best-effort.
         async let membersTask = (try? await app.groupsRepo.membersWithProfiles(of: group.id)) ?? []
         async let balancesTask = app.ledgerRepo.balancesForGroup(group.id)
         async let entriesTask = (try? await app.ledgerRepo.list(groupId: group.id, limit: 15)) ?? []
-        async let otherFundsTask = otherFundsCountForGroup()
+        async let otherFundsTask = otherFundsForGroup()
         do {
             members = await membersTask
             balances = try await balancesTask
             recentEntries = await entriesTask
-            otherFundsCount = await otherFundsTask
+            otherFunds = await otherFundsTask
             await loadResourceNames()
         } catch {
             errorMessage = "No pudimos cargar los balances."
@@ -467,18 +543,18 @@ public struct GroupBalancesView: View {
         resourceNamesById = resolved
     }
 
-    /// Count of legacy / protected funds for this group — the canonical
-    /// shared pool is filtered out via `summaryForGroup.sharedPoolId`,
-    /// mirroring the `GroupFundsListView` resolution policy. Best-effort:
-    /// returns 0 on any repo failure.
-    private func otherFundsCountForGroup() async -> Int {
+    /// Legacy / protected funds for this group — the canonical shared
+    /// pool is filtered out via `summaryForGroup.sharedPoolId`,
+    /// mirroring the (now-deprecated for primary nav) `GroupFundsListView`
+    /// resolution policy. Best-effort: returns empty on repo failure.
+    private func otherFundsForGroup() async -> [Fund] {
         async let allFundsTask = (try? await app.fundRepo.listForGroup(group.id)) ?? []
         async let sharedPoolTask = (try? await app.fundRepo.summaryForGroup(
             group.id, preferredCurrency: group.currency
         ))?.sharedPoolId
         let allFunds = await allFundsTask
         let sharedPoolId = await sharedPoolTask
-        return allFunds.filter { $0.fundId != sharedPoolId }.count
+        return allFunds.filter { $0.fundId != sharedPoolId }
     }
 }
 
