@@ -34,6 +34,7 @@ public struct GroupAjustesView: View {
     public var onPickTimezone: () -> Void
     public var onPickModules: () -> Void
     public var onOpenRoles: () -> Void
+    public var onOpenDecisiones: () -> Void
     public var onOpenGovernance: () -> Void
     public var onOpenReglas: () -> Void
     public var onRotateCode: () -> Void
@@ -48,6 +49,7 @@ public struct GroupAjustesView: View {
         onPickTimezone: @escaping () -> Void,
         onPickModules: @escaping () -> Void,
         onOpenRoles: @escaping () -> Void,
+        onOpenDecisiones: @escaping () -> Void,
         onOpenGovernance: @escaping () -> Void,
         onOpenReglas: @escaping () -> Void,
         onRotateCode: @escaping () -> Void,
@@ -61,6 +63,7 @@ public struct GroupAjustesView: View {
         self.onPickTimezone = onPickTimezone
         self.onPickModules = onPickModules
         self.onOpenRoles = onOpenRoles
+        self.onOpenDecisiones = onOpenDecisiones
         self.onOpenGovernance = onOpenGovernance
         self.onOpenReglas = onOpenReglas
         self.onRotateCode = onRotateCode
@@ -79,6 +82,12 @@ public struct GroupAjustesView: View {
             }
 
             Section {
+                row(
+                    icon: "checkmark.bubble",
+                    label: "Decisiones del grupo",
+                    detail: "Ver y participar en las votaciones abiertas",
+                    action: onOpenDecisiones
+                )
                 row(
                     icon: "person.text.rectangle",
                     label: "Roles del grupo",

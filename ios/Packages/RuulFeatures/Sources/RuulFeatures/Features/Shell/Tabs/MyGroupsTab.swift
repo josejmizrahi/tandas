@@ -305,6 +305,7 @@ public struct MyGroupsTab: View {
                     onPickTimezone:        { navPath.append(GroupDestination.timezone) },
                     onPickModules:         { navPath.append(GroupDestination.modules) },
                     onOpenRoles:           { navPath.append(GroupDestination.roles) },
+                    onOpenDecisiones:      { navPath.append(GroupDestination.decisiones) },
                     onOpenGovernance:      { navPath.append(GroupDestination.governance) },
                     onOpenReglas:          { navPath.append(GroupDestination.reglas) },
                     onRotateCode:          { showRotateCode = true },
