@@ -16,6 +16,7 @@ import RuulCore
 public struct GroupAssetsListView: View {
     public let group: RuulCore.Group
     public let onOpenAsset: (ResourceRow) -> Void
+    public let onCreate: (() -> Void)?
 
     @Environment(AppState.self) private var app
 
@@ -24,9 +25,14 @@ public struct GroupAssetsListView: View {
     @State private var errorMessage: String?
     @State private var hasLoaded = false
 
-    public init(group: RuulCore.Group, onOpenAsset: @escaping (ResourceRow) -> Void) {
+    public init(
+        group: RuulCore.Group,
+        onOpenAsset: @escaping (ResourceRow) -> Void,
+        onCreate: (() -> Void)? = nil
+    ) {
         self.group = group
         self.onOpenAsset = onOpenAsset
+        self.onCreate = onCreate
     }
 
     private var phase: LoadPhase<[ResourceRow]> {
@@ -49,7 +55,12 @@ public struct GroupAssetsListView: View {
                 ContentUnavailableView {
                     Label("Aún no hay activos", systemImage: "shippingbox")
                 } description: {
-                    Text("Los activos son cosas con valor que el grupo posee — un terreno, un vehículo, una inversión. Créalos desde el botón \"+\".")
+                    Text("Los activos son cosas con valor que el grupo posee — un terreno, un vehículo, una inversión.")
+                } actions: {
+                    if let onCreate {
+                        Button("Crear activo", action: onCreate)
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             },
             loaded: { rows in
@@ -67,6 +78,16 @@ public struct GroupAssetsListView: View {
         .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
         .navigationTitle("Activos")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let onCreate {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: onCreate) {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Crear activo")
+                }
+            }
+        }
         .task { await load() }
     }
 

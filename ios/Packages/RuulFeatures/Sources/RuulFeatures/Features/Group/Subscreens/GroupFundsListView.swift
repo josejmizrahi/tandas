@@ -17,6 +17,7 @@ import RuulCore
 public struct GroupFundsListView: View {
     public let group: RuulCore.Group
     public let onOpenFund: (Fund) -> Void
+    public let onCreate: (() -> Void)?
 
     @Environment(AppState.self) private var app
 
@@ -25,9 +26,14 @@ public struct GroupFundsListView: View {
     @State private var errorMessage: String?
     @State private var hasLoaded = false
 
-    public init(group: RuulCore.Group, onOpenFund: @escaping (Fund) -> Void) {
+    public init(
+        group: RuulCore.Group,
+        onOpenFund: @escaping (Fund) -> Void,
+        onCreate: (() -> Void)? = nil
+    ) {
         self.group = group
         self.onOpenFund = onOpenFund
+        self.onCreate = onCreate
     }
 
     private var phase: LoadPhase<[Fund]> {
@@ -50,7 +56,12 @@ public struct GroupFundsListView: View {
                 ContentUnavailableView {
                     Label("No hay fondos separados", systemImage: "banknote")
                 } description: {
-                    Text("Todo el dinero del grupo está en Dinero compartido.")
+                    Text("Todo el dinero del grupo está en Dinero compartido. Un fondo separado sirve cuando quieres aislar plata para un fin específico.")
+                } actions: {
+                    if let onCreate {
+                        Button("Crear fondo", action: onCreate)
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             },
             loaded: { rows in
@@ -68,6 +79,16 @@ public struct GroupFundsListView: View {
         .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
         .navigationTitle("Otros fondos")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let onCreate {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: onCreate) {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Crear fondo")
+                }
+            }
+        }
         .task { await load() }
     }
 

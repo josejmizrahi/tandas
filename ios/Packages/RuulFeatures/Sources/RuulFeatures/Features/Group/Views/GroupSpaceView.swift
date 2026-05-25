@@ -200,7 +200,7 @@ public struct GroupSpaceView: View {
 
     private func composeChips() -> [GroupComposeBar.Chip] {
         [
-            .init(id: "event",   label: "Evento",   systemImage: "calendar.badge.plus",
+            .init(id: "create",  label: "Crear",    systemImage: "plus.circle.fill",
                   tint: Color.ruulWarning,             action: onCreateEvent),
             .init(id: "vote",    label: "Votar",    systemImage: "checkmark.square",
                   tint: GroupColorRamp.blue.accent,    action: onStartVote),

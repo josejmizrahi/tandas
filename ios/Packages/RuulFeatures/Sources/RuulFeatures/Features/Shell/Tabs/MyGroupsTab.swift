@@ -226,6 +226,10 @@ public struct MyGroupsTab: View {
                                 router.openResource(row)
                             }
                         }
+                    },
+                    onCreate: {
+                        router.state.pendingWizardResourceType = .fund
+                        router.present(.createCover)
                     }
                 )
                 .environment(app)
@@ -239,6 +243,10 @@ public struct MyGroupsTab: View {
                         // which mounts the Money Block via makeGenericConfig
                         // (Phase 4 brick C.1).
                         router.openResource(asset)
+                    },
+                    onCreate: {
+                        router.state.pendingWizardResourceType = .asset
+                        router.present(.createCover)
                     }
                 )
                 .environment(app)
@@ -498,10 +506,12 @@ private struct GroupSpaceScreen: View {
                 GroupSpaceView(
                     coordinator: coordinator,
                     onCreateEvent: {
-                        // Pre-select the event builder so the wizard
-                        // jumps straight to the event fields step
-                        // instead of the type picker.
-                        router.state.pendingWizardResourceType = .event
+                        // Open the universal ResourceCreationSheet so
+                        // founders can pick between event/asset/fund/
+                        // space/slot/right. Pre-2026-05-24 this branch
+                        // pre-selected `.event` and skipped the picker,
+                        // making every other type unreachable from the
+                        // group home.
                         router.present(.createCover)
                     },
                     onStartVote:      { router.present(.createVotePicker) },
