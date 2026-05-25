@@ -37,6 +37,9 @@ public struct GroupAjustesView: View {
     public var onOpenDecisiones: () -> Void
     public var onOpenGovernance: () -> Void
     public var onOpenReglas: () -> Void
+    public var onOpenEventsList: () -> Void
+    public var onOpenAssetsList: () -> Void
+    public var onOpenFundsList: () -> Void
     public var onRotateCode: () -> Void
     public var onArchiveGroup: () -> Void
     public var onLeaveGroup: () -> Void
@@ -52,6 +55,9 @@ public struct GroupAjustesView: View {
         onOpenDecisiones: @escaping () -> Void,
         onOpenGovernance: @escaping () -> Void,
         onOpenReglas: @escaping () -> Void,
+        onOpenEventsList: @escaping () -> Void,
+        onOpenAssetsList: @escaping () -> Void,
+        onOpenFundsList: @escaping () -> Void,
         onRotateCode: @escaping () -> Void,
         onArchiveGroup: @escaping () -> Void,
         onLeaveGroup: @escaping () -> Void
@@ -66,6 +72,9 @@ public struct GroupAjustesView: View {
         self.onOpenDecisiones = onOpenDecisiones
         self.onOpenGovernance = onOpenGovernance
         self.onOpenReglas = onOpenReglas
+        self.onOpenEventsList = onOpenEventsList
+        self.onOpenAssetsList = onOpenAssetsList
+        self.onOpenFundsList = onOpenFundsList
         self.onRotateCode = onRotateCode
         self.onArchiveGroup = onArchiveGroup
         self.onLeaveGroup = onLeaveGroup
@@ -113,6 +122,29 @@ public struct GroupAjustesView: View {
                 )
             } header: {
                 Text("Reglas")
+            }
+
+            Section {
+                row(
+                    icon: "calendar",
+                    label: "Eventos del grupo",
+                    detail: "Todos los eventos próximos",
+                    action: onOpenEventsList
+                )
+                row(
+                    icon: "shippingbox",
+                    label: "Activos del grupo",
+                    detail: "Cosas que el grupo tiene y comparte",
+                    action: onOpenAssetsList
+                )
+                row(
+                    icon: "banknote",
+                    label: "Fondos protegidos",
+                    detail: "Bolsas de dinero separadas del fondo común",
+                    action: onOpenFundsList
+                )
+            } header: {
+                Text("Recursos del grupo")
             }
 
             Section {

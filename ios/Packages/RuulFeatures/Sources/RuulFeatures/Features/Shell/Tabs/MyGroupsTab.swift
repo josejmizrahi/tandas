@@ -308,6 +308,9 @@ public struct MyGroupsTab: View {
                     onOpenDecisiones:      { navPath.append(GroupDestination.decisiones) },
                     onOpenGovernance:      { navPath.append(GroupDestination.governance) },
                     onOpenReglas:          { navPath.append(GroupDestination.reglas) },
+                    onOpenEventsList:      { navPath.append(GroupDestination.eventos) },
+                    onOpenAssetsList:      { navPath.append(GroupDestination.activos) },
+                    onOpenFundsList:       { navPath.append(GroupDestination.fondos) },
                     onRotateCode:          { showRotateCode = true },
                     onArchiveGroup:        { showArchiveConfirm = true },
                     onLeaveGroup:          { showLeave = true }
