@@ -256,8 +256,14 @@ public struct MyGroupsTab: View {
                 // surface. The view loads its own members snapshot so
                 // it works whether reached via this nav stack or via
                 // a deeplink that bypasses the group coordinator.
-                GroupBalancesView(group: group)
-                    .environment(app)
+                // 2026-05-24: consolidation — `onOpenOtherFunds`
+                // surfaces legacy funds in-place so the user finds
+                // them without a separate tile in the spaces grid.
+                GroupBalancesView(
+                    group: group,
+                    onOpenOtherFunds: { navPath.append(MyGroupsTab.GroupDestination.fondos) }
+                )
+                .environment(app)
 
             case .ajustes:
                 GroupAjustesView(
