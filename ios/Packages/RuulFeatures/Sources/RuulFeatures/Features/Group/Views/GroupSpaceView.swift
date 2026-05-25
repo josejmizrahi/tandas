@@ -241,7 +241,7 @@ public struct GroupSpaceView: View {
                 }
                 if let onOpenAjustes {
                     Button(
-                        "Ajustes del grupo",
+                        "Cómo nos organizamos",
                         systemImage: "gearshape",
                         action: onOpenAjustes
                     )

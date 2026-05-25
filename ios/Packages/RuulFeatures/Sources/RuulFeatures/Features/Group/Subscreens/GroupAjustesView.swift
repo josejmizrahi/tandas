@@ -108,7 +108,7 @@ public struct GroupAjustesView: View {
                 row(
                     icon: "scroll",
                     label: "Reglas vigentes",
-                    detail: "Acuerdos WHEN/IF/THEN que impactan cada recurso",
+                    detail: "Lo que el grupo acordó cumplir",
                     action: onOpenReglas
                 )
             } header: {
@@ -165,7 +165,7 @@ public struct GroupAjustesView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Ajustes del grupo")
+        .navigationTitle("Cómo nos organizamos")
         .navigationBarTitleDisplayMode(.inline)
     }
 
