@@ -19,9 +19,8 @@ struct GroupClusterStream: View {
     let upcoming: [Event]
     let recentMoney: [LedgerEntry]
     let inUse: [InUseProjection]
-    let recentActivity: [MyActivityItem]
+    let recentActivity: [SystemEvent]
 
-    let actor: Profile?
     let locale: String
     let members: [MemberWithProfile]
     let currency: String
@@ -70,9 +69,8 @@ struct GroupClusterStream: View {
             }
             if !recentActivity.isEmpty {
                 JustHappenedCluster(
-                    items: recentActivity,
-                    actor: actor,
-                    locale: locale,
+                    events: recentActivity,
+                    members: members,
                     onSeeAll: onSeeAllActivity
                 )
             }

@@ -64,7 +64,7 @@ public struct GovernanceView: View {
                 durationRow
                 anonymousToggle
             } header: {
-                Text("Configuración de votación")
+                Text("¿Cuándo decimos que una votación pasó?")
             } footer: {
                 if let error {
                     Text(error)
@@ -88,7 +88,7 @@ public struct GovernanceView: View {
     private var quorumRow: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
-                Text("Quórum")
+                Text("Mínimo de gente que debe votar")
                 Spacer()
                 Text("\(rules.votingQuorumPercent)%")
                     .foregroundStyle(Color.secondary)
@@ -102,7 +102,7 @@ public struct GovernanceView: View {
                 in: 25...100,
                 step: 5
             )
-            Text("Mínimo del grupo que debe votar para que cuente.")
+            Text("Si vota menos gente, la decisión no cuenta.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
         }
@@ -111,7 +111,7 @@ public struct GovernanceView: View {
     private var thresholdRow: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xxs) {
             HStack {
-                Text("Mayoría requerida")
+                Text("Cuánto necesita votar a favor")
                 Spacer()
                 Text("\(rules.votingThresholdPercent)%")
                     .foregroundStyle(Color.secondary)
@@ -125,7 +125,7 @@ public struct GovernanceView: View {
                 in: 50...75,
                 step: 5
             )
-            Text("% de votos a favor para aprobar.")
+            Text("Porcentaje de gente que tiene que decir sí para que pase.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
         }
@@ -139,14 +139,15 @@ public struct GovernanceView: View {
                 step: 24
             ) {
                 HStack {
-                    Text("Duración")
+                    Text("Días que dura la votación")
                     Spacer()
-                    Text("\(rules.votingDurationHours) hrs")
+                    let days = max(1, rules.votingDurationHours / 24)
+                    Text(days == 1 ? "1 día" : "\(days) días")
                         .foregroundStyle(Color.secondary)
                         .monospacedDigit()
                 }
             }
-            Text("Tiempo abierta antes de cerrarse.")
+            Text("Después de este tiempo la votación se cierra sola.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
         }

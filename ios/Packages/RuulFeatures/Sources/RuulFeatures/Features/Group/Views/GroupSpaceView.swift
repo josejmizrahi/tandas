@@ -116,8 +116,6 @@ public struct GroupSpaceView: View {
                         onTapMembers: onOpenMembers
                     )
 
-                    GroupComposeBar(chips: composeChips())
-
                     if isEmpty {
                         EmptyGroupHero(
                             onInvite: onInviteMembers,
@@ -129,8 +127,7 @@ public struct GroupSpaceView: View {
                             upcoming: coordinator.upcomingEvents,
                             recentMoney: coordinator.recentMoneyEntries,
                             inUse: coordinator.inUseItems,
-                            recentActivity: coordinator.recentActivity,
-                            actor: app.profile,
+                            recentActivity: coordinator.groupActivityEvents,
                             locale: app.profile?.locale ?? "es-MX",
                             members: coordinator.allMembers,
                             currency: group.currency,
@@ -166,7 +163,7 @@ public struct GroupSpaceView: View {
             && coordinator.upcomingEvents.isEmpty
             && coordinator.recentMoneyEntries.isEmpty
             && coordinator.inUseItems.isEmpty
-            && coordinator.recentActivity.isEmpty
+            && coordinator.groupActivityEvents.isEmpty
     }
 
     @ViewBuilder
@@ -200,41 +197,35 @@ public struct GroupSpaceView: View {
         }
     }
 
-    private func composeChips() -> [GroupComposeBar.Chip] {
-        [
-            .init(
-                id: "create",
-                label: "Crear",
-                systemImage: "plus.circle.fill",
-                tint: Color.ruulWarning,
-                action: onCreateEvent
-            ),
-            .init(
-                id: "vote",
-                label: "Votar",
-                systemImage: "checkmark.square",
-                tint: GroupColorRamp.blue.accent,
-                action: onStartVote
-            ),
-            .init(
-                id: "invite",
-                label: "Invitar",
-                systemImage: "person.badge.plus",
-                tint: GroupColorRamp.purple.accent,
-                action: onInviteMembers
-            ),
-            .init(
-                id: "share",
-                label: "Compartir",
-                systemImage: "square.and.arrow.up",
-                tint: GroupColorRamp.teal.accent,
-                action: onShareInvite
-            )
-        ]
-    }
-
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // "+" trailing button — compose verbs. Replaces the
+        // pre-PR-2 GroupComposeBar chip row (V3 fix 2026-05-25:
+        // 4 equal-weight chips at top diluted the "qué importa
+        // ahora" signal of the clusters below).
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button(
+                    "Crear algo",
+                    systemImage: "plus.circle",
+                    action: onCreateEvent
+                )
+                Button(
+                    "Iniciar votación",
+                    systemImage: "checkmark.square",
+                    action: onStartVote
+                )
+                Button(
+                    "Invitar gente",
+                    systemImage: "person.badge.plus",
+                    action: onInviteMembers
+                )
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel("Agregar al grupo")
+        }
+        // "⋯" trailing — non-create actions (browse / manage / leave).
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button(

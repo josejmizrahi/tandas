@@ -2,16 +2,17 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// "Acabó de pasar" — cluster #5 de la doctrina situacional. Reusa
-/// el row recipe + `parts(for:)` decoder del antiguo
-/// GroupStreamBlock. V1 data source: `my_activity_v1` filtrado por
-/// grupo (per-user), igual que el bloque legacy — el día que un
-/// feed group-wide aterrice, el row layout no cambia.
+/// "Acabó de pasar" — cluster #5 de la doctrina situacional.
+///
+/// V4 fix (2026-05-25): la versión PR-1 leía `my_activity_v1`
+/// (per-user) y mostraba "Tú confirmaste asistencia". Ahora lee
+/// `system_events` group-wide vía `HistoryItemPresentation`, así
+/// el feed verdaderamente refleja al grupo: "José confirmó
+/// asistencia", "Linda pagó la cena". Auto-oculta si está vacío.
 @MainActor
 struct JustHappenedCluster: View {
-    let items: [MyActivityItem]
-    let actor: Profile?
-    let locale: String
+    let events: [SystemEvent]
+    let members: [MemberWithProfile]
     var onSeeAll: (() -> Void)?
 
     var body: some View {
@@ -30,9 +31,9 @@ struct JustHappenedCluster: View {
             .padding(.horizontal, RuulSpacing.xxs)
 
             VStack(spacing: 0) {
-                ForEach(items) { item in
-                    JustHappenedRow(item: item, actor: actor, locale: locale)
-                    if item.id != items.last?.id {
+                ForEach(events) { event in
+                    JustHappenedRow(event: event, members: members)
+                    if event.id != events.last?.id {
                         Divider()
                             .background(Color(.separator))
                             .padding(.leading, 54)
@@ -50,21 +51,33 @@ struct JustHappenedCluster: View {
 
 @MainActor
 private struct JustHappenedRow: View {
-    let item: MyActivityItem
-    let actor: Profile?
-    let locale: String
+    let event: SystemEvent
+    let members: [MemberWithProfile]
 
     var body: some View {
         HStack(alignment: .top, spacing: RuulSpacing.sm) {
             RuulAvatar(
-                name: actorName,
-                imageURL: actor?.avatarUrl.flatMap(URL.init(string:)),
+                name: actorMember?.displayName ?? "Alguien",
+                imageURL: actorMember?.avatarURL,
                 size: .small
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                streamText
-                Text(relativeTime(item.occurredAt))
+                let presentation = HistoryItemPresentation(
+                    event: event,
+                    memberName: actorMember?.displayName
+                )
+                Text(presentation.title)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(2)
+                if let subtitle = presentation.subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                        .lineLimit(1)
+                }
+                Text(relativeTime(event.occurredAt))
                     .font(.caption2)
                     .foregroundStyle(Color(.tertiaryLabel))
                     .monospacedDigit()
@@ -75,29 +88,15 @@ private struct JustHappenedRow: View {
         .padding(RuulSpacing.md)
     }
 
-    private var actorName: String { actor?.displayName ?? "Tú" }
-
-    private var streamText: Text {
-        let parts = GroupStreamBlock.parts(for: item)
-        var t = Text(actorName).fontWeight(.semibold)
-            + Text(" \(parts.verb) ").foregroundColor(.secondary)
-        if let amount = parts.amount {
-            let amountText = Text(amount.value).fontWeight(.semibold)
-            t = t + (amount.isPositive
-                     ? amountText.foregroundColor(Color.ruulPositive)
-                     : amountText.foregroundColor(Color.ruulNegative))
-            t = t + Text(" ")
-        }
-        if !parts.object.isEmpty {
-            t = t + Text(parts.object).foregroundColor(.primary)
-        }
-        return t.font(.subheadline)
+    private var actorMember: MemberWithProfile? {
+        guard let id = event.memberId else { return nil }
+        return members.first(where: { $0.member.id == id })
     }
 
     private func relativeTime(_ date: Date) -> String {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .short
-        f.locale = Locale(identifier: locale)
+        f.locale = Locale(identifier: "es_MX")
         return f.localizedString(for: date, relativeTo: .now)
     }
 }

@@ -413,6 +413,7 @@ private struct GroupHomeSheetContent: View {
             groupSummaryRepo: app.groupSummaryRepo,
             userActionRepo: app.userActionRepo,
             myActivityRepo: app.myActivityRepo,
+            systemEventRepo: app.systemEventRepo,
             eventRepo: app.eventRepo,
             fineRepo: app.fineRepo,
             fundRepo: app.fundRepo,

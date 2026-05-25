@@ -39,6 +39,10 @@ public struct MyGroupsTab: View {
     public init() {}
 
     public enum GroupDestination: Hashable {
+        // V7 fix (2026-05-25): polymorphic resources view, replacing
+        // the per-type rows (eventos/activos/fondos) that recreated
+        // silo browsing in Ajustes.
+        case recursos
         // Decisiones tile → open votes (votes in progress).
         // Reglas vigentes (the WHEN/IF/THEN policy list) is a
         // separate destination reached from Ajustes.
@@ -308,13 +312,18 @@ public struct MyGroupsTab: View {
                     onOpenDecisiones:      { navPath.append(GroupDestination.decisiones) },
                     onOpenGovernance:      { navPath.append(GroupDestination.governance) },
                     onOpenReglas:          { navPath.append(GroupDestination.reglas) },
-                    onOpenEventsList:      { navPath.append(GroupDestination.eventos) },
-                    onOpenAssetsList:      { navPath.append(GroupDestination.activos) },
-                    onOpenFundsList:       { navPath.append(GroupDestination.fondos) },
+                    onOpenResources:       { navPath.append(GroupDestination.recursos) },
                     onRotateCode:          { showRotateCode = true },
                     onArchiveGroup:        { showArchiveConfirm = true },
                     onLeaveGroup:          { showLeave = true }
                 )
+
+            case .recursos:
+                GroupResourcesView(
+                    group: group,
+                    onSelect: { row in router.openResource(row) }
+                )
+                .environment(app)
 
             case .roles:
                 GroupRolesAssignmentsView(
@@ -587,6 +596,7 @@ private struct GroupSpaceScreen: View {
                     groupSummaryRepo: app.groupSummaryRepo,
                     userActionRepo: app.userActionRepo,
                     myActivityRepo: app.myActivityRepo,
+                    systemEventRepo: app.systemEventRepo,
                     eventRepo: app.eventRepo,
                     fineRepo: app.fineRepo,
                     fundRepo: app.fundRepo,

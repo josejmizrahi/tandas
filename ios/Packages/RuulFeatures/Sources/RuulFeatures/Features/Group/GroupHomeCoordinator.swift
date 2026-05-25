@@ -12,6 +12,7 @@ public final class GroupHomeCoordinator {
     private let groupSummaryRepo: (any GroupSummaryRepository)?
     private let userActionRepo: (any UserActionRepository)?
     private let myActivityRepo: (any MyActivityRepository)?
+    private let systemEventRepo: (any SystemEventRepository)?
     private let eventRepo: (any EventRepository)?
     private let fineRepo: (any FineRepository)?
     private let fundRepo: (any FundRepository)?
@@ -106,6 +107,13 @@ public final class GroupHomeCoordinator {
     /// cluster on GroupSpaceView. Slot in-use is intentionally not
     /// surfaced (semantics ambiguous per founder rule 2026-05-24).
     public var inUseItems: [InUseProjection] = []
+
+    /// Group-wide system events for the "Acabó de pasar" cluster
+    /// (V4 fix 2026-05-25). Replaces the per-user `recentActivity`
+    /// source — the cluster now reads from `system_events` so rows
+    /// say "José pagó la cena" instead of "Tú pagaste la cena".
+    /// Top 5 newest. Empty until first successful refresh.
+    public var groupActivityEvents: [SystemEvent] = []
     /// The viewer's own balance for the group's currency, derived from
     /// `groupBalances` once `group` + `actorUserId` resolve. nil when
     /// the user has no entries yet (settled). UI hides the card in
@@ -179,6 +187,7 @@ public final class GroupHomeCoordinator {
         groupSummaryRepo: (any GroupSummaryRepository)? = nil,
         userActionRepo: (any UserActionRepository)? = nil,
         myActivityRepo: (any MyActivityRepository)? = nil,
+        systemEventRepo: (any SystemEventRepository)? = nil,
         eventRepo: (any EventRepository)? = nil,
         fineRepo: (any FineRepository)? = nil,
         fundRepo: (any FundRepository)? = nil,
@@ -193,6 +202,7 @@ public final class GroupHomeCoordinator {
         self.groupSummaryRepo = groupSummaryRepo
         self.userActionRepo = userActionRepo
         self.myActivityRepo = myActivityRepo
+        self.systemEventRepo = systemEventRepo
         self.eventRepo = eventRepo
         self.fineRepo = fineRepo
         self.fundRepo = fundRepo
@@ -235,6 +245,7 @@ public final class GroupHomeCoordinator {
             async let balancesTask: Void = loadBalances()
             async let recentMoneyTask: Void = loadRecentMoney()
             async let inUseTask: Void = loadInUse()
+            async let groupActivityTask: Void = loadGroupActivity()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -248,6 +259,7 @@ public final class GroupHomeCoordinator {
             _ = await balancesTask
             _ = await recentMoneyTask
             _ = await inUseTask
+            _ = await groupActivityTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
@@ -329,6 +341,26 @@ public final class GroupHomeCoordinator {
             self.inUseItems = try await repo.inUseInGroup(groupId)
         } catch {
             log.warning("group in-use load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Loads the most recent group-wide system events for the "Acabó
+    /// de pasar" cluster. V4 fix 2026-05-25: replaces the per-user
+    /// `MyActivityRepository.loadRecent` source so the feed reads
+    /// "José confirmó asistencia" instead of "Tú confirmaste". Top 5
+    /// newest; soft-fails (empty list auto-hides the cluster per
+    /// doctrine).
+    private func loadGroupActivity() async {
+        guard let repo = systemEventRepo else { return }
+        do {
+            let events = try await repo.query(
+                filter: SystemEventFilter(groupId: groupId),
+                limit: 5,
+                offset: 0
+            )
+            self.groupActivityEvents = events
+        } catch {
+            log.warning("group activity load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
