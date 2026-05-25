@@ -2,10 +2,10 @@ import SwiftUI
 import RuulUI
 import RuulCore
 
-/// Phase 2 Slice 2.4 — detail view for a slot (one cupo of an asset).
-/// Shows time range, status, assigned holder, booking, and exposes
-/// 3 actions: Assign (founder/admin), Book (any member with bookSlot),
-/// Request swap (current assigned holder).
+/// Detail de un turno (sub-unidad de un activo). Doctrine v2 (2026-05-25):
+/// renderiza vía `ResourceDetailContent` igual que Event/Fund/Space/Fine —
+/// "same world". Vocabulario humanizado: "Cupo" → "Turno", status state
+/// machine → frase ("Le toca a José" / "Disponible").
 public struct SlotDetailView: View {
     public let slot: ResourceRow
     public let asset: ResourceRow
@@ -23,99 +23,128 @@ public struct SlotDetailView: View {
     }
 
     public var body: some View {
-        List {
-            Section {
-                LabeledContent("Empieza", value: rangeLabel(key: "starts_at"))
-                LabeledContent("Termina", value: rangeLabel(key: "ends_at"))
-                LabeledContent("Estado", value: slot.status.capitalized)
-                LabeledContent("Recurso", value: assetName)
-            } header: {
-                Text("Cupo")
-                    .font(.title2.weight(.semibold))
-                    .textCase(nil)
+        ResourceDetailContent(config: makeConfig())
+            .fullScreenCover(isPresented: $showAssignSheet) {
+                AssignSlotSheet(slot: slot, members: members) { Task { await refresh() } }
             }
-
-            Section("Asignación") {
-                if let assigned = assignedMember {
-                    LabeledContent("Titular", value: assigned.displayName)
-                } else {
-                    Text("Sin titular")
-                        .foregroundStyle(Color.secondary)
-                }
-                if let booking = bookingId {
-                    LabeledContent("Reserva", value: booking.uuidString.prefix(8) + "…")
-                }
+            .fullScreenCover(isPresented: $showSwapSheet) {
+                RequestSwapSheet(
+                    slot: slot,
+                    members: members.filter { $0.id != currentMemberId }
+                ) { _ in Task { await refresh() } }
             }
-
-            Section("Acciones") {
-                if canAssign {
-                    Button("Asignar a un miembro") { showAssignSheet = true }
-                }
-                if canBook {
-                    Button("Reservar este cupo", action: { Task { await book() } })
-                        .disabled(isBooking)
-                }
-                if canRequestSwap {
-                    Button("Solicitar swap a otro miembro") { showSwapSheet = true }
-                }
+            .task { await loadMembers() }
+            .navigationTitle("Turno")
+            .navigationBarTitleDisplayMode(.inline)
+            .alert(
+                "No pudimos hacer el cambio",
+                isPresented: Binding(
+                    get: { actionError != nil },
+                    set: { if !$0 { actionError = nil } }
+                ),
+                presenting: actionError
+            ) { _ in
+                Button("OK", role: .cancel) { actionError = nil }
+            } message: { msg in
+                Text(msg)
             }
-
-            if let actionError {
-                Section { Text(actionError).foregroundStyle(.red) }
-            }
-            if let actionInfo {
-                Section { Text(actionInfo).foregroundStyle(.green) }
-            }
-        }
-        .navigationTitle("Cupo")
-        .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $showAssignSheet) {
-            AssignSlotSheet(slot: slot, members: members) { Task { await refresh() } }
-        }
-        .fullScreenCover(isPresented: $showSwapSheet) {
-            RequestSwapSheet(slot: slot, members: members.filter { $0.id != currentMemberId }) { _ in
-                Task { await refresh() }
-            }
-        }
-        .task { await loadMembers() }
     }
 
-    // MARK: - Computed
+    // MARK: - Config
+
+    private func makeConfig() -> ResourceConfig {
+        ResourceConfig.slot(
+            SlotInput(
+                id: slot.id.uuidString,
+                assetName: assetName,
+                timeRangeLabel: timeRangeLabel,
+                statusLabel: humanStatus,
+                titularPerson: titularPersonForDetail,
+                canAssign: canAssign,
+                canBook: canBook,
+                canRequestSwap: canRequestSwap
+            ),
+            onBook: { Task { await book() } },
+            onAssign: { showAssignSheet = true },
+            onRequestSwap: { showSwapSheet = true }
+        )
+    }
+
+    // MARK: - Derived
 
     private var assetName: String {
         asset.metadata["name"]?.stringValue ?? "Recurso"
     }
 
     private var assignedMemberId: UUID? {
-        guard let s = slot.metadata["assigned_member_id"]?.stringValue else { return nil }
-        return UUID(uuidString: s)
+        guard let raw = slot.metadata["assigned_member_id"]?.stringValue else { return nil }
+        return UUID(uuidString: raw)
     }
+
     private var assignedMember: MemberWithProfile? {
         guard let id = assignedMemberId else { return nil }
         return members.first { $0.id == id }
     }
+
     private var bookingId: UUID? {
-        guard let s = slot.metadata["booking_id"]?.stringValue else { return nil }
-        return UUID(uuidString: s)
+        guard let raw = slot.metadata["booking_id"]?.stringValue else { return nil }
+        return UUID(uuidString: raw)
     }
+
     private var currentMemberId: UUID? {
         guard let userId = appState.session?.user.id else { return nil }
         return members.first { $0.member.userId == userId }?.id
     }
 
+    /// Maps the wire status string + assignment metadata into a single
+    /// human phrase ("Le toca a José" / "Disponible" / "Reservado").
+    /// Per doctrine v2 §7: the state machine label never appears verbatim.
+    private var humanStatus: String {
+        if let assigned = assignedMember {
+            return "Le toca a \(assigned.displayName)"
+        }
+        switch slot.status {
+        case "unassigned": return "Disponible"
+        case "assigned":   return "Asignado"
+        case "booked":     return "Reservado"
+        default:           return slot.status.capitalized
+        }
+    }
+
+    /// Renders the titular as a `Person` for the avatars section.
+    /// Nil when unassigned — the factory falls back to the empty-state row.
+    private var titularPersonForDetail: Person? {
+        guard let mw = assignedMember else { return nil }
+        return Person(
+            id: mw.id.uuidString,
+            name: mw.displayName,
+            initials: initials(mw.displayName),
+            color: ResourceFamilyTint.persons.color,
+            imageURL: mw.avatarURL
+        )
+    }
+
+    private var timeRangeLabel: String {
+        let start = parseISO(slot.metadata["starts_at"]?.stringValue)?.ruulShortDate
+        let end = parseISO(slot.metadata["ends_at"]?.stringValue)?.ruulShortTime
+        switch (start, end) {
+        case let (s?, e?): return "\(s) · hasta \(e)"
+        case let (s?, nil): return s
+        case let (nil, e?): return "Hasta \(e)"
+        default: return "Sin fecha"
+        }
+    }
+
     private var canAssign: Bool {
-        // Server enforces assignSlot perm. UI proxy: founder/admin role.
         guard let g = appState.activeGroup else { return false }
-        // Best-effort check on cached myRole if loaded; fall back to true and let server reject.
         return slot.groupId == g.id
     }
+
     private var canBook: Bool {
-        // Server enforces bookSlot perm. UI proxy: anyone in the group.
-        // Server will reject if slot is assigned to another holder.
         slot.status == "unassigned" || slot.status == "assigned"
     }
+
     private var canRequestSwap: Bool {
-        // Only the current holder can request a swap.
         guard let me = currentMemberId, let assigned = assignedMemberId else { return false }
         return me == assigned
     }
@@ -129,8 +158,7 @@ public struct SlotDetailView: View {
         actionInfo = nil
         defer { isBooking = false }
         do {
-            let bookingId = try await appState.slotLifecycleRepo.bookSlot(slot.id)
-            actionInfo = "Reservado: \(bookingId.uuidString.prefix(8))…"
+            _ = try await appState.slotLifecycleRepo.bookSlot(slot.id)
             await refresh()
         } catch {
             actionError = error.localizedDescription
@@ -151,13 +179,19 @@ public struct SlotDetailView: View {
         }
     }
 
-    private func rangeLabel(key: String) -> String {
-        guard let raw = slot.metadata[key]?.stringValue else { return "—" }
+    private func initials(_ name: String) -> String {
+        let parts = name.split(separator: " ")
+        let first = parts.first.map(String.init).flatMap { $0.first.map(String.init) } ?? ""
+        let last = parts.dropFirst().last.map(String.init).flatMap { $0.first.map(String.init) } ?? ""
+        return (first + last).uppercased()
+    }
+
+    private func parseISO(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
         let isoFrac = ISO8601DateFormatter()
         isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let isoPlain = ISO8601DateFormatter()
-        let date = isoFrac.date(from: raw) ?? isoPlain.date(from: raw)
-        return date?.ruulShortDate ?? raw
+        if let d = isoFrac.date(from: raw) { return d }
+        return ISO8601DateFormatter().date(from: raw)
     }
 }
 
@@ -179,7 +213,7 @@ struct AssignSlotSheet: View {
                 Text(m.displayName)
                     .tag(m.id as UUID?)
             }
-            .ruulSheetToolbar("Asignar cupo")
+            .ruulSheetToolbar("Asignar turno")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Asignar") { Task { await submit() } }
@@ -227,7 +261,7 @@ struct RequestSwapSheet: View {
                 Text(m.displayName)
                     .tag(m.id as UUID?)
             }
-            .ruulSheetToolbar("Pedir swap")
+            .ruulSheetToolbar("Pedir intercambio")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Solicitar") { Task { await submit() } }
