@@ -70,17 +70,15 @@ struct MapSection: View {
                                 .font(.subheadline.weight(.semibold))
                         }
                         .buttonStyle(.glass)
+                        .controlSize(.large)
                         .tint(accent)
 
                         Button { showingOptions = true } label: {
                             Image(systemName: "ellipsis")
                                 .font(.subheadline.weight(.semibold))
-                                .frame(width: 32, height: 32)
                         }
-                        // Default accent — passing ruulFillGlassStrong as tint
-                        // colored the ellipsis with the fill wash and made it
-                        // disappear into the glass background.
                         .buttonStyle(.glass)
+                        .controlSize(.large)
                     }
                 }
                 .padding(.horizontal, 14)

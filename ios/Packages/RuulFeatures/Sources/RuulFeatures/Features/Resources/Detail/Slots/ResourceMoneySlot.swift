@@ -65,7 +65,7 @@ struct ResourceMoneySlot: View {
             RuulButton(
                 "Registrar movimiento",
                 style: .secondary,
-                size: .medium,
+                size: .large,
                 fillsWidth: true
             ) {
                 presentedSheet = .picker

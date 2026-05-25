@@ -52,8 +52,9 @@ private struct ActionButton: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 38)
+            .frame(maxWidth: .infinity)
         }
+        .controlSize(.large)
         .modifier(ActionStyle(tint: action.tint))
     }
 }
