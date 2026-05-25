@@ -94,12 +94,22 @@ public struct GroupSpaceView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackgroundRecessed.ignoresSafeArea()
-            AsyncContentView(
-                phase: coordinator.phase,
-                onRetry: { await coordinator.refresh() },
-                loaded: { _ in loadedScroll }
-            )
+            // Cold-start: replace generic spinner with a structural
+            // skeleton so entering a group feels like entering THE
+            // group (Audit 2 fix 2026-05-25).
+            if coordinator.phase.isInitialLoading {
+                GroupSpaceSkeleton()
+                    .transition(.opacity)
+            } else {
+                AsyncContentView(
+                    phase: coordinator.phase,
+                    onRetry: { await coordinator.refresh() },
+                    loaded: { _ in loadedScroll }
+                )
+                .transition(.opacity)
+            }
         }
+        .animation(.smooth, value: coordinator.phase.isInitialLoading)
         .task { await coordinator.refresh() }
         .toolbar { toolbarContent }
     }
