@@ -157,9 +157,11 @@ public struct EventDetailSheets: ViewModifier {
             .sheet(isPresented: bindingForSheet(.movementPicker)) {
                 RegisterMovementSheet { kind in
                     switch kind {
-                    case .contribution: b.sheet.wrappedValue = .movementContribute
-                    case .expense:      b.sheet.wrappedValue = .movementExpense
-                    case .settlement:   b.sheet.wrappedValue = .movementSettle
+                    case .contribution:  b.sheet.wrappedValue = .movementContribute
+                    case .expense:       b.sheet.wrappedValue = .movementExpense
+                    case .settlement:    b.sheet.wrappedValue = .movementSettle
+                    case .reimbursement, .payout, .poolCharge:
+                        b.sheet.wrappedValue = .movementExpense
                     }
                 }
                 .presentationBackground(.ultraThinMaterial)

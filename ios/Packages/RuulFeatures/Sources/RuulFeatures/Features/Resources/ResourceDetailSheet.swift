@@ -155,10 +155,14 @@ public struct ResourceDetailSheet: View {
         // by attaching here (inside the content), not as siblings at the
         // shell root. SwiftUI only renders one sibling cover at a time.
         .sheet(isPresented: $spaceReservePresented) {
-            SpaceReserveSheet(resourceName: displayName)
-                .environment(app)
-                .presentationBackground(.ultraThinMaterial)
-                .presentationDragIndicator(.visible)
+            SpaceReserveSheet(
+                resourceId: (liveResource ?? resource).id,
+                resourceName: displayName,
+                onSubmitted: { Task { await refreshResource() } }
+            )
+            .environment(app)
+            .presentationBackground(.ultraThinMaterial)
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $spaceCalendarPresented) {
             SpaceCalendarSheet(resource: liveResource ?? resource)
@@ -268,7 +272,7 @@ public struct ResourceDetailSheet: View {
                 case .contribution:  moneySheet = .contribute
                 case .expense:       moneySheet = .record
                 case .settlement:    moneySheet = .settle
-                case .reimbursement, .payout: moneySheet = .record
+                case .reimbursement, .payout, .poolCharge: moneySheet = .record
                 }
             }
         case .contribute:
