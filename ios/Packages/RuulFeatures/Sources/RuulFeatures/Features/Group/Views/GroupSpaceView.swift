@@ -43,6 +43,9 @@ public struct GroupSpaceView: View {
         var id: Self { self }
     }
     @State private var sharedMoneySheet: SharedMoneySheet?
+    /// 2026-05-25 proposal B: tap an avatar → MemberQuickSheet.
+    /// Contextual participation FIRST, full identity SECOND.
+    @State private var quickSheetMember: MemberWithProfile?
 
     // Compose chips (toolbar "+")
     public var onCreateEvent: () -> Void
@@ -137,7 +140,8 @@ public struct GroupSpaceView: View {
                         group: group,
                         memberCount: coordinator.memberCount,
                         members: coordinator.members,
-                        onTapMembers: onOpenMembers
+                        onTapMembers: onOpenMembers,
+                        onTapMember: { quickSheetMember = $0 }
                     )
 
                     GroupPulseLine(
@@ -196,6 +200,31 @@ public struct GroupSpaceView: View {
             .sheet(item: $sharedMoneySheet) { which in
                 sharedMoneySheetContent(which, group: group)
                     .presentationDetents([.medium, .large])
+            }
+            .sheet(item: $quickSheetMember) { member in
+                MemberQuickSheet(
+                    member: member,
+                    groupId: group.id,
+                    groupCurrency: group.currency,
+                    memberBalance: coordinator.groupBalances.first(where: {
+                        $0.memberId == member.member.id && $0.currency == group.currency
+                    }),
+                    onLiquidar: nil,  // Future: pre-fill SettlementSheet
+                                       // with dyadic pair (viewer ↔ member).
+                                       // V1 keeps the action hidden until the
+                                       // dyadic balance projection lands.
+                    onOpenProfile: {
+                        quickSheetMember = nil
+                        // Defer the member-list navigation push to the
+                        // caller's onOpenMembers route; the list itself
+                        // can push MemberDetailView for the specific member.
+                        onOpenMembers?()
+                    }
+                )
+                .environment(app)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
             }
         }
     }

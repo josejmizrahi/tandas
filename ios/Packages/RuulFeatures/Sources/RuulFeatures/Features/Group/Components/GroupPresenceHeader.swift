@@ -12,7 +12,21 @@ struct GroupPresenceHeader: View {
     let group: RuulCore.Group
     let memberCount: Int
     let members: [MemberWithProfile]
+    /// Tap on the whole avatar strip (or the "+N" overflow). Routes
+    /// to the full members list.
     var onTapMembers: (() -> Void)?
+    /// 2026-05-25: per-avatar tap → opens `MemberQuickSheet`. When nil,
+    /// the avatar stack is a single tap target falling back to
+    /// `onTapMembers`. When set, each avatar becomes its own tap surface.
+    var onTapMember: ((MemberWithProfile) -> Void)?
+
+    private let maxVisible = 5
+    private var visibleMembers: [MemberWithProfile] {
+        Array(members.prefix(maxVisible))
+    }
+    private var overflow: Int {
+        max(0, memberCount - maxVisible)
+    }
 
     var body: some View {
         VStack(spacing: RuulSpacing.sm) {
@@ -27,30 +41,73 @@ struct GroupPresenceHeader: View {
             VStack(spacing: 2) {
                 Text(group.name)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.primary)
+                    .foregroundStyle(Color.ruulTextPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                 Text(metadataLabel)
                     .font(.caption)
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Color.ruulTextSecondary)
             }
 
             if !members.isEmpty {
-                Button(action: { onTapMembers?() }) {
-                    RuulAvatarStack(
-                        people: members.map(personFromMember),
-                        size: .small,
-                        maxVisible: 5
-                    )
+                avatarRow
                     .padding(.top, RuulSpacing.xxs)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Ver miembros del grupo")
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, RuulSpacing.md)
+    }
+
+    // MARK: - Avatar row
+
+    /// When `onTapMember` is non-nil, each avatar is independently
+    /// tappable (opens MemberQuickSheet). When nil, the whole row falls
+    /// back to a single button that routes to the full members list.
+    @ViewBuilder
+    private var avatarRow: some View {
+        if onTapMember != nil {
+            HStack(spacing: -8) {
+                ForEach(visibleMembers, id: \.id) { m in
+                    Button {
+                        onTapMember?(m)
+                    } label: {
+                        RuulAvatar(
+                            name: m.displayName,
+                            imageURL: m.avatarURL,
+                            size: .small,
+                            border: .glass
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(m.displayName)
+                }
+                if overflow > 0 {
+                    Button(action: { onTapMembers?() }) {
+                        Text("+\(overflow)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.ruulTextSecondary)
+                            .frame(width: 28, height: 28)
+                            .background(Color.ruulSurface, in: Circle())
+                            .overlay(
+                                Circle().strokeBorder(Color.ruulSurface, lineWidth: 2)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Ver \(overflow) miembros más")
+                }
+            }
+        } else {
+            Button(action: { onTapMembers?() }) {
+                RuulAvatarStack(
+                    people: members.map(personFromMember),
+                    size: .small,
+                    maxVisible: maxVisible
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ver miembros del grupo")
+        }
     }
 
     private var metadataLabel: String {
