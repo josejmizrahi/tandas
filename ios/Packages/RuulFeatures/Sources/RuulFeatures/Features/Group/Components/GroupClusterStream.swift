@@ -16,7 +16,10 @@ import RuulCore
 @MainActor
 struct GroupClusterStream: View {
     let attention: [UserAction]
-    let upcoming: [Event]
+    /// 2026-05-25: polimorphic Próximo. Items can be events, closing
+    /// votes, or slot rotations. Adding new cases doesn't touch this
+    /// component — only `UpcomingCluster` row rendering.
+    let upcoming: [UpcomingItem]
     let recentMoney: [LedgerEntry]
     let inUse: [InUseProjection]
     let recentActivity: [SystemEvent]
@@ -27,6 +30,8 @@ struct GroupClusterStream: View {
 
     let onSelectPending: (UserAction) -> Void
     let onOpenEvent: (Event) -> Void
+    let onOpenVote: (Vote) -> Void
+    let onOpenSlot: (Slot) -> Void
     let onOpenInUseResource: (UUID) -> Void
     var onSeeAllActivity: (() -> Void)?
     var onSeeAllMoney: (() -> Void)?
@@ -42,8 +47,10 @@ struct GroupClusterStream: View {
             }
             if !upcoming.isEmpty {
                 UpcomingCluster(
-                    events: upcoming,
+                    items: upcoming,
                     onOpenEvent: onOpenEvent,
+                    onOpenVote: onOpenVote,
+                    onOpenSlot: onOpenSlot,
                     onSeeAll: onSeeAllUpcoming
                 )
             }

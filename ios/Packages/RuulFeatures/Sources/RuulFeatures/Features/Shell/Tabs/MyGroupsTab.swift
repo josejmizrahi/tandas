@@ -557,6 +557,14 @@ private struct GroupSpaceScreen: View {
                     onInviteMembers:  { showInvite = true },
                     onShareInvite:    { router.present(.inviteShare) },
                     onOpenEvent:      { event in router.openEvent(event) },
+                    onOpenVote:       { vote in router.openVoteDetail(VoteDetailRouteContext(vote: vote)) },
+                    onOpenSlot:       { slot in
+                        Task {
+                            if let row = try? await app.resourceRepo.resource(slot.id) {
+                                router.openResource(row)
+                            }
+                        }
+                    },
                     onSelectPending:  { action in
                         Task { await handleInboxAction(action) }
                     },
@@ -599,6 +607,8 @@ private struct GroupSpaceScreen: View {
                     fundRepo: app.fundRepo,
                     resourceRepo: app.resourceRepo,
                     ledgerRepo: app.ledgerRepo,
+                    voteRepo: app.voteRepo,
+                    slotRepo: app.slotRepo,
                     actorUserId: app.session?.user.id,
                     changeFeed: app.multiDeviceChangeFeed
                 )

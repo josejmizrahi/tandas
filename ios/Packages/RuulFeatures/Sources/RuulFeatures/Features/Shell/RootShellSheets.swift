@@ -419,6 +419,8 @@ private struct GroupHomeSheetContent: View {
             fundRepo: app.fundRepo,
             resourceRepo: app.resourceRepo,
             ledgerRepo: app.ledgerRepo,
+            voteRepo: app.voteRepo,
+            slotRepo: app.slotRepo,
             actorUserId: app.session?.user.id
         )
         NavigationStack(path: $path) {
@@ -429,6 +431,16 @@ private struct GroupHomeSheetContent: View {
                 onInviteMembers: { showInvite = true },
                 onShareInvite: { router.present(.inviteShare) },
                 onOpenEvent: { event in router.openEvent(event) },
+                onOpenVote: { vote in router.openVoteDetail(VoteDetailRouteContext(vote: vote)) },
+                onOpenSlot: { slot in
+                    // Slot doesn't have a dedicated route; open the
+                    // resource detail via the polymorphic ResourceRow.
+                    Task {
+                        if let row = try? await app.resourceRepo.resource(slot.id) {
+                            router.openResource(row)
+                        }
+                    }
+                },
                 onSelectPending: { _ in router.selectTab(.home) },
                 onOpenMembers: {
                     path.append(

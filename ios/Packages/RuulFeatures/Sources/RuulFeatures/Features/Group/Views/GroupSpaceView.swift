@@ -52,6 +52,8 @@ public struct GroupSpaceView: View {
 
     // Cluster row routing
     public var onOpenEvent: (Event) -> Void
+    public var onOpenVote: (Vote) -> Void
+    public var onOpenSlot: (Slot) -> Void
     public var onSelectPending: (UserAction) -> Void
     public var onOpenInUseResource: (UUID) -> Void
 
@@ -73,6 +75,8 @@ public struct GroupSpaceView: View {
         onInviteMembers: @escaping () -> Void,
         onShareInvite: @escaping () -> Void,
         onOpenEvent: @escaping (Event) -> Void,
+        onOpenVote: @escaping (Vote) -> Void = { _ in },
+        onOpenSlot: @escaping (Slot) -> Void = { _ in },
         onSelectPending: @escaping (UserAction) -> Void,
         onOpenInUseResource: @escaping (UUID) -> Void = { _ in },
         onOpenMembers: (() -> Void)? = nil,
@@ -89,6 +93,8 @@ public struct GroupSpaceView: View {
         self.onInviteMembers = onInviteMembers
         self.onShareInvite = onShareInvite
         self.onOpenEvent = onOpenEvent
+        self.onOpenVote = onOpenVote
+        self.onOpenSlot = onOpenSlot
         self.onSelectPending = onSelectPending
         self.onOpenInUseResource = onOpenInUseResource
         self.onOpenMembers = onOpenMembers
@@ -156,7 +162,7 @@ public struct GroupSpaceView: View {
                     if hasStreamContent {
                         GroupClusterStream(
                             attention: coordinator.pendingActions,
-                            upcoming: coordinator.upcomingEvents,
+                            upcoming: coordinator.upcomingItems,
                             recentMoney: coordinator.recentMoneyEntries,
                             inUse: coordinator.inUseItems,
                             recentActivity: coordinator.groupActivityEvents,
@@ -165,6 +171,8 @@ public struct GroupSpaceView: View {
                             currency: group.currency,
                             onSelectPending: onSelectPending,
                             onOpenEvent: onOpenEvent,
+                            onOpenVote: onOpenVote,
+                            onOpenSlot: onOpenSlot,
                             onOpenInUseResource: onOpenInUseResource,
                             onSeeAllActivity: onOpenActivity,
                             onSeeAllMoney: onOpenTransactions,
@@ -204,7 +212,7 @@ public struct GroupSpaceView: View {
 
     private var hasStreamContent: Bool {
         !coordinator.pendingActions.isEmpty
-            || !coordinator.upcomingEvents.isEmpty
+            || !coordinator.upcomingItems.isEmpty
             || !coordinator.recentMoneyEntries.isEmpty
             || !coordinator.inUseItems.isEmpty
             || !coordinator.groupActivityEvents.isEmpty

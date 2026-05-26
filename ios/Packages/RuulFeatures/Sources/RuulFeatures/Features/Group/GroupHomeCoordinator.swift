@@ -18,6 +18,10 @@ public final class GroupHomeCoordinator {
     private let fundRepo: (any FundRepository)?
     private let resourceRepo: (any ResourceRepository)?
     private let ledgerRepo: (any LedgerRepository)?
+    /// 2026-05-25: polymorphic "Próximo" sources. `voteRepo` powers
+    /// `.voteClosing` items; `slotRepo` powers `.slotRotation`.
+    private let voteRepo: (any VoteRepository)?
+    private let slotRepo: (any SlotRepository)?
     private let actorUserId: UUID?
     private let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "group.home")
 
@@ -92,10 +96,25 @@ public final class GroupHomeCoordinator {
     public var groupBalances: [MemberGroupBalance] = []
 
     /// Upcoming events in the group, ordered ascending by `startsAt`.
-    /// Drives the "Próximo" cluster on GroupSpaceView. V1 cluster is
-    /// event-only (slot/booking/deadline are V1.5+); the cluster will
-    /// extend polymorphically when those types ship.
+    /// Kept for back-compat with consumers that read raw events
+    /// (HomeOverviewView, EventsHistory, etc.). The Próximo cluster
+    /// reads from `upcomingItems` instead.
     public var upcomingEvents: [Event] = []
+
+    /// 2026-05-25 polymorphic Próximo: merged + sorted upcoming items
+    /// across Event / Vote (closing) / Slot (rotation). New sources
+    /// land here by extending `UpcomingItem` + adding a loader in
+    /// `loadUpcomingItems` — no caller changes.
+    public var upcomingItems: [UpcomingItem] = []
+
+    /// Open votes for this group whose `closesAt` is in the future.
+    /// Populated alongside `upcomingItems` so the votes are also
+    /// addressable as `[Vote]` if a future surface needs them.
+    public var openVotes: [Vote] = []
+
+    /// Upcoming slot rotations (`startsAt > now`). Same back-compat
+    /// rationale as `openVotes`.
+    public var upcomingSlots: [Slot] = []
 
     /// Recent ledger entries for the group, newest first. Drives the
     /// "Dinero reciente" cluster on GroupSpaceView. Polymorphic via
@@ -193,6 +212,8 @@ public final class GroupHomeCoordinator {
         fundRepo: (any FundRepository)? = nil,
         resourceRepo: (any ResourceRepository)? = nil,
         ledgerRepo: (any LedgerRepository)? = nil,
+        voteRepo: (any VoteRepository)? = nil,
+        slotRepo: (any SlotRepository)? = nil,
         actorUserId: UUID? = nil,
         changeFeed: (any MultiDeviceChangeFeed)? = nil
     ) {
@@ -208,6 +229,8 @@ public final class GroupHomeCoordinator {
         self.fundRepo = fundRepo
         self.resourceRepo = resourceRepo
         self.ledgerRepo = ledgerRepo
+        self.voteRepo = voteRepo
+        self.slotRepo = slotRepo
         self.actorUserId = actorUserId
         if let feed = changeFeed {
             self.changeFeedTask = Task { [weak self] in
@@ -246,6 +269,8 @@ public final class GroupHomeCoordinator {
             async let recentMoneyTask: Void = loadRecentMoney()
             async let inUseTask: Void = loadInUse()
             async let groupActivityTask: Void = loadGroupActivity()
+            async let openVotesTask: Void = loadOpenVotes()
+            async let upcomingSlotsTask: Void = loadUpcomingSlots()
             let detail = try await detailTask
             self.members = await membersTask
             _ = await summaryTask
@@ -260,11 +285,16 @@ public final class GroupHomeCoordinator {
             _ = await recentMoneyTask
             _ = await inUseTask
             _ = await groupActivityTask
+            _ = await openVotesTask
+            _ = await upcomingSlotsTask
             self.group = detail.group
             self.memberCount = detail.memberCount
             self.myRole = detail.myRole
             self.myRawRoles = detail.myRawRoles
             self.activeModules = resolveModules(slugs: detail.group.activeModules ?? [])
+            // Merge polymorphic Próximo sources after all dependents
+            // resolve (allMembers needs to be set for holder resolution).
+            rebuildUpcomingItems()
         } catch {
             log.warning("group home refresh failed: \(error.localizedDescription, privacy: .public)")
             self.error = CoordinatorError.from(error, fallback: "No pudimos cargar el grupo")
@@ -442,5 +472,73 @@ public final class GroupHomeCoordinator {
 
     private func resolveModules(slugs: [String]) -> [GroupModule] {
         slugs.compactMap { slug in moduleRegistry.modules.first(where: { $0.id == slug }) }
+    }
+
+    // MARK: - Polymorphic Próximo sources (2026-05-25)
+
+    /// Loads open votes for the group. The Próximo cluster will filter
+    /// these by `closesAt` imminence at merge time.
+    private func loadOpenVotes() async {
+        guard let repo = voteRepo else { return }
+        do {
+            self.openVotes = try await repo.openVotes(for: groupId)
+        } catch {
+            log.warning("group open votes load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Loads all non-archived slots for the group. `rebuildUpcomingItems`
+    /// filters to `startsAt > now` for the Próximo merge.
+    private func loadUpcomingSlots() async {
+        guard let repo = slotRepo else { return }
+        do {
+            let all = try await repo.listForGroup(groupId)
+            let now = Date()
+            self.upcomingSlots = all.filter { $0.startsAt > now }
+        } catch {
+            log.warning("group upcoming slots load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Merges all polymorphic upcoming sources into `upcomingItems`,
+    /// sorted ascending by `occursAt`. Called after parallel loaders
+    /// complete (so member names can be resolved for slot holders).
+    /// Cap at 8 rows — the cluster itself further caps at 5 visible,
+    /// the extras give us headroom for filter changes.
+    private func rebuildUpcomingItems() {
+        let now = Date()
+        var items: [UpcomingItem] = []
+
+        // Events: take what's already loaded by `loadUpcomingEventsCount`.
+        items.append(contentsOf: upcomingEvents.map(UpcomingItem.event))
+
+        // Votes: filter open + closesAt in the future. Status filter
+        // is defensive — `openVotes` repo method should already return
+        // status=.open, but pre-finalize jobs can leave stale rows.
+        items.append(contentsOf:
+            openVotes
+                .filter { $0.status == .open && $0.closesAt > now }
+                .map(UpcomingItem.voteClosing)
+        )
+
+        // Slots: resolve the holder name from `allMembers` (loaded in
+        // parallel with the slots themselves). asset_name resolution
+        // is deferred — the row falls back to a generic "Turno" title
+        // when assetName is nil (no extra fetch on the hot path).
+        items.append(contentsOf:
+            upcomingSlots.map { slot in
+                let holderName: String? = slot.assignedMemberId.flatMap { memberId in
+                    allMembers.first(where: { $0.member.id == memberId })?.displayName
+                }
+                return UpcomingItem.slotRotation(
+                    slot: slot,
+                    holderName: holderName,
+                    assetName: nil
+                )
+            }
+        )
+
+        items.sort { $0.occursAt < $1.occursAt }
+        self.upcomingItems = Array(items.prefix(8))
     }
 }
