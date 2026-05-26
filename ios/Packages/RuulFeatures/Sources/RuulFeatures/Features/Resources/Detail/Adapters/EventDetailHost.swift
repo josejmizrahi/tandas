@@ -732,14 +732,36 @@ public struct EventDetailHost: View {
                 },
                 ToolbarMenuItem(label: "Recordar a asistentes", icon: "bell.badge") {
                     sheet = .remindAttendees
-                },
-                ToolbarMenuItem(label: "Cerrar evento", icon: "lock") {
-                    sheet = .closeEvent
-                },
-                ToolbarMenuItem(label: "Cancelar evento", icon: "xmark.circle", role: .destructive) {
-                    sheet = .cancelEvent
                 }
             ])
+            // FASE 3 PR-8: Cerrar/Reabrir mutually exclusive según status.
+            // El catalog ya declaraba `.reopenEvent` SecondaryAction
+            // (CapabilityResolver+SecondaryActions.swift) pero este menu
+            // manual la ignoraba — Reabrir era un botón fantasma.
+            let status = coordinator.event.status
+            if status == .closed || status == .cancelled {
+                items.append(ToolbarMenuItem(label: "Reabrir evento", icon: "arrow.uturn.backward.circle") {
+                    RuulHaptic.light.trigger()
+                    Task {
+                        coordinator.clearError()
+                        await coordinator.reopenEvent()
+                        if coordinator.error == nil {
+                            RuulHaptic.success.trigger()
+                        } else {
+                            RuulHaptic.error.trigger()
+                        }
+                    }
+                })
+            } else {
+                items.append(ToolbarMenuItem(label: "Cerrar evento", icon: "lock") {
+                    sheet = .closeEvent
+                })
+            }
+            if status != .cancelled {
+                items.append(ToolbarMenuItem(label: "Cancelar evento", icon: "xmark.circle", role: .destructive) {
+                    sheet = .cancelEvent
+                })
+            }
         }
         return items
     }
