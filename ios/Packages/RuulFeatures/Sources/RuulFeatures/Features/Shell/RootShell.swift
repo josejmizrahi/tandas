@@ -160,6 +160,7 @@ public struct RootShell: View {
             userActionRepo: app.userActionRepo,
             groupsRepo: app.groupsRepo,
             rsvpRepo: app.rsvpRepo,
+            appealRepo: app.appealRepo,
             changeFeed: app.multiDeviceChangeFeed,
             analytics: app.analytics
         )
@@ -175,6 +176,7 @@ public struct RootShell: View {
             userActionRepo: app.userActionRepo,
             groupsRepo: app.groupsRepo,
             rsvpRepo: app.rsvpRepo,
+            appealRepo: app.appealRepo,
             changeFeed: app.multiDeviceChangeFeed,
             analytics: app.analytics
         )

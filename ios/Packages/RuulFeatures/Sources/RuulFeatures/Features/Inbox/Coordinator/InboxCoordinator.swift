@@ -27,6 +27,11 @@ public final class InboxCoordinator {
     /// pushing the event detail. Optional so preview / mock paths can
     /// instantiate the coordinator without rewiring AppState.
     private let rsvpRepo: (any RSVPRepository)?
+    /// FASE 3 C.2 surface 2 (appeal vote inline): when injected, the inbox
+    /// can cast a fine-appeal vote (Mantener multa / Anular multa) without
+    /// pushing the vote detail. Optional so preview / mock paths still
+    /// instantiate the coordinator without rewiring AppState.
+    private let appealRepo: (any AppealRepository)?
     /// Beta 1 W4 F-4.5: nil-safe analytics injection so `inbox_action_resolved`
     /// fires when the user taps through a row. Default nil keeps preview /
     /// mock callers working without rewiring AppState.
@@ -48,6 +53,7 @@ public final class InboxCoordinator {
         userActionRepo: any UserActionRepository,
         groupsRepo: (any GroupsRepository)? = nil,
         rsvpRepo: (any RSVPRepository)? = nil,
+        appealRepo: (any AppealRepository)? = nil,
         changeFeed: (any MultiDeviceChangeFeed)? = nil,
         analytics: (any AnalyticsService)? = nil
     ) {
@@ -56,6 +62,7 @@ public final class InboxCoordinator {
         self.userActionRepo = userActionRepo
         self.groupsRepo = groupsRepo
         self.rsvpRepo = rsvpRepo
+        self.appealRepo = appealRepo
         self.analytics = analytics
         if let feed = changeFeed {
             self.changeFeedTask = Task { [weak self] in
@@ -174,6 +181,28 @@ public final class InboxCoordinator {
         } catch {
             log.warning("confirmRSVP failed: \(error.localizedDescription)")
             self.error = CoordinatorError.from(error, fallback: "No pudimos guardar tu respuesta")
+            await refresh()
+        }
+    }
+
+    /// FASE 3 C.2 surface 2: casts a fine-appeal vote from the inbox row
+    /// without pushing the vote detail. `action.referenceId` carries the
+    /// vote id (mig 00163 — `appealVotePending.reference_id = vote_id`).
+    /// `cast_vote` writes a vote_casts row; the post-insert trigger then
+    /// auto-resolves the `appealVotePending` UserAction server-side, so
+    /// no resolve() call is needed on success. Refresh restores the row
+    /// on RPC failure.
+    public func castAppealVote(_ action: UserAction, choice: AppealVoteChoice) async {
+        guard action.actionType == .appealVotePending,
+              let appealRepo
+        else { return }
+        let voteId = action.referenceId
+        actions.removeAll { $0.id == action.id }
+        do {
+            try await appealRepo.castVote(appealId: voteId, choice: choice)
+        } catch {
+            log.warning("castAppealVote failed: \(error.localizedDescription)")
+            self.error = CoordinatorError.from(error, fallback: "No pudimos guardar tu voto")
             await refresh()
         }
     }

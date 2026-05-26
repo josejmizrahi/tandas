@@ -72,7 +72,10 @@ public struct ActionInboxView: View {
 
     /// FASE 3 C.2 surface 2/3: returns an inline-action strip for action
     /// types that can be resolved in-place (B.1 optimistic-toggle). nil
-    /// for types that still require a sheet/detail flow.
+    /// for types that still require a sheet/detail flow. Vote choice
+    /// semantics per `Appeal.swift`: `inFavor` = side with the appellant
+    /// (anular la multa), `against` = uphold the fine (mantenerla). The
+    /// inbox shows the binary path only; abstain still routes to detail.
     @ViewBuilder
     private func inlineStrip(for action: UserAction) -> some View {
         switch action.actionType {
@@ -92,6 +95,22 @@ public struct ActionInboxView: View {
                     handler: { Task { await coordinator.confirmRSVP(action, status: .declined) } }
                 )
             ])
+        case .appealVotePending:
+            InlineActionStrip(actions: [
+                .init(
+                    label: "Anular multa",
+                    systemImage: "hand.thumbsup",
+                    haptic: .medium,
+                    handler: { Task { await coordinator.castAppealVote(action, choice: .inFavor) } }
+                ),
+                .init(
+                    label: "Mantener",
+                    systemImage: "hand.thumbsdown",
+                    role: .destructive,
+                    haptic: .medium,
+                    handler: { Task { await coordinator.castAppealVote(action, choice: .against) } }
+                )
+            ])
         default:
             EmptyView()
         }
@@ -101,8 +120,8 @@ public struct ActionInboxView: View {
     /// Mirrors the switch in `inlineStrip(for:)` — keep in sync.
     private func hasInlineStrip(_ action: UserAction) -> Bool {
         switch action.actionType {
-        case .rsvpPending: return true
-        default:           return false
+        case .rsvpPending, .appealVotePending: return true
+        default:                               return false
         }
     }
 
