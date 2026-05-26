@@ -17,6 +17,9 @@ public struct HomeTab: View {
     /// canonical `ReviewProposedFinesView` instead of routing to the
     /// event detail.
     @State private var reviewProposedFinesEvent: Event?
+    /// Action id of the originating `.fineProposalReview` so the sheet
+    /// can auto-resolve it server-side when the load returns zero fines.
+    @State private var reviewProposedFinesActionId: UUID?
 
     public init(home: HomeCoordinator?, inbox: InboxCoordinator?) {
         self.homeCoordinator = home
@@ -48,9 +51,19 @@ public struct HomeTab: View {
         .sheet(item: $reviewProposedFinesEvent) { event in
             ReviewProposedFinesSheet(
                 event: event,
-                onClose: { reviewProposedFinesEvent = nil },
+                pendingActionId: reviewProposedFinesActionId,
+                onClose: {
+                    reviewProposedFinesEvent = nil
+                    reviewProposedFinesActionId = nil
+                    // Inbox refresh so a freshly-resolved stale action
+                    // disappears from the pendings cluster on next render.
+                    if let inbox = inboxCoordinator {
+                        Task { await inbox.refresh() }
+                    }
+                },
                 onSelectFine: { fine in
                     reviewProposedFinesEvent = nil
+                    reviewProposedFinesActionId = nil
                     router.openFine(fine)
                 }
             )
@@ -82,8 +95,11 @@ public struct HomeTab: View {
         case .fineProposalReview:
             // Bug-1 fix: open the host's grace-period dashboard (proposed
             // fines for this event) instead of routing to the event detail.
-            // referenceId IS event_id per mig 00044.
+            // referenceId IS event_id per mig 00044. The actionId is
+            // captured so the sheet auto-resolves it when the event has
+            // zero fines (stale-action cleanup).
             if let event = try? await app.eventRepo.event(action.referenceId) {
+                reviewProposedFinesActionId = action.id
                 reviewProposedFinesEvent = event
             }
         case .appealVotePending:

@@ -542,6 +542,10 @@ private struct GroupSpaceScreen: View {
     /// canonical `ReviewProposedFinesView` (the host's grace-period
     /// dashboard) instead of routing to the event detail.
     @State private var reviewProposedFinesEvent: Event?
+    /// Action id of the originating `.fineProposalReview` so the sheet
+    /// can auto-resolve it server-side when the load returns zero fines
+    /// (stale-action cleanup).
+    @State private var reviewProposedFinesActionId: UUID?
 
     var body: some View {
         Group {
@@ -615,9 +619,17 @@ private struct GroupSpaceScreen: View {
         .sheet(item: $reviewProposedFinesEvent) { event in
             ReviewProposedFinesSheet(
                 event: event,
-                onClose: { reviewProposedFinesEvent = nil },
+                pendingActionId: reviewProposedFinesActionId,
+                onClose: {
+                    reviewProposedFinesEvent = nil
+                    reviewProposedFinesActionId = nil
+                    // Inbox refresh so a freshly-resolved stale action
+                    // disappears from the pendings cluster on next render.
+                    Task { await coordinator?.refresh() }
+                },
                 onSelectFine: { fine in
                     reviewProposedFinesEvent = nil
+                    reviewProposedFinesActionId = nil
                     router.openFine(fine)
                 }
             )
@@ -643,8 +655,11 @@ private struct GroupSpaceScreen: View {
         case .fineProposalReview:
             // Bug-1 fix: open the host's grace-period dashboard for the
             // event's proposed fines, not the event detail. The action's
-            // referenceId IS event_id (per mig 00044).
+            // referenceId IS event_id (per mig 00044). The actionId is
+            // also captured so the sheet can auto-resolve the action if
+            // the event has zero fines (stale-action cleanup).
             if let event = try? await app.eventRepo.event(action.referenceId) {
+                reviewProposedFinesActionId = action.id
                 reviewProposedFinesEvent = event
             }
         case .rsvpPending, .hostAssigned:
