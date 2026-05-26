@@ -72,12 +72,17 @@ public final class ReviewProposedFinesCoordinator {
             let updated = try await fineRepo.officialize(fineId: fineId)
             replaceLocal(updated)
         } catch {
-            // W2-C2: translate to Spanish-MX so PostgREST/JWT/network
-            // messages don't leak straight into the inbox banner.
-            self.error = error.ruulUserMessage
-            // Beta 1 W4 F-4.5 TODO: emit `error_shown` when this coordinator
-            // gains an injected AnalyticsService. High-traffic error paths
-            // (auth, settings save, inbox resolve) already covered.
+            // 2026-05-25 founder debug: surface raw error detail
+            // alongside the user-friendly translation. The server's
+            // `raise exception 'only host or admin can officialize'`
+            // (mig 00155) was getting collapsed into a generic
+            // "Algo salió mal" by `ruulUserMessage`, hiding the
+            // actual cause. Verbose form lets the founder share what
+            // failed; safe to keep — error is selectable text in the
+            // UI banner.
+            let detail = "\(type(of: error)): \(error)"
+            log.warning("officialize failed fineId=\(fineId.uuidString) error=\(detail)")
+            self.error = composeMutationError(error: error, detail: detail)
         }
     }
 
@@ -89,8 +94,27 @@ public final class ReviewProposedFinesCoordinator {
             let updated = try await fineRepo.void(fineId: fineId, reason: reason)
             replaceLocal(updated)
         } catch {
-            self.error = error.ruulUserMessage
+            let detail = "\(type(of: error)): \(error)"
+            log.warning("void failed fineId=\(fineId.uuidString) error=\(detail)")
+            self.error = composeMutationError(error: error, detail: detail)
         }
+    }
+
+    /// Combines the Spanish-MX user-facing message with the raw error
+    /// detail so the banner shows both. Banner is `textSelection(.enabled)`
+    /// in the view so founders can copy the detail when filing bugs.
+    private func composeMutationError(error: Error, detail: String) -> String {
+        let userMessage = error.ruulUserMessage
+        // If the user message is the generic fallback, prepend a
+        // permission-specific hint when the raw error mentions "host"
+        // or "admin" — that's by far the most common officialize/void
+        // failure mode (RPC permission gate per mig 00155 / 00273).
+        let lower = detail.lowercased()
+        if lower.contains("only host") || lower.contains("only admin")
+            || lower.contains("host or admin") {
+            return "Solo el host del evento o un admin pueden hacer esto.\n\nDetalle: \(detail)"
+        }
+        return "\(userMessage)\n\nDetalle: \(detail)"
     }
 
     private func replaceLocal(_ fine: Fine) {
