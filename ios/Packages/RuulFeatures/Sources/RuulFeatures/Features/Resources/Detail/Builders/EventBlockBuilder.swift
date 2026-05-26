@@ -104,12 +104,32 @@ public struct EventBlockBuilder: BlockBuilder {
                 urgency: .actionable
             )
         }
+        // FASE 3 C.2 surface 4: attendee with RSVP=going and not yet
+        // checked-in gets a "Ya llegué" one-shot. Server (mig 00236) lets
+        // any user self check-in (`auth.uid() = p_user_id`) regardless of
+        // event status, so we mirror that here — no event-status gate.
+        if let rsvp = source.myRSVP,
+           rsvp.status == .going,
+           !rsvp.isCheckedIn {
+            return StateHeadline(
+                headline: "¿Ya llegaste?",
+                supportingFacts: [relativeDay(from: source.event.startsAt, now: now)],
+                primaryAction: PrimaryAction(
+                    label: "Ya llegué",
+                    symbol: "figure.wave",
+                    style: .standard,
+                    kind: .selfCheckIn
+                ),
+                urgency: .actionable
+            )
+        }
         let rsvpLabel = source.myRSVP?.status.displayName ?? ""
+        let checkInFact = source.myRSVP?.isCheckedIn == true ? "Llegaste" : rsvpLabel
         return StateHeadline(
             headline: "Asistencia confirmada",
             supportingFacts: [
                 relativeDay(from: source.event.startsAt, now: now),
-                rsvpLabel
+                checkInFact
             ],
             primaryAction: nil,
             urgency: .ambient

@@ -327,7 +327,7 @@ public struct VoteDetailHost: View {
         case .none,
              .rsvpConfirm, .rsvpCancel, .viewHostActions,
              .openContribute, .openBooking, .viewClosed,
-             .exerciseRight, .payFine:
+             .exerciseRight, .payFine, .selfCheckIn:
             break  // not applicable to votes
         }
     }

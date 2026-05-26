@@ -178,7 +178,7 @@ public struct FineDetailHost: View {
         case .none,
              .rsvpConfirm, .rsvpCancel, .viewHostActions,
              .openContribute, .openBooking, .viewClosed,
-             .exerciseRight, .castVote:
+             .exerciseRight, .castVote, .selfCheckIn:
             break  // not applicable to fines (castVote is for votes only)
         }
     }

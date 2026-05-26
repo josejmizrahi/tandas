@@ -32,6 +32,10 @@ public struct PrimaryAction: Sendable, Hashable {
         /// Vote + status=open + viewer hasn't cast a ballot. Routes to
         /// existing `VoteRepository.castVote` → `rpc('cast_vote')`.
         case castVote
+        /// Event + viewer is attendee (RSVP=going) + not host + not yet
+        /// checked-in. Routes to `EventDetailCoordinator.selfCheckIn` →
+        /// `rpc('check_in_v2', method='self')` (FASE 3 C.2 surface 4).
+        case selfCheckIn
         case none               // no CTA — caller hides the footer
     }
 

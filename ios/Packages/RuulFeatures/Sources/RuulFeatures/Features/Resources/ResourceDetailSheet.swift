@@ -256,9 +256,10 @@ public struct ResourceDetailSheet: View {
         case .picker:
             RegisterMovementSheet { kind in
                 switch kind {
-                case .contribution: moneySheet = .contribute
-                case .expense:      moneySheet = .record
-                case .settlement:   moneySheet = .settle
+                case .contribution:  moneySheet = .contribute
+                case .expense:       moneySheet = .record
+                case .settlement:    moneySheet = .settle
+                case .reimbursement, .payout: moneySheet = .record
                 }
             }
         case .contribute:
@@ -1094,7 +1095,7 @@ public struct ResourceDetailSheet: View {
         case .exerciseRight:
             break  // right exercise — post-Beta-1
         case .rsvpConfirm, .rsvpCancel, .viewHostActions,
-             .viewClosed, .payFine, .castVote:
+             .viewClosed, .payFine, .castVote, .selfCheckIn:
             break  // not applicable for non-event resources in this path
         case .none:
             break  // PrimaryAction.Kind.none — no CTA

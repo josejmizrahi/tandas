@@ -367,6 +367,11 @@ public struct EventDetailHost: View {
             await coordinator.setRSVP(.going, plusOnes: 0, reason: nil)
         case .rsvpCancel:
             sheet = .cancelAttendance
+        case .selfCheckIn:
+            // FASE 3 C.2 surface 4: B.3 one-shot self check-in. Haptic on
+            // tap is emitted by the StateHero CTA; the .success haptic on
+            // the flip lives in the sensoryFeedback below.
+            await coordinator.selfCheckIn(locationVerified: false)
         case .viewHostActions:
             // Reserved for a future host-actions menu (recordar / cerrar
             // / cancelar / reabrir). EventBlockBuilder doesn't emit this
