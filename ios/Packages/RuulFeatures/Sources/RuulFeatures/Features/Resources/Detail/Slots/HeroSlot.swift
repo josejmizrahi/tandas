@@ -29,6 +29,12 @@ struct HeroSlot: View {
                 .font(.footnote)
                 .foregroundStyle(Color.ruulTextSecondary)
                 .multilineTextAlignment(.center)
+                // FASE 3 D.4: state pill changes animan, no aparecen.
+                // Cuando Fine flippa de "$X por pagar" a "Pagaste" /
+                // "Pagada por X", el label morph debe sentirse alive,
+                // no abrupto. `.opacity` cubre transitions textuales;
+                // value mantiene `.numericText()` para morph numérico.
+                .contentTransition(.opacity)
 
             if let subRow = data.subRow, !subRow.isEmpty {
                 HStack(spacing: RuulSpacing.lg) {
@@ -47,6 +53,8 @@ struct HeroSlot: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, RuulSpacing.xs)
+        .animation(.snappy(duration: 0.28), value: data.label)
+        .animation(.snappy(duration: 0.28), value: data.value)
     }
 
     /// Maps the hero `size` enum onto the app's native typography scale —
