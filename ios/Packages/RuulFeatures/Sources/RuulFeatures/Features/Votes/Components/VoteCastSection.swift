@@ -40,6 +40,10 @@ public struct VoteCastSection: View {
                 )
             }
         }
+        // FASE 3 D.1: voto exitoso → .success haptic. Mantiene el
+        // modifier en el outer container así sigue vivo durante la
+        // transición VoteCastButtons → VoteAlreadyCastView.
+        .sensoryFeedback(.success, trigger: coordinator.alreadyVoted)
     }
 
     private func castCount(_ counts: VoteCounts?) -> Int {
@@ -63,7 +67,10 @@ public struct VoteCastSection: View {
 
 private struct VoteCastButtons: View {
     @Bindable var coordinator: VoteDetailCoordinator
-    @State private var hapticTrigger: VoteChoice?
+    /// FASE 3 B.1 (pure morph): tracks which pill was tapped so SOLO ese
+    /// botón muestra ProgressView + label morph durante el cast. Reemplaza
+    /// el patrón banned `.disabled + .opacity(0.5)` en el grupo entero.
+    @State private var castingChoice: VoteChoice?
 
     public var body: some View {
         VStack(spacing: RuulSpacing.xs) {
@@ -71,36 +78,47 @@ private struct VoteCastButtons: View {
             castButton(.against,    label: "En contra",    systemImage: "xmark.circle.fill",     tint: .red)
             castButton(.abstained,  label: "Me abstengo",  systemImage: "minus.circle.fill",     tint: Color(.tertiaryLabel))
         }
-        .disabled(coordinator.isCasting)
-        .opacity(coordinator.isCasting ? 0.5 : 1.0)
-        .sensoryFeedback(.selection, trigger: hapticTrigger)
+        .sensoryFeedback(.selection, trigger: castingChoice)
     }
 
     private func castButton(_ choice: VoteChoice, label: String, systemImage: String, tint: Color) -> some View {
-        Button {
-            hapticTrigger = choice
+        let isMine = castingChoice == choice && coordinator.isCasting
+        return Button {
+            castingChoice = choice
             Task { await coordinator.cast(choice) }
         } label: {
             HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: systemImage)
-                    .font(.title3)
-                    .foregroundStyle(tint)
-                    .accessibilityHidden(true)
-                Text(label)
+                if isMine {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(tint)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.title3)
+                        .foregroundStyle(tint)
+                        .accessibilityHidden(true)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                Text(isMine ? "Votando…" : label)
                     .font(.headline)
                     .foregroundStyle(Color.primary)
+                    .contentTransition(.opacity)
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .accessibilityHidden(true)
+                if !isMine {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                        .accessibilityHidden(true)
+                }
             }
             .padding(.horizontal, RuulSpacing.md)
             .padding(.vertical, RuulSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
+            .animation(.snappy(duration: 0.18), value: isMine)
         }
         .buttonStyle(.glass)
+        .disabled(coordinator.isCasting)
         .accessibilityLabel(label)
     }
 }
