@@ -315,7 +315,7 @@ private enum RolePreset: String, CaseIterable {
 
     var summary: String {
         switch self {
-        case .treasurer: return "Maneja el fondo: aporta, retira, audita, aprueba gastos."
+        case .treasurer: return "Maneja el dinero compartido: aporta, retira, audita, aprueba gastos."
         case .host:      return "Gestiona eventos: cierra, marca multas como pagadas."
         case .moderator: return "Modera el grupo: remover miembros, anular multas, cerrar apelaciones."
         case .observer:  return "Sólo lee y vota. Sin permisos de mutación."

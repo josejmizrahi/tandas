@@ -27,6 +27,10 @@ public struct SettlementSheet: View {
     /// balance, computed by the caller). nil falls back to first
     /// member in the list.
     public let suggestedToMemberId: UUID?
+    /// FASE 4 PR-3: pre-fill amount from the suggestion row so the user
+    /// arrives with both "who" and "how much" already set. `SettlementContext`
+    /// in `GroupBalancesView` already computes this — we just forward it.
+    public let suggestedAmountCents: Int64?
     /// Called after a successful settlement so the caller can refresh
     /// its balance view.
     public let onDidSettle: () -> Void
@@ -50,6 +54,7 @@ public struct SettlementSheet: View {
         currency: String,
         members: [MemberWithProfile],
         suggestedToMemberId: UUID?,
+        suggestedAmountCents: Int64? = nil,
         onDidSettle: @escaping () -> Void
     ) {
         self.groupId = groupId
@@ -57,6 +62,7 @@ public struct SettlementSheet: View {
         self.currency = currency
         self.members = members
         self.suggestedToMemberId = suggestedToMemberId
+        self.suggestedAmountCents = suggestedAmountCents
         self.onDidSettle = onDidSettle
     }
 
@@ -127,6 +133,18 @@ public struct SettlementSheet: View {
                 } else {
                     toMemberId = members.first(where: { $0.member.id != fromMemberId })?.member.id
                 }
+            }
+            // FASE 4 PR-3: pre-fill amount when the caller carried the
+            // suggestion magnitude. The user can still override; this is
+            // about reducing friction on the suggestion-driven flow.
+            if amountText.isEmpty, let cents = suggestedAmountCents, cents > 0 {
+                let pesos = Decimal(cents) / 100
+                let f = NumberFormatter()
+                f.usesGroupingSeparator = false
+                f.minimumFractionDigits = 0
+                f.maximumFractionDigits = 2
+                f.decimalSeparator = "."
+                amountText = f.string(from: pesos as NSDecimalNumber) ?? ""
             }
         }
     }

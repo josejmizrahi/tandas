@@ -138,7 +138,7 @@ public struct RecordSharedExpenseSheet: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        Text("Quién recibe el dinero del fondo. Por defecto la misma persona que pagó.")
+                        Text("Quién recibe el dinero compartido. Por defecto la misma persona que pagó.")
                             .font(.caption)
                             .foregroundStyle(Color.secondary)
                     }

@@ -54,12 +54,12 @@ public struct GroupFundsListView: View {
             onRetry: { await load() },
             empty: {
                 ContentUnavailableView {
-                    Label("No hay fondos separados", systemImage: "banknote")
+                    Label("No hay dineros protegidos", systemImage: "banknote")
                 } description: {
-                    Text("Todo el dinero del grupo está en Dinero compartido. Un fondo separado sirve cuando quieres aislar plata para un fin específico.")
+                    Text("Todo el dinero del grupo está en Dinero compartido. Un dinero protegido sirve cuando quieres aislar plata para un fin específico.")
                 } actions: {
                     if let onCreate {
-                        Button("Crear fondo", action: onCreate)
+                        Button("Crear dinero protegido", action: onCreate)
                             .buttonStyle(.glassProminent)
                     }
                 }
@@ -77,7 +77,7 @@ public struct GroupFundsListView: View {
             }
         )
         .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
-        .navigationTitle("Otros fondos")
+        .navigationTitle("Dineros protegidos")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let onCreate {
@@ -85,7 +85,7 @@ public struct GroupFundsListView: View {
                     Button(action: onCreate) {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("Crear fondo")
+                    .accessibilityLabel("Crear dinero protegido")
                 }
             }
         }

@@ -76,6 +76,7 @@ public struct GroupSettlementPlanView: View {
                 currency: group.currency,
                 members: members,
                 suggestedToMemberId: ctx.toMemberId,
+                suggestedAmountCents: ctx.amountCents,
                 onDidSettle: { Task { await load() } }
             )
             .environment(app)

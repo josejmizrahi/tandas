@@ -27,6 +27,19 @@ public extension JSONConfig {
         self["paid_by_member_id"]?.stringValue.flatMap(UUID.init(uuidString:))
     }
 
+    /// Settlement recipient (or expense reimbursement target). Stamped
+    /// into the atom payload by the trigger from mig 20260524180000.
+    /// FASE 4 PR-1: used by `HistoryItemPresentation` to render the
+    /// bi-role "X le pagó $Y a Z" settlement title.
+    var ledgerToMemberId: UUID? {
+        self["to_member_id"]?.stringValue.flatMap(UUID.init(uuidString:))
+    }
+
+    /// Settlement payer. Stamped into the atom payload by the same trigger.
+    var ledgerFromMemberId: UUID? {
+        self["from_member_id"]?.stringValue.flatMap(UUID.init(uuidString:))
+    }
+
     var ledgerIsInKind: Bool {
         self["in_kind"]?.boolValue == true
     }

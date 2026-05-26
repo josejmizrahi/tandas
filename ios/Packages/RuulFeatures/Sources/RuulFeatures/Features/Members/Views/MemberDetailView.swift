@@ -388,7 +388,7 @@ public struct MemberDetailView: View {
         case "founder":   return "Arrancó este grupo"
         case "admin":     return "Coordina decisiones"
         case "host":      return "Organiza eventos"
-        case "treasurer": return "Lleva el dinero del fondo"
+        case "treasurer": return "Lleva el dinero compartido"
         case "arbiter":   return "Resuelve apelaciones"
         case "observer":  return "Observa decisiones"
         default:          return role.humanLabel

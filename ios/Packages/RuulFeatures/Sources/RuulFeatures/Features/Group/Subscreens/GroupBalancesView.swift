@@ -158,6 +158,7 @@ public struct GroupBalancesView: View {
                 currency: group.currency,
                 members: members,
                 suggestedToMemberId: ctx.toMemberId,
+                suggestedAmountCents: ctx.amountCents,
                 onDidSettle: { Task { await load() } }
             )
             .environment(app)
@@ -729,7 +730,7 @@ public struct GroupBalancesView: View {
                 otherFundsHeader
                 VStack(spacing: 0) {
                     if otherFunds.isEmpty {
-                        Text("No hay fondos separados. Todo el dinero está en el pool compartido.")
+                        Text("No hay dineros protegidos. Todo el dinero está en el pool compartido.")
                             .font(.caption)
                             .foregroundStyle(Color.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -749,7 +750,7 @@ public struct GroupBalancesView: View {
 
     private var otherFundsHeader: some View {
         HStack {
-            Text("Otros fondos")
+            Text("Dineros protegidos")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.secondary)
                 .textCase(.uppercase)

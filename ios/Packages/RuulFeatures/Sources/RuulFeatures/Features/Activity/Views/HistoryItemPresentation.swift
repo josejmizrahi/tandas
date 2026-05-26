@@ -538,9 +538,22 @@ public struct HistoryItemPresentation {
                     : "\(effectiveActor) aportó \(amount)"
             }
         case "settlement":
-            base = amount.isEmpty
-                ? "\(effectiveActor) registró un pago"
-                : "\(effectiveActor) registró un pago de \(amount)"
+            // FASE 4 PR-1: bi-role completion. Settlement carries
+            // to_member_id in the atom payload — surface "X le pagó $Y
+            // a Z" so the activity feed shows the social closure, not
+            // just the payer. Fallback to legacy copy when to_member
+            // doesn't resolve (e.g. atoms written pre-mig 20260524180000).
+            let toUUID = payload.ledgerToMemberId
+            let toName = toUUID.flatMap { resolveMemberName?($0) }
+            if let toName, toName != effectiveActor {
+                base = amount.isEmpty
+                    ? "\(effectiveActor) le pagó a \(toName)"
+                    : "\(effectiveActor) le pagó \(amount) a \(toName)"
+            } else {
+                base = amount.isEmpty
+                    ? "\(effectiveActor) registró un pago"
+                    : "\(effectiveActor) registró un pago de \(amount)"
+            }
         case "payout":
             base = amount.isEmpty
                 ? "\(effectiveActor) recibió un pago del fondo"

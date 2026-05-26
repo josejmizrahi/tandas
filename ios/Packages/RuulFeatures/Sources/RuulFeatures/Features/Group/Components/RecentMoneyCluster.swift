@@ -144,7 +144,12 @@ private struct RecentMoneyRow: View {
         case LedgerEntry.Kind.contribution:
             return Composition(verb: "aportó", isPositive: true)
         case LedgerEntry.Kind.settlement:
-            return Composition(verb: "liquidó", isPositive: false)
+            // FASE 4 PR-2: liquidar = cierre de tensión social, no
+            // pérdida. Doctrine: "settlement = alivio, no expense".
+            // Compartir el color positivo con "aportó" reframea
+            // visualmente la liquidación como momento de coordinación
+            // saludable.
+            return Composition(verb: "liquidó", isPositive: true)
         case LedgerEntry.Kind.finePaid:
             return Composition(verb: "pagó multa de", isPositive: false)
         case LedgerEntry.Kind.reimbursement:

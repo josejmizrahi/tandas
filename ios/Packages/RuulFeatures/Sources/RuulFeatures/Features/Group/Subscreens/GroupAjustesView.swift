@@ -150,7 +150,7 @@ public struct GroupAjustesView: View {
                 row(
                     icon: "puzzlepiece",
                     label: "Características del grupo",
-                    detail: "Qué tipo de coordinación tiene activa (multas, eventos, fondo…)",
+                    detail: "Qué tipo de coordinación tiene activa (multas, eventos, dinero compartido…)",
                     trailing: "\(activeModulesCount)",
                     action: onPickModules
                 )
