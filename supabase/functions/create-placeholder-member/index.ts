@@ -1,17 +1,22 @@
 // create-placeholder-member: admin creates a stand-in member that already
 // counts for rotation/RSVP/fines/votes before the real person registers.
 //
+// A single placeholder (phone) can be a member of multiple groups — if a
+// placeholder with the requested phone already exists, we REUSE its
+// user_id and only INSERT the new group_members + invite. The RPC is
+// idempotent on the profiles row (mig placeholder_cross_group_membership).
+//
 // Request:  { group_id: uuid, display_name: string, phone_e164: string }
 //
 // Responses:
-//   200 { kind: "created", member_id, invite_id, placeholder_user_id }
+//   200 { kind: "created" | "reused_placeholder", member_id, invite_id, placeholder_user_id }
 //        WhatsApp magic link sent best-effort (not awaited).
 //   409 { kind: "existing_user", user_id, display_name? }
-//        Phone already belongs to a real user — client should offer
-//        a regular add-existing-member flow instead.
-//   409 { kind: "duplicate_placeholder", user_id }
-//        Another unclaimed placeholder already owns this phone.
-//   403 forbidden          — caller lacks members.invite on the group
+//        Phone already belongs to a real (claimed) user — client should
+//        offer a regular add-existing-member flow instead.
+//   409 { kind: "already_in_group", user_id }
+//        This placeholder is already a member of THIS group.
+//   403 forbidden          — caller lacks modifyMembers on the group
 //   401 missing/invalid auth
 //   400 validation error
 //   500 unexpected
@@ -107,46 +112,63 @@ serve(withSentry(async (req) => {
     }, 409);
   }
 
+  // Existing unclaimed placeholder with this phone — reuse its user_id
+  // across groups (a phone = a person, can live in N groups). Skip the
+  // createUser + profile delete steps; finalize_placeholder_member is
+  // idempotent on the profiles row (mig placeholder_cross_group_membership)
+  // so it only inserts the new group_members + invite + atom.
   const dupPlaceholder = (realByProfilePhone ?? []).find(
     (p) => p.is_placeholder === true && p.claimed_at === null,
   );
+
+  let placeholderUid: string;
+  let reusedPlaceholder = false;
+
   if (dupPlaceholder) {
-    return json({ kind: "duplicate_placeholder", user_id: dupPlaceholder.id }, 409);
+    const { data: existingMembership, error: memErr } = await admin
+      .from("group_members")
+      .select("id")
+      .eq("group_id", group_id)
+      .eq("user_id", dupPlaceholder.id)
+      .maybeSingle();
+    if (memErr) {
+      return json({ error: `membership check failed: ${memErr.message}` }, 500);
+    }
+    if (existingMembership) {
+      return json({ kind: "already_in_group", user_id: dupPlaceholder.id }, 409);
+    }
+    placeholderUid = dupPlaceholder.id;
+    reusedPlaceholder = true;
+  } else {
+    // New placeholder. Supabase auth.admin.createUser requires email or
+    // phone. Phone would collide with the real owner when they later sign
+    // up via OTP, so we mint a synthetic email under our reserved
+    // sub-domain `placeholders.ruul.mx`. No MX records → no inbound mail.
+    // email_confirm: true so Supabase doesn't try to send a verification
+    // mail that would silently bounce.
+    const placeholderEmail =
+      `placeholder-${crypto.randomUUID()}@placeholders.ruul.mx`;
+
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: placeholderEmail,
+      email_confirm: true,
+      user_metadata: {
+        placeholder: true,
+        display_name,
+        created_by: callerId,
+      },
+    });
+    if (createErr || !created?.user) {
+      return json({ error: `createUser failed: ${createErr?.message ?? "unknown"}` }, 500);
+    }
+    placeholderUid = created.user.id;
+
+    // Some envs have an on_auth_user_created trigger that auto-inserts a
+    // profiles row. Wipe it so the finalize RPC starts from a clean slate.
+    await admin.from("profiles").delete().eq("id", placeholderUid);
   }
 
-  // 2. Create the anonymous placeholder auth.users row.
-  //
-  // Supabase auth.admin.createUser requires either an email or a phone.
-  // Phone would collide with the real owner when they later sign up via
-  // OTP, so we mint a synthetic email under our reserved sub-domain
-  // `placeholders.ruul.mx`. No MX records → no inbound email → the
-  // address is unreachable on purpose. email_confirm: true marks the row
-  // as confirmed so Supabase doesn't try to send a verification mail
-  // (which would silently bounce).
-  const placeholderEmail =
-    `placeholder-${crypto.randomUUID()}@placeholders.ruul.mx`;
-
-  const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email: placeholderEmail,
-    email_confirm: true,
-    user_metadata: {
-      placeholder: true,
-      display_name,
-      created_by: callerId,
-    },
-  });
-  if (createErr || !created?.user) {
-    return json({ error: `createUser failed: ${createErr?.message ?? "unknown"}` }, 500);
-  }
-  const placeholderUid = created.user.id;
-
-  // 3. Some envs have an on_auth_user_created trigger that auto-inserts a
-  //    profiles row from auth.users defaults. The atomic finalize RPC
-  //    expects a clean slate (so it can set is_placeholder + phone). Wipe
-  //    the auto-row if present; idempotent if it doesn't exist.
-  await admin.from("profiles").delete().eq("id", placeholderUid);
-
-  // 4. Atomic finalize.
+  // Atomic finalize.
   const { data: finalize, error: rpcErr } = await admin.rpc("finalize_placeholder_member", {
     p_placeholder_user_id: placeholderUid,
     p_group_id: group_id,
@@ -155,8 +177,10 @@ serve(withSentry(async (req) => {
     p_actor_user_id: callerId,
   });
   if (rpcErr) {
-    // Rollback orphan auth user.
-    await admin.auth.admin.deleteUser(placeholderUid).catch(() => {});
+    // Rollback orphan auth user only if WE created it this call.
+    if (!reusedPlaceholder) {
+      await admin.auth.admin.deleteUser(placeholderUid).catch(() => {});
+    }
     return json({ error: `finalize failed: ${rpcErr.message}` }, 500);
   }
 
@@ -185,7 +209,7 @@ serve(withSentry(async (req) => {
   }
 
   return json({
-    kind: "created",
+    kind: reusedPlaceholder ? "reused_placeholder" : "created",
     member_id: memberId,
     invite_id: inviteId,
     placeholder_user_id: placeholderUid,
