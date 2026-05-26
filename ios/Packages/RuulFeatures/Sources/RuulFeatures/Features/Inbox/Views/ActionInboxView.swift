@@ -111,6 +111,23 @@ public struct ActionInboxView: View {
                     handler: { Task { await coordinator.castAppealVote(action, choice: .against) } }
                 )
             ])
+        case .assetActionApproval:
+            // FASE 3 C.2 surface 3: damage-approval UserActions don't have
+            // a binary backend semantic — there is no "approve vs reject"
+            // RPC, only `resolve(actionId)` (per the rule engine spec).
+            // Surfacing a fake binary would lie about consequence. Instead
+            // we expose the same single-tap resolve the context menu has,
+            // promoted to a visible glass chip so it's discoverable. The
+            // row tap still pushes the asset detail when the admin needs
+            // to record a maintenance expense or inspect the damage.
+            InlineActionStrip(actions: [
+                .init(
+                    label: "Revisado",
+                    systemImage: "checkmark.shield",
+                    haptic: .medium,
+                    handler: { Task { await coordinator.resolveQuick(action.id) } }
+                )
+            ])
         default:
             EmptyView()
         }
@@ -120,8 +137,8 @@ public struct ActionInboxView: View {
     /// Mirrors the switch in `inlineStrip(for:)` — keep in sync.
     private func hasInlineStrip(_ action: UserAction) -> Bool {
         switch action.actionType {
-        case .rsvpPending, .appealVotePending: return true
-        default:                               return false
+        case .rsvpPending, .appealVotePending, .assetActionApproval: return true
+        default:                                                     return false
         }
     }
 
