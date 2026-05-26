@@ -69,6 +69,8 @@ public extension ResourceConfig {
     static func fine(
         _ fine: FineInput,
         isPaying: Bool = false,
+        payLabel: String = "Pagar",
+        payPendingLabel: String = "Pagando…",
         onPay: @escaping () -> Void = {},
         onAppeal: @escaping () -> Void = {},
         toolbarMenu: [ToolbarMenuItem] = []
@@ -77,11 +79,11 @@ public extension ResourceConfig {
         var actions: [ResourceAction] = []
         if fine.canPay {
             actions.append(ResourceAction(
-                label: "Pagar",
+                label: payLabel,
                 icon: "creditcard",
                 tint: .ruulSemanticSuccess,
                 isPending: isPaying,
-                pendingLabel: "Pagando…",
+                pendingLabel: payPendingLabel,
                 handler: onPay
             ))
         }

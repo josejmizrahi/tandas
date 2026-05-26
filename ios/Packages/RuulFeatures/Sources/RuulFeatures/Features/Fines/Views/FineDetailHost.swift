@@ -29,6 +29,10 @@ public struct FineDetailHost: View {
     @State private var appealSheetPresented = false
     @State private var voidSheetPresented = false
     @State private var canVoidFine: Bool = false
+    /// Mirror of server's `has_permission(group_id, viewer, 'markFinePaid')`.
+    /// Lets a non-debtor admin surface the "Marcar como pagada" action
+    /// (FASE 3 C.2: confirma pago offline). Server still gates `pay_fine`.
+    @State private var canMarkFinePaid: Bool = false
     /// "Ver más" tap on the Activity layer.
     @State private var activityHistoryPresented: Bool = false
 
@@ -64,6 +68,7 @@ public struct FineDetailHost: View {
             await coordinator.trackSeen()
             canVoidFine = await computeCanVoid()
             await loadMembers()
+            canMarkFinePaid = computeCanMarkFinePaid()
             await rebuildBlocks()
         }
         .onChange(of: coordinator.fine) { _, _ in
@@ -221,7 +226,12 @@ public struct FineDetailHost: View {
     private func makeConfig(blocks: ResourceBlocks) -> ResourceConfig {
         let f = coordinator.fine
         let viewerIsDebtor = coordinator.isMine
-        let canPay    = viewerIsDebtor && !f.paid && f.status != .voided
+        // Server gates `pay_fine` on (self-pay) OR has_permission(markFinePaid)
+        // (mig 00273). We mirror that here so an admin with the permission
+        // can surface the action when the debtor pays offline.
+        let canPay    = !f.paid
+                        && f.status == .officialized
+                        && (viewerIsDebtor || canMarkFinePaid)
         let canAppeal = viewerIsDebtor
                         && coordinator.existingAppeal == nil
                         && f.status == .officialized
@@ -260,9 +270,17 @@ public struct FineDetailHost: View {
                 voidSheetPresented = true
             })
         }
+        // FASE 3 C.2: when a non-debtor admin (markFinePaid permission)
+        // triggers the action, the verb shifts from "Pagar" (self-pay)
+        // to "Marcar como pagada" (recording an offline payment). Same
+        // RPC + same B.3 warmth (haptic on tap + .success on flip).
+        let payLabel = viewerIsDebtor ? "Pagar" : "Marcar como pagada"
+        let payPendingLabel = viewerIsDebtor ? "Pagando…" : "Marcando…"
         return withGroupContext(.fine(
             input,
             isPaying: coordinator.isMutating,
+            payLabel: payLabel,
+            payPendingLabel: payPendingLabel,
             onPay: {
                 // FASE 3 D.1 rule 1: haptic en tap (B.3 = .medium para
                 // one-shot CTAs cargadas como pagar/aprobar). El .success
@@ -351,6 +369,22 @@ public struct FineDetailHost: View {
               )
         else { return false }
         if case .allowed = decision { return true }
+        return false
+    }
+
+    /// Mirrors `has_permission(group_id, viewer, 'markFinePaid')`. Reads
+    /// the viewer's `rawRoles` against `group.effectiveRoles` — same
+    /// resolution `GroupHomeCoordinator.hasPermission(_:)` uses. The
+    /// permission lets a non-debtor admin record an offline payment;
+    /// pay_fine RPC still gates the final write (mig 00273).
+    private func computeCanMarkFinePaid() -> Bool {
+        guard let group = app.groups.first(where: { $0.id == coordinator.fine.groupId }),
+              let viewer = membersByUserId[coordinator.userId]?.member
+        else { return false }
+        let catalog = group.effectiveRoles
+        for raw in viewer.rawRoles {
+            if let def = catalog[raw], def.grants(.markFinePaid) { return true }
+        }
         return false
     }
 }

@@ -159,6 +159,7 @@ public struct RootShell: View {
             groupId: nil,                   // 14.2 — cross-group inbox (tab)
             userActionRepo: app.userActionRepo,
             groupsRepo: app.groupsRepo,
+            rsvpRepo: app.rsvpRepo,
             changeFeed: app.multiDeviceChangeFeed,
             analytics: app.analytics
         )
@@ -173,6 +174,7 @@ public struct RootShell: View {
             groupId: group.id,
             userActionRepo: app.userActionRepo,
             groupsRepo: app.groupsRepo,
+            rsvpRepo: app.rsvpRepo,
             changeFeed: app.multiDeviceChangeFeed,
             analytics: app.analytics
         )

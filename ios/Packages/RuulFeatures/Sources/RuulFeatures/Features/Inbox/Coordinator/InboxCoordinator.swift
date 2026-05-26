@@ -22,6 +22,11 @@ public final class InboxCoordinator {
     private let groupId: UUID?
     private let userActionRepo: any UserActionRepository
     private let groupsRepo: (any GroupsRepository)?
+    /// FASE 3 C.2 surface 2 (RSVP inline): when injected, the inbox can
+    /// commit `.rsvpPending` actions inline (Voy / No voy chips) without
+    /// pushing the event detail. Optional so preview / mock paths can
+    /// instantiate the coordinator without rewiring AppState.
+    private let rsvpRepo: (any RSVPRepository)?
     /// Beta 1 W4 F-4.5: nil-safe analytics injection so `inbox_action_resolved`
     /// fires when the user taps through a row. Default nil keeps preview /
     /// mock callers working without rewiring AppState.
@@ -42,6 +47,7 @@ public final class InboxCoordinator {
         groupId: UUID?,
         userActionRepo: any UserActionRepository,
         groupsRepo: (any GroupsRepository)? = nil,
+        rsvpRepo: (any RSVPRepository)? = nil,
         changeFeed: (any MultiDeviceChangeFeed)? = nil,
         analytics: (any AnalyticsService)? = nil
     ) {
@@ -49,6 +55,7 @@ public final class InboxCoordinator {
         self.groupId = groupId
         self.userActionRepo = userActionRepo
         self.groupsRepo = groupsRepo
+        self.rsvpRepo = rsvpRepo
         self.analytics = analytics
         if let feed = changeFeed {
             self.changeFeedTask = Task { [weak self] in
@@ -141,6 +148,32 @@ public final class InboxCoordinator {
         } catch {
             log.warning("resolveQuick failed: \(error.localizedDescription)")
             // On failure: a subsequent refresh() will restore the row if still pending.
+            await refresh()
+        }
+    }
+
+    /// FASE 3 C.2 surface 2: commits an RSVP from the inbox row without
+    /// pushing the event detail. Optimistic — removes the row immediately
+    /// so the inbox feels responsive; if the RPC fails, refresh() restores
+    /// the row (server-side projection is the source of truth). The
+    /// `set_rsvp_v2` trigger resolves the `rsvpPending` UserAction
+    /// server-side, so no separate resolve() call is needed on success.
+    public func confirmRSVP(_ action: UserAction, status: RSVPStatus) async {
+        guard action.actionType == .rsvpPending,
+              let rsvpRepo
+        else { return }
+        let eventId = action.referenceId
+        actions.removeAll { $0.id == action.id }
+        do {
+            _ = try await rsvpRepo.setRSVP(
+                eventId: eventId,
+                status: status,
+                plusOnes: 0,
+                reason: nil
+            )
+        } catch {
+            log.warning("confirmRSVP failed: \(error.localizedDescription)")
+            self.error = CoordinatorError.from(error, fallback: "No pudimos guardar tu respuesta")
             await refresh()
         }
     }

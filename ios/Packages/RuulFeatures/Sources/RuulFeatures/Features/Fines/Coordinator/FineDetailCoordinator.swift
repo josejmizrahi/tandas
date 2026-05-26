@@ -111,8 +111,14 @@ public final class FineDetailCoordinator {
         }
     }
 
+    /// Marks the fine as paid via `pay_fine` RPC. Auth is server-gated
+     /// (mig 00273): caller is the fined member (self-pay) OR holds the
+     /// `markFinePaid` permission (admin records an offline payment).
+     /// Client-side gating on `isMine` was removed so the host can expose
+     /// the action to admins with the permission without re-encoding the
+     /// server policy here.
     public func payFine() async {
-        guard !isMutating, isMine, fine.status == .officialized else { return }
+        guard !isMutating, fine.status == .officialized else { return }
         isMutating = true
         error = nil
         defer { isMutating = false }

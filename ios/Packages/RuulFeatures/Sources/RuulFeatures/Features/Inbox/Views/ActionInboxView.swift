@@ -32,15 +32,25 @@ public struct ActionInboxView: View {
                     ForEach(prioritizedBuckets(actions), id: \.label) { bucket in
                         Section {
                             ForEach(bucket.actions) { action in
-                                InboxActionRow(
-                                    icon: icon(for: action.actionType),
-                                    meta: meta(for: action),
-                                    title: action.title,
-                                    subtitle: action.body,
-                                    priorityDot: dotColor(for: action.priority),
-                                    timeRemaining: UserActionExpiry.remainingDescription(for: action),
-                                    onTap: { onOpenAction(action) }
-                                )
+                                VStack(alignment: .leading, spacing: 8) {
+                                    InboxActionRow(
+                                        icon: icon(for: action.actionType),
+                                        meta: meta(for: action),
+                                        title: action.title,
+                                        subtitle: action.body,
+                                        priorityDot: dotColor(for: action.priority),
+                                        timeRemaining: UserActionExpiry.remainingDescription(for: action),
+                                        onTap: { onOpenAction(action) }
+                                    )
+                                    if hasInlineStrip(action) {
+                                        inlineStrip(for: action)
+                                            // Indent under the row icon column
+                                            // so the chips line up with the
+                                            // title block (40 + 12 spacing).
+                                            .padding(.leading, 52)
+                                            .transition(.opacity.combined(with: .move(edge: .top)))
+                                    }
+                                }
                                 .contextMenu {
                                     Button {
                                         Task { await coordinator.resolveQuick(action.id) }
@@ -58,6 +68,42 @@ public struct ActionInboxView: View {
                 .refreshable { await coordinator.refresh() }
             }
         )
+    }
+
+    /// FASE 3 C.2 surface 2/3: returns an inline-action strip for action
+    /// types that can be resolved in-place (B.1 optimistic-toggle). nil
+    /// for types that still require a sheet/detail flow.
+    @ViewBuilder
+    private func inlineStrip(for action: UserAction) -> some View {
+        switch action.actionType {
+        case .rsvpPending:
+            InlineActionStrip(actions: [
+                .init(
+                    label: "Voy",
+                    systemImage: "checkmark",
+                    haptic: .medium,
+                    handler: { Task { await coordinator.confirmRSVP(action, status: .going) } }
+                ),
+                .init(
+                    label: "No voy",
+                    systemImage: "xmark",
+                    role: .destructive,
+                    haptic: .medium,
+                    handler: { Task { await coordinator.confirmRSVP(action, status: .declined) } }
+                )
+            ])
+        default:
+            EmptyView()
+        }
+    }
+
+    /// Predicate the row body uses to decide whether to render the strip.
+    /// Mirrors the switch in `inlineStrip(for:)` — keep in sync.
+    private func hasInlineStrip(_ action: UserAction) -> Bool {
+        switch action.actionType {
+        case .rsvpPending: return true
+        default:           return false
+        }
     }
 
     private var emptyState: some View {
