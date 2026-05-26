@@ -8,15 +8,19 @@ import RuulCore
 public struct AppealFineSheet: View {
     @Binding var isPresented: Bool
     public let fine: Fine
-    public let onSubmit: (String) -> Void
+    /// FASE 3 Action Warmth (B.2): async + Bool contract so we can
+    /// respirar el éxito antes del dismiss.
+    public let onSubmit: (String) async -> Bool
 
-    public init(isPresented: Binding<Bool>, fine: Fine, onSubmit: @escaping (String) -> Void) {
+    public init(isPresented: Binding<Bool>, fine: Fine, onSubmit: @escaping (String) async -> Bool) {
         self._isPresented = isPresented
         self.fine = fine
         self.onSubmit = onSubmit
     }
 
     @State private var reason: String = ""
+    @State private var isSubmitting = false
+    @State private var successPhrase: String?
     @FocusState private var reasonFocused: Bool
 
     public var body: some View {
@@ -36,17 +40,38 @@ public struct AppealFineSheet: View {
                     label: "Argumento"
                 )
                 .focused($reasonFocused)
+                .disabled(isSubmitting || successPhrase != nil)
+                if let successPhrase {
+                    HStack(spacing: RuulSpacing.sm) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.ruulSemanticSuccess)
+                            .accessibilityHidden(true)
+                        Text(successPhrase)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.primary)
+                    }
+                    .padding(RuulSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .ruulCardSurface(.solid, radius: RuulRadius.md)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 RuulButton(
-                    "Enviar apelación",
+                    confirmButtonLabel,
                     style: .primary,
                     size: .large,
-                    fillsWidth: true,
-                    action: submit
-                )
-                .disabled(trimmedReason.count < 10)
+                    isLoading: isSubmitting,
+                    fillsWidth: true
+                ) {
+                    RuulHaptic.light.trigger()
+                    Task { await submit() }
+                }
+                .disabled(trimmedReason.count < 10 || isSubmitting || successPhrase != nil)
             }
+            .animation(.snappy(duration: 0.22), value: successPhrase)
         }
         .onAppear { reasonFocused = true }
+        .sensoryFeedback(.success, trigger: successPhrase)
     }
 
     private var summaryCard: some View {
@@ -73,10 +98,26 @@ public struct AppealFineSheet: View {
         reason.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func submit() {
+    private var confirmButtonLabel: String {
+        if successPhrase != nil { return "Listo" }
+        if isSubmitting { return "Enviando…" }
+        return "Enviar apelación"
+    }
+
+    @MainActor
+    private func submit() async {
         let r = trimmedReason
         guard r.count >= 10 else { return }
-        onSubmit(r)
-        isPresented = false
+        isSubmitting = true
+        let ok = await onSubmit(r)
+        if ok {
+            isSubmitting = false
+            successPhrase = "Apelaste — el grupo tiene 72h para votar"
+            try? await Task.sleep(for: .milliseconds(700))
+            isPresented = false
+        } else {
+            isSubmitting = false
+            RuulHaptic.error.trigger()
+        }
     }
 }

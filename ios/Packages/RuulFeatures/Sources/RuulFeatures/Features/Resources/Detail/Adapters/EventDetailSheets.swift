@@ -77,8 +77,14 @@ public struct EventDetailSheets: ViewModifier {
                 .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: bindingForSheet(.cancelEvent)) {
-                CancelEventSheet(isPresented: bindingForSheet(.cancelEvent)) { reason in
-                    Task { await b.coordinator.cancelEvent(reason: reason) }
+                CancelEventSheet(
+                    isPresented: bindingForSheet(.cancelEvent),
+                    eventName: b.coordinator.event.title
+                ) { reason in
+                    // FASE 3 B.2: el sheet espera + reporta éxito/fail.
+                    b.coordinator.clearError()
+                    await b.coordinator.cancelEvent(reason: reason)
+                    return b.coordinator.error == nil
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)

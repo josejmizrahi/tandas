@@ -85,7 +85,10 @@ public struct FineDetailHost: View {
                 isPresented: $appealSheetPresented,
                 fine: coordinator.fine
             ) { reason in
-                Task { await coordinator.startAppeal(reason: reason) }
+                // FASE 3 B.2: el sheet ahora espera + reporta éxito/fail.
+                coordinator.clearError()
+                await coordinator.startAppeal(reason: reason)
+                return coordinator.error == nil
             }
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
