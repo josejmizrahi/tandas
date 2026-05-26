@@ -46,6 +46,13 @@ public struct GroupSpaceView: View {
     /// 2026-05-25 proposal B: tap an avatar → MemberQuickSheet.
     /// Contextual participation FIRST, full identity SECOND.
     @State private var quickSheetMember: MemberWithProfile?
+    /// Sibling of `quickSheetMember`: "Ver perfil completo" from
+    /// MemberQuickSheet dismisses the quick sheet and pushes this
+    /// state — fullScreenCover then mounts MemberDetailView for the
+    /// specific member. Sequential dismissal pattern avoids
+    /// sheet-on-sheet violations per `ruul_sheet_on_sheet_doctrine`
+    /// (substantial sub-screen = cover, not nested sheet).
+    @State private var memberDetailMember: MemberWithProfile?
 
     // Compose chips (toolbar "+")
     public var onCreateEvent: () -> Void
@@ -209,22 +216,49 @@ public struct GroupSpaceView: View {
                     memberBalance: coordinator.groupBalances.first(where: {
                         $0.memberId == member.member.id && $0.currency == group.currency
                     }),
-                    onLiquidar: nil,  // Future: pre-fill SettlementSheet
-                                       // with dyadic pair (viewer ↔ member).
-                                       // V1 keeps the action hidden until the
-                                       // dyadic balance projection lands.
+                    onLiquidar: nil,
                     onOpenProfile: {
+                        // Sequential dismissal: capture the member,
+                        // close the quick sheet, then present the full
+                        // MemberDetailView via fullScreenCover. The
+                        // 0.35s delay lets the sheet animation finish
+                        // before the cover lands — SwiftUI rejects
+                        // simultaneous sheet+cover presentations.
+                        let captured = member
                         quickSheetMember = nil
-                        // Defer the member-list navigation push to the
-                        // caller's onOpenMembers route; the list itself
-                        // can push MemberDetailView for the specific member.
-                        onOpenMembers?()
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(350))
+                            memberDetailMember = captured
+                        }
                     }
                 )
                 .environment(app)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+            }
+            .fullScreenCover(item: $memberDetailMember) { member in
+                NavigationStack {
+                    MemberDetailView(
+                        memberWithProfile: member,
+                        group: group,
+                        isCurrentUser: member.member.userId == app.session?.user.id,
+                        canManageRoles: coordinator.isCurrentUserAdmin,
+                        founderCount: coordinator.allMembers.filter {
+                            $0.member.roles.contains(.founder)
+                        }.count,
+                        adminCount: coordinator.allMembers.filter {
+                            $0.member.roles.contains(.admin)
+                        }.count,
+                        onMemberChanged: { await coordinator.refresh() }
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Listo") { memberDetailMember = nil }
+                        }
+                    }
+                }
+                .environment(app)
             }
         }
     }

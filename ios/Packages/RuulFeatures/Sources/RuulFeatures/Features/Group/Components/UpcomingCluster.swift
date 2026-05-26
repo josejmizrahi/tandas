@@ -18,6 +18,17 @@ struct UpcomingCluster: View {
         Array(items.prefix(5))
     }
 
+    /// 2026-05-25 founder fix: "Ver todo" routes to `GroupEventsListView`
+    /// (events-only directory). When Próximo currently surfaces ONLY
+    /// non-event items (votes / slots), the user tap landed on an empty
+    /// "Sin eventos" state — misleading. Hide the link entirely when
+    /// the cluster has no events. When events ARE present, the link
+    /// still routes to event history; a polymorphic
+    /// `UpcomingItemsListView` is deferred.
+    private var hasAnyEvent: Bool {
+        items.contains { if case .event = $0 { return true }; return false }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: RuulSpacing.xs) {
             HStack {
@@ -25,7 +36,7 @@ struct UpcomingCluster: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.ruulTextTertiary)
                 Spacer()
-                if let onSeeAll {
+                if hasAnyEvent, let onSeeAll {
                     Button("Ver todo", action: onSeeAll)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.ruulAccent)
@@ -66,7 +77,7 @@ private struct UpcomingRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: RuulSpacing.md) {
-                DateTile(date: item.occursAt, accent: accentColor)
+                leadingTile
 
                 VStack(alignment: .leading, spacing: RuulSpacing.s0_5) {
                     HStack(spacing: RuulSpacing.xxs) {
@@ -82,21 +93,12 @@ private struct UpcomingRow: View {
                         }
                     }
 
-                    HStack(spacing: RuulSpacing.xxs) {
-                        Text(item.occursAt, format: .dateTime.hour().minute())
+                    if let sub = subtitle {
+                        Text(sub)
                             .font(.caption)
                             .foregroundStyle(Color.ruulTextSecondary)
-                            .monospacedDigit()
-                        if let sub = subtitle {
-                            Text("·")
-                                .font(.caption)
-                                .foregroundStyle(Color.ruulTextSecondary)
-                            Text(sub)
-                                .font(.caption)
-                                .foregroundStyle(Color.ruulTextSecondary)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                 }
 
@@ -110,6 +112,25 @@ private struct UpcomingRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: Leading tile — type-appropriate
+
+    /// 2026-05-25 founder fix: not every Próximo row deserves a
+    /// calendar tile. Events ARE date-anchored (calendar feels right);
+    /// votes and slots aren't (calendar implied "esto sucede en esa
+    /// fecha" which is misleading). Polymorphic tile picks the right
+    /// visual per case.
+    @ViewBuilder
+    private var leadingTile: some View {
+        switch item {
+        case .event:
+            DateTile(date: item.occursAt, accent: accentColor)
+        case .voteClosing:
+            IconTile(systemName: "checkmark.square.fill", accent: accentColor)
+        case .slotRotation:
+            IconTile(systemName: "person.2.fill", accent: accentColor)
+        }
     }
 
     // MARK: Per-case display
@@ -128,40 +149,70 @@ private struct UpcomingRow: View {
         }
     }
 
+    /// Subtitle composition is now per-case (calendar tile only on
+    /// events, so the time format used to live as a separate caption
+    /// next to the venue — folding it into the subtitle keeps the row
+    /// scan-readable across types).
     private var subtitle: String? {
         switch item {
         case .event(let e):
-            return primaryVenue(e.locationName)
-        case .voteClosing:
-            return "Cierra"
-        case .slotRotation(_, _, _):
-            return nil
+            let time = e.startsAt.formatted(.dateTime.hour().minute())
+            if let venue = primaryVenue(e.locationName) {
+                return "\(time) · \(venue)"
+            }
+            return time
+        case .voteClosing(let v):
+            return "Cierra \(relativeFutureLabel(v.closesAt))"
+        case .slotRotation(let s, _, _):
+            return startsAtLabel(s.startsAt)
         }
     }
 
-    /// Subtle badge to indicate non-event upcoming items at a glance.
-    /// Events get the recurring arrow when they're part of a series;
-    /// votes get a checkmark.square; slots get a person.2.
+    /// Subtle badge to indicate item kind at a glance.
+    /// Events get the recurring arrow when part of a series; votes/slots
+    /// get nothing extra (the leading IconTile already telegraphs the type).
     private var badgeIcon: String? {
         switch item {
         case .event(let e):
             return e.seriesId != nil ? "arrow.triangle.2.circlepath" : nil
-        case .voteClosing:
-            return "checkmark.square"
-        case .slotRotation:
-            return "person.2.fill"
+        case .voteClosing, .slotRotation:
+            return nil
         }
     }
 
-    /// Accent color used in the DateTile's month label. Lets the
-    /// founder distinguish row types at a glance without breaking the
-    /// minimalist row design.
+    /// Accent color shared between the leading tile + (when used) the
+    /// month label. Lets the user distinguish row kinds at a glance.
     private var accentColor: Color {
         switch item {
         case .event:        return .ruulSemanticError
         case .voteClosing:  return .ruulAccent
         case .slotRotation: return .ruulSemanticWarning
         }
+    }
+
+    /// Compact future-relative label for vote close deadlines.
+    /// "en 4h", "hoy", "mañana", "el viernes", etc.
+    private func relativeFutureLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "hoy" }
+        if cal.isDateInTomorrow(date) { return "mañana" }
+        let delta = date.timeIntervalSinceNow
+        if delta < 3600 { return "en menos de 1h" }
+        if delta < 86400 { return "en \(Int(delta / 3600))h" }
+        let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "es_MX")
+        f.unitsStyle = .full
+        return f.localizedString(for: date, relativeTo: .now)
+    }
+
+    /// "Hoy 6pm" / "Mañana 8am" / "Vie 6pm".
+    private func startsAtLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        let time = date.formatted(.dateTime.hour().minute())
+        if cal.isDateInToday(date)    { return "Hoy \(time)" }
+        if cal.isDateInTomorrow(date) { return "Mañana \(time)" }
+        let weekday = date.formatted(.dateTime.weekday(.abbreviated))
+        return "\(weekday) \(time)"
     }
 
     /// Mirrors `HomeOverviewView.UpcomingCard.primaryVenue` — toma el
@@ -195,5 +246,23 @@ private struct DateTile: View {
         }
         .frame(width: 50, height: 50)
         .ruulCardSurface(.solid, radius: RuulRadius.md)
+    }
+}
+
+/// 2026-05-25 sibling of `DateTile` for non-event upcoming items.
+/// Same dimensions and surface so the row alignment stays consistent;
+/// the icon + accent telegraph "this isn't a date-anchored event"
+/// without breaking the visual rhythm of the cluster.
+@MainActor
+private struct IconTile: View {
+    let systemName: String
+    let accent: Color
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.title2.weight(.semibold))
+            .foregroundStyle(accent)
+            .frame(width: 50, height: 50)
+            .ruulCardSurface(.solid, radius: RuulRadius.md)
     }
 }
