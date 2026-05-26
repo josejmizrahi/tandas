@@ -36,19 +36,31 @@ public struct SharedPoolSummary: Projection, Identifiable, Hashable {
     /// target for any flow that still needs the fund id (e.g.,
     /// `fund_lock`/`unlock`, or future migrations).
     public let sharedPoolId: UUID
-    /// Sum of all `contribution`-typed ledger entries against the
-    /// shared pool in this currency.
+    /// Sum of CASH `contribution`-typed ledger entries against the
+    /// shared pool in this currency. FASE 4 Wave 4 (mig 20260525221500):
+    /// narrows from "all contributions" to "cash contributions only" —
+    /// in-kind contributions surface separately via `inKindCents`.
     public let inCents: Int64
     /// Sum of all `expense`-typed ledger entries.
     public let outCents: Int64
-    /// `inCents - outCents`. Can go negative when expenses exceed
-    /// contributions — that's a valid IOU state for the group.
+    /// `inCents - outCents` (cash flow only). Excludes in-kind
+    /// contributions per FASE 4 Wave 4 (mig 20260525221500). Use
+    /// `totalValueCents` for the gross value that includes assets.
     public let balanceCents: Int64
     /// Total count of ledger entries feeding this row.
     public let entryCount: Int64
     /// Most-recent `occurred_at` across the feeding entries. Nil when
     /// the pool has zero activity yet.
     public let lastActivityAt: Date?
+    /// FASE 4 Wave 4 (mig 20260525221500): sum of in-kind `contribution`
+    /// entries (metadata.in_kind = true) — assets aportados en especie
+    /// (terrenos, equipo, etc). Surfaced apart from `inCents` so the
+    /// pool number reflects cash flow, not gross asset value.
+    public let inKindCents: Int64
+    /// FASE 4 Wave 4: gross pool value = cash balance + in-kind. Useful
+    /// for surfaces that want the "total worth of the pool including
+    /// assets", e.g. capital reports.
+    public let totalValueCents: Int64
 
     /// Composite id for SwiftUI ForEach. Group + currency is the
     /// natural key (one row per currency in the projection).
@@ -71,6 +83,8 @@ public struct SharedPoolSummary: Projection, Identifiable, Hashable {
         case balanceCents     = "shared_pool_balance_cents"
         case entryCount       = "entry_count"
         case lastActivityAt   = "last_activity_at"
+        case inKindCents      = "shared_pool_in_kind_cents"
+        case totalValueCents  = "shared_pool_total_value_cents"
     }
 
     public init(
@@ -81,7 +95,9 @@ public struct SharedPoolSummary: Projection, Identifiable, Hashable {
         outCents: Int64,
         balanceCents: Int64,
         entryCount: Int64,
-        lastActivityAt: Date?
+        lastActivityAt: Date?,
+        inKindCents: Int64 = 0,
+        totalValueCents: Int64? = nil
     ) {
         self.groupId = groupId
         self.currency = currency
@@ -91,5 +107,37 @@ public struct SharedPoolSummary: Projection, Identifiable, Hashable {
         self.balanceCents = balanceCents
         self.entryCount = entryCount
         self.lastActivityAt = lastActivityAt
+        self.inKindCents = inKindCents
+        // Default: cash balance + in-kind. Allows older callers /
+        // mock fixtures to skip the param without changing values.
+        self.totalValueCents = totalValueCents ?? (balanceCents + inKindCents)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.groupId = try c.decode(UUID.self, forKey: .groupId)
+        self.currency = try c.decode(String.self, forKey: .currency)
+        self.sharedPoolId = try c.decode(UUID.self, forKey: .sharedPoolId)
+        self.inCents = try Self.decodeCents(c, .inCents)
+        self.outCents = try Self.decodeCents(c, .outCents)
+        self.balanceCents = try Self.decodeCents(c, .balanceCents)
+        self.entryCount = try Self.decodeCents(c, .entryCount)
+        self.lastActivityAt = try c.decodeIfPresent(Date.self, forKey: .lastActivityAt)
+        // Backward compat: tolerate missing keys for callers reading
+        // legacy fixtures or pre-mig-20260525221500 snapshots.
+        self.inKindCents = (try? Self.decodeCents(c, .inKindCents)) ?? 0
+        self.totalValueCents = (try? Self.decodeCents(c, .totalValueCents))
+            ?? (self.balanceCents + self.inKindCents)
+    }
+
+    private static func decodeCents(
+        _ c: KeyedDecodingContainer<CodingKeys>,
+        _ key: CodingKeys
+    ) throws -> Int64 {
+        if let int64 = try? c.decode(Int64.self, forKey: key) { return int64 }
+        if let int = try? c.decode(Int.self, forKey: key) { return Int64(int) }
+        if let str = try? c.decode(String.self, forKey: key),
+           let int64 = Int64(str) { return int64 }
+        return try c.decode(Int64.self, forKey: key)
     }
 }

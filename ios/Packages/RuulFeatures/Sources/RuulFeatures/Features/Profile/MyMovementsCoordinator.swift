@@ -29,6 +29,11 @@ public final class MyMovementsCoordinator {
     public let allGroups: [RuulCore.Group]
 
     public private(set) var groupMovements: [GroupMovements] = []
+    /// FASE 4 Wave 4 Phase 3 Tier 1 (mig 20260525230000): per-group
+    /// obligation rows for the viewer — one entry per group where the
+    /// user is an active member. Used by the cross-group "El grupo te
+    /// debe / Le debes" surface so it stops mixing aportes con deuda.
+    public private(set) var viewerObligations: [MemberObligationSummary] = []
     public private(set) var isLoading: Bool = true
     public private(set) var error: String?
     /// True después de que `refresh()` corrió al menos una vez. Permite
@@ -64,6 +69,7 @@ public final class MyMovementsCoordinator {
         }
 
         var collected: [GroupMovements] = []
+        var collectedObligations: [MemberObligationSummary] = []
         for group in allGroups {
             do {
                 let members = try await groupsRepo.membersWithProfiles(of: group.id)
@@ -79,12 +85,24 @@ public final class MyMovementsCoordinator {
                     paidCents: paid,
                     receivedCents: received
                 ))
+                // FASE 4 Wave 4 Phase 3 Tier 1: also pull the viewer's
+                // obligation row from this group's view — drives the
+                // cross-group net surface. Best-effort, soft-fail.
+                if let row = (try? await ledgerRepo.obligationsForGroup(group.id))?
+                    .first(where: {
+                        $0.memberId == myMember.member.id
+                            && $0.currency == group.currency
+                    })
+                {
+                    collectedObligations.append(row)
+                }
             } catch {
                 log.warning("movements refresh failed for \(group.id): \(error.localizedDescription)")
             }
         }
         // Most active group first.
         groupMovements = collected.sorted { ($0.paidCents + $0.receivedCents) > ($1.paidCents + $1.receivedCents) }
+        viewerObligations = collectedObligations
     }
 
     /// Sums money that left vs reached the given member, expressed in
@@ -144,6 +162,17 @@ public final class MyMovementsCoordinator {
     }
 
     public var netCents: Int64 { totalReceivedCents - totalPaidCents }
+
+    /// FASE 4 Wave 4 Phase 3 Tier 1: sum of viewer's
+    /// `netPeerPositionCents` across all groups. Excludes stake
+    /// (aportes) so the cross-group "El grupo te debe / Le debes"
+    /// surface stops mintiendo cuando hay capital invertido. Prefer
+    /// THIS over `netCents` for relational labels.
+    public var peerNetCents: Int64 {
+        viewerObligations.reduce(into: Int64(0)) { acc, row in
+            acc += row.netPeerPositionCents
+        }
+    }
 
     public var hasAnyActivity: Bool {
         totalPaidCents > 0 || totalReceivedCents > 0

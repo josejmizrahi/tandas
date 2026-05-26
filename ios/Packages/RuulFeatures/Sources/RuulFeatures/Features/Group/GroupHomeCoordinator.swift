@@ -94,6 +94,12 @@ public final class GroupHomeCoordinator {
     /// subscreen. Empty until first load (or when `ledgerRepo`/
     /// `actorUserId` isn't wired).
     public var groupBalances: [MemberGroupBalance] = []
+    /// FASE 4 Wave 4 Phase 3 (mig 20260525230000): per-member breakdown
+    /// of stake / receivable / obligation / settlement net. The greedy
+    /// peer-settlement plan reads `netPeerPositionCents` from these
+    /// rows (NOT `groupBalances.netCents`, which conflates aportes
+    /// con deuda). Empty until first load.
+    public var groupObligations: [MemberObligationSummary] = []
 
     /// Upcoming events in the group, ordered ascending by `startsAt`.
     /// Kept for back-compat with consumers that read raw events
@@ -143,6 +149,20 @@ public final class GroupHomeCoordinator {
         guard let myMemberId = allMembers
             .first(where: { $0.member.userId == userId })?.member.id else { return nil }
         return groupBalances.first(where: {
+            $0.memberId == myMemberId && $0.currency == group.currency
+        })
+    }
+
+    /// FASE 4 Wave 4 Phase 3 Tier 1 (mig 20260525230000): viewer's
+    /// obligations row — uses `netPeerPositionCents` (excludes stake)
+    /// so labels stop mintiendo cuando hay aportes. Surfaces should
+    /// prefer THIS over `viewerBalance` for "Te deben / Le debes"
+    /// strings.
+    public var viewerObligation: MemberObligationSummary? {
+        guard let group, let userId = actorUserId else { return nil }
+        guard let myMemberId = allMembers
+            .first(where: { $0.member.userId == userId })?.member.id else { return nil }
+        return groupObligations.first(where: {
             $0.memberId == myMemberId && $0.currency == group.currency
         })
     }
@@ -416,6 +436,8 @@ public final class GroupHomeCoordinator {
     /// P3 (mig 00136): per-member net balances in the group. Soft-fails —
     /// the card simply stays hidden if the read errors. Read is small
     /// (one row per (member, currency)) so no pagination needed.
+    /// FASE 4 Wave 4 Phase 3: also loads `member_obligations_view` for
+    /// the 3-dim breakdown used by the peer-settlement greedy.
     private func loadBalances() async {
         guard let repo = ledgerRepo else { return }
         do {
@@ -423,6 +445,8 @@ public final class GroupHomeCoordinator {
         } catch {
             log.warning("group balances load failed: \(error.localizedDescription, privacy: .public)")
         }
+        self.groupObligations =
+            (try? await repo.obligationsForGroup(groupId)) ?? []
     }
 
     /// Loads active assets in the group (resource_type='asset'). Soft-

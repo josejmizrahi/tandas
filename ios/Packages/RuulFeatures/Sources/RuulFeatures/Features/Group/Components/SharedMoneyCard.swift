@@ -48,6 +48,8 @@ struct SharedMoneyCard: View {
                 .padding(.top, 6)
             footer
                 .padding(.top, RuulSpacing.xxs)
+            inKindLine
+                .padding(.top, RuulSpacing.xxs)
 
             secondaryRow
                 .padding(.top, RuulSpacing.md)
@@ -64,6 +66,31 @@ struct SharedMoneyCard: View {
         .padding(RuulSpacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ruulCardSurface(.solid)
+    }
+
+    /// FASE 4 Wave 4 (mig 20260525221500): in-kind contributions live
+    /// separately from the cash balance. Surfaced inline when present.
+    @ViewBuilder
+    private var inKindLine: some View {
+        if summary.inKindCents > 0 {
+            Label(
+                "+ \(formatInKind(summary.inKindCents)) en activos",
+                systemImage: "shippingbox"
+            )
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+        }
+    }
+
+    private func formatInKind(_ cents: Int64) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = summary.currency
+        f.maximumFractionDigits = 0
+        f.locale = Locale(identifier: "es_MX")
+        let dec = Decimal(cents) / 100
+        return f.string(from: dec as NSDecimalNumber)
+            ?? "\(summary.currency) \(cents / 100)"
     }
 
     // MARK: - Label

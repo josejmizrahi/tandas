@@ -39,10 +39,20 @@ public struct GroupSpaceView: View {
     /// al sheet correspondiente — sin pasar por un picker intermedio
     /// (founder decision 2026-05-25).
     private enum SharedMoneySheet: Identifiable {
-        case contribute, recordExpense, settle
+        case contribute, recordExpense, settle, payout, poolCharge
         var id: Self { self }
     }
     @State private var sharedMoneySheet: SharedMoneySheet?
+    /// FASE 4 Wave 3 (2026-05-25): pre-filled settlement sheet driven
+    /// by the pending-settlement strip inside the money cluster. Keeps
+    /// the bare `sharedMoneySheet = .settle` path intact for the
+    /// PoolStatusBlock + cluster menu CTAs.
+    @State private var prefilledSettlement: PrefilledSettlement?
+    private struct PrefilledSettlement: Identifiable {
+        let id = UUID()
+        let toMemberId: UUID
+        let amountCents: Int64
+    }
     /// 2026-05-25 proposal B: tap an avatar → MemberQuickSheet.
     /// Contextual participation FIRST, full identity SECOND.
     @State private var quickSheetMember: MemberWithProfile?
@@ -162,6 +172,7 @@ public struct GroupSpaceView: View {
                         GroupPoolStatusBlock(
                             pool: pool,
                             viewerBalance: coordinator.viewerBalance,
+                            viewerObligation: coordinator.viewerObligation,
                             members: coordinator.allMembers,
                             onTapPool: onOpenTransactions,
                             onContribute: { sharedMoneySheet = .contribute },
@@ -174,7 +185,13 @@ public struct GroupSpaceView: View {
                         GroupClusterStream(
                             attention: coordinator.pendingActions,
                             upcoming: coordinator.upcomingItems,
-                            recentMoney: coordinator.recentMoneyEntries,
+                            // FASE 4 Wave 4 Phase 3 (mig 20260525230000):
+                            // re-activado con `member_obligations_view`
+                            // que separa stake de deuda peer-to-peer
+                            // real. El greedy ahora corre sobre
+                            // `netPeerPositionCents` (excluye aportes)
+                            // → settlements correctos.
+                            pendingDebts: viewerPendingDebts(group: group),
                             inUse: coordinator.inUseItems,
                             recentActivity: coordinator.groupActivityEvents,
                             locale: app.profile?.locale ?? "es-MX",
@@ -190,7 +207,15 @@ public struct GroupSpaceView: View {
                             onSeeAllUpcoming: onOpenEventsHistory,
                             onRegisterExpense: { sharedMoneySheet = .recordExpense },
                             onContribute: { sharedMoneySheet = .contribute },
-                            onSettle: { sharedMoneySheet = .settle }
+                            onSettle: { sharedMoneySheet = .settle },
+                            onPayout: { sharedMoneySheet = .payout },
+                            onPoolCharge: { sharedMoneySheet = .poolCharge },
+                            onTapDebt: { hint in
+                                prefilledSettlement = PrefilledSettlement(
+                                    toMemberId: hint.toMemberId,
+                                    amountCents: hint.amountCents
+                                )
+                            }
                         )
                     } else if !hasPoolContent {
                         EmptyGroupHero(
@@ -207,6 +232,20 @@ public struct GroupSpaceView: View {
             .sheet(item: $sharedMoneySheet) { which in
                 sharedMoneySheetContent(which, group: group)
                     .presentationDetents([.medium, .large])
+            }
+            .sheet(item: $prefilledSettlement) { ctx in
+                SettlementSheet(
+                    groupId: group.id,
+                    resourceId: nil,
+                    currency: group.currency,
+                    members: coordinator.allMembers,
+                    suggestedToMemberId: ctx.toMemberId,
+                    suggestedAmountCents: ctx.amountCents,
+                    onDidSettle: { Task { await coordinator.refresh() } }
+                )
+                .environment(app)
+                .presentationDetents([.medium, .large])
+                .presentationBackground(.ultraThinMaterial)
             }
             .sheet(item: $quickSheetMember) { member in
                 MemberQuickSheet(
@@ -276,9 +315,64 @@ public struct GroupSpaceView: View {
     private var hasStreamContent: Bool {
         !coordinator.pendingActions.isEmpty
             || !coordinator.upcomingItems.isEmpty
-            || !coordinator.recentMoneyEntries.isEmpty
             || !coordinator.inUseItems.isEmpty
             || !coordinator.groupActivityEvents.isEmpty
+            || (coordinator.group.map { !viewerPendingDebts(group: $0).isEmpty } ?? false)
+    }
+
+    /// FASE 4 Wave 4 Phase 3 (mig 20260525230000): peer-settlement
+    /// greedy ahora corre sobre `member_obligations_view.netPeerPositionCents`
+    /// que EXCLUYE aportes/stake. Resultado: settlements sugeridos
+    /// reflejan deuda real entre miembros (fronteos sin cobrar, multas
+    /// pendientes, peer settlements), NO el stake invertido.
+    ///
+    /// Doctrine recordatoria: el viewer solo ve pairs en los que está
+    /// involucrado (founder doctrine 2026-05-25). Third-party pairs
+    /// viven en `GroupSettlementPlanView` con su toggle.
+    private func viewerPendingDebts(group: RuulCore.Group) -> [PendingSettlementHint] {
+        guard let userId = app.session?.user.id else { return [] }
+        guard let myMemberId = coordinator.allMembers
+            .first(where: { $0.member.userId == userId })?.member.id else { return [] }
+        let obligations = coordinator.groupObligations
+            .filter { $0.currency == group.currency }
+        guard obligations.contains(where: {
+            $0.memberId == myMemberId && $0.netPeerPositionCents != 0
+        }) else {
+            return []
+        }
+        var creditors = obligations.filter { $0.netPeerPositionCents > 0 }
+            .sorted { $0.netPeerPositionCents > $1.netPeerPositionCents }
+            .map { (memberId: $0.memberId, net: $0.netPeerPositionCents) }
+        var debtors = obligations.filter { $0.netPeerPositionCents < 0 }
+            .sorted { $0.netPeerPositionCents < $1.netPeerPositionCents }
+            .map { (memberId: $0.memberId, net: $0.netPeerPositionCents) }
+        var out: [PendingSettlementHint] = []
+        while !creditors.isEmpty, !debtors.isEmpty {
+            var c = creditors.removeFirst()
+            var d = debtors.removeFirst()
+            let amount = min(c.net, -d.net)
+            guard amount > 0 else { break }
+            let viewerIsPayer = (d.memberId == myMemberId)
+            let viewerIsCreditor = (c.memberId == myMemberId)
+            if viewerIsPayer || viewerIsCreditor {
+                let counterpartId = viewerIsPayer ? c.memberId : d.memberId
+                let name = coordinator.allMembers
+                    .first(where: { $0.member.id == counterpartId })?
+                    .displayName ?? "Miembro"
+                out.append(PendingSettlementHint(
+                    toMemberId: counterpartId,
+                    counterpartName: name,
+                    amountCents: amount,
+                    currency: group.currency,
+                    viewerIsPayer: viewerIsPayer
+                ))
+            }
+            c.net -= amount
+            d.net += amount
+            if c.net > 0 { creditors.insert(c, at: 0) }
+            if d.net < 0 { debtors.insert(d, at: 0) }
+        }
+        return out
     }
 
     private var hasPoolContent: Bool {
@@ -316,6 +410,23 @@ public struct GroupSpaceView: View {
                 suggestedToMemberId: nil,
                 onDidSettle: { Task { await coordinator.refresh() } }
             )
+        case .payout:
+            RecordPayoutSheet(
+                groupId: group.id,
+                currency: group.currency,
+                members: coordinator.allMembers,
+                suggestedMemberId: nil,
+                onDidPayout: { Task { await coordinator.refresh() } }
+            )
+            .environment(app)
+        case .poolCharge:
+            IssuePoolChargeSheet(
+                groupId: group.id,
+                currency: group.currency,
+                members: coordinator.allMembers,
+                onDidIssue: { Task { await coordinator.refresh() } }
+            )
+            .environment(app)
         }
     }
 
@@ -397,6 +508,9 @@ public struct GroupSpaceView: View {
 private struct GroupPoolStatusBlock: View {
     let pool: SharedPoolSummary
     let viewerBalance: MemberGroupBalance?
+    /// FASE 4 Wave 4 Phase 3 Tier 1: preferred over `viewerBalance` for
+    /// obligation chip labels — `netPeerPositionCents` excludes stake.
+    let viewerObligation: MemberObligationSummary?
     let members: [MemberWithProfile]
     var onTapPool: (() -> Void)?
     var onContribute: () -> Void
@@ -420,13 +534,25 @@ private struct GroupPoolStatusBlock: View {
         Button(action: { onTapPool?() }) {
             HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.sm) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Dinero compartido")
-                        .font(.footnote)
+                    Text("EFECTIVO DEL GRUPO")
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(Color.ruulTextSecondary)
+                        .tracking(0.6)
                     Text(formattedBalance)
                         .font(.title2.weight(.semibold).monospacedDigit())
                         .foregroundStyle(balanceTint)
                         .contentTransition(.numericText())
+                    // FASE 4 Wave 4 (mig 20260525221500): in-kind
+                    // contributions live separately from the cash
+                    // balance. Surface them inline when present.
+                    if pool.inKindCents > 0 {
+                        Label(
+                            "+ \(formatAmount(pool.inKindCents, currency: pool.currency)) en activos",
+                            systemImage: "shippingbox"
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(Color.ruulTextSecondary)
+                    }
                 }
                 Spacer()
                 if let lastActivity = pool.lastActivityAt {
@@ -463,11 +589,30 @@ private struct GroupPoolStatusBlock: View {
 
     @ViewBuilder
     private var viewerObligationChip: some View {
-        if let balance = viewerBalance, balance.netCents != 0 {
-            let isViewerCredited = balance.netCents > 0
-            let amountFormatted = formatAmount(abs(balance.netCents), currency: balance.currency)
+        // FASE 4 Wave 4 Phase 3 Tier 1 (mig 20260525230000): prefer
+        // `viewerObligation.netPeerPositionCents` — separates stake
+        // from peer-relevant debt so the chip can show BOTH directions
+        // truthfully ("Te deben" cuando + / "Debes" cuando −). Falls
+        // back to `viewerBalance.netCents > 0` only when obligations
+        // haven't loaded (first paint) — keeps the post-aporte
+        // "Le debes" bug from re-surfacing during the load gap.
+        let netCents: Int64? = {
+            if let o = viewerObligation { return o.netPeerPositionCents }
+            if let b = viewerBalance, b.netCents > 0 { return b.netCents }
+            return nil
+        }()
+        if let net = netCents, net != 0 {
+            let isViewerCredited = net > 0
+            let amountFormatted = formatAmount(
+                abs(net),
+                currency: viewerObligation?.currency
+                    ?? viewerBalance?.currency
+                    ?? pool.currency
+            )
             HStack(spacing: RuulSpacing.sm) {
-                Image(systemName: isViewerCredited ? "arrow.down.left.circle.fill" : "arrow.up.right.circle.fill")
+                Image(systemName: isViewerCredited
+                      ? "arrow.down.left.circle.fill"
+                      : "arrow.up.right.circle.fill")
                     .font(.body)
                     .foregroundStyle(isViewerCredited ? Color.ruulPositive : Color.ruulNegative)
                     .accessibilityHidden(true)
@@ -506,13 +651,12 @@ private struct GroupPoolStatusBlock: View {
             .buttonStyle(.glass)
             .controlSize(.regular)
 
-            Button(action: onSettle) {
-                Label("Liquidar", systemImage: "arrow.left.arrow.right.circle")
-                    .font(.footnote.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
-            .controlSize(.regular)
+            // 2026-05-25: Liquidar removido del toolbar — vivía
+            // duplicado con el `viewerObligationChip` contextual ("Le
+            // debes $X · Liquidar") + las rows del `DebtsCluster` +
+            // el bloque "Tu posición" del Money Detail. El toolbar
+            // queda para acciones de creación (Aportar / Gasto);
+            // settle es contextual y se ofrece donde hay deuda.
         }
     }
 

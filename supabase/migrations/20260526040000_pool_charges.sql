@@ -495,7 +495,7 @@ BEGIN
      WHERE gm.group_id = v_obligation.group_id
        AND gm.user_id = v_uid
        AND gm.active
-       AND gm.role IN ('admin', 'founder')
+       AND COALESCE(gm.roles, '[]'::jsonb) ?| array['admin', 'founder']
   ) INTO v_is_admin;
 
   IF NOT v_is_admin AND v_issuer_uid IS DISTINCT FROM v_uid::text THEN

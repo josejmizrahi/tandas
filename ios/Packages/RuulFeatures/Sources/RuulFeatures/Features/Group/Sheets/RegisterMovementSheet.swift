@@ -25,38 +25,66 @@ public struct RegisterMovementSheet: View {
         case contribution
         case expense
         case settlement
+        /// FASE 4 Wave 4 (2026-05-25): cuando el pool ya pagó a un
+        /// miembro por algún gasto fronteado, este movimiento cancela
+        /// el saldo a favor del miembro sin tocar el balance del pool
+        /// (el `expense` original ya lo contó).
+        case reimbursement
+        /// FASE 4 Wave 4 Phase 3 Tier 2 (2026-05-25): capital flow del
+        /// pool al miembro SIN receivable previo — dividendos, retorno
+        /// de capital, stipends, devolución al salir del grupo. RPC
+        /// canónica `record_payout`.
+        case payout
+        /// Phase 4.4 (2026-05-26): cuota / buy-in / aportación
+        /// esperada. Marca a uno o varios miembros como deudores hacia
+        /// el pool, sin mover dinero todavía. Cuando paguen, se cierra
+        /// vía `pay_pool_charge` (RPC mig 20260526040000) que emite un
+        /// `contribution` ledger entry + cierra la obligación.
+        case poolCharge
 
         public var id: String { rawValue }
 
         public var title: String {
             switch self {
-            case .contribution: return "Registrar un aporte"
-            case .expense:      return "Registrar un gasto"
-            case .settlement:   return "Pagar a un miembro"
+            case .contribution:  return "Registrar un aporte"
+            case .expense:       return "Registrar un gasto"
+            case .settlement:    return "Pagar a un miembro"
+            case .reimbursement: return "Reembolsar a alguien"
+            case .payout:        return "Pagar desde el pool"
+            case .poolCharge:    return "Cobrar cuota al grupo"
             }
         }
 
         public var subtitle: String {
             switch self {
-            case .contribution: return "Yo o alguien aportó dinero al grupo."
-            case .expense:      return "Alguien pagó algo del grupo (con o sin reparto)."
-            case .settlement:   return "Cerrar una deuda entre dos miembros."
+            case .contribution:  return "Yo o alguien aportó dinero al grupo."
+            case .expense:       return "Alguien pagó algo del grupo (con o sin reparto)."
+            case .settlement:    return "Cerrar una deuda entre dos miembros."
+            case .reimbursement: return "El pool le devuelve dinero a alguien que pagó del grupo."
+            case .payout:        return "Dividendo, retorno de capital, stipend, devolución al salir."
+            case .poolCharge:    return "Cuota de poker, tanda, mensualidad. Cada miembro queda con deuda al pool hasta que paga."
             }
         }
 
         public var icon: String {
             switch self {
-            case .contribution: return "arrow.down.circle.fill"
-            case .expense:      return "arrow.up.circle.fill"
-            case .settlement:   return "arrow.left.arrow.right.circle.fill"
+            case .contribution:  return "arrow.down.circle.fill"
+            case .expense:       return "arrow.up.circle.fill"
+            case .settlement:    return "arrow.left.arrow.right.circle.fill"
+            case .reimbursement: return "arrow.uturn.left.circle.fill"
+            case .payout:        return "banknote"
+            case .poolCharge:    return "person.2.badge.minus"
             }
         }
 
         public var tint: Color {
             switch self {
-            case .contribution: return .ruulPositive
-            case .expense:      return .ruulNegative
-            case .settlement:   return .ruulAccent
+            case .contribution:  return .ruulPositive
+            case .expense:       return .ruulNegative
+            case .settlement:    return .ruulAccent
+            case .reimbursement: return .ruulAccent
+            case .payout:        return .ruulPositive
+            case .poolCharge:    return .ruulAccent
             }
         }
     }
@@ -75,9 +103,20 @@ public struct RegisterMovementSheet: View {
                 }
                 .padding(RuulSpacing.lg)
             }
-            .background(Color.ruulBackgroundRecessed)
             .ruulSheetToolbar("Registrar movimiento")
         }
+        // 2026-05-25: detents baked into the sheet so every call site
+        // (ResourceMoneySlot, ResourceDetailSheet, EventDetailSheets)
+        // gets a quick-picker, not a full-screen takeover. With 6
+        // cards (Phase 4.4 added poolCharge), `.medium` shows enough
+        // and `.large` is available if the user scrolls.
+        .presentationDetents([.medium, .large])
+        // Glass sheet to match the rest of the app's sheets per
+        // `doctrine_post_v2_consolidation_phase` § sheet standardization.
+        // Replaces the opaque `.background(Color.ruulBackgroundRecessed)`
+        // that made this picker look heavy vs the other ultraThinMaterial
+        // sheets.
+        .presentationBackground(.ultraThinMaterial)
     }
 
     private func card(for kind: Kind) -> some View {

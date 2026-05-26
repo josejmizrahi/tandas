@@ -22,6 +22,11 @@ public struct GroupSettlementPlanView: View {
     @State private var errorMessage: String?
     @State private var hasLoaded = false
     @State private var settlementContext: SettlementContext?
+    /// FASE 4 Wave 2 (2026-05-25): hide third-party suggestions by
+    /// default. Showing everyone's debts on first land reads like
+    /// ledger surveillance; the viewer should only see pairs they're
+    /// involved in unless they opt in via the footer toggle.
+    @State private var showThirdParty = false
 
     public init(group: RuulCore.Group) {
         self.group = group
@@ -31,6 +36,12 @@ public struct GroupSettlementPlanView: View {
         let id = UUID()
         let toMemberId: UUID
         let amountCents: Int64
+        /// Stable key for the suggestion the user just resolved, so the
+        /// matching row can be animated out post-dismiss.
+        let suggestionKey: String
+        /// Which side of the dyad the viewer was on. Drives the
+        /// closure-card phrasing ("Le pagaste" vs "X te pagó").
+        let viewerIsPayer: Bool
     }
 
     private struct SettlementSuggestion: Identifiable {
@@ -38,7 +49,16 @@ public struct GroupSettlementPlanView: View {
         let fromMemberId: UUID
         let toMemberId: UUID
         let amountCents: Int64
+
+        var key: String {
+            "\(fromMemberId.uuidString)|\(toMemberId.uuidString)|\(amountCents)"
+        }
     }
+
+    /// FASE 4 Wave 2 (2026-05-25): which row to fade after dismiss.
+    @State private var dismissedSuggestionKey: String?
+    /// FASE 4 Wave 2 (2026-05-25): closure banner post-settle.
+    @State private var recentClosure: DyadicClosureState?
 
     private var visibleBalances: [MemberGroupBalance] {
         balances
@@ -51,18 +71,31 @@ public struct GroupSettlementPlanView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        let all = suggestions
+        let viewerOnly = all.filter {
+            $0.fromMemberId == myMemberId || $0.toMemberId == myMemberId
+        }
+        let displayed = showThirdParty ? all : viewerOnly
+        let hiddenCount = all.count - viewerOnly.count
+        return ScrollView {
             LazyVStack(spacing: RuulSpacing.sm) {
+                closureBanner
                 headerCard
-                if suggestions.isEmpty && hasLoaded {
+                if hasLoaded && all.isEmpty {
                     emptyState
+                } else if hasLoaded && displayed.isEmpty {
+                    viewerSettledPrompt(hiddenCount: hiddenCount)
                 } else {
-                    ForEach(suggestions) { s in
+                    ForEach(displayed) { s in
                         suggestionRow(s)
                     }
                 }
+                if hiddenCount > 0 && !displayed.isEmpty {
+                    thirdPartyToggle(hiddenCount: hiddenCount)
+                }
             }
             .padding(RuulSpacing.lg)
+            .animation(.snappy, value: showThirdParty)
         }
         .refreshable { await load() }
         .background(Color.ruulBackgroundRecessed.ignoresSafeArea())
@@ -77,7 +110,26 @@ public struct GroupSettlementPlanView: View {
                 members: members,
                 suggestedToMemberId: ctx.toMemberId,
                 suggestedAmountCents: ctx.amountCents,
-                onDidSettle: { Task { await load() } }
+                onDidSettle: {
+                    let key = ctx.suggestionKey
+                    let counterpartId = ctx.toMemberId
+                    let amount = Decimal(ctx.amountCents) / 100
+                    let viewerSide: DyadicClosureCard.ViewerSide =
+                        ctx.viewerIsPayer ? .payer : .creditor
+                    Task { @MainActor in
+                        withAnimation(.easeOut(duration: 0.35)) {
+                            dismissedSuggestionKey = key
+                        }
+                        try? await Task.sleep(for: .milliseconds(380))
+                        await load()
+                        dismissedSuggestionKey = nil
+                        await presentClosure(
+                            counterpartId: counterpartId,
+                            amount: amount,
+                            viewerSide: viewerSide
+                        )
+                    }
+                }
             )
             .environment(app)
             .presentationDetents([.medium, .large])
@@ -122,17 +174,75 @@ public struct GroupSettlementPlanView: View {
         .padding(.top, RuulSpacing.xl)
     }
 
+    /// Shown when the viewer has no pending pairs but other members
+    /// still owe each other. Keeps the screen calm + on-message instead
+    /// of feeling broken / empty.
+    private func viewerSettledPrompt(hiddenCount: Int) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            Label("Estás al día", systemImage: "checkmark.circle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.ruulPositive)
+            if hiddenCount > 0 {
+                Text(hiddenCount == 1
+                     ? "Queda 1 pago sugerido entre otros miembros."
+                     : "Quedan \(hiddenCount) pagos sugeridos entre otros miembros.")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+                Button {
+                    withAnimation(.snappy) { showThirdParty = true }
+                } label: {
+                    Text("Verlos")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.ruulAccent)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(RuulSpacing.md)
+        .ruulCardSurface(.solid)
+    }
+
+    /// Footer link to reveal / hide settlement rows between members
+    /// the viewer is not involved in. Subtle accent-only treatment so
+    /// it reads as opt-in detail, not a primary action.
+    private func thirdPartyToggle(hiddenCount: Int) -> some View {
+        Button {
+            withAnimation(.snappy) { showThirdParty.toggle() }
+        } label: {
+            Label(
+                showThirdParty
+                    ? "Ocultar pagos entre otros miembros"
+                    : "Mostrar pagos entre otros miembros (\(hiddenCount))",
+                systemImage: showThirdParty ? "eye.slash" : "eye"
+            )
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.ruulAccent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, RuulSpacing.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Rows
 
     @ViewBuilder
     private func suggestionRow(_ s: SettlementSuggestion) -> some View {
         let viewerIsPayer = (s.fromMemberId == myMemberId)
         let viewerIsCreditor = (s.toMemberId == myMemberId)
-        if viewerIsPayer || viewerIsCreditor {
-            actionableRow(s, viewerIsPayer: viewerIsPayer)
-        } else {
-            infoRow(s)
+        let isDismissed = (dismissedSuggestionKey == s.key)
+        Group {
+            if viewerIsPayer || viewerIsCreditor {
+                actionableRow(s, viewerIsPayer: viewerIsPayer)
+            } else {
+                infoRow(s)
+            }
         }
+        .opacity(isDismissed ? 0 : 1)
+        .scaleEffect(isDismissed ? 0.97 : 1, anchor: .center)
+        .blur(radius: isDismissed ? 3 : 0)
     }
 
     private func actionableRow(_ s: SettlementSuggestion, viewerIsPayer: Bool) -> some View {
@@ -143,7 +253,9 @@ public struct GroupSettlementPlanView: View {
         return Button {
             settlementContext = SettlementContext(
                 toMemberId: counterpartId,
-                amountCents: s.amountCents
+                amountCents: s.amountCents,
+                suggestionKey: s.key,
+                viewerIsPayer: viewerIsPayer
             )
         } label: {
             HStack(spacing: RuulSpacing.md) {
@@ -207,6 +319,61 @@ public struct GroupSettlementPlanView: View {
             RoundedRectangle(cornerRadius: RuulRadius.lg)
                 .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
         )
+    }
+
+    // MARK: - Closure banner (FASE 4 Wave 2)
+
+    @ViewBuilder
+    private var closureBanner: some View {
+        if let c = recentClosure {
+            DyadicClosureCard(
+                counterpartName: c.counterpartName,
+                amount: c.amount,
+                currency: c.currency,
+                viewerSide: c.viewerSide,
+                outcome: c.outcome,
+                onDismiss: {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        recentClosure = nil
+                    }
+                }
+            )
+            .id(c.id)
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .top)),
+                removal: .opacity.combined(with: .scale(scale: 0.95))
+            ))
+        }
+    }
+
+    @MainActor
+    private func presentClosure(
+        counterpartId: UUID,
+        amount: Decimal,
+        viewerSide: DyadicClosureCard.ViewerSide
+    ) async {
+        let stillSuggested = settlementSuggestions(balances: visibleBalances).contains { s in
+            guard let me = myMemberId else { return false }
+            return (s.fromMemberId == me && s.toMemberId == counterpartId) ||
+                   (s.fromMemberId == counterpartId && s.toMemberId == me)
+        }
+        let outcome: DyadicClosureCard.Outcome = stillSuggested ? .partial : .closed
+        let state = DyadicClosureState(
+            counterpartName: memberName(for: counterpartId) ?? "este miembro",
+            amount: amount,
+            currency: group.currency,
+            viewerSide: viewerSide,
+            outcome: outcome
+        )
+        withAnimation(.snappy) {
+            recentClosure = state
+        }
+        try? await Task.sleep(for: .seconds(6))
+        if recentClosure?.id == state.id {
+            withAnimation(.easeOut(duration: 0.4)) {
+                recentClosure = nil
+            }
+        }
     }
 
     // MARK: - Algorithm

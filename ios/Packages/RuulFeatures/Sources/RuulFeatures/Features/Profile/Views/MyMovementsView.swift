@@ -24,6 +24,13 @@ public struct MyMovementsView: View {
     @Bindable var coordinator: MyMovementsCoordinator
     @Environment(AppState.self) private var app
 
+    /// FASE 4 Wave 3 (2026-05-25): netRow drill-down. Tap the cross-
+    /// group "El grupo te debe / Tú le debes" aggregate to reveal the
+    /// per-group breakdown that composes the net — only groups with a
+    /// non-zero net show up, so the user sees where the position
+    /// actually lives.
+    @State private var netExpanded: Bool = false
+
     public init(coordinator: MyMovementsCoordinator) {
         self.coordinator = coordinator
     }
@@ -108,27 +115,94 @@ public struct MyMovementsView: View {
 
     @ViewBuilder
     private var netRow: some View {
-        let net = coordinator.netCents
+        // FASE 4 Wave 4 Phase 3 Tier 1: prefer `peerNetCents` —
+        // excludes stake (aportes) so the label reflects peer debt
+        // honestly. `coordinator.netCents` is kept as backstop for
+        // first-paint when obligations haven't loaded across groups.
+        let peerNet = coordinator.peerNetCents
+        let net = peerNet != 0 ? peerNet : coordinator.netCents
         if net != 0 {
-            HStack(spacing: RuulSpacing.xs) {
-                Text(net > 0 ? "El grupo te debe" : "Tú le debes al grupo")
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-                Spacer(minLength: RuulSpacing.sm)
-                RuulMoneyView(
-                    amount: decimal(abs(net)),
-                    currency: "MXN",
-                    size: .medium,
-                    color: net > 0 ? .positive : .negative
-                )
+            let contributors = coordinator.groupMovements.filter { mv in
+                (net > 0 && mv.netCents > 0) || (net < 0 && mv.netCents < 0)
             }
-            .padding(RuulSpacing.md)
+            .sorted { abs($0.netCents) > abs($1.netCents) }
+
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.snappy) { netExpanded.toggle() }
+                } label: {
+                    HStack(spacing: RuulSpacing.xs) {
+                        Text(net > 0 ? "El grupo te debe" : "Tú le debes al grupo")
+                            .font(.headline)
+                            .foregroundStyle(Color.primary)
+                        Spacer(minLength: RuulSpacing.sm)
+                        RuulMoneyView(
+                            amount: decimal(abs(net)),
+                            currency: "MXN",
+                            size: .medium,
+                            color: net > 0 ? .positive : .negative
+                        )
+                        if !contributors.isEmpty {
+                            Image(systemName: "chevron.down")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Color.secondary)
+                                .rotationEffect(.degrees(netExpanded ? 180 : 0))
+                        }
+                    }
+                    .padding(RuulSpacing.md)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(contributors.isEmpty)
+
+                if netExpanded && !contributors.isEmpty {
+                    Divider()
+                        .background(Color(.separator))
+                    VStack(spacing: 0) {
+                        ForEach(Array(contributors.enumerated()), id: \.element.id) { idx, mv in
+                            netBreakdownRow(mv, viewerIsCreditor: net > 0)
+                            if idx < contributors.count - 1 {
+                                Divider()
+                                    .background(Color(.separator))
+                                    .padding(.leading, RuulSpacing.md)
+                            }
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
             .background(Color.ruulBackgroundCanvas, in: RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous)
                     .stroke(Color(.separator), lineWidth: 0.5)
             )
+            .clipShape(RoundedRectangle(cornerRadius: RuulRadius.md, style: .continuous))
         }
+    }
+
+    /// Inline drill-down row for the netRow expansion. Shows ONE group's
+    /// contribution to the cross-group net with a one-line phrase like
+    /// "Cenas Quincenales · $200" — colored by the viewer's direction.
+    private func netBreakdownRow(
+        _ movements: MyMovementsCoordinator.GroupMovements,
+        viewerIsCreditor: Bool
+    ) -> some View {
+        HStack(spacing: RuulSpacing.sm) {
+            Text(movements.group.name)
+                .font(.subheadline)
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+            Spacer(minLength: RuulSpacing.xs)
+            RuulMoneyView(
+                amount: decimal(abs(movements.netCents)),
+                currency: "MXN",
+                size: .small,
+                showSign: false,
+                color: viewerIsCreditor ? .positive : .negative
+            )
+        }
+        .padding(.horizontal, RuulSpacing.md)
+        .padding(.vertical, RuulSpacing.sm)
     }
 
     // MARK: - Per-group

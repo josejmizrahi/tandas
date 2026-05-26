@@ -3,16 +3,18 @@ import RuulUI
 import RuulCore
 
 /// Stream situacional del GroupSpace en orden canónico
-/// (doctrine_group_space_situational, 2026-05-24). Cada cluster
-/// auto-oculta cuando su data está vacía — si TODOS están vacíos,
-/// el parent debe montar `EmptyGroupHero` en su lugar.
+/// (doctrine_group_space_situational, 2026-05-24 → 2026-05-25 reframe).
+/// Cada cluster auto-oculta cuando su data está vacía — si TODOS están
+/// vacíos, el parent debe montar `EmptyGroupHero` en su lugar.
 ///
 /// Orden fijo:
 ///   1. Necesita atención
-///   2. Próximo (PR-1: event-only)
-///   3. Dinero reciente (con compose `+` contextual)
+///   2. Próximo (events + votes + slots)
+///   3. Deudas (founder reframe 2026-05-25: dyadic pendientes, no
+///      historial; recent money queda en GroupBalancesView +
+///      JustHappenedCluster + MyMovementsView)
 ///   4. En uso (asset custody + space occupancy; slot deferred)
-///   5. Acabó de pasar
+///   5. Acabó de pasar (incluye money happenings via system_events)
 @MainActor
 struct GroupClusterStream: View {
     let attention: [UserAction]
@@ -20,7 +22,10 @@ struct GroupClusterStream: View {
     /// votes, or slot rotations. Adding new cases doesn't touch this
     /// component — only `UpcomingCluster` row rendering.
     let upcoming: [UpcomingItem]
-    let recentMoney: [LedgerEntry]
+    /// 2026-05-25 reframe: greedy settlement pairs involving the viewer.
+    /// Empty → cluster #3 hides entirely. Historical money entries live
+    /// elsewhere (GroupBalancesView, JustHappenedCluster, MyMovements).
+    let pendingDebts: [PendingSettlementHint]
     let inUse: [InUseProjection]
     let recentActivity: [SystemEvent]
 
@@ -39,6 +44,14 @@ struct GroupClusterStream: View {
     let onRegisterExpense: () -> Void
     let onContribute: () -> Void
     let onSettle: () -> Void
+    /// FASE 4 Wave 4 Phase 3 Tier 2: pool→member payout (dividendos /
+    /// retornos / stipends). Nil → option hidden in compose menus.
+    var onPayout: (() -> Void)?
+    /// Phase 4.4 (2026-05-26): open the "cobrar cuota al grupo" sheet
+    /// — poker buy-in, tanda, cuota mensual. Nil → option hidden.
+    var onPoolCharge: (() -> Void)?
+    /// Open the SettlementSheet pre-filled with this dyadic pair.
+    var onTapDebt: ((PendingSettlementHint) -> Void)?
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: RuulSpacing.xl) {
@@ -54,16 +67,17 @@ struct GroupClusterStream: View {
                     onSeeAll: onSeeAllUpcoming
                 )
             }
-            if !recentMoney.isEmpty {
-                RecentMoneyCluster(
-                    entries: recentMoney,
-                    members: members,
-                    currency: currency,
+            if !pendingDebts.isEmpty {
+                DebtsCluster(
+                    debts: pendingDebts,
                     locale: locale,
                     onRegisterExpense: onRegisterExpense,
                     onContribute: onContribute,
                     onSettle: onSettle,
-                    onSeeAll: onSeeAllMoney
+                    onPoolCharge: onPoolCharge,
+                    onSeeAll: onSeeAllMoney,
+                    onTapDebt: onTapDebt,
+                    onPayout: onPayout
                 )
             }
             if !inUse.isEmpty {
