@@ -323,6 +323,114 @@ struct CheckOutAssetSheet: View {
     }
 }
 
+/// FASE 3 C.2 surface 5: closes an active checkout with optional damage
+/// reporting in the same form-commit gesture (template B.2). When the
+/// damage toggle is off we call `checkInAsset` alone; when it's on we
+/// also append a `reportDamage` atom. Either path emits a success
+/// phrase + haptic before dismissing (warmth doctrine).
+struct CheckInAssetSheet: View {
+    let asset: ResourceRow
+    let onSubmitted: () -> Void
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var conditionNotes: String = ""
+    @State private var hadDamage: Bool = false
+    @State private var damageSeverity: AssetDamageSeverity = .minor
+    @State private var damageNotes: String = ""
+    @State private var damageCostString: String = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+    @State private var successPhrase: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Condición al devolver (opcional)") {
+                    TextField("Sin novedades…", text: $conditionNotes, axis: .vertical)
+                }
+                Section {
+                    Toggle("Hubo un daño", isOn: $hadDamage.animation(.snappy(duration: 0.22)))
+                }
+                if hadDamage {
+                    Section("Severidad") {
+                        Picker("", selection: $damageSeverity) {
+                            ForEach(AssetDamageSeverity.allCases, id: \.self) { s in
+                                Text(s.label).tag(s)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    Section("Qué pasó") {
+                        TextField("Notas del daño", text: $damageNotes, axis: .vertical)
+                    }
+                    Section("Costo estimado (opcional)") {
+                        TextField("0", text: $damageCostString)
+                            .keyboardType(.decimalPad)
+                    }
+                }
+                if let successPhrase {
+                    Section {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text(successPhrase)
+                                .font(.subheadline.weight(.medium))
+                        }
+                    }
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .ruulSheetToolbar("Devolver activo")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Devolver") { Task { await submit() } }
+                        .disabled(isSubmitting || successPhrase != nil)
+                }
+            }
+            .sensoryFeedback(.success, trigger: successPhrase)
+        }
+    }
+
+    @MainActor
+    private func submit() async {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        let trimmedNotes = conditionNotes.trimmingCharacters(in: .whitespaces)
+        do {
+            try await app.assetLifecycleRepo.checkInAsset(
+                asset: asset.id,
+                conditionNotes: trimmedNotes.isEmpty ? nil : trimmedNotes
+            )
+            if hadDamage {
+                let cents: Int64? = {
+                    let trimmed = damageCostString.trimmingCharacters(in: .whitespaces)
+                    guard let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")) else { return nil }
+                    return Int64(value * 100)
+                }()
+                let damageNotesTrimmed = damageNotes.trimmingCharacters(in: .whitespaces)
+                _ = try await app.assetLifecycleRepo.reportDamage(
+                    asset: asset.id,
+                    severity: damageSeverity,
+                    notes: damageNotesTrimmed.isEmpty ? nil : damageNotesTrimmed,
+                    estimatedCostCents: cents,
+                    currency: nil
+                )
+                successPhrase = "Devuelto · daño \(damageSeverity.label.lowercased()) anotado"
+            } else {
+                successPhrase = "Devuelto · todo bien"
+            }
+            try? await Task.sleep(for: .milliseconds(700))
+            onSubmitted()
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
 struct RecordValuationSheet: View {
     let asset: ResourceRow
     let onSubmitted: () -> Void

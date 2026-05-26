@@ -90,6 +90,7 @@ public struct ResourceDetailSheet: View {
     @State private var logMaintenancePresented: Bool = false
     @State private var reportDamagePresented: Bool = false
     @State private var checkOutAssetPresented: Bool = false
+    @State private var checkInAssetPresented: Bool = false
     @State private var recordValuationPresented: Bool = false
     @State private var assignCustodyPresented: Bool = false
     @State private var releaseCustodyPresented: Bool = false
@@ -213,6 +214,14 @@ public struct ResourceDetailSheet: View {
             .presentationBackground(.ultraThinMaterial)
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $checkInAssetPresented) {
+            CheckInAssetSheet(asset: liveResource ?? resource) {
+                Task { await refreshResource() }
+            }
+            .environment(app)
+            .presentationBackground(.ultraThinMaterial)
+            .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $recordValuationPresented) {
             RecordValuationSheet(asset: liveResource ?? resource) {
                 Task { await refreshResource() }
@@ -320,6 +329,16 @@ public struct ResourceDetailSheet: View {
                         checkOutAssetPresented = true
                     } label: {
                         Label("Prestar activo", systemImage: "arrow.up.right.square")
+                    }
+                    if assetHasActiveCheckout {
+                        // FASE 3 C.2 surface 5: only surface "Devolver"
+                        // when there's an active checkout to close, so the
+                        // menu reflects state instead of offering a no-op.
+                        Button {
+                            checkInAssetPresented = true
+                        } label: {
+                            Label("Devolver activo", systemImage: "arrow.down.left.square")
+                        }
                     }
                     Button {
                         recordValuationPresented = true
@@ -1266,6 +1285,16 @@ public struct ResourceDetailSheet: View {
     private var assetHasCustodian: Bool {
         let live = liveResource ?? resource
         return live.metadata["custodian_display_name"]?.stringValue?.isEmpty == false
+    }
+
+    /// True when the asset has an open checkout (mig 00210 stamps
+    /// `checked_out_to` on the resource metadata at `check_out_asset` time
+    /// and clears it on `check_in_asset`). Drives the "Devolver activo"
+    /// menu item visibility so it only appears when there's something to
+    /// close.
+    private var assetHasActiveCheckout: Bool {
+        let live = liveResource ?? resource
+        return live.metadata["checked_out_to"]?.stringValue?.isEmpty == false
     }
 
     private var typeLabel: String {
