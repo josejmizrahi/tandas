@@ -4,31 +4,39 @@ import RuulCore
 
 /// Group "space" — the persistent home for a community.
 ///
-/// PR-1 (2026-05-25) pivots to the situational-stream doctrine
-/// (`doctrine_group_space_situational`): the home renders
-/// `GroupPresenceHeader` → `GroupClusterStream` (o `EmptyGroupHero`
-/// cuando todos los clusters están vacíos). Se borraron el antiguo
-/// `GroupSpacesGrid`, el `SharedMoneyCard` como superficie top, el
-/// chip-bar `GroupComposeBar` (movido a toolbar "+" en V3 fix), y los
-/// destinos peer por tipo (Eventos / Multas / Fondos / Activos /
-/// Balances) — la navegación ahora ocurre directo desde las filas de
-/// los clusters.
+/// V2 (2026-05-25): rebuild from scratch. The page is a vertical
+/// situational stream made of self-contained sections, each one
+/// responsible for ONE element of the group's life:
 ///
-/// Sub-screens reachable from here:
-///   - Avatar stack → MembersList (`onOpenMembers`)
-///   - UpcomingCluster row → Event detail (`onOpenEvent`)
-///   - AttentionCluster row → `onSelectPending` → router dispatch
-///   - Compose chips (Crear / Votar / Invitar / Compartir) → router
-///   - JustHappenedCluster "Ver todo" → Activity
-///   - "⋯" menu → Compartir invitación / Ajustes / Salir
+///   1. `GroupPresenceHeader`   — identity + members avatar band
+///   2. `GroupPoolStatusBlock`  — shared money pool state + viewer
+///                                 obligation chip (when relevant)
+///   3. `GroupClusterStream`    — 5 situational clusters in fixed order
+///                                 (Necesita atención / Próximo / Dinero
+///                                 reciente / En uso / Acabó de pasar)
+///   4. `EmptyGroupHero`        — only when truly empty across all signals
+///
+/// Each section auto-hides when its data source is empty (doctrine
+/// `group_space_situational`: data-driven, empty cluster invisible).
+/// The view itself is a thin shell over `GroupHomeCoordinator` — no
+/// data shaping happens here; the coordinator already exposes the
+/// `Observable` projections each section needs.
+///
+/// Composable concerns kept OUT of this file:
+///   - Per-cluster row rendering         → `Group/Components/*Cluster.swift`
+///   - Presence avatar stack             → `GroupPresenceHeader.swift`
+///   - Money sheet flows (record / aportar / settle) → presented from
+///     the same `sharedMoneySheet` enum; the sheet content itself lives
+///     in `Group/Sheets/*` and `Resources/Detail/Sections/SettlementSheet`
+///   - Toolbar menu items                → built inline at the bottom
 @MainActor
 public struct GroupSpaceView: View {
     @State var coordinator: GroupHomeCoordinator
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    /// El `+` de "Dinero reciente" salta directo al sheet
-    /// correspondiente — sin pasar por un picker intermedio
+    /// El `+` de "Dinero reciente" + el PoolStatusBlock saltan directo
+    /// al sheet correspondiente — sin pasar por un picker intermedio
     /// (founder decision 2026-05-25).
     private enum SharedMoneySheet: Identifiable {
         case contribute, recordExpense, settle
@@ -36,7 +44,7 @@ public struct GroupSpaceView: View {
     }
     @State private var sharedMoneySheet: SharedMoneySheet?
 
-    // Compose chips
+    // Compose chips (toolbar "+")
     public var onCreateEvent: () -> Void
     public var onStartVote: () -> Void
     public var onInviteMembers: () -> Void
@@ -47,13 +55,13 @@ public struct GroupSpaceView: View {
     public var onSelectPending: (UserAction) -> Void
     public var onOpenInUseResource: (UUID) -> Void
 
-    // Header + stream
+    // Header + stream secondary destinations
     public var onOpenMembers: (() -> Void)?
     public var onOpenActivity: (() -> Void)?
     public var onOpenTransactions: (() -> Void)?
     public var onOpenEventsHistory: (() -> Void)?
 
-    // Toolbar
+    // Toolbar ⋯ menu
     public var onOpenAjustes: (() -> Void)?
     public var onConfirmLeave: (() -> Void)?
     public var onLeaveGroup: () -> Void
@@ -95,9 +103,6 @@ public struct GroupSpaceView: View {
     public var body: some View {
         ZStack {
             Color.ruulBackgroundRecessed.ignoresSafeArea()
-            // Cold-start: replace generic spinner with a structural
-            // skeleton so entering a group feels like entering THE
-            // group (Audit 2 fix 2026-05-25).
             if coordinator.phase.isInitialLoading {
                 GroupSpaceSkeleton()
                     .transition(.opacity)
@@ -105,7 +110,7 @@ public struct GroupSpaceView: View {
                 AsyncContentView(
                     phase: coordinator.phase,
                     onRetry: { await coordinator.refresh() },
-                    loaded: { _ in loadedScroll }
+                    loaded: { _ in loadedContent }
                 )
                 .transition(.opacity)
             }
@@ -115,8 +120,10 @@ public struct GroupSpaceView: View {
         .toolbar { toolbarContent }
     }
 
+    // MARK: - Loaded content
+
     @ViewBuilder
-    private var loadedScroll: some View {
+    private var loadedContent: some View {
         if let group = coordinator.group {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: RuulSpacing.xl) {
@@ -127,12 +134,19 @@ public struct GroupSpaceView: View {
                         onTapMembers: onOpenMembers
                     )
 
-                    if isEmpty {
-                        EmptyGroupHero(
-                            onInvite: onInviteMembers,
-                            onCreate: onCreateEvent
+                    if let pool = coordinator.sharedPoolSummary, shouldShowPool(pool) {
+                        GroupPoolStatusBlock(
+                            pool: pool,
+                            viewerBalance: coordinator.viewerBalance,
+                            members: coordinator.allMembers,
+                            onTapPool: onOpenTransactions,
+                            onContribute: { sharedMoneySheet = .contribute },
+                            onRegisterExpense: { sharedMoneySheet = .recordExpense },
+                            onSettle: { sharedMoneySheet = .settle }
                         )
-                    } else {
+                    }
+
+                    if hasStreamContent {
                         GroupClusterStream(
                             attention: coordinator.pendingActions,
                             upcoming: coordinator.upcomingEvents,
@@ -152,6 +166,11 @@ public struct GroupSpaceView: View {
                             onContribute: { sharedMoneySheet = .contribute },
                             onSettle: { sharedMoneySheet = .settle }
                         )
+                    } else if !hasPoolContent {
+                        EmptyGroupHero(
+                            onInvite: onInviteMembers,
+                            onCreate: onCreateEvent
+                        )
                     }
                 }
                 .padding(.horizontal, RuulSpacing.lg)
@@ -166,16 +185,30 @@ public struct GroupSpaceView: View {
         }
     }
 
-    /// Todos los clusters vacíos → render `EmptyGroupHero` debajo del
-    /// PresenceHeader + ComposeBar. Regla de la doctrina: si no hay
-    /// vida, no inventes estructura.
-    private var isEmpty: Bool {
-        coordinator.pendingActions.isEmpty
-            && coordinator.upcomingEvents.isEmpty
-            && coordinator.recentMoneyEntries.isEmpty
-            && coordinator.inUseItems.isEmpty
-            && coordinator.groupActivityEvents.isEmpty
+    // MARK: - Visibility predicates
+
+    /// Pool block appears when there's something worth saying about the
+    /// group's money — balance non-zero, viewer carrying an obligation,
+    /// or at least one ledger entry recorded. A fresh empty pool stays
+    /// hidden so the empty group doesn't feel "bancario" out of the gate.
+    private func shouldShowPool(_ pool: SharedPoolSummary) -> Bool {
+        pool.hasActivity || pool.balanceCents != 0 || (coordinator.viewerBalance?.netCents ?? 0) != 0
     }
+
+    private var hasStreamContent: Bool {
+        !coordinator.pendingActions.isEmpty
+            || !coordinator.upcomingEvents.isEmpty
+            || !coordinator.recentMoneyEntries.isEmpty
+            || !coordinator.inUseItems.isEmpty
+            || !coordinator.groupActivityEvents.isEmpty
+    }
+
+    private var hasPoolContent: Bool {
+        guard let pool = coordinator.sharedPoolSummary else { return false }
+        return shouldShowPool(pool)
+    }
+
+    // MARK: - Sheet routing
 
     @ViewBuilder
     private func sharedMoneySheetContent(
@@ -208,12 +241,10 @@ public struct GroupSpaceView: View {
         }
     }
 
+    // MARK: - Toolbar
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        // "+" trailing button — compose verbs. Replaces the
-        // pre-PR-2 GroupComposeBar chip row (V3 fix 2026-05-25:
-        // 4 equal-weight chips at top diluted the "qué importa
-        // ahora" signal of the clusters below).
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button(
@@ -236,7 +267,6 @@ public struct GroupSpaceView: View {
             }
             .accessibilityLabel("Agregar al grupo")
         }
-        // "⋯" trailing — non-create actions (browse / manage / leave).
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button(
@@ -269,5 +299,151 @@ public struct GroupSpaceView: View {
                 Image(systemName: "ellipsis")
             }
         }
+    }
+}
+
+// MARK: - GroupPoolStatusBlock
+
+/// Shared money pool surface for the home (FASE 4 M.2 fix).
+///
+/// Doctrine: the home doesn't show a Splitwise card. It shows ONE line
+/// of "qué hay en el dinero compartido y qué tengo que ver yo con eso".
+/// Tap → opens GroupBalancesView. Inline mini-actions (Aportar /
+/// Gasto / Liquidar) keep the create flows reachable without
+/// re-introducing the verb-grid that PR-1 deprecated.
+///
+/// Visibility: caller (`GroupSpaceView.shouldShowPool`) guards rendering
+/// so a fresh empty pool stays hidden — the home doesn't feel bancario
+/// when there's literally nothing to say.
+@MainActor
+private struct GroupPoolStatusBlock: View {
+    let pool: SharedPoolSummary
+    let viewerBalance: MemberGroupBalance?
+    let members: [MemberWithProfile]
+    var onTapPool: (() -> Void)?
+    var onContribute: () -> Void
+    var onRegisterExpense: () -> Void
+    var onSettle: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+            poolRow
+            viewerObligationChip
+            quickActions
+        }
+        .padding(RuulSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ruulCardSurface(.solid)
+    }
+
+    // MARK: Pool row — balance + relative time
+
+    private var poolRow: some View {
+        Button(action: { onTapPool?() }) {
+            HStack(alignment: .firstTextBaseline, spacing: RuulSpacing.sm) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dinero compartido")
+                        .font(.footnote)
+                        .foregroundStyle(Color.secondary)
+                    Text(formattedBalance)
+                        .font(.title2.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(balanceTint)
+                        .contentTransition(.numericText())
+                }
+                Spacer()
+                if let lastActivity = pool.lastActivityAt {
+                    Text(lastActivity.ruulRelativeDescription)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(onTapPool == nil)
+    }
+
+    private var formattedBalance: String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = pool.currency
+        f.locale = Locale(identifier: "es_MX")
+        let decimal = Decimal(pool.balanceCents) / 100
+        return f.string(from: decimal as NSDecimalNumber) ?? "\(pool.currency) \(pool.balanceCents / 100)"
+    }
+
+    private var balanceTint: Color {
+        if pool.isOverSpent { return .ruulSemanticWarning }
+        return .primary
+    }
+
+    // MARK: Viewer obligation chip (FASE 4 D.1 — name + amount)
+
+    @ViewBuilder
+    private var viewerObligationChip: some View {
+        if let balance = viewerBalance, balance.netCents != 0 {
+            let isViewerCredited = balance.netCents > 0
+            let amountFormatted = formatAmount(abs(balance.netCents), currency: balance.currency)
+            HStack(spacing: RuulSpacing.sm) {
+                Image(systemName: isViewerCredited ? "arrow.down.left.circle.fill" : "arrow.up.right.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(isViewerCredited ? Color.ruulPositive : Color.ruulNegative)
+                    .accessibilityHidden(true)
+                Text(isViewerCredited
+                     ? "El grupo te debe \(amountFormatted)"
+                     : "Le debes \(amountFormatted) al grupo")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.primary)
+                Spacer()
+                if !isViewerCredited {
+                    Button("Liquidar", action: onSettle)
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                }
+            }
+        }
+    }
+
+    // MARK: Quick actions row
+
+    private var quickActions: some View {
+        HStack(spacing: RuulSpacing.xs) {
+            Button(action: onContribute) {
+                Label("Aportar", systemImage: "arrow.down.circle")
+                    .font(.footnote.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .controlSize(.regular)
+
+            Button(action: onRegisterExpense) {
+                Label("Gasto", systemImage: "arrow.up.circle")
+                    .font(.footnote.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .controlSize(.regular)
+
+            Button(action: onSettle) {
+                Label("Liquidar", systemImage: "arrow.left.arrow.right.circle")
+                    .font(.footnote.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .controlSize(.regular)
+        }
+    }
+
+    private func formatAmount(_ cents: Int64, currency: String) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.locale = Locale(identifier: "es_MX")
+        let decimal = Decimal(cents) / 100
+        return f.string(from: decimal as NSDecimalNumber) ?? "\(currency) \(cents / 100)"
     }
 }
