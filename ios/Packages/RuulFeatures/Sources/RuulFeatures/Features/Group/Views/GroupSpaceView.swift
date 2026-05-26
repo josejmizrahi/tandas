@@ -134,6 +134,13 @@ public struct GroupSpaceView: View {
                         onTapMembers: onOpenMembers
                     )
 
+                    GroupPulseLine(
+                        pendingCount: coordinator.pendingActions.count,
+                        nextEvent: coordinator.upcomingEvents.first,
+                        hasPoolContent: hasPoolContent,
+                        hasStreamContent: hasStreamContent
+                    )
+
                     if let pool = coordinator.sharedPoolSummary, shouldShowPool(pool) {
                         GroupPoolStatusBlock(
                             pool: pool,
@@ -447,3 +454,91 @@ private struct GroupPoolStatusBlock: View {
         return f.string(from: decimal as NSDecimalNumber) ?? "\(currency) \(cents / 100)"
     }
 }
+
+// MARK: - GroupPulseLine
+
+/// Single-line situational summary between PresenceHeader and the
+/// rest of the stream. Picks the highest-priority "what's true now"
+/// signal to communicate the group's emotional state in one sentence.
+///
+/// Priority (first match wins):
+///   1. Pending attention items → "Te toca atender N \(cosa | cosas)"
+///   2. Imminent upcoming event (today/tomorrow) → "[título] es \(hoy|mañana)"
+///   3. Group has any stream activity / pool — but nothing urgent → "Todo en orden"
+///   4. Empty group → hidden (EmptyGroupHero handles invitation framing)
+///
+/// Design intent (`doctrine_group_space_situational`): data-driven,
+/// auto-hides when there's nothing to say. The line is a *summary*,
+/// not a redundant restatement of the clusters below — it's the
+/// single thing a returning user wants to see before scrolling.
+@MainActor
+private struct GroupPulseLine: View {
+    let pendingCount: Int
+    let nextEvent: Event?
+    let hasPoolContent: Bool
+    let hasStreamContent: Bool
+
+    var body: some View {
+        if let line = composeLine() {
+            HStack(spacing: RuulSpacing.sm) {
+                Image(systemName: line.icon)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(line.tint)
+                    .accessibilityHidden(true)
+                Text(line.text)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.ruulTextPrimary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, RuulSpacing.md)
+            .padding(.vertical, RuulSpacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ruulCardSurface(.solid)
+        }
+    }
+
+    private struct Line {
+        let icon: String
+        let tint: Color
+        let text: String
+    }
+
+    private func composeLine() -> Line? {
+        // 1. Pending attention is always #1 priority — the user came back
+        //    to the app to handle something.
+        if pendingCount > 0 {
+            let things = pendingCount == 1 ? "cosa pendiente" : "cosas pendientes"
+            return Line(
+                icon: "exclamationmark.circle.fill",
+                tint: .ruulSemanticWarning,
+                text: "Te toca atender \(pendingCount) \(things)"
+            )
+        }
+        // 2. Imminent event: today or tomorrow surfaces as next signal.
+        if let event = nextEvent, let when = imminenceLabel(for: event) {
+            return Line(
+                icon: "calendar.badge.clock",
+                tint: .ruulAccent,
+                text: "\(event.title) es \(when)"
+            )
+        }
+        // 3. Group has activity but nothing burning — reassuring tone.
+        if hasStreamContent || hasPoolContent {
+            return Line(
+                icon: "checkmark.circle.fill",
+                tint: .ruulSemanticSuccess,
+                text: "Todo en orden"
+            )
+        }
+        // 4. Empty group: defer to EmptyGroupHero.
+        return nil
+    }
+
+    private func imminenceLabel(for event: Event) -> String? {
+        let cal = Calendar.current
+        if cal.isDateInToday(event.startsAt) { return "hoy" }
+        if cal.isDateInTomorrow(event.startsAt) { return "mañana" }
+        return nil
+    }
+}
+
