@@ -186,6 +186,21 @@ public protocol LedgerRepository: Actor {
         obligationId: UUID,
         reason: String?
     ) async throws -> Obligation
+
+    /// Money 2.0 Phase 4.5 (mig 20260526050000): pool paga directo a un
+    /// proveedor externo. Sin miembro fronter, sin peer obligation,
+    /// sin reembolso pendiente. Para construcción, viaje, sociedad —
+    /// cuando el dinero YA está en el pool y sale al exterior.
+    /// Idempotent via `clientId` stamped in ledger metadata.
+    func recordPoolPaymentToVendor(
+        groupId: UUID,
+        amountCents: Int64,
+        currency: String,
+        vendorName: String?,
+        note: String?,
+        sourceResourceId: UUID?,
+        clientId: UUID
+    ) async throws -> LedgerEntry
 }
 
 // MARK: - Mock
@@ -602,6 +617,47 @@ public actor MockLedgerRepository: LedgerRepository {
             createdAt: charge.createdAt,
             updatedAt: Date()
         )
+        return entry
+    }
+
+    public func recordPoolPaymentToVendor(
+        groupId: UUID,
+        amountCents: Int64,
+        currency: String,
+        vendorName: String?,
+        note: String?,
+        sourceResourceId: UUID?,
+        clientId: UUID
+    ) async throws -> LedgerEntry {
+        // Idempotency: match on metadata.client_id.
+        let clientKey = clientId.uuidString.lowercased()
+        if let existing = entries.first(where: { e in
+            e.groupId == groupId &&
+            e.metadata["client_id"]?.stringValue == clientKey
+        }) {
+            return existing
+        }
+        var meta: [String: JSONConfig] = ["client_id": .string(clientKey)]
+        if let v = vendorName?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
+            meta["vendor_name"] = .string(v)
+        }
+        if let n = note?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty {
+            meta["note"] = .string(n)
+        }
+        if let r = sourceResourceId {
+            meta["source_resource_id"] = .string(r.uuidString.lowercased())
+        }
+        let entry = LedgerEntry(
+            groupId: groupId,
+            resourceId: nil,
+            type: LedgerEntry.Kind.expense,
+            amountCents: amountCents,
+            currency: currency,
+            fromMemberId: nil,
+            toMemberId: nil,
+            metadata: .object(meta)
+        )
+        entries.append(entry)
         return entry
     }
 
@@ -1332,6 +1388,64 @@ public actor LiveLedgerRepository: LedgerRepository {
                 .rpc("void_pool_charge", params: Params(
                     p_obligation_id: obligationId.uuidString.lowercased(),
                     p_reason: (trimmed?.isEmpty ?? true) ? nil : trimmed
+                ))
+                .execute()
+                .value
+        } catch {
+            throw LedgerError.rpcFailed(error.localizedDescription)
+        }
+    }
+
+    public func recordPoolPaymentToVendor(
+        groupId: UUID,
+        amountCents: Int64,
+        currency: String,
+        vendorName: String?,
+        note: String?,
+        sourceResourceId: UUID?,
+        clientId: UUID
+    ) async throws -> LedgerEntry {
+        struct Params: Encodable {
+            let p_group_id: String
+            let p_amount_cents: Int64
+            let p_currency: String?
+            let p_vendor_name: String?
+            let p_note: String?
+            let p_source_resource_id: String?
+            let p_client_id: String
+
+            enum CodingKeys: String, CodingKey {
+                case p_group_id, p_amount_cents, p_currency
+                case p_vendor_name, p_note, p_source_resource_id, p_client_id
+            }
+
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                try c.encode(p_group_id, forKey: .p_group_id)
+                try c.encode(p_amount_cents, forKey: .p_amount_cents)
+                try c.encode(p_client_id, forKey: .p_client_id)
+                if let v = p_currency { try c.encode(v, forKey: .p_currency) }
+                else { try c.encodeNil(forKey: .p_currency) }
+                if let v = p_vendor_name { try c.encode(v, forKey: .p_vendor_name) }
+                else { try c.encodeNil(forKey: .p_vendor_name) }
+                if let v = p_note { try c.encode(v, forKey: .p_note) }
+                else { try c.encodeNil(forKey: .p_note) }
+                if let v = p_source_resource_id { try c.encode(v, forKey: .p_source_resource_id) }
+                else { try c.encodeNil(forKey: .p_source_resource_id) }
+            }
+        }
+        let trimmedVendor = vendorName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNote = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            return try await client
+                .rpc("record_pool_payment_to_vendor", params: Params(
+                    p_group_id: groupId.uuidString.lowercased(),
+                    p_amount_cents: amountCents,
+                    p_currency: currency,
+                    p_vendor_name: (trimmedVendor?.isEmpty ?? true) ? nil : trimmedVendor,
+                    p_note: (trimmedNote?.isEmpty ?? true) ? nil : trimmedNote,
+                    p_source_resource_id: sourceResourceId?.uuidString.lowercased(),
+                    p_client_id: clientId.uuidString.lowercased()
                 ))
                 .execute()
                 .value

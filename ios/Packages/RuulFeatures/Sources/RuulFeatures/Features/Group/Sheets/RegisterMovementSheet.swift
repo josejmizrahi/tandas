@@ -41,50 +41,59 @@ public struct RegisterMovementSheet: View {
         /// vía `pay_pool_charge` (RPC mig 20260526040000) que emite un
         /// `contribution` ledger entry + cierra la obligación.
         case poolCharge
+        /// Phase 4.5 (2026-05-26): pool paga directo a un proveedor
+        /// externo, sin miembro fronter. Para construcción, viaje,
+        /// sociedad — cuando el dinero ya está en el pool y sale al
+        /// exterior. Backend RPC `record_pool_payment_to_vendor`.
+        case vendorPayment
 
         public var id: String { rawValue }
 
         public var title: String {
             switch self {
-            case .contribution:  return "Registrar un aporte"
-            case .expense:       return "Registrar un gasto"
-            case .settlement:    return "Pagar a un miembro"
-            case .reimbursement: return "Reembolsar a alguien"
-            case .payout:        return "Pagar desde el pool"
-            case .poolCharge:    return "Cobrar cuota al grupo"
+            case .contribution:   return "Registrar un aporte"
+            case .expense:        return "Registrar un gasto"
+            case .settlement:     return "Pagar a un miembro"
+            case .reimbursement:  return "Reembolsar a alguien"
+            case .payout:         return "Pagar desde el pool"
+            case .poolCharge:     return "Cobrar cuota al grupo"
+            case .vendorPayment:  return "Pagar a un proveedor"
             }
         }
 
         public var subtitle: String {
             switch self {
-            case .contribution:  return "Yo o alguien aportó dinero al grupo."
-            case .expense:       return "Alguien pagó algo del grupo (con o sin reparto)."
-            case .settlement:    return "Cerrar una deuda entre dos miembros."
-            case .reimbursement: return "El pool le devuelve dinero a alguien que pagó del grupo."
-            case .payout:        return "Dividendo, retorno de capital, stipend, devolución al salir."
-            case .poolCharge:    return "Cuota de poker, tanda, mensualidad. Cada miembro queda con deuda al pool hasta que paga."
+            case .contribution:   return "Yo o alguien aportó dinero al grupo."
+            case .expense:        return "Alguien pagó algo del grupo (con o sin reparto)."
+            case .settlement:     return "Cerrar una deuda entre dos miembros."
+            case .reimbursement:  return "El pool le devuelve dinero a alguien que pagó del grupo."
+            case .payout:         return "Dividendo, retorno de capital, stipend, devolución al salir."
+            case .poolCharge:     return "Cuota de poker, tanda, mensualidad. Cada miembro queda con deuda al pool hasta que paga."
+            case .vendorPayment:  return "El pool paga directo al exterior (proveedor, hotel, materiales). Sin reembolso a un miembro."
             }
         }
 
         public var icon: String {
             switch self {
-            case .contribution:  return "arrow.down.circle.fill"
-            case .expense:       return "arrow.up.circle.fill"
-            case .settlement:    return "arrow.left.arrow.right.circle.fill"
-            case .reimbursement: return "arrow.uturn.left.circle.fill"
-            case .payout:        return "banknote"
-            case .poolCharge:    return "person.2.badge.minus"
+            case .contribution:   return "arrow.down.circle.fill"
+            case .expense:        return "arrow.up.circle.fill"
+            case .settlement:     return "arrow.left.arrow.right.circle.fill"
+            case .reimbursement:  return "arrow.uturn.left.circle.fill"
+            case .payout:         return "banknote"
+            case .poolCharge:     return "person.2.badge.minus"
+            case .vendorPayment:  return "shippingbox"
             }
         }
 
         public var tint: Color {
             switch self {
-            case .contribution:  return .ruulPositive
-            case .expense:       return .ruulNegative
-            case .settlement:    return .ruulAccent
-            case .reimbursement: return .ruulAccent
-            case .payout:        return .ruulPositive
-            case .poolCharge:    return .ruulAccent
+            case .contribution:   return .ruulPositive
+            case .expense:        return .ruulNegative
+            case .settlement:     return .ruulAccent
+            case .reimbursement:  return .ruulAccent
+            case .payout:         return .ruulPositive
+            case .poolCharge:     return .ruulAccent
+            case .vendorPayment:  return .ruulNegative
             }
         }
     }

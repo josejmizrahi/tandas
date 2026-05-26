@@ -39,7 +39,7 @@ public struct GroupSpaceView: View {
     /// al sheet correspondiente — sin pasar por un picker intermedio
     /// (founder decision 2026-05-25).
     private enum SharedMoneySheet: Identifiable {
-        case contribute, recordExpense, settle, payout, poolCharge
+        case contribute, recordExpense, settle, payout, poolCharge, vendorPayment
         var id: Self { self }
     }
     @State private var sharedMoneySheet: SharedMoneySheet?
@@ -210,6 +210,7 @@ public struct GroupSpaceView: View {
                             onSettle: { sharedMoneySheet = .settle },
                             onPayout: { sharedMoneySheet = .payout },
                             onPoolCharge: { sharedMoneySheet = .poolCharge },
+                            onVendorPayment: { sharedMoneySheet = .vendorPayment },
                             onTapDebt: { hint in
                                 prefilledSettlement = PrefilledSettlement(
                                     toMemberId: hint.toMemberId,
@@ -425,6 +426,13 @@ public struct GroupSpaceView: View {
                 currency: group.currency,
                 members: coordinator.allMembers,
                 onDidIssue: { Task { await coordinator.refresh() } }
+            )
+            .environment(app)
+        case .vendorPayment:
+            RecordVendorPaymentSheet(
+                groupId: group.id,
+                currency: group.currency,
+                onDidRecord: { Task { await coordinator.refresh() } }
             )
             .environment(app)
         }

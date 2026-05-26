@@ -160,7 +160,7 @@ public struct EventDetailSheets: ViewModifier {
                     case .contribution:  b.sheet.wrappedValue = .movementContribute
                     case .expense:       b.sheet.wrappedValue = .movementExpense
                     case .settlement:    b.sheet.wrappedValue = .movementSettle
-                    case .reimbursement, .payout, .poolCharge:
+                    case .reimbursement, .payout, .poolCharge, .vendorPayment:
                         b.sheet.wrappedValue = .movementExpense
                     }
                 }

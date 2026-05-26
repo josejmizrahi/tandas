@@ -26,6 +26,10 @@ struct DebtsCluster: View {
     /// Phase 4.4 (2026-05-26): open the "cobrar cuota al grupo" sheet
     /// (poker buy-in / tanda / cuota mensual). Nil → option hidden.
     var onPoolCharge: (() -> Void)?
+    /// Phase 4.5 (2026-05-26): open the "pagar a proveedor" sheet —
+    /// pool gasta directo al exterior sin miembro fronter (construcción,
+    /// hotel, materiales). Nil → option hidden.
+    var onVendorPayment: (() -> Void)?
     var onSeeAll: (() -> Void)?
     var onTapDebt: ((PendingSettlementHint) -> Void)?
     /// FASE 4 Wave 4 Phase 3 Tier 2 (2026-05-25): pool→member capital
@@ -143,6 +147,13 @@ struct DebtsCluster: View {
                     onPoolCharge()
                 } label: {
                     Label("Cobrar cuota al grupo", systemImage: "person.2.badge.minus")
+                }
+            }
+            if let onVendorPayment {
+                Button {
+                    onVendorPayment()
+                } label: {
+                    Label("Pagar a un proveedor", systemImage: "shippingbox")
                 }
             }
         } label: {

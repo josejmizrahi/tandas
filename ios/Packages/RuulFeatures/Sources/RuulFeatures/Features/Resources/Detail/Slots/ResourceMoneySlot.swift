@@ -367,11 +367,11 @@ struct ResourceMoneySlot: View {
         case .contribution:  presentedSheet = .contribute
         case .expense:       presentedSheet = .record
         case .settlement:    presentedSheet = .settle
-        case .reimbursement, .payout, .poolCharge:
-            // Resource-level slot no rutea reimbursement/payout/poolCharge —
-            // los tres viven como acciones del Money Detail del grupo
-            // (ahí hay member picker contextual). Colapsamos a
-            // `record` (el caso similar más cercano).
+        case .reimbursement, .payout, .poolCharge, .vendorPayment:
+            // Resource-level slot no rutea estos — viven como acciones
+            // del Money Detail del grupo (ahí hay member picker
+            // contextual y el flujo completo de cuotas/vendor). Colapsamos
+            // a `record` (el caso similar más cercano).
             presentedSheet = .record
         }
     }

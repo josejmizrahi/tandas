@@ -272,7 +272,8 @@ public struct ResourceDetailSheet: View {
                 case .contribution:  moneySheet = .contribute
                 case .expense:       moneySheet = .record
                 case .settlement:    moneySheet = .settle
-                case .reimbursement, .payout, .poolCharge: moneySheet = .record
+                case .reimbursement, .payout, .poolCharge, .vendorPayment:
+                    moneySheet = .record
                 }
             }
         case .contribute:

@@ -50,6 +50,9 @@ struct GroupClusterStream: View {
     /// Phase 4.4 (2026-05-26): open the "cobrar cuota al grupo" sheet
     /// — poker buy-in, tanda, cuota mensual. Nil → option hidden.
     var onPoolCharge: (() -> Void)?
+    /// Phase 4.5 (2026-05-26): open the "pagar a proveedor" sheet —
+    /// pool sale directo al exterior. Nil → option hidden.
+    var onVendorPayment: (() -> Void)?
     /// Open the SettlementSheet pre-filled with this dyadic pair.
     var onTapDebt: ((PendingSettlementHint) -> Void)?
 
@@ -75,6 +78,7 @@ struct GroupClusterStream: View {
                     onContribute: onContribute,
                     onSettle: onSettle,
                     onPoolCharge: onPoolCharge,
+                    onVendorPayment: onVendorPayment,
                     onSeeAll: onSeeAllMoney,
                     onTapDebt: onTapDebt,
                     onPayout: onPayout
