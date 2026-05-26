@@ -9,9 +9,20 @@ import SwiftUI
 
 public extension Color {
 
-    // Backgrounds — Apple's three-tier system: page / row / grouped backdrop.
+    // Backgrounds — translucent card fill (founder pick 2026-05-25 v5).
+    //
+    // Card fill is `.tertiarySystemFill` — a translucent gray (~12% in
+    // light mode, ~24% in dark) that blends with the canvas underneath
+    // instead of being an opaque elevated rectangle. The card reads as
+    // a quiet patch carved INTO the canvas, not a tile floating above
+    // it. Used by iOS 26 controls (segmented controls, search bars,
+    // capsule chips) for the same "asentado en el lienzo" feel.
+    //
+    // Canvas stays `.systemGroupedBackground` (light gray) so the
+    // translucent card blends to slightly darker than canvas in light
+    // mode and slightly lighter in dark mode — adaptive recessed look.
     static var ruulBackgroundCanvas: Color   { Color(.systemBackground) }
-    static var ruulBackgroundElevated: Color { Color(.secondarySystemBackground) }
+    static var ruulBackgroundElevated: Color { Color(.tertiarySystemFill) }
     static var ruulBackgroundRecessed: Color { Color(.systemGroupedBackground) }
 
     // Glass-tint fills. Apple's recipe is `.glassEffect()` over content; these

@@ -118,7 +118,7 @@ public extension ResourceConfig {
             if event.isHost {
                 actions = [
                     confirm,
-                    ResourceAction(label: "Invitar", icon: "plus", tint: accent, handler: onInvite),
+                    ResourceAction(label: "Invitar", icon: "plus", handler: onInvite),
                     ResourceAction(label: "Editar", handler: onEdit)
                 ]
             } else {
@@ -130,7 +130,7 @@ public extension ResourceConfig {
             }
         } else if event.isHost {
             actions = [
-                ResourceAction(label: "Invitar", icon: "plus", tint: accent, handler: onInvite),
+                ResourceAction(label: "Invitar", icon: "plus", handler: onInvite),
                 ResourceAction(label: "Editar", handler: onEdit),
                 ResourceAction(label: "Rotar", handler: onRotateHost)
             ]

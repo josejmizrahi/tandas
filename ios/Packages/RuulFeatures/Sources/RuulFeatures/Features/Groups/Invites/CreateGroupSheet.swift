@@ -5,10 +5,9 @@ import RuulCore
 
 /// Minimal "create another group" flow for users who already have a group.
 /// Skips identity / templateSelect / vocabulary / rules / invite / OTP since
-/// the user is already authed and we use the dinner_recurring template
-/// defaults (5 platform rules seeded automatically).
-///
-/// Just asks for a group name (and optional cover) and ships it.
+/// the user is already authed. The group is created blank — no template,
+/// no preset rules. Vocabulary / modules / rules are added on demand
+/// per `doctrine: "template = preset inicial, no es cárcel"` (CLAUDE.md).
 public struct CreateGroupSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -61,7 +60,7 @@ public struct CreateGroupSheet: View {
             Text("¿Cómo se llama tu grupo?")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.primary)
-            Text("Usaremos plantilla de cena recurrente con las 5 reglas por defecto. Podrás editarlas después.")
+            Text("Lo arrancamos en blanco. Vas a poder agregar reglas, módulos y vocabulario cuando los necesites.")
                 .font(.subheadline)
                 .foregroundStyle(Color.secondary)
         }
@@ -85,16 +84,11 @@ public struct CreateGroupSheet: View {
             do {
                 var draft = GroupDraft.empty
                 draft.name = trimmed
-                draft.template = TemplateRegistry.dinnerRecurringId
+                // Blank — no template (RPC treats empty as null per mig
+                // create_group_with_admin_role_column). Skip seedTemplateRules.
+                draft.template = ""
                 draft.coverImageName = coverImageName
                 let group = try await app.groupsRepo.createInitial(draft)
-                // Seed platform rules from the chosen template so the engine
-                // fires for this group too. Idempotent — skips if already
-                // platform-shape. Generic since Gap 2 (mig 00062).
-                _ = try? await app.ruleRepo.seedTemplateRules(
-                    templateId: draft.template,
-                    groupId: group.id
-                )
                 await app.refreshProfileAndGroups()
                 await MainActor.run {
                     app.activeGroupId = group.id

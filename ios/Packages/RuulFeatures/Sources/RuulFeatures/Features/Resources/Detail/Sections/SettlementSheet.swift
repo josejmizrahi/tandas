@@ -12,9 +12,14 @@ import RuulCore
 /// the user can switch freely.
 ///
 /// Submit path:
-///   LedgerRepository.recordSettlement → record_settlement RPC
-///   (mig 00145). Balance projection views (mig 00136) refresh
-///   automatically on the next read.
+///   LedgerRepository.recordSettlementV2 → record_settlement_v2 RPC
+///   (mig 20260526010500, Money 2.0 Phase 4.2). Creates a `settlements`
+///   row, FIFO-allocates against open obligations via the
+///   `settlement_obligations` bridge, updates each touched obligation
+///   to `partially_paid`/`settled`, and writes the audit ledger row so
+///   `member_balances_per_group` keeps reflecting the dyad net.
+///   Idempotent via `clientId` — the sheet holds a stable UUID in
+///   `@State` so retries on the same open dedupe server-side.
 public struct SettlementSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -23,10 +28,18 @@ public struct SettlementSheet: View {
     public let resourceId: UUID?
     public let currency: String
     public let members: [MemberWithProfile]
-    /// Pre-selected "to" member (the one with the largest positive
-    /// balance, computed by the caller). nil falls back to first
-    /// member in the list.
+    /// Pre-selected "to" member (creditor side). nil falls back to
+    /// first member other than `suggestedFromMemberId`.
     public let suggestedToMemberId: UUID?
+    /// Money 2.0 Phase 4.2 fix (2026-05-26): pre-selected "from"
+    /// member (debtor side). nil falls back to the current user. THIS
+    /// MATTERS — when the viewer is the CREDITOR (e.g. "Cobrale a
+    /// Maria $50"), the suggestion must put Maria as `from` and the
+    /// viewer as `to`. Defaulting `from` to the viewer in that case
+    /// inverts the dyad and `record_settlement_v2` finds no matching
+    /// obligations (bridge_count=0 → obligation never closes →
+    /// deudas se ven duplicadas).
+    public let suggestedFromMemberId: UUID?
     /// FASE 4 PR-3: pre-fill amount from the suggestion row so the user
     /// arrives with both "who" and "how much" already set. `SettlementContext`
     /// in `GroupBalancesView` already computes this — we just forward it.
@@ -41,6 +54,10 @@ public struct SettlementSheet: View {
     @State private var note: String = ""
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
+    /// Stable idempotency key per sheet open. `record_settlement_v2`
+    /// dedupes on `(group_id, client_id)` so a double-tap or retry
+    /// returns the existing settlement row instead of duplicating it.
+    @State private var clientId: UUID = UUID()
     /// FASE 3 Action Warmth (B.2 form-commit). Doctrine: el sheet NO
     /// dismissa antes de mostrar éxito. Cuando este string toma valor
     /// renderizamos un row de confirmación humana ("Le pagaste $X a
@@ -54,6 +71,7 @@ public struct SettlementSheet: View {
         currency: String,
         members: [MemberWithProfile],
         suggestedToMemberId: UUID?,
+        suggestedFromMemberId: UUID? = nil,
         suggestedAmountCents: Int64? = nil,
         onDidSettle: @escaping () -> Void
     ) {
@@ -62,6 +80,7 @@ public struct SettlementSheet: View {
         self.currency = currency
         self.members = members
         self.suggestedToMemberId = suggestedToMemberId
+        self.suggestedFromMemberId = suggestedFromMemberId
         self.suggestedAmountCents = suggestedAmountCents
         self.onDidSettle = onDidSettle
     }
@@ -122,10 +141,15 @@ public struct SettlementSheet: View {
         }
         .sensoryFeedback(.success, trigger: successPhrase)
         .onAppear {
-            // Default from = current user's member row; to = suggestion or
-            // the first OTHER member.
+            // Money 2.0 Phase 4.2 fix: defaults must honor the suggestion's
+            // direction. When the caller already knows who is paying (e.g.
+            // "Cobrale a Maria" → from=Maria, to=viewer), defaulting
+            // `from` to the current user inverts the dyad and the RPC
+            // fails to match any open obligation.
             if fromMemberId == nil {
-                fromMemberId = currentUserMemberId() ?? members.first?.member.id
+                fromMemberId = suggestedFromMemberId
+                    ?? currentUserMemberId()
+                    ?? members.first?.member.id
             }
             if toMemberId == nil {
                 if let suggested = suggestedToMemberId, suggested != fromMemberId {
@@ -190,14 +214,15 @@ public struct SettlementSheet: View {
         isSubmitting = true
         errorMessage = nil
         do {
-            _ = try await app.ledgerRepo.recordSettlement(
-                groupId:      groupId,
-                fromMemberId: from,
-                toMemberId:   to,
-                amountCents:  amount,
-                currency:     currency,
-                resourceId:   resourceId,
-                note:         note.isEmpty ? nil : note
+            _ = try await app.ledgerRepo.recordSettlementV2(
+                groupId:          groupId,
+                fromMemberId:     from,
+                toMemberId:       to,
+                amountCents:      amount,
+                currency:         currency,
+                note:             note.isEmpty ? nil : note,
+                clientId:         clientId,
+                sourceResourceId: resourceId
             )
             isSubmitting = false
             // FASE 3 D.2 + D.3: la consecuencia respira antes del dismiss

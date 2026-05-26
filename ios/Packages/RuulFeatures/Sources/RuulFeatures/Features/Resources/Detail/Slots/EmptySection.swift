@@ -56,13 +56,15 @@ struct CustomSection: View {
 struct SectionHeader: View {
     let title: String
     var body: some View {
-        // V2 cherry-pick: iOS-26-native grouped-list header — title case,
-        // subheadline, secondary. Replaces the older all-caps + tracking
-        // variant which read as a print convention rather than as Apple's
-        // native section style.
+        // 2026-05-25 v3 (founder ref 2 form-label style): small footnote
+        // in secondary gray, title case (NOT uppercase), no chrome. Matches
+        // iOS form labels — "Nombre", "Frecuencia", "Día", "Hora" — sitting
+        // quietly above their content pill. Previous `.subheadline secondary`
+        // read too prominent against the new translucent card chrome.
         Text(title)
-            .font(.subheadline)
-            .foregroundStyle(Color.ruulTextSecondary)
+            .font(.footnote)
+            .foregroundStyle(Color.secondary)
             .padding(.horizontal, RuulSpacing.xxs)
+            .padding(.bottom, RuulSpacing.xxs)
     }
 }

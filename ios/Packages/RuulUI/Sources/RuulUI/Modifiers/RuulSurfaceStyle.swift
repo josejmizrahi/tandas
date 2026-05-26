@@ -38,17 +38,16 @@ private struct RuulCardSurfaceModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch style {
         case .solid:
-            // 2026-05-25: hairline stroke baked into the primitive so
-            // every elevated card across the app shares the exact same
-            // recipe — fill + 0.5pt separator — without callers needing
-            // to remember the overlay. Matches the Apple Settings /
-            // Wallet card chrome.
+            // 2026-05-25 v2: no border. Apple's grouped-list cards rely
+            // entirely on the color delta between
+            // `.systemGroupedBackground` (canvas) and
+            // `.secondarySystemGroupedBackground` (card fill, see
+            // `ruulBackgroundElevated`) to mark the card edge. Adding
+            // a separator stroke on top creates the "boxed card" look
+            // we just removed — un-Apple. Internal row dividers still
+            // belong inside the card (see `RuulSeparatedRows`).
             content
                 .background(Color.ruulSurface, in: shapeFor(radius))
-                .overlay(
-                    shapeFor(radius)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
         case .glass:
             // 2026-05-15: dropped card chrome entirely — no fill, no
             // shadow, no border. The "contorno gris" complaint and the

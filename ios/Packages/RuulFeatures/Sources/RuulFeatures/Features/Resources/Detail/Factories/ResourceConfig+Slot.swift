@@ -80,7 +80,6 @@ public extension ResourceConfig {
             actions.append(ResourceAction(
                 label: "Reservar",
                 icon: "ticket",
-                tint: accent,
                 handler: onBook
             ))
         }

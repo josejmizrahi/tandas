@@ -90,7 +90,6 @@ public extension ResourceConfig {
             actions.append(ResourceAction(
                 label: "Cambiar monto",
                 icon: "slider.horizontal.3",
-                tint: accent,
                 handler: onEditParams
             ))
         }

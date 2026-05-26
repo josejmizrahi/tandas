@@ -57,6 +57,31 @@ public struct MemberDetailView: View {
     /// Top 5 system_events where this member is the actor. Empty
     /// until the first load; section auto-hides when empty.
     @State private var recentActivity: [SystemEvent] = []
+    /// FASE 4 Wave 3 (2026-05-25): money block — closes the identity/
+    /// money blind spot. Surfaces the viewer's contextual position with
+    /// this member ("Le debes $X" / "X te debe $Y" / "Están al día").
+    /// Self-view shows the group net ("Estás al día" / "Te deben $X").
+    @State private var moneyState: MoneyState = .unknown
+    /// Members snapshot for the SettlementSheet wired below the Liquidar
+    /// CTA on the money block. Loaded together with the money state.
+    @State private var moneyMembers: [MemberWithProfile] = []
+    @State private var moneySettlementCtx: MoneySettlementCtx?
+
+    fileprivate enum MoneyState: Equatable {
+        case unknown
+        case selfOwed(Decimal)
+        case selfOwes(Decimal)
+        case selfSettled
+        case dyadicSettled
+        case dyadicOpen(viewerIsPayer: Bool, amount: Decimal)
+    }
+
+    fileprivate struct MoneySettlementCtx: Identifiable {
+        let id = UUID()
+        let toMemberId: UUID
+        let amountCents: Int64
+        let viewerIsPayer: Bool
+    }
 
     public init(
         memberWithProfile: MemberWithProfile,
@@ -85,6 +110,7 @@ public struct MemberDetailView: View {
                     trustChipsRow
                 }
                 participationCard
+                moneyBlock
                 responsibilitiesCard
                 activityCard
                 joinedFooter
@@ -131,9 +157,26 @@ public struct MemberDetailView: View {
             )
             .environment(app)
         }
+        .sheet(item: $moneySettlementCtx) { ctx in
+            SettlementSheet(
+                groupId: group.id,
+                resourceId: nil,
+                currency: group.currency,
+                members: moneyMembers,
+                suggestedToMemberId: ctx.toMemberId,
+                suggestedAmountCents: ctx.amountCents,
+                onDidSettle: {
+                    Task { await loadMoneyState() }
+                }
+            )
+            .environment(app)
+            .presentationDetents([.medium, .large])
+            .presentationBackground(.ultraThinMaterial)
+        }
         .task {
             await loadSummary()
             await loadRecentActivity()
+            await loadMoneyState()
         }
     }
 
@@ -442,6 +485,187 @@ public struct MemberDetailView: View {
             Spacer(minLength: 0)
         }
         .padding(RuulSpacing.md)
+    }
+
+    // MARK: - Money block (FASE 4 Wave 3, 2026-05-25)
+
+    @ViewBuilder
+    private var moneyBlock: some View {
+        switch moneyState {
+        case .unknown:
+            EmptyView()
+        case .selfSettled:
+            moneyCard(
+                primary: "Estás al día en \(group.name)",
+                secondary: nil,
+                tone: .neutralPositive,
+                actionAmount: nil
+            )
+        case .dyadicSettled:
+            // Hide for self-view — selfSettled already covers that case.
+            if !isCurrentUser {
+                moneyCard(
+                    primary: "Están al día entre ustedes",
+                    secondary: nil,
+                    tone: .neutralPositive,
+                    actionAmount: nil
+                )
+            }
+        case .selfOwed(let amount):
+            moneyCard(
+                primary: "Te deben \(formatMoneyAmount(amount))",
+                secondary: "En \(group.name)",
+                tone: .positive,
+                actionAmount: nil
+            )
+        case .selfOwes(let amount):
+            moneyCard(
+                primary: "Debes \(formatMoneyAmount(amount))",
+                secondary: "En \(group.name)",
+                tone: .negative,
+                actionAmount: nil
+            )
+        case .dyadicOpen(let viewerIsPayer, let amount):
+            moneyCard(
+                primary: viewerIsPayer
+                    ? "Le debes \(formatMoneyAmount(amount)) a \(displayName)"
+                    : "\(displayName) te debe \(formatMoneyAmount(amount))",
+                secondary: "Posición sugerida entre ustedes",
+                tone: viewerIsPayer ? .negative : .positive,
+                actionAmount: (amount, viewerIsPayer)
+            )
+        }
+    }
+
+    private enum MoneyTone {
+        case neutralPositive, positive, negative
+    }
+
+    @ViewBuilder
+    private func moneyCard(
+        primary: String,
+        secondary: String?,
+        tone: MoneyTone,
+        actionAmount: (amount: Decimal, viewerIsPayer: Bool)?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RuulSpacing.xs) {
+            sectionHeader("Dinero")
+            VStack(alignment: .leading, spacing: RuulSpacing.sm) {
+                HStack(spacing: RuulSpacing.md) {
+                    Image(systemName: moneyIcon(tone))
+                        .font(.title3)
+                        .foregroundStyle(moneyTint(tone))
+                        .frame(width: RuulSpacing.xxl, alignment: .center)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(primary)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(2)
+                        if let secondary {
+                            Text(secondary)
+                                .font(.caption)
+                                .foregroundStyle(Color.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                if let actionAmount {
+                    Button {
+                        let cents = NSDecimalNumber(
+                            decimal: actionAmount.amount * 100
+                        ).int64Value
+                        moneySettlementCtx = MoneySettlementCtx(
+                            toMemberId: memberWithProfile.member.id,
+                            amountCents: cents,
+                            viewerIsPayer: actionAmount.viewerIsPayer
+                        )
+                    } label: {
+                        Label("Liquidar", systemImage: "arrow.left.arrow.right")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .buttonStyle(.glass)
+                }
+            }
+            .padding(RuulSpacing.md)
+            .ruulCardSurface(.solid)
+        }
+    }
+
+    private func moneyIcon(_ tone: MoneyTone) -> String {
+        switch tone {
+        case .neutralPositive: return "checkmark.circle.fill"
+        case .positive:        return "arrow.down.left.circle.fill"
+        case .negative:        return "arrow.up.right.circle.fill"
+        }
+    }
+
+    private func moneyTint(_ tone: MoneyTone) -> Color {
+        switch tone {
+        case .neutralPositive, .positive: return Color.ruulPositive
+        case .negative:                   return Color.ruulNegative
+        }
+    }
+
+    private func formatMoneyAmount(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: group.currency))
+    }
+
+    /// Load this group's balances + member roster and derive a single
+    /// `MoneyState`. The dyadic case is a best-effort approximation —
+    /// we only have per-member group nets (not pairwise positions), so
+    /// the "amount between us" is `min(|viewerNet|, |memberNet|)` when
+    /// signs differ. Same heuristic the greedy settlement plan uses.
+    private func loadMoneyState() async {
+        guard let userId = app.session?.user.id else { return }
+        // FASE 4 Wave 4 Phase 3 Tier 1: switch to `member_obligations_view`
+        // — uses `netPeerPositionCents` (excludes stake) so labels
+        // reflect peer-relevant debt, not capital injection.
+        let obligations = (try? await app.ledgerRepo.obligationsForGroup(group.id)) ?? []
+        let currentObligations = obligations.filter { $0.currency == group.currency }
+        let roster = (try? await app.groupsRepo.membersWithProfiles(of: group.id)) ?? []
+        let myMemberId = roster.first(where: { $0.member.userId == userId })?.member.id
+        let state: MoneyState
+        if isCurrentUser {
+            let me = currentObligations.first(where: {
+                $0.memberId == memberWithProfile.member.id
+            })
+            let net = me?.netPeerPositionCents ?? 0
+            if net > 0 {
+                state = .selfOwed(Decimal(net) / 100)
+            } else if net < 0 {
+                state = .selfOwes(Decimal(-net) / 100)
+            } else {
+                state = .selfSettled
+            }
+        } else {
+            let viewer = currentObligations.first(where: { $0.memberId == myMemberId })
+            let other = currentObligations.first(where: {
+                $0.memberId == memberWithProfile.member.id
+            })
+            let viewerNet = viewer?.netPeerPositionCents ?? 0
+            let otherNet = other?.netPeerPositionCents ?? 0
+            if viewerNet > 0 && otherNet < 0 {
+                let amountCents = min(viewerNet, -otherNet)
+                state = .dyadicOpen(
+                    viewerIsPayer: false,
+                    amount: Decimal(amountCents) / 100
+                )
+            } else if viewerNet < 0 && otherNet > 0 {
+                let amountCents = min(-viewerNet, otherNet)
+                state = .dyadicOpen(
+                    viewerIsPayer: true,
+                    amount: Decimal(amountCents) / 100
+                )
+            } else {
+                state = .dyadicSettled
+            }
+        }
+        await MainActor.run {
+            moneyMembers = roster
+            moneyState = state
+        }
     }
 
     // MARK: - Joined footer

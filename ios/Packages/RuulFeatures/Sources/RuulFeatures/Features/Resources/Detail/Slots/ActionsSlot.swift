@@ -2,19 +2,14 @@
 //  ActionsSlot.swift
 //  ResourceKit
 //
-//  Horizontal row of action buttons.  Apple segmented-bar recipe:
-//
-//    - **Primary CTAs** (action.tint set) → `.glassProminent` with the
-//      semantic tint → filled background, system-contrast (white) label
-//      → readable in both light and dark.
-//    - **Secondary actions** (action.tint == nil) → plain `.glass` →
-//      outlined / glass-effect background, label uses the ambient
-//      `.tint(...)` (`config.accent` from `ResourceDetailContent`).
-//
-//  Previously every button was `.glassProminent` with a fallback tint of
-//  `Color.ruulFillGlassStrong` — that's a 6-10% primary-text wash, not a
-//  proper accent color, so the white prominent label sat on a near-empty
-//  background and disappeared in light mode and bleached in dark.
+//  Horizontal row of action buttons. 2026-05-25 v2 (founder pick):
+//  uniform `.glass` chrome for ALL actions — no prominent fills,
+//  no per-button colored pills. The action.tint only controls the
+//  LABEL color for semantic role (red for cancel/destructive, green
+//  for confirm/success). Default tint = .primary (black/white
+//  adaptive) so most buttons read as quiet neutral pills, matching
+//  the iOS form-style action row pattern (ref: Luma / Apple Maps
+//  detail / iOS Forms).
 //
 //  Resource factories cap this at 3 actions; overflow goes to the
 //  toolbar menu.
@@ -47,7 +42,6 @@ private struct ActionButton: View {
                 if action.isPending {
                     ProgressView()
                         .controlSize(.mini)
-                        .tint(action.tint == nil ? nil : .white)
                 } else if let icon = action.icon {
                     Image(systemName: icon)
                         .font(.footnote.weight(.semibold))
@@ -61,32 +55,14 @@ private struct ActionButton: View {
             .frame(maxWidth: .infinity)
             .animation(.snappy(duration: 0.18), value: action.isPending)
         }
-        .controlSize(.large)
+        .buttonStyle(.glass)
+        .controlSize(.regular)
+        .tint(action.tint ?? .primary)
         .disabled(action.isPending)
-        .modifier(ActionStyle(tint: action.tint))
     }
 
     private var displayedLabel: String {
         if action.isPending, let pending = action.pendingLabel { return pending }
         return action.label
-    }
-}
-
-/// Branching the modifier (instead of conditional inside `body`) keeps
-/// SwiftUI from confusing the two button styles in the same expression
-/// tree (which compiles but lets the system pick the wrong default).
-private struct ActionStyle: ViewModifier {
-    let tint: Color?
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if let tint {
-            content
-                .buttonStyle(.glassProminent)
-                .tint(tint)
-        } else {
-            content
-                .buttonStyle(.glass)
-        }
     }
 }

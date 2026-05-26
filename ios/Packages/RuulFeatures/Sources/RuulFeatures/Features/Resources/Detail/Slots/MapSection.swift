@@ -70,15 +70,16 @@ struct MapSection: View {
                                 .font(.subheadline.weight(.semibold))
                         }
                         .buttonStyle(.glass)
-                        .controlSize(.large)
-                        .tint(accent)
+                        .controlSize(.regular)
+                        .tint(.primary)
 
                         Button { showingOptions = true } label: {
                             Image(systemName: "ellipsis")
                                 .font(.subheadline.weight(.semibold))
                         }
                         .buttonStyle(.glass)
-                        .controlSize(.large)
+                        .controlSize(.regular)
+                        .tint(.primary)
                     }
                 }
                 .padding(.horizontal, 14)

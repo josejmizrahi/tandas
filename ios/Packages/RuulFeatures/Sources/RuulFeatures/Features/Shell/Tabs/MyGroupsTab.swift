@@ -270,7 +270,7 @@ public struct MyGroupsTab: View {
                 // .fondos NavigationPath destination is kept as a
                 // deeplink/back-compat path but no primary surface
                 // links to it anymore.
-                GroupBalancesView(
+                GroupMoneyDetailView(
                     group: group,
                     onOpenFund: { fund in
                         Task {
@@ -288,6 +288,23 @@ public struct MyGroupsTab: View {
                     },
                     onOpenSettlementPlan: {
                         navPath.append(MyGroupsTab.GroupDestination.liquidacion)
+                    },
+                    onOpenResource: { resourceId in
+                        // FASE 4 Wave 4 polish: generic resource navigation
+                        // for the "Por contexto" section. Fetches the
+                        // polymorphic ResourceRow and hands it to the
+                        // universal resource detail sheet.
+                        Task {
+                            if let row = try? await app.resourceRepo.resource(resourceId) {
+                                router.openResource(row)
+                            }
+                        }
+                    },
+                    onOpenFine: { fine in
+                        router.openFine(fine)
+                    },
+                    onOpenAllFines: {
+                        navPath.append(MyGroupsTab.GroupDestination.multas)
                     }
                 )
                 .environment(app)
@@ -577,7 +594,7 @@ private struct GroupSpaceScreen: View {
                     },
                     onOpenMembers:    { path.append(MyGroupsTab.GroupDestination.personas) },
                     onOpenActivity:   { path.append(MyGroupsTab.GroupDestination.actividad) },
-                    onOpenTransactions: { path.append(MyGroupsTab.GroupDestination.transacciones) },
+                    onOpenTransactions: { path.append(MyGroupsTab.GroupDestination.balances) },
                     onOpenEventsHistory: { path.append(MyGroupsTab.GroupDestination.eventos) },
                     onOpenAjustes:    { path.append(MyGroupsTab.GroupDestination.ajustes) },
                     onConfirmLeave:   { showLeave = true },

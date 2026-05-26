@@ -71,7 +71,7 @@ public extension ResourceConfig {
                 size: .title
             ),
             actions: [
-                ResourceAction(label: "Reservar", icon: "calendar.badge.plus", tint: accent, handler: onReserve),
+                ResourceAction(label: "Reservar", icon: "calendar.badge.plus", handler: onReserve),
                 ResourceAction(label: "Calendario", handler: onSeeCalendar),
                 ResourceAction(label: "Editar", handler: onEdit)
             ],

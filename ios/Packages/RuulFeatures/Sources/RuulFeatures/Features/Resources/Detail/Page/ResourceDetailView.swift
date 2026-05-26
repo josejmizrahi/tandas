@@ -108,11 +108,12 @@ public struct ResourceDetailContent: View {
                     .padding(.horizontal, RuulSpacing.lg)
                     .padding(.top, RuulSpacing.xs)
 
-                if let ctx = config.groupContext {
-                    GroupContextSlot(data: ctx)
-                        .padding(.horizontal, RuulSpacing.lg)
-                        .padding(.top, RuulSpacing.sm)
-                }
+                // 2026-05-25: GroupContextSlot removido del resource
+                // detail por decisión del fundador — el chip "En {grupo} ·
+                // Propuesto por {x}" agregaba ruido sin valor claro. La
+                // información de grupo ya está en la navegación/breadcrumb
+                // del shell. Si reaparece la necesidad, restaurar con el
+                // condicional `if let ctx = config.groupContext`.
 
                 if let hero = config.hero {
                     HeroSlot(data: hero)
@@ -150,6 +151,13 @@ public struct ResourceDetailContent: View {
         .background(Color.ruulBackgroundRecessed)
         .scrollDismissesKeyboard(.interactively)
         .scrollEdgeEffectStyle(.soft, for: .all)
-        .tint(config.accent)
+        // 2026-05-25: ambient `.tint(config.accent)` removed. It made
+        // every `.glass` button, link, and chevron on the page inherit
+        // the resource family color (orange on events, etc.), which
+        // floods the page in one hue — un-Apple. Per
+        // `ruul_canonical_ux_doctrine` § 4, the family color belongs on
+        // avatars/dots/icons, NOT on every interactive element. Primary
+        // CTAs already set their own tint inline via `ResourceAction.tint`.
+        // Slots that need the accent for icons receive it explicitly.
     }
 }

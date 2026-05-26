@@ -129,7 +129,7 @@ public extension ResourceConfig {
     ) -> ResourceConfig {
         let accent = ResourceFamilyTint.votes.color
         let actions: [ResourceAction] = vote.viewerAlreadyVoted ? [] : [
-            ResourceAction(label: "Emitir voto", icon: "checkmark.seal", tint: accent, handler: onCast)
+            ResourceAction(label: "Emitir voto", icon: "checkmark.seal", handler: onCast)
         ]
         var sections: [ResourceSection] = []
         if vote.totalEligible > 0 {
