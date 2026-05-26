@@ -72,6 +72,11 @@ public struct FineDetailHost: View {
         .onChange(of: coordinator.existingAppeal) { _, _ in
             Task { await rebuildBlocks() }
         }
+        // FASE 3 Action Warmth (D.1 rule 1 + B.3 template). Doctrine:
+        // toda acción commit dispara haptic. Pago de multa = .success
+        // cuando flippa a paid. Tap haptic se dispara en el handler
+        // wrap del closure de Pagar (ver makeConfig).
+        .sensoryFeedback(.success, trigger: coordinator.fine.paid)
         // Appeal sheet — opened from primary action when builder emits
         // an appeal-cast intent (no current path; reserved for future
         // builder rewrite that surfaces "Apelar" as a primary action).
@@ -222,11 +227,22 @@ public struct FineDetailHost: View {
             guard coordinator.existingAppeal != nil else { return nil }
             return f.status == .inAppeal ? "En curso" : "Resuelta"
         }()
+        // FASE 3 Action Warmth (D.3 rule "el éxito se atribuye al humano").
+        // "Pagada" es contabilidad; "Pagaste" / "Pagada por X" es coordinación.
+        let humanStatusLabel: String = {
+            if f.paid {
+                if viewerIsDebtor { return "Pagaste" }
+                if let finedName = membersByUserId[f.userId]?.displayName {
+                    return "Pagada por \(finedName)"
+                }
+            }
+            return f.status.displayLabel
+        }()
         let input = FineInput(
             id: f.id.uuidString,
             reason: f.reason,
             amountFormatted: f.amountFormatted,
-            statusLabel: f.status.displayLabel,
+            statusLabel: humanStatusLabel,
             createdAtLabel: Self.relativeAgo(f.createdAt),
             finedPerson: makePerson(forUserId: f.userId),
             issuerPerson: f.issuedBy.flatMap { makePerson(forUserId: $0) },
@@ -243,7 +259,14 @@ public struct FineDetailHost: View {
         }
         return withGroupContext(.fine(
             input,
-            onPay: { Task { await coordinator.payFine() } },
+            isPaying: coordinator.isMutating,
+            onPay: {
+                // FASE 3 D.1 rule 1: haptic en tap (B.3 = .medium para
+                // one-shot CTAs cargadas como pagar/aprobar). El .success
+                // post-éxito vive en el .sensoryFeedback del body.
+                RuulHaptic.medium.trigger()
+                Task { await coordinator.payFine() }
+            },
             onAppeal: { appealSheetPresented = true },
             toolbarMenu: toolbar
         ))

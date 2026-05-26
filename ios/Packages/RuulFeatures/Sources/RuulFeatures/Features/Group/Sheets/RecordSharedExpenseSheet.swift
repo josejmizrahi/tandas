@@ -54,6 +54,10 @@ public struct RecordSharedExpenseSheet: View {
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
     @State private var clientId: UUID = UUID()
+    /// FASE 3 Action Warmth (B.2 form-commit): el sheet NO dismissa
+    /// inmediato. Frase humana ("Linda pagó $300 de la cena") respira
+    /// 700ms antes del dismiss.
+    @State private var successPhrase: String?
 
     public init(
         groupId: UUID,
@@ -147,14 +151,30 @@ public struct RecordSharedExpenseSheet: View {
                             .foregroundStyle(Color.red)
                     }
                 }
+                if let successPhrase {
+                    Section {
+                        HStack(spacing: RuulSpacing.sm) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.ruulSemanticSuccess)
+                                .accessibilityHidden(true)
+                            Text(successPhrase)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
+            .animation(.snappy(duration: 0.22), value: successPhrase)
             .ruulSheetToolbar("Registrar gasto")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSubmitting ? "Registrando…" : "Registrar") {
+                    Button(confirmButtonLabel) {
+                        RuulHaptic.light.trigger()
                         Task { await submit() }
                     }
-                    .disabled(isSubmitting || !isFormValid)
+                    .disabled(isSubmitting || successPhrase != nil || !isFormValid)
                 }
             }
             .task(id: app.session?.user.id) {
@@ -169,6 +189,35 @@ public struct RecordSharedExpenseSheet: View {
                 }
             }
         }
+        .sensoryFeedback(.success, trigger: successPhrase)
+    }
+
+    // MARK: - Warmth helpers (B.2 template)
+
+    private var confirmButtonLabel: String {
+        if successPhrase != nil { return "Listo" }
+        if isSubmitting { return "Registrando…" }
+        return "Registrar"
+    }
+
+    private func composeSuccessPhrase(paidBy: UUID, amount: Int64) -> String {
+        let formatted = formatted(amount)
+        let viewerMemberId = currentUserMemberId()
+        let context = sourceResource.map { " de \($0.name)" } ?? ""
+        if paidBy == viewerMemberId {
+            return "Pagaste \(formatted)\(context)"
+        }
+        let name = memberName(paidBy)
+        return "\(name) pagó \(formatted)\(context)"
+    }
+
+    private func memberName(_ id: UUID) -> String {
+        members.first(where: { $0.member.id == id })?.displayName ?? "alguien"
+    }
+
+    private func currentUserMemberId() -> UUID? {
+        guard let uid = app.session?.user.id else { return nil }
+        return members.first(where: { $0.member.userId == uid })?.member.id
     }
 
     // MARK: - Mode-specific section
@@ -462,7 +511,6 @@ public struct RecordSharedExpenseSheet: View {
               let breakdown = computedBreakdown else { return }
         isSubmitting = true
         errorMessage = nil
-        defer { isSubmitting = false }
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         // Derive the legacy `participants` array from the breakdown so
         // pre-mig-00370 readers still see something useful (the set of
@@ -505,10 +553,16 @@ public struct RecordSharedExpenseSheet: View {
                     splitBreakdown: breakdown
                 )
             }
+            isSubmitting = false
+            // FASE 3 D.2 + D.3: respirar la consecuencia + atribuir al humano.
+            successPhrase = composeSuccessPhrase(paidBy: paidById, amount: cents)
+            try? await Task.sleep(for: .milliseconds(700))
             onDidRecord()
             dismiss()
         } catch {
+            isSubmitting = false
             errorMessage = error.localizedDescription
+            RuulHaptic.error.trigger()
         }
     }
 }

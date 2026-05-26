@@ -59,12 +59,15 @@ public final class CheckInScannerCoordinator {
 
         guard let parsed = QRSignatureService.verify(payload, secret: QRSignatureService.sharedSecret) else {
             overlay = .invalid
+            // FASE 3 D.1: scan invalid → .error haptic.
+            RuulHaptic.error.trigger()
             await analytics.qrScanFailure(reason: .invalidSignature)
             await throttleOverlay()
             return
         }
         guard parsed.eventId == event.id else {
             overlay = .invalid
+            RuulHaptic.error.trigger()
             await analytics.qrScanFailure(reason: .unknown)
             await throttleOverlay()
             return
@@ -74,6 +77,10 @@ public final class CheckInScannerCoordinator {
             _ = try await checkInRepo.qrScanCheckIn(eventId: event.id, memberId: parsed.memberId)
             let name = memberLookup(parsed.memberId)
             overlay = .success(memberId: parsed.memberId, name: name)
+            // FASE 3 D.1: check-in exitoso → .success haptic. La acción más
+            // social del flow de evento (alguien acaba de llegar) finalmente
+            // vibra al confirmar.
+            RuulHaptic.success.trigger()
             recentCheckIns.insert((parsed.memberId, name, .now), at: 0)
             recentCheckIns = Array(recentCheckIns.prefix(3))
             checkedCount += 1
@@ -81,9 +88,13 @@ public final class CheckInScannerCoordinator {
         } catch EventError.alreadyCheckedIn {
             let name = memberLookup(parsed.memberId)
             overlay = .alreadyCheckedIn(memberId: parsed.memberId, name: name)
+            // FASE 3 D.1: ya estaba dentro → .warning (no es error pero
+            // tampoco hito a celebrar).
+            RuulHaptic.warning.trigger()
             await analytics.qrScanFailure(reason: .alreadyCheckedIn)
         } catch {
             overlay = .invalid
+            RuulHaptic.error.trigger()
             await analytics.qrScanFailure(reason: .unknown)
         }
         await throttleOverlay()

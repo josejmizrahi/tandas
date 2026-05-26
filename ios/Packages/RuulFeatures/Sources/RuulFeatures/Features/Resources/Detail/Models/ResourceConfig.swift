@@ -216,18 +216,30 @@ public struct ResourceAction: Identifiable {
     public let tint: Color?                 // nil → acción secundaria (gris)
     public let role: ButtonRole?            // .destructive si aplica
     public let handler: () -> Void
+    /// FASE 3 Action Warmth (B.3 one-shot template): mientras la acción
+    /// está ejecutándose, el botón muestra `pendingLabel` + ProgressView
+    /// inline y queda disabled. El host pasa su `coordinator.isMutating`
+    /// (o equivalente) para que el control morph en lugar de congelarse.
+    public let isPending: Bool
+    /// Label durante el pending state. Si es `nil` y `isPending == true`
+    /// el botón mantiene el label original.
+    public let pendingLabel: String?
 
     public init(
         label: String,
         icon: String? = nil,
         tint: Color? = nil,
         role: ButtonRole? = nil,
+        isPending: Bool = false,
+        pendingLabel: String? = nil,
         handler: @escaping () -> Void
     ) {
         self.label = label
         self.icon = icon
         self.tint = tint
         self.role = role
+        self.isPending = isPending
+        self.pendingLabel = pendingLabel
         self.handler = handler
     }
 }

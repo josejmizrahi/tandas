@@ -228,6 +228,9 @@ struct AssignSlotSheet: View {
     @State private var selected: UUID?
     @State private var isSubmitting = false
     @State private var error: String?
+    /// FASE 3 Action Warmth (B.2 form-commit): el sheet NO dismissa
+    /// inmediato. "Le toca a [Nombre]" respira 700ms antes del dismiss.
+    @State private var successPhrase: String?
 
     var body: some View {
         NavigationStack {
@@ -238,29 +241,67 @@ struct AssignSlotSheet: View {
             .ruulSheetToolbar("Asignar turno")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Asignar") { Task { await submit() } }
-                        .disabled(selected == nil || isSubmitting)
+                    Button(confirmButtonLabel) {
+                        RuulHaptic.light.trigger()
+                        Task { await submit() }
+                    }
+                    .disabled(selected == nil || isSubmitting || successPhrase != nil)
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if let error {
-                    Text(error).foregroundStyle(.red).padding()
+                VStack(spacing: RuulSpacing.sm) {
+                    if let successPhrase {
+                        HStack(spacing: RuulSpacing.sm) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.ruulSemanticSuccess)
+                                .accessibilityHidden(true)
+                            Text(successPhrase)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                        }
+                        .padding(RuulSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .ruulCardSurface(.solid, radius: RuulRadius.md)
+                        .padding(.horizontal)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                    if let error {
+                        Text(error).foregroundStyle(.red).padding()
+                    }
                 }
+                .animation(.snappy(duration: 0.22), value: successPhrase)
             }
         }
+        .sensoryFeedback(.success, trigger: successPhrase)
+    }
+
+    private var confirmButtonLabel: String {
+        if successPhrase != nil { return "Listo" }
+        if isSubmitting { return "Asignando…" }
+        return "Asignar"
     }
 
     @MainActor
     private func submit() async {
         guard let memberId = selected else { return }
         isSubmitting = true
-        defer { isSubmitting = false }
+        error = nil
         do {
             try await appState.slotLifecycleRepo.assignSlot(slot.id, to: memberId)
+            isSubmitting = false
+            // FASE 3 D.3: "Le toca a [Nombre]" — atribución humana del
+            // turno asignado. Misma frase canónica que `humanStatus`
+            // recompute al volver al detail.
+            let name = members.first(where: { $0.id == memberId })?.displayName ?? "alguien"
+            successPhrase = "Le toca a \(name)"
+            try? await Task.sleep(for: .milliseconds(700))
             onAssigned()
             dismiss()
         } catch {
+            isSubmitting = false
             self.error = error.localizedDescription
+            RuulHaptic.error.trigger()
         }
     }
 }

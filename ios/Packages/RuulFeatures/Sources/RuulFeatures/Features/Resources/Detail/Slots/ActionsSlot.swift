@@ -44,18 +44,31 @@ private struct ActionButton: View {
     var body: some View {
         Button(role: action.role, action: action.handler) {
             HStack(spacing: RuulSpacing.micro) {
-                if let icon = action.icon {
+                if action.isPending {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .tint(action.tint == nil ? nil : .white)
+                } else if let icon = action.icon {
                     Image(systemName: icon)
                         .font(.footnote.weight(.semibold))
+                        .contentTransition(.symbolEffect(.replace))
                 }
-                Text(action.label)
+                Text(displayedLabel)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                    .contentTransition(.opacity)
             }
             .frame(maxWidth: .infinity)
+            .animation(.snappy(duration: 0.18), value: action.isPending)
         }
         .controlSize(.large)
+        .disabled(action.isPending)
         .modifier(ActionStyle(tint: action.tint))
+    }
+
+    private var displayedLabel: String {
+        if action.isPending, let pending = action.pendingLabel { return pending }
+        return action.label
     }
 }
 

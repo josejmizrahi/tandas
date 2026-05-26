@@ -94,8 +94,10 @@ public struct VoidFineSheet: View {
         ) {
             Task {
                 if await coordinator.submit() != nil {
+                    // FASE 3 D.1: usar RuulHaptic en lugar de UIKit directo.
+                    // Anular = acción completada → .success semantic.
+                    RuulHaptic.success.trigger()
                     isPresented = false
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }
             }
         }

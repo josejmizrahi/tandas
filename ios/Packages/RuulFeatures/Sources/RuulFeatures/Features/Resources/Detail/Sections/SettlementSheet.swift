@@ -37,6 +37,12 @@ public struct SettlementSheet: View {
     @State private var note: String = ""
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String?
+    /// FASE 3 Action Warmth (B.2 form-commit). Doctrine: el sheet NO
+    /// dismissa antes de mostrar éxito. Cuando este string toma valor
+    /// renderizamos un row de confirmación humana ("Le pagaste $X a
+    /// Linda") y esperamos ~700ms para dejar respirar la consecuencia
+    /// antes del dismiss.
+    @State private var successPhrase: String?
 
     public init(
         groupId: UUID,
@@ -81,17 +87,34 @@ public struct SettlementSheet: View {
                             .foregroundStyle(Color.red)
                     }
                 }
+                if let successPhrase {
+                    Section {
+                        HStack(spacing: RuulSpacing.sm) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.ruulSemanticSuccess)
+                                .accessibilityHidden(true)
+                            Text(successPhrase)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
+            .animation(.snappy(duration: 0.22), value: successPhrase)
             .ruulSheetToolbar("Registrar pago")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSubmitting ? "Registrando…" : "Registrar") {
+                    Button(confirmButtonLabel) {
+                        RuulHaptic.light.trigger()
                         Task { await submit() }
                     }
-                    .disabled(isSubmitting || !isValid)
+                    .disabled(isSubmitting || successPhrase != nil || !isValid)
                 }
             }
         }
+        .sensoryFeedback(.success, trigger: successPhrase)
         .onAppear {
             // Default from = current user's member row; to = suggestion or
             // the first OTHER member.
@@ -159,11 +182,52 @@ public struct SettlementSheet: View {
                 note:         note.isEmpty ? nil : note
             )
             isSubmitting = false
+            // FASE 3 D.2 + D.3: la consecuencia respira antes del dismiss
+            // y se atribuye al humano. Frase tri-role (paga/cobra/tercero)
+            // según quién es el viewer en la transacción.
+            successPhrase = composeSuccessPhrase(from: from, to: to, amount: amount)
+            try? await Task.sleep(for: .milliseconds(700))
             onDidSettle()
             dismiss()
         } catch {
             isSubmitting = false
             errorMessage = "No se pudo registrar: \(error.localizedDescription)"
+            RuulHaptic.error.trigger()
         }
+    }
+
+    // MARK: - Warmth helpers (B.2 template)
+
+    private var confirmButtonLabel: String {
+        if successPhrase != nil { return "Listo" }
+        if isSubmitting { return "Registrando…" }
+        return "Registrar"
+    }
+
+    private func composeSuccessPhrase(from: UUID, to: UUID, amount: Int64) -> String {
+        let formatted = formatAmount(cents: amount)
+        let toName = memberName(to)
+        let fromName = memberName(from)
+        let viewerMemberId = currentUserMemberId()
+        if from == viewerMemberId {
+            return "Le pagaste \(formatted) a \(toName)"
+        }
+        if to == viewerMemberId {
+            return "\(fromName) te pagó \(formatted)"
+        }
+        return "\(fromName) le pagó \(formatted) a \(toName)"
+    }
+
+    private func memberName(_ id: UUID) -> String {
+        members.first(where: { $0.member.id == id })?.displayName ?? "alguien"
+    }
+
+    private func formatAmount(cents: Int64) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.locale = Locale(identifier: "es_MX")
+        let decimal = Decimal(cents) / 100
+        return f.string(from: decimal as NSDecimalNumber) ?? "$\(cents/100)"
     }
 }

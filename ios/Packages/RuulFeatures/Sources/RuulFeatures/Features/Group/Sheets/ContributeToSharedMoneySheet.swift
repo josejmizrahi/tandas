@@ -67,6 +67,10 @@ public struct ContributeToSharedMoneySheet: View {
     /// open; re-taps after a network error reuse it so the server
     /// returns the existing ledger row instead of duplicating.
     @State private var clientId: UUID = UUID()
+    /// FASE 3 Action Warmth (B.2 form-commit): el sheet NO dismissa
+    /// inmediato. Frase humana ("Aportaste $300 a Cena familiar")
+    /// respira 700ms antes del dismiss.
+    @State private var successPhrase: String?
 
     public init(
         groupId: UUID,
@@ -154,14 +158,30 @@ public struct ContributeToSharedMoneySheet: View {
                             .foregroundStyle(Color.red)
                     }
                 }
+                if let successPhrase {
+                    Section {
+                        HStack(spacing: RuulSpacing.sm) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.ruulSemanticSuccess)
+                                .accessibilityHidden(true)
+                            Text(successPhrase)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
+            .animation(.snappy(duration: 0.22), value: successPhrase)
             .ruulSheetToolbar("Aportar al dinero compartido")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSubmitting ? "Aportando…" : "Aportar") {
+                    Button(confirmButtonLabel) {
+                        RuulHaptic.light.trigger()
                         Task { await submit() }
                     }
-                    .disabled(isSubmitting || amountCents == nil)
+                    .disabled(isSubmitting || successPhrase != nil || amountCents == nil)
                 }
             }
             // SharedMoney P1: kick off a single best-effort valuation
@@ -171,6 +191,32 @@ public struct ContributeToSharedMoneySheet: View {
             // returns nil and the toggle works as before.
             .task { await preloadValuationIfApplicable() }
         }
+        .sensoryFeedback(.success, trigger: successPhrase)
+    }
+
+    // MARK: - Warmth helpers (B.2 template)
+
+    private var confirmButtonLabel: String {
+        if successPhrase != nil { return "Listo" }
+        if isSubmitting { return "Aportando…" }
+        return "Aportar"
+    }
+
+    private func composeSuccessPhrase(amount: Int64) -> String {
+        let formatted = formatAmount(cents: amount)
+        if let sourceResource {
+            return "Aportaste \(formatted) a \(sourceResource.name)"
+        }
+        return "Aportaste \(formatted)"
+    }
+
+    private func formatAmount(cents: Int64) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.locale = Locale(identifier: "es_MX")
+        let decimal = Decimal(cents) / 100
+        return f.string(from: decimal as NSDecimalNumber) ?? "$\(cents/100)"
     }
 
     /// SharedMoney P1: when the in-kind toggle flips on, populate the
@@ -232,7 +278,6 @@ public struct ContributeToSharedMoneySheet: View {
         guard let cents = amountCents else { return }
         isSubmitting = true
         errorMessage = nil
-        defer { isSubmitting = false }
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             if let targetFundId {
@@ -268,10 +313,16 @@ public struct ContributeToSharedMoneySheet: View {
             // will fail RLS / not-found, which we silently swallow).
             await syncValuationIfApplicable(cents: cents)
 
+            isSubmitting = false
+            // FASE 3 D.2 + D.3: respirar la consecuencia + atribuir al humano.
+            successPhrase = composeSuccessPhrase(amount: cents)
+            try? await Task.sleep(for: .milliseconds(700))
             onDidContribute()
             dismiss()
         } catch {
+            isSubmitting = false
             errorMessage = error.localizedDescription
+            RuulHaptic.error.trigger()
         }
     }
 

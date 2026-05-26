@@ -68,6 +68,7 @@ public extension ResourceConfig {
     /// when `appealStatusLabel` is set.
     static func fine(
         _ fine: FineInput,
+        isPaying: Bool = false,
         onPay: @escaping () -> Void = {},
         onAppeal: @escaping () -> Void = {},
         toolbarMenu: [ToolbarMenuItem] = []
@@ -75,7 +76,14 @@ public extension ResourceConfig {
         let accent = ResourceFamilyTint.fines.color
         var actions: [ResourceAction] = []
         if fine.canPay {
-            actions.append(ResourceAction(label: "Pagar", icon: "creditcard", tint: .ruulSemanticSuccess, handler: onPay))
+            actions.append(ResourceAction(
+                label: "Pagar",
+                icon: "creditcard",
+                tint: .ruulSemanticSuccess,
+                isPending: isPaying,
+                pendingLabel: "Pagando…",
+                handler: onPay
+            ))
         }
         if fine.canAppeal {
             actions.append(ResourceAction(label: "Apelar", icon: "exclamationmark.bubble", handler: onAppeal))

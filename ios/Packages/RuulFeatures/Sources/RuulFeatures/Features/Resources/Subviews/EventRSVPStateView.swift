@@ -19,6 +19,14 @@ public struct EventRSVPStateView: View {
     public let onChange: (RSVPStatus) -> Void
     public let onAddToWallet: () -> Void
     public let onShowQR: () -> Void
+    /// FASE 3 Action Warmth (B.1 optimistic-toggle). Counter bumps con
+    /// cada tap del usuario para disparar `.sensoryFeedback(.selection)`.
+    /// Counter — no status — porque queremos que vibre cada tap incluso
+    /// si el usuario picks el mismo status dos veces (la doctrine D.1
+    /// dice "toda acción commit dispara haptic", sin excepción).
+    /// Mantenerlo en `hapticTrigger` (no `status`) evita vibrar cuando
+    /// el RSVP cambia desde realtime sync de otro device.
+    @State private var hapticTrigger: Int = 0
 
     public init(
         status: RSVPStatus,
@@ -51,6 +59,13 @@ public struct EventRSVPStateView: View {
             }
         }
         .animation(.smooth, value: status)
+        .sensoryFeedback(.selection, trigger: hapticTrigger)
+    }
+
+    /// Tap intent wrapper — bump haptic counter then propagate.
+    private func fire(_ s: RSVPStatus) {
+        hapticTrigger &+= 1
+        onChange(s)
     }
 
     // MARK: - Pending — 3 segment-style pills (capacity-aware) + plus-ones row
@@ -73,7 +88,7 @@ public struct EventRSVPStateView: View {
     }
 
     private func choicePill(_ s: RSVPStatus, label: String, icon: String, dot: Color) -> some View {
-        Button { onChange(s) } label: {
+        Button { fire(s) } label: {
             VStack(spacing: RuulSpacing.xxs) {
                 ZStack {
                     Circle()
@@ -181,7 +196,7 @@ public struct EventRSVPStateView: View {
             }
             actionButton("Mi QR", icon: "qrcode", primary: !walletAvailable, action: onShowQR)
             actionButton("Cambiar", icon: "arrow.triangle.2.circlepath", primary: false) {
-                onChange(.pending)
+                fire(.pending)
             }
         }
     }
@@ -204,8 +219,8 @@ public struct EventRSVPStateView: View {
                 isAtCapacity ? "Lista" : "Voy",
                 icon: isAtCapacity ? "person.crop.circle.badge.clock" : "checkmark",
                 primary: true
-            ) { onChange(.going) }
-            actionButton("No voy", icon: "xmark", primary: false) { onChange(.declined) }
+            ) { fire(.going) }
+            actionButton("No voy", icon: "xmark", primary: false) { fire(.declined) }
         }
     }
 
@@ -219,7 +234,7 @@ public struct EventRSVPStateView: View {
             subtitle: "Te avisamos si se libera lugar"
         ) {
             actionButton("Quitarme de la lista", icon: "xmark", primary: false) {
-                onChange(.declined)
+                fire(.declined)
             }
         }
     }
@@ -235,7 +250,7 @@ public struct EventRSVPStateView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.primary)
             Spacer()
-            Button { onChange(.pending) } label: {
+            Button { fire(.pending) } label: {
                 Text("Cambiar")
                     .font(.footnote)
                     .foregroundStyle(Color.primary)

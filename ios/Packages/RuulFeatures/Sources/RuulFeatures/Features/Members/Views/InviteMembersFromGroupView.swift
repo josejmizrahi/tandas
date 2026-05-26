@@ -18,6 +18,11 @@ public struct InviteMembersFromGroupView: View {
     @State private var showContactPicker = false
     @State private var prefillName: String?
     @State private var prefillPhone: String?
+    /// FASE 3 Action Warmth (B.2 variant — sin dismiss): la vista no es
+    /// modal por sí misma, así que en lugar de "respirar antes del
+    /// dismiss" mostramos un confirm transient ("Invitaste a +52…")
+    /// durante 1.5s mientras el pending list reload completa.
+    @State private var successPhrase: String?
 
     public init(group: RuulCore.Group) { self.group = group }
 
@@ -27,6 +32,21 @@ public struct InviteMembersFromGroupView: View {
                 VStack(alignment: .leading, spacing: RuulSpacing.lg) {
                     shareCard
                     addManualSection
+                    if let successPhrase {
+                        HStack(spacing: RuulSpacing.sm) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.ruulSemanticSuccess)
+                                .accessibilityHidden(true)
+                            Text(successPhrase)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                        }
+                        .padding(RuulSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .ruulCardSurface(.solid, radius: RuulRadius.md)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                     if !pending.isEmpty { pendingSection }
                     if let error {
                         Text(error)
@@ -35,9 +55,11 @@ public struct InviteMembersFromGroupView: View {
                     }
                 }
                 .padding(RuulSpacing.lg)
+                .animation(.snappy(duration: 0.22), value: successPhrase)
             }
             .background(Color.ruulBackground.ignoresSafeArea())
             .ruulSheetToolbar("Invitar miembros")
+            .sensoryFeedback(.success, trigger: successPhrase)
             .task { await loadPending() }
             .sheet(isPresented: $showAddPlaceholder, onDismiss: clearPrefill) {
                 AddPlaceholderSheet(
@@ -94,9 +116,12 @@ public struct InviteMembersFromGroupView: View {
                     .keyboardType(.phonePad)
                     .padding(RuulSpacing.md)
                     .ruulCardSurface(.solid, radius: RuulRadius.md)
-                Button("Enviar") { Task { await sendInvite() } }
-                    .buttonStyle(.glassProminent)
-                    .disabled(sending || newPhone.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button(sending ? "Enviando…" : "Enviar") {
+                    RuulHaptic.light.trigger()
+                    Task { await sendInvite() }
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(sending || newPhone.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             // Placeholder member: cuenta para turnos/RSVP/fines/votos antes
             // de que la persona acepte (mig 00310-00319 + edge fn
@@ -206,13 +231,21 @@ public struct InviteMembersFromGroupView: View {
         let trimmed = newPhone.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         sending = true
-        defer { sending = false }
+        error = nil
         do {
             _ = try await app.inviteRepo.createInvite(groupId: group.id, phoneE164: trimmed)
+            sending = false
+            // FASE 3 D.2 + D.3: confirm transient con teléfono atribuido.
+            // 1.5s para coincidir con el pending list reload completo.
+            successPhrase = "Invitaste a \(trimmed)"
             newPhone = ""
             await loadPending()
+            try? await Task.sleep(for: .milliseconds(1500))
+            successPhrase = nil
         } catch {
+            sending = false
             self.error = "No pudimos enviar la invitación."
+            RuulHaptic.error.trigger()
         }
     }
 }

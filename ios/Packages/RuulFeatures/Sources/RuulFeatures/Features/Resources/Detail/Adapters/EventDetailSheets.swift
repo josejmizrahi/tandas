@@ -111,9 +111,17 @@ public struct EventDetailSheets: ViewModifier {
             .sheet(isPresented: bindingForSheet(.closeEvent)) {
                 CloseEventSheet(
                     isPresented: bindingForSheet(.closeEvent),
-                    vocabulary: b.group.eventVocabulary
+                    vocabulary: b.group.eventVocabulary,
+                    eventName: b.coordinator.event.title
                 ) {
-                    Task { await b.coordinator.closeEvent(autoGenerateEnabled: false) }
+                    // FASE 3 B.2: el sheet ahora espera el await y nos
+                    // pide reportar éxito/fallo para respirar la
+                    // consecuencia con frase humana antes del dismiss.
+                    // `clearError()` antes garantiza que el Bool refleja
+                    // ESTA invocación, no errores residuales de ops previos.
+                    b.coordinator.clearError()
+                    await b.coordinator.closeEvent(autoGenerateEnabled: false)
+                    return b.coordinator.error == nil
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
