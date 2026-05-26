@@ -344,7 +344,7 @@ private struct GroupPoolStatusBlock: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Dinero compartido")
                         .font(.footnote)
-                        .foregroundStyle(Color.secondary)
+                        .foregroundStyle(Color.ruulTextSecondary)
                     Text(formattedBalance)
                         .font(.title2.weight(.semibold).monospacedDigit())
                         .foregroundStyle(balanceTint)
@@ -354,11 +354,11 @@ private struct GroupPoolStatusBlock: View {
                 if let lastActivity = pool.lastActivityAt {
                     Text(lastActivity.ruulRelativeDescription)
                         .font(.caption)
-                        .foregroundStyle(Color.secondary)
+                        .foregroundStyle(Color.ruulTextSecondary)
                 }
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color(.tertiaryLabel))
+                    .foregroundStyle(Color.ruulTextTertiary)
                     .accessibilityHidden(true)
             }
             .contentShape(Rectangle())
@@ -378,7 +378,7 @@ private struct GroupPoolStatusBlock: View {
 
     private var balanceTint: Color {
         if pool.isOverSpent { return .ruulSemanticWarning }
-        return .primary
+        return .ruulTextPrimary
     }
 
     // MARK: Viewer obligation chip (FASE 4 D.1 — name + amount)
@@ -397,7 +397,7 @@ private struct GroupPoolStatusBlock: View {
                      ? "El grupo te debe \(amountFormatted)"
                      : "Le debes \(amountFormatted) al grupo")
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.primary)
+                    .foregroundStyle(Color.ruulTextPrimary)
                 Spacer()
                 if !isViewerCredited {
                     Button("Liquidar", action: onSettle)
