@@ -426,23 +426,12 @@ public struct MyGroupsTab: View {
         ToolbarItem(placement: .topBarLeading) {
             scopeSwitcherButton
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button {
-                    router.present(.createGroup)
-                } label: {
-                    Label("Crear grupo", systemImage: "plus")
-                }
-                Button {
-                    router.present(.joinGroup)
-                } label: {
-                    Label("Unirme con código", systemImage: "qrcode")
-                }
-            } label: {
-                Image(systemName: "plus")
-            }
-            .accessibilityLabel("Agregar grupo")
-        }
+        // 2026-05-25 founder direction: "crear grupo / unirme" lives en
+        // HomeOverviewView toolbar (router.presentCreate cubre el caso
+        // sin active group). Tenerlo aquí también producía DOS `+` en
+        // GroupSpaceView (uno del tab + uno propio del group home).
+        // Empty state inline button mantiene el path para nuevos users
+        // sin grupo (ver `emptyState` en este archivo).
     }
 
     @ViewBuilder
@@ -549,6 +538,10 @@ private struct GroupSpaceScreen: View {
     @Environment(RootRouter.self) private var router
 
     @State private var coordinator: GroupHomeCoordinator?
+    /// 2026-05-25 Bug-1 fix: `.fineProposalReview` actions now open the
+    /// canonical `ReviewProposedFinesView` (the host's grace-period
+    /// dashboard) instead of routing to the event detail.
+    @State private var reviewProposedFinesEvent: Event?
 
     var body: some View {
         Group {
@@ -619,6 +612,18 @@ private struct GroupSpaceScreen: View {
         .onChange(of: showInvite) { _, presented in
             if !presented, let coord = coordinator { Task { await coord.refresh() } }
         }
+        .sheet(item: $reviewProposedFinesEvent) { event in
+            ReviewProposedFinesSheet(
+                event: event,
+                onClose: { reviewProposedFinesEvent = nil },
+                onSelectFine: { fine in
+                    reviewProposedFinesEvent = nil
+                    router.openFine(fine)
+                }
+            )
+            .environment(app)
+            .presentationBackground(.ultraThinMaterial)
+        }
     }
 
     /// Per-`ActionType` routing for the Pendings block. Mirrors the
@@ -635,7 +640,14 @@ private struct GroupSpaceScreen: View {
             if let fine = try? await app.fineRepo.fine(id: action.referenceId) {
                 router.openFine(fine)
             }
-        case .fineProposalReview, .rsvpPending, .hostAssigned:
+        case .fineProposalReview:
+            // Bug-1 fix: open the host's grace-period dashboard for the
+            // event's proposed fines, not the event detail. The action's
+            // referenceId IS event_id (per mig 00044).
+            if let event = try? await app.eventRepo.event(action.referenceId) {
+                reviewProposedFinesEvent = event
+            }
+        case .rsvpPending, .hostAssigned:
             if let event = try? await app.eventRepo.event(action.referenceId) {
                 router.openEvent(event)
             }

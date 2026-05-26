@@ -13,6 +13,11 @@ public struct HomeTab: View {
     let homeCoordinator: HomeCoordinator?
     let inboxCoordinator: InboxCoordinator?
 
+    /// 2026-05-25 Bug-1 fix: `.fineProposalReview` actions now open the
+    /// canonical `ReviewProposedFinesView` instead of routing to the
+    /// event detail.
+    @State private var reviewProposedFinesEvent: Event?
+
     public init(home: HomeCoordinator?, inbox: InboxCoordinator?) {
         self.homeCoordinator = home
         self.inboxCoordinator = inbox
@@ -40,6 +45,18 @@ public struct HomeTab: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .sheet(item: $reviewProposedFinesEvent) { event in
+            ReviewProposedFinesSheet(
+                event: event,
+                onClose: { reviewProposedFinesEvent = nil },
+                onSelectFine: { fine in
+                    reviewProposedFinesEvent = nil
+                    router.openFine(fine)
+                }
+            )
+            .environment(app)
+            .presentationBackground(.ultraThinMaterial)
+        }
     }
 
     // MARK: - Inbox action dispatch
@@ -63,8 +80,11 @@ public struct HomeTab: View {
                 router.openFine(fine)
             }
         case .fineProposalReview:
+            // Bug-1 fix: open the host's grace-period dashboard (proposed
+            // fines for this event) instead of routing to the event detail.
+            // referenceId IS event_id per mig 00044.
             if let event = try? await app.eventRepo.event(action.referenceId) {
-                router.openEvent(event)
+                reviewProposedFinesEvent = event
             }
         case .appealVotePending:
             if let appeal = try? await app.appealRepo.appeal(id: action.referenceId),
