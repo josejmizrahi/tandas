@@ -21,6 +21,12 @@ public final class DependencyContainer {
     public let authService: any AuthService
     public let rpcClient: any RuulRPCClient
 
+    /// Kept as a concrete reference so Foundation can call
+    /// `signInWithApple(idToken:nonce:)` which lives on
+    /// `LiveAuthService` (not on the protocol — the protocol's no-arg
+    /// `signInWithApple()` was a placeholder that always throws).
+    private let liveAuth: LiveAuthService
+
     // MARK: - Repositories
 
     public let groupRepository: CanonicalGroupRepository
@@ -40,6 +46,7 @@ public final class DependencyContainer {
 
         let auth = LiveAuthService(client: client)
         self.authService = auth
+        self.liveAuth = auth
 
         let rpc = SupabaseRuulRPCClient(client: client)
         self.rpcClient = rpc
@@ -58,5 +65,13 @@ public final class DependencyContainer {
     /// transitions. Idempotent; safe to call from `.task`.
     public func bootstrap() {
         sessionStore.bootstrap()
+    }
+
+    /// Forwards a completed Sign In with Apple credential to Supabase via
+    /// `LiveAuthService`. The view layer owns the `ASAuthorizationController`
+    /// dance + nonce generation; it just hands us the verified token + the
+    /// matching raw nonce when Apple returns success.
+    public func signInWithApple(idToken: String, nonce: String) async throws -> AppSession {
+        try await liveAuth.signInWithApple(idToken: idToken, nonce: nonce)
     }
 }
