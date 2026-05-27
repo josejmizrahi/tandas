@@ -12,9 +12,11 @@
 > - UI Apple-native (iOS 26+ Liquid Glass cuando aplique)
 > - slices chicos, mergeables y testeables
 >
-> Foundation set (Primitivas 1-5 + DecisionRules + Sanctions parcial
-> + Reputation RPC + GroupProfileView) cerrado al commit `097964ea`.
-> Próximo trabajo arranca desde aquí.
+> Foundation set (Primitivas 1-5) cerrado al commit `097964ea`.
+> Sesión 2026-05-27 (segunda mitad) cerró además 4 primitivas extra
+> (6 DecisionRules, 11 Sanctions, 12 Reputation read, 13 Memory,
+> 14 Disputes parcial). Estado actual: 15 de 25 primitivas con
+> cobertura backend+iOS Foundation. Detalle en §2 y §8.
 
 ---
 
@@ -107,28 +109,62 @@ stream con 5 clusters per `doctrine_group_space_situational`).
 
 ---
 
-## 2. Estado al cierre del plan (2026-05-27)
+## 2. Estado al cierre de sesión (2026-05-27 segunda mitad)
 
 - **Branch**: `main`
-- **Último commit**: `097964ea foundation: add GroupProfileView`
-- **Tests RuulCore**: 186/186 verdes en 29 suites
-- **Foundation set**: Primitivas 1-5 + Decision Rules + Sanctions
-  (parcial) + Reputation RPC + GroupProfileView ✅
+- **Último commit del slice**: `943667dc foundation: add Historia del
+  grupo (Primitiva 13 Memoria)` (después A1 MemberDetailView del founder)
+- **Tests RuulCore**: 209/209 verdes en 33 suites
+- **Foundation primitives end-to-end (backend + iOS)**:
+  - Primitivas 1, 2, 3, 4, 5 (Members/Boundary/Purpose/Rules/Resources)
+    + Foundation readiness card
+  - Primitiva 6 Authority via `decision_rules` jsonb + DecisionRulesCard
+    + EditDecisionRulesView
+  - Primitiva 11 Sanctions (issue + list + monetary/warning/repair_task/
+    reputation_note/other; suspension/loss_of_role/expulsion deferred)
+  - Primitiva 12 Reputation read-only (MemberHistoryView)
+  - Primitiva 13 Memory (GroupHistoryView con timeline paginado)
+  - Primitiva 14 Disputes parcial (DisputesListView + DisputeSanctionSheet
+    via swipe en SanctionsListView; falta DisputeDetailView/Open/Resolve)
+  - Primitiva 15 Entry/Exit (leave group)
+  - Primitiva 16 Decisions parcial (decision_rules sí; votes UI faltante)
+  - Primitiva 19 Accounting (Money block + record_expense/settlement)
+  - Primitiva 22 Legitimacy parcial (default_style en decision_rules)
 - **Páginas con stores wired listas para usar**:
-  - Members (List + Detail history)
+  - Members (List + Detail + History per-member)
   - Purpose (Card + Edit)
   - Rules (List + Card + Edit + Row)
   - Resources (List + Card + Create + Row)
-  - Sanctions (List + Card + Issue + Row)
+  - Sanctions (List + Card + Issue + Row + Dispute swipe action)
   - Decision Rules (Card + Edit)
-  - Disputes (List + Card + Row + Dispute sanction sheet)
+  - Disputes (List + Card + Row + DisputeSanctionSheet)
   - Foundation Status (Card)
   - GroupProfile (Read-only)
+  - **History** (group-wide timeline con scroll infinito) ← nuevo
 - **Stores en RuulCore**:
   - profileStore, membersStore, purposeStore, rulesStore,
     resourcesStore, decisionRulesStore, sanctionsStore,
     disputesStore, foundationStatusStore, reputationStore,
-    moneyStore, currentGroupStore, sessionStore, groupsStore.
+    **eventsStore**, moneyStore, currentGroupStore, sessionStore,
+    groupsStore.
+
+### Primitivas pendientes para terminar Foundation (10 de 25)
+
+| # | Primitiva | Backend dev | iOS | Estimado |
+|---|---|---|---|---|
+| 7 | Comunicación | ❌ | ❌ | post-V1 (chat/canales) |
+| 9 | Contribuciones (no-money) | 🟡 tabla `group_contributions` + RPCs faltantes | ❌ | 1 sesión |
+| 10 | Incentivos | ❌ | ❌ | post-V1 |
+| 16 | Decisions/Voting completo | 🟡 tablas existen + RPCs propose/cast/finalize faltantes | ❌ | 2 sesiones |
+| 17 | Permisos UI | ✅ matriz + has_permission | ❌ list/editor faltan | 1-2 sesiones |
+| 20 | Cultura | ✅ tabla `group_cultural_norms` + RPCs faltantes | ❌ | 1 sesión |
+| 21 | Ritual | ✅ `group_resource_series.ritual_meaning` | ❌ | 1 sesión |
+| 23 | Mandatos | ✅ tabla `group_mandates` + RPCs faltantes | ❌ | 1-2 sesiones |
+| 24 | Cuidado/Mantenimiento | ❌ | ❌ | post-V1 |
+| 25 | Disolución | 🟡 tabla `group_dissolutions` + RPC mínima | ❌ | 1-2 sesiones |
+
+**Suma**: 7 primitivas accionables V1 en ~9-12 sesiones de slice.
+**Disputas (14)**: completar UI (DisputeDetailView + mediation flow + open dispute genérico) = 1-2 sesiones extra.
 
 ---
 
@@ -473,16 +509,32 @@ git push origin main
 
 ## 7. Prompt inicial sugerido para la nueva sesión
 
-> Continuando Ruul. Estamos en commit `097964ea` con Foundation set
-> cerrado + GroupProfileView. Lee
-> `Plans/Active/UIBottomUpPlan.md` para el roadmap completo.
-> Doctrina vigente: backend = fuente de verdad, iOS no escribe
-> tablas, slices chicos mergeables, Apple-native UI. Hoy arrancamos
-> con **A1 MemberDetailView** según el plan. Sigue las convenciones
-> del §4 (templates mentales) y §1 (reglas inviolables). Cierra el
-> slice con: build green + tests green + device install + commit
-> + push a main + actualizar
-> `Plans/Active/UIBottomUpPlan.md` marcando A1 como ✅.
+> Continuando Ruul. Estamos en `main` con 15/25 primitivas cubiertas
+> end-to-end (último slice cerrado: Memoria/Historia del grupo,
+> commit `943667dc`). Suite 209/33 verdes en RuulCore. Lee
+> `Plans/Active/UIBottomUpPlan.md` §2 para el estado actual + tabla
+> de primitivas pendientes, §3 para el roadmap, §4 para templates
+> mentales, §1 para reglas inviolables.
+>
+> **Próximos slices doctrinales recomendados** (orden sugerido):
+> 1. **Primitiva 20 Cultura** — tabla `group_cultural_norms` ya canónica,
+>    falta RPCs + UI list/editor. Slice chico, isolated.
+> 2. **Primitiva 23 Mandatos** — tabla `group_mandates` ya canónica,
+>    completa la dimensión de Autoridad junto con Decision Rules.
+> 3. **Primitiva 17 Permisos UI** — matriz existe, solo falta surface
+>    de admin (`list_group_roles` + RoleEditor).
+> 4. **Primitiva 16 Decisions/Voting** — completar UI con propose/cast/
+>    finalize (decision_rules ya está; faltan votos concretos).
+> 5. **Primitiva 9 Contribuciones no monetarias** — Plan.md §A6
+>    backend extiende ledger; iOS surface en Money tab.
+> 6. **Primitiva 21 Ritual** — anotación en recurrence (resource_series).
+> 7. **Primitiva 25 Disolución** — wizard de liquidación + state machine.
+> 8. **Primitiva 14 Disputes completion** — DisputeDetailView + mediation/
+>    resolve flow (apertura genérica más allá de sanciones).
+>
+> Sigue las convenciones del §4 (templates mentales) y §1 (reglas
+> inviolables). Cierra cada slice con: build green + tests green +
+> device install + commit + push a main + actualizar §8 tracking.
 
 ---
 
@@ -493,24 +545,31 @@ Marcar cada slice cerrado:
 - [x] **Pre-fase** — Foundation set (1-5) + Decision Rules +
       Sanctions parcial + Reputation RPC + GroupProfileView
       (commit `097964ea`)
+- [x] **Mid-fase 2026-05-27** — Cierre de 5 primitivas más en una sesión:
+      Decision Rules completo (commit `244080ca`), Reputation read
+      (commit `58c5d3ff`), Sanctions completo (commit `94494de9`),
+      Disputes parcial (commit `71885fd4`), Memoria/Historia
+      (commit `943667dc`).
 - [x] A1 MemberDetailView
 - [ ] A2 MoneyDashboardView + sub-vistas
 - [ ] A3 ResourceDetailView
 - [ ] A4 SanctionDetailView + AppealSanctionView
-- [ ] A5 GroupHistoryView
+- [x] A5 GroupHistoryView (commit `943667dc`)
 - [ ] A6 PersonalProfileSheet + PersonalSettingsView
 - [ ] B1 GroupSettingsView root
 - [ ] B2 BoundaryPolicyView
-- [ ] B3 RolesAndPermissionsListView + RoleEditorView
-- [ ] B4 MandatesView
-- [ ] B5 CulturalNormsListView + EditCulturalNormView
-- [ ] B6 RitualsListView + CreateRitualSheet
+- [ ] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)
+- [ ] B4 MandatesView (Primitiva 23)
+- [ ] B5 CulturalNormsListView + EditCulturalNormView (Primitiva 20)
+- [ ] B6 RitualsListView + CreateRitualSheet (Primitiva 21)
 - [ ] B7 NotificationsSettingsView + GroupPrivacyView
-- [ ] B8 DissolveGroupConfirmation
-- [ ] C1 Decisions/Voting (Primitiva 16)
-- [ ] C2 Disputes UI completo (Primitiva 14)
+- [ ] B8 DissolveGroupConfirmation (Primitiva 25)
+- [ ] C1 Decisions/Voting (Primitiva 16) — votes UI, decision_rules ✅
+- [ ] C2 Disputes UI completo (Primitiva 14) — parcial: list + dispute
+      sanction sheet listos; faltan DisputeDetailView + open generic +
+      mediation/resolve
 - [ ] C3 Contributions (Primitiva 9)
-- [ ] C4 Reputation UI completo (Primitiva 12)
+- [ ] C4 Reputation UI admin (Primitiva 12) — read listo
 - [ ] D1 GroupSwitcherSheet
 - [ ] D2 GroupTabsHost
 - [ ] D3 AppShell (replace RuulAppShell)

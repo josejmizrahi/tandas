@@ -2,10 +2,13 @@
 
 > **Plan único activo.** Doctrina fuente: `Plans/Active/GroupPrimitives.md`.
 > Cualquier otro plan fue archivado en `Plans/Archive/` (2026-05-26).
-> No se abre otro plan hasta cerrar éste.
+> Hermano operacional iOS: `Plans/Active/UIBottomUpPlan.md`.
 >
-> **Orden no negociable:** primero backend (Supabase), después UI (iOS).
-> No tocar iOS hasta cerrar la Fase B.
+> **Estado 2026-05-27**: Fase A backend canónica desplegada en dev
+> (`wyvkqveienzixinonhum`). Fase B iOS progresa por slices bottom-up
+> en lugar del orden estricto B1-B13 — cada primitiva pendiente cierra
+> backend RPCs + iOS surface + tests + push en una sesión. Cobertura
+> end-to-end actual: 15 de 25 primitivas (§1).
 
 ---
 
@@ -26,37 +29,42 @@ Reglas del plan:
 
 ---
 
-## 1. Mapa de cobertura (estado actual)
+## 1. Mapa de cobertura (estado 2026-05-27 fin de sesión)
 
-| # | Primitiva | Backend | iOS | Acción |
+| # | Primitiva | Backend | iOS | Notas |
 |---|---|---|---|---|
-| 1 | Miembros | ✅ | ✅ | nada (Fase B5 podría agregar niveles) |
-| 2 | Membresía | 🟡 | 🟡 | Fase A4 (estados: provisional/suspendido/exmiembro) |
-| 3 | **Propósito** | ❌ | ❌ | **Fase A2** (tabla + RPC + onboarding) |
-| 4 | Reglas | ✅ | ✅ | Fase A1 (limpiar `rule_conflicts` muerta) |
-| 5 | Roles | ✅ | ✅ | nada |
-| 6 | Poder/Autoridad | 🟡 | 🟡 | Fase A3 (rename `governance` → `decision_rules`) |
-| 7 | Comunicación | 🟡 | 🟡 | post-V1 (canales/chat fuera de scope) |
-| 8 | Recursos | ✅ | ✅ | nada |
-| 9 | Contribuciones | 🟡 | 🟡 | Fase A6 (tipo `non_monetary_contribution`) |
+| 1 | Miembros | ✅ | ✅ | MembersListView + MemberDetailView + MemberHistoryView |
+| 2 | Membresía boundary | ✅ | ✅ | `group_membership_boundary`; estados provisional/suspended pendientes UI |
+| 3 | Propósito | ✅ | ✅ | declared/operative/emotional, upsert in-place |
+| 4 | Reglas | ✅ | ✅ | texto V1; engine path intacto pero invisible |
+| 5 | Roles | ✅ | 🟡 | matriz canónica; sin UI editor (B3) |
+| 6 | Poder/Autoridad | ✅ | ✅ | DecisionRulesCard + EditDecisionRulesView |
+| 7 | Comunicación | ❌ | ❌ | post-V1 (chat/canales fuera de scope) |
+| 8 | Recursos | ✅ | ✅ | envelope-only V1 |
+| 9 | Contribuciones | 🟡 | 🟡 | `group_contributions` canónica, faltan RPCs + UI |
 | 10 | Incentivos | ❌ | ❌ | post-V1 |
-| 11 | Sanciones | ✅ | ✅ | Fase A5 (rename `fines` → ver §3) |
-| 12 | **Confianza/Reputación** | ❌ | ❌ | **Fase A7** (registro auditable, no score público) |
-| 13 | Memoria | ✅ | 🟡 | Fase B6 (narrativa en UX) |
-| 14 | **Resolución de conflictos** | 🟡 | 🟡 | **Fase A8** (`disputes` + mediación) |
-| 15 | Entrada/Salida | ✅ | ✅ | Fase A4 (cierre + liquidación) |
-| 16 | Decisiones | ✅ | ✅ | Fase A3 (renames) |
-| 17 | Permisos | 🟡 | 🟡 | Fase A3 (matriz explícita) |
-| 18 | Propiedad | 🟡 | 🟡 | Fase A9 (`ownership_kind` en resources) |
-| 19 | Contabilidad | ✅ | ✅ | Fase A1 (drop legacy expenses/pots) |
-| 20 | **Cultura** | ❌ | ❌ | **Fase A10** (norms/values/taboos opt-in) |
-| 21 | **Ritual** | 🟡 | ❌ | **Fase A11** (anotar significado en recurrence) |
-| 22 | Legitimidad | 🟡 | 🟡 | Fase A3 (anotar `source` en cada decisión) |
-| 23 | **Representación** | ❌ | ❌ | **Fase A12** (`mandates` + revocación) |
-| 24 | Cuidado/Mantenimiento | 🟡 | 🟡 | post-V1 |
-| 25 | **Disolución** | ❌ | 🟡 | **Fase A13** (proceso, no solo archive) |
+| 11 | Sanciones | ✅ | ✅ | warning/monetary/repair_task/reputation_note/other; suspension/loss_of_role/expulsion deferred |
+| 12 | Confianza/Reputación | ✅ | 🟡 | read en MemberHistoryView; falta UI admin / record (C4) |
+| 13 | Memoria | ✅ | ✅ | GroupHistoryView + system_events paginated |
+| 14 | Resolución de conflictos | ✅ | 🟡 | DisputesListView + dispute_sanction; falta DisputeDetailView + open genérico + mediation (C2) |
+| 15 | Entrada/Salida | ✅ | ✅ | leave_group + accept_invite |
+| 16 | Decisiones | 🟡 | 🟡 | decision_rules ✅; votos concretos pendientes (C1) |
+| 17 | Permisos | ✅ | ❌ | matriz canónica + has_permission; falta admin UI (B3) |
+| 18 | Propiedad | ✅ | 🟡 | `ownership_kind` en resources; UI transfer/edit pendiente |
+| 19 | Contabilidad | ✅ | ✅ | record_expense/settlement + Money block |
+| 20 | Cultura | 🟡 | ❌ | `group_cultural_norms` canónica, faltan RPCs + UI (B5) |
+| 21 | Ritual | 🟡 | ❌ | anotación en `resource_series.ritual_meaning`; UI pendiente (B6) |
+| 22 | Legitimidad | 🟡 | 🟡 | default_style en decision_rules; falta `legitimacy_source` por voto |
+| 23 | Representación | 🟡 | ❌ | `group_mandates` canónica, faltan RPCs + UI (B4) |
+| 24 | Cuidado/Mantenimiento | ❌ | ❌ | post-V1 |
+| 25 | Disolución | 🟡 | ❌ | `group_dissolutions` canónica, falta wizard liquidación (B8) |
 
 ✅ cubierto • 🟡 parcial • ❌ ausente
+
+**Cobertura end-to-end (backend + iOS)**: 15 de 25 primitivas (60%).
+**Pendientes V1**: 7 primitivas accionables (9, 16, 17, 20, 21, 23, 25)
++ completar 14 (Disputes UI full).
+**Post-V1 explícito**: 7 (Comunicación), 10 (Incentivos), 24 (Cuidado).
 
 ---
 
