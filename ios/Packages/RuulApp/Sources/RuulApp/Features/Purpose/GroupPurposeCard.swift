@@ -131,6 +131,11 @@ private struct PurposeStubClient: RuulRPCClient, @unchecked Sendable {
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] { [] }
     func groupMembers(groupId: UUID) async throws -> [MemberListItem] { [] }
     func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] { [] }
+    func groupRulesActive(groupId: UUID) async throws -> [GroupRule] { [] }
+    func createTextRule(_ input: CreateTextRuleInput) async throws -> CreateTextRuleResult {
+        CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
+    }
+    func archiveRule(_ input: ArchiveRuleInput) async throws {}
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

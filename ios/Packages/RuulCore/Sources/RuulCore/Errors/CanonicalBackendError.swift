@@ -36,6 +36,13 @@ public enum CanonicalBackendError: Sendable, Equatable {
     case invalidPurposeVisibility
     case purposeBodyRequired
 
+    // Rules
+    case ruleTitleRequired
+    case ruleBodyRequired
+    case invalidRuleType
+    case invalidRuleSeverity
+    case ruleNotFound
+
     // Anything we haven't classified yet
     case unknown(message: String)
 }

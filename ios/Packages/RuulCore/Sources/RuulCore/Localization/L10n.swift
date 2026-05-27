@@ -64,6 +64,34 @@ public enum L10n {
         public static let bodyRequired       = LocalizedStringResource("purpose.body.required",        defaultValue: "Escribe el propósito.")
     }
 
+    public enum Rules {
+        public static let title              = LocalizedStringResource("rules.title",                defaultValue: "Reglas")
+        public static let emptyTitle         = LocalizedStringResource("rules.empty.title",          defaultValue: "Sin reglas todavía")
+        public static let emptyDescription   = LocalizedStringResource("rules.empty.description",    defaultValue: "Agrega las primeras reglas del grupo.")
+        public static let addButton          = LocalizedStringResource("rules.add",                  defaultValue: "Agregar")
+        public static let editTitle          = LocalizedStringResource("rules.edit.title",           defaultValue: "Editar regla")
+        public static let createTitle        = LocalizedStringResource("rules.create.title",         defaultValue: "Nueva regla")
+        public static let ruleTitleLabel     = LocalizedStringResource("rules.title.label",          defaultValue: "Título")
+        public static let ruleTitlePlaceholder = LocalizedStringResource("rules.title.placeholder",  defaultValue: "Ej. Sin celulares en la mesa")
+        public static let bodyLabel          = LocalizedStringResource("rules.body.label",           defaultValue: "Detalles")
+        public static let bodyPlaceholder    = LocalizedStringResource("rules.body.placeholder",     defaultValue: "Explica la regla…")
+        public static let typeLabel          = LocalizedStringResource("rules.type.label",           defaultValue: "Tipo")
+        public static let severityLabel      = LocalizedStringResource("rules.severity.label",       defaultValue: "Severidad")
+        public static let save               = LocalizedStringResource("rules.save",                 defaultValue: "Guardar")
+        public static let cancel             = LocalizedStringResource("rules.cancel",               defaultValue: "Cancelar")
+        public static let archive            = LocalizedStringResource("rules.archive",              defaultValue: "Archivar")
+        public static let ruleTitleRequired  = LocalizedStringResource("rules.title.required",       defaultValue: "Escribe el título de la regla.")
+        public static let ruleBodyRequired   = LocalizedStringResource("rules.body.required",        defaultValue: "Escribe la regla.")
+        public static let normLabel          = LocalizedStringResource("rules.type.norm",            defaultValue: "Norma")
+        public static let requirementLabel   = LocalizedStringResource("rules.type.requirement",     defaultValue: "Requisito")
+        public static let prohibitionLabel   = LocalizedStringResource("rules.type.prohibition",     defaultValue: "Prohibición")
+        public static let processLabel       = LocalizedStringResource("rules.type.process",         defaultValue: "Proceso")
+        public static let principleLabel     = LocalizedStringResource("rules.type.principle",       defaultValue: "Principio")
+        public static let archiveConfirmTitle = LocalizedStringResource("rules.archive.confirm.title", defaultValue: "Archivar regla")
+        public static let archiveConfirmMessage = LocalizedStringResource("rules.archive.confirm.message", defaultValue: "Ya no aparecerá como activa. Puedes crear una nueva después.")
+        public static let countSingular      = LocalizedStringResource("rules.count.singular",       defaultValue: "1 regla activa")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")

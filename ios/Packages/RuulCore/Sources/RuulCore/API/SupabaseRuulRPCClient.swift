@@ -190,6 +190,43 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Rules
+
+    public func groupRulesActive(groupId: UUID) async throws -> [GroupRule] {
+        let params = GroupRulesActiveParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_rules_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func createTextRule(_ input: CreateTextRuleInput) async throws -> CreateTextRuleResult {
+        do {
+            let rows: [CreateTextRuleResult] = try await client
+                .rpc("create_text_rule", params: input)
+                .execute()
+                .value
+            guard let row = rows.first else {
+                throw RuulError.unexpected(message: "create_text_rule returned no rows")
+            }
+            return row
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func archiveRule(_ input: ArchiveRuleInput) async throws {
+        do {
+            _ = try await client.rpc("archive_rule", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

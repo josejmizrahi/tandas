@@ -54,6 +54,12 @@ public enum RPCErrorMapper {
         if s.contains("invalid purpose visibility") { return .invalidPurposeVisibility }
         if s.contains("purpose body required") { return .purposeBodyRequired }
 
+        if s.contains("rule title required") { return .ruleTitleRequired }
+        if s.contains("rule body required") { return .ruleBodyRequired }
+        if s.contains("invalid rule type") { return .invalidRuleType }
+        if s.contains("invalid rule severity") { return .invalidRuleSeverity }
+        if s.contains("rule not found") { return .ruleNotFound }
+
         if s.contains("invite requires email or phone") { return .inviteRequiresEmailOrPhone }
         if s.contains("invite not found or already used") { return .inviteNotFoundOrUsed }
         if s.contains("invite expired") { return .inviteExpired }

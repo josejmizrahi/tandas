@@ -124,6 +124,15 @@ struct RPCErrorMapperTests {
         #expect(RPCErrorMapper.parse("purpose body required") == .purposeBodyRequired)
     }
 
+    @Test("rules raises")
+    func rulesRaises() {
+        #expect(RPCErrorMapper.parse("rule title required") == .ruleTitleRequired)
+        #expect(RPCErrorMapper.parse("rule body required") == .ruleBodyRequired)
+        #expect(RPCErrorMapper.parse("invalid rule type") == .invalidRuleType)
+        #expect(RPCErrorMapper.parse("invalid rule severity") == .invalidRuleSeverity)
+        #expect(RPCErrorMapper.parse("rule not found") == .ruleNotFound)
+    }
+
     @Test("unknown raises fall through to .unknown(message:)")
     func unknownRaise() {
         let raw = "Database connection lost"

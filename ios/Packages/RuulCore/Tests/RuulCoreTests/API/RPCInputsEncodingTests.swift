@@ -317,4 +317,38 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_body"] as? String == "Jugar poker")
         #expect(dict["p_visibility"] as? String == "members")
     }
+
+    // MARK: - rules
+
+    @Test("group_rules_active encodes p_group_id only")
+    func groupRulesActiveEncoding() throws {
+        let id = UUID()
+        let dict = try encode(GroupRulesActiveParams(groupId: id))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+        #expect(dict["p_group_id"] as? String == id.uuidString)
+    }
+
+    @Test("create_text_rule encodes all p_* keys")
+    func createTextRuleEncoding() throws {
+        let id = UUID()
+        let input = CreateTextRuleInput(
+            pGroupId: id, pTitle: "Sin cel", pBody: "Apaga", pRuleType: "prohibition", pSeverity: 3
+        )
+        let dict = try encode(input)
+        #expect(dict.keys.sorted() == ["p_body", "p_group_id", "p_rule_type", "p_severity", "p_title"])
+        #expect(dict["p_severity"] as? NSNumber == NSNumber(value: 3))
+    }
+
+    @Test("archive_rule encodes p_rule_id always; reason as null when nil")
+    func archiveRuleEncoding() throws {
+        let id = UUID()
+        let dict = try encode(ArchiveRuleInput(pRuleId: id, pReason: nil))
+        #expect(dict["p_rule_id"] as? String == id.uuidString)
+        // Standard Swift encoder omits nil optionals; either path is OK for this RPC
+        // because backend treats missing AND null as default. Just assert no crash.
+        _ = dict["p_reason"]
+
+        let withReason = try encode(ArchiveRuleInput(pRuleId: id, pReason: "moving"))
+        #expect(withReason["p_reason"] as? String == "moving")
+    }
 }

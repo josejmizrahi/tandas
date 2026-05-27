@@ -64,6 +64,21 @@ public protocol RuulRPCClient: Sendable {
     /// upsert by kind. Requires `purpose.set` permission.
     func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose
 
+    // MARK: - Rules
+
+    /// `group_rules_active(p_group_id)` — active text rules for the
+    /// group (engine rules filtered out). Any active member can read.
+    func groupRulesActive(groupId: UUID) async throws -> [GroupRule]
+
+    /// `create_text_rule(...)` — one-shot create+publish for a text
+    /// rule. Requires `rules.create`.
+    func createTextRule(_ input: CreateTextRuleInput) async throws -> CreateTextRuleResult
+
+    /// `archive_rule(p_rule_id, p_reason)` — marks the rule
+    /// `archived` and closes its current version. Requires
+    /// `rules.archive`.
+    func archiveRule(_ input: ArchiveRuleInput) async throws
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

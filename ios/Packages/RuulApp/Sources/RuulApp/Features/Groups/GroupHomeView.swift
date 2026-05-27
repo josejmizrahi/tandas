@@ -21,6 +21,7 @@ struct GroupHomeView: View {
         List {
             summarySection
             purposeSection
+            rulesSection
             moneySection
             membersSection
             actionsSection
@@ -29,6 +30,9 @@ struct GroupHomeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: MembersDestination.self) { _ in
             MembersListView(store: container.membersStore, groupId: group.id)
+        }
+        .navigationDestination(for: RulesDestination.self) { _ in
+            RulesListView(store: container.rulesStore, groupId: group.id)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -50,9 +54,13 @@ struct GroupHomeView: View {
             await container.currentGroupStore.setGroup(group)
             await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
             await container.purposeStore.refreshIfNeeded(groupId: group.id)
+            await container.rulesStore.refreshIfNeeded(groupId: group.id)
         }
         .sheet(isPresented: purposeSheetBinding) {
             EditPurposeView(store: container.purposeStore, groupId: group.id)
+        }
+        .sheet(isPresented: rulesCreateSheetBinding) {
+            EditRuleView(store: container.rulesStore, groupId: group.id)
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -148,6 +156,25 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var rulesSection: some View {
+        Section(L10n.Rules.title) {
+            GroupRulesCard(
+                store: container.rulesStore,
+                onAdd: { container.rulesStore.beginCreating() }
+            )
+            if container.rulesStore.hasRules {
+                NavigationLink(value: RulesDestination()) {
+                    Text(container.rulesStore.rules.count == 1
+                         ? String(localized: L10n.Rules.countSingular)
+                         : "\(container.rulesStore.rules.count) reglas activas")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private var moneySection: some View {
         Section("Dinero") {
             MoneyBlock(container: container)
@@ -201,6 +228,9 @@ struct GroupHomeView: View {
     /// list view via `NavigationLink(value:)`.
     private struct MembersDestination: Hashable {}
 
+    /// Same pattern for the Rules destination.
+    private struct RulesDestination: Hashable {}
+
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same
     /// pattern used by GroupListView for the profile sheet).
@@ -208,6 +238,17 @@ struct GroupHomeView: View {
         Binding(
             get: { container.purposeStore.isEditPresented },
             set: { container.purposeStore.isEditPresented = $0 }
+        )
+    }
+
+    /// Same pattern for the Rules create sheet. The empty-state
+    /// "Agregar" button on the GroupRulesCard flips this flag (so
+    /// users can create the first rule without first navigating into
+    /// the full RulesListView).
+    private var rulesCreateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.rulesStore.isCreatePresented },
+            set: { container.rulesStore.isCreatePresented = $0 }
         )
     }
 

@@ -25,6 +25,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupMembershipBoundary(groupId: UUID)
         case groupPurposesActive(groupId: UUID)
         case setGroupPurpose(input: SetGroupPurposeInput)
+        case groupRulesActive(groupId: UUID)
+        case createTextRule(input: CreateTextRuleInput)
+        case archiveRule(input: ArchiveRuleInput)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -56,6 +59,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var setGroupPurposeStub: Result<GroupPurpose, RuulError> = .success(
         GroupPurpose(id: UUID(), groupId: UUID(), kind: .declared, body: "")
     )
+    private var groupRulesActiveStub: Result<[GroupRule], RuulError> = .success([])
+    private var createTextRuleStub: Result<CreateTextRuleResult, RuulError> = .success(
+        CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
+    )
+    private var archiveRuleStub: Result<Void, RuulError> = .success(())
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -78,6 +86,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupMembershipBoundaryStub(_ stub: Result<[MembershipBoundaryItem], RuulError>) { groupMembershipBoundaryStub = stub }
     func setGroupPurposesActiveStub(_ stub: Result<[GroupPurpose], RuulError>) { groupPurposesActiveStub = stub }
     func setSetGroupPurposeStub(_ stub: Result<GroupPurpose, RuulError>) { setGroupPurposeStub = stub }
+    func setGroupRulesActiveStub(_ stub: Result<[GroupRule], RuulError>) { groupRulesActiveStub = stub }
+    func setCreateTextRuleStub(_ stub: Result<CreateTextRuleResult, RuulError>) { createTextRuleStub = stub }
+    func setArchiveRuleStub(_ stub: Result<Void, RuulError>) { archiveRuleStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -156,6 +167,21 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose {
         recorded.append(.setGroupPurpose(input: input))
         return try setGroupPurposeStub.get()
+    }
+
+    func groupRulesActive(groupId: UUID) async throws -> [GroupRule] {
+        recorded.append(.groupRulesActive(groupId: groupId))
+        return try groupRulesActiveStub.get()
+    }
+
+    func createTextRule(_ input: CreateTextRuleInput) async throws -> CreateTextRuleResult {
+        recorded.append(.createTextRule(input: input))
+        return try createTextRuleStub.get()
+    }
+
+    func archiveRule(_ input: ArchiveRuleInput) async throws {
+        recorded.append(.archiveRule(input: input))
+        try archiveRuleStub.get()
     }
 
     func myProfile() async throws -> Profile {

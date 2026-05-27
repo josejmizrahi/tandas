@@ -72,6 +72,16 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(message: "Visibilidad inválida.")
         case .purposeBodyRequired:
             return UserFacingError(message: "Escribe el propósito.")
+        case .ruleTitleRequired:
+            return UserFacingError(message: "Escribe el título de la regla.")
+        case .ruleBodyRequired:
+            return UserFacingError(message: "Escribe la regla.")
+        case .invalidRuleType:
+            return UserFacingError(message: "Tipo de regla inválido.")
+        case .invalidRuleSeverity:
+            return UserFacingError(message: "Severidad inválida (0–5).")
+        case .ruleNotFound:
+            return UserFacingError(message: "Esa regla ya no existe.")
         case .unknown(let message):
             return UserFacingError(message: message)
         }

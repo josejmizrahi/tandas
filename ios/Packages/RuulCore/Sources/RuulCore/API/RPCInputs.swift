@@ -305,6 +305,53 @@ public struct SetGroupPurposeInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Rules
+
+public struct GroupRulesActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct CreateTextRuleInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pTitle: String
+    public let pBody: String
+    public let pRuleType: String
+    public let pSeverity: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId  = "p_group_id"
+        case pTitle    = "p_title"
+        case pBody     = "p_body"
+        case pRuleType = "p_rule_type"
+        case pSeverity = "p_severity"
+    }
+
+    public init(pGroupId: UUID, pTitle: String, pBody: String, pRuleType: String, pSeverity: Int) {
+        self.pGroupId = pGroupId
+        self.pTitle = pTitle
+        self.pBody = pBody
+        self.pRuleType = pRuleType
+        self.pSeverity = pSeverity
+    }
+}
+
+public struct ArchiveRuleInput: Encodable, Sendable, Equatable {
+    public let pRuleId: UUID
+    public let pReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pRuleId = "p_rule_id"
+        case pReason = "p_reason"
+    }
+
+    public init(pRuleId: UUID, pReason: String? = nil) {
+        self.pRuleId = pRuleId
+        self.pReason = pReason
+    }
+}
+
 // MARK: - Profile
 
 /// Params for `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)`.
