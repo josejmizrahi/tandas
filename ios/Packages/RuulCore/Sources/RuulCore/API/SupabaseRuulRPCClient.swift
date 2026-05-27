@@ -299,6 +299,28 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Disputes (Primitiva 14)
+
+    public func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute] {
+        let params = GroupDisputesActiveParams(groupId: groupId, limit: limit)
+        do {
+            return try await client
+                .rpc("group_disputes_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func disputeSanction(_ input: DisputeSanctionInput) async throws -> UUID {
+        do {
+            return try await client.rpc("dispute_sanction", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Sanctions (Primitiva 11)
 
     public func groupSanctionsActive(groupId: UUID, limit: Int) async throws -> [GroupSanction] {

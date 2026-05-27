@@ -8,13 +8,19 @@ public struct SanctionsListView: View {
     @Bindable var store: SanctionsStore
     @Bindable var membersStore: MembersStore
     let groupId: UUID
+    /// Optional handler invoked when the user swipes "Disputar" on a
+    /// row. Lets the parent open a `DisputeSanctionSheet` without
+    /// coupling this view to the disputes store.
+    let onDispute: ((UUID) -> Void)?
 
     public init(store: SanctionsStore,
                 membersStore: MembersStore,
-                groupId: UUID) {
+                groupId: UUID,
+                onDispute: ((UUID) -> Void)? = nil) {
         self.store = store
         self.membersStore = membersStore
         self.groupId = groupId
+        self.onDispute = onDispute
     }
 
     public var body: some View {
@@ -84,6 +90,21 @@ public struct SanctionsListView: View {
             } else {
                 ForEach(store.sanctions) { sanction in
                     SanctionRowView(sanction: sanction)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if let onDispute,
+                               sanction.status != .disputed,
+                               sanction.status.isOpen {
+                                Button {
+                                    onDispute(sanction.id)
+                                } label: {
+                                    Label(
+                                        String(localized: L10n.Disputes.openButton),
+                                        systemImage: "scale.3d"
+                                    )
+                                }
+                                .tint(.orange)
+                            }
+                        }
                 }
             }
         }

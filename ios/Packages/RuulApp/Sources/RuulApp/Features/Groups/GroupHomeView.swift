@@ -31,6 +31,7 @@ struct GroupHomeView: View {
             rulesSection
             resourcesSection
             sanctionsSection
+            disputesSection
             moneySection
             membersSection
             actionsSection
@@ -63,8 +64,14 @@ struct GroupHomeView: View {
             SanctionsListView(
                 store: container.sanctionsStore,
                 membersStore: container.membersStore,
-                groupId: group.id
+                groupId: group.id,
+                onDispute: { sanctionId in
+                    container.disputesStore.beginDisputingSanction(sanctionId)
+                }
             )
+        }
+        .navigationDestination(for: DisputesDestination.self) { _ in
+            DisputesListView(store: container.disputesStore, groupId: group.id)
         }
         .navigationDestination(for: GroupProfileDestination.self) { _ in
             GroupProfileView(container: container, group: group)
@@ -97,6 +104,7 @@ struct GroupHomeView: View {
             await container.resourcesStore.refreshIfNeeded(groupId: group.id)
             await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
             await container.sanctionsStore.refreshIfNeeded(groupId: group.id)
+            await container.disputesStore.refreshIfNeeded(groupId: group.id)
             await container.foundationStatusStore.refresh(groupId: group.id)
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -115,6 +123,12 @@ struct GroupHomeView: View {
             IssueSanctionSheet(
                 store: container.sanctionsStore,
                 membersStore: container.membersStore,
+                groupId: group.id
+            )
+        }
+        .sheet(isPresented: disputeSanctionSheetBinding) {
+            DisputeSanctionSheet(
+                store: container.disputesStore,
                 groupId: group.id
             )
         }
@@ -303,6 +317,19 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var disputesSection: some View {
+        // Empty state is invisible — doctrine `doctrine_group_space_situational`:
+        // empty cluster = invisible.
+        if container.disputesStore.hasDisputes {
+            Section(L10n.Disputes.title) {
+                NavigationLink(value: DisputesDestination()) {
+                    GroupDisputesCard(store: container.disputesStore)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private var moneySection: some View {
         Section("Dinero") {
             MoneyBlock(container: container)
@@ -351,6 +378,7 @@ struct GroupHomeView: View {
         await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
         await container.decisionRulesStore.refresh(groupId: group.id)
         await container.sanctionsStore.refresh(groupId: group.id)
+        await container.disputesStore.refresh(groupId: group.id)
         await container.foundationStatusStore.refresh(groupId: group.id)
     }
 
@@ -367,6 +395,9 @@ struct GroupHomeView: View {
 
     /// And Sanctions.
     private struct SanctionsDestination: Hashable {}
+
+    /// And Disputes.
+    private struct DisputesDestination: Hashable {}
 
     private struct GroupProfileDestination: Hashable {}
 
@@ -411,6 +442,13 @@ struct GroupHomeView: View {
         Binding(
             get: { container.sanctionsStore.isIssuePresented },
             set: { container.sanctionsStore.isIssuePresented = $0 }
+        )
+    }
+
+    private var disputeSanctionSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.disputesStore.isDisputeSanctionPresented },
+            set: { container.disputesStore.isDisputeSanctionPresented = $0 }
         )
     }
 

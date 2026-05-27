@@ -125,6 +125,33 @@ public enum L10n {
         public static let countSingular      = LocalizedStringResource("resources.count.singular",     defaultValue: "1 recurso activo")
     }
 
+    public enum Disputes {
+        public static let title            = LocalizedStringResource("disputes.title",            defaultValue: "Disputas")
+        public static let emptyTitle       = LocalizedStringResource("disputes.empty.title",      defaultValue: "Sin disputas abiertas")
+        public static let emptyDescription = LocalizedStringResource("disputes.empty.description", defaultValue: "Aquí aparecerán cuando alguien quiera revisar algo.")
+        public static let openTitle        = LocalizedStringResource("disputes.open.title",       defaultValue: "Disputar sanción")
+        public static let openButton       = LocalizedStringResource("disputes.open.button",      defaultValue: "Disputar")
+        public static let cancel           = LocalizedStringResource("disputes.cancel",           defaultValue: "Cancelar")
+        public static let summarySection   = LocalizedStringResource("disputes.section.summary",  defaultValue: "Resumen")
+        public static let summaryPlaceholder = LocalizedStringResource("disputes.summary.placeholder", defaultValue: "¿Por qué la disputas? Explica brevemente…")
+        public static let summaryRequired  = LocalizedStringResource("disputes.summary.required", defaultValue: "Escribe un resumen.")
+        public static let countSingular    = LocalizedStringResource("disputes.count.singular",   defaultValue: "1 disputa abierta")
+
+        public static let statusOpen       = LocalizedStringResource("disputes.status.open",       defaultValue: "Abierta")
+        public static let statusInReview   = LocalizedStringResource("disputes.status.in_review",  defaultValue: "En revisión")
+        public static let statusMediation  = LocalizedStringResource("disputes.status.mediation",  defaultValue: "En mediación")
+        public static let statusResolved   = LocalizedStringResource("disputes.status.resolved",   defaultValue: "Resuelta")
+        public static let statusDismissed  = LocalizedStringResource("disputes.status.dismissed",  defaultValue: "Desestimada")
+        public static let statusEscalated  = LocalizedStringResource("disputes.status.escalated",  defaultValue: "Escalada a voto")
+        public static let statusClosed     = LocalizedStringResource("disputes.status.closed",     defaultValue: "Cerrada")
+
+        public static let subjectSanction  = LocalizedStringResource("disputes.subject.sanction",  defaultValue: "Sobre una sanción")
+        public static let subjectRule      = LocalizedStringResource("disputes.subject.rule",      defaultValue: "Sobre una regla")
+        public static let subjectResource  = LocalizedStringResource("disputes.subject.resource",  defaultValue: "Sobre un recurso")
+        public static let subjectMember    = LocalizedStringResource("disputes.subject.member",    defaultValue: "Sobre un miembro")
+        public static let subjectOther     = LocalizedStringResource("disputes.subject.other",     defaultValue: "Otro")
+    }
+
     public enum Sanctions {
         public static let title            = LocalizedStringResource("sanctions.title",            defaultValue: "Sanciones")
         public static let emptyTitle       = LocalizedStringResource("sanctions.empty.title",      defaultValue: "Sin sanciones activas")

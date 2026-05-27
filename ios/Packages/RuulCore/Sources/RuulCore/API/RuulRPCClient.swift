@@ -115,6 +115,19 @@ public protocol RuulRPCClient: Sendable {
     /// `group.update` permission.
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules
 
+    // MARK: - Disputes (Primitiva 14)
+
+    /// `group_disputes_active(p_group_id, p_limit)` — open disputes
+    /// (open/in_review/mediation/escalated), pre-joined with display
+    /// names. Active-member gate.
+    func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute]
+
+    /// `dispute_sanction(p_sanction_id, p_summary)` — opens a dispute
+    /// against an existing sanction. Returns the new dispute id.
+    /// Backend gates by `sanctions.dispute` permission + flips the
+    /// sanction status to `disputed`.
+    func disputeSanction(_ input: DisputeSanctionInput) async throws -> UUID
+
     // MARK: - Sanctions (Primitiva 11)
 
     /// `group_sanctions_active(p_group_id, p_limit)` — active+disputed

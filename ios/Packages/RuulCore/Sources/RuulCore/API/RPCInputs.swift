@@ -425,6 +425,38 @@ public struct GroupFoundationStatusParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+// MARK: - Disputes (Primitiva 14)
+
+public struct GroupDisputesActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pLimit   = "p_limit"
+    }
+
+    public init(groupId: UUID, limit: Int = 50) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+    }
+}
+
+public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
+    public let pSanctionId: UUID
+    public let pSummary: String
+
+    enum CodingKeys: String, CodingKey {
+        case pSanctionId = "p_sanction_id"
+        case pSummary    = "p_summary"
+    }
+
+    public init(pSanctionId: UUID, pSummary: String) {
+        self.pSanctionId = pSanctionId
+        self.pSummary = pSummary
+    }
+}
+
 // MARK: - Sanctions (Primitiva 11)
 
 public struct GroupSanctionsActiveParams: Encodable, Sendable {

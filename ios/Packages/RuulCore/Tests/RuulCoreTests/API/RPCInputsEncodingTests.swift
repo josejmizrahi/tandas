@@ -451,4 +451,24 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_amount"] is NSNull)
         #expect(dict["p_unit"] is NSNull)
     }
+
+    // MARK: - Disputes (Primitiva 14)
+
+    @Test("group_disputes_active emits p_group_id + p_limit")
+    func groupDisputesActiveEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(GroupDisputesActiveParams(groupId: gid, limit: 25))
+        #expect(dict.keys.sorted() == ["p_group_id", "p_limit"])
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect((dict["p_limit"] as? Int) == 25)
+    }
+
+    @Test("dispute_sanction emits p_sanction_id + p_summary")
+    func disputeSanctionEncoding() throws {
+        let sid = UUID()
+        let dict = try encode(DisputeSanctionInput(pSanctionId: sid, pSummary: "Razón"))
+        #expect(dict.keys.sorted() == ["p_sanction_id", "p_summary"])
+        #expect(dict["p_sanction_id"] as? String == sid.uuidString)
+        #expect(dict["p_summary"] as? String == "Razón")
+    }
 }
