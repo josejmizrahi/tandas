@@ -20,6 +20,14 @@ let package = Package(
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
+        ),
+        .testTarget(
+            name: "RuulCoreTests",
+            dependencies: ["RuulCore"],
+            path: "Tests/RuulCoreTests",
+            swiftSettings: [
+                .swiftLanguageMode(.v6)
+            ]
         )
     ]
 )
