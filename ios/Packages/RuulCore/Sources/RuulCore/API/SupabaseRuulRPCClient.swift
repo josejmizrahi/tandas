@@ -160,6 +160,30 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Profile
+
+    public func myProfile() async throws -> Profile {
+        do {
+            return try await client
+                .rpc("my_profile")
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile {
+        do {
+            return try await client
+                .rpc("update_my_profile", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Helpers
 
     private func callVoid(_ name: String, params: any Encodable & Sendable) async throws {

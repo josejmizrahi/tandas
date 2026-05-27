@@ -248,4 +248,31 @@ struct RPCInputsEncodingTests {
             #expect(dict["p_user_id"] is NSNull)
         }
     }
+
+    // MARK: - update_my_profile
+
+    @Test("update_my_profile encodes snake_case keys")
+    func updateMyProfileSnakeCase() throws {
+        let input = UpdateMyProfileInput(
+            pDisplayName: "Jose Mizrahi",
+            pUsername: "jose_m",
+            pAvatarUrl: "https://example.com/a.png",
+            pBio: "Founder"
+        )
+        let dict = try encode(input)
+        #expect(dict["p_display_name"] as? String == "Jose Mizrahi")
+        #expect(dict["p_username"] as? String == "jose_m")
+        #expect(dict["p_avatar_url"] as? String == "https://example.com/a.png")
+        #expect(dict["p_bio"] as? String == "Founder")
+    }
+
+    @Test("update_my_profile keeps display_name only when optionals are nil")
+    func updateMyProfileNilOptionals() throws {
+        let input = UpdateMyProfileInput(pDisplayName: "Jose")
+        let dict = try encode(input)
+        #expect(dict["p_display_name"] as? String == "Jose")
+        #expect(dict["p_username"] == nil)
+        #expect(dict["p_avatar_url"] == nil)
+        #expect(dict["p_bio"] == nil)
+    }
 }

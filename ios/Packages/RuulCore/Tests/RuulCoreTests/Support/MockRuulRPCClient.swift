@@ -21,6 +21,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case memberBalance(groupId: UUID, membershipId: UUID)
         case memberObligationSummary(groupId: UUID, membershipId: UUID)
         case listMemberPermissions(groupId: UUID, userId: UUID?)
+        case myProfile
+        case updateMyProfile(input: UpdateMyProfileInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -44,6 +46,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var memberBalanceStub: Result<Decimal, RuulError> = .success(0)
     private var memberObligationSummaryStub: Result<[ObligationSummary], RuulError> = .success([])
     private var listMemberPermissionsStub: Result<[String], RuulError> = .success([])
+    private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
+    private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
     init() {}
 
@@ -60,6 +64,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setMemberBalanceStub(_ stub: Result<Decimal, RuulError>) { memberBalanceStub = stub }
     func setMemberObligationSummaryStub(_ stub: Result<[ObligationSummary], RuulError>) { memberObligationSummaryStub = stub }
     func setListMemberPermissionsStub(_ stub: Result<[String], RuulError>) { listMemberPermissionsStub = stub }
+    func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
+    func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -116,5 +122,15 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] {
         recorded.append(.listMemberPermissions(groupId: groupId, userId: userId))
         return try listMemberPermissionsStub.get()
+    }
+
+    func myProfile() async throws -> Profile {
+        recorded.append(.myProfile)
+        return try myProfileStub.get()
+    }
+
+    func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile {
+        recorded.append(.updateMyProfile(input: input))
+        return try updateMyProfileStub.get()
     }
 }

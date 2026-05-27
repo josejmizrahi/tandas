@@ -13,6 +13,12 @@ struct GroupListView: View {
 
     var body: some View {
         List {
+            if container.profileStore.requiresProfileCompletion {
+                Section {
+                    ProfileOnboardingNudge(store: container.profileStore)
+                }
+            }
+
             switch container.groupsStore.phase {
             case .idle, .loading:
                 Section {
@@ -92,6 +98,11 @@ struct GroupListView: View {
             }
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
+                    Button {
+                        container.profileStore.isEditPresented = true
+                    } label: {
+                        Label("Editar perfil", systemImage: "person.crop.circle")
+                    }
                     Button(role: .destructive) {
                         Task { await container.sessionStore.signOut() }
                     } label: {
@@ -107,6 +118,7 @@ struct GroupListView: View {
         }
         .task {
             await container.groupsStore.refresh()
+            await container.profileStore.refreshIfNeeded()
         }
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateGroupView(container: container) {
@@ -120,6 +132,23 @@ struct GroupListView: View {
                 Task { await container.groupsStore.refresh() }
             }
         }
+        .sheet(isPresented: profileSheetBinding) {
+            EditProfileView(
+                store: container.profileStore,
+                mode: container.profileStore.requiresProfileCompletion ? .onboarding : .edit
+            )
+        }
+    }
+
+    /// Bridges the `@Bindable`-style flag on `ProfileStore` to the
+    /// `.sheet(isPresented:)` API the existing View hierarchy uses. The
+    /// store owns the boolean so the nudge + the account menu push into
+    /// the same sheet without colliding state.
+    private var profileSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.profileStore.isEditPresented },
+            set: { container.profileStore.isEditPresented = $0 }
+        )
     }
 }
 

@@ -27,6 +27,10 @@ public enum CanonicalBackendError: Sendable, Equatable {
     case mandateDoesNotAuthorize(reason: String?)
     case ruleEvaluationDepthExceeded(eventId: UUID?, max: Int)
 
+    // Profile
+    case displayNameRequired
+    case usernameAlreadyTaken
+
     // Anything we haven't classified yet
     case unknown(message: String)
 }

@@ -62,6 +62,10 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(title: "Sin autoridad delegada", message: detail)
         case .ruleEvaluationDepthExceeded:
             return UserFacingError(message: "Las reglas del grupo se ciclaron. Avísale al admin.")
+        case .displayNameRequired:
+            return UserFacingError(message: "Escribe tu nombre.")
+        case .usernameAlreadyTaken:
+            return UserFacingError(title: "Usuario ocupado", message: "Ese usuario ya está ocupado.")
         case .unknown(let message):
             return UserFacingError(message: message)
         }

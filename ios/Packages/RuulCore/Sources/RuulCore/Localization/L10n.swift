@@ -26,6 +26,23 @@ public enum L10n {
         public static let retryButton        = LocalizedStringResource("members.error.retry",        defaultValue: "Reintentar")
     }
 
+    public enum Profile {
+        public static let editTitle             = LocalizedStringResource("profile.edit.title",              defaultValue: "Tu perfil")
+        public static let onboardingTitle       = LocalizedStringResource("profile.onboarding.title",        defaultValue: "Completa tu perfil")
+        public static let onboardingMessage     = LocalizedStringResource("profile.onboarding.message",      defaultValue: "Agrega tu nombre para que otros miembros sepan quién eres.")
+        public static let displayNameLabel      = LocalizedStringResource("profile.display_name.label",      defaultValue: "Nombre")
+        public static let displayNamePlaceholder = LocalizedStringResource("profile.display_name.placeholder", defaultValue: "Tu nombre")
+        public static let usernameLabel         = LocalizedStringResource("profile.username.label",          defaultValue: "Usuario")
+        public static let usernamePlaceholder   = LocalizedStringResource("profile.username.placeholder",    defaultValue: "Opcional")
+        public static let bioLabel              = LocalizedStringResource("profile.bio.label",               defaultValue: "Sobre ti")
+        public static let bioPlaceholder        = LocalizedStringResource("profile.bio.placeholder",         defaultValue: "Opcional")
+        public static let cancel                = LocalizedStringResource("profile.cancel",                  defaultValue: "Cancelar")
+        public static let save                  = LocalizedStringResource("profile.save",                    defaultValue: "Guardar")
+        public static let later                 = LocalizedStringResource("profile.later",                   defaultValue: "Más tarde")
+        public static let complete              = LocalizedStringResource("profile.complete",                defaultValue: "Completar")
+        public static let displayNameRequired   = LocalizedStringResource("profile.display_name.required",   defaultValue: "Escribe tu nombre.")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")

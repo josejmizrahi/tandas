@@ -262,6 +262,38 @@ public struct MemberObligationSummaryParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Profile
+
+/// Params for `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)`.
+/// Backend trims/lowercases the inputs; the repository pre-trims so the
+/// wire payload is already canonical (avoids subtle ambiguity between
+/// "user typed spaces" and "user cleared the field").
+public struct UpdateMyProfileInput: Encodable, Sendable, Equatable {
+    public let pDisplayName: String
+    public let pUsername: String?
+    public let pAvatarUrl: String?
+    public let pBio: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pDisplayName = "p_display_name"
+        case pUsername = "p_username"
+        case pAvatarUrl = "p_avatar_url"
+        case pBio = "p_bio"
+    }
+
+    public init(
+        pDisplayName: String,
+        pUsername: String? = nil,
+        pAvatarUrl: String? = nil,
+        pBio: String? = nil
+    ) {
+        self.pDisplayName = pDisplayName
+        self.pUsername = pUsername
+        self.pAvatarUrl = pAvatarUrl
+        self.pBio = pBio
+    }
+}
+
 public struct ListMemberPermissionsParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pUserId: UUID?

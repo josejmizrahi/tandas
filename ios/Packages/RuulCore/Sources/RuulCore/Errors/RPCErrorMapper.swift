@@ -47,6 +47,9 @@ public enum RPCErrorMapper {
         }
         if s.contains("cross-tenant violation") { return .crossTenantViolation }
 
+        if s.contains("display_name required") { return .displayNameRequired }
+        if s.contains("username already taken") { return .usernameAlreadyTaken }
+
         if s.contains("invite requires email or phone") { return .inviteRequiresEmailOrPhone }
         if s.contains("invite not found or already used") { return .inviteNotFoundOrUsed }
         if s.contains("invite expired") { return .inviteExpired }

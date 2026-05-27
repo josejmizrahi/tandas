@@ -42,4 +42,16 @@ public protocol RuulRPCClient: Sendable {
     func memberObligationSummary(groupId: UUID, membershipId: UUID) async throws -> [ObligationSummary]
 
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String]
+
+    // MARK: - Profile
+
+    /// `my_profile() returns public.profiles`. Backend creates a blank
+    /// row on first call so this never returns nil for an authenticated
+    /// caller.
+    func myProfile() async throws -> Profile
+
+    /// `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)
+    /// returns public.profiles`. Caller pre-trims; backend lowercases
+    /// username and enforces uniqueness.
+    func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile
 }

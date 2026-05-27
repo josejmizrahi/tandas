@@ -111,6 +111,12 @@ struct RPCErrorMapperTests {
         }
     }
 
+    @Test("profile raises")
+    func profileRaises() {
+        #expect(RPCErrorMapper.parse("display_name required") == .displayNameRequired)
+        #expect(RPCErrorMapper.parse("username already taken") == .usernameAlreadyTaken)
+    }
+
     @Test("unknown raises fall through to .unknown(message:)")
     func unknownRaise() {
         let raw = "Database connection lost"
