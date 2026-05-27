@@ -1,0 +1,141 @@
+import Foundation
+
+/// Wire-format DTOs for RPC and table responses. Stay as close to the
+/// Postgres rows as possible; the surrounding repositories convert these
+/// into `Domain/` models before handing off to features.
+
+// MARK: - accept_invite returns TABLE(group_id, membership_id)
+
+struct AcceptInviteRow: Decodable {
+    let groupId: UUID
+    let membershipId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case groupId = "group_id"
+        case membershipId = "membership_id"
+    }
+}
+
+// MARK: - record_settlement returns TABLE(settlement_id, transaction_id)
+
+struct RecordSettlementRow: Decodable {
+    let settlementId: UUID
+    let transactionId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case settlementId = "settlement_id"
+        case transactionId = "transaction_id"
+    }
+}
+
+// MARK: - group_summary returns jsonb
+
+struct GroupSummaryDTO: Decodable {
+    let groupId: UUID
+    let memberCount: Int
+    let openDecisions: Int
+    let openDisputes: Int
+    let openObligations: Int
+    let recentEvents: [RecentEvent]
+
+    struct RecentEvent: Decodable {
+        let id: Int64
+        let eventType: String
+        let summary: String?
+        let occurredAt: Date?
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case eventType = "event_type"
+            case summary
+            case occurredAt = "occurred_at"
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case groupId = "group_id"
+        case memberCount = "member_count"
+        case openDecisions = "open_decisions"
+        case openDisputes = "open_disputes"
+        case openObligations = "open_obligations"
+        case recentEvents = "recent_events"
+    }
+}
+
+extension GroupSummaryDTO {
+    func toDomain() -> CanonicalGroupSummary {
+        CanonicalGroupSummary(
+            groupId: groupId,
+            memberCount: memberCount,
+            openDecisions: openDecisions,
+            openDisputes: openDisputes,
+            openObligations: openObligations,
+            recentEvents: recentEvents.map {
+                CanonicalGroupSummary.Event(
+                    id: $0.id,
+                    eventType: $0.eventType,
+                    summary: $0.summary,
+                    occurredAt: $0.occurredAt
+                )
+            }
+        )
+    }
+}
+
+// MARK: - member_obligation_summary returns TABLE(obligation_id, kind, amount_outstanding, owed_to_kind, owed_to_label)
+
+struct MemberObligationRow: Decodable {
+    let obligationId: UUID
+    let kind: String
+    let amountOutstanding: Decimal
+    let owedToKind: String
+    let owedToLabel: String
+
+    enum CodingKeys: String, CodingKey {
+        case obligationId = "obligation_id"
+        case kind
+        case amountOutstanding = "amount_outstanding"
+        case owedToKind = "owed_to_kind"
+        case owedToLabel = "owed_to_label"
+    }
+}
+
+extension MemberObligationRow {
+    func toDomain() -> ObligationSummary {
+        ObligationSummary(
+            id: obligationId,
+            kind: kind,
+            amountOutstanding: amountOutstanding,
+            owedToKind: owedToKind,
+            owedToLabel: owedToLabel
+        )
+    }
+}
+
+// MARK: - list_groups_for_user: from('groups') joined via membership
+
+/// Row shape for the "groups I'm an active member of" select. RLS on
+/// `groups` restricts the result to groups where the caller has an
+/// active `group_memberships` row, so we don't need to filter client-side.
+struct GroupRow: Decodable {
+    let id: UUID
+    let name: String
+    let slug: String?
+    let category: String?
+    let purposeSummary: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, slug, category
+        case purposeSummary = "purpose_summary"
+    }
+}
+
+struct MembershipRow: Decodable {
+    let id: UUID
+    let groupId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case groupId = "group_id"
+    }
+}

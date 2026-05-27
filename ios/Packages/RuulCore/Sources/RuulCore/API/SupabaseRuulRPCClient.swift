@@ -1,0 +1,188 @@
+import Foundation
+import Supabase
+
+/// Live implementation of `RuulRPCClient` against the canonical dev backend.
+/// All write paths use `client.rpc(...)`; reads either hit a read RPC or
+/// `client.from(...)` for the membership-joined groups list. Every error
+/// passes through `RPCErrorMapper`.
+public struct SupabaseRuulRPCClient: RuulRPCClient {
+    private let client: SupabaseClient
+
+    public init(client: SupabaseClient) {
+        self.client = client
+    }
+
+    // MARK: - Identity & membership
+
+    public func createGroup(name: String,
+                            slug: String?,
+                            category: String?,
+                            purposeDeclared: String?) async throws -> UUID {
+        let params = RPCCreateGroupParams(name: name, slug: slug, category: category, purposeDeclared: purposeDeclared)
+        return try await callReturningUUID("create_group", params: params)
+    }
+
+    public func inviteMember(groupId: UUID,
+                             email: String?,
+                             phone: String?,
+                             membershipType: String,
+                             message: String?) async throws -> UUID {
+        let params = InviteMemberParams(
+            groupId: groupId,
+            email: email,
+            phone: phone,
+            membershipType: membershipType,
+            message: message
+        )
+        return try await callReturningUUID("invite_member", params: params)
+    }
+
+    public func acceptInvite(code: String) async throws -> AcceptInviteResult {
+        let params = AcceptInviteParams(code: code)
+        let rows: [AcceptInviteRow] = try await callReturningArray("accept_invite", params: params)
+        guard let row = rows.first else {
+            throw RuulError.unexpected(message: "accept_invite returned no rows")
+        }
+        return AcceptInviteResult(groupId: row.groupId, membershipId: row.membershipId)
+    }
+
+    public func leaveGroup(groupId: UUID, reason: String?) async throws {
+        let params = LeaveGroupParams(groupId: groupId, reason: reason)
+        try await callVoid("leave_group", params: params)
+    }
+
+    // MARK: - Money
+
+    public func recordExpense(_ draft: ExpenseDraft, clientId: String?) async throws -> UUID {
+        let params = RecordExpenseParams(draft: draft, clientId: clientId)
+        return try await callReturningUUID("record_expense", params: params)
+    }
+
+    public func recordSettlement(_ draft: SettlementDraft, clientId: String?) async throws -> SettlementResult {
+        let params = RecordSettlementParams(draft: draft, clientId: clientId)
+        let rows: [RecordSettlementRow] = try await callReturningArray("record_settlement", params: params)
+        guard let row = rows.first else {
+            throw RuulError.unexpected(message: "record_settlement returned no rows")
+        }
+        return SettlementResult(settlementId: row.settlementId, transactionId: row.transactionId)
+    }
+
+    // MARK: - Reads
+
+    public func listMyGroups() async throws -> [GroupListItem] {
+        // RLS on group_memberships restricts to the caller's own active rows;
+        // the embedded `groups(...)` join inherits visibility from groups' RLS.
+        // We select with an embedded resource so the row gives us both ids
+        // in one round-trip.
+        struct Joined: Decodable {
+            let id: UUID                                  // membership id
+            let groupId: UUID
+            let group: GroupRow
+
+            enum CodingKeys: String, CodingKey {
+                case id
+                case groupId = "group_id"
+                case group = "groups"
+            }
+        }
+        do {
+            let rows: [Joined] = try await client
+                .from("group_memberships")
+                .select("id, group_id, groups(id, name, slug, category, purpose_summary)")
+                .eq("status", value: "active")
+                .order("joined_at", ascending: false)
+                .execute()
+                .value
+            return rows.map {
+                GroupListItem(
+                    id: $0.group.id,
+                    name: $0.group.name,
+                    slug: $0.group.slug,
+                    category: $0.group.category,
+                    purposeSummary: $0.group.purposeSummary,
+                    membershipId: $0.id
+                )
+            }
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func groupSummary(groupId: UUID) async throws -> CanonicalGroupSummary {
+        let params = GroupSummaryParams(groupId: groupId)
+        do {
+            let dto: GroupSummaryDTO = try await client
+                .rpc("group_summary", params: params)
+                .execute()
+                .value
+            return dto.toDomain()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func memberBalance(groupId: UUID, membershipId: UUID) async throws -> Decimal {
+        let params = MemberBalanceParams(groupId: groupId, membershipId: membershipId)
+        do {
+            let value: Decimal = try await client
+                .rpc("member_balance_in_group", params: params)
+                .execute()
+                .value
+            return value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func memberObligationSummary(groupId: UUID, membershipId: UUID) async throws -> [ObligationSummary] {
+        let params = MemberObligationSummaryParams(groupId: groupId, membershipId: membershipId)
+        do {
+            let rows: [MemberObligationRow] = try await client
+                .rpc("member_obligation_summary", params: params)
+                .execute()
+                .value
+            return rows.map { $0.toDomain() }
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] {
+        let params = ListMemberPermissionsParams(groupId: groupId, userId: userId)
+        do {
+            let rows: [String] = try await client
+                .rpc("list_member_permissions", params: params)
+                .execute()
+                .value
+            return rows
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func callVoid(_ name: String, params: any Encodable & Sendable) async throws {
+        do {
+            _ = try await client.rpc(name, params: params).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    private func callReturningUUID(_ name: String, params: any Encodable & Sendable) async throws -> UUID {
+        do {
+            return try await client.rpc(name, params: params).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    private func callReturningArray<Row: Decodable>(_ name: String, params: any Encodable & Sendable) async throws -> [Row] {
+        do {
+            return try await client.rpc(name, params: params).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+}
