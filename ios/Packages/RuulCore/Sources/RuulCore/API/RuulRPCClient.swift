@@ -79,6 +79,23 @@ public protocol RuulRPCClient: Sendable {
     /// `rules.archive`.
     func archiveRule(_ input: ArchiveRuleInput) async throws
 
+    // MARK: - Resources
+
+    /// `group_resources_active(p_group_id)` — active resource envelopes
+    /// filtered to Foundation types (fund/space/asset/document/other).
+    func groupResourcesActive(groupId: UUID) async throws -> [GroupResource]
+
+    /// `create_group_resource(...)` — envelope-only create.
+    /// Requires `resources.create`.
+    func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource
+
+    /// `archive_resource(p_resource_id, p_reason)` — marks the
+    /// resource archived. Requires `resources.archive`. Backend
+    /// raises `resource has N open obligations` if obligations are
+    /// outstanding; the canonical iOS surface treats that as a
+    /// generic backend error.
+    func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

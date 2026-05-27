@@ -133,6 +133,19 @@ struct RPCErrorMapperTests {
         #expect(RPCErrorMapper.parse("rule not found") == .ruleNotFound)
     }
 
+    @Test("resources raises")
+    func resourcesRaises() {
+        #expect(RPCErrorMapper.parse("invalid resource type") == .invalidResourceType)
+        #expect(RPCErrorMapper.parse("resource name required") == .resourceNameRequired)
+        #expect(RPCErrorMapper.parse("invalid resource visibility") == .invalidResourceVisibility)
+        #expect(RPCErrorMapper.parse("invalid ownership kind") == .invalidOwnershipKind)
+        #expect(RPCErrorMapper.parse("resource not found") == .resourceNotFound)
+        let parsed = RPCErrorMapper.parse("owner membership not in group \(UUID().uuidString.lowercased())")
+        if case .ownerMembershipNotInGroup = parsed {} else { Issue.record("expected ownerMembershipNotInGroup") }
+        let parsed2 = RPCErrorMapper.parse("custodian membership not in group \(UUID().uuidString.lowercased())")
+        if case .custodianMembershipNotInGroup = parsed2 {} else { Issue.record("expected custodianMembershipNotInGroup") }
+    }
+
     @Test("unknown raises fall through to .unknown(message:)")
     func unknownRaise() {
         let raw = "Database connection lost"

@@ -227,6 +227,39 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Resources
+
+    public func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {
+        let params = GroupResourcesActiveParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_resources_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
+        do {
+            return try await client
+                .rpc("create_group_resource", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {
+        do {
+            _ = try await client.rpc("archive_resource", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

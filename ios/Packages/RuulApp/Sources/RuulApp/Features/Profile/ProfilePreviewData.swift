@@ -124,4 +124,9 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
     }
     func archiveRule(_ input: ArchiveRuleInput) async throws {}
+    func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
+    func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
+        GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)
+    }
+    func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {}
 }

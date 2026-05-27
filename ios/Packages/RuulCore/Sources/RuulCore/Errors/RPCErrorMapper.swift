@@ -60,6 +60,18 @@ public enum RPCErrorMapper {
         if s.contains("invalid rule severity") { return .invalidRuleSeverity }
         if s.contains("rule not found") { return .ruleNotFound }
 
+        if s.contains("invalid resource type") { return .invalidResourceType }
+        if s.contains("resource name required") { return .resourceNameRequired }
+        if s.contains("invalid resource visibility") { return .invalidResourceVisibility }
+        if s.contains("invalid ownership kind") { return .invalidOwnershipKind }
+        if s.contains("owner membership not in group") {
+            return .ownerMembershipNotInGroup(groupId: extractUUID(after: "group", in: raw))
+        }
+        if s.contains("custodian membership not in group") {
+            return .custodianMembershipNotInGroup(groupId: extractUUID(after: "group", in: raw))
+        }
+        if s.contains("resource not found") { return .resourceNotFound }
+
         if s.contains("invite requires email or phone") { return .inviteRequiresEmailOrPhone }
         if s.contains("invite not found or already used") { return .inviteNotFoundOrUsed }
         if s.contains("invite expired") { return .inviteExpired }

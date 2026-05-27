@@ -136,6 +136,11 @@ private struct PurposeStubClient: RuulRPCClient, @unchecked Sendable {
         CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
     }
     func archiveRule(_ input: ArchiveRuleInput) async throws {}
+    func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
+    func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
+        GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)
+    }
+    func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {}
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

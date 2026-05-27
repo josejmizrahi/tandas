@@ -43,6 +43,15 @@ public enum CanonicalBackendError: Sendable, Equatable {
     case invalidRuleSeverity
     case ruleNotFound
 
+    // Resources
+    case invalidResourceType
+    case resourceNameRequired
+    case invalidResourceVisibility
+    case invalidOwnershipKind
+    case ownerMembershipNotInGroup(groupId: UUID?)
+    case custodianMembershipNotInGroup(groupId: UUID?)
+    case resourceNotFound
+
     // Anything we haven't classified yet
     case unknown(message: String)
 }

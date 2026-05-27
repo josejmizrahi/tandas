@@ -1,0 +1,55 @@
+import Foundation
+
+/// Foundation-scope repository for Primitiva 5 (Resources). Reads
+/// via `group_resources_active(...)`, writes via the new envelope-
+/// only `create_group_resource(...)` and the pre-existing
+/// `archive_resource(...)` RPC.
+public struct CanonicalResourcesRepository: Sendable {
+    private let rpc: any RuulRPCClient
+
+    public init(rpc: any RuulRPCClient) {
+        self.rpc = rpc
+    }
+
+    public func activeResources(groupId: UUID) async throws -> [GroupResource] {
+        try await rpc.groupResourcesActive(groupId: groupId)
+    }
+
+    public func createResource(
+        groupId: UUID,
+        type: GroupResourceType,
+        name: String,
+        description: String? = nil,
+        visibility: ResourceVisibility = .members,
+        ownershipKind: ResourceOwnershipKind = .group,
+        ownerMembershipId: UUID? = nil,
+        custodianMembershipId: UUID? = nil
+    ) async throws -> GroupResource {
+        let input = CreateGroupResourceInput(
+            pGroupId: groupId,
+            pResourceType: type.rawValue,
+            pName: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            pDescription: description?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .nilIfBlank,
+            pVisibility: visibility.rawValue,
+            pOwnershipKind: ownershipKind.rawValue,
+            pOwnerMembershipId: ownerMembershipId,
+            pCustodianMembershipId: custodianMembershipId
+        )
+        return try await rpc.createGroupResource(input)
+    }
+
+    public func archiveResource(resourceId: UUID, reason: String? = nil) async throws {
+        let trimmed = reason?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+        try await rpc.archiveGroupResource(
+            ArchiveGroupResourceInput(pResourceId: resourceId, pReason: trimmed)
+        )
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? { isEmpty ? nil : self }
+}

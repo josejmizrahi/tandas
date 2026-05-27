@@ -352,6 +352,71 @@ public struct ArchiveRuleInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Resources
+
+public struct GroupResourcesActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct CreateGroupResourceInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pResourceType: String
+    public let pName: String
+    public let pDescription: String?
+    public let pVisibility: String
+    public let pOwnershipKind: String
+    public let pOwnerMembershipId: UUID?
+    public let pCustodianMembershipId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId               = "p_group_id"
+        case pResourceType          = "p_resource_type"
+        case pName                  = "p_name"
+        case pDescription           = "p_description"
+        case pVisibility            = "p_visibility"
+        case pOwnershipKind         = "p_ownership_kind"
+        case pOwnerMembershipId     = "p_owner_membership_id"
+        case pCustodianMembershipId = "p_custodian_membership_id"
+    }
+
+    public init(
+        pGroupId: UUID,
+        pResourceType: String,
+        pName: String,
+        pDescription: String? = nil,
+        pVisibility: String = "members",
+        pOwnershipKind: String = "group",
+        pOwnerMembershipId: UUID? = nil,
+        pCustodianMembershipId: UUID? = nil
+    ) {
+        self.pGroupId = pGroupId
+        self.pResourceType = pResourceType
+        self.pName = pName
+        self.pDescription = pDescription
+        self.pVisibility = pVisibility
+        self.pOwnershipKind = pOwnershipKind
+        self.pOwnerMembershipId = pOwnerMembershipId
+        self.pCustodianMembershipId = pCustodianMembershipId
+    }
+}
+
+public struct ArchiveGroupResourceInput: Encodable, Sendable, Equatable {
+    public let pResourceId: UUID
+    public let pReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pReason     = "p_reason"
+    }
+
+    public init(pResourceId: UUID, pReason: String? = nil) {
+        self.pResourceId = pResourceId
+        self.pReason = pReason
+    }
+}
+
 // MARK: - Profile
 
 /// Params for `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)`.

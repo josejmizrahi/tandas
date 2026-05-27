@@ -22,6 +22,7 @@ struct GroupHomeView: View {
             summarySection
             purposeSection
             rulesSection
+            resourcesSection
             moneySection
             membersSection
             actionsSection
@@ -33,6 +34,9 @@ struct GroupHomeView: View {
         }
         .navigationDestination(for: RulesDestination.self) { _ in
             RulesListView(store: container.rulesStore, groupId: group.id)
+        }
+        .navigationDestination(for: ResourcesDestination.self) { _ in
+            ResourcesListView(store: container.resourcesStore, groupId: group.id)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -55,12 +59,16 @@ struct GroupHomeView: View {
             await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
             await container.purposeStore.refreshIfNeeded(groupId: group.id)
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
+            await container.resourcesStore.refreshIfNeeded(groupId: group.id)
         }
         .sheet(isPresented: purposeSheetBinding) {
             EditPurposeView(store: container.purposeStore, groupId: group.id)
         }
         .sheet(isPresented: rulesCreateSheetBinding) {
             EditRuleView(store: container.rulesStore, groupId: group.id)
+        }
+        .sheet(isPresented: resourcesCreateSheetBinding) {
+            CreateResourceView(store: container.resourcesStore, groupId: group.id)
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -156,6 +164,25 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var resourcesSection: some View {
+        Section(L10n.Resources.title) {
+            GroupResourcesCard(
+                store: container.resourcesStore,
+                onAdd: { container.resourcesStore.beginCreating() }
+            )
+            if container.resourcesStore.hasResources {
+                NavigationLink(value: ResourcesDestination()) {
+                    Text(container.resourcesStore.resources.count == 1
+                         ? String(localized: L10n.Resources.countSingular)
+                         : "\(container.resourcesStore.resources.count) recursos activos")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private var rulesSection: some View {
         Section(L10n.Rules.title) {
             GroupRulesCard(
@@ -231,6 +258,9 @@ struct GroupHomeView: View {
     /// Same pattern for the Rules destination.
     private struct RulesDestination: Hashable {}
 
+    /// And Resources.
+    private struct ResourcesDestination: Hashable {}
+
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same
     /// pattern used by GroupListView for the profile sheet).
@@ -249,6 +279,13 @@ struct GroupHomeView: View {
         Binding(
             get: { container.rulesStore.isCreatePresented },
             set: { container.rulesStore.isCreatePresented = $0 }
+        )
+    }
+
+    private var resourcesCreateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.resourcesStore.isCreatePresented },
+            set: { container.resourcesStore.isCreatePresented = $0 }
         )
     }
 

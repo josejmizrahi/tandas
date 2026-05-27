@@ -1,38 +1,40 @@
 import SwiftUI
 import RuulCore
 
-/// Compact "Reglas" card mounted in `GroupHomeView`. Shows top 3
-/// rules + a count and a navigation row into `RulesListView`.
-public struct GroupRulesCard: View {
-    @Bindable var store: RulesStore
+/// Compact "Recursos" card mounted in `GroupHomeView`. Shows top 3
+/// rows or an empty-state add prompt. The NavigationLink into
+/// `ResourcesListView` lives in GroupHomeView (same pattern as
+/// rules/members).
+public struct GroupResourcesCard: View {
+    @Bindable var store: ResourcesStore
     let onAdd: () -> Void
 
-    public init(store: RulesStore, onAdd: @escaping () -> Void) {
+    public init(store: ResourcesStore, onAdd: @escaping () -> Void) {
         self.store = store
         self.onAdd = onAdd
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if store.hasRules {
-                ForEach(store.topRules) { rule in
-                    RuleRowView(rule: rule, compact: true)
-                    if rule.id != store.topRules.last?.id {
+            if store.hasResources {
+                ForEach(store.topResources) { resource in
+                    ResourceRowView(resource: resource, compact: true)
+                    if resource.id != store.topResources.last?.id {
                         Divider().padding(.leading, 36)
                     }
                 }
             } else {
                 Button(action: onAdd) {
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "list.bullet.rectangle")
+                        Image(systemName: "square.stack.3d.up")
                             .font(.body.weight(.medium))
                             .foregroundStyle(.tint)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.Rules.emptyTitle)
+                            Text(L10n.Resources.emptyTitle)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
-                            Text(L10n.Rules.emptyDescription)
+                            Text(L10n.Resources.emptyDescription)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
@@ -49,18 +51,13 @@ public struct GroupRulesCard: View {
             }
         }
     }
-
-    public var countLabel: String {
-        let n = store.rules.count
-        return n == 1 ? String(localized: L10n.Rules.countSingular) : "\(n) reglas activas"
-    }
 }
 
 #Preview("Populated") {
-    let mock = makePreviewStore(seed: RulesPreviewData.all)
+    let mock = makePreviewStore(seed: ResourcesPreviewData.all)
     return List {
-        Section(L10n.Rules.title) {
-            GroupRulesCard(store: mock, onAdd: {})
+        Section(L10n.Resources.title) {
+            GroupResourcesCard(store: mock, onAdd: {})
         }
     }
 }
@@ -68,28 +65,28 @@ public struct GroupRulesCard: View {
 #Preview("Empty") {
     let mock = makePreviewStore(seed: [])
     return List {
-        Section(L10n.Rules.title) {
-            GroupRulesCard(store: mock, onAdd: {})
+        Section(L10n.Resources.title) {
+            GroupResourcesCard(store: mock, onAdd: {})
         }
     }
 }
 
 @MainActor
-private func makePreviewStore(seed: [GroupRule]) -> RulesStore {
-    let client = RulesStubClient(seed: seed)
-    let repo = CanonicalRulesRepository(rpc: client)
-    let store = RulesStore(repository: repo)
+private func makePreviewStore(seed: [GroupResource]) -> ResourcesStore {
+    let client = ResourcesStubClient(seed: seed)
+    let repo = CanonicalResourcesRepository(rpc: client)
+    let store = ResourcesStore(repository: repo)
     Task { await store.refresh(groupId: UUID()) }
     return store
 }
 
-private struct RulesStubClient: RuulRPCClient, @unchecked Sendable {
-    let seed: [GroupRule]
-    func groupRulesActive(groupId: UUID) async throws -> [GroupRule] { seed }
-    func createTextRule(_ input: CreateTextRuleInput) async throws -> CreateTextRuleResult {
-        CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
+private struct ResourcesStubClient: RuulRPCClient, @unchecked Sendable {
+    let seed: [GroupResource]
+    func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { seed }
+    func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
+        GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)
     }
-    func archiveRule(_ input: ArchiveRuleInput) async throws {}
+    func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {}
 
     func createGroup(name: String, slug: String?, category: String?, purposeDeclared: String?) async throws -> UUID { UUID() }
     func inviteMember(groupId: UUID, email: String?, phone: String?, membershipType: String, message: String?) async throws -> UUID { UUID() }
@@ -112,11 +109,11 @@ private struct RulesStubClient: RuulRPCClient, @unchecked Sendable {
     func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose {
         GroupPurpose(id: UUID(), groupId: input.pGroupId, kind: .declared, body: input.pBody)
     }
-    func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
-    func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
-        GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)
+    func groupRulesActive(groupId: UUID) async throws -> [GroupRule] { [] }
+    func createTextRule(_ input: CreateTextRuleInput) async throws -> CreateTextRuleResult {
+        CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
     }
-    func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {}
+    func archiveRule(_ input: ArchiveRuleInput) async throws {}
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

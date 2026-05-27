@@ -82,6 +82,20 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(message: "Severidad inválida (0–5).")
         case .ruleNotFound:
             return UserFacingError(message: "Esa regla ya no existe.")
+        case .invalidResourceType:
+            return UserFacingError(message: "Tipo de recurso inválido.")
+        case .resourceNameRequired:
+            return UserFacingError(message: "Ponle un nombre al recurso.")
+        case .invalidResourceVisibility:
+            return UserFacingError(message: "Visibilidad inválida.")
+        case .invalidOwnershipKind:
+            return UserFacingError(message: "Tipo de propiedad inválido.")
+        case .ownerMembershipNotInGroup:
+            return UserFacingError(message: "El dueño elegido no es miembro del grupo.")
+        case .custodianMembershipNotInGroup:
+            return UserFacingError(message: "El custodio elegido no es miembro del grupo.")
+        case .resourceNotFound:
+            return UserFacingError(message: "Ese recurso ya no existe.")
         case .unknown(let message):
             return UserFacingError(message: message)
         }

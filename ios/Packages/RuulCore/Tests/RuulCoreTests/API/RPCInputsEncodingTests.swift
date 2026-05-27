@@ -344,11 +344,48 @@ struct RPCInputsEncodingTests {
         let id = UUID()
         let dict = try encode(ArchiveRuleInput(pRuleId: id, pReason: nil))
         #expect(dict["p_rule_id"] as? String == id.uuidString)
-        // Standard Swift encoder omits nil optionals; either path is OK for this RPC
-        // because backend treats missing AND null as default. Just assert no crash.
         _ = dict["p_reason"]
 
         let withReason = try encode(ArchiveRuleInput(pRuleId: id, pReason: "moving"))
         #expect(withReason["p_reason"] as? String == "moving")
+    }
+
+    // MARK: - resources
+
+    @Test("group_resources_active encodes p_group_id only")
+    func groupResourcesActiveEncoding() throws {
+        let id = UUID()
+        let dict = try encode(GroupResourcesActiveParams(groupId: id))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+    }
+
+    @Test("create_group_resource encodes all p_* keys")
+    func createGroupResourceEncoding() throws {
+        let gid = UUID()
+        let input = CreateGroupResourceInput(
+            pGroupId: gid,
+            pResourceType: "fund",
+            pName: "Fondo",
+            pDescription: "Bote",
+            pVisibility: "members",
+            pOwnershipKind: "group",
+            pOwnerMembershipId: nil,
+            pCustodianMembershipId: nil
+        )
+        let dict = try encode(input)
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_resource_type"] as? String == "fund")
+        #expect(dict["p_name"] as? String == "Fondo")
+        #expect(dict["p_description"] as? String == "Bote")
+        #expect(dict["p_visibility"] as? String == "members")
+        #expect(dict["p_ownership_kind"] as? String == "group")
+    }
+
+    @Test("archive_group_resource encodes p_resource_id")
+    func archiveGroupResourceEncoding() throws {
+        let id = UUID()
+        let dict = try encode(ArchiveGroupResourceInput(pResourceId: id, pReason: "moved"))
+        #expect(dict["p_resource_id"] as? String == id.uuidString)
+        #expect(dict["p_reason"] as? String == "moved")
     }
 }
