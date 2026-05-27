@@ -396,4 +396,59 @@ struct RPCInputsEncodingTests {
         #expect(dict.keys.sorted() == ["p_group_id"])
         #expect(dict["p_group_id"] as? String == id.uuidString)
     }
+
+    // MARK: - member_reputation_events (Primitiva 12)
+
+    @Test("member_reputation_events emits p_group_id, p_subject_membership_id, p_limit")
+    func memberReputationEventsEncoding() throws {
+        let gid = UUID(); let mid = UUID()
+        let dict = try encode(MemberReputationEventsParams(groupId: gid, subjectMembershipId: mid, limit: 25))
+        #expect(dict.keys.sorted() == ["p_group_id", "p_limit", "p_subject_membership_id"])
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_subject_membership_id"] as? String == mid.uuidString)
+        #expect((dict["p_limit"] as? Int) == 25)
+    }
+
+    // MARK: - issue_sanction (Primitiva 11)
+
+    @Test("issue_sanction emits all p_* keys, optionals as explicit JSON null")
+    func issueSanctionMonetaryEncoding() throws {
+        let gid = UUID(); let mid = UUID()
+        let input = IssueSanctionInput(
+            pGroupId: gid,
+            pTargetMembershipId: mid,
+            pSanctionKind: "monetary",
+            pReason: "Faltó al fondo",
+            pAmount: 250,
+            pUnit: "MXN",
+            pClientId: "abc"
+        )
+        let dict = try encode(input)
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_target_membership_id"] as? String == mid.uuidString)
+        #expect(dict["p_sanction_kind"] as? String == "monetary")
+        #expect(dict["p_reason"] as? String == "Faltó al fondo")
+        #expect(dict["p_unit"] as? String == "MXN")
+        #expect(dict["p_client_id"] as? String == "abc")
+        // Optionals not set should still be present as JSON null.
+        #expect(dict.keys.contains("p_ends_at"))
+        #expect(dict.keys.contains("p_rule_version_id"))
+        #expect(dict.keys.contains("p_source_event_id"))
+        #expect(dict["p_ends_at"] is NSNull)
+        #expect(dict["p_rule_version_id"] is NSNull)
+    }
+
+    @Test("issue_sanction with nil amount emits null amount key explicitly")
+    func issueSanctionWarningEncoding() throws {
+        let input = IssueSanctionInput(
+            pGroupId: UUID(),
+            pTargetMembershipId: UUID(),
+            pSanctionKind: "warning",
+            pReason: "Llegó tarde"
+        )
+        let dict = try encode(input)
+        #expect(dict["p_sanction_kind"] as? String == "warning")
+        #expect(dict["p_amount"] is NSNull)
+        #expect(dict["p_unit"] is NSNull)
+    }
 }

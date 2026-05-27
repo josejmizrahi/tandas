@@ -75,6 +75,8 @@ public enum RPCErrorMapper {
         if s.contains("invalid decision style") { return .invalidDecisionStyle }
         if s.contains("quorum_min must be >= 1") { return .quorumMinTooSmall }
 
+        if s.contains("monetary sanction requires positive amount") { return .monetarySanctionRequiresAmountUnit }
+
         if s.contains("invite requires email or phone") { return .inviteRequiresEmailOrPhone }
         if s.contains("invite not found or already used") { return .inviteNotFoundOrUsed }
         if s.contains("invite expired") { return .inviteExpired }

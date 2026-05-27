@@ -30,6 +30,7 @@ struct GroupHomeView: View {
             decisionRulesSection
             rulesSection
             resourcesSection
+            sanctionsSection
             moneySection
             membersSection
             actionsSection
@@ -58,6 +59,13 @@ struct GroupHomeView: View {
         .navigationDestination(for: ResourcesDestination.self) { _ in
             ResourcesListView(store: container.resourcesStore, groupId: group.id)
         }
+        .navigationDestination(for: SanctionsDestination.self) { _ in
+            SanctionsListView(
+                store: container.sanctionsStore,
+                membersStore: container.membersStore,
+                groupId: group.id
+            )
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -81,6 +89,7 @@ struct GroupHomeView: View {
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
             await container.resourcesStore.refreshIfNeeded(groupId: group.id)
             await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
+            await container.sanctionsStore.refreshIfNeeded(groupId: group.id)
             await container.foundationStatusStore.refresh(groupId: group.id)
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -94,6 +103,13 @@ struct GroupHomeView: View {
         }
         .sheet(isPresented: resourcesCreateSheetBinding) {
             CreateResourceView(store: container.resourcesStore, groupId: group.id)
+        }
+        .sheet(isPresented: sanctionsIssueSheetBinding) {
+            IssueSanctionSheet(
+                store: container.sanctionsStore,
+                membersStore: container.membersStore,
+                groupId: group.id
+            )
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -261,6 +277,25 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var sanctionsSection: some View {
+        Section(L10n.Sanctions.title) {
+            GroupSanctionsCard(
+                store: container.sanctionsStore,
+                onAdd: { container.sanctionsStore.beginIssuing() }
+            )
+            if container.sanctionsStore.hasSanctions {
+                NavigationLink(value: SanctionsDestination()) {
+                    Text(container.sanctionsStore.activeCount == 1
+                         ? String(localized: L10n.Sanctions.countSingular)
+                         : "\(container.sanctionsStore.activeCount) sanciones activas")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private var moneySection: some View {
         Section("Dinero") {
             MoneyBlock(container: container)
@@ -308,6 +343,7 @@ struct GroupHomeView: View {
         await container.currentGroupStore.refresh()
         await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
         await container.decisionRulesStore.refresh(groupId: group.id)
+        await container.sanctionsStore.refresh(groupId: group.id)
         await container.foundationStatusStore.refresh(groupId: group.id)
     }
 
@@ -321,6 +357,9 @@ struct GroupHomeView: View {
 
     /// And Resources.
     private struct ResourcesDestination: Hashable {}
+
+    /// And Sanctions.
+    private struct SanctionsDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same
@@ -356,6 +395,13 @@ struct GroupHomeView: View {
         Binding(
             get: { container.decisionRulesStore.isEditPresented },
             set: { container.decisionRulesStore.isEditPresented = $0 }
+        )
+    }
+
+    private var sanctionsIssueSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.sanctionsStore.isIssuePresented },
+            set: { container.sanctionsStore.isIssuePresented = $0 }
         )
     }
 

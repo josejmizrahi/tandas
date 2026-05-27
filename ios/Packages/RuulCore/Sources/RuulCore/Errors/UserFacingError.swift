@@ -100,6 +100,8 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(message: "Estilo de decisión inválido.")
         case .quorumMinTooSmall:
             return UserFacingError(message: "El quórum mínimo debe ser al menos 1.")
+        case .monetarySanctionRequiresAmountUnit:
+            return UserFacingError(message: "Una multa necesita monto > 0 y moneda.")
         case .unknown(let message):
             return UserFacingError(message: message)
         }

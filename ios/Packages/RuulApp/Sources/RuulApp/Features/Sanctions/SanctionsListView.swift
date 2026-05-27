@@ -1,0 +1,91 @@
+import SwiftUI
+import RuulCore
+
+/// Full-list surface for active sanctions. Embeds inside a parent
+/// `NavigationStack`. The "Emitir" toolbar action opens the issue
+/// sheet via the shared store flag.
+public struct SanctionsListView: View {
+    @Bindable var store: SanctionsStore
+    @Bindable var membersStore: MembersStore
+    let groupId: UUID
+
+    public init(store: SanctionsStore,
+                membersStore: MembersStore,
+                groupId: UUID) {
+        self.store = store
+        self.membersStore = membersStore
+        self.groupId = groupId
+    }
+
+    public var body: some View {
+        List {
+            content
+        }
+        .navigationTitle(L10n.Sanctions.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await store.refresh(groupId: groupId)
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    store.beginIssuing()
+                } label: {
+                    Label(String(localized: L10n.Sanctions.addButton), systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $store.isIssuePresented) {
+            IssueSanctionSheet(
+                store: store,
+                membersStore: membersStore,
+                groupId: groupId
+            )
+        }
+        .task {
+            await store.refreshIfNeeded(groupId: groupId)
+            await membersStore.refreshIfNeeded(groupId: groupId)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch store.phase {
+        case .idle, .loading:
+            ForEach(0..<3, id: \.self) { _ in
+                SanctionRowView(sanction: GroupSanction(
+                    id: UUID(), groupId: groupId,
+                    targetMembershipId: UUID(),
+                    targetDisplayName: "Cargando…",
+                    kind: .warning,
+                    reason: "Placeholder reason"
+                ))
+                .redacted(reason: .placeholder)
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button("Reintentar") {
+                    Task { await store.refresh(groupId: groupId) }
+                }
+            }
+            .padding(.vertical, 6)
+        case .loaded:
+            if !store.hasSanctions {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L10n.Sanctions.emptyTitle).font(.headline)
+                    Text(L10n.Sanctions.emptyDescription)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 6)
+            } else {
+                ForEach(store.sanctions) { sanction in
+                    SanctionRowView(sanction: sanction)
+                }
+            }
+        }
+    }
+}

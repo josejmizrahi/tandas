@@ -139,6 +139,8 @@ private struct RulesStubClient: RuulRPCClient, @unchecked Sendable {
                            isDefault: false)
     }
     func memberReputationEvents(groupId: UUID, subjectMembershipId: UUID, limit: Int) async throws -> [GroupReputationEvent] { [] }
+    func groupSanctionsActive(groupId: UUID, limit: Int) async throws -> [GroupSanction] { [] }
+    func issueSanction(_ input: IssueSanctionInput) async throws -> UUID { UUID() }
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

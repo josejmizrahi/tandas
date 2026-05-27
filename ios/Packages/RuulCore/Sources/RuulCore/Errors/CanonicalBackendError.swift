@@ -56,6 +56,9 @@ public enum CanonicalBackendError: Sendable, Equatable {
     case invalidDecisionStyle
     case quorumMinTooSmall
 
+    // Sanctions
+    case monetarySanctionRequiresAmountUnit
+
     // Anything we haven't classified yet
     case unknown(message: String)
 }

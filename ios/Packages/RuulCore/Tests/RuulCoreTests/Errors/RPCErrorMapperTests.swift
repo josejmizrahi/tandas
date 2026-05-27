@@ -146,6 +146,17 @@ struct RPCErrorMapperTests {
         if case .custodianMembershipNotInGroup = parsed2 {} else { Issue.record("expected custodianMembershipNotInGroup") }
     }
 
+    @Test("sanctions raises")
+    func sanctionsRaises() {
+        #expect(RPCErrorMapper.parse("monetary sanction requires positive amount + unit") == .monetarySanctionRequiresAmountUnit)
+    }
+
+    @Test("decision rules raises")
+    func decisionRulesRaises() {
+        #expect(RPCErrorMapper.parse("invalid decision style") == .invalidDecisionStyle)
+        #expect(RPCErrorMapper.parse("quorum_min must be >= 1") == .quorumMinTooSmall)
+    }
+
     @Test("unknown raises fall through to .unknown(message:)")
     func unknownRaise() {
         let raw = "Database connection lost"

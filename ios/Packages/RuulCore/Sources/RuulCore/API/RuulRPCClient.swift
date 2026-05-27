@@ -115,6 +115,19 @@ public protocol RuulRPCClient: Sendable {
     /// `group.update` permission.
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules
 
+    // MARK: - Sanctions (Primitiva 11)
+
+    /// `group_sanctions_active(p_group_id, p_limit)` — active+disputed
+    /// sanctions for a group, pre-joined with target/issuer display
+    /// names. Active-member gate.
+    func groupSanctionsActive(groupId: UUID, limit: Int) async throws -> [GroupSanction]
+
+    /// `issue_sanction(...)` — emits a sanction. Requires permission
+    /// `sanctions.create`. Returns the sanction id. Monetary kinds
+    /// also create a `group_obligations` row + link it back; backend
+    /// also writes a reputation event automatically.
+    func issueSanction(_ input: IssueSanctionInput) async throws -> UUID
+
     // MARK: - Reputation (Primitiva 12)
 
     /// `member_reputation_events(p_group_id, p_subject_membership_id, p_limit)`

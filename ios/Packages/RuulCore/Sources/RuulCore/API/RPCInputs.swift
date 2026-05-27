@@ -425,6 +425,91 @@ public struct GroupFoundationStatusParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+// MARK: - Sanctions (Primitiva 11)
+
+public struct GroupSanctionsActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pLimit   = "p_limit"
+    }
+
+    public init(groupId: UUID, limit: Int = 50) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+    }
+}
+
+public struct IssueSanctionInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pTargetMembershipId: UUID
+    public let pSanctionKind: String
+    public let pReason: String
+    public let pAmount: Decimal?
+    public let pUnit: String?
+    public let pEndsAt: Date?
+    public let pRuleVersionId: UUID?
+    public let pSourceEventId: UUID?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId            = "p_group_id"
+        case pTargetMembershipId = "p_target_membership_id"
+        case pSanctionKind       = "p_sanction_kind"
+        case pReason             = "p_reason"
+        case pAmount             = "p_amount"
+        case pUnit               = "p_unit"
+        case pEndsAt             = "p_ends_at"
+        case pRuleVersionId      = "p_rule_version_id"
+        case pSourceEventId      = "p_source_event_id"
+        case pClientId           = "p_client_id"
+    }
+
+    public init(
+        pGroupId: UUID,
+        pTargetMembershipId: UUID,
+        pSanctionKind: String,
+        pReason: String,
+        pAmount: Decimal? = nil,
+        pUnit: String? = nil,
+        pEndsAt: Date? = nil,
+        pRuleVersionId: UUID? = nil,
+        pSourceEventId: UUID? = nil,
+        pClientId: String? = nil
+    ) {
+        self.pGroupId = pGroupId
+        self.pTargetMembershipId = pTargetMembershipId
+        self.pSanctionKind = pSanctionKind
+        self.pReason = pReason
+        self.pAmount = pAmount
+        self.pUnit = pUnit
+        self.pEndsAt = pEndsAt
+        self.pRuleVersionId = pRuleVersionId
+        self.pSourceEventId = pSourceEventId
+        self.pClientId = pClientId
+    }
+
+    /// Same rationale as `RecordExpenseParams.encode(to:)` — emit
+    /// optional keys as explicit JSON `null` so PostgREST overload
+    /// resolution doesn't drop into the wrong signature when the
+    /// caller wants the SECURITY DEFINER backend defaults.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pTargetMembershipId, forKey: .pTargetMembershipId)
+        try c.encode(pSanctionKind, forKey: .pSanctionKind)
+        try c.encode(pReason, forKey: .pReason)
+        try c.encodeOrNil(pAmount, forKey: .pAmount)
+        try c.encodeOrNil(pUnit, forKey: .pUnit)
+        try c.encodeOrNil(pEndsAt, forKey: .pEndsAt)
+        try c.encodeOrNil(pRuleVersionId, forKey: .pRuleVersionId)
+        try c.encodeOrNil(pSourceEventId, forKey: .pSourceEventId)
+        try c.encodeOrNil(pClientId, forKey: .pClientId)
+    }
+}
+
 // MARK: - Reputation (Primitiva 12)
 
 public struct MemberReputationEventsParams: Encodable, Sendable {
