@@ -6,6 +6,9 @@ import OSLog
 import Sentry
 import RuulUI
 import RuulCore
+#if DEBUG
+import RuulApp
+#endif
 
 @main
 struct TandasApp: App {
@@ -244,27 +247,54 @@ struct TandasApp: App {
         log.info("Sentry active — release=ruul-ios@\(shortVersion)+\(buildNumber) dsn=…\(dsnTail)")
     }
 
-    var body: some Scene {
-        WindowGroup {
-            // Luma-style: respeta sistema o user preference (Auto/Claro/Oscuro).
-            AuthGate()
-                .environment(appState)
-                .tint(.accentColor)
-                .preferredColorScheme(appearance.colorScheme)
-                #if DEBUG
-                .ruulShowcaseShakeListener()
-                #endif
-                .onOpenURL { url in
+    /// Foundation iOS rebuild shell (slice 4+). Activated only in DEBUG
+    /// builds with the `-FoundationShell` launch argument. Lets the new
+    /// SwiftUI surface coexist with the legacy `AuthGate`/RuulFeatures
+    /// shell until the cutover lands.
+    private static var useFoundationShell: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-FoundationShell")
+        #else
+        return false
+        #endif
+    }
+
+    @ViewBuilder
+    private var legacyShell: some View {
+        // Luma-style: respeta sistema o user preference (Auto/Claro/Oscuro).
+        AuthGate()
+            .environment(appState)
+            .tint(.accentColor)
+            .preferredColorScheme(appearance.colorScheme)
+            #if DEBUG
+            .ruulShowcaseShakeListener()
+            #endif
+            .onOpenURL { url in
+                appState.handleIncomingURL(url)
+            }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL {
                     appState.handleIncomingURL(url)
                 }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                    if let url = activity.webpageURL {
-                        appState.handleIncomingURL(url)
-                    }
-                }
-                .task {
-                    appDelegate.bind(appState: appState)
-                }
+            }
+            .task {
+                appDelegate.bind(appState: appState)
+            }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            #if DEBUG
+            if Self.useFoundationShell {
+                RuulAppShell()
+                    .tint(.accentColor)
+                    .preferredColorScheme(appearance.colorScheme)
+            } else {
+                legacyShell
+            }
+            #else
+            legacyShell
+            #endif
         }
         .modelContainer(for: [OnboardingProgress.self])
         // Beta 1 instrumentation (Plans/Active/Beta1.md §4): fire

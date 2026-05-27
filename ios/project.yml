@@ -49,6 +49,8 @@ packages:
     path: Packages/RuulCore
   RuulFeatures:
     path: Packages/RuulFeatures
+  RuulApp:
+    path: Packages/RuulApp
 targets:
   Tandas:
     type: application
@@ -71,6 +73,8 @@ targets:
         product: RuulCore
       - package: RuulFeatures
         product: RuulFeatures
+      - package: RuulApp
+        product: RuulApp
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
