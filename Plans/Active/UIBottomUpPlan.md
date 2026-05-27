@@ -559,7 +559,7 @@ Marcar cada slice cerrado:
 - [x] A3 ResourceDetailView
 - [x] A4 SanctionDetailView + AppealSanctionView
 - [x] A5 GroupHistoryView (commit `943667dc`)
-- [ ] A6 PersonalProfileSheet + PersonalSettingsView
+- [x] A6 PersonalProfileSheet + PersonalSettingsView
 - [ ] B1 GroupSettingsView root
 - [ ] B2 BoundaryPolicyView
 - [ ] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)

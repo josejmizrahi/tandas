@@ -305,6 +305,50 @@ public enum L10n {
         public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
     }
 
+    public enum PersonalProfile {
+        public static let title                 = LocalizedStringResource("personal_profile.title",                 defaultValue: "Tu cuenta")
+        public static let editProfile           = LocalizedStringResource("personal_profile.edit_profile",          defaultValue: "Editar perfil")
+        public static let settingsRow           = LocalizedStringResource("personal_profile.settings_row",          defaultValue: "Ajustes personales")
+        public static let accountSecurityRow    = LocalizedStringResource("personal_profile.account_security_row", defaultValue: "Cuenta y seguridad")
+        public static let signOut               = LocalizedStringResource("personal_profile.sign_out",              defaultValue: "Cerrar sesión")
+        public static let signOutConfirmTitle   = LocalizedStringResource("personal_profile.sign_out.confirm.title", defaultValue: "Cerrar sesión")
+        public static let signOutConfirmMessage = LocalizedStringResource("personal_profile.sign_out.confirm.message", defaultValue: "Tu sesión actual se cerrará en este dispositivo. Puedes volver a entrar cuando quieras.")
+        public static let signOutAction         = LocalizedStringResource("personal_profile.sign_out.action",       defaultValue: "Cerrar sesión")
+        public static let cancel                = LocalizedStringResource("personal_profile.cancel",                defaultValue: "Cancelar")
+        public static let close                 = LocalizedStringResource("personal_profile.close",                 defaultValue: "Listo")
+        public static let identitySection       = LocalizedStringResource("personal_profile.section.identity",     defaultValue: "Identidad")
+        public static let accountSection        = LocalizedStringResource("personal_profile.section.account",      defaultValue: "Cuenta")
+        public static let preferencesSection    = LocalizedStringResource("personal_profile.section.preferences",  defaultValue: "Preferencias")
+        public static let dangerSection         = LocalizedStringResource("personal_profile.section.danger",       defaultValue: "Sesión")
+    }
+
+    public enum PersonalSettings {
+        public static let title                 = LocalizedStringResource("personal_settings.title",                defaultValue: "Ajustes personales")
+        public static let notificationsSection  = LocalizedStringResource("personal_settings.section.notifications", defaultValue: "Notificaciones")
+        public static let notificationsHint     = LocalizedStringResource("personal_settings.notifications.hint",   defaultValue: "Próximamente — vas a poder elegir qué te avisa el grupo.")
+        public static let languageSection       = LocalizedStringResource("personal_settings.section.language",     defaultValue: "Idioma")
+        public static let languageHint          = LocalizedStringResource("personal_settings.language.hint",        defaultValue: "Sigue el idioma del sistema.")
+        public static let appearanceSection     = LocalizedStringResource("personal_settings.section.appearance",   defaultValue: "Apariencia")
+        public static let appearanceHint        = LocalizedStringResource("personal_settings.appearance.hint",      defaultValue: "Sigue el modo del sistema (claro/oscuro).")
+    }
+
+    public enum AccountSecurity {
+        public static let title             = LocalizedStringResource("account_security.title",             defaultValue: "Cuenta y seguridad")
+        public static let contactSection    = LocalizedStringResource("account_security.section.contact",   defaultValue: "Contacto")
+        public static let emailLabel        = LocalizedStringResource("account_security.email",             defaultValue: "Correo")
+        public static let phoneLabel        = LocalizedStringResource("account_security.phone",             defaultValue: "Teléfono")
+        public static let noEmail           = LocalizedStringResource("account_security.no_email",          defaultValue: "Sin correo")
+        public static let noPhone           = LocalizedStringResource("account_security.no_phone",          defaultValue: "Sin teléfono")
+        public static let changeSection     = LocalizedStringResource("account_security.section.change",    defaultValue: "Cambiar")
+        public static let changePhone       = LocalizedStringResource("account_security.change.phone",      defaultValue: "Cambiar teléfono")
+        public static let changeEmail       = LocalizedStringResource("account_security.change.email",      defaultValue: "Cambiar correo")
+        public static let comingSoonTitle   = LocalizedStringResource("account_security.coming_soon.title", defaultValue: "Próximamente")
+        public static let comingSoonBody    = LocalizedStringResource("account_security.coming_soon.body",  defaultValue: "Cambiar correo o teléfono usa el flujo OTP de Supabase. La UI completa aterriza en el siguiente slice — por ahora podemos verlo aquí.")
+        public static let userIdSection     = LocalizedStringResource("account_security.section.user_id",   defaultValue: "Identificador")
+        public static let userIdLabel       = LocalizedStringResource("account_security.user_id",           defaultValue: "ID de usuario")
+        public static let close             = LocalizedStringResource("account_security.close",             defaultValue: "Cerrar")
+    }
+
     public enum SanctionDetail {
         public static let title           = LocalizedStringResource("sanction_detail.title",           defaultValue: "Sanción")
         public static let infoSection     = LocalizedStringResource("sanction_detail.section.info",    defaultValue: "Información")

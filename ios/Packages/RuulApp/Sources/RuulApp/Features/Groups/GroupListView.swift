@@ -10,6 +10,7 @@ struct GroupListView: View {
 
     @State private var isShowingCreateSheet: Bool = false
     @State private var isShowingAcceptSheet: Bool = false
+    @State private var isShowingPersonalProfile: Bool = false
 
     var body: some View {
         List {
@@ -97,19 +98,10 @@ struct GroupListView: View {
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
-                Menu {
-                    Button {
-                        container.profileStore.isEditPresented = true
-                    } label: {
-                        Label("Editar perfil", systemImage: "person.crop.circle")
-                    }
-                    Button(role: .destructive) {
-                        Task { await container.sessionStore.signOut() }
-                    } label: {
-                        Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
+                Button {
+                    isShowingPersonalProfile = true
                 } label: {
-                    Label("Cuenta", systemImage: "person.circle")
+                    Label(L10n.PersonalProfile.title, systemImage: "person.crop.circle")
                 }
             }
         }
@@ -137,6 +129,9 @@ struct GroupListView: View {
                 store: container.profileStore,
                 mode: container.profileStore.requiresProfileCompletion ? .onboarding : .edit
             )
+        }
+        .sheet(isPresented: $isShowingPersonalProfile) {
+            PersonalProfileSheet(container: container)
         }
     }
 
