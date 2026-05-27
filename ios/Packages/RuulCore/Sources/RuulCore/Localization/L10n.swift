@@ -233,6 +233,25 @@ public enum L10n {
         public static let readinessRowSuffix = LocalizedStringResource("foundation.row.suffix",   defaultValue: "%@ de 5 listos")
     }
 
+    public enum GroupProfile {
+        public static let title             = LocalizedStringResource("group_profile.title",              defaultValue: "Perfil del grupo")
+        public static let editButton        = LocalizedStringResource("group_profile.edit",               defaultValue: "Editar")
+        public static let aboutSection      = LocalizedStringResource("group_profile.section.about",      defaultValue: "Acerca de")
+        public static let purposeSection    = LocalizedStringResource("group_profile.section.purpose",    defaultValue: "Propósito")
+        public static let rulesSection      = LocalizedStringResource("group_profile.section.rules",      defaultValue: "Reglas activas")
+        public static let decisionsSection  = LocalizedStringResource("group_profile.section.decisions",  defaultValue: "Cómo decidimos")
+        public static let membersSection    = LocalizedStringResource("group_profile.section.members",    defaultValue: "Miembros")
+        public static let cultureSection    = LocalizedStringResource("group_profile.section.culture",    defaultValue: "Cultura")
+        public static let ritualsSection    = LocalizedStringResource("group_profile.section.rituals",    defaultValue: "Rituales")
+        public static let cultureSoon       = LocalizedStringResource("group_profile.culture.soon",       defaultValue: "Próximamente")
+        public static let ritualsSoon       = LocalizedStringResource("group_profile.rituals.soon",       defaultValue: "Próximamente")
+        public static let noPurpose         = LocalizedStringResource("group_profile.purpose.none",       defaultValue: "Sin propósito declarado todavía.")
+        public static let noRules           = LocalizedStringResource("group_profile.rules.none",         defaultValue: "Sin reglas activas todavía.")
+        public static let viewAllRules      = LocalizedStringResource("group_profile.rules.view_all",     defaultValue: "Ver todas")
+        public static let viewAllMembers    = LocalizedStringResource("group_profile.members.view_all",  defaultValue: "Ver todos")
+        public static let memberCount       = LocalizedStringResource("group_profile.members.count",      defaultValue: "%lld miembros")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")

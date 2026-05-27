@@ -66,9 +66,16 @@ struct GroupHomeView: View {
                 groupId: group.id
             )
         }
+        .navigationDestination(for: GroupProfileDestination.self) { _ in
+            GroupProfileView(container: container, group: group)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    NavigationLink(value: GroupProfileDestination()) {
+                        Label(L10n.GroupProfile.title, systemImage: "person.crop.rectangle")
+                    }
+                    Divider()
                     Button(role: .destructive) {
                         isConfirmingLeave = true
                     } label: {
@@ -360,6 +367,8 @@ struct GroupHomeView: View {
 
     /// And Sanctions.
     private struct SanctionsDestination: Hashable {}
+
+    private struct GroupProfileDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same
