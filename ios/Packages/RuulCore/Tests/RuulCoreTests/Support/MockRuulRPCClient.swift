@@ -32,6 +32,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
         case groupFoundationStatus(groupId: UUID)
+        case groupDecisionRules(groupId: UUID)
+        case setDecisionRules(input: SetDecisionRulesInput)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -84,6 +86,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
             overallStatus: .notReady
         )
     )
+    private var groupDecisionRulesStub: Result<GroupDecisionRules, RuulError> = .success(
+        GroupDecisionRules(groupId: UUID(), defaultStyle: .majority, isDefault: true)
+    )
+    private var setDecisionRulesStub: Result<GroupDecisionRules, RuulError> = .success(
+        GroupDecisionRules(groupId: UUID(), defaultStyle: .majority, isDefault: false)
+    )
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -113,6 +121,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
     func setGroupFoundationStatusStub(_ stub: Result<GroupFoundationStatus, RuulError>) { groupFoundationStatusStub = stub }
+    func setGroupDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { groupDecisionRulesStub = stub }
+    func setSetDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { setDecisionRulesStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -226,6 +236,16 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
         recorded.append(.groupFoundationStatus(groupId: groupId))
         return try groupFoundationStatusStub.get()
+    }
+
+    func groupDecisionRules(groupId: UUID) async throws -> GroupDecisionRules {
+        recorded.append(.groupDecisionRules(groupId: groupId))
+        return try groupDecisionRulesStub.get()
+    }
+
+    func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules {
+        recorded.append(.setDecisionRules(input: input))
+        return try setDecisionRulesStub.get()
     }
 
     func myProfile() async throws -> Profile {

@@ -22,6 +22,7 @@ struct GroupHomeView: View {
             summarySection
             foundationStatusSection
             purposeSection
+            decisionRulesSection
             rulesSection
             resourcesSection
             moneySection
@@ -61,10 +62,14 @@ struct GroupHomeView: View {
             await container.purposeStore.refreshIfNeeded(groupId: group.id)
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
             await container.resourcesStore.refreshIfNeeded(groupId: group.id)
+            await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
             await container.foundationStatusStore.refresh(groupId: group.id)
         }
         .sheet(isPresented: purposeSheetBinding) {
             EditPurposeView(store: container.purposeStore, groupId: group.id)
+        }
+        .sheet(isPresented: decisionRulesSheetBinding) {
+            EditDecisionRulesView(store: container.decisionRulesStore, groupId: group.id)
         }
         .sheet(isPresented: rulesCreateSheetBinding) {
             EditRuleView(store: container.rulesStore, groupId: group.id)
@@ -162,6 +167,13 @@ struct GroupHomeView: View {
     private var purposeSection: some View {
         Section(L10n.Purpose.title) {
             GroupPurposeCard(store: container.purposeStore)
+        }
+    }
+
+    @ViewBuilder
+    private var decisionRulesSection: some View {
+        Section(L10n.DecisionRules.title) {
+            DecisionRulesCard(store: container.decisionRulesStore)
         }
     }
 
@@ -277,6 +289,7 @@ struct GroupHomeView: View {
     private func refresh() async {
         await container.currentGroupStore.refresh()
         await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
+        await container.decisionRulesStore.refresh(groupId: group.id)
         await container.foundationStatusStore.refresh(groupId: group.id)
     }
 
@@ -316,6 +329,15 @@ struct GroupHomeView: View {
         Binding(
             get: { container.resourcesStore.isCreatePresented },
             set: { container.resourcesStore.isCreatePresented = $0 }
+        )
+    }
+
+    /// Same pattern as `purposeSheetBinding` — drives the
+    /// `EditDecisionRulesView` sheet via the shared store flag.
+    private var decisionRulesSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.decisionRulesStore.isEditPresented },
+            set: { container.decisionRulesStore.isEditPresented = $0 }
         )
     }
 

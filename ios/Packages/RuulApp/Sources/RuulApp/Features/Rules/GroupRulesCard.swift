@@ -128,6 +128,16 @@ private struct RulesStubClient: RuulRPCClient, @unchecked Sendable {
             overallStatus: .notReady
         )
     }
+    func groupDecisionRules(groupId: UUID) async throws -> GroupDecisionRules {
+        GroupDecisionRules(groupId: groupId, defaultStyle: .majority, isDefault: true)
+    }
+    func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules {
+        GroupDecisionRules(groupId: input.pGroupId,
+                           defaultStyle: DecisionStyle(rawValue: input.pDefaultStyle) ?? .majority,
+                           quorumMin: input.pQuorumMin,
+                           notes: input.pNotes,
+                           isDefault: false)
+    }
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

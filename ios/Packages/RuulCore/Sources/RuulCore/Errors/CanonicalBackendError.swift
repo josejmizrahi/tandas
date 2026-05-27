@@ -52,6 +52,10 @@ public enum CanonicalBackendError: Sendable, Equatable {
     case custodianMembershipNotInGroup(groupId: UUID?)
     case resourceNotFound
 
+    // Decision rules
+    case invalidDecisionStyle
+    case quorumMinTooSmall
+
     // Anything we haven't classified yet
     case unknown(message: String)
 }

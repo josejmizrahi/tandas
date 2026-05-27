@@ -425,6 +425,46 @@ public struct GroupFoundationStatusParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+// MARK: - Decision rules
+
+public struct GroupDecisionRulesParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pDefaultStyle: String
+    public let pQuorumMin: Int?
+    public let pNotes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId      = "p_group_id"
+        case pDefaultStyle = "p_default_style"
+        case pQuorumMin    = "p_quorum_min"
+        case pNotes        = "p_notes"
+    }
+
+    public init(pGroupId: UUID, pDefaultStyle: String, pQuorumMin: Int? = nil, pNotes: String? = nil) {
+        self.pGroupId = pGroupId
+        self.pDefaultStyle = pDefaultStyle
+        self.pQuorumMin = pQuorumMin
+        self.pNotes = pNotes
+    }
+
+    /// Same rationale as `RecordExpenseParams.encode(to:)` — emit
+    /// optional keys as explicit JSON `null` so PostgREST resolves
+    /// the overload deterministically.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pDefaultStyle, forKey: .pDefaultStyle)
+        try c.encodeOrNil(pQuorumMin, forKey: .pQuorumMin)
+        try c.encodeOrNil(pNotes, forKey: .pNotes)
+    }
+}
+
 // MARK: - Profile
 
 /// Params for `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)`.

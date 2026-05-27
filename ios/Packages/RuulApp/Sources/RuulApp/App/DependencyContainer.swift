@@ -38,6 +38,7 @@ public final class DependencyContainer {
     public let rulesRepository: CanonicalRulesRepository
     public let resourcesRepository: CanonicalResourcesRepository
     public let foundationStatusRepository: CanonicalFoundationStatusRepository
+    public let decisionRulesRepository: CanonicalDecisionRulesRepository
 
     // MARK: - Stores
 
@@ -51,6 +52,7 @@ public final class DependencyContainer {
     public let rulesStore: RulesStore
     public let resourcesStore: ResourcesStore
     public let foundationStatusStore: FoundationStatusStore
+    public let decisionRulesStore: DecisionRulesStore
 
     public init() {
         let client = SupabaseEnvironment.shared
@@ -73,6 +75,7 @@ public final class DependencyContainer {
         self.rulesRepository = CanonicalRulesRepository(rpc: rpc)
         self.resourcesRepository = CanonicalResourcesRepository(rpc: rpc)
         self.foundationStatusRepository = CanonicalFoundationStatusRepository(rpc: rpc)
+        self.decisionRulesRepository = CanonicalDecisionRulesRepository(rpc: rpc)
 
         self.sessionStore = SessionStore(authService: auth)
         self.groupsStore = GroupsStore(repository: groupRepository)
@@ -84,6 +87,7 @@ public final class DependencyContainer {
         self.rulesStore = RulesStore(repository: rulesRepository)
         self.resourcesStore = ResourcesStore(repository: resourcesRepository)
         self.foundationStatusStore = FoundationStatusStore(repository: foundationStatusRepository)
+        self.decisionRulesStore = DecisionRulesStore(repository: decisionRulesRepository)
     }
 
     /// Kicks off the session subscription so the shell can observe state

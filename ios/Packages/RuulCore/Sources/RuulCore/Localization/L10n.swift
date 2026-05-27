@@ -125,6 +125,35 @@ public enum L10n {
         public static let countSingular      = LocalizedStringResource("resources.count.singular",     defaultValue: "1 recurso activo")
     }
 
+    public enum DecisionRules {
+        public static let title              = LocalizedStringResource("decision_rules.title",            defaultValue: "Decisiones del grupo")
+        public static let cardHeadline       = LocalizedStringResource("decision_rules.headline",         defaultValue: "Cómo decidimos aquí")
+        public static let emptyDescription   = LocalizedStringResource("decision_rules.empty.description", defaultValue: "Por defecto, decidimos por mayoría.")
+        public static let addButton          = LocalizedStringResource("decision_rules.add",              defaultValue: "Definir")
+        public static let editButton         = LocalizedStringResource("decision_rules.edit",             defaultValue: "Cambiar")
+        public static let editTitle          = LocalizedStringResource("decision_rules.edit.title",       defaultValue: "Cómo decidimos")
+        public static let styleSection       = LocalizedStringResource("decision_rules.style.section",    defaultValue: "Estilo de decisión")
+        public static let quorumSection      = LocalizedStringResource("decision_rules.quorum.section",   defaultValue: "Quórum mínimo")
+        public static let quorumLabel        = LocalizedStringResource("decision_rules.quorum.label",     defaultValue: "Miembros mínimos para decidir")
+        public static let quorumNone         = LocalizedStringResource("decision_rules.quorum.none",      defaultValue: "Sin quórum mínimo")
+        public static let notesSection       = LocalizedStringResource("decision_rules.notes.section",    defaultValue: "Notas")
+        public static let notesPlaceholder   = LocalizedStringResource("decision_rules.notes.placeholder", defaultValue: "Cómo decidimos en la práctica…")
+        public static let save               = LocalizedStringResource("decision_rules.save",             defaultValue: "Guardar")
+        public static let cancel             = LocalizedStringResource("decision_rules.cancel",           defaultValue: "Cancelar")
+        public static let isDefaultHint      = LocalizedStringResource("decision_rules.default.hint",     defaultValue: "Sin definir — usando el valor por defecto.")
+
+        public static let styleAdminOnly             = LocalizedStringResource("decision_rules.style.admin_only",             defaultValue: "Admin decide")
+        public static let styleAdminOnlySubtitle     = LocalizedStringResource("decision_rules.style.admin_only.subtitle",    defaultValue: "Una persona toma la decisión.")
+        public static let styleMajority              = LocalizedStringResource("decision_rules.style.majority",                defaultValue: "Mayoría simple")
+        public static let styleMajoritySubtitle      = LocalizedStringResource("decision_rules.style.majority.subtitle",       defaultValue: "Más de la mitad a favor.")
+        public static let styleSupermajority         = LocalizedStringResource("decision_rules.style.supermajority",           defaultValue: "Supermayoría")
+        public static let styleSupermajoritySubtitle = LocalizedStringResource("decision_rules.style.supermajority.subtitle",  defaultValue: "Dos tercios a favor.")
+        public static let styleUnanimity             = LocalizedStringResource("decision_rules.style.unanimity",               defaultValue: "Unanimidad")
+        public static let styleUnanimitySubtitle     = LocalizedStringResource("decision_rules.style.unanimity.subtitle",      defaultValue: "Todos a favor.")
+        public static let styleConsensus             = LocalizedStringResource("decision_rules.style.consensus",               defaultValue: "Consenso")
+        public static let styleConsensusSubtitle     = LocalizedStringResource("decision_rules.style.consensus.subtitle",      defaultValue: "Nadie se opone activamente.")
+    }
+
     public enum Foundation {
         public static let title           = LocalizedStringResource("foundation.title",           defaultValue: "Foundation")
         public static let readySummary    = LocalizedStringResource("foundation.ready",           defaultValue: "Listo")

@@ -274,6 +274,31 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Decision rules
+
+    public func groupDecisionRules(groupId: UUID) async throws -> GroupDecisionRules {
+        let params = GroupDecisionRulesParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_decision_rules", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules {
+        do {
+            return try await client
+                .rpc("set_decision_rules", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

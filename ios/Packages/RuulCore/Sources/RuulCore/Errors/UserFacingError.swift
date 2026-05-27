@@ -96,6 +96,10 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(message: "El custodio elegido no es miembro del grupo.")
         case .resourceNotFound:
             return UserFacingError(message: "Ese recurso ya no existe.")
+        case .invalidDecisionStyle:
+            return UserFacingError(message: "Estilo de decisión inválido.")
+        case .quorumMinTooSmall:
+            return UserFacingError(message: "El quórum mínimo debe ser al menos 1.")
         case .unknown(let message):
             return UserFacingError(message: message)
         }

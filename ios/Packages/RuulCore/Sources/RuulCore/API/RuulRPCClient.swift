@@ -103,6 +103,18 @@ public protocol RuulRPCClient: Sendable {
     /// Active-member gate.
     func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus
 
+    // MARK: - Decision rules
+
+    /// `group_decision_rules(p_group_id)` — returns the active
+    /// decision style + quorum + notes (with defaults baked in when
+    /// the underlying jsonb is empty). Active-member gate.
+    func groupDecisionRules(groupId: UUID) async throws -> GroupDecisionRules
+
+    /// `set_decision_rules(p_group_id, p_default_style, p_quorum_min, p_notes)`
+    /// — upsert in-place on `groups.decision_rules`. Requires
+    /// `group.update` permission.
+    func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank
