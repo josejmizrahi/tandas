@@ -82,13 +82,14 @@ extension GroupSummaryDTO {
     }
 }
 
-// MARK: - member_obligation_summary returns TABLE(obligation_id, kind, amount_outstanding, owed_to_kind, owed_to_label)
+// MARK: - member_obligation_summary returns TABLE(obligation_id, kind, amount_outstanding, owed_to_kind, owed_to_membership_id, owed_to_label)
 
 struct MemberObligationRow: Decodable {
     let obligationId: UUID
     let kind: String
     let amountOutstanding: Decimal
     let owedToKind: String
+    let owedToMembershipId: UUID?
     let owedToLabel: String
 
     enum CodingKeys: String, CodingKey {
@@ -96,6 +97,7 @@ struct MemberObligationRow: Decodable {
         case kind
         case amountOutstanding = "amount_outstanding"
         case owedToKind = "owed_to_kind"
+        case owedToMembershipId = "owed_to_membership_id"
         case owedToLabel = "owed_to_label"
     }
 }
@@ -107,6 +109,7 @@ extension MemberObligationRow {
             kind: kind,
             amountOutstanding: amountOutstanding,
             owedToKind: owedToKind,
+            owedToMembershipId: owedToMembershipId,
             owedToLabel: owedToLabel
         )
     }

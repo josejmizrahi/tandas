@@ -1,14 +1,11 @@
 import SwiftUI
 import RuulCore
 
-/// Self-party settlement form, pool target only in 4b.
-///
-/// Member-to-member settlement is intentionally out of scope: the iOS
-/// `ObligationSummary` doesn't expose the counterparty's membership id
-/// (only a label), so we can't safely fill `p_paid_to_membership_id`
-/// for `paid_to_kind = member` without inventing client-side
-/// resolution. Pool covers the common "I owe the group" case and stays
-/// within the firmed §16-bis contract.
+/// Self-party settlement form. Slice 5a adds a target picker so callers
+/// can pay either the pool or a specific member they already owe (the
+/// member options are derived from `MoneyStore.obligations`, now that
+/// `member_obligation_summary` exposes `owed_to_membership_id` per
+/// canonical_followup_25).
 struct RecordSettlementSheet: View {
     let container: DependencyContainer
     let groupId: UUID
@@ -17,15 +14,39 @@ struct RecordSettlementSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @State private var target: TargetOption = .pool
     @State private var amountText: String = ""
     @State private var notes: String = ""
     @State private var isSubmitting: Bool = false
     @State private var error: UserFacingError?
     @State private var clientId: String?
 
+    private enum TargetOption: Hashable {
+        case pool
+        case member(id: UUID, label: String)
+
+        var label: String {
+            switch self {
+            case .pool: return "Al grupo"
+            case .member(_, let label): return label
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                Section("¿A quién pagas?") {
+                    Picker("Destino", selection: $target) {
+                        Text("Al grupo (pool)").tag(TargetOption.pool)
+                        ForEach(memberOptions, id: \.self) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                }
+
                 Section("Cuánto") {
                     TextField("Monto en MXN", text: $amountText)
                         .keyboardType(.decimalPad)
@@ -36,13 +57,15 @@ struct RecordSettlementSheet: View {
                         .lineLimit(1...4)
                 }
 
-                Section {
-                    Text("Se aplica al fondo del grupo. Para liquidar con un miembro específico necesitas su ID — todavía no lo exponemos en la app.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                if memberOptions.isEmpty {
+                    Section {
+                        Text("Solo puedes liquidar al grupo por ahora. Cuando alguien te preste dinero, ese miembro aparecerá aquí.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
-            .navigationTitle("Liquidar al grupo")
+            .navigationTitle("Liquidar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -77,6 +100,22 @@ struct RecordSettlementSheet: View {
         }
     }
 
+    /// Distinct member counterparties pulled from the open obligations.
+    /// One obligation per person can show up multiple times in the store
+    /// (e.g. two separate expenses → two rows owed to the same person);
+    /// we collapse by membership id so the picker stays tight.
+    private var memberOptions: [TargetOption] {
+        var seen: Set<UUID> = []
+        var options: [TargetOption] = []
+        for obligation in container.moneyStore.obligations
+        where obligation.owedToKind == "member" {
+            guard let id = obligation.owedToMembershipId, !seen.contains(id) else { continue }
+            seen.insert(id)
+            options.append(.member(id: id, label: obligation.owedToLabel))
+        }
+        return options
+    }
+
     private var parsedAmount: Decimal? {
         let normalized = amountText
             .replacingOccurrences(of: ",", with: ".")
@@ -97,10 +136,18 @@ struct RecordSettlementSheet: View {
         if clientId == nil { clientId = UUID().uuidString }
         let notesClean = notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let settlementTarget: SettlementTarget
+        switch target {
+        case .pool:
+            settlementTarget = .pool
+        case .member(let id, _):
+            settlementTarget = .member(membershipId: id)
+        }
+
         let draft = SettlementDraft(
             groupId: groupId,
             paidByMembershipId: myMembershipId,
-            target: .pool,
+            target: settlementTarget,
             amount: amount,
             notes: notesClean.isEmpty ? nil : notesClean
         )

@@ -15,6 +15,7 @@ struct MoneyStoreTests {
             kind: "expense_share",
             amountOutstanding: 50,
             owedToKind: "member",
+            owedToMembershipId: UUID(),
             owedToLabel: "Ana"
         )
         await mock.setMemberObligationSummaryStub(.success([row]))

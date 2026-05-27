@@ -113,13 +113,26 @@ public struct ObligationSummary: Sendable, Hashable, Identifiable {
     public let kind: String
     public let amountOutstanding: Decimal
     public let owedToKind: String
+    /// Counterparty membership id when `owedToKind == "member"`; nil when
+    /// `owedToKind == "pool"`. Exposed in canonical_followup_25 so iOS
+    /// can pre-fill `record_settlement.p_paid_to_membership_id` when
+    /// settling member-to-member.
+    public let owedToMembershipId: UUID?
     public let owedToLabel: String
 
-    public init(id: UUID, kind: String, amountOutstanding: Decimal, owedToKind: String, owedToLabel: String) {
+    public init(
+        id: UUID,
+        kind: String,
+        amountOutstanding: Decimal,
+        owedToKind: String,
+        owedToMembershipId: UUID?,
+        owedToLabel: String
+    ) {
         self.id = id
         self.kind = kind
         self.amountOutstanding = amountOutstanding
         self.owedToKind = owedToKind
+        self.owedToMembershipId = owedToMembershipId
         self.owedToLabel = owedToLabel
     }
 }
