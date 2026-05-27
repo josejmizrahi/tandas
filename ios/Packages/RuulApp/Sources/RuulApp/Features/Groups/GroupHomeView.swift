@@ -81,6 +81,13 @@ struct GroupHomeView: View {
         .navigationDestination(for: GroupHistoryDestination.self) { _ in
             GroupHistoryView(store: container.eventsStore, groupId: group.id)
         }
+        .navigationDestination(for: MoneyDashboardDestination.self) { _ in
+            MoneyDashboardView(
+                container: container,
+                groupId: group.id,
+                myMembershipId: group.membershipId
+            )
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -339,8 +346,10 @@ struct GroupHomeView: View {
 
     @ViewBuilder
     private var moneySection: some View {
-        Section("Dinero") {
-            MoneyBlock(container: container)
+        Section(L10n.MoneyDashboard.title) {
+            NavigationLink(value: MoneyDashboardDestination()) {
+                MoneySummaryRow(store: container.moneyStore)
+            }
         }
     }
 
@@ -411,6 +420,9 @@ struct GroupHomeView: View {
 
     /// And History (Primitiva 13 — system_events timeline).
     private struct GroupHistoryDestination: Hashable {}
+
+    /// And Money (A2.a — replaces inline MoneyBlock).
+    private struct MoneyDashboardDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same

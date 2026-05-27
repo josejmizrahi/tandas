@@ -551,7 +551,11 @@ Marcar cada slice cerrado:
       Disputes parcial (commit `71885fd4`), Memoria/Historia
       (commit `943667dc`).
 - [x] A1 MemberDetailView
-- [ ] A2 MoneyDashboardView + sub-vistas
+- [~] A2 MoneyDashboardView + sub-vistas
+      - [x] A2.a Dashboard root + DebtsListView + PaySanctionSheet
+            (sin backend nuevo)
+      - [ ] A2.b Movements + Detail + Stake/PoolCharges (espera
+            `group_money_movements` RPC)
 - [ ] A3 ResourceDetailView
 - [ ] A4 SanctionDetailView + AppealSanctionView
 - [x] A5 GroupHistoryView (commit `943667dc`)

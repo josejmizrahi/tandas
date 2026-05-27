@@ -305,6 +305,49 @@ public enum L10n {
         public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
     }
 
+    public enum MoneyDashboard {
+        public static let title                 = LocalizedStringResource("money_dashboard.title",                  defaultValue: "Dinero")
+        public static let heroPositiveLabel     = LocalizedStringResource("money_dashboard.hero.positive",          defaultValue: "El grupo te debe")
+        public static let heroNegativeLabel     = LocalizedStringResource("money_dashboard.hero.negative",          defaultValue: "Le debes al grupo")
+        public static let heroZeroLabel         = LocalizedStringResource("money_dashboard.hero.zero",              defaultValue: "Estás al corriente")
+        public static let heroEmptyLabel        = LocalizedStringResource("money_dashboard.hero.empty",             defaultValue: "Sin posición todavía")
+        public static let sanctionsToPaySection = LocalizedStringResource("money_dashboard.section.sanctions",      defaultValue: "Multas a pagar")
+        public static let sanctionsEmpty        = LocalizedStringResource("money_dashboard.sanctions.empty",        defaultValue: "Sin multas pendientes.")
+        public static let paySanctionButton     = LocalizedStringResource("money_dashboard.pay_sanction",           defaultValue: "Pagar")
+        public static let debtsSection          = LocalizedStringResource("money_dashboard.section.debts",          defaultValue: "Deudas abiertas")
+        public static let debtsEmpty            = LocalizedStringResource("money_dashboard.debts.empty",            defaultValue: "Sin deudas abiertas.")
+        public static let debtsViewAll          = LocalizedStringResource("money_dashboard.debts.view_all",         defaultValue: "Ver todas")
+        public static let debtsCountSingular    = LocalizedStringResource("money_dashboard.debts.count.singular",   defaultValue: "1 deuda abierta")
+        public static let actionsSection        = LocalizedStringResource("money_dashboard.section.actions",        defaultValue: "Acciones")
+        public static let actionRecordExpense   = LocalizedStringResource("money_dashboard.action.record_expense",  defaultValue: "Registrar gasto")
+        public static let actionSettle          = LocalizedStringResource("money_dashboard.action.settle",          defaultValue: "Liquidar")
+        public static let errorTitle            = LocalizedStringResource("money_dashboard.error.title",            defaultValue: "No pudimos cargar tu dinero")
+        public static let retry                 = LocalizedStringResource("money_dashboard.retry",                  defaultValue: "Reintentar")
+        public static let groupSummary          = LocalizedStringResource("money_dashboard.group_summary",          defaultValue: "Tu posición en este grupo")
+    }
+
+    public enum Debts {
+        public static let title              = LocalizedStringResource("debts.title",              defaultValue: "Deudas")
+        public static let withMembersSection = LocalizedStringResource("debts.section.members",    defaultValue: "Con miembros")
+        public static let withPoolSection    = LocalizedStringResource("debts.section.pool",       defaultValue: "Con el grupo")
+        public static let emptyTitle         = LocalizedStringResource("debts.empty.title",        defaultValue: "Sin deudas abiertas")
+        public static let emptyDescription   = LocalizedStringResource("debts.empty.description",  defaultValue: "Estás al corriente con todos.")
+        public static let liquidateButton    = LocalizedStringResource("debts.liquidate",          defaultValue: "Liquidar")
+        public static let errorTitle         = LocalizedStringResource("debts.error.title",        defaultValue: "No pudimos cargar las deudas")
+    }
+
+    public enum PaySanction {
+        public static let title          = LocalizedStringResource("pay_sanction.title",          defaultValue: "Pagar multa")
+        public static let summarySection = LocalizedStringResource("pay_sanction.section.summary", defaultValue: "Multa")
+        public static let amountSection  = LocalizedStringResource("pay_sanction.section.amount",  defaultValue: "Monto a pagar")
+        public static let amountField    = LocalizedStringResource("pay_sanction.amount.field",    defaultValue: "Monto en MXN")
+        public static let notesSection   = LocalizedStringResource("pay_sanction.section.notes",   defaultValue: "Notas (opcional)")
+        public static let notesPlaceholder = LocalizedStringResource("pay_sanction.notes.placeholder", defaultValue: "Comentario…")
+        public static let confirmButton  = LocalizedStringResource("pay_sanction.confirm",         defaultValue: "Pagar")
+        public static let cancelButton   = LocalizedStringResource("pay_sanction.cancel",          defaultValue: "Cancelar")
+        public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")
