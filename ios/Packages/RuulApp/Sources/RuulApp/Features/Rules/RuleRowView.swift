@@ -17,7 +17,7 @@ public struct RuleRowView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: rule.ruleType.systemImageName)
                 .font(.body.weight(.medium))
-                .foregroundStyle(rule.isHighSeverity ? .red : .tint)
+                .foregroundStyle(rule.isHighSeverity ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 4) {
