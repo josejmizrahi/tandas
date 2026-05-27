@@ -70,39 +70,19 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
     // MARK: - Reads
 
     public func listMyGroups() async throws -> [GroupListItem] {
-        // RLS on group_memberships restricts to the caller's own active rows;
-        // the embedded `groups(...)` join inherits visibility from groups' RLS.
-        // We select with an embedded resource so the row gives us both ids
-        // in one round-trip.
-        struct Joined: Decodable {
-            let id: UUID                                  // membership id
-            let groupId: UUID
-            let group: GroupRow
-
-            enum CodingKeys: String, CodingKey {
-                case id
-                case groupId = "group_id"
-                case group = "groups"
-            }
-        }
+        // Canonical surface: `list_my_groups()` SECURITY DEFINER filters
+        // by auth.uid() + status='active' and DISTINCTs by group_id —
+        // iOS no longer touches `group_memberships` directly (pre-fix
+        // doing `from('group_memberships').select(...)` produced one
+        // row per OTHER member, since RLS lets active members see the
+        // whole group's membership rows; the same group rendered N
+        // times).
         do {
-            let rows: [Joined] = try await client
-                .from("group_memberships")
-                .select("id, group_id, groups(id, name, slug, category, purpose_summary)")
-                .eq("status", value: "active")
-                .order("joined_at", ascending: false)
+            let rows: [ListMyGroupsRow] = try await client
+                .rpc("list_my_groups")
                 .execute()
                 .value
-            return rows.map {
-                GroupListItem(
-                    id: $0.group.id,
-                    name: $0.group.name,
-                    slug: $0.group.slug,
-                    category: $0.group.category,
-                    purposeSummary: $0.group.purposeSummary,
-                    membershipId: $0.id
-                )
-            }
+            return rows.map { $0.toDomain() }
         } catch {
             throw RPCErrorMapper.map(error)
         }

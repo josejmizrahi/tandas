@@ -115,31 +115,45 @@ extension MemberObligationRow {
     }
 }
 
-// MARK: - list_groups_for_user: from('groups') joined via membership
+// MARK: - (legacy GroupRow/MembershipRow DTOs removed — listMyGroups
+// now uses the canonical `list_my_groups()` RPC which returns the
+// pre-flattened ListMyGroupsRow shape; no embedded join is needed.)
 
-/// Row shape for the "groups I'm an active member of" select. RLS on
-/// `groups` restricts the result to groups where the caller has an
-/// active `group_memberships` row, so we don't need to filter client-side.
-struct GroupRow: Decodable {
-    let id: UUID
+// MARK: - list_my_groups()
+
+/// Wire row from `public.list_my_groups()`. One row per group the
+/// caller is an active member of, with the joined membership id
+/// flattened so iOS never sees `group_memberships` directly.
+struct ListMyGroupsRow: Decodable {
+    let membershipId: UUID
+    let groupId: UUID
     let name: String
     let slug: String?
     let category: String?
     let purposeSummary: String?
+    let joinedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, slug, category
+        case membershipId   = "membership_id"
+        case groupId        = "group_id"
+        case name
+        case slug
+        case category
         case purposeSummary = "purpose_summary"
+        case joinedAt       = "joined_at"
     }
 }
 
-struct MembershipRow: Decodable {
-    let id: UUID
-    let groupId: UUID
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case groupId = "group_id"
+extension ListMyGroupsRow {
+    func toDomain() -> GroupListItem {
+        GroupListItem(
+            id: groupId,
+            name: name,
+            slug: slug,
+            category: category,
+            purposeSummary: purposeSummary,
+            membershipId: membershipId
+        )
     }
 }
 
