@@ -96,6 +96,13 @@ public protocol RuulRPCClient: Sendable {
     /// generic backend error.
     func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws
 
+    // MARK: - Foundation status
+
+    /// `group_foundation_status(p_group_id)` — per-primitive readiness
+    /// (Members/Boundary/Purpose/Rules/Resources) + overall summary.
+    /// Active-member gate.
+    func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

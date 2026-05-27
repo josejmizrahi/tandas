@@ -260,6 +260,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Foundation status
+
+    public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
+        let params = GroupFoundationStatusParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_foundation_status", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

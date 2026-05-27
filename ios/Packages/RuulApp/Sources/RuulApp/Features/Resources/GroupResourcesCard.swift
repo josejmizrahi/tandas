@@ -114,6 +114,17 @@ private struct ResourcesStubClient: RuulRPCClient, @unchecked Sendable {
         CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
     }
     func archiveRule(_ input: ArchiveRuleInput) async throws {}
+    func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
+        GroupFoundationStatus(
+            groupId: groupId,
+            members: .init(status: .incomplete),
+            boundary: .init(status: .incomplete),
+            purpose: .init(status: .incomplete),
+            rules: .init(status: .incomplete),
+            resources: .init(status: .incomplete),
+            overallStatus: .notReady
+        )
+    }
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

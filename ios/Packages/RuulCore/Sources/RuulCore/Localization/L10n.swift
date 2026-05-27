@@ -125,6 +125,20 @@ public enum L10n {
         public static let countSingular      = LocalizedStringResource("resources.count.singular",     defaultValue: "1 recurso activo")
     }
 
+    public enum Foundation {
+        public static let title           = LocalizedStringResource("foundation.title",           defaultValue: "Foundation")
+        public static let readySummary    = LocalizedStringResource("foundation.ready",           defaultValue: "Listo")
+        public static let notReadySummary = LocalizedStringResource("foundation.not_ready",       defaultValue: "Falta configurar")
+        public static let completeLabel   = LocalizedStringResource("foundation.complete",        defaultValue: "Completo")
+        public static let incompleteLabel = LocalizedStringResource("foundation.incomplete",      defaultValue: "Pendiente")
+        public static let membersLabel    = LocalizedStringResource("foundation.members",         defaultValue: "Miembros")
+        public static let boundaryLabel   = LocalizedStringResource("foundation.boundary",        defaultValue: "Frontera")
+        public static let purposeLabel    = LocalizedStringResource("foundation.purpose",         defaultValue: "Propósito")
+        public static let rulesLabel      = LocalizedStringResource("foundation.rules",           defaultValue: "Reglas")
+        public static let resourcesLabel  = LocalizedStringResource("foundation.resources",       defaultValue: "Recursos")
+        public static let readinessRowSuffix = LocalizedStringResource("foundation.row.suffix",   defaultValue: "%@ de 5 listos")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")

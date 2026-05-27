@@ -20,6 +20,7 @@ struct GroupHomeView: View {
     var body: some View {
         List {
             summarySection
+            foundationStatusSection
             purposeSection
             rulesSection
             resourcesSection
@@ -60,6 +61,7 @@ struct GroupHomeView: View {
             await container.purposeStore.refreshIfNeeded(groupId: group.id)
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
             await container.resourcesStore.refreshIfNeeded(groupId: group.id)
+            await container.foundationStatusStore.refresh(groupId: group.id)
         }
         .sheet(isPresented: purposeSheetBinding) {
             EditPurposeView(store: container.purposeStore, groupId: group.id)
@@ -164,6 +166,33 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var foundationStatusSection: some View {
+        Section(L10n.Foundation.title) {
+            FoundationStatusCard(
+                store: container.foundationStatusStore,
+                onSelect: { kind in
+                    handleFoundationTap(kind)
+                }
+            )
+        }
+    }
+
+    private func handleFoundationTap(_ kind: FoundationPrimitiveKind) {
+        switch kind {
+        case .members, .boundary:
+            // Both rows lead to the same create-affordance: invite a
+            // member. The invite sheet is hosted on GroupHomeView.
+            isShowingInviteSheet = true
+        case .purpose:
+            container.purposeStore.beginEditing(kind: .declared)
+        case .rules:
+            container.rulesStore.beginCreating()
+        case .resources:
+            container.resourcesStore.beginCreating()
+        }
+    }
+
+    @ViewBuilder
     private var resourcesSection: some View {
         Section(L10n.Resources.title) {
             GroupResourcesCard(
@@ -248,6 +277,7 @@ struct GroupHomeView: View {
     private func refresh() async {
         await container.currentGroupStore.refresh()
         await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
+        await container.foundationStatusStore.refresh(groupId: group.id)
     }
 
     /// `Hashable` token for the Members destination so the existing

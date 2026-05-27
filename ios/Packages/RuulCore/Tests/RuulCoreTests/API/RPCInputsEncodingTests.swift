@@ -388,4 +388,12 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_resource_id"] as? String == id.uuidString)
         #expect(dict["p_reason"] as? String == "moved")
     }
+
+    @Test("group_foundation_status encodes p_group_id only")
+    func groupFoundationStatusEncoding() throws {
+        let id = UUID()
+        let dict = try encode(GroupFoundationStatusParams(groupId: id))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+        #expect(dict["p_group_id"] as? String == id.uuidString)
+    }
 }
