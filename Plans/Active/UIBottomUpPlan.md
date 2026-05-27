@@ -493,7 +493,7 @@ Marcar cada slice cerrado:
 - [x] **Pre-fase** — Foundation set (1-5) + Decision Rules +
       Sanctions parcial + Reputation RPC + GroupProfileView
       (commit `097964ea`)
-- [ ] A1 MemberDetailView
+- [x] A1 MemberDetailView
 - [ ] A2 MoneyDashboardView + sub-vistas
 - [ ] A3 ResourceDetailView
 - [ ] A4 SanctionDetailView + AppealSanctionView

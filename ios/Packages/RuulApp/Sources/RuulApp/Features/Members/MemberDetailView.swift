@@ -10,8 +10,6 @@ import RuulCore
 /// when they have no data (per `doctrine_group_space_situational`).
 ///
 /// Stores consumed:
-/// - `membersStore`     — boundary row (already in `items` from the
-///   parent surface; no refetch).
 /// - `sanctionsStore`   — group-wide list, filtered locally by
 ///   `targetMembershipId == memberItem.membershipId`.
 /// - `reputationStore`  — events for THIS subject only; loaded on
@@ -19,7 +17,6 @@ import RuulCore
 /// - `moneyStore`       — only used when the member IS the caller
 ///   (the RPCs are keyed to the caller's own membership).
 public struct MemberDetailView: View {
-    @Bindable var membersStore: MembersStore
     @Bindable var sanctionsStore: SanctionsStore
     @Bindable var reputationStore: ReputationStore
     @Bindable var moneyStore: MoneyStore
@@ -31,14 +28,12 @@ public struct MemberDetailView: View {
     private let recentHistoryLimit = 5
 
     public init(
-        membersStore: MembersStore,
         sanctionsStore: SanctionsStore,
         reputationStore: ReputationStore,
         moneyStore: MoneyStore,
         groupId: UUID,
         memberItem: MembershipBoundaryItem
     ) {
-        self.membersStore = membersStore
         self.sanctionsStore = sanctionsStore
         self.reputationStore = reputationStore
         self.moneyStore = moneyStore
@@ -300,91 +295,3 @@ public struct MemberDetailView: View {
     private struct MemberFullHistoryDestination: Hashable {}
 }
 
-// MARK: - Previews
-
-#Preview("Active member with roles") {
-    @Previewable @State var members = MembersStore(initialItems: [
-        MembershipBoundaryItem(
-            id: UUID(),
-            kind: .membership,
-            membershipId: UUID(),
-            displayName: "Ana López",
-            username: "analopez",
-            status: .active,
-            membershipType: .member,
-            roleNames: ["Tesorera", "Aprobadora"],
-            joinedAt: Date().addingTimeInterval(-60 * 60 * 24 * 30)
-        )
-    ])
-    @Previewable @State var sanctions = SanctionsStore.preview(empty: true)
-    @Previewable @State var reputation = ReputationStore.preview(empty: true)
-    @Previewable @State var money = MoneyStore.preview()
-
-    return NavigationStack {
-        MemberDetailView(
-            membersStore: members,
-            sanctionsStore: sanctions,
-            reputationStore: reputation,
-            moneyStore: money,
-            groupId: UUID(),
-            memberItem: members.items[0]
-        )
-    }
-}
-
-private extension SanctionsStore {
-    static func preview(empty: Bool) -> SanctionsStore {
-        let s = SanctionsStore(repository: PreviewSanctionsRepo())
-        if empty { /* no-op, store starts empty */ }
-        return s
-    }
-}
-
-private extension ReputationStore {
-    static func preview(empty: Bool) -> ReputationStore {
-        let s = ReputationStore(repository: PreviewReputationRepo())
-        return s
-    }
-}
-
-private extension MoneyStore {
-    static func preview() -> MoneyStore {
-        MoneyStore(repository: PreviewMoneyRepo())
-    }
-}
-
-private struct PreviewSanctionsRepo: CanonicalSanctionsRepository {
-    func activeSanctions(groupId: UUID) async throws -> [GroupSanction] { [] }
-    func issueSanction(
-        groupId: UUID,
-        targetMembershipId: UUID,
-        kind: SanctionKind,
-        reason: String,
-        amount: Decimal?,
-        unit: String?,
-        endsAt: Date?,
-        clientId: String
-    ) async throws -> GroupSanction {
-        GroupSanction(
-            id: UUID(),
-            groupId: groupId,
-            targetMembershipId: targetMembershipId,
-            targetDisplayName: "Preview",
-            kind: kind,
-            reason: reason
-        )
-    }
-}
-
-private struct PreviewReputationRepo: CanonicalReputationRepository {
-    func eventsForMember(
-        groupId: UUID,
-        subjectMembershipId: UUID,
-        limit: Int
-    ) async throws -> [GroupReputationEvent] { [] }
-}
-
-private struct PreviewMoneyRepo: CanonicalMoneyRepository {
-    func balance(groupId: UUID, membershipId: UUID) async throws -> Decimal? { nil }
-    func obligationSummary(groupId: UUID, membershipId: UUID) async throws -> [ObligationSummary] { [] }
-}
