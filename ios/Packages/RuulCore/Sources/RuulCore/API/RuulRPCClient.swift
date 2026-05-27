@@ -115,6 +115,13 @@ public protocol RuulRPCClient: Sendable {
     /// `group.update` permission.
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules
 
+    // MARK: - History / Events (Primitiva 13)
+
+    /// `group_events_recent(p_group_id, p_limit, p_before)` —
+    /// chronological feed of system events for a group, newest first.
+    /// `before` is the cursor for pagination. Active-member gate.
+    func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
+
     // MARK: - Disputes (Primitiva 14)
 
     /// `group_disputes_active(p_group_id, p_limit)` — open disputes

@@ -125,6 +125,13 @@ public enum L10n {
         public static let countSingular      = LocalizedStringResource("resources.count.singular",     defaultValue: "1 recurso activo")
     }
 
+    public enum History {
+        public static let title            = LocalizedStringResource("history.title",            defaultValue: "Historia del grupo")
+        public static let emptyTitle       = LocalizedStringResource("history.empty.title",      defaultValue: "Sin historia todavía")
+        public static let emptyDescription = LocalizedStringResource("history.empty.description", defaultValue: "Cada acción del grupo quedará anotada aquí.")
+        public static let menuLink         = LocalizedStringResource("history.menu",             defaultValue: "Historia del grupo")
+    }
+
     public enum Disputes {
         public static let title            = LocalizedStringResource("disputes.title",            defaultValue: "Disputas")
         public static let emptyTitle       = LocalizedStringResource("disputes.empty.title",      defaultValue: "Sin disputas abiertas")
@@ -277,6 +284,25 @@ public enum L10n {
         public static let viewAllRules      = LocalizedStringResource("group_profile.rules.view_all",     defaultValue: "Ver todas")
         public static let viewAllMembers    = LocalizedStringResource("group_profile.members.view_all",  defaultValue: "Ver todos")
         public static let memberCount       = LocalizedStringResource("group_profile.members.count",      defaultValue: "%lld miembros")
+    }
+
+    public enum MemberDetail {
+        public static let title                 = LocalizedStringResource("member_detail.title",                  defaultValue: "Miembro")
+        public static let identitySection       = LocalizedStringResource("member_detail.section.identity",       defaultValue: "Identidad")
+        public static let rolesSection          = LocalizedStringResource("member_detail.section.roles",          defaultValue: "Roles")
+        public static let rolesEmpty            = LocalizedStringResource("member_detail.roles.empty",            defaultValue: "Sin roles asignados.")
+        public static let sanctionsSection      = LocalizedStringResource("member_detail.section.sanctions",      defaultValue: "Sanciones activas")
+        public static let sanctionsEmpty        = LocalizedStringResource("member_detail.sanctions.empty",        defaultValue: "Sin sanciones activas.")
+        public static let moneySection          = LocalizedStringResource("member_detail.section.money",          defaultValue: "Tu dinero en este grupo")
+        public static let moneyBalanceLabel     = LocalizedStringResource("member_detail.money.balance",          defaultValue: "Balance con el grupo")
+        public static let moneyObligationsLabel = LocalizedStringResource("member_detail.money.obligations",      defaultValue: "Deudas abiertas")
+        public static let moneyEmpty            = LocalizedStringResource("member_detail.money.empty",            defaultValue: "Sin deudas abiertas.")
+        public static let historySection        = LocalizedStringResource("member_detail.section.history",        defaultValue: "Historial reciente")
+        public static let historyEmpty          = LocalizedStringResource("member_detail.history.empty",          defaultValue: "Sin historial todavía.")
+        public static let viewFullHistory       = LocalizedStringResource("member_detail.history.view_all",       defaultValue: "Ver historial completo")
+        public static let memberTypeLabel       = LocalizedStringResource("member_detail.member_type",            defaultValue: "Tipo")
+        public static let joinedAtLabel         = LocalizedStringResource("member_detail.joined_at",              defaultValue: "Se unió")
+        public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
     }
 
     public enum Invite {

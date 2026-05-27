@@ -425,6 +425,35 @@ public struct GroupFoundationStatusParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+// MARK: - History / Events (Primitiva 13)
+
+public struct GroupEventsRecentParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+    public let pBefore: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pLimit   = "p_limit"
+        case pBefore  = "p_before"
+    }
+
+    public init(groupId: UUID, limit: Int = 100, before: Date? = nil) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+        self.pBefore = before
+    }
+
+    /// Emit `p_before` as JSON `null` when nil so PostgREST overload
+    /// resolution stays deterministic.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pLimit, forKey: .pLimit)
+        try c.encodeOrNil(pBefore, forKey: .pBefore)
+    }
+}
+
 // MARK: - Disputes (Primitiva 14)
 
 public struct GroupDisputesActiveParams: Encodable, Sendable {

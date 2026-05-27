@@ -155,4 +155,5 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func issueSanction(_ input: IssueSanctionInput) async throws -> UUID { UUID() }
     func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute] { [] }
     func disputeSanction(_ input: DisputeSanctionInput) async throws -> UUID { UUID() }
+    func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] { [] }
 }

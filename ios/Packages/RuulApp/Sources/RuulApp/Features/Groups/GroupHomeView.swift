@@ -17,10 +17,10 @@ struct GroupHomeView: View {
     @State private var isConfirmingLeave: Bool = false
     @State private var leaveError: UserFacingError?
 
-    /// Drives the `MemberHistoryView` navigation push. Set when a row
+    /// Drives the `MemberDetailView` navigation push. Set when a row
     /// inside the embedded `MembersListView` is tapped. SwiftUI's
     /// `navigationDestination(item:)` consumes the binding.
-    @State private var pendingHistorySelection: MembershipBoundaryItem?
+    @State private var pendingMemberSelection: MembershipBoundaryItem?
 
     var body: some View {
         List {
@@ -43,13 +43,15 @@ struct GroupHomeView: View {
                 store: container.membersStore,
                 groupId: group.id,
                 onSelectMember: { item in
-                    pendingHistorySelection = item
+                    pendingMemberSelection = item
                 }
             )
         }
-        .navigationDestination(item: $pendingHistorySelection) { item in
-            MemberHistoryView(
-                store: container.reputationStore,
+        .navigationDestination(item: $pendingMemberSelection) { item in
+            MemberDetailView(
+                sanctionsStore: container.sanctionsStore,
+                reputationStore: container.reputationStore,
+                moneyStore: container.moneyStore,
                 groupId: group.id,
                 memberItem: item
             )
@@ -76,11 +78,17 @@ struct GroupHomeView: View {
         .navigationDestination(for: GroupProfileDestination.self) { _ in
             GroupProfileView(container: container, group: group)
         }
+        .navigationDestination(for: GroupHistoryDestination.self) { _ in
+            GroupHistoryView(store: container.eventsStore, groupId: group.id)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     NavigationLink(value: GroupProfileDestination()) {
                         Label(L10n.GroupProfile.title, systemImage: "person.crop.rectangle")
+                    }
+                    NavigationLink(value: GroupHistoryDestination()) {
+                        Label(L10n.History.menuLink, systemImage: "clock.arrow.circlepath")
                     }
                     Divider()
                     Button(role: .destructive) {
@@ -400,6 +408,9 @@ struct GroupHomeView: View {
     private struct DisputesDestination: Hashable {}
 
     private struct GroupProfileDestination: Hashable {}
+
+    /// And History (Primitiva 13 — system_events timeline).
+    private struct GroupHistoryDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same

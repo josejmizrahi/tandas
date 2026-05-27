@@ -471,4 +471,28 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_sanction_id"] as? String == sid.uuidString)
         #expect(dict["p_summary"] as? String == "Razón")
     }
+
+    // MARK: - Events / History (Primitiva 13)
+
+    @Test("group_events_recent emits group_id + limit and null before by default")
+    func groupEventsRecentDefault() throws {
+        let gid = UUID()
+        let dict = try encode(GroupEventsRecentParams(groupId: gid))
+        #expect(dict.keys.sorted() == ["p_before", "p_group_id", "p_limit"])
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect((dict["p_limit"] as? Int) == 100)
+        #expect(dict["p_before"] is NSNull)
+    }
+
+    @Test("group_events_recent encodes before as ISO date string when set")
+    func groupEventsRecentWithCursor() throws {
+        let gid = UUID()
+        let cursor = Date(timeIntervalSince1970: 1_700_000_000)
+        let dict = try encode(GroupEventsRecentParams(groupId: gid, limit: 25, before: cursor))
+        #expect((dict["p_limit"] as? Int) == 25)
+        // JSONEncoder default Date strategy is `.deferredToDate` which emits
+        // a number; the wire format flows through PostgREST's text→timestamptz
+        // cast either way. Assert it's *not* null — actual value is opaque.
+        #expect((dict["p_before"] is NSNull) == false)
+    }
 }

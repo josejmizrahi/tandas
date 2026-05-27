@@ -299,6 +299,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - History / Events (Primitiva 13)
+
+    public func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] {
+        let params = GroupEventsRecentParams(groupId: groupId, limit: limit, before: before)
+        do {
+            return try await client
+                .rpc("group_events_recent", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Disputes (Primitiva 14)
 
     public func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute] {

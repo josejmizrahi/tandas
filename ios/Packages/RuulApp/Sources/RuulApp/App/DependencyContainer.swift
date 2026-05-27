@@ -42,6 +42,7 @@ public final class DependencyContainer {
     public let reputationRepository: CanonicalReputationRepository
     public let sanctionsRepository: CanonicalSanctionsRepository
     public let disputesRepository: CanonicalDisputesRepository
+    public let eventsRepository: CanonicalEventsRepository
 
     // MARK: - Stores
 
@@ -59,6 +60,7 @@ public final class DependencyContainer {
     public let reputationStore: ReputationStore
     public let sanctionsStore: SanctionsStore
     public let disputesStore: DisputesStore
+    public let eventsStore: EventsStore
 
     public init() {
         let client = SupabaseEnvironment.shared
@@ -85,6 +87,7 @@ public final class DependencyContainer {
         self.reputationRepository = CanonicalReputationRepository(rpc: rpc)
         self.sanctionsRepository = CanonicalSanctionsRepository(rpc: rpc)
         self.disputesRepository = CanonicalDisputesRepository(rpc: rpc)
+        self.eventsRepository = CanonicalEventsRepository(rpc: rpc)
 
         self.sessionStore = SessionStore(authService: auth)
         self.groupsStore = GroupsStore(repository: groupRepository)
@@ -100,6 +103,7 @@ public final class DependencyContainer {
         self.reputationStore = ReputationStore(repository: reputationRepository)
         self.sanctionsStore = SanctionsStore(repository: sanctionsRepository)
         self.disputesStore = DisputesStore(repository: disputesRepository)
+        self.eventsStore = EventsStore(repository: eventsRepository)
     }
 
     /// Kicks off the session subscription so the shell can observe state
