@@ -8,10 +8,18 @@ import RuulCore
 public struct MembersListView: View {
     @Bindable var store: MembersStore
     let groupId: UUID
+    /// Optional handler invoked when the user taps an active membership
+    /// row. Allows the parent (GroupHomeView) to push a member-history
+    /// destination without coupling this view to the route registry.
+    /// Pending invites stay non-tappable.
+    let onSelectMember: ((MembershipBoundaryItem) -> Void)?
 
-    public init(store: MembersStore, groupId: UUID) {
+    public init(store: MembersStore,
+                groupId: UUID,
+                onSelectMember: ((MembershipBoundaryItem) -> Void)? = nil) {
         self.store = store
         self.groupId = groupId
+        self.onSelectMember = onSelectMember
     }
 
     public var body: some View {
@@ -78,7 +86,16 @@ public struct MembersListView: View {
         ForEach(store.sections) { section in
             Section {
                 ForEach(section.members) { item in
-                    MemberRowView(item: item)
+                    if item.kind == .membership, onSelectMember != nil, item.membershipId != nil {
+                        Button {
+                            onSelectMember?(item)
+                        } label: {
+                            MemberRowView(item: item)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        MemberRowView(item: item)
+                    }
                 }
             } header: {
                 Text(section.kind.title)

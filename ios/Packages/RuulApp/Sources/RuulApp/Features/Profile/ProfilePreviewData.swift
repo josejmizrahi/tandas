@@ -150,4 +150,5 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
                            notes: input.pNotes,
                            isDefault: false)
     }
+    func memberReputationEvents(groupId: UUID, subjectMembershipId: UUID, limit: Int) async throws -> [GroupReputationEvent] { [] }
 }

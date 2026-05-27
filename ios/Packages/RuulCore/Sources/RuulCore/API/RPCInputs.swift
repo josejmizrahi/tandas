@@ -425,6 +425,26 @@ public struct GroupFoundationStatusParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+// MARK: - Reputation (Primitiva 12)
+
+public struct MemberReputationEventsParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pSubjectMembershipId: UUID
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId             = "p_group_id"
+        case pSubjectMembershipId = "p_subject_membership_id"
+        case pLimit               = "p_limit"
+    }
+
+    public init(groupId: UUID, subjectMembershipId: UUID, limit: Int = 50) {
+        self.pGroupId = groupId
+        self.pSubjectMembershipId = subjectMembershipId
+        self.pLimit = limit
+    }
+}
+
 // MARK: - Decision rules
 
 public struct GroupDecisionRulesParams: Encodable, Sendable {

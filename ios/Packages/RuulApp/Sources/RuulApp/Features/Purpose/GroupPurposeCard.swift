@@ -162,6 +162,7 @@ private struct PurposeStubClient: RuulRPCClient, @unchecked Sendable {
                            notes: input.pNotes,
                            isDefault: false)
     }
+    func memberReputationEvents(groupId: UUID, subjectMembershipId: UUID, limit: Int) async throws -> [GroupReputationEvent] { [] }
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }

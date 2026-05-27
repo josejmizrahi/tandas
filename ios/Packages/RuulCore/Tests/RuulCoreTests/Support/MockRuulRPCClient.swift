@@ -34,6 +34,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupFoundationStatus(groupId: UUID)
         case groupDecisionRules(groupId: UUID)
         case setDecisionRules(input: SetDecisionRulesInput)
+        case memberReputationEvents(groupId: UUID, subjectMembershipId: UUID, limit: Int)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -92,6 +93,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var setDecisionRulesStub: Result<GroupDecisionRules, RuulError> = .success(
         GroupDecisionRules(groupId: UUID(), defaultStyle: .majority, isDefault: false)
     )
+    private var memberReputationEventsStub: Result<[GroupReputationEvent], RuulError> = .success([])
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -123,6 +125,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupFoundationStatusStub(_ stub: Result<GroupFoundationStatus, RuulError>) { groupFoundationStatusStub = stub }
     func setGroupDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { groupDecisionRulesStub = stub }
     func setSetDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { setDecisionRulesStub = stub }
+    func setMemberReputationEventsStub(_ stub: Result<[GroupReputationEvent], RuulError>) { memberReputationEventsStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -246,6 +249,13 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules {
         recorded.append(.setDecisionRules(input: input))
         return try setDecisionRulesStub.get()
+    }
+
+    func memberReputationEvents(groupId: UUID,
+                                subjectMembershipId: UUID,
+                                limit: Int) async throws -> [GroupReputationEvent] {
+        recorded.append(.memberReputationEvents(groupId: groupId, subjectMembershipId: subjectMembershipId, limit: limit))
+        return try memberReputationEventsStub.get()
     }
 
     func myProfile() async throws -> Profile {

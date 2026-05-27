@@ -125,6 +125,26 @@ public enum L10n {
         public static let countSingular      = LocalizedStringResource("resources.count.singular",     defaultValue: "1 recurso activo")
     }
 
+    public enum Reputation {
+        public static let title            = LocalizedStringResource("reputation.title",            defaultValue: "Historial en este grupo")
+        public static let emptyTitle       = LocalizedStringResource("reputation.empty.title",      defaultValue: "Sin historial todavía")
+        public static let emptyDescription = LocalizedStringResource("reputation.empty.description", defaultValue: "Aquí aparecerán momentos concretos cuando ocurran.")
+        public static let errorTitle       = LocalizedStringResource("reputation.error.title",      defaultValue: "No pudimos cargar el historial")
+        public static let retry            = LocalizedStringResource("reputation.retry",            defaultValue: "Reintentar")
+
+        public static let kindTrustEvent              = LocalizedStringResource("reputation.kind.trust_event",              defaultValue: "Hecho de confianza")
+        public static let kindContributionRecognized  = LocalizedStringResource("reputation.kind.contribution_recognized",  defaultValue: "Contribución reconocida")
+        public static let kindCommitmentKept          = LocalizedStringResource("reputation.kind.commitment_kept",          defaultValue: "Cumplió un acuerdo")
+        public static let kindCommitmentBroken        = LocalizedStringResource("reputation.kind.commitment_broken",        defaultValue: "No cumplió un acuerdo")
+        public static let kindConflictResolved        = LocalizedStringResource("reputation.kind.conflict_resolved",        defaultValue: "Resolvió un conflicto")
+        public static let kindCareShown               = LocalizedStringResource("reputation.kind.care_shown",                defaultValue: "Mostró cuidado")
+        public static let kindLeadershipShown         = LocalizedStringResource("reputation.kind.leadership_shown",          defaultValue: "Tomó iniciativa")
+        public static let kindRuleViolation           = LocalizedStringResource("reputation.kind.rule_violation",            defaultValue: "Faltó a una regla")
+        public static let kindReliabilitySignal       = LocalizedStringResource("reputation.kind.reliability_signal",        defaultValue: "Señal de constancia")
+        public static let kindSkillSignal             = LocalizedStringResource("reputation.kind.skill_signal",               defaultValue: "Señal de habilidad")
+        public static let kindOther                   = LocalizedStringResource("reputation.kind.other",                     defaultValue: "Otro")
+    }
+
     public enum DecisionRules {
         public static let title              = LocalizedStringResource("decision_rules.title",            defaultValue: "Decisiones del grupo")
         public static let cardHeadline       = LocalizedStringResource("decision_rules.headline",         defaultValue: "Cómo decidimos aquí")

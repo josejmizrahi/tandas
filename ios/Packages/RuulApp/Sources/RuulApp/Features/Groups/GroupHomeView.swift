@@ -17,6 +17,11 @@ struct GroupHomeView: View {
     @State private var isConfirmingLeave: Bool = false
     @State private var leaveError: UserFacingError?
 
+    /// Drives the `MemberHistoryView` navigation push. Set when a row
+    /// inside the embedded `MembersListView` is tapped. SwiftUI's
+    /// `navigationDestination(item:)` consumes the binding.
+    @State private var pendingHistorySelection: MembershipBoundaryItem?
+
     var body: some View {
         List {
             summarySection
@@ -32,7 +37,20 @@ struct GroupHomeView: View {
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: MembersDestination.self) { _ in
-            MembersListView(store: container.membersStore, groupId: group.id)
+            MembersListView(
+                store: container.membersStore,
+                groupId: group.id,
+                onSelectMember: { item in
+                    pendingHistorySelection = item
+                }
+            )
+        }
+        .navigationDestination(item: $pendingHistorySelection) { item in
+            MemberHistoryView(
+                store: container.reputationStore,
+                groupId: group.id,
+                memberItem: item
+            )
         }
         .navigationDestination(for: RulesDestination.self) { _ in
             RulesListView(store: container.rulesStore, groupId: group.id)

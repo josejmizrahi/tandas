@@ -115,6 +115,15 @@ public protocol RuulRPCClient: Sendable {
     /// `group.update` permission.
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules
 
+    // MARK: - Reputation (Primitiva 12)
+
+    /// `member_reputation_events(p_group_id, p_subject_membership_id, p_limit)`
+    /// — visible reputation events for a member, newest first. RLS
+    /// visibility tiers apply (public / members / private records.read).
+    func memberReputationEvents(groupId: UUID,
+                                subjectMembershipId: UUID,
+                                limit: Int) async throws -> [GroupReputationEvent]
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank
