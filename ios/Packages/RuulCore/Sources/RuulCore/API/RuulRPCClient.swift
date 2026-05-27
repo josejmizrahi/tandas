@@ -48,6 +48,11 @@ public protocol RuulRPCClient: Sendable {
     /// validates the caller is an active member of the group.
     func groupMembers(groupId: UUID) async throws -> [MemberListItem]
 
+    /// `group_membership_boundary(p_group_id) returns table(...)` —
+    /// Primitiva 2 unified view that UNIONs memberships with pending
+    /// invites. Same auth rules as `groupMembers`.
+    func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem]
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

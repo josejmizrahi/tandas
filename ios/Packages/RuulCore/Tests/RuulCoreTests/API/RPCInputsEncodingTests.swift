@@ -285,4 +285,12 @@ struct RPCInputsEncodingTests {
         #expect(dict.keys.sorted() == ["p_group_id"])
         #expect(dict["p_group_id"] as? String == id.uuidString)
     }
+
+    @Test("group_membership_boundary encodes p_group_id only")
+    func groupMembershipBoundaryEncoding() throws {
+        let id = UUID()
+        let dict = try encode(GroupMembershipBoundaryParams(groupId: id))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+        #expect(dict["p_group_id"] as? String == id.uuidString)
+    }
 }

@@ -5,14 +5,14 @@ import RuulCore
 /// initials-on-material fallback when the URL is absent or fails to
 /// load. Uses only system primitives — no custom palette.
 public struct MemberAvatarView: View {
-    let member: MemberListItem
+    let item: MembershipBoundaryItem
 
-    public init(member: MemberListItem) {
-        self.member = member
+    public init(item: MembershipBoundaryItem) {
+        self.item = item
     }
 
     public var body: some View {
-        if let url = member.avatarURL {
+        if let url = item.avatarURL {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -33,7 +33,7 @@ public struct MemberAvatarView: View {
     private var fallback: some View {
         ZStack {
             Circle().fill(.thinMaterial)
-            Text(member.initials)
+            Text(item.initials)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.primary)
         }
@@ -41,13 +41,25 @@ public struct MemberAvatarView: View {
 }
 
 #Preview("Initials") {
-    MemberAvatarView(member: .init(id: UUID(), displayName: "Ana López"))
-        .frame(width: 40, height: 40)
-        .padding()
+    MemberAvatarView(item: MembershipBoundaryItem(
+        id: UUID(), kind: .membership, displayName: "Ana López"
+    ))
+    .frame(width: 40, height: 40)
+    .padding()
 }
 
 #Preview("Single letter") {
-    MemberAvatarView(member: .init(id: UUID(), displayName: "Luis"))
-        .frame(width: 40, height: 40)
-        .padding()
+    MemberAvatarView(item: MembershipBoundaryItem(
+        id: UUID(), kind: .membership, displayName: "Luis"
+    ))
+    .frame(width: 40, height: 40)
+    .padding()
+}
+
+#Preview("Invite email") {
+    MemberAvatarView(item: MembershipBoundaryItem(
+        id: UUID(), kind: .invite, displayName: "carlos@email.com"
+    ))
+    .frame(width: 40, height: 40)
+    .padding()
 }

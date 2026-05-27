@@ -23,6 +23,14 @@ public struct CanonicalMembersRepository: Sendable {
         try await rpc.groupMembers(groupId: groupId)
     }
 
+    /// Primitiva 2: unified boundary view (memberships ∪ pending
+    /// invites). One row per person who currently has a relationship
+    /// with the group, with `boundary_kind` distinguishing real
+    /// memberships from outstanding invites.
+    public func membershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] {
+        try await rpc.groupMembershipBoundary(groupId: groupId)
+    }
+
     /// Forwards the invite to `CanonicalInviteRepository`. Returns the
     /// new `group_invites.id` so callers can correlate UI flows.
     public func inviteMember(

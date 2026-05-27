@@ -1,15 +1,10 @@
 import SwiftUI
 import RuulCore
 
-/// Members surface for a single group. Designed to be embedded inside
-/// a parent `NavigationStack` (slice 7 will mount it from a tab); the
-/// view itself only provides the `List`, toolbar item, search field,
-/// refresh handler, and sheet presenter so it composes cleanly inside
-/// any container.
-///
-/// Renders placeholder rows during the initial load, a search-empty
-/// state when the query has no matches, and the canonical empty /
-/// error placeholders for the no-data and failure paths.
+/// Members surface for a single group. Renders boundary items
+/// (memberships + pending invites) returned by
+/// `group_membership_boundary`. Designed to be embedded inside a
+/// parent `NavigationStack` (mounted from `GroupHomeView`).
 public struct MembersListView: View {
     @Bindable var store: MembersStore
     let groupId: UUID
@@ -50,9 +45,9 @@ public struct MembersListView: View {
     private var content: some View {
         switch store.phase {
         case .idle, .loading:
-            if store.members.isEmpty {
+            if store.items.isEmpty {
                 ForEach(0..<3, id: \.self) { _ in
-                    MemberRowView(member: .placeholder)
+                    MemberRowView(item: .placeholder)
                         .redacted(reason: .placeholder)
                 }
             } else {
@@ -64,7 +59,7 @@ public struct MembersListView: View {
             }
             .listRowBackground(Color.clear)
         case .loaded:
-            if store.filteredMembers.isEmpty {
+            if store.filteredItems.isEmpty {
                 if store.searchText.isEmpty {
                     MembersEmptyStateView()
                         .listRowBackground(Color.clear)
@@ -82,8 +77,8 @@ public struct MembersListView: View {
     private var loadedSections: some View {
         ForEach(store.sections) { section in
             Section {
-                ForEach(section.members) { member in
-                    MemberRowView(member: member)
+                ForEach(section.members) { item in
+                    MemberRowView(item: item)
                 }
             } header: {
                 Text(section.kind.title)
@@ -92,8 +87,23 @@ public struct MembersListView: View {
     }
 }
 
+// MARK: - Preview placeholder
+
+extension MembershipBoundaryItem {
+    /// Stable redacted-placeholder shape for skeleton rows during the
+    /// first load. SwiftUI swaps the literal glyphs for grey blocks.
+    static var placeholder: MembershipBoundaryItem {
+        MembershipBoundaryItem(
+            id: UUID(),
+            kind: .membership,
+            displayName: "Placeholder Name",
+            roleNames: ["Placeholder role"]
+        )
+    }
+}
+
 #Preview("Populated") {
-    @Previewable @State var store = MembersStore(initialMembers: MembersPreviewData.all)
+    @Previewable @State var store = MembersStore(initialItems: MembersPreviewData.boundaryAll)
     return NavigationStack {
         MembersListView(store: store, groupId: UUID())
     }
@@ -126,20 +136,4 @@ public struct MembersListView: View {
     return NavigationStack {
         MembersListView(store: store, groupId: UUID())
     }
-}
-
-#Preview("Dark mode") {
-    @Previewable @State var store = MembersStore(initialMembers: MembersPreviewData.all)
-    return NavigationStack {
-        MembersListView(store: store, groupId: UUID())
-    }
-    .preferredColorScheme(.dark)
-}
-
-#Preview("xxxLarge Dynamic Type") {
-    @Previewable @State var store = MembersStore(initialMembers: MembersPreviewData.all)
-    return NavigationStack {
-        MembersListView(store: store, groupId: UUID())
-    }
-    .environment(\.dynamicTypeSize, .accessibility3)
 }

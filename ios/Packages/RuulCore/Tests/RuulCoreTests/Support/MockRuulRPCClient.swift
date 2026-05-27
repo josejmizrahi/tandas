@@ -22,6 +22,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case memberObligationSummary(groupId: UUID, membershipId: UUID)
         case listMemberPermissions(groupId: UUID, userId: UUID?)
         case groupMembers(groupId: UUID)
+        case groupMembershipBoundary(groupId: UUID)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -48,6 +49,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var memberObligationSummaryStub: Result<[ObligationSummary], RuulError> = .success([])
     private var listMemberPermissionsStub: Result<[String], RuulError> = .success([])
     private var groupMembersStub: Result<[MemberListItem], RuulError> = .success([])
+    private var groupMembershipBoundaryStub: Result<[MembershipBoundaryItem], RuulError> = .success([])
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -67,6 +69,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setMemberObligationSummaryStub(_ stub: Result<[ObligationSummary], RuulError>) { memberObligationSummaryStub = stub }
     func setListMemberPermissionsStub(_ stub: Result<[String], RuulError>) { listMemberPermissionsStub = stub }
     func setGroupMembersStub(_ stub: Result<[MemberListItem], RuulError>) { groupMembersStub = stub }
+    func setGroupMembershipBoundaryStub(_ stub: Result<[MembershipBoundaryItem], RuulError>) { groupMembershipBoundaryStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -130,6 +133,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupMembers(groupId: UUID) async throws -> [MemberListItem] {
         recorded.append(.groupMembers(groupId: groupId))
         return try groupMembersStub.get()
+    }
+
+    func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] {
+        recorded.append(.groupMembershipBoundary(groupId: groupId))
+        return try groupMembershipBoundaryStub.get()
     }
 
     func myProfile() async throws -> Profile {

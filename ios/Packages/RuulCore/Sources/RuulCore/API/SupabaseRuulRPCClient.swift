@@ -153,6 +153,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] {
+        let params = GroupMembershipBoundaryParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_membership_boundary", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

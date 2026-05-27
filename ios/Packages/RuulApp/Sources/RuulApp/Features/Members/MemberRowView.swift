@@ -1,27 +1,28 @@
 import SwiftUI
 import RuulCore
 
-/// Single row inside `MembersListView`. Avatar + name + optional role
-/// subtitle on the leading side; status badge trailing. The whole row
-/// is exposed as a single accessibility element so VoiceOver doesn't
-/// fragment the announcement.
+/// Single row inside `MembersListView`. Renders a boundary item
+/// (membership or pending invite). Pending invites use the same
+/// avatar/initial fallback as memberships and surface "Invitación
+/// pendiente" as the subtitle so the row makes sense even when no
+/// profile is attached to the invite yet.
 public struct MemberRowView: View {
-    let member: MemberListItem
+    let item: MembershipBoundaryItem
 
-    public init(member: MemberListItem) {
-        self.member = member
+    public init(item: MembershipBoundaryItem) {
+        self.item = item
     }
 
     public var body: some View {
         HStack(spacing: 12) {
-            MemberAvatarView(member: member)
+            MemberAvatarView(item: item)
                 .frame(width: 40, height: 40)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(member.displayName)
+                Text(item.displayName)
                     .font(.body)
                     .lineLimit(1)
-                if let subtitle = member.subtitle {
+                if let subtitle = item.subtitle {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -31,38 +32,46 @@ public struct MemberRowView: View {
 
             Spacer(minLength: 8)
 
-            MembershipStatusBadge(status: member.status)
+            MembershipStatusBadge(status: item.status)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(member.accessibilityLabelText))
+        .accessibilityLabel(Text(item.accessibilityLabelText))
     }
 }
 
 #Preview("Active w/ role") {
     List {
-        MemberRowView(member: .init(
-            id: UUID(),
-            displayName: "Ana López",
-            status: .active,
+        MemberRowView(item: MembershipBoundaryItem(
+            id: UUID(), kind: .membership, membershipId: UUID(),
+            displayName: "Ana López", status: .active,
             roleNames: ["Tesorero"]
         ))
     }
 }
 
-#Preview("Invited, no role") {
+#Preview("Pending invite") {
     List {
-        MemberRowView(member: .init(
-            id: UUID(),
-            displayName: "carlos@email.com",
-            status: .invited
+        MemberRowView(item: MembershipBoundaryItem(
+            id: UUID(), kind: .invite, inviteId: UUID(),
+            displayName: "carlos@email.com", status: .invited
+        ))
+    }
+}
+
+#Preview("Provisional") {
+    List {
+        MemberRowView(item: MembershipBoundaryItem(
+            id: UUID(), kind: .membership, membershipId: UUID(),
+            displayName: "Mateo García", status: .active,
+            membershipType: .provisional
         ))
     }
 }
 
 #Preview("Long name + many roles") {
     List {
-        MemberRowView(member: .init(
-            id: UUID(),
+        MemberRowView(item: MembershipBoundaryItem(
+            id: UUID(), kind: .membership, membershipId: UUID(),
             displayName: "Christopher Alexander de la Vega y Castillo del Mar",
             status: .active,
             roleNames: ["Coordinador", "Aprobador", "Moderador"]

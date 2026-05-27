@@ -1,14 +1,14 @@
 import Foundation
 
-/// Logical grouping for the members list. `MembersStore.sections`
-/// projects its `members` array into one section per non-empty kind,
+/// Logical grouping for the boundary list. `MembersStore.sections`
+/// projects its `items` array into one section per non-empty kind,
 /// in a fixed order so the UI is stable across refreshes.
 public struct MemberSection: Identifiable, Sendable, Equatable {
     public var id: MemberSectionKind { kind }
     public let kind: MemberSectionKind
-    public let members: [MemberListItem]
+    public let members: [MembershipBoundaryItem]
 
-    public init(kind: MemberSectionKind, members: [MemberListItem]) {
+    public init(kind: MemberSectionKind, members: [MembershipBoundaryItem]) {
         self.kind = kind
         self.members = members
     }

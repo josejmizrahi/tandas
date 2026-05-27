@@ -1,21 +1,25 @@
 import Foundation
 import Observation
 
-/// `@MainActor` store for the Members surface. Backed by
-/// `CanonicalMembersRepository` — the list comes from the canonical
-/// `group_members(p_group_id)` RPC and invites route through
-/// `invite_member` (wrapped by the same repo).
+/// `@MainActor` store for the Members surface (Primitiva 2 boundary).
+/// Backed by `CanonicalMembersRepository.membershipBoundary(...)` —
+/// the list mixes real memberships with pending invites, distinguished
+/// by `MembershipBoundaryItem.kind`. Invites route through
+/// `invite_member` (wrapped by the same repo); after a successful
+/// invite the store refreshes so the new pending row appears.
 ///
-/// Foundation scope: no admin actions, no role editing, no realtime.
-/// The store keeps its own search/invite-form state so the Views stay
-/// dumb.
+/// Foundation scope: no admin actions, no role editing, no revoke
+/// invite, no realtime.
 @MainActor
 @Observable
 public final class MembersStore {
 
     // MARK: - State
 
-    public private(set) var members: [MemberListItem]
+    /// Canonical list, one row per "person currently related to the
+    /// group" (membership or pending invite). Renamed from `members`
+    /// in slice 8 — previews/tests still seed via the back-compat init.
+    public private(set) var items: [MembershipBoundaryItem]
     public var phase: StorePhase = .idle
     public var searchText: String = ""
 
@@ -33,43 +37,79 @@ public final class MembersStore {
     private let repository: CanonicalMembersRepository?
     private var loadedGroupId: UUID?
 
-    /// Production initialiser — injects a real repository.
     public init(repository: CanonicalMembersRepository) {
         self.repository = repository
-        self.members = []
+        self.items = []
     }
 
-    /// Preview/testing initialiser — seeds the store with stub rows so
-    /// SwiftUI previews and unit tests don't have to spin up a repo.
-    /// `refresh` becomes a no-op (just re-asserts `.loaded`) when no
-    /// repository is wired.
-    public init(initialMembers: [MemberListItem] = []) {
+    /// Preview/testing initialiser — seeds the store directly with
+    /// boundary fixtures so SwiftUI previews and store tests don't
+    /// have to spin up a repo.
+    public init(initialItems: [MembershipBoundaryItem] = []) {
         self.repository = nil
-        self.members = initialMembers
-        if !initialMembers.isEmpty {
-            self.phase = .loaded
+        self.items = initialItems
+        if !initialItems.isEmpty { self.phase = .loaded }
+    }
+
+    /// Back-compat seed for callers (mostly tests) still expressing
+    /// state in terms of `MemberListItem`. Each membership-shaped
+    /// fixture is wrapped as a `.membership` boundary row.
+    public init(initialMembers: [MemberListItem]) {
+        self.repository = nil
+        self.items = initialMembers.map { m in
+            MembershipBoundaryItem(
+                id: m.id,
+                kind: .membership,
+                membershipId: m.id,
+                inviteId: nil,
+                userId: m.userId,
+                displayName: m.displayName,
+                username: nil,
+                avatarURL: m.avatarURL,
+                status: m.status,
+                membershipType: m.membershipType,
+                roleNames: m.roleNames,
+                joinedAt: m.joinedAt,
+                invitedAt: nil,
+                isCurrentUser: m.isCurrentUser
+            )
         }
+        if !items.isEmpty { self.phase = .loaded }
     }
 
     // MARK: - Derived state
 
-    public var filteredMembers: [MemberListItem] {
+    /// Items filtered by `searchText`. Matches displayName, username,
+    /// and any role name (case- and diacritic-insensitive). Invite
+    /// rows whose `displayName` is the invite email/phone are
+    /// matchable too because they go through the same path.
+    public var filteredItems: [MembershipBoundaryItem] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return members }
-        return members.filter {
-            $0.displayName.range(of: trimmed, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        guard !trimmed.isEmpty else { return items }
+        let opts: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        return items.filter { item in
+            if item.displayName.range(of: trimmed, options: opts) != nil { return true }
+            if let u = item.username, u.range(of: trimmed, options: opts) != nil { return true }
+            return item.roleNames.contains { $0.range(of: trimmed, options: opts) != nil }
         }
     }
 
     public var sections: [MemberSection] {
-        var byKind: [MemberSectionKind: [MemberListItem]] = [:]
-        for member in filteredMembers {
-            byKind[Self.sectionKind(for: member), default: []].append(member)
+        var byKind: [MemberSectionKind: [MembershipBoundaryItem]] = [:]
+        for item in filteredItems {
+            byKind[Self.sectionKind(for: item), default: []].append(item)
         }
         return MemberSectionKind.renderOrder.compactMap { kind in
-            guard let items = byKind[kind], !items.isEmpty else { return nil }
-            return MemberSection(kind: kind, members: items)
+            guard let bucket = byKind[kind], !bucket.isEmpty else { return nil }
+            return MemberSection(kind: kind, members: bucket)
         }
+    }
+
+    /// Back-compat read-only view: only the `.membership` rows
+    /// projected back to the legacy `MemberListItem` shape, for any
+    /// caller that still consumes that surface.
+    public var members: [MemberListItem] {
+        items.filter { $0.kind == .membership }.map { $0.asMemberListItem }
     }
 
     public var canSubmitInvite: Bool {
@@ -80,22 +120,18 @@ public final class MembersStore {
 
     // MARK: - Intents
 
-    /// Force-refetches the member list. Sets `.loading` only when there
-    /// is no prior data so a re-pull doesn't flash the placeholder rows.
     public func refresh(groupId: UUID) async {
         guard let repository else {
-            // Preview/test mode: just settle into .loaded without
-            // touching the network.
             phase = .loaded
             loadedGroupId = groupId
             return
         }
-        if members.isEmpty || loadedGroupId != groupId {
+        if items.isEmpty || loadedGroupId != groupId {
             phase = .loading
         }
         do {
-            let fetched = try await repository.listMembers(groupId: groupId)
-            members = fetched
+            let fetched = try await repository.membershipBoundary(groupId: groupId)
+            items = fetched
             phase = .loaded
             loadedGroupId = groupId
             errorMessage = nil
@@ -106,23 +142,17 @@ public final class MembersStore {
         }
     }
 
-    /// `.task`-friendly loader: fetches the first time, no-ops on
-    /// re-entry for the same group, refetches if the group changes.
     public func refreshIfNeeded(groupId: UUID) async {
-        if loadedGroupId == groupId, !members.isEmpty {
+        if loadedGroupId == groupId, !items.isEmpty {
             if case .idle = phase { phase = .loaded }
             return
         }
         await refresh(groupId: groupId)
     }
 
-    /// Sends the invite via the repository. Returns `true` on success
-    /// so the sheet can dismiss; on failure leaves the form intact and
-    /// surfaces `errorMessage` for the View to display.
     public func inviteMember(groupId: UUID) async -> Bool {
         guard canSubmitInvite else { return false }
         guard let repository else {
-            // Preview mode — pretend success so the sheet UX is testable.
             clearInviteForm()
             return true
         }
@@ -154,21 +184,24 @@ public final class MembersStore {
         errorMessage = nil
     }
 
-    public func clearError() {
-        errorMessage = nil
-    }
+    public func clearError() { errorMessage = nil }
 
     // MARK: - Section routing
 
-    private static func sectionKind(for member: MemberListItem) -> MemberSectionKind {
-        if member.isCurrentUser { return .currentUser }
-        switch member.status {
-        case .active:
-            return member.membershipType == .provisional ? .provisional : .active
-        case .invited, .requested:
+    private static func sectionKind(for item: MembershipBoundaryItem) -> MemberSectionKind {
+        if item.isCurrentUser { return .currentUser }
+        switch item.kind {
+        case .invite:
             return .invited
-        case .suspended, .banned, .left:
-            return .suspended
+        case .membership:
+            switch item.status {
+            case .active:
+                return item.membershipType == .provisional ? .provisional : .active
+            case .invited, .requested:
+                return .invited
+            case .suspended, .banned, .left:
+                return .suspended
+            }
         }
     }
 }
