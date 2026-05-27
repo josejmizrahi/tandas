@@ -556,7 +556,7 @@ Marcar cada slice cerrado:
             (sin backend nuevo)
       - [ ] A2.b Movements + Detail + Stake/PoolCharges (espera
             `group_money_movements` RPC)
-- [ ] A3 ResourceDetailView
+- [x] A3 ResourceDetailView
 - [ ] A4 SanctionDetailView + AppealSanctionView
 - [x] A5 GroupHistoryView (commit `943667dc`)
 - [ ] A6 PersonalProfileSheet + PersonalSettingsView

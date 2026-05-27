@@ -305,6 +305,23 @@ public enum L10n {
         public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
     }
 
+    public enum ResourceDetail {
+        public static let title              = LocalizedStringResource("resource_detail.title",              defaultValue: "Recurso")
+        public static let aboutSection       = LocalizedStringResource("resource_detail.section.about",      defaultValue: "Acerca de")
+        public static let aboutEmpty         = LocalizedStringResource("resource_detail.about.empty",        defaultValue: "Sin descripción todavía.")
+        public static let detailsSection     = LocalizedStringResource("resource_detail.section.details",    defaultValue: "Detalles")
+        public static let typeLabel          = LocalizedStringResource("resource_detail.type",               defaultValue: "Tipo")
+        public static let ownershipLabel     = LocalizedStringResource("resource_detail.ownership",          defaultValue: "Propiedad")
+        public static let visibilityLabel    = LocalizedStringResource("resource_detail.visibility",         defaultValue: "Visibilidad")
+        public static let statusLabel        = LocalizedStringResource("resource_detail.status",             defaultValue: "Estado")
+        public static let createdAtLabel     = LocalizedStringResource("resource_detail.created_at",         defaultValue: "Creado")
+        public static let updatedAtLabel     = LocalizedStringResource("resource_detail.updated_at",         defaultValue: "Actualizado")
+        public static let activitySection    = LocalizedStringResource("resource_detail.section.activity",   defaultValue: "Actividad")
+        public static let activityPlaceholder = LocalizedStringResource("resource_detail.activity.placeholder", defaultValue: "Próximamente: aquí aparecerá la actividad reciente del recurso.")
+        public static let actionsSection     = LocalizedStringResource("resource_detail.section.actions",    defaultValue: "Acciones")
+        public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
+    }
+
     public enum MoneyDashboard {
         public static let title                 = LocalizedStringResource("money_dashboard.title",                  defaultValue: "Dinero")
         public static let heroPositiveLabel     = LocalizedStringResource("money_dashboard.hero.positive",          defaultValue: "El grupo te debe")

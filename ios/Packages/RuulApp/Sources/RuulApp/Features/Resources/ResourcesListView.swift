@@ -37,6 +37,9 @@ public struct ResourcesListView: View {
         .sheet(isPresented: $store.isCreatePresented) {
             CreateResourceView(store: store, groupId: groupId)
         }
+        .navigationDestination(for: GroupResource.self) { resource in
+            ResourceDetailView(store: store, groupId: groupId, resource: resource)
+        }
         .confirmationDialog(
             Text(L10n.Resources.archiveConfirmTitle),
             isPresented: archiveDialogBinding,
@@ -112,14 +115,16 @@ public struct ResourcesListView: View {
             if let bucket = store.resourcesByType[type], !bucket.isEmpty {
                 Section {
                     ForEach(bucket) { resource in
-                        ResourceRowView(resource: resource)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    toArchive = resource
-                                } label: {
-                                    Label(L10n.Resources.archive, systemImage: "archivebox")
-                                }
+                        NavigationLink(value: resource) {
+                            ResourceRowView(resource: resource)
+                        }
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                toArchive = resource
+                            } label: {
+                                Label(L10n.Resources.archive, systemImage: "archivebox")
                             }
+                        }
                     }
                 } header: {
                     Text(type.label)
