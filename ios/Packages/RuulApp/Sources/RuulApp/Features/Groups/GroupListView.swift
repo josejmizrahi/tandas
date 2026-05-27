@@ -2,13 +2,14 @@ import SwiftUI
 import RuulCore
 
 /// First authenticated screen of the Foundation shell — the caller's
-/// groups. Slice 4a renders the list, exposes "Nuevo grupo" + "Cerrar
-/// sesión", and refreshes via `GroupsStore.refresh()`. Row taps are a
-/// no-op until slice 4b lands the group home view.
+/// groups. Renders the list, hosts "Nuevo grupo" + "Tengo código" +
+/// "Cerrar sesión", and refreshes via `GroupsStore.refresh()`. Row taps
+/// push `GroupHomeView` onto the navigation stack.
 struct GroupListView: View {
     let container: DependencyContainer
 
     @State private var isShowingCreateSheet: Bool = false
+    @State private var isShowingAcceptSheet: Bool = false
 
     var body: some View {
         List {
@@ -53,19 +54,33 @@ struct GroupListView: View {
                 } else {
                     Section {
                         ForEach(container.groupsStore.groups) { group in
-                            GroupRow(group: group)
+                            NavigationLink(value: group) {
+                                GroupRow(group: group)
+                            }
                         }
                     }
                 }
             }
         }
         .navigationTitle("Mis grupos")
+        .navigationDestination(for: GroupListItem.self) { group in
+            GroupHomeView(container: container, group: group)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isShowingCreateSheet = true
+                Menu {
+                    Button {
+                        isShowingCreateSheet = true
+                    } label: {
+                        Label("Crear grupo", systemImage: "plus")
+                    }
+                    Button {
+                        isShowingAcceptSheet = true
+                    } label: {
+                        Label("Tengo un código", systemImage: "ticket")
+                    }
                 } label: {
-                    Label("Nuevo", systemImage: "plus")
+                    Label("Agregar", systemImage: "plus")
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
@@ -89,6 +104,12 @@ struct GroupListView: View {
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateGroupView(container: container) {
                 isShowingCreateSheet = false
+                Task { await container.groupsStore.refresh() }
+            }
+        }
+        .sheet(isPresented: $isShowingAcceptSheet) {
+            AcceptInviteSheet(container: container) { _ in
+                isShowingAcceptSheet = false
                 Task { await container.groupsStore.refresh() }
             }
         }
