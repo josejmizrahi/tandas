@@ -557,7 +557,7 @@ Marcar cada slice cerrado:
       - [ ] A2.b Movements + Detail + Stake/PoolCharges (espera
             `group_money_movements` RPC)
 - [x] A3 ResourceDetailView
-- [ ] A4 SanctionDetailView + AppealSanctionView
+- [x] A4 SanctionDetailView + AppealSanctionView
 - [x] A5 GroupHistoryView (commit `943667dc`)
 - [ ] A6 PersonalProfileSheet + PersonalSettingsView
 - [ ] B1 GroupSettingsView root

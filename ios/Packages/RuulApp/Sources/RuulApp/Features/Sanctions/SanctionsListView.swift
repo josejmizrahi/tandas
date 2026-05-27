@@ -5,21 +5,27 @@ import RuulCore
 /// `NavigationStack`. The "Emitir" toolbar action opens the issue
 /// sheet via the shared store flag.
 public struct SanctionsListView: View {
+    let container: DependencyContainer
     @Bindable var store: SanctionsStore
     @Bindable var membersStore: MembersStore
     let groupId: UUID
+    let myMembershipId: UUID
     /// Optional handler invoked when the user swipes "Disputar" on a
     /// row. Lets the parent open a `DisputeSanctionSheet` without
     /// coupling this view to the disputes store.
     let onDispute: ((UUID) -> Void)?
 
-    public init(store: SanctionsStore,
+    public init(container: DependencyContainer,
+                store: SanctionsStore,
                 membersStore: MembersStore,
                 groupId: UUID,
+                myMembershipId: UUID,
                 onDispute: ((UUID) -> Void)? = nil) {
+        self.container = container
         self.store = store
         self.membersStore = membersStore
         self.groupId = groupId
+        self.myMembershipId = myMembershipId
         self.onDispute = onDispute
     }
 
@@ -46,6 +52,14 @@ public struct SanctionsListView: View {
                 store: store,
                 membersStore: membersStore,
                 groupId: groupId
+            )
+        }
+        .navigationDestination(for: GroupSanction.self) { sanction in
+            SanctionDetailView(
+                container: container,
+                groupId: groupId,
+                myMembershipId: myMembershipId,
+                sanction: sanction
             )
         }
         .task {
@@ -89,22 +103,24 @@ public struct SanctionsListView: View {
                 .padding(.vertical, 6)
             } else {
                 ForEach(store.sanctions) { sanction in
-                    SanctionRowView(sanction: sanction)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if let onDispute,
-                               sanction.status != .disputed,
-                               sanction.status.isOpen {
-                                Button {
-                                    onDispute(sanction.id)
-                                } label: {
-                                    Label(
-                                        String(localized: L10n.Disputes.openButton),
-                                        systemImage: "scale.3d"
-                                    )
-                                }
-                                .tint(.orange)
+                    NavigationLink(value: sanction) {
+                        SanctionRowView(sanction: sanction)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if let onDispute,
+                           sanction.status != .disputed,
+                           sanction.status.isOpen {
+                            Button {
+                                onDispute(sanction.id)
+                            } label: {
+                                Label(
+                                    String(localized: L10n.Disputes.openButton),
+                                    systemImage: "scale.3d"
+                                )
                             }
+                            .tint(.orange)
                         }
+                    }
                 }
             }
         }

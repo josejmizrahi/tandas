@@ -305,6 +305,32 @@ public enum L10n {
         public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
     }
 
+    public enum SanctionDetail {
+        public static let title           = LocalizedStringResource("sanction_detail.title",           defaultValue: "Sanción")
+        public static let infoSection     = LocalizedStringResource("sanction_detail.section.info",    defaultValue: "Información")
+        public static let targetLabel     = LocalizedStringResource("sanction_detail.target",          defaultValue: "Para")
+        public static let issuerLabel     = LocalizedStringResource("sanction_detail.issuer",          defaultValue: "Emitida por")
+        public static let reasonLabel     = LocalizedStringResource("sanction_detail.reason",          defaultValue: "Razón")
+        public static let amountLabel     = LocalizedStringResource("sanction_detail.amount",          defaultValue: "Monto")
+        public static let startsAtLabel   = LocalizedStringResource("sanction_detail.starts_at",       defaultValue: "Inicia")
+        public static let endsAtLabel     = LocalizedStringResource("sanction_detail.ends_at",         defaultValue: "Vence")
+        public static let createdAtLabel  = LocalizedStringResource("sanction_detail.created_at",      defaultValue: "Creada")
+        public static let statusLabel     = LocalizedStringResource("sanction_detail.status",          defaultValue: "Estado")
+        public static let actionsSection  = LocalizedStringResource("sanction_detail.section.actions", defaultValue: "Acciones")
+        public static let payAction       = LocalizedStringResource("sanction_detail.action.pay",      defaultValue: "Pagar multa")
+        public static let disputeAction   = LocalizedStringResource("sanction_detail.action.dispute",  defaultValue: "Disputar")
+        public static let appealAction    = LocalizedStringResource("sanction_detail.action.appeal",   defaultValue: "Apelar a voto")
+        public static let paidHint        = LocalizedStringResource("sanction_detail.hint.paid",       defaultValue: "Ya está pagada — la obligación enlazada se cerró.")
+        public static let closedHint      = LocalizedStringResource("sanction_detail.hint.closed",     defaultValue: "Esta sanción ya no está activa.")
+    }
+
+    public enum AppealSanction {
+        public static let title              = LocalizedStringResource("appeal_sanction.title",              defaultValue: "Apelar a voto")
+        public static let placeholderTitle   = LocalizedStringResource("appeal_sanction.placeholder.title",  defaultValue: "Próximamente")
+        public static let placeholderBody    = LocalizedStringResource("appeal_sanction.placeholder.body",   defaultValue: "Vas a poder llevar esta sanción a votación del grupo. La RPC aún no está disponible; mientras tanto, puedes Disputar la sanción para abrir una conversación con el emisor.")
+        public static let close              = LocalizedStringResource("appeal_sanction.close",              defaultValue: "Cerrar")
+    }
+
     public enum ResourceDetail {
         public static let title              = LocalizedStringResource("resource_detail.title",              defaultValue: "Recurso")
         public static let aboutSection       = LocalizedStringResource("resource_detail.section.about",      defaultValue: "Acerca de")

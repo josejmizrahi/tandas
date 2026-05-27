@@ -64,9 +64,11 @@ struct GroupHomeView: View {
         }
         .navigationDestination(for: SanctionsDestination.self) { _ in
             SanctionsListView(
+                container: container,
                 store: container.sanctionsStore,
                 membersStore: container.membersStore,
                 groupId: group.id,
+                myMembershipId: group.membershipId,
                 onDispute: { sanctionId in
                     container.disputesStore.beginDisputingSanction(sanctionId)
                 }
