@@ -247,13 +247,17 @@ struct TandasApp: App {
         log.info("Sentry active — release=ruul-ios@\(shortVersion)+\(buildNumber) dsn=…\(dsnTail)")
     }
 
-    /// Foundation iOS rebuild shell (slice 4+). Activated only in DEBUG
-    /// builds with the `-FoundationShell` launch argument. Lets the new
-    /// SwiftUI surface coexist with the legacy `AuthGate`/RuulFeatures
-    /// shell until the cutover lands.
+    /// Foundation iOS rebuild shell (slice 4+). DEBUG builds boot the new
+    /// SwiftUI surface by default so tap-to-launch from SpringBoard goes
+    /// straight to `RuulAppShell`. Pass `-LegacyShell` to opt back into
+    /// the old `AuthGate`/RuulFeatures stack for comparison. Release
+    /// builds still use legacy until the cutover lands.
     private static var useFoundationShell: Bool {
         #if DEBUG
-        return ProcessInfo.processInfo.arguments.contains("-FoundationShell")
+        if ProcessInfo.processInfo.arguments.contains("-LegacyShell") {
+            return false
+        }
+        return true
         #else
         return false
         #endif
