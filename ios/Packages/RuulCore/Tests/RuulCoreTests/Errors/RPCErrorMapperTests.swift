@@ -117,6 +117,13 @@ struct RPCErrorMapperTests {
         #expect(RPCErrorMapper.parse("username already taken") == .usernameAlreadyTaken)
     }
 
+    @Test("purpose raises")
+    func purposeRaises() {
+        #expect(RPCErrorMapper.parse("invalid purpose kind") == .invalidPurposeKind)
+        #expect(RPCErrorMapper.parse("invalid purpose visibility") == .invalidPurposeVisibility)
+        #expect(RPCErrorMapper.parse("purpose body required") == .purposeBodyRequired)
+    }
+
     @Test("unknown raises fall through to .unknown(message:)")
     func unknownRaise() {
         let raw = "Database connection lost"

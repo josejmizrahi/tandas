@@ -23,6 +23,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case listMemberPermissions(groupId: UUID, userId: UUID?)
         case groupMembers(groupId: UUID)
         case groupMembershipBoundary(groupId: UUID)
+        case groupPurposesActive(groupId: UUID)
+        case setGroupPurpose(input: SetGroupPurposeInput)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -50,6 +52,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var listMemberPermissionsStub: Result<[String], RuulError> = .success([])
     private var groupMembersStub: Result<[MemberListItem], RuulError> = .success([])
     private var groupMembershipBoundaryStub: Result<[MembershipBoundaryItem], RuulError> = .success([])
+    private var groupPurposesActiveStub: Result<[GroupPurpose], RuulError> = .success([])
+    private var setGroupPurposeStub: Result<GroupPurpose, RuulError> = .success(
+        GroupPurpose(id: UUID(), groupId: UUID(), kind: .declared, body: "")
+    )
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -70,6 +76,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setListMemberPermissionsStub(_ stub: Result<[String], RuulError>) { listMemberPermissionsStub = stub }
     func setGroupMembersStub(_ stub: Result<[MemberListItem], RuulError>) { groupMembersStub = stub }
     func setGroupMembershipBoundaryStub(_ stub: Result<[MembershipBoundaryItem], RuulError>) { groupMembershipBoundaryStub = stub }
+    func setGroupPurposesActiveStub(_ stub: Result<[GroupPurpose], RuulError>) { groupPurposesActiveStub = stub }
+    func setSetGroupPurposeStub(_ stub: Result<GroupPurpose, RuulError>) { setGroupPurposeStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -138,6 +146,16 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] {
         recorded.append(.groupMembershipBoundary(groupId: groupId))
         return try groupMembershipBoundaryStub.get()
+    }
+
+    func groupPurposesActive(groupId: UUID) async throws -> [GroupPurpose] {
+        recorded.append(.groupPurposesActive(groupId: groupId))
+        return try groupPurposesActiveStub.get()
+    }
+
+    func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose {
+        recorded.append(.setGroupPurpose(input: input))
+        return try setGroupPurposeStub.get()
     }
 
     func myProfile() async throws -> Profile {

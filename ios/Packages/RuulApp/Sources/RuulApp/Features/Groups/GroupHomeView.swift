@@ -20,6 +20,7 @@ struct GroupHomeView: View {
     var body: some View {
         List {
             summarySection
+            purposeSection
             moneySection
             membersSection
             actionsSection
@@ -48,6 +49,10 @@ struct GroupHomeView: View {
         .task {
             await container.currentGroupStore.setGroup(group)
             await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
+            await container.purposeStore.refreshIfNeeded(groupId: group.id)
+        }
+        .sheet(isPresented: purposeSheetBinding) {
+            EditPurposeView(store: container.purposeStore, groupId: group.id)
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -136,6 +141,13 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var purposeSection: some View {
+        Section(L10n.Purpose.title) {
+            GroupPurposeCard(store: container.purposeStore)
+        }
+    }
+
+    @ViewBuilder
     private var moneySection: some View {
         Section("Dinero") {
             MoneyBlock(container: container)
@@ -188,6 +200,16 @@ struct GroupHomeView: View {
     /// `NavigationStack` (declared on `RuulAppShell`) can push the
     /// list view via `NavigationLink(value:)`.
     private struct MembersDestination: Hashable {}
+
+    /// Bridges the `isEditPresented` flag on the shared PurposeStore
+    /// to the View's `.sheet(isPresented:)` API (mirrors the same
+    /// pattern used by GroupListView for the profile sheet).
+    private var purposeSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.purposeStore.isEditPresented },
+            set: { container.purposeStore.isEditPresented = $0 }
+        )
+    }
 
     private func leave() async {
         do {

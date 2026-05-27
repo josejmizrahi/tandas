@@ -276,6 +276,35 @@ public struct GroupMembershipBoundaryParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+// MARK: - Purpose
+
+public struct GroupPurposesActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct SetGroupPurposeInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pKind: String
+    public let pBody: String
+    public let pVisibility: String
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId    = "p_group_id"
+        case pKind       = "p_kind"
+        case pBody       = "p_body"
+        case pVisibility = "p_visibility"
+    }
+
+    public init(pGroupId: UUID, pKind: String, pBody: String, pVisibility: String) {
+        self.pGroupId = pGroupId
+        self.pKind = pKind
+        self.pBody = pBody
+        self.pVisibility = pVisibility
+    }
+}
+
 // MARK: - Profile
 
 /// Params for `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)`.

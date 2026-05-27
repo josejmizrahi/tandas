@@ -43,6 +43,27 @@ public enum L10n {
         public static let displayNameRequired   = LocalizedStringResource("profile.display_name.required",   defaultValue: "Escribe tu nombre.")
     }
 
+    public enum Purpose {
+        public static let title              = LocalizedStringResource("purpose.title",                defaultValue: "Propósito")
+        public static let emptyTitle         = LocalizedStringResource("purpose.empty.title",          defaultValue: "Sin propósito todavía")
+        public static let emptyDescription   = LocalizedStringResource("purpose.empty.description",    defaultValue: "Define para qué existe este grupo.")
+        public static let editTitle          = LocalizedStringResource("purpose.edit.title",           defaultValue: "Editar propósito")
+        public static let addButton          = LocalizedStringResource("purpose.add",                  defaultValue: "Agregar")
+        public static let save               = LocalizedStringResource("purpose.save",                 defaultValue: "Guardar")
+        public static let cancel             = LocalizedStringResource("purpose.cancel",               defaultValue: "Cancelar")
+        public static let kindLabel          = LocalizedStringResource("purpose.kind.label",           defaultValue: "Tipo")
+        public static let declaredLabel      = LocalizedStringResource("purpose.declared.label",       defaultValue: "Declarado")
+        public static let declaredSubtitle   = LocalizedStringResource("purpose.declared.subtitle",    defaultValue: "Lo que decimos que somos.")
+        public static let operativeLabel     = LocalizedStringResource("purpose.operative.label",      defaultValue: "Operativo")
+        public static let operativeSubtitle  = LocalizedStringResource("purpose.operative.subtitle",   defaultValue: "Cómo lo hacemos cada vez.")
+        public static let emotionalLabel     = LocalizedStringResource("purpose.emotional.label",      defaultValue: "Emocional")
+        public static let emotionalSubtitle  = LocalizedStringResource("purpose.emotional.subtitle",   defaultValue: "Cómo nos hace sentir.")
+        public static let bodyLabel          = LocalizedStringResource("purpose.body.label",           defaultValue: "Propósito")
+        public static let bodyPlaceholder    = LocalizedStringResource("purpose.body.placeholder",     defaultValue: "Escribe el propósito…")
+        public static let visibilityLabel    = LocalizedStringResource("purpose.visibility.label",     defaultValue: "Visibilidad")
+        public static let bodyRequired       = LocalizedStringResource("purpose.body.required",        defaultValue: "Escribe el propósito.")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")

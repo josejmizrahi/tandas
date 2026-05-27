@@ -165,6 +165,31 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Purpose
+
+    public func groupPurposesActive(groupId: UUID) async throws -> [GroupPurpose] {
+        let params = GroupPurposesActiveParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_purposes_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose {
+        do {
+            return try await client
+                .rpc("set_group_purpose", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

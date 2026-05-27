@@ -31,6 +31,11 @@ public enum CanonicalBackendError: Sendable, Equatable {
     case displayNameRequired
     case usernameAlreadyTaken
 
+    // Purpose
+    case invalidPurposeKind
+    case invalidPurposeVisibility
+    case purposeBodyRequired
+
     // Anything we haven't classified yet
     case unknown(message: String)
 }

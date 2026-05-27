@@ -53,6 +53,17 @@ public protocol RuulRPCClient: Sendable {
     /// invites. Same auth rules as `groupMembers`.
     func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem]
 
+    // MARK: - Purpose
+
+    /// `group_purposes_active(p_group_id)` — returns the group's
+    /// active purposes (declared/operative/emotional). Any active
+    /// member can read.
+    func groupPurposesActive(groupId: UUID) async throws -> [GroupPurpose]
+
+    /// `set_group_purpose(p_group_id, p_kind, p_body, p_visibility)` —
+    /// upsert by kind. Requires `purpose.set` permission.
+    func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

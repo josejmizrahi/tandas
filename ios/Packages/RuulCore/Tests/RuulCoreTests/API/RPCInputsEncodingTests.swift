@@ -293,4 +293,28 @@ struct RPCInputsEncodingTests {
         #expect(dict.keys.sorted() == ["p_group_id"])
         #expect(dict["p_group_id"] as? String == id.uuidString)
     }
+
+    // MARK: - purpose
+
+    @Test("group_purposes_active encodes p_group_id only")
+    func groupPurposesActiveEncoding() throws {
+        let id = UUID()
+        let dict = try encode(GroupPurposesActiveParams(groupId: id))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+        #expect(dict["p_group_id"] as? String == id.uuidString)
+    }
+
+    @Test("set_group_purpose encodes all p_* keys")
+    func setGroupPurposeEncoding() throws {
+        let id = UUID()
+        let input = SetGroupPurposeInput(
+            pGroupId: id, pKind: "declared", pBody: "Jugar poker", pVisibility: "members"
+        )
+        let dict = try encode(input)
+        #expect(dict.keys.sorted() == ["p_body", "p_group_id", "p_kind", "p_visibility"])
+        #expect(dict["p_group_id"] as? String == id.uuidString)
+        #expect(dict["p_kind"] as? String == "declared")
+        #expect(dict["p_body"] as? String == "Jugar poker")
+        #expect(dict["p_visibility"] as? String == "members")
+    }
 }

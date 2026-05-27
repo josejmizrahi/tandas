@@ -66,6 +66,12 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(message: "Escribe tu nombre.")
         case .usernameAlreadyTaken:
             return UserFacingError(title: "Usuario ocupado", message: "Ese usuario ya está ocupado.")
+        case .invalidPurposeKind:
+            return UserFacingError(message: "Tipo de propósito inválido.")
+        case .invalidPurposeVisibility:
+            return UserFacingError(message: "Visibilidad inválida.")
+        case .purposeBodyRequired:
+            return UserFacingError(message: "Escribe el propósito.")
         case .unknown(let message):
             return UserFacingError(message: message)
         }

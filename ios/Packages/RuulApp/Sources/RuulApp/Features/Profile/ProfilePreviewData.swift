@@ -115,4 +115,8 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] { [] }
     func groupMembers(groupId: UUID) async throws -> [MemberListItem] { [] }
     func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] { [] }
+    func groupPurposesActive(groupId: UUID) async throws -> [GroupPurpose] { [] }
+    func setGroupPurpose(_ input: SetGroupPurposeInput) async throws -> GroupPurpose {
+        GroupPurpose(id: UUID(), groupId: input.pGroupId, kind: .declared, body: input.pBody)
+    }
 }
