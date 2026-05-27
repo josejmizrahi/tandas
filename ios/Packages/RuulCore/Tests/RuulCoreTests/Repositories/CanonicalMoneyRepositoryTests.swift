@@ -91,7 +91,14 @@ struct CanonicalMoneyRepositoryTests {
     @Test("obligationSummary returns the rows the RPC returned")
     func obligationSummary() async throws {
         let mock = MockRuulRPCClient()
-        let row = ObligationSummary(id: UUID(), kind: "expense_share", amountOutstanding: 33, owedToKind: "member", owedToLabel: "Ana")
+        let row = ObligationSummary(
+            id: UUID(),
+            kind: "expense_share",
+            amountOutstanding: 33,
+            owedToKind: "member",
+            owedToMembershipId: UUID(),
+            owedToLabel: "Ana"
+        )
         await mock.setMemberObligationSummaryStub(.success([row]))
         let repo = CanonicalMoneyRepository(rpc: mock)
 
