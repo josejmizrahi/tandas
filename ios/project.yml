@@ -34,21 +34,11 @@ settings:
     Release:
       DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
 packages:
-  Supabase:
-    url: https://github.com/supabase/supabase-swift
-    from: "2.20.0"
-  SnapshotTesting:
-    url: https://github.com/pointfreeco/swift-snapshot-testing
-    from: "1.17.0"
   Sentry:
     url: https://github.com/getsentry/sentry-cocoa
     from: "8.40.0"
-  RuulUI:
-    path: Packages/RuulUI
   RuulCore:
     path: Packages/RuulCore
-  RuulFeatures:
-    path: Packages/RuulFeatures
   RuulApp:
     path: Packages/RuulApp
 targets:
@@ -63,16 +53,10 @@ targets:
     resources:
       - path: Tandas/Resources/Assets.xcassets
     dependencies:
-      - package: Supabase
-        product: Supabase
       - package: Sentry
         product: Sentry
-      - package: RuulUI
-        product: RuulUI
       - package: RuulCore
         product: RuulCore
-      - package: RuulFeatures
-        product: RuulFeatures
       - package: RuulApp
         product: RuulApp
     settings:
@@ -85,14 +69,8 @@ targets:
     sources: TandasTests
     dependencies:
       - target: Tandas
-      - package: SnapshotTesting
-        product: SnapshotTesting
-      - package: RuulUI
-        product: RuulUI
       - package: RuulCore
         product: RuulCore
-      - package: RuulFeatures
-        product: RuulFeatures
     settings:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"
