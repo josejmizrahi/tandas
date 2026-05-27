@@ -43,6 +43,11 @@ public protocol RuulRPCClient: Sendable {
 
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String]
 
+    /// `group_members(p_group_id) returns table(...)`. Pre-joined rows
+    /// (membership × profile × roles) for the Members surface. RPC
+    /// validates the caller is an active member of the group.
+    func groupMembers(groupId: UUID) async throws -> [MemberListItem]
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

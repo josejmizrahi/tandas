@@ -262,6 +262,14 @@ public struct MemberObligationSummaryParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Members
+
+public struct GroupMembersParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
 // MARK: - Profile
 
 /// Params for `update_my_profile(p_display_name, p_username, p_avatar_url, p_bio)`.

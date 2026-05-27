@@ -33,6 +33,7 @@ public final class DependencyContainer {
     public let inviteRepository: CanonicalInviteRepository
     public let moneyRepository: CanonicalMoneyRepository
     public let profileRepository: CanonicalProfileRepository
+    public let membersRepository: CanonicalMembersRepository
 
     // MARK: - Stores
 
@@ -41,6 +42,7 @@ public final class DependencyContainer {
     public let currentGroupStore: CurrentGroupStore
     public let moneyStore: MoneyStore
     public let profileStore: ProfileStore
+    public let membersStore: MembersStore
 
     public init() {
         let client = SupabaseEnvironment.shared
@@ -54,15 +56,18 @@ public final class DependencyContainer {
         self.rpcClient = rpc
 
         self.groupRepository = CanonicalGroupRepository(rpc: rpc)
-        self.inviteRepository = CanonicalInviteRepository(rpc: rpc)
+        let invites = CanonicalInviteRepository(rpc: rpc)
+        self.inviteRepository = invites
         self.moneyRepository = CanonicalMoneyRepository(rpc: rpc)
         self.profileRepository = CanonicalProfileRepository(rpc: rpc)
+        self.membersRepository = CanonicalMembersRepository(rpc: rpc, invites: invites)
 
         self.sessionStore = SessionStore(authService: auth)
         self.groupsStore = GroupsStore(repository: groupRepository)
         self.currentGroupStore = CurrentGroupStore(repository: groupRepository)
         self.moneyStore = MoneyStore(repository: moneyRepository)
         self.profileStore = ProfileStore(repository: profileRepository)
+        self.membersStore = MembersStore(repository: membersRepository)
     }
 
     /// Kicks off the session subscription so the shell can observe state

@@ -160,6 +160,19 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupMembers(groupId: UUID) async throws -> [MemberListItem] {
+        let params = GroupMembersParams(groupId: groupId)
+        do {
+            let rows: [GroupMemberRow] = try await client
+                .rpc("group_members", params: params)
+                .execute()
+                .value
+            return rows.map { $0.toDomain() }
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

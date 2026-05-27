@@ -1,14 +1,14 @@
 import Foundation
 import Observation
 
-/// `@MainActor` store for the Members surface. Slice 6 ships only the
-/// UI scaffolding — `refresh` / `inviteMember` are intentional no-op
-/// stubs awaiting `CanonicalMembersRepository` (next slice). The
-/// observable state is real and drives the SwiftUI bindings (search,
-/// invite form, sheet presentation) end-to-end.
+/// `@MainActor` store for the Members surface. Backed by
+/// `CanonicalMembersRepository` — the list comes from the canonical
+/// `group_members(p_group_id)` RPC and invites route through
+/// `invite_member` (wrapped by the same repo).
 ///
-/// Keeps the legacy `LoadPhase<Value>` decoupled — Foundation stores
-/// use the simpler `StorePhase` introduced in slice 2.
+/// Foundation scope: no admin actions, no role editing, no realtime.
+/// The store keeps its own search/invite-form state so the Views stay
+/// dumb.
 @MainActor
 @Observable
 public final class MembersStore {
@@ -28,7 +28,23 @@ public final class MembersStore {
     public var inviteMembershipType: MembershipType = .member
     public private(set) var errorMessage: String?
 
+    // MARK: - Dependencies
+
+    private let repository: CanonicalMembersRepository?
+    private var loadedGroupId: UUID?
+
+    /// Production initialiser — injects a real repository.
+    public init(repository: CanonicalMembersRepository) {
+        self.repository = repository
+        self.members = []
+    }
+
+    /// Preview/testing initialiser — seeds the store with stub rows so
+    /// SwiftUI previews and unit tests don't have to spin up a repo.
+    /// `refresh` becomes a no-op (just re-asserts `.loaded`) when no
+    /// repository is wired.
     public init(initialMembers: [MemberListItem] = []) {
+        self.repository = nil
         self.members = initialMembers
         if !initialMembers.isEmpty {
             self.phase = .loaded
@@ -37,8 +53,6 @@ public final class MembersStore {
 
     // MARK: - Derived state
 
-    /// `members` filtered by `searchText`. Empty query → unmodified.
-    /// Case- and diacritic-insensitive substring match on `displayName`.
     public var filteredMembers: [MemberListItem] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return members }
@@ -47,9 +61,6 @@ public final class MembersStore {
         }
     }
 
-    /// Bucketed view of `filteredMembers`, ordered per
-    /// `MemberSectionKind.renderOrder`. Empty kinds are skipped so the
-    /// caller can iterate sections directly.
     public var sections: [MemberSection] {
         var byKind: [MemberSectionKind: [MemberListItem]] = [:]
         for member in filteredMembers {
@@ -61,8 +72,6 @@ public final class MembersStore {
         }
     }
 
-    /// At least one of email or phone must be present; whitespace-only
-    /// values don't count.
     public var canSubmitInvite: Bool {
         let email = inviteEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         let phone = invitePhone.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -71,33 +80,70 @@ public final class MembersStore {
 
     // MARK: - Intents
 
-    /// Forces a reload. Real backend wiring lands when
-    /// `CanonicalMembersRepository` ships; for now this is a no-op that
-    /// preserves the existing `members` array and only nudges `phase`
-    /// for visual feedback.
+    /// Force-refetches the member list. Sets `.loading` only when there
+    /// is no prior data so a re-pull doesn't flash the placeholder rows.
     public func refresh(groupId: UUID) async {
-        if members.isEmpty { phase = .loading }
-        // TODO: replace with await repository.listMembers(groupId:) once
-        // the canonical members RPC lands.
-        phase = .loaded
-    }
-
-    /// Calls `refresh` only when the store has never loaded. Use this
-    /// from `.task` modifiers to avoid stomping a freshly loaded list.
-    public func refreshIfNeeded(groupId: UUID) async {
-        if case .idle = phase {
-            await refresh(groupId: groupId)
+        guard let repository else {
+            // Preview/test mode: just settle into .loaded without
+            // touching the network.
+            phase = .loaded
+            loadedGroupId = groupId
+            return
+        }
+        if members.isEmpty || loadedGroupId != groupId {
+            phase = .loading
+        }
+        do {
+            let fetched = try await repository.listMembers(groupId: groupId)
+            members = fetched
+            phase = .loaded
+            loadedGroupId = groupId
+            errorMessage = nil
+        } catch {
+            let message = UserFacingError.from(error).message
+            errorMessage = message
+            phase = .failed(message: message)
         }
     }
 
-    /// Stubbed invite submission. Returns true and clears the form so
-    /// the sheet UX works end-to-end against preview data; the real
-    /// implementation will route through `CanonicalInviteRepository`.
+    /// `.task`-friendly loader: fetches the first time, no-ops on
+    /// re-entry for the same group, refetches if the group changes.
+    public func refreshIfNeeded(groupId: UUID) async {
+        if loadedGroupId == groupId, !members.isEmpty {
+            if case .idle = phase { phase = .loaded }
+            return
+        }
+        await refresh(groupId: groupId)
+    }
+
+    /// Sends the invite via the repository. Returns `true` on success
+    /// so the sheet can dismiss; on failure leaves the form intact and
+    /// surfaces `errorMessage` for the View to display.
     public func inviteMember(groupId: UUID) async -> Bool {
         guard canSubmitInvite else { return false }
-        // TODO: await CanonicalInviteRepository.inviteMember(...)
-        clearInviteForm()
-        return true
+        guard let repository else {
+            // Preview mode — pretend success so the sheet UX is testable.
+            clearInviteForm()
+            return true
+        }
+        let email = inviteEmail.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+        let phone = invitePhone.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+        let message = inviteMessage.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+        do {
+            _ = try await repository.inviteMember(
+                groupId: groupId,
+                email: email,
+                phone: phone,
+                membershipType: inviteMembershipType,
+                message: message
+            )
+            clearInviteForm()
+            await refresh(groupId: groupId)
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
     }
 
     public func clearInviteForm() {
@@ -105,6 +151,10 @@ public final class MembersStore {
         invitePhone = ""
         inviteMessage = ""
         inviteMembershipType = .member
+        errorMessage = nil
+    }
+
+    public func clearError() {
         errorMessage = nil
     }
 
@@ -121,4 +171,8 @@ public final class MembersStore {
             return .suspended
         }
     }
+}
+
+private extension String {
+    var nilIfBlank: String? { isEmpty ? nil : self }
 }

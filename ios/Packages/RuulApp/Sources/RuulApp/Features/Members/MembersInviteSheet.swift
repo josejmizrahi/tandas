@@ -66,6 +66,13 @@ public struct MembersInviteSheet: View {
                 } header: {
                     Text(L10n.Invite.messageSection)
                 }
+
+                if let message = store.errorMessage {
+                    Section {
+                        Label(message, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                    }
+                }
             }
             .navigationTitle(L10n.Invite.title)
             .navigationBarTitleDisplayMode(.inline)

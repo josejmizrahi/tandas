@@ -275,4 +275,14 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_avatar_url"] == nil)
         #expect(dict["p_bio"] == nil)
     }
+
+    // MARK: - group_members
+
+    @Test("group_members encodes p_group_id only")
+    func groupMembersEncoding() throws {
+        let id = UUID()
+        let dict = try encode(GroupMembersParams(groupId: id))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+        #expect(dict["p_group_id"] as? String == id.uuidString)
+    }
 }

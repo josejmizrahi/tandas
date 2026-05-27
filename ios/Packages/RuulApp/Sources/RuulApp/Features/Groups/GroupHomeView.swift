@@ -21,10 +21,14 @@ struct GroupHomeView: View {
         List {
             summarySection
             moneySection
+            membersSection
             actionsSection
         }
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: MembersDestination.self) { _ in
+            MembersListView(store: container.membersStore, groupId: group.id)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -139,6 +143,20 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
+    private var membersSection: some View {
+        Section {
+            NavigationLink(value: MembersDestination()) {
+                Label {
+                    let count = container.currentGroupStore.summary?.memberCount
+                    Text(count.map { "\($0) miembros" } ?? "Miembros")
+                } icon: {
+                    Image(systemName: "person.2")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private var actionsSection: some View {
         Section {
             Button {
@@ -165,6 +183,11 @@ struct GroupHomeView: View {
         await container.currentGroupStore.refresh()
         await container.moneyStore.refresh(groupId: group.id, membershipId: group.membershipId)
     }
+
+    /// `Hashable` token for the Members destination so the existing
+    /// `NavigationStack` (declared on `RuulAppShell`) can push the
+    /// list view via `NavigationLink(value:)`.
+    private struct MembersDestination: Hashable {}
 
     private func leave() async {
         do {

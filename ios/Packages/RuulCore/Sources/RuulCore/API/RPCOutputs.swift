@@ -142,3 +142,61 @@ struct MembershipRow: Decodable {
         case groupId = "group_id"
     }
 }
+
+// MARK: - group_members(p_group_id)
+
+/// Wire row from `public.group_members(p_group_id) returns table(...)`.
+/// Kept as a plain DTO so the wire-level concerns (string avatar_url
+/// that may not parse as URL, numeric/text status) stay isolated from
+/// the domain `MemberListItem`.
+struct GroupMemberRow: Decodable {
+    let membershipId: UUID
+    let userId: UUID?
+    let displayName: String
+    let username: String?
+    let avatarUrl: String?
+    let status: String
+    let membershipType: String
+    let roleNames: [String]
+    let joinedAt: Date?
+    let isCurrentUser: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case membershipId   = "membership_id"
+        case userId         = "user_id"
+        case displayName    = "display_name"
+        case username
+        case avatarUrl      = "avatar_url"
+        case status
+        case membershipType = "membership_type"
+        case roleNames      = "role_names"
+        case joinedAt       = "joined_at"
+        case isCurrentUser  = "is_current_user"
+    }
+}
+
+extension GroupMemberRow {
+    /// Maps the wire row into the domain model the Members surface
+    /// consumes. Unknown enum values fall back to safe defaults so a
+    /// new status from the backend never crashes the UI.
+    func toDomain() -> MemberListItem {
+        let parsedStatus = MembershipStatus(rawValue: status) ?? .active
+        let parsedType = MembershipType(rawValue: membershipType) ?? .member
+        let parsedURL: URL? = {
+            guard let raw = avatarUrl?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !raw.isEmpty else { return nil }
+            return URL(string: raw)
+        }()
+        return MemberListItem(
+            id: membershipId,
+            userId: userId,
+            displayName: displayName,
+            avatarURL: parsedURL,
+            status: parsedStatus,
+            membershipType: parsedType,
+            roleNames: roleNames,
+            joinedAt: joinedAt,
+            isCurrentUser: isCurrentUser
+        )
+    }
+}
