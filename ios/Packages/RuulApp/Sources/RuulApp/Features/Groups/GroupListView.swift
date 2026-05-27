@@ -38,18 +38,24 @@ struct GroupListView: View {
             case .loaded:
                 if container.groupsStore.groups.isEmpty {
                     Section {
-                        ContentUnavailableView {
-                            Label("Aún no tienes grupos", systemImage: "person.3")
-                        } description: {
+                        VStack(spacing: 12) {
+                            Image(systemName: "person.3")
+                                .font(.system(size: 36))
+                                .foregroundStyle(.secondary)
+                            Text("Aún no tienes grupos")
+                                .font(.headline)
                             Text("Crea uno nuevo para empezar a coordinar con tu gente.")
-                        } actions: {
-                            Button {
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button("Crear grupo") {
                                 isShowingCreateSheet = true
-                            } label: {
-                                Label("Crear grupo", systemImage: "plus")
                             }
                             .buttonStyle(.glassProminent)
+                            .padding(.top, 4)
                         }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
                     }
                 } else {
                     Section {
