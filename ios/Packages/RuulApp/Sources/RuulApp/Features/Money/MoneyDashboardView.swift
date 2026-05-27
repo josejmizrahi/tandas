@@ -169,10 +169,21 @@ struct MoneyDashboardView: View {
     }
 
     private var monetarySanctionsToPay: [GroupSanction] {
-        container.sanctionsStore.sanctions.filter { sanction in
-            sanction.targetMembershipId == myMembershipId
-                && sanction.kind == .monetary
-                && sanction.status.isOpen
+        let openObligationIds = Set(container.moneyStore.obligations.map(\.id))
+        return container.sanctionsStore.sanctions.filter { sanction in
+            guard sanction.targetMembershipId == myMembershipId,
+                  sanction.kind == .monetary,
+                  sanction.status.isOpen
+            else { return false }
+            // `group_sanctions_active` keeps a row in `.active` even after
+            // its linked obligation is settled — so cross-reference with
+            // the caller's open obligations. Sanctions without a linked
+            // obligation row (legacy/unusual) stay visible; sanctions
+            // whose obligation is no longer outstanding drop out.
+            if let oid = sanction.obligationId {
+                return openObligationIds.contains(oid)
+            }
+            return true
         }
     }
 
