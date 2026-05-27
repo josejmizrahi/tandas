@@ -137,6 +137,27 @@ public struct RecordExpenseParams: Encodable, Sendable {
         self.pMandateId = nil
         self.pClientId = clientId
     }
+
+    /// Emits every `p_*` key explicitly; nil Optionals encode as JSON
+    /// `null`. The dev `record_expense` has REQUIRED positional args
+    /// (no DEFAULT) for `p_resource_id`, so omitting the key breaks
+    /// PostgREST overload resolution with "Could not find the function
+    /// public.record_expense(...) in the schema cache". Founder lock
+    /// §16-bis condition 3 mandates explicit null for shared-pool too.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encodeOrNil(pResourceId, forKey: .pResourceId)
+        try c.encode(pAmount, forKey: .pAmount)
+        try c.encode(pUnit, forKey: .pUnit)
+        try c.encode(pPaidByMembershipId, forKey: .pPaidByMembershipId)
+        try c.encodeOrNil(pDescription, forKey: .pDescription)
+        try c.encode(pSplitMode, forKey: .pSplitMode)
+        try c.encodeOrNil(pSplitBreakdown, forKey: .pSplitBreakdown)
+        try c.encode(pInKind, forKey: .pInKind)
+        try c.encodeOrNil(pMandateId, forKey: .pMandateId)
+        try c.encodeOrNil(pClientId, forKey: .pClientId)
+    }
 }
 
 public struct RecordSettlementParams: Encodable, Sendable {
@@ -172,6 +193,38 @@ public struct RecordSettlementParams: Encodable, Sendable {
         self.pNotes = draft.notes
         self.pMandateId = nil
         self.pClientId = clientId
+    }
+
+    /// See `RecordExpenseParams.encode(to:)` — same rationale: the dev
+    /// `record_settlement` requires `p_paid_to_membership_id` even when
+    /// `paid_to_kind = 'pool'`, so nil must serialise as JSON `null`.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pPaidByMembershipId, forKey: .pPaidByMembershipId)
+        try c.encodeOrNil(pPaidToMembershipId, forKey: .pPaidToMembershipId)
+        try c.encode(pPaidToKind, forKey: .pPaidToKind)
+        try c.encode(pAmount, forKey: .pAmount)
+        try c.encode(pUnit, forKey: .pUnit)
+        try c.encodeOrNil(pNotes, forKey: .pNotes)
+        try c.encodeOrNil(pMandateId, forKey: .pMandateId)
+        try c.encodeOrNil(pClientId, forKey: .pClientId)
+    }
+}
+
+// MARK: - Helpers
+
+extension KeyedEncodingContainer {
+    /// Always emits the key. When `value` is `nil`, encodes JSON `null`
+    /// (via `encodeNil`) rather than omitting the key. Used by canonical
+    /// params whose backend signature treats omitted keys differently
+    /// from explicit nulls.
+    mutating func encodeOrNil<T: Encodable>(_ value: T?, forKey key: Key) throws {
+        if let value {
+            try encode(value, forKey: key)
+        } else {
+            try encodeNil(forKey: key)
+        }
     }
 }
 
