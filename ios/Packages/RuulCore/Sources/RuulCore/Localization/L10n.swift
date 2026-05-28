@@ -352,6 +352,51 @@ public enum L10n {
         public static let reversalNotice     = LocalizedStringResource("money_movement_detail.reversal_notice",    defaultValue: "Este movimiento es una reversión de uno anterior.")
     }
 
+    public enum GroupSettings {
+        public static let title                 = LocalizedStringResource("group_settings.title",                 defaultValue: "Ajustes del grupo")
+
+        public static let foundationSection     = LocalizedStringResource("group_settings.section.foundation",    defaultValue: "Estado del grupo")
+        public static let foundationReadyHint   = LocalizedStringResource("group_settings.foundation.ready",      defaultValue: "Foundation listo — los cinco básicos están en su lugar.")
+        public static let foundationPendingHint = LocalizedStringResource("group_settings.foundation.pending",    defaultValue: "Aún falta algo de Foundation. Revísalo en Inicio.")
+        public static let foundationLoading     = LocalizedStringResource("group_settings.foundation.loading",    defaultValue: "Cargando estado…")
+
+        public static let belongingSection      = LocalizedStringResource("group_settings.section.belonging",     defaultValue: "Quién pertenece")
+        public static let boundaryPolicyRow     = LocalizedStringResource("group_settings.row.boundary_policy",   defaultValue: "Política de entrada")
+        public static let membershipTypesRow    = LocalizedStringResource("group_settings.row.membership_types",  defaultValue: "Tipos de membresía")
+        public static let rolesRow              = LocalizedStringResource("group_settings.row.roles",             defaultValue: "Roles y permisos")
+        public static let mandatesRow           = LocalizedStringResource("group_settings.row.mandates",          defaultValue: "Mandatos")
+
+        public static let organizationSection   = LocalizedStringResource("group_settings.section.organization",  defaultValue: "Cómo nos organizamos")
+        public static let purposeRow            = LocalizedStringResource("group_settings.row.purpose",           defaultValue: "Propósito")
+        public static let rulesRow              = LocalizedStringResource("group_settings.row.rules",             defaultValue: "Reglas")
+        public static let decisionRulesRow      = LocalizedStringResource("group_settings.row.decision_rules",    defaultValue: "Cómo decidimos")
+        public static let cultureRow            = LocalizedStringResource("group_settings.row.culture",           defaultValue: "Cultura")
+        public static let ritualsRow            = LocalizedStringResource("group_settings.row.rituals",           defaultValue: "Rituales")
+
+        public static let moneyResourcesSection = LocalizedStringResource("group_settings.section.money_resources", defaultValue: "Dinero y recursos")
+        public static let currencyRow           = LocalizedStringResource("group_settings.row.currency",          defaultValue: "Moneda")
+        public static let fundsPolicyRow        = LocalizedStringResource("group_settings.row.funds_policy",      defaultValue: "Política de fondos")
+        public static let sanctionsPolicyRow    = LocalizedStringResource("group_settings.row.sanctions_policy",  defaultValue: "Política de sanciones")
+
+        public static let notificationsSection  = LocalizedStringResource("group_settings.section.notifications", defaultValue: "Notificaciones")
+        public static let notificationsRow      = LocalizedStringResource("group_settings.row.notifications",     defaultValue: "Avisos del grupo")
+
+        public static let privacySection        = LocalizedStringResource("group_settings.section.privacy",       defaultValue: "Privacidad")
+        public static let privacyRow            = LocalizedStringResource("group_settings.row.privacy",           defaultValue: "Quién ve qué")
+
+        public static let dangerSection         = LocalizedStringResource("group_settings.section.danger",        defaultValue: "Zona destructiva")
+        public static let leaveRow              = LocalizedStringResource("group_settings.row.leave",             defaultValue: "Salir del grupo")
+        public static let leaveConfirmTitle     = LocalizedStringResource("group_settings.leave.confirm.title",   defaultValue: "Salir del grupo")
+        public static let leaveConfirmMessage   = LocalizedStringResource("group_settings.leave.confirm.message", defaultValue: "Dejarás de ver lo que pase aquí. Puedes volver con otra invitación.")
+        public static let leaveAction           = LocalizedStringResource("group_settings.leave.action",          defaultValue: "Salir")
+        public static let cancel                = LocalizedStringResource("group_settings.cancel",                defaultValue: "Cancelar")
+        public static let dissolveRow           = LocalizedStringResource("group_settings.row.dissolve",          defaultValue: "Cerrar grupo")
+
+        public static let comingSoonTitle       = LocalizedStringResource("group_settings.coming_soon.title",     defaultValue: "Próximamente")
+        public static let comingSoonBody        = LocalizedStringResource("group_settings.coming_soon.body",      defaultValue: "Este ajuste aterriza en un slice siguiente. Por ahora ya hay un lugar reservado para él.")
+        public static let close                 = LocalizedStringResource("group_settings.close",                 defaultValue: "Cerrar")
+    }
+
     public enum PersonalProfile {
         public static let title                 = LocalizedStringResource("personal_profile.title",                 defaultValue: "Tu cuenta")
         public static let editProfile           = LocalizedStringResource("personal_profile.edit_profile",          defaultValue: "Editar perfil")

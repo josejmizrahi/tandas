@@ -90,6 +90,9 @@ struct GroupHomeView: View {
                 myMembershipId: group.membershipId
             )
         }
+        .navigationDestination(for: GroupSettingsDestination.self) { _ in
+            GroupSettingsView(container: container, group: group)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -98,6 +101,9 @@ struct GroupHomeView: View {
                     }
                     NavigationLink(value: GroupHistoryDestination()) {
                         Label(L10n.History.menuLink, systemImage: "clock.arrow.circlepath")
+                    }
+                    NavigationLink(value: GroupSettingsDestination()) {
+                        Label(L10n.GroupSettings.title, systemImage: "gearshape")
                     }
                     Divider()
                     Button(role: .destructive) {
@@ -425,6 +431,9 @@ struct GroupHomeView: View {
 
     /// And Money (A2.a — replaces inline MoneyBlock).
     private struct MoneyDashboardDestination: Hashable {}
+
+    /// And Group Settings (B1 — Settings.app root).
+    private struct GroupSettingsDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same
