@@ -25,11 +25,16 @@ struct GroupHomeFeedView: View {
     let container: DependencyContainer
     let group: GroupListItem
 
-    // MARK: - Sheet state
+    // MARK: - Sheet + push state
 
     @State private var isShowingSettlementSheet = false
     @State private var isShowingInviteSheet = false
     @State private var pendingMemberSelection: MembershipBoundaryItem?
+    /// Drives the push from any cluster row that targets a decision
+    /// (attention.decisionNeedsVote + upcoming.decisionClosing).
+    @State private var pendingDecisionDetail: GroupDecisionSummary?
+    /// Drives the push from attention.sanctionOnMe.
+    @State private var pendingSanctionDetail: GroupSanction?
 
     var body: some View {
         List {
@@ -51,6 +56,22 @@ struct GroupHomeFeedView: View {
                 membersStore: container.membersStore,
                 groupId: group.id,
                 memberItem: item
+            )
+        }
+        .navigationDestination(item: $pendingDecisionDetail) { summary in
+            DecisionDetailView(
+                store: container.decisionsStore,
+                groupId: group.id,
+                decisionId: summary.id,
+                initial: summary
+            )
+        }
+        .navigationDestination(item: $pendingSanctionDetail) { sanction in
+            SanctionDetailView(
+                container: container,
+                groupId: group.id,
+                myMembershipId: group.membershipId,
+                sanction: sanction
             )
         }
         .navigationDestination(for: GroupHistoryDestination.self) { _ in
@@ -172,7 +193,7 @@ struct GroupHomeFeedView: View {
         if !items.isEmpty {
             Section("Próximo") {
                 ForEach(items) { item in
-                    UpcomingRow(item: item)
+                    UpcomingRow(item: item, onSelect: handleUpcomingTap)
                 }
             }
         }
@@ -303,17 +324,17 @@ struct GroupHomeFeedView: View {
 
     private func handleAttentionTap(_ item: AttentionItem) {
         switch item {
-        case .decisionNeedsVote:
-            // Push the decisions list — the caller picks the right
-            // decision there. Deeper "tap into specific decision detail"
-            // is wired through the deep-link router for v1.
-            // (Foundation slice — no programmatic NavigationPath yet.)
-            break
-        case .sanctionOnMe:
-            // Same — push to sanctions list via the Más menu / deep
-            // link for now. The cluster surfaces awareness, not a
-            // dedicated push target yet.
-            break
+        case .decisionNeedsVote(let summary):
+            pendingDecisionDetail = summary
+        case .sanctionOnMe(let sanction):
+            pendingSanctionDetail = sanction
+        }
+    }
+
+    private func handleUpcomingTap(_ item: UpcomingItem) {
+        switch item {
+        case .decisionClosing(let summary):
+            pendingDecisionDetail = summary
         }
     }
 
@@ -426,24 +447,32 @@ private struct AttentionRow: View {
 
 private struct UpcomingRow: View {
     let item: GroupHomeFeedView.UpcomingItem
+    let onSelect: (GroupHomeFeedView.UpcomingItem) -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "clock")
-                .font(.body.weight(.medium))
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(headline)
-                    .font(.body.weight(.semibold))
-                if let detail {
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        Button {
+            onSelect(item)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "clock")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(headline)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    if let detail {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                Spacer()
             }
-            Spacer()
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     private var headline: String {
