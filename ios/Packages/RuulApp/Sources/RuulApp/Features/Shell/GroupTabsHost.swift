@@ -58,7 +58,7 @@ public struct GroupTabsHost: View {
     @ViewBuilder
     private var homeTab: some View {
         NavigationStack {
-            GroupHomeView(container: container, group: group)
+            GroupHomeFeedView(container: container, group: group)
                 .toolbar { shellToolbar }
         }
         .tabItem {
