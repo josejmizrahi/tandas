@@ -443,6 +443,24 @@ public struct ValidateRuleShapeInput: Encodable, Sendable, Equatable {
     public init(shape: RuleShapePayload) { self.pShape = shape }
 }
 
+public struct GroupRuleEvaluationsParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+    public let pBefore: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pLimit   = "p_limit"
+        case pBefore  = "p_before"
+    }
+
+    public init(groupId: UUID, limit: Int = 50, before: Date? = nil) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+        self.pBefore = before
+    }
+}
+
 public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pTitle: String

@@ -32,6 +32,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case validateRuleShape(input: ValidateRuleShapeInput)
         case createEngineRule(input: CreateEngineRuleInput)
         case groupRulesEngine(groupId: UUID)
+        case groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?)
         case groupResourcesActive(groupId: UUID)
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
@@ -137,6 +138,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         CreateEngineRuleResult(ruleId: UUID(), versionId: UUID())
     )
     private var groupRulesEngineStub: Result<[EngineRule], RuulError> = .success([])
+    private var groupRuleEvaluationsStub: Result<[GroupRuleEvaluation], RuulError> = .success([])
     private var groupResourcesActiveStub: Result<[GroupResource], RuulError> = .success([])
     private var createGroupResourceStub: Result<GroupResource, RuulError> = .success(
         GroupResource(id: UUID(), groupId: UUID(), resourceType: .other, name: "")
@@ -255,6 +257,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setValidateRuleShapeStub(_ stub: Result<RuleShapeValidationResult, RuulError>) { validateRuleShapeStub = stub }
     func setCreateEngineRuleStub(_ stub: Result<CreateEngineRuleResult, RuulError>) { createEngineRuleStub = stub }
     func setGroupRulesEngineStub(_ stub: Result<[EngineRule], RuulError>) { groupRulesEngineStub = stub }
+    func setGroupRuleEvaluationsStub(_ stub: Result<[GroupRuleEvaluation], RuulError>) { groupRuleEvaluationsStub = stub }
     func setGroupResourcesActiveStub(_ stub: Result<[GroupResource], RuulError>) { groupResourcesActiveStub = stub }
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
@@ -429,6 +432,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupRulesEngine(groupId: UUID) async throws -> [EngineRule] {
         recorded.append(.groupRulesEngine(groupId: groupId))
         return try groupRulesEngineStub.get()
+    }
+
+    func groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupRuleEvaluation] {
+        recorded.append(.groupRuleEvaluations(groupId: groupId, limit: limit, before: before))
+        return try groupRuleEvaluationsStub.get()
     }
 
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

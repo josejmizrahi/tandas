@@ -132,6 +132,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         CreateEngineRuleResult(ruleId: UUID(), versionId: UUID())
     }
     func groupRulesEngine(groupId: UUID) async throws -> [EngineRule] { [] }
+    func groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupRuleEvaluation] { [] }
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
     func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
         GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)

@@ -8,13 +8,20 @@ import RuulCore
 /// don't fire by accident.
 public struct RulesListView: View {
     @Bindable var store: RulesStore
+    @Bindable var evaluationsStore: RuleEvaluationsStore
     let groupId: UUID
 
     @State private var ruleToArchive: GroupRule?
     @State private var engineRuleToArchive: EngineRule?
+    @State private var showsEvaluations: Bool = false
 
-    public init(store: RulesStore, groupId: UUID) {
+    public init(
+        store: RulesStore,
+        evaluationsStore: RuleEvaluationsStore,
+        groupId: UUID
+    ) {
         self.store = store
+        self.evaluationsStore = evaluationsStore
         self.groupId = groupId
     }
 
@@ -28,6 +35,13 @@ public struct RulesListView: View {
             await store.refresh(groupId: groupId)
         }
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showsEvaluations = true
+                } label: {
+                    Label("Disparos", systemImage: "bolt.horizontal.circle")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
@@ -44,6 +58,9 @@ public struct RulesListView: View {
                     Label(L10n.Rules.addButton, systemImage: "plus")
                 }
             }
+        }
+        .navigationDestination(isPresented: $showsEvaluations) {
+            RuleEvaluationsView(store: evaluationsStore, groupId: groupId)
         }
         .sheet(isPresented: $store.isCreatePresented) {
             EditRuleView(store: store, groupId: groupId)

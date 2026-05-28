@@ -278,6 +278,22 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupRuleEvaluations(
+        groupId: UUID,
+        limit: Int,
+        before: Date?
+    ) async throws -> [GroupRuleEvaluation] {
+        let params = GroupRuleEvaluationsParams(groupId: groupId, limit: limit, before: before)
+        do {
+            return try await client
+                .rpc("group_rule_evaluations", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Resources
 
     public func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

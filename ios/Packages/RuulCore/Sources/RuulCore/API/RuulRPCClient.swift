@@ -106,6 +106,18 @@ public protocol RuulRPCClient: Sendable {
     /// to). Active-member gate.
     func groupRulesEngine(groupId: UUID) async throws -> [EngineRule]
 
+    /// `group_rule_evaluations(p_group_id, p_limit, p_before)` —
+    /// paginated feed of engine audit rows for a group, newest first.
+    /// Each row carries the matched_predicate outcome
+    /// `{passed, reason, evaluated_value}` and `actions_emitted[]`
+    /// per-action results so iOS can render explainability without a
+    /// second hop. Active-member gate.
+    func groupRuleEvaluations(
+        groupId: UUID,
+        limit: Int,
+        before: Date?
+    ) async throws -> [GroupRuleEvaluation]
+
     // MARK: - Resources
 
     /// `group_resources_active(p_group_id)` — active resource envelopes

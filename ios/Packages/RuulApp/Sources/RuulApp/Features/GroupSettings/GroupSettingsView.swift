@@ -220,7 +220,11 @@ public struct GroupSettingsView: View {
     private func destinationView(for destination: GroupSettingsDestination) -> some View {
         switch destination {
         case .rules:
-            RulesListView(store: container.rulesStore, groupId: group.id)
+            RulesListView(
+                store: container.rulesStore,
+                evaluationsStore: container.ruleEvaluationsStore,
+                groupId: group.id
+            )
         case .culture:
             CulturalNormsListView(
                 store: container.culturalNormsStore,

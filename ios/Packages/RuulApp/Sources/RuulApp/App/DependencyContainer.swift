@@ -36,6 +36,7 @@ public final class DependencyContainer {
     public let membersRepository: CanonicalMembersRepository
     public let purposeRepository: CanonicalPurposeRepository
     public let rulesRepository: CanonicalRulesRepository
+    public let ruleEvaluationsRepository: CanonicalRuleEvaluationsRepository
     public let resourcesRepository: CanonicalResourcesRepository
     public let foundationStatusRepository: CanonicalFoundationStatusRepository
     public let decisionRulesRepository: CanonicalDecisionRulesRepository
@@ -65,6 +66,7 @@ public final class DependencyContainer {
     public let membersStore: MembersStore
     public let purposeStore: PurposeStore
     public let rulesStore: RulesStore
+    public let ruleEvaluationsStore: RuleEvaluationsStore
     public let resourcesStore: ResourcesStore
     public let foundationStatusStore: FoundationStatusStore
     public let decisionRulesStore: DecisionRulesStore
@@ -117,6 +119,7 @@ public final class DependencyContainer {
         self.membersRepository = CanonicalMembersRepository(rpc: rpc, invites: invites)
         self.purposeRepository = CanonicalPurposeRepository(rpc: rpc)
         self.rulesRepository = CanonicalRulesRepository(rpc: rpc)
+        self.ruleEvaluationsRepository = CanonicalRuleEvaluationsRepository(rpc: rpc)
         self.resourcesRepository = CanonicalResourcesRepository(rpc: rpc)
         self.foundationStatusRepository = CanonicalFoundationStatusRepository(rpc: rpc)
         self.decisionRulesRepository = CanonicalDecisionRulesRepository(rpc: rpc)
@@ -144,6 +147,7 @@ public final class DependencyContainer {
         self.membersStore = MembersStore(repository: membersRepository)
         self.purposeStore = PurposeStore(repository: purposeRepository)
         self.rulesStore = RulesStore(repository: rulesRepository)
+        self.ruleEvaluationsStore = RuleEvaluationsStore(repository: ruleEvaluationsRepository)
         self.resourcesStore = ResourcesStore(repository: resourcesRepository)
         self.foundationStatusStore = FoundationStatusStore(repository: foundationStatusRepository)
         self.decisionRulesStore = DecisionRulesStore(repository: decisionRulesRepository)
