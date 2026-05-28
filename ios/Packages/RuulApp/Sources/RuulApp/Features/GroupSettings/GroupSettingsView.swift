@@ -170,11 +170,7 @@ public struct GroupSettingsView: View {
             }
             comingSoonRow(.membershipTypes, label: L10n.GroupSettings.membershipTypesRow, systemImage: "person.crop.rectangle.stack")
             NavigationLink(value: GroupSettingsDestination.roles) {
-                Label {
-                    Text(L10n.GroupSettings.rolesRow)
-                } icon: {
-                    Image(systemName: "person.crop.rectangle.badge.checkmark")
-                }
+                Label(L10n.GroupSettings.rolesRow, systemImage: "person.crop.circle.badge.checkmark")
             }
             NavigationLink(value: GroupSettingsDestination.mandates) {
                 Label(L10n.GroupSettings.mandatesRow, systemImage: "signature")
