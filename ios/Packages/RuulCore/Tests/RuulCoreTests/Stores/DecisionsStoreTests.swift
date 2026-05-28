@@ -303,6 +303,75 @@ struct DecisionsStoreTests {
         #expect(store.draftRuleChangeAction == nil)
     }
 
+    @Test("budget requires target + amount + kind (V2-G2 sub-slice 6)")
+    func budgetRequiresAllFields() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "Cuota mensual"
+        store.draftType = .budget
+        #expect(store.draftNeedsReferencePick) // target missing
+        store.draftReferenceId = UUID()
+        #expect(store.draftNeedsPoolChargeFields) // amount + kind missing
+        store.draftPoolChargeAmount = "150"
+        #expect(store.draftNeedsPoolChargeFields) // still need kind
+        store.draftPoolChargeKind = .quota
+        #expect(store.draftNeedsPoolChargeFields == false)
+        #expect(store.canSaveDraftDecision)
+    }
+
+    @Test("budget rejects non-positive amounts (V2-G2 sub-slice 6)")
+    func budgetRejectsBadAmount() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "X"
+        store.draftType = .budget
+        store.draftReferenceId = UUID()
+        store.draftPoolChargeKind = .fee
+        store.draftPoolChargeAmount = "0"
+        #expect(store.draftNeedsPoolChargeFields)
+        store.draftPoolChargeAmount = "abc"
+        #expect(store.draftNeedsPoolChargeFields)
+    }
+
+    @Test("saveDraftDecision forwards budget metadata (V2-G2 sub-slice 6)")
+    func saveDraftDecisionForwardsBudgetMetadata() async {
+        let (store, mock) = await makeStore()
+        let target = UUID()
+        store.beginProposing()
+        store.draftTitle = "Cuota"
+        store.draftType = .budget
+        store.draftReferenceId = target
+        store.draftPoolChargeAmount = "200"
+        store.draftPoolChargeKind = .buyIn
+
+        let ok = await store.saveDraftDecision(groupId: groupId)
+        #expect(ok)
+        let recorded = await mock.recorded
+        #expect(recorded.contains { call in
+            if case .startVote(let input) = call {
+                return input.pDecisionType == "budget"
+                    && input.pReferenceKind == "pool_charge"
+                    && input.pReferenceId == target
+                    && input.pMetadata?["amount"] == "200"
+                    && input.pMetadata?["unit"] == "MXN"
+                    && input.pMetadata?["charge_kind"] == "buy_in"
+            }
+            return false
+        })
+    }
+
+    @Test("Switching away from budget clears amount + kind (V2-G2 sub-slice 6)")
+    func switchingTypeClearsBudgetFields() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftType = .budget
+        store.draftPoolChargeAmount = "300"
+        store.draftPoolChargeKind = .quota
+        store.draftType = .proposal
+        #expect(store.draftPoolChargeAmount.isEmpty)
+        #expect(store.draftPoolChargeKind == nil)
+    }
+
     @Test("saveDraftDecision rejects sanction_appeal without a picked reference")
     func saveDraftRejectsMissingReference() async {
         let (store, mock) = await makeStore()

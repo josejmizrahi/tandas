@@ -65,7 +65,7 @@ public struct ProposeDecisionSheet: View {
                     await sanctionsStore?.refreshIfNeeded(groupId: groupId)
                 case .mandateGrant, .mandateRevoke:
                     await mandatesStore?.refreshIfNeeded(groupId: groupId)
-                case .membership:
+                case .membership, .budget:
                     await membersStore?.refreshIfNeeded(groupId: groupId)
                 case .ruleChange:
                     await rulesStore?.refreshIfNeeded(groupId: groupId)
@@ -204,6 +204,10 @@ public struct ProposeDecisionSheet: View {
         case .ruleChange:
             ruleReferenceSection
             ruleChangeActionSection
+        case .budget:
+            budgetTargetSection
+            budgetAmountSection
+            budgetKindSection
         case .dissolution:
             unsupportedReferenceHint
         default:
@@ -367,6 +371,70 @@ public struct ProposeDecisionSheet: View {
                 .foregroundStyle(.secondary)
         } header: {
             Text(L10n.Decisions.proposeRuleChangeActionSection)
+        }
+    }
+
+    @ViewBuilder
+    private var budgetTargetSection: some View {
+        Section {
+            let rows = membersStore?.items.filter {
+                $0.kind == .membership && $0.membershipId != nil
+            } ?? []
+            if rows.isEmpty {
+                Text(L10n.Decisions.proposeBudgetTargetEmpty)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker(selection: $store.draftReferenceId) {
+                    Text(String(localized: L10n.Decisions.voteOptionNoneRow)).tag(UUID?.none)
+                    ForEach(rows, id: \.id) { item in
+                        Label(item.displayName, systemImage: "person.crop.circle")
+                            .tag(UUID?.some(item.membershipId!))
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+        } header: {
+            Text(L10n.Decisions.proposeBudgetTargetSection)
+        }
+    }
+
+    @ViewBuilder
+    private var budgetAmountSection: some View {
+        Section {
+            TextField(
+                String(localized: L10n.Decisions.proposeBudgetAmountPlaceholder),
+                text: $store.draftPoolChargeAmount
+            )
+            .keyboardType(.decimalPad)
+        } header: {
+            Text(L10n.Decisions.proposeBudgetAmountSection)
+        }
+    }
+
+    @ViewBuilder
+    private var budgetKindSection: some View {
+        Section {
+            Picker(selection: $store.draftPoolChargeKind) {
+                Text(String(localized: L10n.Decisions.voteOptionNoneRow))
+                    .tag(PoolChargeKind?.none)
+                ForEach(PoolChargeKind.displayOrder) { kind in
+                    Label(kind.label, systemImage: kind.systemImageName)
+                        .tag(PoolChargeKind?.some(kind))
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            Text(L10n.Decisions.proposeBudgetKindHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text(L10n.Decisions.proposeBudgetKindSection)
         }
     }
 

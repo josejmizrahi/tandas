@@ -57,12 +57,15 @@ public final class DecisionsStore {
     public var draftType: DecisionType = .proposal {
         didSet {
             // Switching type wipes the reference pick + per-type
-            // metadata — the previous entity (a sanction, a mandate)
-            // or membership/rule_change action is no longer relevant.
+            // metadata — the previous entity or per-type fields are
+            // no longer relevant.
             if oldValue != draftType {
                 draftReferenceId = nil
                 draftMembershipTargetState = nil
                 draftRuleChangeAction = nil
+                draftPoolChargeAmount = ""
+                draftPoolChargeUnit = "MXN"
+                draftPoolChargeKind = nil
             }
         }
     }
@@ -81,6 +84,13 @@ public final class DecisionsStore {
     /// finalize. Persists to `metadata.action`. finalize_vote handler
     /// inlines the matching group_rules.status flip.
     public var draftRuleChangeAction: RuleChangeAction? = nil
+    /// V2-G2 sub-slice 6 — for `decision_type='budget'` the proposer
+    /// specifies the pool_charge to create on finalize. Amount is a
+    /// free-form string here so the UI can hold partial input; the
+    /// metadata composer parses it.
+    public var draftPoolChargeAmount: String = ""
+    public var draftPoolChargeUnit: String = "MXN"
+    public var draftPoolChargeKind: PoolChargeKind? = nil
     public var draftOptions: [DraftOption] = []
     public private(set) var draftErrorMessage: String?
 
@@ -103,15 +113,41 @@ public final class DecisionsStore {
         draftType == .ruleChange && draftRuleChangeAction == nil
     }
 
+    /// V2-G2 sub-slice 6 — budget type needs amount + kind. Unit
+    /// defaults to MXN so we don't gate on it; amount must parse to
+    /// a positive Decimal.
+    public var draftPoolChargeParsedAmount: Decimal? {
+        let normalized = draftPoolChargeAmount
+            .replacingOccurrences(of: ",", with: ".")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty, let value = Decimal(string: normalized) else { return nil }
+        return value > 0 ? value : nil
+    }
+
+    public var draftNeedsPoolChargeFields: Bool {
+        draftType == .budget
+            && (draftPoolChargeParsedAmount == nil || draftPoolChargeKind == nil)
+    }
+
     /// Composed `metadata` jsonb payload for the current draft.
     /// Membership decisions write `target_state`; rule_change writes
-    /// `action`. Future handlers add more keys here.
+    /// `action`; budget writes amount/unit/charge_kind. Future handlers
+    /// add more keys here.
     public var draftMetadata: [String: String]? {
         if draftType == .membership, let target = draftMembershipTargetState {
             return ["target_state": target.rawValue]
         }
         if draftType == .ruleChange, let action = draftRuleChangeAction {
             return ["action": action.rawValue]
+        }
+        if draftType == .budget,
+           let amount = draftPoolChargeParsedAmount,
+           let kind = draftPoolChargeKind {
+            return [
+                "amount":      "\(amount)",
+                "unit":        draftPoolChargeUnit,
+                "charge_kind": kind.rawValue
+            ]
         }
         return nil
     }
@@ -227,6 +263,9 @@ public final class DecisionsStore {
         draftReferenceId = nil
         draftMembershipTargetState = nil
         draftRuleChangeAction = nil
+        draftPoolChargeAmount = ""
+        draftPoolChargeUnit = "MXN"
+        draftPoolChargeKind = nil
         draftOptions = []
         draftErrorMessage = nil
         isProposePresented = true
@@ -245,6 +284,7 @@ public final class DecisionsStore {
             && !draftNeedsReferencePick
             && !draftNeedsMembershipTargetState
             && !draftNeedsRuleChangeAction
+            && !draftNeedsPoolChargeFields
     }
 
     @discardableResult
@@ -279,6 +319,11 @@ public final class DecisionsStore {
         // V2-G2 sub-slice 5 — same rationale for rule_change action.
         if draftNeedsRuleChangeAction {
             draftErrorMessage = String(localized: L10n.Decisions.proposeRuleChangeActionRequired)
+            return false
+        }
+        // V2-G2 sub-slice 6 — budget needs amount + kind.
+        if draftNeedsPoolChargeFields {
+            draftErrorMessage = String(localized: L10n.Decisions.proposeBudgetFieldsRequired)
             return false
         }
         let payload: [StartVoteParams.OptionDraft]? = cleanedOptions.isEmpty
@@ -317,6 +362,9 @@ public final class DecisionsStore {
         draftReferenceId = nil
         draftMembershipTargetState = nil
         draftRuleChangeAction = nil
+        draftPoolChargeAmount = ""
+        draftPoolChargeUnit = "MXN"
+        draftPoolChargeKind = nil
         draftOptions = []
         draftErrorMessage = nil
     }

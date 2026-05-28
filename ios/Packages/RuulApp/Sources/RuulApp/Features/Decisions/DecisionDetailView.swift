@@ -251,6 +251,7 @@ public struct DecisionDetailView: View {
         case "dissolution":    return L10n.Decisions.referenceDissolution
         case "rule":           return L10n.Decisions.referenceRule
         case "membership":     return L10n.Decisions.referenceMembership
+        case "pool_charge":    return L10n.Decisions.referencePoolCharge
         default:               return L10n.Decisions.referenceOther
         }
     }
@@ -265,6 +266,7 @@ public struct DecisionDetailView: View {
         case "dissolution":    return "archivebox"
         case "rule":           return "list.bullet.rectangle"
         case "membership":     return "person.crop.circle"
+        case "pool_charge":    return "creditcard"
         default:               return "link"
         }
     }
@@ -281,6 +283,8 @@ public struct DecisionDetailView: View {
             return .dispute(groupId: groupId, disputeId: referenceId)
         case "mandate", "mandate_grant", "mandate_revoke":
             return .mandate(groupId: groupId, mandateId: referenceId)
+        case "membership", "pool_charge":
+            return .member(groupId: groupId, membershipId: referenceId)
         default:
             return nil
         }
@@ -321,6 +325,7 @@ public struct DecisionDetailView: View {
         case "dissolution":    return L10n.Decisions.outcomeDissolutionApproved
         case "membership":     return L10n.Decisions.outcomeMembershipApplied
         case "rule":           return L10n.Decisions.outcomeRuleApplied
+        case "pool_charge":    return L10n.Decisions.outcomePoolChargeCreated
         default:               return nil
         }
     }

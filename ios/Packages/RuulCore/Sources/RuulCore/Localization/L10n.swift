@@ -1155,6 +1155,7 @@ public enum L10n {
         public static let referenceDissolution             = LocalizedStringResource("decisions.reference.dissolution",             defaultValue: "La disolución del grupo")
         public static let referenceRule                    = LocalizedStringResource("decisions.reference.rule",                    defaultValue: "Una regla")
         public static let referenceMembership              = LocalizedStringResource("decisions.reference.membership",              defaultValue: "Un miembro")
+        public static let referencePoolCharge              = LocalizedStringResource("decisions.reference.pool_charge",             defaultValue: "Un cobro al grupo")
         public static let referenceOther                   = LocalizedStringResource("decisions.reference.other",                   defaultValue: "Otro elemento")
 
         public static let outcomeAppliedSection            = LocalizedStringResource("decisions.outcome_applied.section",           defaultValue: "Consecuencia")
@@ -1165,6 +1166,7 @@ public enum L10n {
         public static let outcomeDissolutionApproved       = LocalizedStringResource("decisions.outcome_applied.dissolution",       defaultValue: "La disolución del grupo fue aprobada por esta votación.")
         public static let outcomeMembershipApplied         = LocalizedStringResource("decisions.outcome_applied.membership",       defaultValue: "El cambio de estado del miembro se aplicó automáticamente.")
         public static let outcomeRuleApplied               = LocalizedStringResource("decisions.outcome_applied.rule",             defaultValue: "El cambio en la regla se aplicó automáticamente.")
+        public static let outcomePoolChargeCreated         = LocalizedStringResource("decisions.outcome_applied.pool_charge",      defaultValue: "El cobro al grupo quedó registrado automáticamente.")
         public static let optionsSection     = LocalizedStringResource("decisions.section.options",    defaultValue: "Opciones")
         public static let bodySection        = LocalizedStringResource("decisions.section.body",       defaultValue: "Detalle")
         public static let bodyEmpty          = LocalizedStringResource("decisions.body.empty",         defaultValue: "Sin detalles adicionales.")
@@ -1214,6 +1216,18 @@ public enum L10n {
         public static let proposeRuleChangeActionHint             = LocalizedStringResource("decisions.propose.rule_change.action.hint",     defaultValue: "Cuando se apruebe, la regla cambia su estado automáticamente.")
         public static let ruleChangeActionArchive                 = LocalizedStringResource("decisions.rule_change.action.archive",         defaultValue: "Archivar")
         public static let ruleChangeActionActivate                = LocalizedStringResource("decisions.rule_change.action.activate",        defaultValue: "Activar")
+
+        // Budget / pool_charge (V2-G2 sub-slice 6)
+        public static let proposeBudgetTargetSection              = LocalizedStringResource("decisions.propose.budget.target.section",     defaultValue: "¿A quién se le cobra?")
+        public static let proposeBudgetTargetEmpty                = LocalizedStringResource("decisions.propose.budget.target.empty",       defaultValue: "No hay miembros activos para cobrar.")
+        public static let proposeBudgetAmountSection              = LocalizedStringResource("decisions.propose.budget.amount.section",     defaultValue: "Monto")
+        public static let proposeBudgetAmountPlaceholder          = LocalizedStringResource("decisions.propose.budget.amount.placeholder", defaultValue: "Monto en MXN")
+        public static let proposeBudgetKindSection                = LocalizedStringResource("decisions.propose.budget.kind.section",       defaultValue: "Tipo de cobro")
+        public static let proposeBudgetKindHint                   = LocalizedStringResource("decisions.propose.budget.kind.hint",          defaultValue: "Cuando se apruebe, se crea la deuda automáticamente.")
+        public static let proposeBudgetFieldsRequired             = LocalizedStringResource("decisions.propose.budget.fields.required",    defaultValue: "Completa el monto y el tipo de cobro.")
+        public static let poolChargeKindQuota                     = LocalizedStringResource("decisions.pool_charge.kind.quota",            defaultValue: "Cuota")
+        public static let poolChargeKindBuyIn                     = LocalizedStringResource("decisions.pool_charge.kind.buy_in",           defaultValue: "Buy-in")
+        public static let poolChargeKindFee                       = LocalizedStringResource("decisions.pool_charge.kind.fee",              defaultValue: "Fee")
 
         // Vote sheet
         public static let voteTitle          = LocalizedStringResource("decisions.vote.title",         defaultValue: "Tu voto")
