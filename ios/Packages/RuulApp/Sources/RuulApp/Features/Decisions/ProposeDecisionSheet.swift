@@ -123,13 +123,28 @@ public struct ProposeDecisionSheet: View {
 
     @ViewBuilder
     private var typeSection: some View {
-        Section(L10n.Decisions.proposeTypeSection) {
+        Section {
             Picker(String(localized: L10n.Decisions.typeLabel), selection: $store.draftType) {
-                ForEach([DecisionType.proposal, .rule, .other], id: \.self) { type in
-                    Text(type.label).tag(type)
+                ForEach(DecisionType.Group.allCases) { group in
+                    let typesInGroup = DecisionType.selectable.filter { $0.group == group }
+                    if !typesInGroup.isEmpty {
+                        Section {
+                            ForEach(typesInGroup) { type in
+                                Label(type.label, systemImage: type.systemImageName)
+                                    .tag(type)
+                            }
+                        } header: {
+                            Text(group.label)
+                        }
+                    }
                 }
             }
             .pickerStyle(.menu)
+            Text(store.draftType.subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text(L10n.Decisions.proposeTypeSection)
         }
     }
 

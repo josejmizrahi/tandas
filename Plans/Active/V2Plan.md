@@ -366,15 +366,15 @@ desconectadas de dinero, reglas decorativas, votos triviales).
 - [x] **V1 release tag** `v1.0.0-rc` — 2026-05-27
 
 ### V2 Depth/Engine/Integrations (~22-30 sesiones)
-- [~] V2-G1 Voting methods completos — sub-slices 1+2+3: propose surface con 8 methods + LegitimacySource + adaptive VoteSheet (consensus 3-state / consent 2-state / veto 2-state + admin informativa) + DecisionDetail tally por método (narrativa + buckets semánticos + threshold/quorum + admin no-ballot + block-highlight para consent/veto). Falta sub-slice 4: ranked_choice drag-to-reorder + weighted input numérico (UX adaptativa para esos dos métodos).
-- [ ] V2-G2 Decision types con outcome handlers (rule_change / membership / mandate_grant / mandate_revoke / sanction_appeal / dissolution / budget)
+- [x] V2-G1 Voting methods completos — sub-slices 1+2+3: propose surface con 8 methods + LegitimacySource + adaptive VoteSheet (consensus 3-state / consent 2-state / veto 2-state + admin informativa) + DecisionDetail tally por método (narrativa + buckets semánticos + threshold/quorum + admin no-ballot + block-highlight para consent/veto). Ranked_choice drag + weighted input numérico se mueven a **V2-G9** porque requieren backend que aún no acepta peso/rank en `cast_vote` (no `p_weight`, no `cast_ranked_vote`); el slice de vote weights ahí incluye el RPC nuevo + columna weight_strategy + ambas UXs adaptativas.
+- [~] V2-G2 Decision types con outcome handlers — sub-slice 1 (propose surface): DecisionType ahora cubre los 11 valores canónicos del backend CHECK (`proposal / poll / election / budget / rule_change / membership / sanction_appeal / mandate_grant / mandate_revoke / dissolution / other`) con label + subtitle + icon + grouping. Picker en ProposeDecisionSheet ya expone todos agrupados (Conversar / Sobre personas / Sobre dinero / Sobre reglas / Salida). Falta sub-slices 2-7: outcome handlers backend + iOS feedback ("Esta decisión mutó X") para rule_change / membership / mandate_grant / mandate_revoke / sanction_appeal / dissolution / budget.
 - [ ] V2-G3 Rule engine activation (sync eval + shapes + recursion guards + audit)
 - [ ] V2-G4 Sanction ↔ Money deep (pago parcial / plan de pago / auto-pay from fund / convert to service)
 - [x] V2-G5 Mandate ↔ Action sheets — write: RecordExpense / RecordSettlement / PaySanction (mig 20260528020000 + read en MoneyMovementDetailView). VoteSheet + IssueSanction quedan fuera (backend `cast_vote` / `issue_sanction` no aceptan `p_mandate_id` aún; pertenecen a V2-G9 vote-weights / sanction-on-behalf con migration aparte)
 - [x] V2-G6 Norm → Rule promotion — mig 20260528010000 + PromoteNormToRuleSheet
 - [x] V2-G7 Cross-primitive search & filters — chip strip + searchable + tap→DeepLinkRouter (client-side, sin RPC nueva)
 - [ ] V2-G8 Engine-driven UX (consequences visible)
-- [ ] V2-G9 Vote weights por rol/contribución
+- [ ] V2-G9 Vote weights por rol/contribución — incluye también la UX de `ranked_choice` (drag-to-reorder en VoteSheet) y `weighted` (input numérico por opción) heredadas de V2-G1; backend nuevo: `cast_vote` ampliado con `p_weight` + RPC `cast_ranked_vote(p_decision_id, p_rankings jsonb)` + columna `weight_strategy` en `group_decisions`.
 - [ ] **V2 release tag** `v2.0.0-rc`
 
 ### V3 Quality/Launch (~18-22 sesiones)

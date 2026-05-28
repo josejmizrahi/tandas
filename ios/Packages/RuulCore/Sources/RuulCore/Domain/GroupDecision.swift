@@ -188,25 +188,114 @@ public enum LegitimacySource: String, Codable, CaseIterable, Identifiable, Senda
     }
 }
 
-/// Decision categories. Mirrors `group_decisions.decision_type`.
+/// Mirrors `group_decisions.decision_type`. The 11 canonical types
+/// from the backend CHECK are all exposed in the picker; `other` is
+/// retained as a tolerant decode-only fallback for unknown future
+/// values. V2-G2 sub-slice 1 surfaces all of them at the propose
+/// stage; outcome handlers (mutate state on finalize) land in
+/// subsequent sub-slices.
 public enum DecisionType: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
     case proposal
-    case rule
-    case sanction
-    case mandate
+    case poll
+    case election
+    case budget
+    case ruleChange       = "rule_change"
+    case membership
+    case sanctionAppeal   = "sanction_appeal"
+    case mandateGrant     = "mandate_grant"
+    case mandateRevoke    = "mandate_revoke"
     case dissolution
     case other
 
     public var id: String { rawValue }
 
+    /// What the proposer can actually pick. `other` stays decode-only.
+    public static let selectable: [DecisionType] = [
+        .proposal, .poll, .election, .budget,
+        .ruleChange, .membership, .sanctionAppeal,
+        .mandateGrant, .mandateRevoke, .dissolution
+    ]
+
     public var label: LocalizedStringResource {
         switch self {
-        case .proposal:    return L10n.Decisions.typeProposal
-        case .rule:        return L10n.Decisions.typeRule
-        case .sanction:    return L10n.Decisions.typeSanction
-        case .mandate:     return L10n.Decisions.typeMandate
-        case .dissolution: return L10n.Decisions.typeDissolution
-        case .other:       return L10n.Decisions.typeOther
+        case .proposal:       return L10n.Decisions.typeProposal
+        case .poll:           return L10n.Decisions.typePoll
+        case .election:       return L10n.Decisions.typeElection
+        case .budget:         return L10n.Decisions.typeBudget
+        case .ruleChange:     return L10n.Decisions.typeRuleChange
+        case .membership:     return L10n.Decisions.typeMembership
+        case .sanctionAppeal: return L10n.Decisions.typeSanctionAppeal
+        case .mandateGrant:   return L10n.Decisions.typeMandateGrant
+        case .mandateRevoke:  return L10n.Decisions.typeMandateRevoke
+        case .dissolution:    return L10n.Decisions.typeDissolution
+        case .other:          return L10n.Decisions.typeOther
+        }
+    }
+
+    public var subtitle: LocalizedStringResource {
+        switch self {
+        case .proposal:       return L10n.Decisions.typeProposalSubtitle
+        case .poll:           return L10n.Decisions.typePollSubtitle
+        case .election:       return L10n.Decisions.typeElectionSubtitle
+        case .budget:         return L10n.Decisions.typeBudgetSubtitle
+        case .ruleChange:     return L10n.Decisions.typeRuleChangeSubtitle
+        case .membership:     return L10n.Decisions.typeMembershipSubtitle
+        case .sanctionAppeal: return L10n.Decisions.typeSanctionAppealSubtitle
+        case .mandateGrant:   return L10n.Decisions.typeMandateGrantSubtitle
+        case .mandateRevoke:  return L10n.Decisions.typeMandateRevokeSubtitle
+        case .dissolution:    return L10n.Decisions.typeDissolutionSubtitle
+        case .other:          return L10n.Decisions.typeOtherSubtitle
+        }
+    }
+
+    public var systemImageName: String {
+        switch self {
+        case .proposal:       return "lightbulb"
+        case .poll:           return "chart.pie"
+        case .election:       return "person.crop.circle.badge.checkmark"
+        case .budget:         return "creditcard"
+        case .ruleChange:     return "list.bullet.rectangle"
+        case .membership:     return "person.2"
+        case .sanctionAppeal: return "exclamationmark.shield"
+        case .mandateGrant:   return "person.crop.rectangle.badge.checkmark"
+        case .mandateRevoke:  return "xmark.circle"
+        case .dissolution:    return "archivebox"
+        case .other:          return "questionmark.circle"
+        }
+    }
+
+    /// Coarse grouping so the propose picker can section the 11 types
+    /// in human language ("Charla / Movimiento de gente / Plata /
+    /// Reglas internas / Salida"). Order respects the founder's mental
+    /// model: deliberate→organize→manage money→fix rules→leave.
+    public enum Group: String, CaseIterable, Identifiable, Hashable {
+        case discussion
+        case people
+        case money
+        case rules
+        case exit
+
+        public var id: String { rawValue }
+
+        public var label: LocalizedStringResource {
+            switch self {
+            case .discussion: return L10n.Decisions.typeGroupDiscussion
+            case .people:     return L10n.Decisions.typeGroupPeople
+            case .money:      return L10n.Decisions.typeGroupMoney
+            case .rules:      return L10n.Decisions.typeGroupRules
+            case .exit:       return L10n.Decisions.typeGroupExit
+            }
+        }
+    }
+
+    public var group: Group {
+        switch self {
+        case .proposal, .poll:                                     return .discussion
+        case .election, .membership, .mandateGrant, .mandateRevoke: return .people
+        case .budget:                                              return .money
+        case .ruleChange, .sanctionAppeal:                         return .rules
+        case .dissolution:                                         return .exit
+        case .other:                                               return .discussion
         }
     }
 }

@@ -150,6 +150,51 @@ struct GroupDecisionTests {
         #expect(d.quorumPct == Decimal(string: "33.5"))
     }
 
+    @Test("DecisionType covers the 11 canonical backend values + tolerant other (V2-G2)")
+    func decisionTypeMatrix() {
+        #expect(DecisionType.selectable.count == 10)
+        #expect(DecisionType.proposal.rawValue == "proposal")
+        #expect(DecisionType.ruleChange.rawValue == "rule_change")
+        #expect(DecisionType.sanctionAppeal.rawValue == "sanction_appeal")
+        #expect(DecisionType.mandateGrant.rawValue == "mandate_grant")
+        #expect(DecisionType.mandateRevoke.rawValue == "mandate_revoke")
+        #expect(DecisionType.dissolution.rawValue == "dissolution")
+        #expect(DecisionType.poll.rawValue == "poll")
+        #expect(DecisionType.election.rawValue == "election")
+        #expect(DecisionType.budget.rawValue == "budget")
+        #expect(DecisionType.membership.rawValue == "membership")
+        #expect(DecisionType.other.rawValue == "other")
+
+        // Group ordering matches the propose picker layout.
+        #expect(DecisionType.proposal.group == .discussion)
+        #expect(DecisionType.election.group == .people)
+        #expect(DecisionType.budget.group == .money)
+        #expect(DecisionType.ruleChange.group == .rules)
+        #expect(DecisionType.dissolution.group == .exit)
+    }
+
+    @Test("Decoder still tolerates an unknown decision_type (V2-G2)")
+    func decisionTypeTolerantDecode() throws {
+        let json = """
+        {
+          "decision_id": "\(UUID().uuidString)",
+          "group_id":    "\(UUID().uuidString)",
+          "title":       "X",
+          "decision_type": "future_type_we_dont_know",
+          "method":      "majority",
+          "status":      "open",
+          "option_count": 0,
+          "vote_count":   0,
+          "yes_count":    0,
+          "no_count":     0,
+          "abstain_count":0,
+          "block_count":  0
+        }
+        """.data(using: .utf8)!
+        let s = try makeDecoder().decode(GroupDecisionSummary.self, from: json)
+        #expect(s.decisionType == .other)
+    }
+
     @Test("VoteValue.label(for:) returns method-specific copy for consent / veto / consensus")
     func voteValueLabelByMethod() {
         // Consent: yes = Consiento, block = Bloqueo
