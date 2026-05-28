@@ -91,6 +91,13 @@ public final class DependencyContainer {
     /// shell can route them on the next render pass.
     public let deepLinkRouter: DeepLinkRouter
 
+    // MARK: - Realtime (V2-A1)
+
+    /// Drives the 3 in-place store refreshes on remote postgres changes
+    /// (events / disputes / decisions). The shell starts listening when
+    /// a group is mounted and the store-level handle is idempotent.
+    public let realtime: any GroupRealtimeService
+
     public init() {
         let client = SupabaseEnvironment.shared
         self.supabaseClient = client
@@ -157,6 +164,7 @@ public final class DependencyContainer {
         self.notificationSettingsStore = NotificationSettingsStore(repository: notificationsRepository)
         self.privacyStore = PrivacyStore(repository: privacyRepository)
         self.deepLinkRouter = DeepLinkRouter()
+        self.realtime = SupabaseGroupRealtimeService(client: client)
     }
 
     /// Kicks off the session subscription so the shell can observe state

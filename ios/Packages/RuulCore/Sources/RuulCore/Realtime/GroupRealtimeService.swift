@@ -47,14 +47,15 @@ public final class SupabaseGroupRealtimeService: GroupRealtimeService {
         onChange: @escaping @Sendable () async -> Void
     ) async -> any GroupRealtimeSubscription {
         let topic = "ruul:group:\(groupId.uuidString.lowercased()):\(table.rawValue)"
-        let channel = client.realtime.channel(topic)
+        let channel = client.realtimeV2.channel(topic)
+        let filter: RealtimePostgresFilter = .eq("group_id", value: groupId)
         let stream = channel.postgresChange(
             AnyAction.self,
             schema: "public",
             table: table.rawValue,
-            filter: .eq("group_id", value: groupId)
+            filter: filter
         )
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
 
         let task = Task {
             for await _ in stream {

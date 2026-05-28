@@ -52,6 +52,11 @@ public final class DecisionsStore {
     private let repository: CanonicalDecisionsRepository
     private var loadedGroupId: UUID?
 
+    // V2-A1 — realtime listener handle for the active group's
+    // `group_decisions` stream.
+    private var realtimeSubscription: (any GroupRealtimeSubscription)?
+    private var realtimeGroupId: UUID?
+
     public init(repository: CanonicalDecisionsRepository) {
         self.repository = repository
     }
@@ -278,5 +283,27 @@ public final class DecisionsStore {
         errorMessage = nil
         draftErrorMessage = nil
         voteDraftErrorMessage = nil
+    }
+
+    // MARK: - Realtime (V2-A1)
+
+    public func startListening(groupId: UUID, realtime: any GroupRealtimeService) async {
+        if realtimeGroupId == groupId, realtimeSubscription != nil { return }
+        await stopListening()
+        realtimeGroupId = groupId
+        realtimeSubscription = await realtime.subscribe(
+            groupId: groupId,
+            table: .decisions,
+            onChange: { [weak self] in
+                await self?.refresh(groupId: groupId)
+            }
+        )
+    }
+
+    public func stopListening() async {
+        guard let sub = realtimeSubscription else { return }
+        realtimeSubscription = nil
+        realtimeGroupId = nil
+        await sub.cancel()
     }
 }

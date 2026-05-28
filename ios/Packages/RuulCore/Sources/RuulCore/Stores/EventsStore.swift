@@ -19,6 +19,13 @@ public final class EventsStore {
     private var loadedGroupId: UUID?
     private let pageSize: Int = 100
 
+    // V2-A1 — realtime listener handle for the active group's
+    // `group_events` stream. `startListening` is idempotent: a second
+    // call with the same group_id is a no-op; a call with a different
+    // group_id swaps the subscription.
+    private var realtimeSubscription: (any GroupRealtimeSubscription)?
+    private var realtimeGroupId: UUID?
+
     public init(repository: CanonicalEventsRepository) {
         self.repository = repository
     }
@@ -82,4 +89,26 @@ public final class EventsStore {
     }
 
     public func clearError() { errorMessage = nil }
+
+    // MARK: - Realtime (V2-A1)
+
+    public func startListening(groupId: UUID, realtime: any GroupRealtimeService) async {
+        if realtimeGroupId == groupId, realtimeSubscription != nil { return }
+        await stopListening()
+        realtimeGroupId = groupId
+        realtimeSubscription = await realtime.subscribe(
+            groupId: groupId,
+            table: .events,
+            onChange: { [weak self] in
+                await self?.refresh(groupId: groupId)
+            }
+        )
+    }
+
+    public func stopListening() async {
+        guard let sub = realtimeSubscription else { return }
+        realtimeSubscription = nil
+        realtimeGroupId = nil
+        await sub.cancel()
+    }
 }

@@ -53,6 +53,15 @@ public struct GroupTabsHost: View {
         .sheet(isPresented: $isShowingPersonalProfile) {
             PersonalProfileSheet(container: container)
         }
+        // V2-A1 — wire realtime listeners to the active group. The
+        // `.task(id:)` lifecycle cancels-and-replaces on group switch,
+        // and stores debounce same-group calls internally.
+        .task(id: group.id) {
+            let realtime = container.realtime
+            await container.eventsStore.startListening(groupId: group.id, realtime: realtime)
+            await container.disputesStore.startListening(groupId: group.id, realtime: realtime)
+            await container.decisionsStore.startListening(groupId: group.id, realtime: realtime)
+        }
     }
 
     // MARK: - Tabs
