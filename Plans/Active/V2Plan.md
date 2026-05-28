@@ -1,18 +1,22 @@
-# V2 Plan — Ruul post-V1 (capa de calidad sobre las primitivas)
+# V2 Plan — Ruul post-V1 (profundización del modelo + calidad)
 
 > **Plan complementario activo.** Hermano de `Plans/Active/Plan.md`
 > (backend canónico) y `Plans/Active/UIBottomUpPlan.md` (iOS bottom-up).
-> Este plan rige la fase **post-Foundation**: V2 no agrega primitivas
-> nuevas, agrega *capas* sobre las 22 primitivas accionables de V1
-> para que el grupo se sienta vivo, claro y confiable en uso diario.
 >
-> Acordado 2026-05-27.
+> Acordado 2026-05-27. **Reescrito 2026-05-27** después de feedback
+> founder: el plan original quedaba en "capa de calidad" pero no
+> tocaba la *profundización* (votos completos, rule engine activo,
+> conexión cross-primitiva). Esta versión separa **V2 (Depth/Engine/
+> Integrations)** de **V3 (Quality/Launch)**.
 >
 > Doctrina vigente:
 > - V1 contesta: *"¿se puede coordinar un grupo aquí?"* → sí, 22/22 primitivas.
-> - V2 contesta: *"¿se siente vivo, claro y confiable a diario?"*
+> - **V2 contesta: *"¿las primitivas trabajan juntas?"*** — votos
+>   completos, rule engine corriendo, multas conectadas a dinero,
+>   decisiones que mutan reglas/membresía, mandatos en cada acción.
+> - V3 contesta: *"¿se siente vivo, claro y confiable a diario?"*
 > - Primitivas post-V1 explícitas (Comunicación 7, Incentivos 10,
->   Cuidado 24) NO entran en V2 — quedan para una fase posterior.
+>   Cuidado 24) NO entran en V2/V3 — quedan post-launch.
 > - Slices chicos, mergeables, instalables en device por sesión.
 
 ---
@@ -31,235 +35,329 @@ el trabajo es UX/wire en iOS.
 | V1.4 | Estados de membresía (Primitiva 2) | `set_membership_state` | Acciones admin en `MemberDetailView`: Suspender / Reactivar / Expulsar, con razón opcional + duración para suspensión, gated por `members.suspend` / `members.remove` | 4 h |
 | V1.5 | Proponer norma cultural (Primitiva 20) | `propose_cultural_norm` | Toolbar `+` en `CulturalNormsListView` que abre `EditCulturalNormView` en modo crear | 30 min |
 
-**Done V1**: build verde, tests verdes, smoke en device de los 5 flows, push a main, V1 release tag opcional (`v1.0.0-rc`).
+**Done V1**: build verde, tests verdes, smoke en device de los 5 flows, push a main, V1 release tag `v1.0.0-rc`.
 
 ---
 
-## 1. Convenciones (las mismas de UIBottomUpPlan §1)
+## 1. Convenciones
 
-- iOS no escribe tablas directo.
-- Toda mutación pasa por RPC canónica.
-- Views no importan `Supabase`.
-- Strings → `L10n.<Namespace>.<key>`.
-- Stores `@MainActor @Observable`.
-- Tolerant Codable.
-- Errores → `CanonicalBackendError` → `UserFacingError`.
-- Commits: `v2: <verb> <thing>` (cambia el prefijo `foundation:`→`v2:` para
-  distinguir fase).
-- Cada slice: build green + tests green + device install + push.
-- Append-only se respeta.
+Las mismas que `UIBottomUpPlan.md §1`. Prefijo de commits:
+- Durante V1 close: `foundation:`
+- Después de `v1.0.0-rc`: `v2:` para fase Depth, luego `v3:` para Quality.
 
 ---
 
-## 2. V2 — Épicas
+## 2. V2 — Depth / Engine / Integrations
 
-V2 no es secuencial estricto; cada épica entrega valor independiente.
-Orden recomendado abajo (§4) basado en ROI percibido.
+> **El núcleo de lo que hace Ruul interesante.** Las primitivas
+> existen aisladas (V1) pero no se conectan automáticamente. Acá
+> activamos el tejido: votos con métodos reales, rule engine
+> evaluando eventos, decisiones que mutan estado de otras
+> primitivas, multas con flujos de pago verdaderos, mandatos que
+> permiten actuar en nombre de.
+>
+> Estado backend actual (verificado 2026-05-27):
+> - `group_decisions.method` acepta 8 métodos canónicos
+>   (admin/majority/supermajority/consensus/consent/ranked_choice/
+>   weighted/veto) — iOS sólo expone ~1-2.
+> - `group_decisions.decision_type` acepta 11 tipos
+>   (proposal/poll/election/budget/rule_change/membership/
+>   sanction_appeal/mandate_grant/mandate_revoke/dissolution/other)
+>   — iOS expone ~1.
+> - `group_decisions.legitimacy_source` acepta 10 fuentes — iOS no
+>   las muestra.
+> - `rule_shapes_catalog` + `group_rule_evaluations` existen, pero
+>   `evaluate_rules_for_event(...)` nunca se invoca: 0 filas en
+>   `group_rule_evaluations`.
+> - `mandate_id` aceptado por `record_expense`/`record_settlement`/
+>   `record_pool_charge` pero iOS pasa siempre `null`.
 
-### V2-A · Sensación de vivo (Real-time + Push)
+### V2-G1 · Voting methods completos (Primitiva 16)
 
-**Por qué**: hoy todo requiere pull-to-refresh. Una app que coordina
-gente necesita reaccionar a eventos remotos sin que el usuario tenga
-que ir a buscarlos.
+Hoy `ProposeDecisionSheet` solo asume mayoría simple. Backend ya
+soporta los 8 métodos. **Slice**:
 
-- **A1 Real-time subscriptions**: Supabase Realtime para `group_events`
-  (timeline), `group_disputes` (estado), `group_decisions` (votos
-  abiertos). Cada store relevante actualiza in-place.
-- **A2 APNs token registration**: device token → `notification_tokens`
-  table. Handlers de tap deep-link al destino correcto.
-- **A3 Notification preferences en device**: surface
-  `notification_preferences` (ya existe tabla) en
-  `NotificationSettingsView` — opt-in por categoría.
-- **A4 Notification handlers críticos**: disputa abierta contra ti,
-  sanción emitida contra ti, voto abierto donde puedes votar,
-  recordatorio de deuda outstanding > 7 días, mandate vence en 24h,
-  miembro nuevo aceptó invitación.
-
-Backend ya tiene `dispatch-notifications` cron + `notifications_outbox`
-table. Sólo falta wire device + handlers.
+- Picker de `method` en `ProposeDecisionSheet` con explicación humana
+  por método (Admin / Mayoría simple / Supermayoría 2/3 / Consenso /
+  Consent / Ranked choice / Weighted / Veto).
+- Picker de `legitimacy_source` (founder/election/committee/etc.) —
+  qué legitima esta decisión.
+- `VoteSheet` adaptativo por método:
+  - `ranked_choice` → drag-to-reorder de opciones.
+  - `consensus` → 3-state (a favor / objeto / me retiro).
+  - `consent` → 2-state (consiento / bloqueo + razón obligatoria).
+  - `weighted` → input numérico por opción (peso).
+  - `veto` → 2-state (sin objeción / veto + razón).
+- `DecisionDetailView` muestra resultados por método correctamente
+  (tally diferente para ranked vs weighted vs consensus).
+- Quorum enforcement real: `finalize_vote` ya está; verificar que
+  respete `quorum_min` de `decision_rules`.
 
 **Tamaño**: 3-4 sesiones.
 
-### V2-B · Warmth / Onboarding
+### V2-G2 · Decision types tipados con outcome handlers
 
-**Por qué**: hoy crear un grupo desde cero es seco. El founder
-quiere que el primer grupo *se sienta como algo que ya estaba bien
-pensado*.
+Hoy todas las decisiones son `decision_type='proposal'` (informativo,
+sin side effects). Backend acepta 11 tipos. **Slice**:
 
-- **B1 Templates de grupo**: presets que pre-pueblan al crear grupo
-  (propósito declarado/operativo, reglas base, decision_rules,
-  módulos activos sugeridos):
-  - "Casa familiar" — money compartido, reglas simples, decisión
-    consensus, fund común.
-  - "Departamento compartido" — money split-friendly, suspensión
-    posible, decision rules majority.
-  - "Viaje con amigos" — temporal, fund común, sin sanciones por
-    default.
-  - "Equipo de trabajo" — roles + mandates pre-creados, decision
-    rules supermajority.
-  - "Comunidad" — cultural norms + ritual annotations sugeridas.
-- **B2 Tutorial primer grupo**: 3-pantalla onboarding (qué es Ruul,
-  cómo se crea, primeros pasos) — skippable.
-- **B3 Foundation hero tarjeta**: cuando `group_foundation_status =
-  ready`, mostrar hero "Tu grupo está listo" con CTAs sugeridos
-  (registrar primer gasto, abrir primera decisión, definir cultura).
-- **B4 Memoria narrativa editorial**: campo opcional `note` en
-  `record_system_event` (mig small) — UI permite anotar el "por
-  qué" en eventos clave (sanción, disolución, gasto grande).
+- Surface en `ProposeDecisionSheet`: picker de `decision_type`,
+  oculto en modo simple, expandible.
+- Outcome handlers backend (RPCs nuevos cuando aplique):
+  - `rule_change` → al finalize con outcome=passed, llama
+    `apply_rule_change(p_decision_id)` que muta `group_rules` /
+    `group_rule_versions`.
+  - `membership` → al finalize, ejecuta admit/expel según outcome.
+  - `mandate_grant` / `mandate_revoke` → al finalize, llama
+    `grant_mandate`/`revoke_mandate` con metadatos del voto.
+  - `sanction_appeal` → al finalize, si pasa → cancela sanción
+    asociada (ya parcialmente conectado via dispute escalation).
+  - `dissolution` → al finalize, llama `finalize_dissolution`
+    si pasa.
+  - `budget` → al finalize, crea el `group_obligations` /
+    `pool_charges` correspondientes.
+- iOS muestra el handler aplicado en `DecisionDetailView` ("Esta
+  decisión modificó la regla X" / "Esta decisión revocó el mandato Y").
 
-**Tamaño**: 3 sesiones.
+**Tamaño**: 4-5 sesiones (cada handler es ~1 sesión).
 
-### V2-C · Money advanced
+### V2-G3 · Rule engine activation
 
-**Por qué**: V1 cubre el caso simple (gasto split + settlement). Hay
-patrones reales (contribución en especie, fondos protegidos, mandatos
-en money) que necesitan superficie propia.
+`evaluate_rules_for_event` existe pero **nadie la invoca**.
+Resultado: las reglas son texto bonito sin consecuencias automáticas.
 
-- **C1 Contribuciones in-kind con valuación**: warehouse case del
-  doctrine `doctrine_in_kind_contributions`. Ledger `type =
-  'contribution'`, no expense. UI distingue claramente.
-- **C2 Subtipos de resources con detalle**:
-  - Fund: balance histórico, in/out, protected flag.
-  - Space: bookings (existe table), check-in.
-  - Asset: valuation timeline, depreciación opcional.
-- **C3 Pool charges admin UX**: `record_pool_charge` ya existe;
-  agregar sheet "Crear cuota" desde tab Dinero.
-- **C4 Mandates en money flows**: cuando hay mandato activo del
-  caller, los sheets de gasto/settlement permiten "actuar en nombre
-  de" + popular `mandate_id` en el RPC (doctrine
-  `doctrine_mandate_in_money_rpcs`).
+**Slice**:
 
-**Tamaño**: 4-5 sesiones.
+- **Sync evaluation** post-commit en RPCs canónicas que mutan
+  estado: `record_expense`, `record_settlement`, `issue_sanction`,
+  `leave_group`, `finalize_vote`, `record_pool_charge`.
+- **Rule shapes ejecutables**: jsonb WHEN/IF/THEN en `group_rules.shape`.
+  Ej:
+  ```json
+  {
+    "when": "obligation.overdue",
+    "if":   { "days_overdue": { "gte": 7 } },
+    "then": { "action": "issue_sanction", "kind": "warning" }
+  }
+  ```
+- **Guards de recursión**: max depth = 5 (doctrina).
+- **`rule_evaluations` write path**: cada evaluación se persiste
+  para auditoría.
+- iOS: `RuleEvaluationsView` per-rule mostrando qué disparó qué
+  últimamente.
+- Migration: agregar columna `shape jsonb` a `group_rule_versions`
+  + helper RPCs `validate_rule_shape`, `simulate_rule_eval`.
 
-### V2-D · Cross-app reach
+**Tamaño**: 5-6 sesiones (el más grande de V2; toca casi todo el
+backend pero unlocked enorme valor).
 
-**Por qué**: Apple platform es mucho más que el app icon. Widgets,
-Live Activities, Shortcuts y Spotlight hacen que Ruul "viva" fuera
-de la app.
+### V2-G4 · Sanction ↔ Money deep
 
-- **D1 WidgetsExtension** (target nuevo): home screen + lock screen.
-  - Pequeño: deudas tuyas pendientes (count).
-  - Mediano: próximo ritual + decisiones abiertas.
-  - Grande: feed del Inicio del grupo activo.
-- **D2 LiveActivity / Dynamic Island** (target nuevo):
-  - Deuda activa con CTA "Pagar".
-  - Voto cerrando pronto (countdown).
-  - Disputa en mediación.
-- **D3 App Intents / Shortcuts** (target nuevo):
-  - "Hey Siri, registra un gasto en [grupo]".
-  - "Hey Siri, abre Inicio de [grupo]".
-- **D4 Spotlight indexing**: indexar grupos, miembros, recursos,
-  decisiones para que `cmd+space` los encuentre cross-app.
-- **D5 Deep-link router robusto**: `ruul://group/X/decision/Y` ya
-  existe parcial; agregar `ruul://sanction/Z`, `ruul://dispute/W`,
-  `ruul://member/G/M`.
+Hoy: multa monetaria crea obligation → pago via settlement to pool.
+Falta lo real:
 
-**Tamaño**: 3-4 sesiones (cada extension target es ~1 sesión).
+- **Pago parcial**: multa $1000 → pago $500 → outstanding $500. Hoy
+  funciona técnicamente pero no se muestra el progreso. UI con
+  progress bar + breakdown.
+- **Plan de pago**: 3 pagos mensuales acordados. RPC nuevo
+  `create_sanction_payment_plan(p_sanction_id, p_installments[])` +
+  recordatorios via rule engine (V2-G3).
+- **Auto-pay from fund**: si el fund del grupo o un fund personal
+  vinculado tiene balance, opción "Pagar desde fondo X". Reuses
+  `record_settlement` con `source_resource_id`.
+- **Conversión a service post-voto**: si `decision_type =
+  'sanction_appeal'` resuelve con outcome=`convert`, mutar
+  `sanction_kind = 'monetary' → 'repair_task'`.
 
-### V2-E · App Store ready
+**Tamaño**: 3-4 sesiones.
 
-**Por qué**: para shipping pública necesitamos i18n real, a11y,
-legal y account deletion. Apple lo exige + es buen ciudadano.
+### V2-G5 · Mandate ↔ Action sheets (cross-cutting)
 
-- **E1 Localización real**: `.xcstrings` catalog generado desde
-  `L10n` namespace. ES-MX primario, agregar EN como segundo.
-- **E2 Accessibility audit**: VoiceOver labels en cada surface,
-  Dynamic Type tests, color contrast WCAG AA, reduce motion respeto.
-- **E3 Avatar real**: `PhotosPicker` + Supabase Storage upload
-  en `EditProfileView`. Hoy `Profile.avatarURL` solo acepta URL externa.
-- **E4 Phone/Email change**: verificar en device que
-  `AccountSecurityView` + `startPhoneChange`/`startEmailChange`
-  funcionan; cubrir error states.
-- **E5 Account deletion**: requirement Apple (App Store Guideline
-  5.1.1(v)). RPC `delete_my_account` + confirmación + grace period.
-- **E6 Legal**: ToS + Privacy Policy hosteados (Vercel
-  ruul.app/legal) + linkear en PersonalSettingsView.
-- **E7 App Store assets**: screenshots (todos los tamaños iPhone),
-  app preview video, metadata ES/EN, icon final.
+Backend de mandates está completo + RPCs de dinero aceptan
+`p_mandate_id`. Hoy iOS pasa siempre null. **Slice**:
 
-**Tamaño**: 4 sesiones.
-
-### V2-F · Operacional
-
-**Por qué**: una vez la app está en manos de usuarios reales, el
-founder necesita ver qué pasa.
-
-- **F1 Sentry wired**: `Sentry` ya está en `Package.swift`; init
-  en `RuulAppShell` con DSN + capture de errores no manejados +
-  breadcrumbs por RPC + screenshot opcional en crashes.
-- **F2 Analytics opt-in**: telemetría minimal sin PII (eventos
-  agregados por screen + retención). Opt-in explícito en onboarding.
-- **F3 Export del grupo**: RPC `export_group(group_id)` → JSON
-  completo (members + history + money + decisions). Apple
-  data portability + paz mental del founder.
-- **F4 Backup automático**: snapshot diario de
-  `decision_rules`/`settings` jsonb en `group_backups` table.
-  Allows revert si algo se corrompe.
-- **F5 Admin dashboard mini**: para founder solamente, página
-  oculta con health del proyecto (groups activos, errores recientes,
-  latencia RPC).
+- En cada sheet de mutación (RecordExpense / RecordSettlement /
+  PaySanction / RecordPoolCharge / VoteSheet / IssueSanction):
+  cuando el caller tiene mandatos activos con scope relevante,
+  picker "Actuar en nombre de [member]".
+- `mandate_id` se popula en el RPC.
+- `MoneyMovementDetailView` muestra "Hecho por X representando a Y
+  con mandato Z (vence W)".
+- `MemberDetailView` muestra "Mandatos activos a su favor" + "Lo
+  representa: ...".
 
 **Tamaño**: 2-3 sesiones.
 
+### V2-G6 · Cultural Norm → Rule promotion
+
+Hoy las cultural norms son lista paralela a las rules. Falta el
+puente:
+
+- Norm endorsada N veces puede promoverse a Rule formal.
+- Sheet "Convertir esta norma en regla" que pre-popula
+  `create_text_rule(...)` + cierra la norm con
+  `retire_cultural_norm(reason='promoted_to_rule', metadata={rule_id})`.
+- Backend: RPC `promote_norm_to_rule(p_norm_id, p_rule_type, p_severity)`
+  hace ambas operaciones atómicamente.
+
+**Tamaño**: 1-2 sesiones.
+
+### V2-G7 · Cross-primitive search & filters
+
+Hoy `GroupHistoryView` es feed crudo, `MembersListView` busca solo
+nombres. Falta navegación lateral:
+
+- Search global por grupo: `search_in_group(p_group_id, p_query)`
+  retorna entities matching (members + resources + decisions +
+  sanctions + disputes).
+- `GroupHistoryView` con filtros (entity_kind chips): Dinero ·
+  Decisiones · Sanciones · Disputas · Miembros · Reglas · Cultura.
+- Tap en cualquier row del history pushea al detail del entity
+  (deep link via `entity_kind` + `entity_id` ya disponibles).
+
+**Tamaño**: 2 sesiones.
+
+### V2-G8 · Engine-driven UX (consequences visible)
+
+Cuando V2-G3 activa, hay que mostrarle al usuario qué pasó:
+
+- Banner en `GroupHomeFeedView`: "El sistema evaluó N reglas en las
+  últimas 24h". Tap → muestra qué reglas dispararon qué.
+- Sheet "¿Por qué pasó esto?" en cualquier evento generado por el
+  engine — explica la cadena de evaluación + qué regla aplicó.
+- Surface en `RuleDetailView`: "Esta regla ha disparado N veces"
+  + listado de eventos generados.
+
+**Tamaño**: 1-2 sesiones (depende de cómo cierre V2-G3).
+
+### V2-G9 · Vote weights por rol/contribución
+
+`method='weighted'` ya existe en backend. Pero ¿de dónde vienen los
+pesos? **Slice**:
+
+- Opción 1: peso fijo por rol (Admin=3, Member=1, Provisional=0.5).
+- Opción 2: peso proporcional a contribuciones aceptadas.
+- Opción 3: peso manual definido en `decision.metadata.weights`.
+- `group_decisions.weight_strategy` column (jsonb).
+- iOS expone en `ProposeDecisionSheet` solo cuando method=weighted.
+
+**Tamaño**: 1-2 sesiones.
+
 ---
 
-## 3. Suma
+## 3. V3 — Quality / Launch (lo que era V2)
+
+Solo después de V2 (depth) cerrar. Capas transversales, no features
+nuevas.
+
+### V3-A · Sensación de vivo (Real-time + Push)
+- A1 Realtime subscriptions (events / disputes / decisions).
+- A2 APNs token registration + deep-link handlers.
+- A3 Notification preferences en device.
+- A4 Notification handlers críticos.
+- **Tamaño**: 3-4 sesiones.
+
+### V3-B · Warmth / Onboarding
+- B1 Templates de grupo (Casa familiar / Departamento / Viaje / Equipo / Comunidad).
+- B2 Tutorial primer grupo.
+- B3 Foundation hero tarjeta cuando ready.
+- B4 Memoria narrativa editorial (notes opcionales en events).
+- **Tamaño**: 3 sesiones.
+
+### V3-C · Money advanced
+- C1 In-kind con valuación (warehouse case).
+- C2 Subtipos resources (fund/space/asset detail).
+- C3 Pool charges admin UX.
+- C4 In-kind contribution flow completo.
+- **Tamaño**: 3-4 sesiones. *(V2-G4 + V2-G5 absorbieron parte
+  del C original.)*
+
+### V3-D · Cross-app reach
+- D1 WidgetsExtension (target nuevo).
+- D2 LiveActivity / Dynamic Island (target nuevo).
+- D3 App Intents / Shortcuts (target nuevo).
+- D4 Spotlight indexing.
+- D5 Deep-link router robusto.
+- **Tamaño**: 3-4 sesiones.
+
+### V3-E · App Store ready
+- E1 Localización `.xcstrings` real.
+- E2 Accessibility audit.
+- E3 Avatar real upload (PhotosPicker + Storage).
+- E4 Phone/Email change verificado en device.
+- E5 Account deletion.
+- E6 Legal (ToS + Privacy).
+- E7 App Store assets.
+- **Tamaño**: 4 sesiones.
+
+### V3-F · Operacional
+- F1 Sentry wired.
+- F2 Analytics opt-in.
+- F3 Export del grupo (JSON/PDF).
+- F4 Backup automático.
+- F5 Admin dashboard mini.
+- **Tamaño**: 2-3 sesiones.
+
+---
+
+## 4. Suma actualizada
 
 | Fase | Sesiones |
 |---|---|
 | V1 close (5 slices polish) | 4-5 |
-| V2-A Real-time + Push | 3-4 |
-| V2-B Warmth | 3 |
-| V2-C Money advanced | 4-5 |
-| V2-D Cross-app | 3-4 |
-| V2-E App Store ready | 4 |
-| V2-F Operacional | 2-3 |
-| **Total post-Foundation** | **~24-28 sesiones** |
+| **V2 Depth/Engine/Integrations** | **22-30** |
+| V3 Quality/Launch | 18-22 |
+| **Total post-Foundation** | **~44-57 sesiones** |
 
-A ritmo de 1-2 sesiones por día = 3-6 semanas calendario. Launch
-realista: julio-agosto 2026.
+Ritmo realista 1 sesión cada 1-2 días = 2-4 meses calendario.
+Launch realista: agosto-octubre 2026.
 
----
-
-## 4. Orden recomendado
-
-| Sesión | Slice | Por qué este orden |
-|---|---|---|
-| 1 | V1.5 Proponer norma cultural | Más chico, calienta motor |
-| 2 | V1.1 Apelación de sanción | Cierra loop sancionatorio |
-| 3 | V1.2 Verify contribución | Cierra loop de aportes |
-| 4 | V1.3 Transferir propiedad | Cierra loop de recursos |
-| 5 | V1.4 Estados de membresía | Cierra loop social pesado |
-| 6 | **V1 release tag** | Hito mental + smoke completo |
-| 7-10 | V2-A Real-time + Push | ROI inmediato, app se siente viva |
-| 11-13 | V2-B Warmth | Hace que el primer grupo no sea seco |
-| 14-18 | V2-C Money advanced | Cierra los casos reales que vimos en dogfooding |
-| 19-22 | V2-D Cross-app | Plataforma Apple completa |
-| 23-26 | V2-E App Store ready | Pre-shipping requirement |
-| 27-28 | V2-F Operacional | Telemetría/Sentry/Export antes de launch |
-| 29+ | **Launch** | TestFlight → App Store |
+**Nota honesta**: V2 es donde está el verdadero trabajo. V3 es
+re-packaging. Saltarse V2 = app shipping sin alma (multas
+desconectadas de dinero, reglas decorativas, votos triviales).
 
 ---
 
-## 5. Prompt sugerido para la próxima sesión
+## 5. Orden recomendado
+
+| Sesión | Slice |
+|---|---|
+| 1-5 | V1 close (V1.5 → V1.1 → V1.2 → V1.3 → V1.4) |
+| 6 | **V1 release tag** `v1.0.0-rc` |
+| 7-10 | V2-G1 Voting methods completos |
+| 11-15 | V2-G2 Decision types con outcome handlers |
+| 16-21 | V2-G3 Rule engine activation (el grande) |
+| 22-25 | V2-G4 Sanction ↔ Money deep |
+| 26-28 | V2-G5 Mandate ↔ Action sheets |
+| 29-30 | V2-G6 Norm → Rule promotion |
+| 31-32 | V2-G7 Cross-primitive search |
+| 33-34 | V2-G8 Engine-driven UX |
+| 35-36 | V2-G9 Vote weights |
+| 37 | **V2 release tag** `v2.0.0-rc` |
+| 38-41 | V3-A Real-time + Push |
+| 42-44 | V3-B Warmth |
+| 45-48 | V3-C Money advanced |
+| 49-52 | V3-D Cross-app |
+| 53-56 | V3-E App Store ready |
+| 57-58 | V3-F Operacional |
+| 59 | TestFlight beta |
+| 60 | **v1.0.0 production** |
+
+---
+
+## 6. Prompt sugerido para la próxima sesión
 
 > Continuando Ruul post-Foundation. V1 está al ~85% — quedan 5
 > slices de polish documentados en `Plans/Active/V2Plan.md §0`.
 > Hoy arrancamos con **V1.5 Proponer norma cultural** (el más chico,
-> 30 min — toolbar `+` en `CulturalNormsListView` que abre
-> `EditCulturalNormView` en modo crear; `propose_cultural_norm`
-> ya existe backend).
->
-> Sigue las convenciones del UIBottomUpPlan.md §1 + V2Plan.md §1
-> (commits prefijo `v2:` después de cerrar V1). Cierra cada slice con:
-> build green + tests green + device install + commit + push +
-> actualizar §6 tracking de V2Plan.md.
+> 30 min). Sigue convenciones de `UIBottomUpPlan.md §1` + `V2Plan.md §1`.
+> Cierra cada slice con: build green + tests green + device install +
+> commit + push + actualizar §7 tracking.
 
 ---
 
-## 6. Tracking
+## 7. Tracking
 
-### V1 close
+### V1 close (~4-5 sesiones)
 - [ ] V1.1 Apelación de sanción (Primitiva 11)
 - [ ] V1.2 Verify contribución (Primitiva 9)
 - [ ] V1.3 Transferir propiedad (Primitiva 18)
@@ -267,46 +365,47 @@ realista: julio-agosto 2026.
 - [ ] V1.5 Proponer norma cultural (Primitiva 20)
 - [ ] **V1 release tag** `v1.0.0-rc`
 
-### V2-A · Real-time + Push
-- [ ] A1 Real-time subscriptions (events / disputes / decisions)
-- [ ] A2 APNs token registration + handlers de tap
-- [ ] A3 Notification preferences en device
-- [ ] A4 Notification handlers críticos (5 tipos)
+### V2 Depth/Engine/Integrations (~22-30 sesiones)
+- [ ] V2-G1 Voting methods completos (8 methods + legitimacy_source + adaptive VoteSheet)
+- [ ] V2-G2 Decision types con outcome handlers (rule_change / membership / mandate_grant / mandate_revoke / sanction_appeal / dissolution / budget)
+- [ ] V2-G3 Rule engine activation (sync eval + shapes + recursion guards + audit)
+- [ ] V2-G4 Sanction ↔ Money deep (pago parcial / plan de pago / auto-pay from fund / convert to service)
+- [ ] V2-G5 Mandate ↔ Action sheets (money + vote + sanction + pool_charge)
+- [ ] V2-G6 Norm → Rule promotion
+- [ ] V2-G7 Cross-primitive search & filters
+- [ ] V2-G8 Engine-driven UX (consequences visible)
+- [ ] V2-G9 Vote weights por rol/contribución
+- [ ] **V2 release tag** `v2.0.0-rc`
 
-### V2-B · Warmth
-- [ ] B1 Templates de grupo (5 presets)
-- [ ] B2 Tutorial primer grupo
-- [ ] B3 Foundation hero tarjeta
-- [ ] B4 Memoria narrativa editorial (notes)
-
-### V2-C · Money advanced
-- [ ] C1 Contribuciones in-kind con valuación
-- [ ] C2 Subtipos de resources (fund/space/asset detail)
-- [ ] C3 Pool charges admin UX
-- [ ] C4 Mandates en money flows
-
-### V2-D · Cross-app
-- [ ] D1 WidgetsExtension
-- [ ] D2 LiveActivity / Dynamic Island
-- [ ] D3 App Intents / Shortcuts
-- [ ] D4 Spotlight indexing
-- [ ] D5 Deep-link router robusto
-
-### V2-E · App Store ready
-- [ ] E1 Localización real `.xcstrings`
-- [ ] E2 Accessibility audit
-- [ ] E3 Avatar real upload
-- [ ] E4 Phone/Email change verificado
-- [ ] E5 Account deletion
-- [ ] E6 Legal (ToS + Privacy hosted)
-- [ ] E7 App Store assets
-
-### V2-F · Operacional
-- [ ] F1 Sentry wired
-- [ ] F2 Analytics opt-in
-- [ ] F3 Export del grupo
-- [ ] F4 Backup automático
-- [ ] F5 Admin dashboard mini
+### V3 Quality/Launch (~18-22 sesiones)
+- [ ] V3-A1 Real-time subscriptions
+- [ ] V3-A2 APNs registration + handlers
+- [ ] V3-A3 Notification preferences
+- [ ] V3-A4 Notification handlers críticos
+- [ ] V3-B1 Templates de grupo
+- [ ] V3-B2 Tutorial primer grupo
+- [ ] V3-B3 Foundation hero
+- [ ] V3-B4 Memoria narrativa editorial
+- [ ] V3-C1 In-kind valuación
+- [ ] V3-C2 Resource subtype details
+- [ ] V3-C3 Pool charges admin UX
+- [ ] V3-D1 WidgetsExtension
+- [ ] V3-D2 LiveActivity / Dynamic Island
+- [ ] V3-D3 App Intents / Shortcuts
+- [ ] V3-D4 Spotlight indexing
+- [ ] V3-D5 Deep-link robusto
+- [ ] V3-E1 Localización `.xcstrings`
+- [ ] V3-E2 Accessibility audit
+- [ ] V3-E3 Avatar real upload
+- [ ] V3-E4 Phone/Email change verificado
+- [ ] V3-E5 Account deletion
+- [ ] V3-E6 Legal (ToS + Privacy)
+- [ ] V3-E7 App Store assets
+- [ ] V3-F1 Sentry wired
+- [ ] V3-F2 Analytics opt-in
+- [ ] V3-F3 Export grupo
+- [ ] V3-F4 Backup automático
+- [ ] V3-F5 Admin dashboard mini
 
 ### Launch
 - [ ] TestFlight beta
@@ -315,16 +414,14 @@ realista: julio-agosto 2026.
 
 ---
 
-## 7. Fuera de scope de V2 (explícito)
+## 8. Fuera de scope (explícito post-launch)
 
-Estas cosas NO entran en V2; se replanteam después del launch.
-
-- Primitiva 7 Comunicación (chat/canales intra-grupo)
+- Primitiva 7 Comunicación (chat/canales)
 - Primitiva 10 Incentivos gamificados
-- Primitiva 24 Cuidado/Mantenimiento como UI dedicada
-- iPad/macOS layouts dedicados (responsive sí, pero no layouts custom)
-- Internationalization más allá de ES + EN
-- Monetización / pricing
+- Primitiva 24 Cuidado/Mantenimiento dedicado
+- iPad / macOS layouts custom
+- I18n más allá de ES + EN
+- Pricing / monetización
 - Marketing site / landing
 - Integraciones third-party (Splitwise import, etc.)
-- AI features (resumen automático, sugerencias)
+- AI features (resumen, sugerencias)
