@@ -521,4 +521,29 @@ struct RPCInputsEncodingTests {
         let cursorOK = (dict["p_before_seq"] as? Int64) == 42 || (dict["p_before_seq"] as? Int) == 42
         #expect(cursorOK)
     }
+
+    @Test("propose_cultural_norm encodes all p_* keys + null body when empty")
+    func proposeCulturalNormDefaults() throws {
+        let gid = UUID()
+        let dict = try encode(ProposeCulturalNormParams(
+            groupId: gid,
+            normType: "value",
+            title: "Test",
+            body: nil,
+            visibility: "members"
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_norm_type"] as? String == "value")
+        #expect(dict["p_title"] as? String == "Test")
+        #expect(dict["p_body"] is NSNull)
+        #expect(dict["p_visibility"] as? String == "members")
+    }
+
+    @Test("retire_cultural_norm encodes p_reason as null when omitted")
+    func retireCulturalNormDefaults() throws {
+        let nid = UUID()
+        let dict = try encode(RetireCulturalNormParams(normId: nid))
+        #expect(dict["p_norm_id"] as? String == nid.uuidString)
+        #expect(dict["p_reason"] is NSNull)
+    }
 }

@@ -52,6 +52,8 @@ public struct GroupSettingsView: View {
                         container.disputesStore.beginDisputingSanction(sanctionId)
                     }
                 )
+            case .culture:
+                CulturalNormsListView(store: container.culturalNormsStore, groupId: group.id)
             }
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -98,6 +100,7 @@ public struct GroupSettingsView: View {
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
             await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
             await container.sanctionsStore.refreshIfNeeded(groupId: group.id)
+            await container.culturalNormsStore.refreshIfNeeded(groupId: group.id)
         }
     }
 
@@ -166,7 +169,9 @@ public struct GroupSettingsView: View {
             } label: {
                 row(label: L10n.GroupSettings.decisionRulesRow, systemImage: "person.3.sequence")
             }
-            comingSoonRow(.culture, label: L10n.GroupSettings.cultureRow, systemImage: "heart")
+            NavigationLink(value: GroupSettingsDestination.culture) {
+                Label(L10n.GroupSettings.cultureRow, systemImage: "heart")
+            }
             comingSoonRow(.rituals, label: L10n.GroupSettings.ritualsRow, systemImage: "sparkles")
         }
     }
@@ -277,6 +282,7 @@ public struct GroupSettingsView: View {
     private enum GroupSettingsDestination: Hashable {
         case rules
         case sanctionsPolicy
+        case culture
     }
 
     private enum ComingSoonRow: Hashable {
@@ -284,7 +290,6 @@ public struct GroupSettingsView: View {
         case membershipTypes
         case roles
         case mandates
-        case culture
         case rituals
         case currency
         case fundsPolicy

@@ -352,6 +352,50 @@ public enum L10n {
         public static let reversalNotice     = LocalizedStringResource("money_movement_detail.reversal_notice",    defaultValue: "Este movimiento es una reversión de uno anterior.")
     }
 
+    public enum CulturalNorms {
+        public static let title              = LocalizedStringResource("cultural_norms.title",              defaultValue: "Cultura")
+        public static let emptyTitle         = LocalizedStringResource("cultural_norms.empty.title",        defaultValue: "Sin cultura declarada todavía")
+        public static let emptyDescription   = LocalizedStringResource("cultural_norms.empty.description",  defaultValue: "Nombra lo que les hace ser este grupo: valores, tabúes, costumbres, rituales.")
+        public static let addButton          = LocalizedStringResource("cultural_norms.add",                defaultValue: "Proponer")
+        public static let createTitle        = LocalizedStringResource("cultural_norms.create.title",       defaultValue: "Proponer norma cultural")
+        public static let endorseButton      = LocalizedStringResource("cultural_norms.endorse",            defaultValue: "Respaldar")
+        public static let endorsedShort      = LocalizedStringResource("cultural_norms.endorsed.short",     defaultValue: "%lld respaldos")
+        public static let endorsedSingular   = LocalizedStringResource("cultural_norms.endorsed.singular",  defaultValue: "1 respaldo")
+        public static let retireAction       = LocalizedStringResource("cultural_norms.retire",             defaultValue: "Retirar")
+        public static let retireConfirmTitle = LocalizedStringResource("cultural_norms.retire.confirm.title", defaultValue: "Retirar norma")
+        public static let retireConfirmMessage = LocalizedStringResource("cultural_norms.retire.confirm.message", defaultValue: "Ya no aparecerá como activa. Sigue en historia.")
+        public static let typeSection        = LocalizedStringResource("cultural_norms.section.type",       defaultValue: "Tipo")
+        public static let titleSection       = LocalizedStringResource("cultural_norms.section.title",      defaultValue: "Título")
+        public static let titlePlaceholder   = LocalizedStringResource("cultural_norms.title.placeholder",  defaultValue: "Ej. Sin celulares en la mesa")
+        public static let bodySection        = LocalizedStringResource("cultural_norms.section.body",       defaultValue: "Detalles")
+        public static let bodyPlaceholder    = LocalizedStringResource("cultural_norms.body.placeholder",   defaultValue: "Explica brevemente por qué importa…")
+        public static let visibilitySection  = LocalizedStringResource("cultural_norms.section.visibility", defaultValue: "Visibilidad")
+        public static let save               = LocalizedStringResource("cultural_norms.save",               defaultValue: "Proponer")
+        public static let cancel             = LocalizedStringResource("cultural_norms.cancel",             defaultValue: "Cancelar")
+        public static let titleRequired      = LocalizedStringResource("cultural_norms.title.required",     defaultValue: "Escribe un título.")
+        public static let errorTitle         = LocalizedStringResource("cultural_norms.error.title",        defaultValue: "No pudimos cargar la cultura del grupo")
+        public static let retry              = LocalizedStringResource("cultural_norms.retry",              defaultValue: "Reintentar")
+        public static let proposedBy         = LocalizedStringResource("cultural_norms.proposed_by",        defaultValue: "Propuesto por %@")
+
+        public static let typeValue          = LocalizedStringResource("cultural_norms.type.value",         defaultValue: "Valor")
+        public static let typeTaboo          = LocalizedStringResource("cultural_norms.type.taboo",         defaultValue: "Tabú")
+        public static let typeSymbol         = LocalizedStringResource("cultural_norms.type.symbol",        defaultValue: "Símbolo")
+        public static let typeStory          = LocalizedStringResource("cultural_norms.type.story",         defaultValue: "Historia")
+        public static let typeLanguage       = LocalizedStringResource("cultural_norms.type.language",      defaultValue: "Idioma propio")
+        public static let typeRitual         = LocalizedStringResource("cultural_norms.type.ritual",        defaultValue: "Ritual")
+        public static let typeCustom         = LocalizedStringResource("cultural_norms.type.custom",        defaultValue: "Costumbre")
+        public static let typeAesthetic      = LocalizedStringResource("cultural_norms.type.aesthetic",     defaultValue: "Estética")
+        public static let typePrinciple      = LocalizedStringResource("cultural_norms.type.principle",     defaultValue: "Principio")
+
+        public static let statusProposed     = LocalizedStringResource("cultural_norms.status.proposed",    defaultValue: "Propuesta")
+        public static let statusEndorsed     = LocalizedStringResource("cultural_norms.status.endorsed",    defaultValue: "Respaldada")
+        public static let statusRetired      = LocalizedStringResource("cultural_norms.status.retired",     defaultValue: "Retirada")
+
+        public static let visibilityPrivate  = LocalizedStringResource("cultural_norms.visibility.private", defaultValue: "Privado")
+        public static let visibilityMembers  = LocalizedStringResource("cultural_norms.visibility.members", defaultValue: "Miembros")
+        public static let visibilityPublic   = LocalizedStringResource("cultural_norms.visibility.public",  defaultValue: "Público")
+    }
+
     public enum GroupSettings {
         public static let title                 = LocalizedStringResource("group_settings.title",                 defaultValue: "Ajustes del grupo")
 

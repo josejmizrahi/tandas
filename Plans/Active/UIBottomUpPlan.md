@@ -564,7 +564,7 @@ Marcar cada slice cerrado:
 - [ ] B2 BoundaryPolicyView
 - [ ] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)
 - [ ] B4 MandatesView (Primitiva 23)
-- [ ] B5 CulturalNormsListView + EditCulturalNormView (Primitiva 20)
+- [x] B5 CulturalNormsListView + EditCulturalNormView (Primitiva 20)
 - [ ] B6 RitualsListView + CreateRitualSheet (Primitiva 21)
 - [ ] B7 NotificationsSettingsView + GroupPrivacyView
 - [ ] B8 DissolveGroupConfirmation (Primitiva 25)

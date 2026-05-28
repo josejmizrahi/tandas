@@ -313,6 +313,45 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Cultural norms (Primitiva 20, B5)
+
+    public func groupCulturalNormsActive(groupId: UUID) async throws -> [GroupCulturalNorm] {
+        let params = GroupCulturalNormsActiveParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_cultural_norms_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func proposeCulturalNorm(_ input: ProposeCulturalNormParams) async throws -> UUID {
+        do {
+            return try await client.rpc("propose_cultural_norm", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func endorseCulturalNorm(normId: UUID) async throws -> Int {
+        let params = EndorseCulturalNormParams(normId: normId)
+        do {
+            return try await client.rpc("endorse_cultural_norm", params: params).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws {
+        do {
+            _ = try await client.rpc("retire_cultural_norm", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Money movements (Primitiva 19, A2.b)
 
     public func groupMoneyMovements(

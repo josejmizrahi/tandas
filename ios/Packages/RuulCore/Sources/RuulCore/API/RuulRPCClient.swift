@@ -122,6 +122,28 @@ public protocol RuulRPCClient: Sendable {
     /// `before` is the cursor for pagination. Active-member gate.
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
 
+    // MARK: - Cultural norms (Primitiva 20, B5)
+
+    /// `group_cultural_norms_active(p_group_id)` — proposed+endorsed
+    /// norms for the group (excludes retired), pre-joined with the
+    /// proposer's display_name. Sorted by endorsed_count DESC then
+    /// created_at DESC. Active-member gate.
+    func groupCulturalNormsActive(groupId: UUID) async throws -> [GroupCulturalNorm]
+
+    /// `propose_cultural_norm(...)` — inserts a new norm in
+    /// `proposed` state. Requires permission `culture.propose`.
+    /// Returns the new norm id.
+    func proposeCulturalNorm(_ input: ProposeCulturalNormParams) async throws -> UUID
+
+    /// `endorse_cultural_norm(p_norm_id)` — increments endorsed_count
+    /// and flips status proposed→endorsed on first endorse. Returns
+    /// the new count. Requires `culture.endorse`.
+    func endorseCulturalNorm(normId: UUID) async throws -> Int
+
+    /// `retire_cultural_norm(p_norm_id, p_reason)` — flips status to
+    /// retired (idempotent). Requires `group.update`.
+    func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws
+
     // MARK: - Money movements (Primitiva 19, A2.b)
 
     /// `group_money_movements(p_group_id, p_limit, p_filter, p_before_seq)`

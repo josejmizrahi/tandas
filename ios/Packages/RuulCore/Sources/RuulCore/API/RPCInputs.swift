@@ -487,6 +487,77 @@ public struct GroupMoneyMovementsParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Cultural norms (Primitiva 20, B5)
+
+public struct GroupCulturalNormsActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct ProposeCulturalNormParams: Encodable, Sendable, Equatable, Hashable {
+    public let pGroupId: UUID
+    public let pNormType: String
+    public let pTitle: String
+    public let pBody: String?
+    public let pVisibility: String
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId   = "p_group_id"
+        case pNormType  = "p_norm_type"
+        case pTitle     = "p_title"
+        case pBody      = "p_body"
+        case pVisibility = "p_visibility"
+    }
+
+    public init(
+        groupId: UUID,
+        normType: String,
+        title: String,
+        body: String? = nil,
+        visibility: String = "members"
+    ) {
+        self.pGroupId = groupId
+        self.pNormType = normType
+        self.pTitle = title
+        self.pBody = body
+        self.pVisibility = visibility
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pNormType, forKey: .pNormType)
+        try c.encode(pTitle, forKey: .pTitle)
+        try c.encodeOrNil(pBody, forKey: .pBody)
+        try c.encode(pVisibility, forKey: .pVisibility)
+    }
+}
+
+public struct EndorseCulturalNormParams: Encodable, Sendable {
+    public let pNormId: UUID
+    enum CodingKeys: String, CodingKey { case pNormId = "p_norm_id" }
+    public init(normId: UUID) { self.pNormId = normId }
+}
+
+public struct RetireCulturalNormParams: Encodable, Sendable, Equatable, Hashable {
+    public let pNormId: UUID
+    public let pReason: String?
+    enum CodingKeys: String, CodingKey {
+        case pNormId = "p_norm_id"
+        case pReason = "p_reason"
+    }
+    public init(normId: UUID, reason: String? = nil) {
+        self.pNormId = normId
+        self.pReason = reason
+    }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pNormId, forKey: .pNormId)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+    }
+}
+
 // MARK: - Disputes (Primitiva 14)
 
 public struct GroupDisputesActiveParams: Encodable, Sendable {

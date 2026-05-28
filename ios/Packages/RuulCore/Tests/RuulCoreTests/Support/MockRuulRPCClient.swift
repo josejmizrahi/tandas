@@ -41,6 +41,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case disputeSanction(input: DisputeSanctionInput)
         case groupEventsRecent(groupId: UUID, limit: Int, before: Date?)
         case groupMoneyMovements(groupId: UUID, limit: Int, filter: [String]?, beforeSeq: Int64?)
+        case groupCulturalNormsActive(groupId: UUID)
+        case proposeCulturalNorm(input: ProposeCulturalNormParams)
+        case endorseCulturalNorm(normId: UUID)
+        case retireCulturalNorm(input: RetireCulturalNormParams)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -106,6 +110,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var disputeSanctionStub: Result<UUID, RuulError> = .success(UUID())
     private var groupEventsRecentStub: Result<[GroupEvent], RuulError> = .success([])
     private var groupMoneyMovementsStub: Result<[MoneyMovement], RuulError> = .success([])
+    private var groupCulturalNormsActiveStub: Result<[GroupCulturalNorm], RuulError> = .success([])
+    private var proposeCulturalNormStub: Result<UUID, RuulError> = .success(UUID())
+    private var endorseCulturalNormStub: Result<Int, RuulError> = .success(1)
+    private var retireCulturalNormStub: Result<Void, RuulError> = .success(())
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -144,6 +152,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setDisputeSanctionStub(_ stub: Result<UUID, RuulError>) { disputeSanctionStub = stub }
     func setGroupEventsRecentStub(_ stub: Result<[GroupEvent], RuulError>) { groupEventsRecentStub = stub }
     func setGroupMoneyMovementsStub(_ stub: Result<[MoneyMovement], RuulError>) { groupMoneyMovementsStub = stub }
+    func setGroupCulturalNormsActiveStub(_ stub: Result<[GroupCulturalNorm], RuulError>) { groupCulturalNormsActiveStub = stub }
+    func setProposeCulturalNormStub(_ stub: Result<UUID, RuulError>) { proposeCulturalNormStub = stub }
+    func setEndorseCulturalNormStub(_ stub: Result<Int, RuulError>) { endorseCulturalNormStub = stub }
+    func setRetireCulturalNormStub(_ stub: Result<Void, RuulError>) { retireCulturalNormStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -309,6 +321,26 @@ final actor MockRuulRPCClient: RuulRPCClient {
     ) async throws -> [MoneyMovement] {
         recorded.append(.groupMoneyMovements(groupId: groupId, limit: limit, filter: filter, beforeSeq: beforeSeq))
         return try groupMoneyMovementsStub.get()
+    }
+
+    func groupCulturalNormsActive(groupId: UUID) async throws -> [GroupCulturalNorm] {
+        recorded.append(.groupCulturalNormsActive(groupId: groupId))
+        return try groupCulturalNormsActiveStub.get()
+    }
+
+    func proposeCulturalNorm(_ input: ProposeCulturalNormParams) async throws -> UUID {
+        recorded.append(.proposeCulturalNorm(input: input))
+        return try proposeCulturalNormStub.get()
+    }
+
+    func endorseCulturalNorm(normId: UUID) async throws -> Int {
+        recorded.append(.endorseCulturalNorm(normId: normId))
+        return try endorseCulturalNormStub.get()
+    }
+
+    func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws {
+        recorded.append(.retireCulturalNorm(input: input))
+        try retireCulturalNormStub.get()
     }
 
     func myProfile() async throws -> Profile {
