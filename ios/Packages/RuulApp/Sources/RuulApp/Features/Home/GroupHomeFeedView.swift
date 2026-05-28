@@ -27,7 +27,6 @@ struct GroupHomeFeedView: View {
 
     // MARK: - Sheet state
 
-    @State private var isShowingExpenseSheet = false
     @State private var isShowingSettlementSheet = false
     @State private var isShowingInviteSheet = false
     @State private var pendingMemberSelection: MembershipBoundaryItem?
@@ -37,8 +36,8 @@ struct GroupHomeFeedView: View {
             foundationSection
             attentionSection
             upcomingSection
+            debtsSection
             recentlyHappenedSection
-            quickActionsSection
         }
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -59,16 +58,6 @@ struct GroupHomeFeedView: View {
         }
         .refreshable { await refresh() }
         .task { await refresh() }
-        .sheet(isPresented: $isShowingExpenseSheet) {
-            RecordExpenseSheet(
-                container: container,
-                groupId: group.id,
-                myMembershipId: group.membershipId
-            ) {
-                isShowingExpenseSheet = false
-                Task { await refresh() }
-            }
-        }
         .sheet(isPresented: $isShowingSettlementSheet) {
             RecordSettlementSheet(
                 container: container,
@@ -202,6 +191,40 @@ struct GroupHomeFeedView: View {
             .map { UpcomingItem.decisionClosing($0) }
     }
 
+    // MARK: - Deudas
+
+    /// Per doctrine_group_space_situational: viewer-involved dyadic
+    /// settlement pairs. At Foundation level we use the caller's open
+    /// obligations directly (each row is a real amount they owe to
+    /// either the pool or a specific member). Tap → opens the
+    /// settlement sheet so they can resolve it on the spot.
+    @ViewBuilder
+    private var debtsSection: some View {
+        let items = debtItems
+        if !items.isEmpty {
+            Section("Deudas") {
+                ForEach(items) { obligation in
+                    DebtRow(obligation: obligation) {
+                        isShowingSettlementSheet = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var debtItems: [ObligationSummary] {
+        container.moneyStore.obligations
+            .filter { $0.amountOutstanding > 0 }
+            .sorted { $0.amountOutstanding > $1.amountOutstanding }
+    }
+
+    // MARK: - En uso
+
+    // Currently invisible — Foundation has no checkout/booking
+    // infrastructure (assets in custody, spaces occupied). Once those
+    // ship the cluster wires here against a polymorphic
+    // `[InUseProjection]` source per doctrine §"Implementation status".
+
     // MARK: - Acabó de pasar
 
     @ViewBuilder
@@ -224,29 +247,6 @@ struct GroupHomeFeedView: View {
         Array(container.eventsStore.events.prefix(5))
     }
 
-    // MARK: - Quick actions (transitional — actions need somewhere to live)
-
-    @ViewBuilder
-    private var quickActionsSection: some View {
-        Section {
-            Button {
-                isShowingExpenseSheet = true
-            } label: {
-                Label("Registrar gasto", systemImage: "plus.circle")
-            }
-            Button {
-                isShowingSettlementSheet = true
-            } label: {
-                Label("Liquidar al grupo", systemImage: "checkmark.circle")
-            }
-            Button {
-                isShowingInviteSheet = true
-            } label: {
-                Label("Invitar a alguien", systemImage: "person.crop.circle.badge.plus")
-            }
-        }
-    }
-
     // MARK: - Empty overlay (presence + invite CTA when literally nothing has happened yet)
 
     @ViewBuilder
@@ -257,8 +257,9 @@ struct GroupHomeFeedView: View {
         let isReady = container.foundationStatusStore.status?.isReady ?? false
         let attentionEmpty = attentionItems.isEmpty
         let upcomingEmpty = upcomingItems.isEmpty
+        let debtsEmpty = debtItems.isEmpty
         let recentEmpty = recentEvents.isEmpty
-        if isReady, attentionEmpty, upcomingEmpty, recentEmpty {
+        if isReady, attentionEmpty, upcomingEmpty, debtsEmpty, recentEmpty {
             VStack(spacing: 16) {
                 Image(systemName: "person.3.sequence")
                     .font(.system(size: 48))
@@ -480,6 +481,44 @@ private struct RecentEventRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
+        }
+    }
+}
+
+private struct DebtRow: View {
+    let obligation: ObligationSummary
+    let onSettle: () -> Void
+
+    var body: some View {
+        Button(action: onSettle) {
+            HStack(spacing: 12) {
+                Image(systemName: "creditcard")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(headline)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text("\(obligation.amountOutstanding.formatted()) MXN")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Names the counterparty per `doctrine_money_two_worlds`: every
+    /// money string must say WHO. "Pagale a Linda" beats "Le debes".
+    private var headline: String {
+        switch obligation.owedToKind {
+        case "pool":
+            return "Pagale al grupo"
+        default:
+            return "Pagale a \(obligation.owedToLabel)"
         }
     }
 }
