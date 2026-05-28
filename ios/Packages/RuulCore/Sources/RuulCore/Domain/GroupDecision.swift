@@ -582,47 +582,130 @@ public struct GroupDecisionTally: Codable, Equatable, Sendable, Hashable {
 /// Typed view over `group_decisions.result` jsonb. Populated when
 /// `finalize_vote` (or `cancel_vote`) runs; empty `{}` while the
 /// decision is still open.
+///
+/// V2-G9 — `finalize_vote` now branches by method:
+/// - `weighted` / `ranked_choice` → `optionTally` + `winnerOption` +
+///   `winnerPoints` + `voterCount` (no yes/no fields).
+/// - everything else → the canonical yes/no/abstain/block fields.
 public struct DecisionResult: Codable, Equatable, Sendable, Hashable {
     public let outcome: String?
+    public let method: String?
     public let yes: Decimal?
     public let no: Decimal?
     public let abstain: Decimal?
     public let block: Decimal?
     public let cancelReason: String?
+    /// V2-G9 — per-option tally (option UUID → points). Present only
+    /// for `weighted` / `ranked_choice` decisions.
+    public let optionTally: [UUID: Decimal]?
+    public let winnerOption: UUID?
+    public let winnerPoints: Decimal?
+    public let voterCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case outcome
+        case method
         case yes
         case no
         case abstain
         case block
         case cancelReason = "cancel_reason"
+        case optionTally  = "option_tally"
+        case winnerOption = "winner_option"
+        case winnerPoints = "winner_points"
+        case voterCount   = "voter_count"
     }
 
     public init(
         outcome: String? = nil,
+        method: String? = nil,
         yes: Decimal? = nil,
         no: Decimal? = nil,
         abstain: Decimal? = nil,
         block: Decimal? = nil,
-        cancelReason: String? = nil
+        cancelReason: String? = nil,
+        optionTally: [UUID: Decimal]? = nil,
+        winnerOption: UUID? = nil,
+        winnerPoints: Decimal? = nil,
+        voterCount: Int? = nil
     ) {
         self.outcome = outcome
+        self.method = method
         self.yes = yes
         self.no = no
         self.abstain = abstain
         self.block = block
         self.cancelReason = cancelReason
+        self.optionTally = optionTally
+        self.winnerOption = winnerOption
+        self.winnerPoints = winnerPoints
+        self.voterCount = voterCount
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.outcome = try c.decodeIfPresent(String.self, forKey: .outcome)
+        self.method = try c.decodeIfPresent(String.self, forKey: .method)
         self.yes = try c.decodeIfPresent(Decimal.self, forKey: .yes)
         self.no = try c.decodeIfPresent(Decimal.self, forKey: .no)
         self.abstain = try c.decodeIfPresent(Decimal.self, forKey: .abstain)
         self.block = try c.decodeIfPresent(Decimal.self, forKey: .block)
         self.cancelReason = try c.decodeIfPresent(String.self, forKey: .cancelReason)
+        if let rawTally = try c.decodeIfPresent([String: Decimal].self, forKey: .optionTally) {
+            var typed: [UUID: Decimal] = [:]
+            for (k, v) in rawTally {
+                if let id = UUID(uuidString: k) { typed[id] = v }
+            }
+            self.optionTally = typed.isEmpty ? nil : typed
+        } else {
+            self.optionTally = nil
+        }
+        self.winnerOption = try c.decodeIfPresent(UUID.self, forKey: .winnerOption)
+        self.winnerPoints = try c.decodeIfPresent(Decimal.self, forKey: .winnerPoints)
+        self.voterCount = try c.decodeIfPresent(Int.self, forKey: .voterCount)
+    }
+}
+
+/// V2-G9 — `metadata.weight_strategy` jsonb on `group_decisions`. Only
+/// the `manual` kind is consumed in V2; `role` + `contribution` are
+/// reserved for future sub-slices and decode tolerantly.
+public struct WeightStrategy: Codable, Equatable, Sendable, Hashable {
+    public enum Kind: String, Codable, Sendable, Hashable {
+        case manual
+        case role
+        case contribution
+    }
+
+    public let kind: Kind
+    public let maxWeight: Decimal
+
+    public static let defaultMaxWeight: Decimal = 10
+
+    public init(kind: Kind = .manual, maxWeight: Decimal = WeightStrategy.defaultMaxWeight) {
+        self.kind = kind
+        self.maxWeight = maxWeight
+    }
+
+    enum CodingKeys: String, CodingKey { case kind, config }
+    enum ConfigKeys: String, CodingKey { case maxWeight = "max_weight" }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let rawKind = (try? c.decode(String.self, forKey: .kind)) ?? Kind.manual.rawValue
+        self.kind = Kind(rawValue: rawKind) ?? .manual
+        if let config = try? c.nestedContainer(keyedBy: ConfigKeys.self, forKey: .config),
+           let mw = try? config.decode(Decimal.self, forKey: .maxWeight) {
+            self.maxWeight = mw
+        } else {
+            self.maxWeight = WeightStrategy.defaultMaxWeight
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(kind.rawValue, forKey: .kind)
+        var config = c.nestedContainer(keyedBy: ConfigKeys.self, forKey: .config)
+        try config.encode(maxWeight, forKey: .maxWeight)
     }
 }
 
@@ -832,6 +915,10 @@ public struct GroupDecisionDetail: Codable, Equatable, Sendable, Hashable {
     public let tally: GroupDecisionTally
     public let optionTally: [UUID: Int]
     public let myVote: GroupDecisionMyVote?
+    /// V2-G9 — derived from `metadata.weight_strategy`. Non-nil only
+    /// for `method='weighted'` decisions; iOS uses `maxWeight` to size
+    /// the VoteSheet weight slider.
+    public let weightStrategy: WeightStrategy?
 
     enum CodingKeys: String, CodingKey {
         case id                   = "decision_id"
@@ -853,10 +940,21 @@ public struct GroupDecisionDetail: Codable, Equatable, Sendable, Hashable {
         case createdBy            = "created_by"
         case createdByDisplayName = "created_by_display_name"
         case result
+        case metadata
         case options
         case tally
         case optionTally          = "option_tally"
         case myVote               = "my_vote"
+    }
+
+    /// Sub-key inside `metadata` carrying the typed weight strategy.
+    private struct MetadataShape: Decodable {
+        let weightStrategy: WeightStrategy?
+        enum CodingKeys: String, CodingKey { case weightStrategy = "weight_strategy" }
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.weightStrategy = try c.decodeIfPresent(WeightStrategy.self, forKey: .weightStrategy)
+        }
     }
 
     public init(
@@ -882,7 +980,8 @@ public struct GroupDecisionDetail: Codable, Equatable, Sendable, Hashable {
         options: [GroupDecisionOption] = [],
         tally: GroupDecisionTally = GroupDecisionTally(),
         optionTally: [UUID: Int] = [:],
-        myVote: GroupDecisionMyVote? = nil
+        myVote: GroupDecisionMyVote? = nil,
+        weightStrategy: WeightStrategy? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -907,6 +1006,7 @@ public struct GroupDecisionDetail: Codable, Equatable, Sendable, Hashable {
         self.tally = tally
         self.optionTally = optionTally
         self.myVote = myVote
+        self.weightStrategy = weightStrategy
     }
 
     public init(from decoder: Decoder) throws {
@@ -945,6 +1045,43 @@ public struct GroupDecisionDetail: Codable, Equatable, Sendable, Hashable {
             self.optionTally = [:]
         }
         self.myVote = try c.decodeIfPresent(GroupDecisionMyVote.self, forKey: .myVote)
+        if let shape = try c.decodeIfPresent(MetadataShape.self, forKey: .metadata) {
+            self.weightStrategy = shape.weightStrategy
+        } else {
+            self.weightStrategy = nil
+        }
+    }
+
+    /// Encode covers the read shape only — iOS never sends a Detail
+    /// back to the server. We still need this so Swift's synthesized
+    /// Encodable conformance doesn't trip on the Decodable-only
+    /// `MetadataShape` helper.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(groupId, forKey: .groupId)
+        try c.encode(title, forKey: .title)
+        try c.encodeIfPresent(body, forKey: .body)
+        try c.encode(decisionType.rawValue, forKey: .decisionType)
+        try c.encode(method.rawValue, forKey: .method)
+        try c.encodeIfPresent(legitimacySource, forKey: .legitimacySource)
+        try c.encode(status.rawValue, forKey: .status)
+        try c.encodeIfPresent(thresholdPct, forKey: .thresholdPct)
+        try c.encodeIfPresent(quorumPct, forKey: .quorumPct)
+        try c.encodeIfPresent(referenceKind, forKey: .referenceKind)
+        try c.encodeIfPresent(referenceId, forKey: .referenceId)
+        try c.encodeIfPresent(opensAt, forKey: .opensAt)
+        try c.encodeIfPresent(closesAt, forKey: .closesAt)
+        try c.encodeIfPresent(decidedAt, forKey: .decidedAt)
+        try c.encodeIfPresent(createdAt, forKey: .createdAt)
+        try c.encodeIfPresent(createdBy, forKey: .createdBy)
+        try c.encodeIfPresent(createdByDisplayName, forKey: .createdByDisplayName)
+        try c.encodeIfPresent(result, forKey: .result)
+        try c.encode(options, forKey: .options)
+        try c.encode(tally, forKey: .tally)
+        let tallyStr = Dictionary(uniqueKeysWithValues: optionTally.map { ($0.key.uuidString, $0.value) })
+        try c.encode(tallyStr, forKey: .optionTally)
+        try c.encodeIfPresent(myVote, forKey: .myVote)
     }
 }
 

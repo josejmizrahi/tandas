@@ -26,9 +26,19 @@ public struct VoteSheet: View {
             Form {
                 if currentMethod == .admin {
                     adminOnlyNotice
+                } else if currentMethod == .rankedChoice,
+                          let detail = currentDetail,
+                          !detail.options.isEmpty {
+                    rankedSection(detail: detail)
+                    reasonSection
+                } else if currentMethod == .weighted,
+                          let detail = currentDetail,
+                          !detail.options.isEmpty {
+                    weightedSection(detail: detail)
+                    reasonSection
                 } else {
                     valueSection
-                    if let detail = store.detail, detail.id == store.voteDraftDecisionId, !detail.options.isEmpty {
+                    if let detail = currentDetail, !detail.options.isEmpty {
                         optionSection(options: detail.options)
                     }
                     reasonSection
@@ -59,6 +69,13 @@ public struct VoteSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    private var currentDetail: GroupDecisionDetail? {
+        guard let detail = store.detail, detail.id == store.voteDraftDecisionId else {
+            return nil
+        }
+        return detail
     }
 
     /// Method of the decision being voted on. We prefer the loaded
@@ -152,6 +169,90 @@ public struct VoteSheet: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rankedSection(detail: GroupDecisionDetail) -> some View {
+        // Map ids → labels for the drag-to-reorder list. Voter touches
+        // store.voteDraftRankedOrder directly via the binding.
+        let optionsById = Dictionary(uniqueKeysWithValues: detail.options.map { ($0.id, $0) })
+        Section {
+            ForEach(Array(store.voteDraftRankedOrder.enumerated()), id: \.element) { index, id in
+                HStack(spacing: 12) {
+                    Text("\(index + 1)")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 28)
+                        .foregroundStyle(.secondary)
+                    Text(optionsById[id]?.label ?? "—")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "line.3.horizontal")
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .onMove { from, to in
+                store.voteDraftRankedOrder.move(fromOffsets: from, toOffset: to)
+            }
+        } header: {
+            Text(L10n.Decisions.voteRankedSection)
+        } footer: {
+            Text(L10n.Decisions.voteRankedHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .environment(\.editMode, .constant(.active))
+    }
+
+    @ViewBuilder
+    private func weightedSection(detail: GroupDecisionDetail) -> some View {
+        Section {
+            ForEach(detail.options) { option in
+                Button {
+                    store.voteDraftOptionId = option.id
+                } label: {
+                    HStack {
+                        Text(option.label)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if store.voteDraftOptionId == option.id {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.tint)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text(L10n.Decisions.voteOptionSection)
+        }
+
+        if let selected = store.voteDraftOptionId {
+            Section {
+                let maxWeight = NSDecimalNumber(decimal: store.voteDraftMaxWeight).intValue
+                let currentWeight = NSDecimalNumber(
+                    decimal: store.voteDraftWeights[selected] ?? 0
+                ).intValue
+                Stepper(value: Binding(
+                    get: { currentWeight },
+                    set: { store.voteDraftWeights[selected] = Decimal($0) }
+                ), in: 0...max(1, maxWeight)) {
+                    HStack {
+                        Text(L10n.Decisions.voteWeightedSection)
+                        Spacer()
+                        Text("\(currentWeight)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(String(localized: L10n.Decisions.voteWeightedMaxLabel)
+                    .replacingOccurrences(of: "%@", with: "\(maxWeight)"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text(L10n.Decisions.voteWeightedSection)
             }
         }
     }

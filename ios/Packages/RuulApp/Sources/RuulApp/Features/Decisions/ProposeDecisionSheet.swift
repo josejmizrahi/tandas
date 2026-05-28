@@ -44,6 +44,9 @@ public struct ProposeDecisionSheet: View {
                 typeSection
                 referencePickerSection
                 optionsSection
+                if store.draftMethod == .weighted {
+                    weightStrategySection
+                }
                 if let message = store.draftErrorMessage, !message.isEmpty {
                     Section {
                         Text(message)
@@ -400,6 +403,34 @@ public struct ProposeDecisionSheet: View {
         Section {
             Text(L10n.Decisions.proposeReferenceUnsupportedHint)
                 .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var weightStrategySection: some View {
+        Section {
+            let bindingMax = Binding<Int>(
+                get: { NSDecimalNumber(decimal: store.draftWeightStrategy.maxWeight).intValue },
+                set: { store.draftWeightStrategy = WeightStrategy(
+                    kind: store.draftWeightStrategy.kind,
+                    maxWeight: Decimal($0)
+                ) }
+            )
+            Stepper(value: bindingMax, in: 1...100) {
+                HStack {
+                    Text(L10n.Decisions.proposeWeightStrategyMaxLabel)
+                    Spacer()
+                    Text("\(bindingMax.wrappedValue)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text(L10n.Decisions.proposeWeightStrategySection)
+        } footer: {
+            Text(L10n.Decisions.proposeWeightStrategyHint)
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }

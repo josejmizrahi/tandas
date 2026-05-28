@@ -129,27 +129,40 @@ public final class DecisionsStore {
             && (draftPoolChargeParsedAmount == nil || draftPoolChargeKind == nil)
     }
 
+    /// V2-G9 — weight strategy attached to a `method='weighted'` draft.
+    /// Defaults to `manual / max_weight=10`. Persists into
+    /// `group_decisions.metadata.weight_strategy` jsonb.
+    public var draftWeightStrategy: WeightStrategy = WeightStrategy()
+
     /// Composed `metadata` jsonb payload for the current draft.
     /// Membership decisions write `target_state`; rule_change writes
-    /// `action`; budget writes amount/unit/charge_kind. Future handlers
-    /// add more keys here.
-    public var draftMetadata: [String: String]? {
+    /// `action`; budget writes amount/unit/charge_kind. Weighted
+    /// decisions write `weight_strategy` as a nested object. Future
+    /// handlers add more keys here.
+    public var draftMetadata: [String: RPCJSONValue]? {
+        var payload: [String: RPCJSONValue] = [:]
         if draftType == .membership, let target = draftMembershipTargetState {
-            return ["target_state": target.rawValue]
+            payload["target_state"] = .string(target.rawValue)
         }
         if draftType == .ruleChange, let action = draftRuleChangeAction {
-            return ["action": action.rawValue]
+            payload["action"] = .string(action.rawValue)
         }
         if draftType == .budget,
            let amount = draftPoolChargeParsedAmount,
            let kind = draftPoolChargeKind {
-            return [
-                "amount":      "\(amount)",
-                "unit":        draftPoolChargeUnit,
-                "charge_kind": kind.rawValue
-            ]
+            payload["amount"]      = .string("\(amount)")
+            payload["unit"]        = .string(draftPoolChargeUnit)
+            payload["charge_kind"] = .string(kind.rawValue)
         }
-        return nil
+        if draftMethod == .weighted {
+            payload["weight_strategy"] = .object([
+                "kind":   .string(draftWeightStrategy.kind.rawValue),
+                "config": .object([
+                    "max_weight": .number(draftWeightStrategy.maxWeight)
+                ])
+            ])
+        }
+        return payload.isEmpty ? nil : payload
     }
 
     public struct DraftOption: Identifiable, Equatable, Sendable {
@@ -169,6 +182,18 @@ public final class DecisionsStore {
     public var voteDraftOptionId: UUID?
     public var voteDraftReason: String = ""
     public private(set) var voteDraftErrorMessage: String?
+    /// V2-G9 — ranked-choice ballot draft. Indexed by 1-based rank as
+    /// the user reorders; the list is materialized from the decision's
+    /// options in `beginVoting(on:)`.
+    public var voteDraftRankedOrder: [UUID] = []
+    /// V2-G9 — weighted ballot draft. Maps option id → weight chosen
+    /// by the voter (capped by the decision's `weight_strategy.max_weight`).
+    public var voteDraftWeights: [UUID: Decimal] = [:]
+    /// V2-G9 — max weight derived from the decision's strategy. Cached
+    /// in the store so VoteSheet can size its slider/stepper. Defaults
+    /// to `WeightStrategy.defaultMaxWeight` when the strategy can't be
+    /// decoded.
+    public var voteDraftMaxWeight: Decimal = WeightStrategy.defaultMaxWeight
 
     // MARK: - Storage
 
@@ -274,6 +299,7 @@ public final class DecisionsStore {
         draftPoolChargeAmount = ""
         draftPoolChargeUnit = "MXN"
         draftPoolChargeKind = nil
+        draftWeightStrategy = WeightStrategy()
         draftOptions = []
         draftErrorMessage = nil
         isProposePresented = true
@@ -373,6 +399,7 @@ public final class DecisionsStore {
         draftPoolChargeAmount = ""
         draftPoolChargeUnit = "MXN"
         draftPoolChargeKind = nil
+        draftWeightStrategy = WeightStrategy()
         draftOptions = []
         draftErrorMessage = nil
     }
@@ -386,6 +413,15 @@ public final class DecisionsStore {
             ?? .yes
         voteDraftOptionId = decision.myVote?.optionId
         voteDraftReason = decision.myVote?.reason ?? ""
+        // V2-G9 — initialize ranked/weighted draft state from the
+        // decision's options. Order matches `sortOrder` (the proposer's
+        // intended display order); the voter can drag to reorder.
+        voteDraftRankedOrder = decision.options.map(\.id)
+        voteDraftWeights = Dictionary(
+            uniqueKeysWithValues: decision.options.map { ($0.id, 0) }
+        )
+        voteDraftMaxWeight = decision.weightStrategy?.maxWeight
+            ?? WeightStrategy.defaultMaxWeight
         voteDraftErrorMessage = nil
         isVotePresented = true
     }
@@ -397,6 +433,9 @@ public final class DecisionsStore {
             ?? .yes
         voteDraftOptionId = summary.myVoteOptionId
         voteDraftReason = ""
+        voteDraftRankedOrder = []
+        voteDraftWeights = [:]
+        voteDraftMaxWeight = WeightStrategy.defaultMaxWeight
         voteDraftErrorMessage = nil
         isVotePresented = true
     }
@@ -407,23 +446,61 @@ public final class DecisionsStore {
             voteDraftErrorMessage = String(localized: L10n.Decisions.voteValueRequired)
             return false
         }
-        // V2-G1 sub-slice 2 — consent/veto block require a reason. The
-        // decision's method comes from the loaded detail when present;
-        // when missing we err on the side of "no requirement" so we
-        // don't reject votes the backend would accept.
-        if let method = detail?.id == decisionId ? detail?.method : nil,
-           voteDraftValue.requiresReason(for: method),
-           voteDraftReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            voteDraftErrorMessage = String(localized: L10n.Decisions.voteReasonRequiredHint)
-            return false
-        }
+        let method: DecisionMethod? = (detail?.id == decisionId) ? detail?.method : nil
+
+        // V2-G9 — branch on method. ranked_choice → cast_ranked_vote;
+        // weighted → cast_vote with p_weight; everything else → legacy.
         do {
-            _ = try await repository.castVote(
-                decisionId: decisionId,
-                value: voteDraftValue,
-                optionId: voteDraftOptionId,
-                reason: voteDraftReason
-            )
+            switch method {
+            case .rankedChoice:
+                if voteDraftRankedOrder.isEmpty {
+                    voteDraftErrorMessage = String(localized: L10n.Decisions.voteRankedEmptyHint)
+                    return false
+                }
+                let rankings = voteDraftRankedOrder.enumerated().map {
+                    (optionId: $0.element, rank: $0.offset + 1)
+                }
+                _ = try await repository.castRankedVote(
+                    decisionId: decisionId,
+                    rankings: rankings,
+                    reason: voteDraftReason
+                )
+            case .weighted:
+                guard let optionId = voteDraftOptionId else {
+                    voteDraftErrorMessage = String(localized: L10n.Decisions.voteWeightedOptionRequiredHint)
+                    return false
+                }
+                let weight = voteDraftWeights[optionId] ?? 0
+                if weight <= 0 {
+                    voteDraftErrorMessage = String(localized: L10n.Decisions.voteWeightedZeroHint)
+                    return false
+                }
+                if weight > voteDraftMaxWeight {
+                    voteDraftErrorMessage = String(localized: L10n.Decisions.voteWeightedOverMaxHint)
+                    return false
+                }
+                _ = try await repository.castVote(
+                    decisionId: decisionId,
+                    value: .yes,                  // backend ignores when method=weighted
+                    optionId: optionId,
+                    reason: voteDraftReason,
+                    weight: weight
+                )
+            default:
+                // V2-G1 sub-slice 2 — consent/veto block require a reason.
+                if let method,
+                   voteDraftValue.requiresReason(for: method),
+                   voteDraftReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    voteDraftErrorMessage = String(localized: L10n.Decisions.voteReasonRequiredHint)
+                    return false
+                }
+                _ = try await repository.castVote(
+                    decisionId: decisionId,
+                    value: voteDraftValue,
+                    optionId: voteDraftOptionId,
+                    reason: voteDraftReason
+                )
+            }
             await refresh(groupId: groupId)
             if detail?.id == decisionId {
                 await refreshDetail()
@@ -438,6 +515,9 @@ public final class DecisionsStore {
     }
 
     public func clearVoteDraft() {
+        voteDraftRankedOrder = []
+        voteDraftWeights = [:]
+        voteDraftMaxWeight = WeightStrategy.defaultMaxWeight
         voteDraftDecisionId = nil
         voteDraftValue = .yes
         voteDraftOptionId = nil

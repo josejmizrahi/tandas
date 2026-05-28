@@ -116,7 +116,7 @@ struct DecisionsStoreProposeReferenceTests {
                 return input.pDecisionType == "membership"
                     && input.pReferenceKind == "membership"
                     && input.pReferenceId == memberId
-                    && input.pMetadata == ["target_state": "active"]
+                    && input.pMetadata?["target_state"] == .string("active")
             }
             return false
         })
@@ -156,7 +156,7 @@ struct DecisionsStoreProposeReferenceTests {
                 return input.pDecisionType == "rule_change"
                     && input.pReferenceKind == "rule"
                     && input.pReferenceId == ruleId
-                    && input.pMetadata == ["action": "activate"]
+                    && input.pMetadata?["action"] == .string("activate")
             }
             return false
         })
@@ -223,9 +223,9 @@ struct DecisionsStoreProposeReferenceTests {
                 return input.pDecisionType == "budget"
                     && input.pReferenceKind == "pool_charge"
                     && input.pReferenceId == target
-                    && input.pMetadata?["amount"] == "200"
-                    && input.pMetadata?["unit"] == "MXN"
-                    && input.pMetadata?["charge_kind"] == "buy_in"
+                    && input.pMetadata?["amount"] == .string("200")
+                    && input.pMetadata?["unit"] == .string("MXN")
+                    && input.pMetadata?["charge_kind"] == .string("buy_in")
             }
             return false
         })

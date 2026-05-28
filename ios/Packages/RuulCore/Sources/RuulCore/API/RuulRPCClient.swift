@@ -422,10 +422,16 @@ public protocol RuulRPCClient: Sendable {
     /// Requires permission `decisions.create`. Returns the decision id.
     func startVote(_ input: StartVoteParams) async throws -> UUID
 
-    /// `cast_vote(p_decision_id, p_option_id, p_vote_value, p_reason)`
+    /// `cast_vote(p_decision_id, p_option_id, p_vote_value, p_reason, p_weight)`
     /// — append-only ballot. Active-member gate (permission check is
-    /// implicit via membership). Returns the inserted row id.
+    /// implicit via membership). `p_weight` is only honored when the
+    /// decision's `method='weighted'`. Returns the inserted row id.
     func castVote(_ input: CastVoteParams) async throws -> UUID
+
+    /// V2-G9 — `cast_ranked_vote(p_decision_id, p_rankings, p_reason)`
+    /// inserts one ballot per ranked option using Borda points
+    /// (`weight = N - rank`). Only applies to `method='ranked_choice'`.
+    func castRankedVote(_ input: CastRankedVoteParams) async throws -> UUID
 
     /// `finalize_vote(p_decision_id)` — closes a decision and writes
     /// the outcome. Returns the new status string (`passed` /

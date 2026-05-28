@@ -63,6 +63,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case decisionDetail(decisionId: UUID)
         case startVote(input: StartVoteParams)
         case castVote(input: CastVoteParams)
+        case castRankedVote(input: CastRankedVoteParams)
         case finalizeVote(decisionId: UUID)
         case cancelVote(input: CancelVoteParams)
         case disputeDetail(disputeId: UUID)
@@ -181,6 +182,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     )
     private var startVoteStub: Result<UUID, RuulError> = .success(UUID())
     private var castVoteStub: Result<UUID, RuulError> = .success(UUID())
+    private var castRankedVoteStub: Result<UUID, RuulError> = .success(UUID())
     private var finalizeVoteStub: Result<String, RuulError> = .success("passed")
     private var cancelVoteStub: Result<Void, RuulError> = .success(())
     private var disputeDetailStub: Result<GroupDisputeDetail, RuulError> = .success(
@@ -272,6 +274,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setDecisionDetailStub(_ stub: Result<GroupDecisionDetail, RuulError>) { decisionDetailStub = stub }
     func setStartVoteStub(_ stub: Result<UUID, RuulError>) { startVoteStub = stub }
     func setCastVoteStub(_ stub: Result<UUID, RuulError>) { castVoteStub = stub }
+    func setCastRankedVoteStub(_ stub: Result<UUID, RuulError>) { castRankedVoteStub = stub }
     func setFinalizeVoteStub(_ stub: Result<String, RuulError>) { finalizeVoteStub = stub }
     func setCancelVoteStub(_ stub: Result<Void, RuulError>) { cancelVoteStub = stub }
     func setDisputeDetailStub(_ stub: Result<GroupDisputeDetail, RuulError>) { disputeDetailStub = stub }
@@ -576,6 +579,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func castVote(_ input: CastVoteParams) async throws -> UUID {
         recorded.append(.castVote(input: input))
         return try castVoteStub.get()
+    }
+
+    func castRankedVote(_ input: CastRankedVoteParams) async throws -> UUID {
+        recorded.append(.castRankedVote(input: input))
+        return try castRankedVoteStub.get()
     }
 
     func finalizeVote(decisionId: UUID) async throws -> String {

@@ -8,6 +8,38 @@ import Foundation
 /// + §13 (reads). UUIDs encode as lowercase strings via `Foundation.UUID`'s
 /// default `Codable` behaviour.
 
+/// V2-G9 — minimal JSON value container used by RPC params that need to
+/// pass nested jsonb (e.g. `start_vote.p_metadata.weight_strategy`).
+/// Flat string maps keep working via the `.string` case.
+public indirect enum RPCJSONValue: Encodable, Sendable, Equatable, Hashable {
+    case string(String)
+    case number(Decimal)
+    case bool(Bool)
+    case object([String: RPCJSONValue])
+    case null
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try c.encode(s)
+        case .number(let n): try c.encode(n)
+        case .bool(let b):   try c.encode(b)
+        case .object(let o): try c.encode(o)
+        case .null:          try c.encodeNil()
+        }
+    }
+}
+
+public extension Dictionary where Key == String, Value == String {
+    /// Lift a flat `[String: String]` into the typed `RPCJSONValue`
+    /// container. Used by callers that only need leaf string values.
+    var asRPCMetadata: [String: RPCJSONValue] {
+        Dictionary<String, RPCJSONValue>(uniqueKeysWithValues:
+            self.map { ($0.key, .string($0.value)) }
+        )
+    }
+}
+
 // MARK: - Identity & Membership
 
 public struct RPCCreateGroupParams: Encodable, Sendable {
@@ -1682,8 +1714,10 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
     /// V2-G2 sub-slice 4 — jsonb-shaped metadata persisted to
     /// `group_decisions.metadata`. Used today by finalize_vote's
     /// membership handler (`target_state` key); future handlers
-    /// (rule_change, budget) will read their own keys here.
-    public let pMetadata: [String: String]?
+    /// (rule_change, budget, weight_strategy) read their own keys here.
+    /// V2-G9 — switched to `RPCJSONValue` so callers can pass nested
+    /// objects (e.g. `weight_strategy: {kind, config}`).
+    public let pMetadata: [String: RPCJSONValue]?
 
     public struct OptionDraft: Encodable, Sendable, Equatable {
         public let label: String
@@ -1727,7 +1761,7 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
         referenceKind: String? = nil,
         referenceId: UUID? = nil,
         options: [OptionDraft]? = nil,
-        metadata: [String: String]? = nil
+        metadata: [String: RPCJSONValue]? = nil
     ) {
         self.pGroupId = groupId
         self.pTitle = title
@@ -1774,19 +1808,30 @@ public struct CastVoteParams: Encodable, Sendable, Equatable {
     public let pOptionId: UUID?
     public let pVoteValue: String?
     public let pReason: String?
+    /// V2-G9 — honored only when the decision's `method='weighted'`.
+    /// `cast_vote` validates `0 < p_weight <= metadata.weight_strategy.config.max_weight`.
+    public let pWeight: Decimal?
 
     enum CodingKeys: String, CodingKey {
         case pDecisionId = "p_decision_id"
         case pOptionId   = "p_option_id"
         case pVoteValue  = "p_vote_value"
         case pReason     = "p_reason"
+        case pWeight     = "p_weight"
     }
 
-    public init(decisionId: UUID, optionId: UUID? = nil, voteValue: String? = nil, reason: String? = nil) {
+    public init(
+        decisionId: UUID,
+        optionId: UUID? = nil,
+        voteValue: String? = nil,
+        reason: String? = nil,
+        weight: Decimal? = nil
+    ) {
         self.pDecisionId = decisionId
         self.pOptionId = optionId
         self.pVoteValue = voteValue
         self.pReason = reason
+        self.pWeight = weight
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -1794,6 +1839,51 @@ public struct CastVoteParams: Encodable, Sendable, Equatable {
         try c.encode(pDecisionId, forKey: .pDecisionId)
         try c.encodeOrNil(pOptionId, forKey: .pOptionId)
         try c.encodeOrNil(pVoteValue, forKey: .pVoteValue)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+        try c.encodeOrNil(pWeight, forKey: .pWeight)
+    }
+}
+
+/// V2-G9 — `cast_ranked_vote(p_decision_id, p_rankings, p_reason)`.
+/// `p_rankings` is a JSON array `[{option_id, rank}, …]` where `rank` is
+/// 1-based (1 = first choice). The backend rejects duplicates, ranks out
+/// of range, and any `option_id` that doesn't belong to the decision.
+public struct CastRankedVoteParams: Encodable, Sendable, Equatable {
+    public let pDecisionId: UUID
+    public let pRankings: [Ranking]
+    public let pReason: String?
+
+    public struct Ranking: Encodable, Sendable, Equatable {
+        public let optionId: UUID
+        public let rank: Int
+
+        enum CodingKeys: String, CodingKey {
+            case optionId = "option_id"
+            case rank
+        }
+
+        public init(optionId: UUID, rank: Int) {
+            self.optionId = optionId
+            self.rank = rank
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case pDecisionId = "p_decision_id"
+        case pRankings   = "p_rankings"
+        case pReason     = "p_reason"
+    }
+
+    public init(decisionId: UUID, rankings: [Ranking], reason: String? = nil) {
+        self.pDecisionId = decisionId
+        self.pRankings = rankings
+        self.pReason = reason
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pDecisionId, forKey: .pDecisionId)
+        try c.encode(pRankings, forKey: .pRankings)
         try c.encodeOrNil(pReason, forKey: .pReason)
     }
 }

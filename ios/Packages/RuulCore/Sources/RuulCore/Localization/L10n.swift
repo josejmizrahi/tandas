@@ -1247,6 +1247,19 @@ public enum L10n {
         public static let voteReasonRequiredPlaceholder = LocalizedStringResource("decisions.vote.reason.required.placeholder", defaultValue: "Explica por qué bloqueas")
         public static let voteReasonRequiredHint = LocalizedStringResource("decisions.vote.reason.required.hint", defaultValue: "Para bloquear hay que explicar el motivo.")
         public static let voteValueRequired  = LocalizedStringResource("decisions.vote.value.required", defaultValue: "Elige una opción de voto.")
+        // V2-G9 — ranked + weighted voting strings.
+        public static let voteRankedSection            = LocalizedStringResource("decisions.vote.ranked.section",            defaultValue: "Ordena tus preferencias")
+        public static let voteRankedHint               = LocalizedStringResource("decisions.vote.ranked.hint",               defaultValue: "Arriba = primera preferencia. Mantén pulsado y arrastra para reordenar.")
+        public static let voteRankedEmptyHint          = LocalizedStringResource("decisions.vote.ranked.empty.hint",         defaultValue: "Ordena al menos una opción antes de votar.")
+        public static let voteWeightedSection          = LocalizedStringResource("decisions.vote.weighted.section",          defaultValue: "Asigna peso a una opción")
+        public static let voteWeightedOptionRequiredHint = LocalizedStringResource("decisions.vote.weighted.option.required.hint", defaultValue: "Selecciona una opción y un peso.")
+        public static let voteWeightedZeroHint         = LocalizedStringResource("decisions.vote.weighted.zero.hint",        defaultValue: "El peso debe ser mayor a 0.")
+        public static let voteWeightedOverMaxHint      = LocalizedStringResource("decisions.vote.weighted.over_max.hint",    defaultValue: "El peso supera el máximo permitido por el grupo.")
+        public static let voteWeightedMaxLabel         = LocalizedStringResource("decisions.vote.weighted.max.label",        defaultValue: "Máximo: %@")
+        // V2-G9 — propose-side weight strategy picker.
+        public static let proposeWeightStrategySection = LocalizedStringResource("decisions.propose.weight_strategy.section", defaultValue: "Estrategia de peso")
+        public static let proposeWeightStrategyHint    = LocalizedStringResource("decisions.propose.weight_strategy.hint",    defaultValue: "Define hasta cuánto peso puede asignar cada votante.")
+        public static let proposeWeightStrategyMaxLabel = LocalizedStringResource("decisions.propose.weight_strategy.max.label", defaultValue: "Peso máximo")
 
         // Method-specific vote value copy (V2-G1 sub-slice 2)
         public static let voteInFavor       = LocalizedStringResource("decisions.vote_value.in_favor",      defaultValue: "A favor")

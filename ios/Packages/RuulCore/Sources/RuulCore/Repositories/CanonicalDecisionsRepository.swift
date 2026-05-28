@@ -37,7 +37,7 @@ public struct CanonicalDecisionsRepository: Sendable {
         legitimacySource: LegitimacySource,
         referenceKind: String? = nil,
         referenceId: UUID? = nil,
-        metadata: [String: String]? = nil,
+        metadata: [String: RPCJSONValue]? = nil,
         options: [StartVoteParams.OptionDraft]?
     ) async throws -> UUID {
         let input = StartVoteParams(
@@ -59,15 +59,33 @@ public struct CanonicalDecisionsRepository: Sendable {
         decisionId: UUID,
         value: VoteValue,
         optionId: UUID? = nil,
-        reason: String? = nil
+        reason: String? = nil,
+        weight: Decimal? = nil
     ) async throws -> UUID {
         let input = CastVoteParams(
             decisionId: decisionId,
             optionId: optionId,
             voteValue: value.rawValue,
-            reason: reason?.trimmedOrNil
+            reason: reason?.trimmedOrNil,
+            weight: weight
         )
         return try await rpc.castVote(input)
+    }
+
+    /// V2-G9 — submit a ranked-choice ballot. Backend computes Borda
+    /// points (`weight = N - rank`); `rankings` MUST be a non-empty
+    /// array of distinct option ids paired with 1-based ranks.
+    public func castRankedVote(
+        decisionId: UUID,
+        rankings: [(optionId: UUID, rank: Int)],
+        reason: String? = nil
+    ) async throws -> UUID {
+        let input = CastRankedVoteParams(
+            decisionId: decisionId,
+            rankings: rankings.map { .init(optionId: $0.optionId, rank: $0.rank) },
+            reason: reason?.trimmedOrNil
+        )
+        return try await rpc.castRankedVote(input)
     }
 
     public func finalize(decisionId: UUID) async throws -> String {

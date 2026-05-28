@@ -872,6 +872,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func castRankedVote(_ input: CastRankedVoteParams) async throws -> UUID {
+        do {
+            return try await client.rpc("cast_ranked_vote", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func finalizeVote(decisionId: UUID) async throws -> String {
         let params = FinalizeVoteParams(decisionId: decisionId)
         do {

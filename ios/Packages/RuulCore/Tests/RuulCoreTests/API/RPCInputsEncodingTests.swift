@@ -704,7 +704,7 @@ struct RPCInputsEncodingTests {
             method: "majority",
             referenceKind: "membership",
             referenceId: UUID(),
-            metadata: ["target_state": "suspended"]
+            metadata: ["target_state": "suspended"].asRPCMetadata
         ))
         let metadata = dict["p_metadata"] as? [String: Any]
         #expect(metadata?["target_state"] as? String == "suspended")
