@@ -318,34 +318,11 @@ public enum DecisionType: String, Codable, CaseIterable, Identifiable, Sendable,
     }
 }
 
-/// V2-G2 sub-slice 6 — kinds the inline pool_charge handler in
-/// `finalize_vote` accepts. Mirrors the backend CHECK
-/// (`record_pool_charge` validates the same three values).
-public enum PoolChargeKind: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
-    case quota
-    case buyIn = "buy_in"
-    case fee
-
-    public var id: String { rawValue }
-
-    public static let displayOrder: [PoolChargeKind] = [.quota, .buyIn, .fee]
-
-    public var label: LocalizedStringResource {
-        switch self {
-        case .quota: return L10n.Decisions.poolChargeKindQuota
-        case .buyIn: return L10n.Decisions.poolChargeKindBuyIn
-        case .fee:   return L10n.Decisions.poolChargeKindFee
-        }
-    }
-
-    public var systemImageName: String {
-        switch self {
-        case .quota: return "calendar.badge.clock"
-        case .buyIn: return "ticket"
-        case .fee:   return "creditcard"
-        }
-    }
-}
+// `PoolChargeKind` moved to its own file (`PoolChargeKind.swift`) so
+// the live typechecker can resolve it without parsing the entire
+// `GroupDecision.swift` body. Same rationale as the post-G2 split in
+// `7b3c1c76` — the IDE indexer chokes on large files full of
+// pattern-matching enums.
 
 /// V2-G2 sub-slice 5 — action a `decision_type='rule_change'`
 /// proposes to apply on the referenced rule when finalize_vote
@@ -666,48 +643,8 @@ public struct DecisionResult: Codable, Equatable, Sendable, Hashable {
     }
 }
 
-/// V2-G9 — `metadata.weight_strategy` jsonb on `group_decisions`. Only
-/// the `manual` kind is consumed in V2; `role` + `contribution` are
-/// reserved for future sub-slices and decode tolerantly.
-public struct WeightStrategy: Codable, Equatable, Sendable, Hashable {
-    public enum Kind: String, Codable, Sendable, Hashable {
-        case manual
-        case role
-        case contribution
-    }
-
-    public let kind: Kind
-    public let maxWeight: Decimal
-
-    public static let defaultMaxWeight: Decimal = 10
-
-    public init(kind: Kind = .manual, maxWeight: Decimal = WeightStrategy.defaultMaxWeight) {
-        self.kind = kind
-        self.maxWeight = maxWeight
-    }
-
-    enum CodingKeys: String, CodingKey { case kind, config }
-    enum ConfigKeys: String, CodingKey { case maxWeight = "max_weight" }
-
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        let rawKind = (try? c.decode(String.self, forKey: .kind)) ?? Kind.manual.rawValue
-        self.kind = Kind(rawValue: rawKind) ?? .manual
-        if let config = try? c.nestedContainer(keyedBy: ConfigKeys.self, forKey: .config),
-           let mw = try? config.decode(Decimal.self, forKey: .maxWeight) {
-            self.maxWeight = mw
-        } else {
-            self.maxWeight = WeightStrategy.defaultMaxWeight
-        }
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(kind.rawValue, forKey: .kind)
-        var config = c.nestedContainer(keyedBy: ConfigKeys.self, forKey: .config)
-        try config.encode(maxWeight, forKey: .maxWeight)
-    }
-}
+// `WeightStrategy` moved to its own file (`WeightStrategy.swift`) for
+// the same indexer-friendliness reason as `PoolChargeKind`.
 
 /// Flat list-row shape returned by `list_decisions_active` /
 /// `list_decisions_history`. Tally + caller's current vote are
