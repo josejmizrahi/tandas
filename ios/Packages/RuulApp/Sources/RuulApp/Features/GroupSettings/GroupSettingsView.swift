@@ -54,6 +54,12 @@ public struct GroupSettingsView: View {
                 )
             case .culture:
                 CulturalNormsListView(store: container.culturalNormsStore, groupId: group.id)
+            case .mandates:
+                MandatesListView(
+                    store: container.mandatesStore,
+                    membersStore: container.membersStore,
+                    groupId: group.id
+                )
             }
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -101,6 +107,7 @@ public struct GroupSettingsView: View {
             await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
             await container.sanctionsStore.refreshIfNeeded(groupId: group.id)
             await container.culturalNormsStore.refreshIfNeeded(groupId: group.id)
+            await container.mandatesStore.refreshIfNeeded(groupId: group.id)
         }
     }
 
@@ -149,7 +156,9 @@ public struct GroupSettingsView: View {
             comingSoonRow(.boundaryPolicy, label: L10n.GroupSettings.boundaryPolicyRow, systemImage: "door.left.hand.closed")
             comingSoonRow(.membershipTypes, label: L10n.GroupSettings.membershipTypesRow, systemImage: "person.crop.rectangle.stack")
             comingSoonRow(.roles, label: L10n.GroupSettings.rolesRow, systemImage: "person.crop.rectangle.badge.checkmark")
-            comingSoonRow(.mandates, label: L10n.GroupSettings.mandatesRow, systemImage: "signature")
+            NavigationLink(value: GroupSettingsDestination.mandates) {
+                Label(L10n.GroupSettings.mandatesRow, systemImage: "signature")
+            }
         }
     }
 
@@ -283,13 +292,13 @@ public struct GroupSettingsView: View {
         case rules
         case sanctionsPolicy
         case culture
+        case mandates
     }
 
     private enum ComingSoonRow: Hashable {
         case boundaryPolicy
         case membershipTypes
         case roles
-        case mandates
         case rituals
         case currency
         case fundsPolicy

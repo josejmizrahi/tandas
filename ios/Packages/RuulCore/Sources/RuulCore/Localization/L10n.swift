@@ -352,6 +352,48 @@ public enum L10n {
         public static let reversalNotice     = LocalizedStringResource("money_movement_detail.reversal_notice",    defaultValue: "Este movimiento es una reversión de uno anterior.")
     }
 
+    public enum Mandates {
+        public static let title              = LocalizedStringResource("mandates.title",              defaultValue: "Mandatos")
+        public static let emptyTitle         = LocalizedStringResource("mandates.empty.title",        defaultValue: "Sin mandatos activos")
+        public static let emptyDescription   = LocalizedStringResource("mandates.empty.description",  defaultValue: "Aquí van las representaciones temporales: quién habla por el grupo, quién firma, quién negocia.")
+        public static let addButton          = LocalizedStringResource("mandates.add",                defaultValue: "Otorgar")
+        public static let grantTitle         = LocalizedStringResource("mandates.grant.title",        defaultValue: "Otorgar mandato")
+        public static let revokeAction       = LocalizedStringResource("mandates.revoke",             defaultValue: "Revocar")
+        public static let revokeConfirmTitle = LocalizedStringResource("mandates.revoke.confirm.title", defaultValue: "Revocar mandato")
+        public static let revokeConfirmMessage = LocalizedStringResource("mandates.revoke.confirm.message", defaultValue: "La representación termina ya. Queda registrado en historia.")
+        public static let representativeSection = LocalizedStringResource("mandates.section.representative", defaultValue: "Quién representa")
+        public static let representativeNone     = LocalizedStringResource("mandates.representative.none",   defaultValue: "Selecciona un miembro")
+        public static let typeSection        = LocalizedStringResource("mandates.section.type",       defaultValue: "Mandato")
+        public static let principalSection   = LocalizedStringResource("mandates.section.principal",  defaultValue: "En nombre de")
+        public static let endsAtSection      = LocalizedStringResource("mandates.section.ends_at",    defaultValue: "Vence (opcional)")
+        public static let endsAtNone         = LocalizedStringResource("mandates.ends_at.none",       defaultValue: "Sin vencimiento")
+        public static let save               = LocalizedStringResource("mandates.save",               defaultValue: "Otorgar")
+        public static let cancel             = LocalizedStringResource("mandates.cancel",             defaultValue: "Cancelar")
+        public static let errorTitle         = LocalizedStringResource("mandates.error.title",        defaultValue: "No pudimos cargar los mandatos")
+        public static let retry              = LocalizedStringResource("mandates.retry",              defaultValue: "Reintentar")
+        public static let openEndedHint      = LocalizedStringResource("mandates.open_ended",         defaultValue: "Sin vencimiento")
+        public static let grantedByLabel     = LocalizedStringResource("mandates.granted_by",         defaultValue: "Otorgó")
+
+        public static let principalGroup      = LocalizedStringResource("mandates.principal.group",     defaultValue: "El grupo")
+        public static let principalCommittee  = LocalizedStringResource("mandates.principal.committee", defaultValue: "Un comité")
+        public static let principalRole       = LocalizedStringResource("mandates.principal.role",      defaultValue: "Un rol")
+        public static let principalMembership = LocalizedStringResource("mandates.principal.membership", defaultValue: "Un miembro")
+
+        public static let typeSpeak          = LocalizedStringResource("mandates.type.speak",         defaultValue: "Hablar por el grupo")
+        public static let typeSign           = LocalizedStringResource("mandates.type.sign",          defaultValue: "Firmar")
+        public static let typeVote           = LocalizedStringResource("mandates.type.vote",          defaultValue: "Votar")
+        public static let typeNegotiate      = LocalizedStringResource("mandates.type.negotiate",     defaultValue: "Negociar")
+        public static let typeSpend          = LocalizedStringResource("mandates.type.spend",         defaultValue: "Gastar")
+        public static let typeRepresent      = LocalizedStringResource("mandates.type.represent",     defaultValue: "Representar")
+        public static let typeDelegate       = LocalizedStringResource("mandates.type.delegate",      defaultValue: "Delegar")
+        public static let typeOther          = LocalizedStringResource("mandates.type.other",         defaultValue: "Otro")
+
+        public static let statusActive       = LocalizedStringResource("mandates.status.active",      defaultValue: "Activo")
+        public static let statusExpired      = LocalizedStringResource("mandates.status.expired",     defaultValue: "Vencido")
+        public static let statusRevoked      = LocalizedStringResource("mandates.status.revoked",     defaultValue: "Revocado")
+        public static let statusFulfilled    = LocalizedStringResource("mandates.status.fulfilled",   defaultValue: "Cumplido")
+    }
+
     public enum CulturalNorms {
         public static let title              = LocalizedStringResource("cultural_norms.title",              defaultValue: "Cultura")
         public static let emptyTitle         = LocalizedStringResource("cultural_norms.empty.title",        defaultValue: "Sin cultura declarada todavía")

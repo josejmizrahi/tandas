@@ -45,6 +45,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case proposeCulturalNorm(input: ProposeCulturalNormParams)
         case endorseCulturalNorm(normId: UUID)
         case retireCulturalNorm(input: RetireCulturalNormParams)
+        case groupMandatesActive(groupId: UUID)
+        case grantMandate(input: GrantMandateParams)
+        case revokeMandate(input: RevokeMandateParams)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -114,6 +117,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var proposeCulturalNormStub: Result<UUID, RuulError> = .success(UUID())
     private var endorseCulturalNormStub: Result<Int, RuulError> = .success(1)
     private var retireCulturalNormStub: Result<Void, RuulError> = .success(())
+    private var groupMandatesActiveStub: Result<[GroupMandate], RuulError> = .success([])
+    private var grantMandateStub: Result<UUID, RuulError> = .success(UUID())
+    private var revokeMandateStub: Result<Void, RuulError> = .success(())
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -156,6 +162,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setProposeCulturalNormStub(_ stub: Result<UUID, RuulError>) { proposeCulturalNormStub = stub }
     func setEndorseCulturalNormStub(_ stub: Result<Int, RuulError>) { endorseCulturalNormStub = stub }
     func setRetireCulturalNormStub(_ stub: Result<Void, RuulError>) { retireCulturalNormStub = stub }
+    func setGroupMandatesActiveStub(_ stub: Result<[GroupMandate], RuulError>) { groupMandatesActiveStub = stub }
+    func setGrantMandateStub(_ stub: Result<UUID, RuulError>) { grantMandateStub = stub }
+    func setRevokeMandateStub(_ stub: Result<Void, RuulError>) { revokeMandateStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -341,6 +350,21 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws {
         recorded.append(.retireCulturalNorm(input: input))
         try retireCulturalNormStub.get()
+    }
+
+    func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] {
+        recorded.append(.groupMandatesActive(groupId: groupId))
+        return try groupMandatesActiveStub.get()
+    }
+
+    func grantMandate(_ input: GrantMandateParams) async throws -> UUID {
+        recorded.append(.grantMandate(input: input))
+        return try grantMandateStub.get()
+    }
+
+    func revokeMandate(_ input: RevokeMandateParams) async throws {
+        recorded.append(.revokeMandate(input: input))
+        try revokeMandateStub.get()
     }
 
     func myProfile() async throws -> Profile {

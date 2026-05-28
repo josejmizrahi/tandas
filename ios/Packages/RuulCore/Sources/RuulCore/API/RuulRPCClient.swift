@@ -122,6 +122,22 @@ public protocol RuulRPCClient: Sendable {
     /// `before` is the cursor for pagination. Active-member gate.
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
 
+    // MARK: - Mandates (Primitiva 23, B4)
+
+    /// `group_mandates_active(p_group_id)` — currently-active mandates
+    /// (status=active AND not expired), pre-joined with representative
+    /// + granted_by display names. Active-member gate.
+    func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate]
+
+    /// `grant_mandate(...)` — inserts a new mandate in `active` state.
+    /// Requires permission `mandates.grant`. Returns the new mandate id.
+    func grantMandate(_ input: GrantMandateParams) async throws -> UUID
+
+    /// `revoke_mandate(p_mandate_id, p_reason)` — flips status to
+    /// revoked (idempotent on non-active rows). Requires
+    /// `mandates.revoke`.
+    func revokeMandate(_ input: RevokeMandateParams) async throws
+
     // MARK: - Cultural norms (Primitiva 20, B5)
 
     /// `group_cultural_norms_active(p_group_id)` — proposed+endorsed

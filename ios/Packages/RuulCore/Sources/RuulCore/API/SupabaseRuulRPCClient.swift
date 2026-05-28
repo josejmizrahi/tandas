@@ -313,6 +313,36 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Mandates (Primitiva 23, B4)
+
+    public func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] {
+        let params = GroupMandatesActiveParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_mandates_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func grantMandate(_ input: GrantMandateParams) async throws -> UUID {
+        do {
+            return try await client.rpc("grant_mandate", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func revokeMandate(_ input: RevokeMandateParams) async throws {
+        do {
+            _ = try await client.rpc("revoke_mandate", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Cultural norms (Primitiva 20, B5)
 
     public func groupCulturalNormsActive(groupId: UUID) async throws -> [GroupCulturalNorm] {

@@ -487,6 +487,80 @@ public struct GroupMoneyMovementsParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Mandates (Primitiva 23, B4)
+
+public struct GroupMandatesActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct GrantMandateParams: Encodable, Sendable, Equatable, Hashable {
+    public let pGroupId: UUID
+    public let pRepresentativeMembershipId: UUID
+    public let pMandateType: String
+    public let pPrincipalType: String
+    public let pPrincipalId: UUID?
+    public let pEndsAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId                    = "p_group_id"
+        case pRepresentativeMembershipId = "p_representative_membership_id"
+        case pMandateType                = "p_mandate_type"
+        case pPrincipalType              = "p_principal_type"
+        case pPrincipalId                = "p_principal_id"
+        case pEndsAt                     = "p_ends_at"
+    }
+
+    public init(
+        groupId: UUID,
+        representativeMembershipId: UUID,
+        mandateType: String,
+        principalType: String = "group",
+        principalId: UUID? = nil,
+        endsAt: Date? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pRepresentativeMembershipId = representativeMembershipId
+        self.pMandateType = mandateType
+        self.pPrincipalType = principalType
+        self.pPrincipalId = principalId
+        self.pEndsAt = endsAt
+    }
+
+    /// Emit `null` for optional principal_id + ends_at so PostgREST
+    /// overload resolution stays deterministic. We don't expose
+    /// `p_scope` or `p_source_decision_id` from Foundation — they
+    /// default at the backend.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pRepresentativeMembershipId, forKey: .pRepresentativeMembershipId)
+        try c.encode(pMandateType, forKey: .pMandateType)
+        try c.encode(pPrincipalType, forKey: .pPrincipalType)
+        try c.encodeOrNil(pPrincipalId, forKey: .pPrincipalId)
+        try c.encodeOrNil(pEndsAt, forKey: .pEndsAt)
+    }
+}
+
+public struct RevokeMandateParams: Encodable, Sendable, Equatable, Hashable {
+    public let pMandateId: UUID
+    public let pReason: String?
+    enum CodingKeys: String, CodingKey {
+        case pMandateId = "p_mandate_id"
+        case pReason    = "p_reason"
+    }
+    public init(mandateId: UUID, reason: String? = nil) {
+        self.pMandateId = mandateId
+        self.pReason = reason
+    }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pMandateId, forKey: .pMandateId)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+    }
+}
+
 // MARK: - Cultural norms (Primitiva 20, B5)
 
 public struct GroupCulturalNormsActiveParams: Encodable, Sendable {

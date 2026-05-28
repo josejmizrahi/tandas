@@ -546,4 +546,28 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_norm_id"] as? String == nid.uuidString)
         #expect(dict["p_reason"] is NSNull)
     }
+
+    @Test("grant_mandate emits required keys + null optionals by default")
+    func grantMandateDefaults() throws {
+        let gid = UUID(); let rep = UUID()
+        let dict = try encode(GrantMandateParams(
+            groupId: gid,
+            representativeMembershipId: rep,
+            mandateType: "represent"
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_representative_membership_id"] as? String == rep.uuidString)
+        #expect(dict["p_mandate_type"] as? String == "represent")
+        #expect(dict["p_principal_type"] as? String == "group")
+        #expect(dict["p_principal_id"] is NSNull)
+        #expect(dict["p_ends_at"] is NSNull)
+    }
+
+    @Test("revoke_mandate encodes p_reason as null when omitted")
+    func revokeMandateDefaults() throws {
+        let mid = UUID()
+        let dict = try encode(RevokeMandateParams(mandateId: mid))
+        #expect(dict["p_mandate_id"] as? String == mid.uuidString)
+        #expect(dict["p_reason"] is NSNull)
+    }
 }
