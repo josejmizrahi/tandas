@@ -263,7 +263,15 @@ public struct GroupSettingsView: View {
         case .rituals:
             RitualsListView(store: container.ritualsStore, groupId: group.id)
         case .history:
-            GroupHistoryView(store: container.eventsStore, groupId: group.id)
+            GroupHistoryView(
+                store: container.eventsStore,
+                groupId: group.id,
+                onSelectEvent: { event in
+                    if let link = HistoryEventRouting.deepLink(for: event, groupId: group.id) {
+                        container.deepLinkRouter.apply(link)
+                    }
+                }
+            )
         case .reputationFeed:
             ReputationFeedView(
                 store: container.reputationFeedStore,

@@ -25,6 +25,14 @@ public final class DeepLinkRouter {
         return true
     }
 
+    /// V2-G7 — in-app navigation. Lets feature surfaces (history rows,
+    /// search results) push a destination through the same shell
+    /// plumbing the external URL path uses, without round-tripping
+    /// through a synthetic URL.
+    public func apply(_ link: DeepLink) {
+        pending = link
+    }
+
     /// Called by the shell once a pending link has been fully applied,
     /// so the same link doesn't reapply on subsequent renders.
     public func consume() {

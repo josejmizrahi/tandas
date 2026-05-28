@@ -96,3 +96,97 @@ public extension GroupEvent {
         }
     }
 }
+
+/// V2-G7 cross-primitive categories for the `GroupHistoryView` filter
+/// strip. The matcher inspects `entity_kind` first (canonical, set by
+/// `record_system_event`) and falls back to `event_type` dotted-prefix
+/// — that way both shapes are covered without backend changes.
+public enum HistoryCategory: String, CaseIterable, Identifiable, Codable, Sendable, Hashable {
+    case money
+    case decisions
+    case sanctions
+    case disputes
+    case members
+    case rules
+    case culture
+
+    public var id: String { rawValue }
+
+    public var systemImageName: String {
+        switch self {
+        case .money:     return "creditcard"
+        case .decisions: return "person.3.sequence"
+        case .sanctions: return "exclamationmark.shield"
+        case .disputes:  return "scale.3d"
+        case .members:   return "person.2"
+        case .rules:     return "list.bullet.rectangle"
+        case .culture:   return "sparkles"
+        }
+    }
+
+    public var label: LocalizedStringResource {
+        switch self {
+        case .money:     return L10n.History.filterMoney
+        case .decisions: return L10n.History.filterDecisions
+        case .sanctions: return L10n.History.filterSanctions
+        case .disputes:  return L10n.History.filterDisputes
+        case .members:   return L10n.History.filterMembers
+        case .rules:     return L10n.History.filterRules
+        case .culture:   return L10n.History.filterCulture
+        }
+    }
+
+    /// Returns `true` when the event belongs to this category. Matchers
+    /// are intentionally inclusive — when in doubt we surface the event
+    /// rather than hide it (Foundation timeline is append-only memory).
+    public func matches(_ event: GroupEvent) -> Bool {
+        let type = event.eventType
+        let kind = event.entityKind ?? ""
+
+        switch self {
+        case .money:
+            return type.hasPrefix("expense.")
+                || type.hasPrefix("settlement.")
+                || type.hasPrefix("obligation.")
+                || type.hasPrefix("transaction.")
+                || type.hasPrefix("pool_charge.")
+                || type.hasPrefix("ledger.")
+                || kind == "transaction"
+                || kind == "obligation"
+                || kind == "money_movement"
+        case .decisions:
+            return type.hasPrefix("decision.")
+                || type.hasPrefix("vote.")
+                || type.hasPrefix("decision_rules.")
+                || kind == "decision"
+        case .sanctions:
+            return type.hasPrefix("sanction.")
+                || kind == "sanction"
+        case .disputes:
+            return type.hasPrefix("dispute.")
+                || kind == "dispute"
+        case .members:
+            return type.hasPrefix("member.")
+                || type.hasPrefix("invite.")
+                || type.hasPrefix("role.")
+                || type.hasPrefix("mandate.")
+                || type.hasPrefix("contribution.")
+                || type.hasPrefix("reputation.")
+                || kind == "membership"
+                || kind == "mandate"
+                || kind == "role"
+        case .rules:
+            return type.hasPrefix("rule.")
+                || type.hasPrefix("purpose.")
+                || type.hasPrefix("boundary_policy.")
+                || kind == "rule"
+                || kind == "group_purpose"
+                || kind == "boundary_policy"
+        case .culture:
+            return type.hasPrefix("cultural_norm.")
+                || type.hasPrefix("ritual.")
+                || kind == "cultural_norm"
+                || kind == "ritual"
+        }
+    }
+}

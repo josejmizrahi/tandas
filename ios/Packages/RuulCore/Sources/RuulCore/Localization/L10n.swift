@@ -130,6 +130,19 @@ public enum L10n {
         public static let emptyTitle       = LocalizedStringResource("history.empty.title",      defaultValue: "Sin historia todavía")
         public static let emptyDescription = LocalizedStringResource("history.empty.description", defaultValue: "Cada acción del grupo quedará anotada aquí.")
         public static let menuLink         = LocalizedStringResource("history.menu",             defaultValue: "Historia del grupo")
+
+        public static let searchPlaceholder        = LocalizedStringResource("history.search.placeholder",         defaultValue: "Buscar en la historia")
+        public static let filterAll                = LocalizedStringResource("history.filter.all",                 defaultValue: "Todo")
+        public static let filterMoney              = LocalizedStringResource("history.filter.money",               defaultValue: "Dinero")
+        public static let filterDecisions          = LocalizedStringResource("history.filter.decisions",           defaultValue: "Decisiones")
+        public static let filterSanctions          = LocalizedStringResource("history.filter.sanctions",           defaultValue: "Sanciones")
+        public static let filterDisputes           = LocalizedStringResource("history.filter.disputes",            defaultValue: "Disputas")
+        public static let filterMembers            = LocalizedStringResource("history.filter.members",             defaultValue: "Miembros")
+        public static let filterRules              = LocalizedStringResource("history.filter.rules",               defaultValue: "Reglas")
+        public static let filterCulture            = LocalizedStringResource("history.filter.culture",             defaultValue: "Cultura")
+        public static let noFilteredResultsTitle   = LocalizedStringResource("history.filtered.empty.title",       defaultValue: "Nada coincide con este filtro")
+        public static let noFilteredResultsBody    = LocalizedStringResource("history.filtered.empty.description", defaultValue: "Ajusta el filtro o la búsqueda para ver más eventos.")
+        public static let clearFilters             = LocalizedStringResource("history.filter.clear",               defaultValue: "Quitar filtros")
     }
 
     public enum Disputes {

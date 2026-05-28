@@ -372,7 +372,7 @@ desconectadas de dinero, reglas decorativas, votos triviales).
 - [ ] V2-G4 Sanction ↔ Money deep (pago parcial / plan de pago / auto-pay from fund / convert to service)
 - [ ] V2-G5 Mandate ↔ Action sheets (money + vote + sanction + pool_charge)
 - [x] V2-G6 Norm → Rule promotion — mig 20260528010000 + PromoteNormToRuleSheet
-- [ ] V2-G7 Cross-primitive search & filters
+- [x] V2-G7 Cross-primitive search & filters — chip strip + searchable + tap→DeepLinkRouter (client-side, sin RPC nueva)
 - [ ] V2-G8 Engine-driven UX (consequences visible)
 - [ ] V2-G9 Vote weights por rol/contribución
 - [ ] **V2 release tag** `v2.0.0-rc`

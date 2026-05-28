@@ -15,6 +15,11 @@ public final class EventsStore {
     public private(set) var isLoadingMore: Bool = false
     public private(set) var reachedEnd: Bool = false
 
+    // V2-G7 — cross-primitive filter + search. Both are pure
+    // derivations over `events`; nothing here triggers another fetch.
+    public var selectedCategory: HistoryCategory? = nil
+    public var searchQuery: String = ""
+
     private let repository: CanonicalEventsRepository
     private var loadedGroupId: UUID?
     private let pageSize: Int = 100
@@ -33,6 +38,36 @@ public final class EventsStore {
     // MARK: - Derived
 
     public var isEmpty: Bool { events.isEmpty }
+
+    /// V2-G7 — events visible after applying the active category +
+    /// search filters. The original `events` array stays pristine so
+    /// pagination keeps working regardless of filter state.
+    public var visibleEvents: [GroupEvent] {
+        var filtered = events
+        if let category = selectedCategory {
+            filtered = filtered.filter { category.matches($0) }
+        }
+        let query = searchQuery
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if !query.isEmpty {
+            filtered = filtered.filter { event in
+                if let summary = event.summary?.lowercased(), summary.contains(query) {
+                    return true
+                }
+                if let actor = event.actorDisplayName?.lowercased(), actor.contains(query) {
+                    return true
+                }
+                return event.eventType.lowercased().contains(query)
+            }
+        }
+        return filtered
+    }
+
+    public var hasActiveFilter: Bool {
+        selectedCategory != nil
+            || !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     // MARK: - Intents
 
@@ -86,6 +121,18 @@ public final class EventsStore {
         loadedGroupId = nil
         errorMessage = nil
         reachedEnd = false
+        selectedCategory = nil
+        searchQuery = ""
+    }
+
+    /// V2-G7 — used by the chip strip. Re-tapping the active chip
+    /// clears the filter (mirrors iOS Photos chip behaviour).
+    public func setCategory(_ category: HistoryCategory?) {
+        if selectedCategory == category {
+            selectedCategory = nil
+        } else {
+            selectedCategory = category
+        }
     }
 
     public func clearError() { errorMessage = nil }

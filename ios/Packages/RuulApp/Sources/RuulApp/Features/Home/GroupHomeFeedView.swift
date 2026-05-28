@@ -75,7 +75,15 @@ struct GroupHomeFeedView: View {
             )
         }
         .navigationDestination(for: GroupHistoryDestination.self) { _ in
-            GroupHistoryView(store: container.eventsStore, groupId: group.id)
+            GroupHistoryView(
+                store: container.eventsStore,
+                groupId: group.id,
+                onSelectEvent: { event in
+                    if let link = HistoryEventRouting.deepLink(for: event, groupId: group.id) {
+                        container.deepLinkRouter.apply(link)
+                    }
+                }
+            )
         }
         .refreshable { await refresh() }
         .task { await refresh() }
