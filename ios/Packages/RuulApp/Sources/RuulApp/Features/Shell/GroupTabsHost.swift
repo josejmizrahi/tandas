@@ -1,31 +1,33 @@
 import SwiftUI
 import RuulCore
 
-/// D2 — Per-group tab bar shell. Replaces the previous direct push to
-/// `GroupHomeView`. The five tabs mirror the doctrine in
+/// D2 + D3 — Per-group tab bar shell. The app's root surface when the
+/// caller has at least one group. Five tabs mirror the doctrine in
 /// `Plans/Active/UIBottomUpPlan.md` §0:
 ///
 ///     🏠 Inicio · 💰 Dinero · 📦 Recursos · 👥 Miembros · ⚙️ Ajustes
 ///
-/// Each tab hosts its own `NavigationStack` so pushes from inside a
-/// tab don't dismiss the tab bar. The outer NavigationStack from
-/// `RuulAppShell` still owns the "Mis grupos" affordance — we hide the
-/// outer nav bar here and surface it as a leading toolbar button in
-/// the Inicio tab to avoid stacked navigation bars.
-///
-/// `GroupHomeView` is reused as the Inicio tab content for V1; the
-/// situational `GroupHomeFeedView` (5 clusters per
-/// `doctrine_group_space_situational`) lands in a later slice.
+/// Top-left toolbar slot hosts the group switcher (Calendar/Reminders
+/// pattern). Top-right hosts the avatar — opens `PersonalProfileSheet`.
+/// Each tab is its own `NavigationStack` so pushes inside a tab don't
+/// dismiss the tab bar.
 public struct GroupTabsHost: View {
     let container: DependencyContainer
     let group: GroupListItem
+    let onSelectGroup: (GroupListItem) -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: GroupTab = .home
+    @State private var isShowingSwitcher: Bool = false
+    @State private var isShowingPersonalProfile: Bool = false
 
-    public init(container: DependencyContainer, group: GroupListItem) {
+    public init(
+        container: DependencyContainer,
+        group: GroupListItem,
+        onSelectGroup: @escaping (GroupListItem) -> Void
+    ) {
         self.container = container
         self.group = group
+        self.onSelectGroup = onSelectGroup
     }
 
     public var body: some View {
@@ -36,11 +38,16 @@ public struct GroupTabsHost: View {
             membersTab
             settingsTab
         }
-        // Outer NavigationStack (RuulAppShell) hosts this view; hide
-        // its nav bar so the inner tabs render with a single nav bar
-        // each. Back-to-Mis-grupos lives as a toolbar button in
-        // every tab (see `backToGroupsToolbar`).
-        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $isShowingSwitcher) {
+            GroupSwitcherSheet(
+                container: container,
+                currentGroupId: group.id,
+                onSelect: onSelectGroup
+            )
+        }
+        .sheet(isPresented: $isShowingPersonalProfile) {
+            PersonalProfileSheet(container: container)
+        }
     }
 
     // MARK: - Tabs
@@ -49,7 +56,10 @@ public struct GroupTabsHost: View {
     private var homeTab: some View {
         NavigationStack {
             GroupHomeView(container: container, group: group)
-                .toolbar { backToGroupsToolbar }
+                // Switcher button already shows the group name; drop
+                // the redundant inline title from GroupHomeView.
+                .navigationTitle("")
+                .toolbar { shellToolbar }
         }
         .tabItem {
             Label(L10n.GroupTabs.home, systemImage: "house")
@@ -65,7 +75,7 @@ public struct GroupTabsHost: View {
                 groupId: group.id,
                 myMembershipId: group.membershipId
             )
-            .toolbar { backToGroupsToolbar }
+            .toolbar { shellToolbar }
         }
         .tabItem {
             Label(L10n.GroupTabs.money, systemImage: "banknote")
@@ -77,7 +87,7 @@ public struct GroupTabsHost: View {
     private var resourcesTab: some View {
         NavigationStack {
             ResourcesListView(store: container.resourcesStore, groupId: group.id)
-                .toolbar { backToGroupsToolbar }
+                .toolbar { shellToolbar }
         }
         .tabItem {
             Label(L10n.GroupTabs.resources, systemImage: "square.stack.3d.up")
@@ -93,7 +103,7 @@ public struct GroupTabsHost: View {
                 groupId: group.id,
                 onSelectMember: nil
             )
-            .toolbar { backToGroupsToolbar }
+            .toolbar { shellToolbar }
         }
         .tabItem {
             Label(L10n.GroupTabs.members, systemImage: "person.3")
@@ -105,7 +115,7 @@ public struct GroupTabsHost: View {
     private var settingsTab: some View {
         NavigationStack {
             GroupSettingsView(container: container, group: group)
-                .toolbar { backToGroupsToolbar }
+                .toolbar { shellToolbar }
         }
         .tabItem {
             Label(L10n.GroupTabs.settings, systemImage: "gearshape")
@@ -113,16 +123,31 @@ public struct GroupTabsHost: View {
         .tag(GroupTab.settings)
     }
 
-    // MARK: - Helpers
+    // MARK: - Toolbar
 
     @ToolbarContentBuilder
-    private var backToGroupsToolbar: some ToolbarContent {
+    private var shellToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button {
-                dismiss()
+                isShowingSwitcher = true
             } label: {
-                Label(L10n.GroupTabs.backToGroups, systemImage: "chevron.left")
-                    .labelStyle(.titleAndIcon)
+                HStack(spacing: 4) {
+                    Text(group.name)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.primary)
+            }
+            .accessibilityLabel(Text(L10n.GroupSwitcher.title))
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                isShowingPersonalProfile = true
+            } label: {
+                Label(L10n.PersonalProfile.title, systemImage: "person.crop.circle")
+                    .labelStyle(.iconOnly)
             }
         }
     }

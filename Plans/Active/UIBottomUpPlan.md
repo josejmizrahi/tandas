@@ -603,14 +603,22 @@ Marcar cada slice cerrado:
       navegación + add toolbar)
 - [x] C3 Contributions (Primitiva 9)
 - [x] C4 Reputation UI admin (Primitiva 12) — read listo
-- [ ] D1 GroupSwitcherSheet
+- [x] D1 GroupSwitcherSheet
+      (sheet con la lista de grupos, Crear y Tengo código. Reemplaza
+      la antigua GroupListView. Accessible desde el group-name button
+      en el toolbar leading de cada tab de GroupTabsHost.)
 - [x] D2 GroupTabsHost
       (TabView interna del grupo con 5 tabs: Inicio/Dinero/Recursos/
       Miembros/Ajustes. Cada tab es su propio NavigationStack. La
       Inicio tab reusa GroupHomeView por ahora; el feed situacional
       `GroupHomeFeedView` queda para slice posterior. GroupListView
       ahora empuja a GroupTabsHost.)
-- [ ] D3 AppShell (replace RuulAppShell)
+- [x] D3 AppShell (replace RuulAppShell)
+      (RuulAppShell ahora salta GroupListView y aterriza directo en
+      GroupTabsHost con el grupo actual. WelcomeNoGroupsView cuando no
+      hay grupos. GroupListView.swift eliminado del repo. Group
+      switcher en leading toolbar; PersonalProfileSheet en trailing
+      toolbar de cada tab.)
 - [ ] D4 DeepLinkRouter
 - [ ] E1 WidgetsExtension
 - [ ] E2 LiveActivityExtension

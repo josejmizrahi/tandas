@@ -763,6 +763,27 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum GroupSwitcher {
+        public static let title              = LocalizedStringResource("group_switcher.title",            defaultValue: "Mis grupos")
+        public static let close              = LocalizedStringResource("group_switcher.close",            defaultValue: "Listo")
+        public static let groupsSection      = LocalizedStringResource("group_switcher.section.groups",   defaultValue: "Tus grupos")
+        public static let actionsSection     = LocalizedStringResource("group_switcher.section.actions",  defaultValue: "Acciones")
+        public static let createButton       = LocalizedStringResource("group_switcher.create",           defaultValue: "Crear grupo")
+        public static let acceptButton       = LocalizedStringResource("group_switcher.accept",           defaultValue: "Tengo un código")
+        public static let emptyTitle         = LocalizedStringResource("group_switcher.empty.title",      defaultValue: "Aún no tienes grupos")
+        public static let emptyDescription   = LocalizedStringResource("group_switcher.empty.description", defaultValue: "Crea uno o pega un código de invitación para empezar.")
+        public static let errorTitle         = LocalizedStringResource("group_switcher.error.title",      defaultValue: "No pudimos cargar tus grupos")
+        public static let retry              = LocalizedStringResource("group_switcher.retry",            defaultValue: "Reintentar")
+    }
+
+    public enum Welcome {
+        public static let title              = LocalizedStringResource("welcome.title",                   defaultValue: "Bienvenido a Ruul")
+        public static let subtitle           = LocalizedStringResource("welcome.subtitle",                defaultValue: "Coordina con tu gente con reglas claras y dinero compartido.")
+        public static let createButton       = LocalizedStringResource("welcome.create",                  defaultValue: "Crear mi primer grupo")
+        public static let acceptButton       = LocalizedStringResource("welcome.accept",                  defaultValue: "Tengo un código de invitación")
+        public static let signOut            = LocalizedStringResource("welcome.sign_out",                defaultValue: "Cerrar sesión")
+    }
+
     public enum GroupTabs {
         public static let home      = LocalizedStringResource("group_tabs.home",      defaultValue: "Inicio")
         public static let money     = LocalizedStringResource("group_tabs.money",     defaultValue: "Dinero")
