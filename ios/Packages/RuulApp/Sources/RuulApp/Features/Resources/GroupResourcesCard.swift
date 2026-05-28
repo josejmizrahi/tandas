@@ -189,4 +189,7 @@ private struct ResourcesStubClient: RuulRPCClient, @unchecked Sendable {
     func updateRolePermissions(_ input: UpdateRolePermissionsInput) async throws {}
     func assignRoleToMember(_ input: AssignRoleToMemberInput) async throws {}
     func revokeRoleFromMember(_ input: RevokeRoleFromMemberInput) async throws {}
+    func groupDissolutionActive(groupId: UUID) async throws -> GroupDissolution? { nil }
+    func proposeDissolution(_ input: ProposeDissolutionInput) async throws -> UUID { UUID() }
+    func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws {}
 }

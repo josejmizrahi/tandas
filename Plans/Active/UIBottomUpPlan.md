@@ -583,7 +583,11 @@ Marcar cada slice cerrado:
       por rituals_only/include_past; write side
       create_resource_series / update_resource_series ya canónico)
 - [ ] B7 NotificationsSettingsView + GroupPrivacyView
-- [ ] B8 DissolveGroupConfirmation (Primitiva 25)
+- [x] B8 Dissolution (Primitiva 25)
+      (mig `20260527210000` agregó group_dissolution_active read RPC;
+      write side propose_dissolution / approve_dissolution /
+      finalize_dissolution ya canónico. iOS: DissolutionStatusView con
+      propose+finalize flujo desde GroupSettings dangerSection)
 - [x] C1 Decisions/Voting (Primitiva 16) — votes UI completo
       (mig `20260527160000` + Domain + Store + DecisionsListView +
       DecisionDetailView + ProposeDecisionSheet + VoteSheet)

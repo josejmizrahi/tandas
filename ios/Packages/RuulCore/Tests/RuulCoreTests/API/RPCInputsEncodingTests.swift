@@ -666,6 +666,25 @@ struct RPCInputsEncodingTests {
         #expect(history["p_limit"] as? Int == 25)
     }
 
+    // MARK: - Dissolution (Primitiva 25, B8)
+
+    @Test("propose_dissolution encodes group + reason only (plan jsonb stays backend-default)")
+    func proposeDissolutionEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(ProposeDissolutionInput(groupId: gid, reason: "Cerramos el ciclo."))
+        #expect(dict.keys.sorted() == ["p_group_id", "p_reason"])
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_reason"] as? String == "Cerramos el ciclo.")
+    }
+
+    @Test("finalize_dissolution encodes only the dissolution id")
+    func finalizeDissolutionEncoding() throws {
+        let did = UUID()
+        let dict = try encode(FinalizeDissolutionInput(dissolutionId: did))
+        #expect(dict.keys.sorted() == ["p_dissolution_id"])
+        #expect(dict["p_dissolution_id"] as? String == did.uuidString)
+    }
+
     // MARK: - Roles + Permissions (Primitiva 17, B3)
 
     @Test("create_custom_role encodes p_description as null when omitted + arrays preserved")

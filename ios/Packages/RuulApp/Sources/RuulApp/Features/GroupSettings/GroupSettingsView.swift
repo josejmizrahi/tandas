@@ -66,6 +66,8 @@ public struct GroupSettingsView: View {
                 RitualsListView(store: container.ritualsStore, groupId: group.id)
             case .roles:
                 RolesListView(store: container.rolesStore, groupId: group.id)
+            case .dissolution:
+                DissolutionStatusView(store: container.dissolutionStore, groupId: group.id)
             }
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -230,7 +232,10 @@ public struct GroupSettingsView: View {
             } label: {
                 Label(L10n.GroupSettings.leaveRow, systemImage: "rectangle.portrait.and.arrow.right")
             }
-            comingSoonRow(.dissolve, label: L10n.GroupSettings.dissolveRow, systemImage: "xmark.octagon")
+            NavigationLink(value: GroupSettingsDestination.dissolution) {
+                Label(L10n.GroupSettings.dissolveRow, systemImage: "xmark.octagon")
+                    .foregroundStyle(.red)
+            }
         }
     }
 
@@ -308,6 +313,7 @@ public struct GroupSettingsView: View {
         case boundaryPolicy
         case rituals
         case roles
+        case dissolution
     }
 
     private enum ComingSoonRow: Hashable {
@@ -316,6 +322,5 @@ public struct GroupSettingsView: View {
         case fundsPolicy
         case notifications
         case privacy
-        case dissolve
     }
 }

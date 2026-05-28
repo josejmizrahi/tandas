@@ -763,6 +763,54 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum Dissolution {
+        public static let title              = LocalizedStringResource("dissolution.title",              defaultValue: "Cerrar grupo")
+        public static let menuLink           = LocalizedStringResource("dissolution.menu",               defaultValue: "Cerrar grupo")
+        public static let headline           = LocalizedStringResource("dissolution.headline",           defaultValue: "Cerrar el grupo")
+        public static let intro              = LocalizedStringResource("dissolution.intro",              defaultValue: "Cuando todos están de acuerdo en que este grupo terminó su ciclo, aquí se cierra. Es una decisión seria — el grupo deja de funcionar para siempre.")
+        public static let processHint        = LocalizedStringResource("dissolution.process.hint",       defaultValue: "Proponer cierre abre un voto del grupo (supermayoría, 14 días). Si pasa, hay que liquidar todas las deudas abiertas antes de finalizar.")
+        public static let errorTitle         = LocalizedStringResource("dissolution.error.title",        defaultValue: "No pudimos cargar el cierre")
+        public static let retry              = LocalizedStringResource("dissolution.retry",              defaultValue: "Reintentar")
+
+        // Empty state — no active dissolution
+        public static let emptyTitle         = LocalizedStringResource("dissolution.empty.title",        defaultValue: "El grupo sigue activo")
+        public static let emptyDescription   = LocalizedStringResource("dissolution.empty.description",  defaultValue: "Nadie ha propuesto cerrar este grupo todavía.")
+        public static let proposeButton      = LocalizedStringResource("dissolution.propose.button",     defaultValue: "Proponer cierre")
+
+        // Active state — banner
+        public static let activeBannerTitle  = LocalizedStringResource("dissolution.active.title",       defaultValue: "Cierre en proceso")
+        public static let proposedByLabel    = LocalizedStringResource("dissolution.proposed_by",        defaultValue: "Propuesto por")
+        public static let proposedAtLabel    = LocalizedStringResource("dissolution.proposed_at",        defaultValue: "Propuesto")
+        public static let approvedAtLabel    = LocalizedStringResource("dissolution.approved_at",        defaultValue: "Aprobado")
+        public static let reasonLabel        = LocalizedStringResource("dissolution.reason",             defaultValue: "Razón")
+        public static let linkedDecisionLabel = LocalizedStringResource("dissolution.linked_decision",   defaultValue: "Decisión vinculada")
+        public static let openObligationsTitle = LocalizedStringResource("dissolution.obligations.title", defaultValue: "Pendiente antes de cerrar")
+        public static let openObligationsCount = LocalizedStringResource("dissolution.obligations.count", defaultValue: "Hay %lld obligaciones aún abiertas. Hay que liquidarlas para finalizar.")
+        public static let openObligationsZero  = LocalizedStringResource("dissolution.obligations.zero",  defaultValue: "Todas las obligaciones están cerradas. Listo para finalizar.")
+
+        // Finalize
+        public static let finalizeButton           = LocalizedStringResource("dissolution.finalize.button",      defaultValue: "Finalizar cierre")
+        public static let finalizeConfirmTitle     = LocalizedStringResource("dissolution.finalize.confirm.title", defaultValue: "¿Finalizar cierre del grupo?")
+        public static let finalizeConfirmMessage   = LocalizedStringResource("dissolution.finalize.confirm.message", defaultValue: "Al finalizar el grupo queda cerrado: todas las membresías terminan y nadie más puede entrar. Esto no se puede deshacer.")
+        public static let finalizeAction           = LocalizedStringResource("dissolution.finalize.action",       defaultValue: "Finalizar")
+
+        // Propose sheet
+        public static let proposeTitle       = LocalizedStringResource("dissolution.propose.title",      defaultValue: "Proponer cierre")
+        public static let proposeConfirm     = LocalizedStringResource("dissolution.propose.confirm",    defaultValue: "Proponer")
+        public static let cancel             = LocalizedStringResource("dissolution.cancel",             defaultValue: "Cancelar")
+        public static let proposeWarning     = LocalizedStringResource("dissolution.propose.warning",    defaultValue: "Esto abre un voto de supermayoría que dura 14 días. Si pasa, el grupo entra en proceso de cierre.")
+        public static let reasonSection      = LocalizedStringResource("dissolution.section.reason",     defaultValue: "Razón")
+        public static let reasonPlaceholder  = LocalizedStringResource("dissolution.reason.placeholder", defaultValue: "Por qué cerrar el grupo (visible para todos los miembros)")
+        public static let reasonRequired     = LocalizedStringResource("dissolution.reason.required",    defaultValue: "Escribe la razón del cierre.")
+
+        // Statuses
+        public static let statusProposed     = LocalizedStringResource("dissolution.status.proposed",    defaultValue: "Propuesto")
+        public static let statusApproved     = LocalizedStringResource("dissolution.status.approved",    defaultValue: "Aprobado")
+        public static let statusLiquidating  = LocalizedStringResource("dissolution.status.liquidating", defaultValue: "Liquidando")
+        public static let statusExecuted     = LocalizedStringResource("dissolution.status.executed",    defaultValue: "Cerrado")
+        public static let statusCancelled    = LocalizedStringResource("dissolution.status.cancelled",   defaultValue: "Cancelado")
+    }
+
     public enum Roles {
         public static let title              = LocalizedStringResource("roles.title",              defaultValue: "Roles y permisos")
         public static let menuLink           = LocalizedStringResource("roles.menu",               defaultValue: "Roles y permisos")

@@ -804,6 +804,45 @@ public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Dissolution (Primitiva 25, B8)
+
+public struct GroupDissolutionActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct ProposeDissolutionInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pReason: String
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pReason  = "p_reason"
+    }
+
+    public init(groupId: UUID, reason: String) {
+        self.pGroupId = groupId
+        self.pReason = reason
+    }
+
+    /// Foundation V1 only collects the reason; backend defaults
+    /// `p_plan` / `p_asset_disposition` / `p_obligations_plan` to
+    /// empty jsonb (the SECURITY DEFINER signature already provides
+    /// defaults, so omitting the keys is safe).
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pReason, forKey: .pReason)
+    }
+}
+
+public struct FinalizeDissolutionInput: Encodable, Sendable, Equatable {
+    public let pDissolutionId: UUID
+    enum CodingKeys: String, CodingKey { case pDissolutionId = "p_dissolution_id" }
+    public init(dissolutionId: UUID) { self.pDissolutionId = dissolutionId }
+}
+
 // MARK: - Roles + Permissions (Primitiva 17, B3)
 
 public struct ListGroupRolesParams: Encodable, Sendable {

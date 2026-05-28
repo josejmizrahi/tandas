@@ -244,6 +244,25 @@ public protocol RuulRPCClient: Sendable {
     /// `group_decisions` row. Returns the new decision id.
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID
 
+    // MARK: - Dissolution (Primitiva 25, B8)
+
+    /// `group_dissolution_active(p_group_id)` — returns the active
+    /// dissolution row (proposed/approved/liquidating) as a domain
+    /// model, or `nil` when none. Active-member gate. Includes
+    /// `open_obligations_count` so the surface can gate finalize.
+    func groupDissolutionActive(groupId: UUID) async throws -> GroupDissolution?
+
+    /// `propose_dissolution(...)` — inserts a `proposed` row + auto-
+    /// creates the linked supermajority vote. Requires
+    /// `group.dissolve`. Returns the new dissolution id.
+    func proposeDissolution(_ input: ProposeDissolutionInput) async throws -> UUID
+
+    /// `finalize_dissolution(p_dissolution_id)` — flips group to
+    /// `dissolved` + all active memberships to `left`. Requires
+    /// `group.dissolve` and all obligations resolved (backend raises
+    /// otherwise).
+    func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws
+
     // MARK: - Roles + Permissions (Primitiva 17, B3)
 
     /// `list_group_roles(p_group_id)` — roles for a group with the

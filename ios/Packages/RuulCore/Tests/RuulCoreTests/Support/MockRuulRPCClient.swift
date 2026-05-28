@@ -78,6 +78,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case updateRolePermissions(input: UpdateRolePermissionsInput)
         case assignRoleToMember(input: AssignRoleToMemberInput)
         case revokeRoleFromMember(input: RevokeRoleFromMemberInput)
+        case groupDissolutionActive(groupId: UUID)
+        case proposeDissolution(input: ProposeDissolutionInput)
+        case finalizeDissolution(input: FinalizeDissolutionInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -188,6 +191,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var updateRolePermissionsStub: Result<Void, RuulError> = .success(())
     private var assignRoleToMemberStub: Result<Void, RuulError> = .success(())
     private var revokeRoleFromMemberStub: Result<Void, RuulError> = .success(())
+    private var groupDissolutionActiveStub: Result<GroupDissolution?, RuulError> = .success(nil)
+    private var proposeDissolutionStub: Result<UUID, RuulError> = .success(UUID())
+    private var finalizeDissolutionStub: Result<Void, RuulError> = .success(())
 
     init() {}
 
@@ -261,6 +267,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setUpdateRolePermissionsStub(_ stub: Result<Void, RuulError>) { updateRolePermissionsStub = stub }
     func setAssignRoleToMemberStub(_ stub: Result<Void, RuulError>) { assignRoleToMemberStub = stub }
     func setRevokeRoleFromMemberStub(_ stub: Result<Void, RuulError>) { revokeRoleFromMemberStub = stub }
+    func setGroupDissolutionActiveStub(_ stub: Result<GroupDissolution?, RuulError>) { groupDissolutionActiveStub = stub }
+    func setProposeDissolutionStub(_ stub: Result<UUID, RuulError>) { proposeDissolutionStub = stub }
+    func setFinalizeDissolutionStub(_ stub: Result<Void, RuulError>) { finalizeDissolutionStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -613,5 +622,20 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func revokeRoleFromMember(_ input: RevokeRoleFromMemberInput) async throws {
         recorded.append(.revokeRoleFromMember(input: input))
         try revokeRoleFromMemberStub.get()
+    }
+
+    func groupDissolutionActive(groupId: UUID) async throws -> GroupDissolution? {
+        recorded.append(.groupDissolutionActive(groupId: groupId))
+        return try groupDissolutionActiveStub.get()
+    }
+
+    func proposeDissolution(_ input: ProposeDissolutionInput) async throws -> UUID {
+        recorded.append(.proposeDissolution(input: input))
+        return try proposeDissolutionStub.get()
+    }
+
+    func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws {
+        recorded.append(.finalizeDissolution(input: input))
+        try finalizeDissolutionStub.get()
     }
 }

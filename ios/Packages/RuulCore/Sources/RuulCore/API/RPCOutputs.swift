@@ -157,6 +157,61 @@ extension ListMyGroupsRow {
     }
 }
 
+// MARK: - group_dissolution_active(p_group_id)
+
+/// Wire envelope returned by `group_dissolution_active(p_group_id)`.
+/// Backend emits `{}` jsonb when no active dissolution exists, so
+/// every field is optional and `toDomain()` returns `nil` until at
+/// least `dissolution_id` is present.
+struct GroupDissolutionWireDTO: Decodable {
+    let dissolutionId: UUID?
+    let groupId: UUID?
+    let initiatedBy: UUID?
+    let initiatedByDisplayName: String?
+    let sourceDecisionId: UUID?
+    let status: String?
+    let reason: String?
+    let proposedAt: Date?
+    let approvedAt: Date?
+    let executedAt: Date?
+    let updatedAt: Date?
+    let openObligationsCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case dissolutionId          = "dissolution_id"
+        case groupId                = "group_id"
+        case initiatedBy            = "initiated_by"
+        case initiatedByDisplayName = "initiated_by_display_name"
+        case sourceDecisionId       = "source_decision_id"
+        case status
+        case reason
+        case proposedAt             = "proposed_at"
+        case approvedAt             = "approved_at"
+        case executedAt             = "executed_at"
+        case updatedAt              = "updated_at"
+        case openObligationsCount   = "open_obligations_count"
+    }
+
+    func toDomain() -> GroupDissolution? {
+        guard let dissolutionId, let groupId else { return nil }
+        let parsedStatus = status.flatMap { DissolutionStatus(rawValue: $0) } ?? .proposed
+        return GroupDissolution(
+            id: dissolutionId,
+            groupId: groupId,
+            initiatedBy: initiatedBy,
+            initiatedByDisplayName: initiatedByDisplayName,
+            sourceDecisionId: sourceDecisionId,
+            status: parsedStatus,
+            reason: reason,
+            proposedAt: proposedAt,
+            approvedAt: approvedAt,
+            executedAt: executedAt,
+            updatedAt: updatedAt,
+            openObligationsCount: openObligationsCount ?? 0
+        )
+    }
+}
+
 // MARK: - group_members(p_group_id)
 
 /// Wire row from `public.group_members(p_group_id) returns table(...)`.

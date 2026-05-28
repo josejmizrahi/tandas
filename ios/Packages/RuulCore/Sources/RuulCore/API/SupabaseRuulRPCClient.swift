@@ -540,6 +540,39 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Dissolution (Primitiva 25, B8)
+
+    public func groupDissolutionActive(groupId: UUID) async throws -> GroupDissolution? {
+        let params = GroupDissolutionActiveParams(groupId: groupId)
+        do {
+            // Backend returns `{}` jsonb when no active dissolution.
+            // Decode tolerantly into the wire shape and convert.
+            let dto: GroupDissolutionWireDTO = try await client
+                .rpc("group_dissolution_active", params: params)
+                .execute()
+                .value
+            return dto.toDomain()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func proposeDissolution(_ input: ProposeDissolutionInput) async throws -> UUID {
+        do {
+            return try await client.rpc("propose_dissolution", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws {
+        do {
+            _ = try await client.rpc("finalize_dissolution", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Roles + Permissions (Primitiva 17, B3)
 
     public func listGroupRoles(groupId: UUID) async throws -> [GroupRole] {
