@@ -5,6 +5,12 @@ import RuulApp
 
 @main
 struct TandasApp: App {
+    /// V3-A2 — owns the APNs lifecycle (token register + tap →
+    /// DeepLinkRouter forwarding). SwiftUI guarantees a single
+    /// instance per process; `RuulAppShell` binds the container into
+    /// it after construction.
+    @UIApplicationDelegateAdaptor(RuulAppDelegate.self) private var appDelegate
+
     init() {
         Self.startSentry()
     }

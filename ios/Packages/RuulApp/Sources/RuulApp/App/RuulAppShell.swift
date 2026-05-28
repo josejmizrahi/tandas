@@ -32,6 +32,18 @@ public struct RuulAppShell: View {
         content
             .task {
                 container.bootstrap()
+                // V3-A2 — hand the container to the app delegate so
+                // APNs callbacks can call the notifications repo.
+                RuulAppDelegate.shared?.bind(container: container)
+            }
+            .task(id: container.sessionStore.state.isAuthenticated) {
+                // V3-A2 — request push authorization the moment the
+                // session becomes signed-in. The system silently
+                // no-ops once the prompt has been answered, so this
+                // is safe to re-fire on every transition.
+                if container.sessionStore.state.isAuthenticated {
+                    await RuulAppDelegate.shared?.requestAuthorizationIfNeeded()
+                }
             }
             .onOpenURL { url in
                 container.deepLinkRouter.handle(url)

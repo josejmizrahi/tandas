@@ -275,6 +275,13 @@ public protocol RuulRPCClient: Sendable {
     /// `(group, category, channel)` row. Returns void.
     func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws
 
+    /// `register_my_notification_token(p_token, p_platform)` —
+    /// upserts the caller's APNs/FCM device token into
+    /// `notification_tokens` (unique on `user_id+token`). Bumps
+    /// `updated_at` on re-registration. authenticated-only.
+    /// Returns the row id.
+    func registerMyNotificationToken(_ input: RegisterMyNotificationTokenInput) async throws -> UUID
+
     /// `group_visibility(p_group_id)` — returns the current
     /// `groups.visibility` text. Active-member gate.
     func groupVisibility(groupId: UUID) async throws -> String

@@ -586,6 +586,17 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func registerMyNotificationToken(_ input: RegisterMyNotificationTokenInput) async throws -> UUID {
+        do {
+            return try await client
+                .rpc("register_my_notification_token", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func groupVisibility(groupId: UUID) async throws -> String {
         let params = GroupVisibilityParams(groupId: groupId)
         do {

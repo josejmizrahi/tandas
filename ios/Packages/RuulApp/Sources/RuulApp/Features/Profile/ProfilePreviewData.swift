@@ -210,6 +210,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws {}
     func myNotificationPreferences(groupId: UUID) async throws -> [NotificationPreferenceRow] { [] }
     func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws {}
+    func registerMyNotificationToken(_ input: RegisterMyNotificationTokenInput) async throws -> UUID { UUID() }
     func groupVisibility(groupId: UUID) async throws -> String { "private" }
     func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String { input.pVisibility }
 }

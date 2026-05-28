@@ -30,4 +30,14 @@ public struct CanonicalNotificationsRepository: Sendable {
             )
         )
     }
+
+    /// V3-A2 — register the caller's APNs token. iOS only sends the
+    /// already-uppercase hex string returned by APNs; the RPC trims
+    /// whitespace + lowercases the platform enum.
+    @discardableResult
+    public func registerToken(_ hex: String, platform: String = "ios") async throws -> UUID {
+        try await rpc.registerMyNotificationToken(
+            RegisterMyNotificationTokenInput(token: hex, platform: platform)
+        )
+    }
 }

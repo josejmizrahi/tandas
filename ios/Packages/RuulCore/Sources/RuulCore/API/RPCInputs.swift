@@ -905,6 +905,21 @@ public struct MyNotificationPreferencesParams: Encodable, Sendable {
     public init(groupId: UUID) { self.pGroupId = groupId }
 }
 
+public struct RegisterMyNotificationTokenInput: Encodable, Sendable, Equatable {
+    public let pToken: String
+    public let pPlatform: String
+
+    enum CodingKeys: String, CodingKey {
+        case pToken    = "p_token"
+        case pPlatform = "p_platform"
+    }
+
+    public init(token: String, platform: String = "ios") {
+        self.pToken = token
+        self.pPlatform = platform
+    }
+}
+
 public struct SetNotificationPreferenceInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pCategory: String
