@@ -1154,6 +1154,7 @@ public enum L10n {
         public static let referenceMandateRevoke           = LocalizedStringResource("decisions.reference.mandate_revoke",          defaultValue: "Revocación de mandato")
         public static let referenceDissolution             = LocalizedStringResource("decisions.reference.dissolution",             defaultValue: "La disolución del grupo")
         public static let referenceRule                    = LocalizedStringResource("decisions.reference.rule",                    defaultValue: "Una regla")
+        public static let referenceMembership              = LocalizedStringResource("decisions.reference.membership",              defaultValue: "Un miembro")
         public static let referenceOther                   = LocalizedStringResource("decisions.reference.other",                   defaultValue: "Otro elemento")
 
         public static let outcomeAppliedSection            = LocalizedStringResource("decisions.outcome_applied.section",           defaultValue: "Consecuencia")
@@ -1162,6 +1163,8 @@ public enum L10n {
         public static let outcomeMandateRevoked            = LocalizedStringResource("decisions.outcome_applied.mandate_revoked",   defaultValue: "El mandato fue revocado por esta votación.")
         public static let outcomeMandateConfirmed          = LocalizedStringResource("decisions.outcome_applied.mandate_confirmed", defaultValue: "El mandato quedó respaldado por esta votación.")
         public static let outcomeDissolutionApproved       = LocalizedStringResource("decisions.outcome_applied.dissolution",       defaultValue: "La disolución del grupo fue aprobada por esta votación.")
+        public static let outcomeMembershipApplied         = LocalizedStringResource("decisions.outcome_applied.membership",       defaultValue: "El cambio de estado del miembro se aplicó automáticamente.")
+        public static let outcomeRuleApplied               = LocalizedStringResource("decisions.outcome_applied.rule",             defaultValue: "El cambio en la regla se aplicó automáticamente.")
         public static let optionsSection     = LocalizedStringResource("decisions.section.options",    defaultValue: "Opciones")
         public static let bodySection        = LocalizedStringResource("decisions.section.body",       defaultValue: "Detalle")
         public static let bodyEmpty          = LocalizedStringResource("decisions.body.empty",         defaultValue: "Sin detalles adicionales.")
@@ -1202,6 +1205,15 @@ public enum L10n {
         public static let membershipTargetSuspended               = LocalizedStringResource("decisions.membership_target.suspended",  defaultValue: "Suspendido")
         public static let membershipTargetExpelled                = LocalizedStringResource("decisions.membership_target.expelled",   defaultValue: "Expulsado")
         public static let membershipTargetInactive                = LocalizedStringResource("decisions.membership_target.inactive",   defaultValue: "Inactivo")
+
+        // Rule change action (V2-G2 sub-slice 5)
+        public static let proposeReferenceRuleSection             = LocalizedStringResource("decisions.propose.reference.rule.section", defaultValue: "¿Qué regla?")
+        public static let proposeReferenceRuleEmpty               = LocalizedStringResource("decisions.propose.reference.rule.empty",   defaultValue: "No hay reglas para modificar.")
+        public static let proposeRuleChangeActionSection          = LocalizedStringResource("decisions.propose.rule_change.action.section",  defaultValue: "¿Qué se hace con la regla?")
+        public static let proposeRuleChangeActionRequired         = LocalizedStringResource("decisions.propose.rule_change.action.required", defaultValue: "Elige qué hacer con la regla.")
+        public static let proposeRuleChangeActionHint             = LocalizedStringResource("decisions.propose.rule_change.action.hint",     defaultValue: "Cuando se apruebe, la regla cambia su estado automáticamente.")
+        public static let ruleChangeActionArchive                 = LocalizedStringResource("decisions.rule_change.action.archive",         defaultValue: "Archivar")
+        public static let ruleChangeActionActivate                = LocalizedStringResource("decisions.rule_change.action.activate",        defaultValue: "Activar")
 
         // Vote sheet
         public static let voteTitle          = LocalizedStringResource("decisions.vote.title",         defaultValue: "Tu voto")

@@ -254,7 +254,8 @@ public struct GroupSettingsView: View {
                 },
                 sanctionsStore: container.sanctionsStore,
                 mandatesStore: container.mandatesStore,
-                membersStore: container.membersStore
+                membersStore: container.membersStore,
+                rulesStore: container.rulesStore
             )
         case .disputes:
             DisputesListView(store: container.disputesStore, groupId: group.id)

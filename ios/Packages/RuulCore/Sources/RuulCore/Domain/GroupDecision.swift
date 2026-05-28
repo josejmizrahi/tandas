@@ -311,7 +311,35 @@ public enum DecisionType: String, Codable, CaseIterable, Identifiable, Sendable,
         case .mandateGrant:   return "mandate_grant"
         case .dissolution:    return "dissolution"
         case .membership:     return "membership"
+        case .ruleChange:     return "rule"
         default:              return nil
+        }
+    }
+}
+
+/// V2-G2 sub-slice 5 — action a `decision_type='rule_change'`
+/// proposes to apply on the referenced rule when finalize_vote
+/// passes. The handler in finalize_vote reads `metadata.action` and
+/// dispatches the corresponding inline mutation.
+public enum RuleChangeAction: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
+    case archive
+    case activate
+
+    public var id: String { rawValue }
+
+    public static let displayOrder: [RuleChangeAction] = [.archive, .activate]
+
+    public var label: LocalizedStringResource {
+        switch self {
+        case .archive:  return L10n.Decisions.ruleChangeActionArchive
+        case .activate: return L10n.Decisions.ruleChangeActionActivate
+        }
+    }
+
+    public var systemImageName: String {
+        switch self {
+        case .archive:  return "archivebox"
+        case .activate: return "checkmark.circle"
         }
     }
 }

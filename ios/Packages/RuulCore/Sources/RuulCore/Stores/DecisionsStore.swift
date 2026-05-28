@@ -58,10 +58,11 @@ public final class DecisionsStore {
         didSet {
             // Switching type wipes the reference pick + per-type
             // metadata — the previous entity (a sanction, a mandate)
-            // or membership target state is no longer relevant.
+            // or membership/rule_change action is no longer relevant.
             if oldValue != draftType {
                 draftReferenceId = nil
                 draftMembershipTargetState = nil
+                draftRuleChangeAction = nil
             }
         }
     }
@@ -75,6 +76,11 @@ public final class DecisionsStore {
     /// expelled / inactive). This persists to `metadata.target_state`
     /// and finalize_vote dispatches set_membership_state with it.
     public var draftMembershipTargetState: MembershipDecisionTargetState? = nil
+    /// V2-G2 sub-slice 5 — for `decision_type='rule_change'` the
+    /// proposer specifies what to do with the referenced rule on
+    /// finalize. Persists to `metadata.action`. finalize_vote handler
+    /// inlines the matching group_rules.status flip.
+    public var draftRuleChangeAction: RuleChangeAction? = nil
     public var draftOptions: [DraftOption] = []
     public private(set) var draftErrorMessage: String?
 
@@ -92,12 +98,20 @@ public final class DecisionsStore {
         draftType == .membership && draftMembershipTargetState == nil
     }
 
-    /// Composed `metadata` jsonb payload for the current draft. Today
-    /// only membership decisions populate it; future handlers can add
-    /// more keys here.
+    /// V2-G2 sub-slice 5 — rule_change type needs an action.
+    public var draftNeedsRuleChangeAction: Bool {
+        draftType == .ruleChange && draftRuleChangeAction == nil
+    }
+
+    /// Composed `metadata` jsonb payload for the current draft.
+    /// Membership decisions write `target_state`; rule_change writes
+    /// `action`. Future handlers add more keys here.
     public var draftMetadata: [String: String]? {
         if draftType == .membership, let target = draftMembershipTargetState {
             return ["target_state": target.rawValue]
+        }
+        if draftType == .ruleChange, let action = draftRuleChangeAction {
+            return ["action": action.rawValue]
         }
         return nil
     }
@@ -212,6 +226,7 @@ public final class DecisionsStore {
         draftType = .proposal
         draftReferenceId = nil
         draftMembershipTargetState = nil
+        draftRuleChangeAction = nil
         draftOptions = []
         draftErrorMessage = nil
         isProposePresented = true
@@ -229,6 +244,7 @@ public final class DecisionsStore {
         !draftTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !draftNeedsReferencePick
             && !draftNeedsMembershipTargetState
+            && !draftNeedsRuleChangeAction
     }
 
     @discardableResult
@@ -258,6 +274,11 @@ public final class DecisionsStore {
         // decision goes nowhere.
         if draftNeedsMembershipTargetState {
             draftErrorMessage = String(localized: L10n.Decisions.proposeMembershipTargetStateRequired)
+            return false
+        }
+        // V2-G2 sub-slice 5 — same rationale for rule_change action.
+        if draftNeedsRuleChangeAction {
+            draftErrorMessage = String(localized: L10n.Decisions.proposeRuleChangeActionRequired)
             return false
         }
         let payload: [StartVoteParams.OptionDraft]? = cleanedOptions.isEmpty
@@ -295,6 +316,7 @@ public final class DecisionsStore {
         draftType = .proposal
         draftReferenceId = nil
         draftMembershipTargetState = nil
+        draftRuleChangeAction = nil
         draftOptions = []
         draftErrorMessage = nil
     }

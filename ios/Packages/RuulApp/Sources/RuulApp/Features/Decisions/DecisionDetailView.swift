@@ -250,6 +250,7 @@ public struct DecisionDetailView: View {
         case "mandate_revoke": return L10n.Decisions.referenceMandateRevoke
         case "dissolution":    return L10n.Decisions.referenceDissolution
         case "rule":           return L10n.Decisions.referenceRule
+        case "membership":     return L10n.Decisions.referenceMembership
         default:               return L10n.Decisions.referenceOther
         }
     }
@@ -263,6 +264,7 @@ public struct DecisionDetailView: View {
              "mandate_revoke": return "person.crop.rectangle.badge.checkmark"
         case "dissolution":    return "archivebox"
         case "rule":           return "list.bullet.rectangle"
+        case "membership":     return "person.crop.circle"
         default:               return "link"
         }
     }
@@ -317,6 +319,8 @@ public struct DecisionDetailView: View {
         case "mandate_grant",
              "mandate":        return L10n.Decisions.outcomeMandateConfirmed
         case "dissolution":    return L10n.Decisions.outcomeDissolutionApproved
+        case "membership":     return L10n.Decisions.outcomeMembershipApplied
+        case "rule":           return L10n.Decisions.outcomeRuleApplied
         default:               return nil
         }
     }

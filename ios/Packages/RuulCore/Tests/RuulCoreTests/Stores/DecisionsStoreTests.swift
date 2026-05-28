@@ -255,6 +255,54 @@ struct DecisionsStoreTests {
         })
     }
 
+    @Test("rule_change requires both rule reference and action (V2-G2 sub-slice 5)")
+    func ruleChangeRequiresActionAndRule() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "Archivar X"
+        store.draftType = .ruleChange
+        #expect(store.draftNeedsReferencePick)
+        store.draftReferenceId = UUID()
+        #expect(store.draftNeedsRuleChangeAction)
+        #expect(store.canSaveDraftDecision == false)
+        store.draftRuleChangeAction = .archive
+        #expect(store.canSaveDraftDecision)
+    }
+
+    @Test("saveDraftDecision forwards rule_change action metadata (V2-G2 sub-slice 5)")
+    func saveDraftDecisionForwardsRuleAction() async {
+        let (store, mock) = await makeStore()
+        let ruleId = UUID()
+        store.beginProposing()
+        store.draftTitle = "Reactivar"
+        store.draftType = .ruleChange
+        store.draftReferenceId = ruleId
+        store.draftRuleChangeAction = .activate
+
+        let ok = await store.saveDraftDecision(groupId: groupId)
+        #expect(ok)
+        let recorded = await mock.recorded
+        #expect(recorded.contains { call in
+            if case .startVote(let input) = call {
+                return input.pDecisionType == "rule_change"
+                    && input.pReferenceKind == "rule"
+                    && input.pReferenceId == ruleId
+                    && input.pMetadata == ["action": "activate"]
+            }
+            return false
+        })
+    }
+
+    @Test("Switching away from rule_change clears action (V2-G2 sub-slice 5)")
+    func switchingTypeClearsRuleChangeAction() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftType = .ruleChange
+        store.draftRuleChangeAction = .archive
+        store.draftType = .proposal
+        #expect(store.draftRuleChangeAction == nil)
+    }
+
     @Test("saveDraftDecision rejects sanction_appeal without a picked reference")
     func saveDraftRejectsMissingReference() async {
         let (store, mock) = await makeStore()

@@ -15,6 +15,7 @@ public struct ProposeDecisionSheet: View {
     let sanctionsStore: SanctionsStore?
     let mandatesStore: MandatesStore?
     let membersStore: MembersStore?
+    let rulesStore: RulesStore?
 
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving: Bool = false
@@ -24,13 +25,15 @@ public struct ProposeDecisionSheet: View {
         groupId: UUID,
         sanctionsStore: SanctionsStore? = nil,
         mandatesStore: MandatesStore? = nil,
-        membersStore: MembersStore? = nil
+        membersStore: MembersStore? = nil,
+        rulesStore: RulesStore? = nil
     ) {
         self.store = store
         self.groupId = groupId
         self.sanctionsStore = sanctionsStore
         self.mandatesStore = mandatesStore
         self.membersStore = membersStore
+        self.rulesStore = rulesStore
     }
 
     public var body: some View {
@@ -64,6 +67,8 @@ public struct ProposeDecisionSheet: View {
                     await mandatesStore?.refreshIfNeeded(groupId: groupId)
                 case .membership:
                     await membersStore?.refreshIfNeeded(groupId: groupId)
+                case .ruleChange:
+                    await rulesStore?.refreshIfNeeded(groupId: groupId)
                 default:
                     break
                 }
@@ -196,6 +201,9 @@ public struct ProposeDecisionSheet: View {
         case .membership:
             membershipReferenceSection
             membershipTargetStateSection
+        case .ruleChange:
+            ruleReferenceSection
+            ruleChangeActionSection
         case .dissolution:
             unsupportedReferenceHint
         default:
@@ -310,6 +318,55 @@ public struct ProposeDecisionSheet: View {
                 .foregroundStyle(.secondary)
         } header: {
             Text(L10n.Decisions.proposeMembershipTargetStateSection)
+        }
+    }
+
+    @ViewBuilder
+    private var ruleReferenceSection: some View {
+        Section {
+            let rows = rulesStore?.rules ?? []
+            if rows.isEmpty {
+                Text(L10n.Decisions.proposeReferenceRuleEmpty)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker(selection: $store.draftReferenceId) {
+                    Text(String(localized: L10n.Decisions.voteOptionNoneRow)).tag(UUID?.none)
+                    ForEach(rows) { rule in
+                        Label(rule.title, systemImage: rule.ruleType.systemImageName)
+                            .tag(UUID?.some(rule.id))
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+        } header: {
+            Text(L10n.Decisions.proposeReferenceRuleSection)
+        }
+    }
+
+    @ViewBuilder
+    private var ruleChangeActionSection: some View {
+        Section {
+            Picker(selection: $store.draftRuleChangeAction) {
+                Text(String(localized: L10n.Decisions.voteOptionNoneRow))
+                    .tag(RuleChangeAction?.none)
+                ForEach(RuleChangeAction.displayOrder) { action in
+                    Label(action.label, systemImage: action.systemImageName)
+                        .tag(RuleChangeAction?.some(action))
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            Text(L10n.Decisions.proposeRuleChangeActionHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text(L10n.Decisions.proposeRuleChangeActionSection)
         }
     }
 
