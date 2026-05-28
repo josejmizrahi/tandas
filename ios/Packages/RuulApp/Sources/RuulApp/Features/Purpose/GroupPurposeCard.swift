@@ -201,4 +201,7 @@ private struct PurposeStubClient: RuulRPCClient, @unchecked Sendable {
     func appendDisputeEvent(_ input: AppendDisputeEventInput) async throws -> UUID { UUID() }
     func recordDisputeResolution(_ input: RecordDisputeResolutionInput) async throws {}
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID { UUID() }
+    func listGroupResourceSeries(groupId: UUID, ritualsOnly: Bool, includePast: Bool) async throws -> [GroupResourceSeries] { [] }
+    func createResourceSeries(_ input: CreateResourceSeriesInput) async throws -> UUID { UUID() }
+    func updateResourceSeries(_ input: UpdateResourceSeriesInput) async throws {}
 }

@@ -763,6 +763,58 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum Rituals {
+        public static let title              = LocalizedStringResource("rituals.title",              defaultValue: "Rituales")
+        public static let menuLink           = LocalizedStringResource("rituals.menu",               defaultValue: "Rituales")
+        public static let emptyTitle         = LocalizedStringResource("rituals.empty.title",        defaultValue: "Sin rituales todavía")
+        public static let emptyDescription   = LocalizedStringResource("rituals.empty.description",  defaultValue: "Marca los momentos recurrentes que sostienen al grupo.")
+        public static let errorTitle         = LocalizedStringResource("rituals.error.title",        defaultValue: "No pudimos cargar los rituales")
+        public static let retry              = LocalizedStringResource("rituals.retry",              defaultValue: "Reintentar")
+        public static let addButton          = LocalizedStringResource("rituals.add",                defaultValue: "Nuevo ritual")
+        public static let editButton         = LocalizedStringResource("rituals.edit",               defaultValue: "Editar")
+        public static let endButton          = LocalizedStringResource("rituals.end",                defaultValue: "Terminar ritual")
+        public static let endConfirmTitle    = LocalizedStringResource("rituals.end.confirm.title",  defaultValue: "Terminar ritual")
+        public static let endConfirmMessage  = LocalizedStringResource("rituals.end.confirm.message", defaultValue: "Quedará registrado como ritual pasado y dejará de aparecer en esta lista.")
+        public static let endAction          = LocalizedStringResource("rituals.end.action",         defaultValue: "Terminar")
+        public static let cancel             = LocalizedStringResource("rituals.cancel",             defaultValue: "Cancelar")
+
+        // Create / edit sheets
+        public static let createTitle        = LocalizedStringResource("rituals.create.title",       defaultValue: "Nuevo ritual")
+        public static let editTitle          = LocalizedStringResource("rituals.edit.title",         defaultValue: "Editar ritual")
+        public static let createConfirm      = LocalizedStringResource("rituals.create.confirm",     defaultValue: "Guardar")
+        public static let editConfirm        = LocalizedStringResource("rituals.edit.confirm",       defaultValue: "Guardar")
+        public static let markerSection      = LocalizedStringResource("rituals.section.marker",     defaultValue: "Tipo de ritual")
+        public static let cadenceSection     = LocalizedStringResource("rituals.section.cadence",    defaultValue: "Cada cuánto")
+        public static let meaningSection     = LocalizedStringResource("rituals.section.meaning",    defaultValue: "Significado")
+        public static let meaningPlaceholder = LocalizedStringResource("rituals.meaning.placeholder", defaultValue: "Ej. Junta semanal donde alineamos pendientes y cuidamos al grupo")
+        public static let datesSection       = LocalizedStringResource("rituals.section.dates",      defaultValue: "Fechas")
+        public static let startsOnLabel      = LocalizedStringResource("rituals.starts_on",          defaultValue: "Empieza")
+        public static let endsOnLabel        = LocalizedStringResource("rituals.ends_on",            defaultValue: "Termina")
+        public static let hasEndDateToggle   = LocalizedStringResource("rituals.has_end_date",       defaultValue: "Con fecha de fin")
+        public static let meaningRequired    = LocalizedStringResource("rituals.meaning.required",   defaultValue: "Escribe el significado del ritual.")
+        public static let endsAfterStart     = LocalizedStringResource("rituals.ends_after_start",   defaultValue: "La fecha de fin debe ser después del inicio.")
+
+        // Cadence labels
+        public static let cadenceOnce       = LocalizedStringResource("rituals.cadence.once",       defaultValue: "Una vez")
+        public static let cadenceDaily      = LocalizedStringResource("rituals.cadence.daily",      defaultValue: "Diario")
+        public static let cadenceWeekly     = LocalizedStringResource("rituals.cadence.weekly",     defaultValue: "Semanal")
+        public static let cadenceBiweekly   = LocalizedStringResource("rituals.cadence.biweekly",   defaultValue: "Quincenal")
+        public static let cadenceMonthly    = LocalizedStringResource("rituals.cadence.monthly",    defaultValue: "Mensual")
+        public static let cadenceQuarterly  = LocalizedStringResource("rituals.cadence.quarterly",  defaultValue: "Trimestral")
+        public static let cadenceYearly     = LocalizedStringResource("rituals.cadence.yearly",     defaultValue: "Anual")
+        public static let cadenceCustom     = LocalizedStringResource("rituals.cadence.custom",     defaultValue: "Personalizado")
+
+        // Marker labels
+        public static let markerWeeklyMeeting  = LocalizedStringResource("rituals.marker.weekly_meeting",  defaultValue: "Junta semanal")
+        public static let markerMonthlyMeeting = LocalizedStringResource("rituals.marker.monthly_meeting", defaultValue: "Junta mensual")
+        public static let markerAnnualAssembly = LocalizedStringResource("rituals.marker.annual_assembly", defaultValue: "Asamblea anual")
+        public static let markerOnboarding     = LocalizedStringResource("rituals.marker.onboarding",      defaultValue: "Bienvenida")
+        public static let markerFarewell       = LocalizedStringResource("rituals.marker.farewell",        defaultValue: "Despedida")
+        public static let markerCelebration    = LocalizedStringResource("rituals.marker.celebration",     defaultValue: "Celebración")
+        public static let markerRetrospective  = LocalizedStringResource("rituals.marker.retrospective",   defaultValue: "Retrospectiva")
+        public static let markerNone           = LocalizedStringResource("rituals.marker.none",            defaultValue: "Sin tipo")
+    }
+
     public enum Decisions {
         public static let title              = LocalizedStringResource("decisions.title",              defaultValue: "Decisiones")
         public static let menuLink           = LocalizedStringResource("decisions.menu",               defaultValue: "Decisiones")

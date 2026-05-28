@@ -804,6 +804,112 @@ public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Rituals (Primitiva 21, B6)
+
+public struct ListGroupResourceSeriesParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pRitualsOnly: Bool
+    public let pIncludePast: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId     = "p_group_id"
+        case pRitualsOnly = "p_rituals_only"
+        case pIncludePast = "p_include_past"
+    }
+
+    public init(groupId: UUID, ritualsOnly: Bool = true, includePast: Bool = false) {
+        self.pGroupId = groupId
+        self.pRitualsOnly = ritualsOnly
+        self.pIncludePast = includePast
+    }
+}
+
+public struct CreateResourceSeriesInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pResourceType: String
+    public let pCadence: String
+    public let pStartsOn: Date?
+    public let pEndsOn: Date?
+    public let pRitualMeaning: String?
+    public let pRitualMarkerKind: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId          = "p_group_id"
+        case pResourceType     = "p_resource_type"
+        case pCadence          = "p_cadence"
+        case pStartsOn         = "p_starts_on"
+        case pEndsOn           = "p_ends_on"
+        case pRitualMeaning    = "p_ritual_meaning"
+        case pRitualMarkerKind = "p_ritual_marker_kind"
+    }
+
+    public init(
+        groupId: UUID,
+        resourceType: String = "event",
+        cadence: String,
+        startsOn: Date? = nil,
+        endsOn: Date? = nil,
+        ritualMeaning: String? = nil,
+        ritualMarkerKind: String? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pResourceType = resourceType
+        self.pCadence = cadence
+        self.pStartsOn = startsOn
+        self.pEndsOn = endsOn
+        self.pRitualMeaning = ritualMeaning
+        self.pRitualMarkerKind = ritualMarkerKind
+    }
+
+    /// Emit every key explicitly with JSON null for nil optionals so
+    /// PostgREST overload resolution remains deterministic and the
+    /// pattern/template_payload defaults are left to the backend.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pResourceType, forKey: .pResourceType)
+        try c.encode(pCadence, forKey: .pCadence)
+        try c.encodeOrNil(pStartsOn, forKey: .pStartsOn)
+        try c.encodeOrNil(pEndsOn, forKey: .pEndsOn)
+        try c.encodeOrNil(pRitualMeaning, forKey: .pRitualMeaning)
+        try c.encodeOrNil(pRitualMarkerKind, forKey: .pRitualMarkerKind)
+    }
+}
+
+public struct UpdateResourceSeriesInput: Encodable, Sendable, Equatable {
+    public let pSeriesId: UUID
+    public let pRitualMeaning: String?
+    public let pRitualMarkerKind: String?
+    public let pEndsOn: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pSeriesId         = "p_series_id"
+        case pRitualMeaning    = "p_ritual_meaning"
+        case pRitualMarkerKind = "p_ritual_marker_kind"
+        case pEndsOn           = "p_ends_on"
+    }
+
+    public init(
+        seriesId: UUID,
+        ritualMeaning: String? = nil,
+        ritualMarkerKind: String? = nil,
+        endsOn: Date? = nil
+    ) {
+        self.pSeriesId = seriesId
+        self.pRitualMeaning = ritualMeaning
+        self.pRitualMarkerKind = ritualMarkerKind
+        self.pEndsOn = endsOn
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pSeriesId, forKey: .pSeriesId)
+        try c.encodeOrNil(pRitualMeaning, forKey: .pRitualMeaning)
+        try c.encodeOrNil(pRitualMarkerKind, forKey: .pRitualMarkerKind)
+        try c.encodeOrNil(pEndsOn, forKey: .pEndsOn)
+    }
+}
+
 // MARK: - Disputes UI completion (Primitiva 14, C2)
 
 public struct DisputeDetailParams: Encodable, Sendable {

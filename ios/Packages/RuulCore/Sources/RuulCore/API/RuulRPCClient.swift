@@ -244,6 +244,25 @@ public protocol RuulRPCClient: Sendable {
     /// `group_decisions` row. Returns the new decision id.
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID
 
+    // MARK: - Rituals (Primitiva 21, B6)
+
+    /// `list_group_resource_series(p_group_id, p_rituals_only, p_include_past)`
+    /// — series for the group; defaults to ritual-flagged ones only
+    /// and excludes ended series. Active-member gate.
+    func listGroupResourceSeries(
+        groupId: UUID,
+        ritualsOnly: Bool,
+        includePast: Bool
+    ) async throws -> [GroupResourceSeries]
+
+    /// `create_resource_series(...)` — creates a new ritual/recurrence
+    /// row. Requires `resources.create`. Returns the new series id.
+    func createResourceSeries(_ input: CreateResourceSeriesInput) async throws -> UUID
+
+    /// `update_resource_series(...)` — patches the ritual annotation
+    /// or end date. Requires `resources.update`.
+    func updateResourceSeries(_ input: UpdateResourceSeriesInput) async throws
+
     // MARK: - Sanctions (Primitiva 11)
 
     /// `group_sanctions_active(p_group_id, p_limit)` — active+disputed

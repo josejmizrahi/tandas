@@ -666,6 +666,53 @@ struct RPCInputsEncodingTests {
         #expect(history["p_limit"] as? Int == 25)
     }
 
+    // MARK: - Rituals (Primitiva 21, B6)
+
+    @Test("list_group_resource_series encodes both filter flags + group id")
+    func listResourceSeriesEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(ListGroupResourceSeriesParams(groupId: gid, ritualsOnly: true, includePast: false))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_rituals_only"] as? Bool == true)
+        #expect(dict["p_include_past"] as? Bool == false)
+    }
+
+    @Test("create_resource_series encodes optional dates and ritual fields as null when omitted")
+    func createResourceSeriesEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(CreateResourceSeriesInput(
+            groupId: gid,
+            resourceType: "event",
+            cadence: "weekly",
+            startsOn: nil,
+            endsOn: nil,
+            ritualMeaning: nil,
+            ritualMarkerKind: nil
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_resource_type"] as? String == "event")
+        #expect(dict["p_cadence"] as? String == "weekly")
+        #expect(dict["p_starts_on"] is NSNull)
+        #expect(dict["p_ends_on"] is NSNull)
+        #expect(dict["p_ritual_meaning"] is NSNull)
+        #expect(dict["p_ritual_marker_kind"] is NSNull)
+    }
+
+    @Test("update_resource_series encodes only the patch keys, nil → null")
+    func updateResourceSeriesEncoding() throws {
+        let sid = UUID()
+        let dict = try encode(UpdateResourceSeriesInput(
+            seriesId: sid,
+            ritualMeaning: "Nueva intención",
+            ritualMarkerKind: nil,
+            endsOn: nil
+        ))
+        #expect(dict["p_series_id"] as? String == sid.uuidString)
+        #expect(dict["p_ritual_meaning"] as? String == "Nueva intención")
+        #expect(dict["p_ritual_marker_kind"] is NSNull)
+        #expect(dict["p_ends_on"] is NSNull)
+    }
+
     // MARK: - Disputes UI completion (Primitiva 14, C2)
 
     @Test("open_dispute encodes p_subject_id as JSON null when nil")

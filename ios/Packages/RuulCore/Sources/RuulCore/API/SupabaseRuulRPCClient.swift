@@ -540,6 +540,44 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Rituals (Primitiva 21, B6)
+
+    public func listGroupResourceSeries(
+        groupId: UUID,
+        ritualsOnly: Bool,
+        includePast: Bool
+    ) async throws -> [GroupResourceSeries] {
+        let params = ListGroupResourceSeriesParams(
+            groupId: groupId,
+            ritualsOnly: ritualsOnly,
+            includePast: includePast
+        )
+        do {
+            return try await client
+                .rpc("list_group_resource_series", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func createResourceSeries(_ input: CreateResourceSeriesInput) async throws -> UUID {
+        do {
+            return try await client.rpc("create_resource_series", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func updateResourceSeries(_ input: UpdateResourceSeriesInput) async throws {
+        do {
+            _ = try await client.rpc("update_resource_series", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Sanctions (Primitiva 11)
 
     public func groupSanctionsActive(groupId: UUID, limit: Int) async throws -> [GroupSanction] {

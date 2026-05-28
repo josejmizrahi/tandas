@@ -569,7 +569,10 @@ Marcar cada slice cerrado:
 - [ ] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)
 - [x] B4 MandatesView (Primitiva 23)
 - [x] B5 CulturalNormsListView + EditCulturalNormView (Primitiva 20)
-- [ ] B6 RitualsListView + CreateRitualSheet (Primitiva 21)
+- [x] B6 RitualsListView + CreateRitualSheet + EditRitualSheet (Primitiva 21)
+      (mig `20260527180000` agregó list_group_resource_series filtrable
+      por rituals_only/include_past; write side
+      create_resource_series / update_resource_series ya canónico)
 - [ ] B7 NotificationsSettingsView + GroupPrivacyView
 - [ ] B8 DissolveGroupConfirmation (Primitiva 25)
 - [x] C1 Decisions/Voting (Primitiva 16) — votes UI completo

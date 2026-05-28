@@ -67,6 +67,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case appendDisputeEvent(input: AppendDisputeEventInput)
         case recordDisputeResolution(input: RecordDisputeResolutionInput)
         case escalateDisputeToVote(input: EscalateDisputeToVoteInput)
+        case listGroupResourceSeries(groupId: UUID, ritualsOnly: Bool, includePast: Bool)
+        case createResourceSeries(input: CreateResourceSeriesInput)
+        case updateResourceSeries(input: UpdateResourceSeriesInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -162,6 +165,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var appendDisputeEventStub: Result<UUID, RuulError> = .success(UUID())
     private var recordDisputeResolutionStub: Result<Void, RuulError> = .success(())
     private var escalateDisputeToVoteStub: Result<UUID, RuulError> = .success(UUID())
+    private var listGroupResourceSeriesStub: Result<[GroupResourceSeries], RuulError> = .success([])
+    private var createResourceSeriesStub: Result<UUID, RuulError> = .success(UUID())
+    private var updateResourceSeriesStub: Result<Void, RuulError> = .success(())
 
     init() {}
 
@@ -224,6 +230,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setAppendDisputeEventStub(_ stub: Result<UUID, RuulError>) { appendDisputeEventStub = stub }
     func setRecordDisputeResolutionStub(_ stub: Result<Void, RuulError>) { recordDisputeResolutionStub = stub }
     func setEscalateDisputeToVoteStub(_ stub: Result<UUID, RuulError>) { escalateDisputeToVoteStub = stub }
+    func setListGroupResourceSeriesStub(_ stub: Result<[GroupResourceSeries], RuulError>) { listGroupResourceSeriesStub = stub }
+    func setCreateResourceSeriesStub(_ stub: Result<UUID, RuulError>) { createResourceSeriesStub = stub }
+    func setUpdateResourceSeriesStub(_ stub: Result<Void, RuulError>) { updateResourceSeriesStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -521,5 +530,20 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID {
         recorded.append(.escalateDisputeToVote(input: input))
         return try escalateDisputeToVoteStub.get()
+    }
+
+    func listGroupResourceSeries(groupId: UUID, ritualsOnly: Bool, includePast: Bool) async throws -> [GroupResourceSeries] {
+        recorded.append(.listGroupResourceSeries(groupId: groupId, ritualsOnly: ritualsOnly, includePast: includePast))
+        return try listGroupResourceSeriesStub.get()
+    }
+
+    func createResourceSeries(_ input: CreateResourceSeriesInput) async throws -> UUID {
+        recorded.append(.createResourceSeries(input: input))
+        return try createResourceSeriesStub.get()
+    }
+
+    func updateResourceSeries(_ input: UpdateResourceSeriesInput) async throws {
+        recorded.append(.updateResourceSeries(input: input))
+        try updateResourceSeriesStub.get()
     }
 }
