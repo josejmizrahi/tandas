@@ -41,6 +41,11 @@ public struct ExpenseDraft: Sendable, Equatable {
     public let description: String?
     public let split: ExpenseSplit
     public let inKind: Bool
+    /// V2-G5 — when set, the caller is recording the expense on
+    /// behalf of someone they hold a mandate from. Persists to
+    /// `transactions.mandate_id` for audit; null = acting in their
+    /// own name.
+    public let mandateId: UUID?
 
     public init(
         groupId: UUID,
@@ -50,7 +55,8 @@ public struct ExpenseDraft: Sendable, Equatable {
         paidByMembershipId: UUID,
         description: String? = nil,
         split: ExpenseSplit = .even,
-        inKind: Bool = false
+        inKind: Bool = false,
+        mandateId: UUID? = nil
     ) {
         self.groupId = groupId
         self.resourceId = resourceId
@@ -60,6 +66,7 @@ public struct ExpenseDraft: Sendable, Equatable {
         self.description = description
         self.split = split
         self.inKind = inKind
+        self.mandateId = mandateId
     }
 }
 
@@ -89,6 +96,9 @@ public struct SettlementDraft: Sendable, Equatable {
     public let amount: Decimal
     public let currency: CurrencyCode
     public let notes: String?
+    /// V2-G5 — see `ExpenseDraft.mandateId`. Both sides share the
+    /// same `p_mandate_id` plumbing on the RPC.
+    public let mandateId: UUID?
 
     public init(
         groupId: UUID,
@@ -96,7 +106,8 @@ public struct SettlementDraft: Sendable, Equatable {
         target: SettlementTarget,
         amount: Decimal,
         currency: CurrencyCode = .mxn,
-        notes: String? = nil
+        notes: String? = nil,
+        mandateId: UUID? = nil
     ) {
         self.groupId = groupId
         self.paidByMembershipId = paidByMembershipId
@@ -104,6 +115,7 @@ public struct SettlementDraft: Sendable, Equatable {
         self.amount = amount
         self.currency = currency
         self.notes = notes
+        self.mandateId = mandateId
     }
 }
 

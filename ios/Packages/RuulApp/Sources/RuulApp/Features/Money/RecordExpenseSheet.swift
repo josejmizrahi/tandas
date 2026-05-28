@@ -27,6 +27,10 @@ struct RecordExpenseSheet: View {
     /// Stable across retries — minted on first submit attempt, reset on
     /// successful commit. Cancel discards it.
     @State private var clientId: String?
+    /// V2-G5 — when the caller holds an active mandate they may record
+    /// the expense on someone else's behalf. `nil` = acting in their
+    /// own name (default).
+    @State private var selectedMandateId: UUID?
 
     var body: some View {
         NavigationStack {
@@ -42,6 +46,11 @@ struct RecordExpenseSheet: View {
                     Toggle("Fue en especie", isOn: $inKind)
                 }
 
+                MandateBehalfPickerSection(
+                    selection: $selectedMandateId,
+                    availableMandates: availableMandates
+                )
+
                 Section {
                     Text("Se reparte parejo entre todos los miembros del grupo.")
                         .font(.footnote)
@@ -50,6 +59,9 @@ struct RecordExpenseSheet: View {
             }
             .navigationTitle("Registrar gasto")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await container.mandatesStore.refreshIfNeeded(groupId: groupId)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
@@ -83,6 +95,16 @@ struct RecordExpenseSheet: View {
         }
     }
 
+    /// Active mandates that authorize *me* (the caller) to act on
+    /// someone else's behalf in the money scope. Empty list collapses
+    /// the picker section in `MandateBehalfPickerSection`.
+    private var availableMandates: [GroupMandate] {
+        container.mandatesStore.availableMandates(
+            representativeMembershipId: myMembershipId,
+            scope: .money
+        )
+    }
+
     private var parsedAmount: Decimal? {
         let normalized = amountText
             .replacingOccurrences(of: ",", with: ".")
@@ -110,7 +132,8 @@ struct RecordExpenseSheet: View {
             paidByMembershipId: myMembershipId,
             description: descriptionClean.isEmpty ? nil : descriptionClean,
             split: .even,
-            inKind: inKind
+            inKind: inKind,
+            mandateId: selectedMandateId
         )
         do {
             _ = try await container.moneyRepository.recordOwnExpense(draft, clientId: clientId)

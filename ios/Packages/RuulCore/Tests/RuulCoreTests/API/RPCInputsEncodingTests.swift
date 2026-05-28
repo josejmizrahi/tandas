@@ -221,6 +221,51 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_client_id"] as? String == "submit-99")
     }
 
+    @Test("record_expense forwards draft.mandateId as p_mandate_id")
+    func recordExpenseMandateIdRoundtrip() throws {
+        let groupId = UUID()
+        let mandateId = UUID()
+        let draft = ExpenseDraft(
+            groupId: groupId,
+            amount: 100,
+            paidByMembershipId: UUID(),
+            mandateId: mandateId
+        )
+        let params = RecordExpenseParams(draft: draft, clientId: nil)
+        let data = try JSONEncoder().encode(params)
+        let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        #expect(dict["p_mandate_id"] as? String == mandateId.uuidString)
+    }
+
+    @Test("record_expense leaves p_mandate_id null when draft.mandateId is nil")
+    func recordExpenseMandateIdDefaultsNull() throws {
+        let draft = ExpenseDraft(
+            groupId: UUID(),
+            amount: 100,
+            paidByMembershipId: UUID()
+        )
+        let params = RecordExpenseParams(draft: draft, clientId: nil)
+        let data = try JSONEncoder().encode(params)
+        let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        #expect(dict["p_mandate_id"] is NSNull)
+    }
+
+    @Test("record_settlement forwards draft.mandateId as p_mandate_id")
+    func recordSettlementMandateIdRoundtrip() throws {
+        let mandateId = UUID()
+        let draft = SettlementDraft(
+            groupId: UUID(),
+            paidByMembershipId: UUID(),
+            target: .pool,
+            amount: 250,
+            mandateId: mandateId
+        )
+        let params = RecordSettlementParams(draft: draft, clientId: nil)
+        let data = try JSONEncoder().encode(params)
+        let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        #expect(dict["p_mandate_id"] as? String == mandateId.uuidString)
+    }
+
     // MARK: - Reads
 
     @Test("group_summary encodes p_group_id only")

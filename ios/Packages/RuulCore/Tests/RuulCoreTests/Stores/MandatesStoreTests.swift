@@ -91,6 +91,64 @@ struct MandatesStoreTests {
         #expect(store.mandates.isEmpty)
     }
 
+    @Test("availableMandates filters by representative, status and money scope")
+    func availableMandatesScopeFilter() async {
+        let me = UUID()
+        let someoneElse = UUID()
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let mineSpend = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: me, type: .spend
+        )
+        let mineRepresent = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: me, type: .represent
+        )
+        let mineVoteOnly = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: me, type: .vote
+        )
+        let otherMember = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: someoneElse, type: .spend
+        )
+        let expired = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: me, type: .spend,
+            endsAt: now.addingTimeInterval(-3600)
+        )
+        let notYetActive = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: me, type: .spend,
+            startsAt: now.addingTimeInterval(3600)
+        )
+        let revoked = GroupMandate(
+            id: UUID(), groupId: groupId, principalType: .group,
+            representativeMembershipId: me, type: .spend,
+            status: .revoked
+        )
+
+        let (store, _) = await makeStore(seed: [
+            mineSpend, mineRepresent, mineVoteOnly,
+            otherMember, expired, notYetActive, revoked
+        ])
+        await store.refresh(groupId: groupId)
+
+        let money = store.availableMandates(
+            representativeMembershipId: me, scope: .money, now: now
+        )
+        #expect(money.count == 2)
+        #expect(money.contains(where: { $0.type == .spend }))
+        #expect(money.contains(where: { $0.type == .represent }))
+
+        let vote = store.availableMandates(
+            representativeMembershipId: me, scope: .vote, now: now
+        )
+        #expect(vote.count == 2)
+        #expect(vote.contains(where: { $0.type == .vote }))
+        #expect(vote.contains(where: { $0.type == .represent }))
+    }
+
     @Test("refresh failure surfaces message and flips to .failed")
     func refreshFailure() async {
         let mock = MockRuulRPCClient()

@@ -36,6 +36,30 @@ public final class MandatesStore {
 
     public var canSaveDraft: Bool { draftRepresentativeMembershipId != nil }
 
+    /// V2-G5 — mandates that authorize the caller (identified by
+    /// `representativeMembershipId`) to act on behalf of someone for a
+    /// given canonical scope. Filters on status=active, matches the
+    /// representative, and limits to mandate types relevant to the
+    /// caller's intent (spend / represent / sign cover money; vote
+    /// covers VoteSheet; etc.). `endsAt` in the past is excluded so
+    /// stale rows never appear in the picker even if the backend hasn't
+    /// rolled the status yet.
+    public func availableMandates(
+        representativeMembershipId: UUID,
+        scope: MandateScope,
+        now: Date = Date()
+    ) -> [GroupMandate] {
+        mandates.filter { mandate in
+            guard mandate.status.isActive,
+                  mandate.representativeMembershipId == representativeMembershipId else {
+                return false
+            }
+            if let endsAt = mandate.endsAt, endsAt <= now { return false }
+            if let startsAt = mandate.startsAt, startsAt > now { return false }
+            return scope.allows(mandate.type)
+        }
+    }
+
     // MARK: - Intents
 
     public func refresh(groupId: UUID) async {

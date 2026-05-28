@@ -20,6 +20,8 @@ struct RecordSettlementSheet: View {
     @State private var isSubmitting: Bool = false
     @State private var error: UserFacingError?
     @State private var clientId: String?
+    /// V2-G5 — see RecordExpenseSheet.selectedMandateId.
+    @State private var selectedMandateId: UUID?
 
     private enum TargetOption: Hashable {
         case pool
@@ -57,6 +59,11 @@ struct RecordSettlementSheet: View {
                         .lineLimit(1...4)
                 }
 
+                MandateBehalfPickerSection(
+                    selection: $selectedMandateId,
+                    availableMandates: availableMandates
+                )
+
                 if memberOptions.isEmpty {
                     Section {
                         Text("Solo puedes liquidar al grupo por ahora. Cuando alguien te preste dinero, ese miembro aparecerá aquí.")
@@ -67,6 +74,9 @@ struct RecordSettlementSheet: View {
             }
             .navigationTitle("Liquidar")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await container.mandatesStore.refreshIfNeeded(groupId: groupId)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
@@ -98,6 +108,14 @@ struct RecordSettlementSheet: View {
                 message: { Text(error?.message ?? "") }
             )
         }
+    }
+
+    /// V2-G5 — see RecordExpenseSheet.availableMandates.
+    private var availableMandates: [GroupMandate] {
+        container.mandatesStore.availableMandates(
+            representativeMembershipId: myMembershipId,
+            scope: .money
+        )
     }
 
     /// Distinct member counterparties pulled from the open obligations.
@@ -149,7 +167,8 @@ struct RecordSettlementSheet: View {
             paidByMembershipId: myMembershipId,
             target: settlementTarget,
             amount: amount,
-            notes: notesClean.isEmpty ? nil : notesClean
+            notes: notesClean.isEmpty ? nil : notesClean,
+            mandateId: selectedMandateId
         )
         do {
             _ = try await container.moneyRepository.recordOwnSettlement(draft, clientId: clientId)

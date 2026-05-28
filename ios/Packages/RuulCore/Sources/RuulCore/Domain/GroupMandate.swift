@@ -183,3 +183,24 @@ public extension GroupMandate {
     /// `true` when the mandate has no end date (open-ended).
     var isOpenEnded: Bool { endsAt == nil }
 }
+
+/// V2-G5 — coarse scope used by action sheets to decide which mandate
+/// types are relevant to display in the "Actuar en nombre de" picker.
+/// The mapping is intentionally permissive: `.represent` is always
+/// included because it's the generic stand-in mandate.
+public enum MandateScope: String, Sendable, Hashable {
+    case money       // expense / settlement / pay sanction / pool charge
+    case vote        // VoteSheet
+    case sanction    // issue sanction
+
+    public func allows(_ type: MandateType) -> Bool {
+        switch self {
+        case .money:
+            return type == .spend || type == .represent || type == .sign
+        case .vote:
+            return type == .vote || type == .represent
+        case .sanction:
+            return type == .represent
+        }
+    }
+}

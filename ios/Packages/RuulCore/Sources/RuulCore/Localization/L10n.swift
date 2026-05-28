@@ -563,6 +563,11 @@ public enum L10n {
         public static let openEndedHint      = LocalizedStringResource("mandates.open_ended",         defaultValue: "Sin vencimiento")
         public static let grantedByLabel     = LocalizedStringResource("mandates.granted_by",         defaultValue: "Otorgó")
 
+        public static let onBehalfSection      = LocalizedStringResource("mandates.on_behalf.section",     defaultValue: "¿En nombre de quién?")
+        public static let onBehalfSelf         = LocalizedStringResource("mandates.on_behalf.self",        defaultValue: "Yo, en mi nombre")
+        public static let onBehalfMandateRow   = LocalizedStringResource("mandates.on_behalf.row",         defaultValue: "%1$@ — %2$@")
+        public static let onBehalfFootnote     = LocalizedStringResource("mandates.on_behalf.footnote",    defaultValue: "Tienes mandatos activos. Si actúas en nombre de alguien, elígelo para dejar constancia.")
+
         public static let principalGroup      = LocalizedStringResource("mandates.principal.group",     defaultValue: "El grupo")
         public static let principalCommittee  = LocalizedStringResource("mandates.principal.committee", defaultValue: "Un comité")
         public static let principalRole       = LocalizedStringResource("mandates.principal.role",      defaultValue: "Un rol")

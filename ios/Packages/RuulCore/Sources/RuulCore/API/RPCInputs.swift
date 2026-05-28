@@ -116,9 +116,9 @@ public struct RecordExpenseParams: Encodable, Sendable {
         case pClientId = "p_client_id"
     }
 
-    /// Convenience init from a domain draft. Foundation always sends
-    /// `p_mandate_id = nil` (Foundation scope = self_party only; mandates
-    /// land in a later phase).
+    /// Convenience init from a domain draft. Mandate-on-behalf-of is
+    /// V2-G5 wiring: `p_mandate_id` is populated from the draft when
+    /// the actor is acting under an active mandate; null otherwise.
     public init(draft: ExpenseDraft, clientId: String?) {
         self.pGroupId = draft.groupId
         self.pResourceId = draft.resourceId
@@ -134,7 +134,7 @@ public struct RecordExpenseParams: Encodable, Sendable {
             return nil
         }()
         self.pInKind = draft.inKind
-        self.pMandateId = nil
+        self.pMandateId = draft.mandateId
         self.pClientId = clientId
     }
 
@@ -191,7 +191,7 @@ public struct RecordSettlementParams: Encodable, Sendable {
         self.pAmount = draft.amount
         self.pUnit = draft.currency.rawValue
         self.pNotes = draft.notes
-        self.pMandateId = nil
+        self.pMandateId = draft.mandateId
         self.pClientId = clientId
     }
 
