@@ -156,16 +156,17 @@ public struct RuulAppShell: View {
 
     @ViewBuilder
     private func shellFor(_ group: GroupListItem) -> some View {
-        NavigationStack {
-            GroupTabsHost(
-                container: container,
-                group: group,
-                onSelectGroup: { picked in
-                    currentGroupId = picked.id
-                    Task { await container.currentGroupStore.setGroup(picked) }
-                }
-            )
-        }
+        // No outer NavigationStack here — each tab in GroupTabsHost
+        // already owns its own stack. Nesting them swallows the inner
+        // toolbar items on iOS 26 (switcher + "Más" go invisible).
+        GroupTabsHost(
+            container: container,
+            group: group,
+            onSelectGroup: { picked in
+                currentGroupId = picked.id
+                Task { await container.currentGroupStore.setGroup(picked) }
+            }
+        )
         // Force a clean rebuild + state reset on every group switch.
         .id(group.id)
         .task(id: group.id) {
