@@ -41,8 +41,6 @@ public struct ProposeDecisionSheet: View {
             Form {
                 titleSection
                 bodySection
-                methodSection
-                legitimacySection
                 typeSection
                 referencePickerSection
                 optionsSection
@@ -109,54 +107,13 @@ public struct ProposeDecisionSheet: View {
         }
     }
 
-    @ViewBuilder
-    private var methodSection: some View {
-        Section(L10n.Decisions.proposeMethodSection) {
-            ForEach(DecisionMethod.selectable) { method in
-                Button {
-                    store.draftMethod = method
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label(method.label, systemImage: method.systemImageName)
-                                .font(.body)
-                            Text(method.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if store.draftMethod == method {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.tint)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var legitimacySection: some View {
-        Section {
-            Picker(selection: $store.draftLegitimacySource) {
-                ForEach(LegitimacySource.selectable) { source in
-                    Label(source.label, systemImage: source.systemImageName)
-                        .tag(source)
-                }
-            } label: {
-                EmptyView()
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            Text(store.draftLegitimacySource.subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } header: {
-            Text(L10n.Decisions.legitimacySection)
-        }
-    }
+    // V2-G2 sub-slice 7 — method + legitimacy moved out of the propose
+    // form per founder doctrine: ambos son configuración del grupo
+    // (cómo decidimos en general), no decisión por-voto. Los pickers
+    // viven ahora en `EditDecisionRulesView`. `draftMethod` y
+    // `draftLegitimacySource` siguen poblándose con los defaults
+    // sensibles (.majority / .majority) hasta que un follow-up wire
+    // los lea desde `groupDecisionRules` directamente.
 
     @ViewBuilder
     private var typeSection: some View {
