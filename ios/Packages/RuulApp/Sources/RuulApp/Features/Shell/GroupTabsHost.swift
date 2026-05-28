@@ -19,6 +19,9 @@ public struct GroupTabsHost: View {
     @State private var selectedTab: GroupTab = .home
     @State private var isShowingSwitcher: Bool = false
     @State private var isShowingPersonalProfile: Bool = false
+    /// Drives the `MemberDetailView` push from the Members tab. Mirrors
+    /// the pattern used by `GroupHomeView`.
+    @State private var pendingMemberSelection: MembershipBoundaryItem?
 
     public init(
         container: DependencyContainer,
@@ -101,8 +104,21 @@ public struct GroupTabsHost: View {
             MembersListView(
                 store: container.membersStore,
                 groupId: group.id,
-                onSelectMember: nil
+                onSelectMember: { item in
+                    pendingMemberSelection = item
+                }
             )
+            .navigationDestination(item: $pendingMemberSelection) { item in
+                MemberDetailView(
+                    sanctionsStore: container.sanctionsStore,
+                    reputationStore: container.reputationStore,
+                    moneyStore: container.moneyStore,
+                    rolesStore: container.rolesStore,
+                    membersStore: container.membersStore,
+                    groupId: group.id,
+                    memberItem: item
+                )
+            }
             .toolbar { shellToolbar }
         }
         .tabItem {
