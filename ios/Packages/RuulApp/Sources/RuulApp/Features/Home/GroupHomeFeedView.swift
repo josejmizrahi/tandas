@@ -425,7 +425,7 @@ private struct AttentionRow: View {
         case .decisionNeedsVote(let d):
             return "Falta tu voto: \(d.title)"
         case .sanctionOnMe(let s):
-            return "Sanción contigo: \(s.reason)"
+            return "Sanción para ti: \(s.reason)"
         }
     }
 
@@ -541,13 +541,13 @@ private struct DebtRow: View {
     }
 
     /// Names the counterparty per `doctrine_money_two_worlds`: every
-    /// money string must say WHO. "Pagale a Linda" beats "Le debes".
+    /// money string must say WHO. "Págale a Linda" beats "Le debes".
     private var headline: String {
         switch obligation.owedToKind {
         case "pool":
-            return "Pagale al grupo"
+            return "Págale al grupo"
         default:
-            return "Pagale a \(obligation.owedToLabel)"
+            return "Págale a \(obligation.owedToLabel)"
         }
     }
 }

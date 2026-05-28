@@ -1,9 +1,9 @@
 import SwiftUI
 import RuulCore
 
-/// Dedicated money surface for a single group. Replaces the embedded
-/// `MoneyBlock` on `GroupHomeView` with a full page — hero balance +
-/// pending monetary sanctions + debts summary + quick actions.
+/// Dedicated money surface for a single group. Owns the Dinero tab —
+/// hero balance + pending monetary sanctions + debts summary + quick
+/// actions.
 ///
 /// Pattern: Wallet card hero + grouped sections. Data comes from the
 /// already-mounted `MoneyStore` (balance + obligations) and
@@ -346,45 +346,3 @@ private struct MoneyMovementCompactRow: View {
     }
 }
 
-/// One-line money summary used as the inline row on `GroupHomeView`
-/// that pushes the full `MoneyDashboardView`. Renders balance + open
-/// obligation count without the hero card chrome.
-struct MoneySummaryRow: View {
-    @Bindable var store: MoneyStore
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(headline)
-                    .font(.body.weight(.medium))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if let balance = store.balance {
-                Text(balance, format: .currency(code: "MXN"))
-                    .font(.body.monospacedDigit())
-                    .foregroundStyle(balanceColor(balance))
-            }
-        }
-    }
-
-    private var headline: String {
-        guard let balance = store.balance else { return "Sin posición todavía" }
-        if balance == 0 { return "Estás al corriente" }
-        return balance > 0 ? "El grupo te debe" : "Le debes al grupo"
-    }
-
-    private var subtitle: String {
-        let count = store.obligations.count
-        if count == 0 { return "Sin deudas abiertas" }
-        if count == 1 { return "1 deuda abierta" }
-        return "\(count) deudas abiertas"
-    }
-
-    private func balanceColor(_ balance: Decimal) -> Color {
-        if balance == 0 { return .primary }
-        return balance > 0 ? .green : .red
-    }
-}
