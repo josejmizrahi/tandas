@@ -72,6 +72,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case updateResourceSeries(input: UpdateResourceSeriesInput)
         case groupBoundaryPolicy(groupId: UUID)
         case setGroupBoundaryPolicy(input: SetGroupBoundaryPolicyInput)
+        case listGroupRoles(groupId: UUID)
+        case listPermissionsCatalog
+        case createCustomRole(input: CreateCustomRoleInput)
+        case updateRolePermissions(input: UpdateRolePermissionsInput)
+        case assignRoleToMember(input: AssignRoleToMemberInput)
+        case revokeRoleFromMember(input: RevokeRoleFromMemberInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -176,6 +182,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var setGroupBoundaryPolicyStub: Result<GroupBoundaryPolicy, RuulError> = .success(
         GroupBoundaryPolicy(groupId: UUID(), isDefault: false)
     )
+    private var listGroupRolesStub: Result<[GroupRole], RuulError> = .success([])
+    private var listPermissionsCatalogStub: Result<[PermissionCatalogEntry], RuulError> = .success([])
+    private var createCustomRoleStub: Result<UUID, RuulError> = .success(UUID())
+    private var updateRolePermissionsStub: Result<Void, RuulError> = .success(())
+    private var assignRoleToMemberStub: Result<Void, RuulError> = .success(())
+    private var revokeRoleFromMemberStub: Result<Void, RuulError> = .success(())
 
     init() {}
 
@@ -243,6 +255,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setUpdateResourceSeriesStub(_ stub: Result<Void, RuulError>) { updateResourceSeriesStub = stub }
     func setGroupBoundaryPolicyStub(_ stub: Result<GroupBoundaryPolicy, RuulError>) { groupBoundaryPolicyStub = stub }
     func setSetGroupBoundaryPolicyStub(_ stub: Result<GroupBoundaryPolicy, RuulError>) { setGroupBoundaryPolicyStub = stub }
+    func setListGroupRolesStub(_ stub: Result<[GroupRole], RuulError>) { listGroupRolesStub = stub }
+    func setListPermissionsCatalogStub(_ stub: Result<[PermissionCatalogEntry], RuulError>) { listPermissionsCatalogStub = stub }
+    func setCreateCustomRoleStub(_ stub: Result<UUID, RuulError>) { createCustomRoleStub = stub }
+    func setUpdateRolePermissionsStub(_ stub: Result<Void, RuulError>) { updateRolePermissionsStub = stub }
+    func setAssignRoleToMemberStub(_ stub: Result<Void, RuulError>) { assignRoleToMemberStub = stub }
+    func setRevokeRoleFromMemberStub(_ stub: Result<Void, RuulError>) { revokeRoleFromMemberStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -565,5 +583,35 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupBoundaryPolicy(_ input: SetGroupBoundaryPolicyInput) async throws -> GroupBoundaryPolicy {
         recorded.append(.setGroupBoundaryPolicy(input: input))
         return try setGroupBoundaryPolicyStub.get()
+    }
+
+    func listGroupRoles(groupId: UUID) async throws -> [GroupRole] {
+        recorded.append(.listGroupRoles(groupId: groupId))
+        return try listGroupRolesStub.get()
+    }
+
+    func listPermissionsCatalog() async throws -> [PermissionCatalogEntry] {
+        recorded.append(.listPermissionsCatalog)
+        return try listPermissionsCatalogStub.get()
+    }
+
+    func createCustomRole(_ input: CreateCustomRoleInput) async throws -> UUID {
+        recorded.append(.createCustomRole(input: input))
+        return try createCustomRoleStub.get()
+    }
+
+    func updateRolePermissions(_ input: UpdateRolePermissionsInput) async throws {
+        recorded.append(.updateRolePermissions(input: input))
+        try updateRolePermissionsStub.get()
+    }
+
+    func assignRoleToMember(_ input: AssignRoleToMemberInput) async throws {
+        recorded.append(.assignRoleToMember(input: input))
+        try assignRoleToMemberStub.get()
+    }
+
+    func revokeRoleFromMember(_ input: RevokeRoleFromMemberInput) async throws {
+        recorded.append(.revokeRoleFromMember(input: input))
+        try revokeRoleFromMemberStub.get()
     }
 }

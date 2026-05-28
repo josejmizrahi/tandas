@@ -804,6 +804,94 @@ public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Roles + Permissions (Primitiva 17, B3)
+
+public struct ListGroupRolesParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct CreateCustomRoleInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pKey: String
+    public let pName: String
+    public let pDescription: String?
+    public let pPermissionKeys: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId        = "p_group_id"
+        case pKey            = "p_key"
+        case pName           = "p_name"
+        case pDescription    = "p_description"
+        case pPermissionKeys = "p_permission_keys"
+    }
+
+    public init(
+        groupId: UUID,
+        key: String,
+        name: String,
+        description: String?,
+        permissionKeys: [String]
+    ) {
+        self.pGroupId = groupId
+        self.pKey = key
+        self.pName = name
+        self.pDescription = description
+        self.pPermissionKeys = permissionKeys
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pKey, forKey: .pKey)
+        try c.encode(pName, forKey: .pName)
+        try c.encodeOrNil(pDescription, forKey: .pDescription)
+        try c.encode(pPermissionKeys, forKey: .pPermissionKeys)
+    }
+}
+
+public struct UpdateRolePermissionsInput: Encodable, Sendable, Equatable {
+    public let pRoleId: UUID
+    public let pPermissionKeys: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case pRoleId         = "p_role_id"
+        case pPermissionKeys = "p_permission_keys"
+    }
+
+    public init(roleId: UUID, permissionKeys: [String]) {
+        self.pRoleId = roleId
+        self.pPermissionKeys = permissionKeys
+    }
+}
+
+public struct AssignRoleToMemberInput: Encodable, Sendable, Equatable {
+    public let pMembershipId: UUID
+    public let pRoleId: UUID
+    enum CodingKeys: String, CodingKey {
+        case pMembershipId = "p_membership_id"
+        case pRoleId       = "p_role_id"
+    }
+    public init(membershipId: UUID, roleId: UUID) {
+        self.pMembershipId = membershipId
+        self.pRoleId = roleId
+    }
+}
+
+public struct RevokeRoleFromMemberInput: Encodable, Sendable, Equatable {
+    public let pMembershipId: UUID
+    public let pRoleId: UUID
+    enum CodingKeys: String, CodingKey {
+        case pMembershipId = "p_membership_id"
+        case pRoleId       = "p_role_id"
+    }
+    public init(membershipId: UUID, roleId: UUID) {
+        self.pMembershipId = membershipId
+        self.pRoleId = roleId
+    }
+}
+
 // MARK: - Boundary policy (Primitiva 2, B2)
 
 public struct GroupBoundaryPolicyParams: Encodable, Sendable {

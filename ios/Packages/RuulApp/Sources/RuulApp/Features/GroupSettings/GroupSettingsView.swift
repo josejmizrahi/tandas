@@ -64,6 +64,8 @@ public struct GroupSettingsView: View {
                 BoundaryPolicyView(store: container.boundaryPolicyStore, groupId: group.id)
             case .rituals:
                 RitualsListView(store: container.ritualsStore, groupId: group.id)
+            case .roles:
+                RolesListView(store: container.rolesStore, groupId: group.id)
             }
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -161,7 +163,9 @@ public struct GroupSettingsView: View {
                 Label(L10n.GroupSettings.boundaryPolicyRow, systemImage: "door.left.hand.closed")
             }
             comingSoonRow(.membershipTypes, label: L10n.GroupSettings.membershipTypesRow, systemImage: "person.crop.rectangle.stack")
-            comingSoonRow(.roles, label: L10n.GroupSettings.rolesRow, systemImage: "person.crop.rectangle.badge.checkmark")
+            NavigationLink(value: GroupSettingsDestination.roles) {
+                Label(L10n.GroupSettings.rolesRow, systemImage: "person.crop.rectangle.badge.checkmark")
+            }
             NavigationLink(value: GroupSettingsDestination.mandates) {
                 Label(L10n.GroupSettings.mandatesRow, systemImage: "signature")
             }
@@ -303,11 +307,11 @@ public struct GroupSettingsView: View {
         case mandates
         case boundaryPolicy
         case rituals
+        case roles
     }
 
     private enum ComingSoonRow: Hashable {
         case membershipTypes
-        case roles
         case currency
         case fundsPolicy
         case notifications

@@ -210,4 +210,10 @@ private struct PurposeStubClient: RuulRPCClient, @unchecked Sendable {
     func setGroupBoundaryPolicy(_ input: SetGroupBoundaryPolicyInput) async throws -> GroupBoundaryPolicy {
         GroupBoundaryPolicy(groupId: input.pGroupId, isDefault: false)
     }
+    func listGroupRoles(groupId: UUID) async throws -> [GroupRole] { [] }
+    func listPermissionsCatalog() async throws -> [PermissionCatalogEntry] { [] }
+    func createCustomRole(_ input: CreateCustomRoleInput) async throws -> UUID { UUID() }
+    func updateRolePermissions(_ input: UpdateRolePermissionsInput) async throws {}
+    func assignRoleToMember(_ input: AssignRoleToMemberInput) async throws {}
+    func revokeRoleFromMember(_ input: RevokeRoleFromMemberInput) async throws {}
 }

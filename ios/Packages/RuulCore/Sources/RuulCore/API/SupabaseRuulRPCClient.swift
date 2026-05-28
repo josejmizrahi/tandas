@@ -540,6 +540,57 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Roles + Permissions (Primitiva 17, B3)
+
+    public func listGroupRoles(groupId: UUID) async throws -> [GroupRole] {
+        let params = ListGroupRolesParams(groupId: groupId)
+        do {
+            return try await client.rpc("list_group_roles", params: params).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func listPermissionsCatalog() async throws -> [PermissionCatalogEntry] {
+        do {
+            return try await client.rpc("list_permissions_catalog").execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func createCustomRole(_ input: CreateCustomRoleInput) async throws -> UUID {
+        do {
+            return try await client.rpc("create_custom_role", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func updateRolePermissions(_ input: UpdateRolePermissionsInput) async throws {
+        do {
+            _ = try await client.rpc("update_role_permissions", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func assignRoleToMember(_ input: AssignRoleToMemberInput) async throws {
+        do {
+            _ = try await client.rpc("assign_role_to_member", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func revokeRoleFromMember(_ input: RevokeRoleFromMemberInput) async throws {
+        do {
+            _ = try await client.rpc("revoke_role_from_member", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Boundary policy (Primitiva 2, B2)
 
     public func groupBoundaryPolicy(groupId: UUID) async throws -> GroupBoundaryPolicy {

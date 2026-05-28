@@ -570,7 +570,12 @@ Marcar cada slice cerrado:
       set_group_boundary_policy persistido bajo
       groups.settings.boundary_policy. iOS surface wired desde
       GroupSettingsView → BoundaryPolicyView con edit sheet inline)
-- [ ] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)
+- [x] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)
+      (mig `20260527200000` agregó list_group_roles +
+      list_permissions_catalog; write side create_custom_role /
+      update_role_permissions / assign_role_to_member /
+      revoke_role_from_member ya canónico. iOS: RolesListView +
+      RoleEditorView con permission catalog agrupado por categoría)
 - [x] B4 MandatesView (Primitiva 23)
 - [x] B5 CulturalNormsListView + EditCulturalNormView (Primitiva 20)
 - [x] B6 RitualsListView + CreateRitualSheet + EditRitualSheet (Primitiva 21)

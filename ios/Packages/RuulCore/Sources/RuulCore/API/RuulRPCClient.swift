@@ -244,6 +244,37 @@ public protocol RuulRPCClient: Sendable {
     /// `group_decisions` row. Returns the new decision id.
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID
 
+    // MARK: - Roles + Permissions (Primitiva 17, B3)
+
+    /// `list_group_roles(p_group_id)` — roles for a group with the
+    /// joined permission_keys and member_count pre-flattened.
+    /// Active-member gate.
+    func listGroupRoles(groupId: UUID) async throws -> [GroupRole]
+
+    /// `list_permissions_catalog()` — static permissions catalog
+    /// grouped by category. Authenticated-only gate (no group
+    /// context). The catalog is global so this is safe to cache.
+    func listPermissionsCatalog() async throws -> [PermissionCatalogEntry]
+
+    /// `create_custom_role(p_group_id, p_key, p_name, p_description, p_permission_keys)`
+    /// — creates a new non-system role with the supplied permissions.
+    /// Requires `roles.manage`. Returns the new role id.
+    func createCustomRole(_ input: CreateCustomRoleInput) async throws -> UUID
+
+    /// `update_role_permissions(p_role_id, p_permission_keys)` —
+    /// patches the role's permission set (overwrite semantics).
+    /// Requires `roles.manage`. Backend raises on system roles.
+    func updateRolePermissions(_ input: UpdateRolePermissionsInput) async throws
+
+    /// `assign_role_to_member(p_membership_id, p_role_id)` —
+    /// idempotent assignment. Requires `roles.manage`.
+    func assignRoleToMember(_ input: AssignRoleToMemberInput) async throws
+
+    /// `revoke_role_from_member(p_membership_id, p_role_id)` — removes
+    /// the role from the member. Requires `roles.manage`. Backend
+    /// blocks removing the member's last role.
+    func revokeRoleFromMember(_ input: RevokeRoleFromMemberInput) async throws
+
     // MARK: - Boundary policy (Primitiva 2, B2)
 
     /// `group_boundary_policy(p_group_id)` — returns the active

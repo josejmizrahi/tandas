@@ -666,6 +666,48 @@ struct RPCInputsEncodingTests {
         #expect(history["p_limit"] as? Int == 25)
     }
 
+    // MARK: - Roles + Permissions (Primitiva 17, B3)
+
+    @Test("create_custom_role encodes p_description as null when omitted + arrays preserved")
+    func createCustomRoleEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(CreateCustomRoleInput(
+            groupId: gid,
+            key: "treasurer",
+            name: "Tesorero",
+            description: nil,
+            permissionKeys: ["money.record_expense", "money.record_settlement"]
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_key"] as? String == "treasurer")
+        #expect(dict["p_name"] as? String == "Tesorero")
+        #expect(dict["p_description"] is NSNull)
+        let perms = dict["p_permission_keys"] as? [String]
+        #expect(perms == ["money.record_expense", "money.record_settlement"])
+    }
+
+    @Test("update_role_permissions encodes the role id + keys array")
+    func updateRolePermissionsEncoding() throws {
+        let rid = UUID()
+        let dict = try encode(UpdateRolePermissionsInput(
+            roleId: rid,
+            permissionKeys: ["decisions.create"]
+        ))
+        #expect(dict["p_role_id"] as? String == rid.uuidString)
+        #expect((dict["p_permission_keys"] as? [String]) == ["decisions.create"])
+    }
+
+    @Test("assign / revoke role encode membership + role uuids")
+    func assignRevokeRoleEncoding() throws {
+        let mid = UUID(); let rid = UUID()
+        let assign = try encode(AssignRoleToMemberInput(membershipId: mid, roleId: rid))
+        #expect(assign["p_membership_id"] as? String == mid.uuidString)
+        #expect(assign["p_role_id"] as? String == rid.uuidString)
+        let revoke = try encode(RevokeRoleFromMemberInput(membershipId: mid, roleId: rid))
+        #expect(revoke["p_membership_id"] as? String == mid.uuidString)
+        #expect(revoke["p_role_id"] as? String == rid.uuidString)
+    }
+
     // MARK: - Boundary policy (Primitiva 2, B2)
 
     @Test("set_group_boundary_policy emits every key + null notes when omitted")

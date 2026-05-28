@@ -763,6 +763,57 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum Roles {
+        public static let title              = LocalizedStringResource("roles.title",              defaultValue: "Roles y permisos")
+        public static let menuLink           = LocalizedStringResource("roles.menu",               defaultValue: "Roles y permisos")
+        public static let emptyTitle         = LocalizedStringResource("roles.empty.title",        defaultValue: "Sin roles personalizados")
+        public static let emptyDescription   = LocalizedStringResource("roles.empty.description",  defaultValue: "Los roles del sistema están listos. Crea uno propio cuando lo necesiten.")
+        public static let errorTitle         = LocalizedStringResource("roles.error.title",        defaultValue: "No pudimos cargar los roles")
+        public static let retry              = LocalizedStringResource("roles.retry",              defaultValue: "Reintentar")
+        public static let addButton          = LocalizedStringResource("roles.add",                defaultValue: "Nuevo rol")
+        public static let cancel             = LocalizedStringResource("roles.cancel",             defaultValue: "Cancelar")
+        public static let save               = LocalizedStringResource("roles.save",               defaultValue: "Guardar")
+
+        public static let systemSection      = LocalizedStringResource("roles.section.system",     defaultValue: "Roles del sistema")
+        public static let customSection      = LocalizedStringResource("roles.section.custom",     defaultValue: "Roles del grupo")
+        public static let systemReadOnlyHint = LocalizedStringResource("roles.system.read_only",   defaultValue: "Los roles del sistema solo se ven; sus permisos son fijos.")
+        public static let permissionsCount   = LocalizedStringResource("roles.permissions.count",  defaultValue: "%lld permisos")
+        public static let defaultLabel       = LocalizedStringResource("roles.default.label",      defaultValue: "Por defecto")
+        public static let systemLabel        = LocalizedStringResource("roles.system.label",       defaultValue: "Sistema")
+
+        // Editor
+        public static let createTitle        = LocalizedStringResource("roles.create.title",       defaultValue: "Nuevo rol")
+        public static let editTitle          = LocalizedStringResource("roles.edit.title",         defaultValue: "Editar rol")
+        public static let nameLabel          = LocalizedStringResource("roles.name.label",         defaultValue: "Nombre")
+        public static let namePlaceholder    = LocalizedStringResource("roles.name.placeholder",   defaultValue: "Ej. Tesorero")
+        public static let keyLabel           = LocalizedStringResource("roles.key.label",          defaultValue: "Clave")
+        public static let keyPlaceholder     = LocalizedStringResource("roles.key.placeholder",    defaultValue: "ej. tesorero")
+        public static let keyHint            = LocalizedStringResource("roles.key.hint",           defaultValue: "Identificador estable para el rol. Sin espacios.")
+        public static let descriptionLabel   = LocalizedStringResource("roles.description.label",  defaultValue: "Descripción")
+        public static let descriptionPlaceholder = LocalizedStringResource("roles.description.placeholder", defaultValue: "Qué cubre este rol (opcional)")
+        public static let permissionsSection = LocalizedStringResource("roles.permissions.section", defaultValue: "Permisos")
+        public static let permissionsEmpty   = LocalizedStringResource("roles.permissions.empty",  defaultValue: "Sin permisos seleccionados.")
+        public static let allOnAction        = LocalizedStringResource("roles.permissions.all_on",  defaultValue: "Seleccionar todo")
+        public static let allOffAction       = LocalizedStringResource("roles.permissions.all_off", defaultValue: "Quitar todo")
+        public static let nameRequired       = LocalizedStringResource("roles.name.required",      defaultValue: "Escribe el nombre del rol.")
+        public static let keyRequired        = LocalizedStringResource("roles.key.required",       defaultValue: "Escribe la clave del rol.")
+
+        // Categories
+        public static let categoryGroup       = LocalizedStringResource("roles.category.group",       defaultValue: "Grupo")
+        public static let categoryMembers     = LocalizedStringResource("roles.category.members",     defaultValue: "Miembros")
+        public static let categoryRoles       = LocalizedStringResource("roles.category.roles",       defaultValue: "Roles")
+        public static let categoryDecisions   = LocalizedStringResource("roles.category.decisions",   defaultValue: "Decisiones")
+        public static let categoryRules       = LocalizedStringResource("roles.category.rules",       defaultValue: "Reglas")
+        public static let categorySanctions   = LocalizedStringResource("roles.category.sanctions",   defaultValue: "Sanciones")
+        public static let categoryDisputes    = LocalizedStringResource("roles.category.disputes",    defaultValue: "Disputas")
+        public static let categoryMoney       = LocalizedStringResource("roles.category.money",       defaultValue: "Dinero")
+        public static let categoryResources   = LocalizedStringResource("roles.category.resources",   defaultValue: "Recursos")
+        public static let categoryCulture     = LocalizedStringResource("roles.category.culture",     defaultValue: "Cultura")
+        public static let categoryReputation  = LocalizedStringResource("roles.category.reputation",  defaultValue: "Reputación")
+        public static let categoryAudit       = LocalizedStringResource("roles.category.audit",       defaultValue: "Historia")
+        public static let categoryOther       = LocalizedStringResource("roles.category.other",       defaultValue: "Otros")
+    }
+
     public enum BoundaryPolicy {
         public static let title              = LocalizedStringResource("boundary_policy.title",            defaultValue: "Política de entrada")
         public static let headline           = LocalizedStringResource("boundary_policy.headline",         defaultValue: "Cómo se entra (y se sale)")
