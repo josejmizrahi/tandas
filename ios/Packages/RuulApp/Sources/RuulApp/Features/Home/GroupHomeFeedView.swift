@@ -87,6 +87,42 @@ struct GroupHomeFeedView: View {
                 isShowingInviteSheet = false
             }
         }
+        // Foundation tap sheets — flipped on by `handleFoundationTap`
+        // via the corresponding store's `beginEditing` / `beginCreating`
+        // flag. Each sheet is the same one mounted by "El grupo" so
+        // the user can resolve a foundation gap without switching tabs.
+        .sheet(isPresented: purposeSheetBinding) {
+            EditPurposeView(store: container.purposeStore, groupId: group.id)
+        }
+        .sheet(isPresented: rulesCreateSheetBinding) {
+            EditRuleView(store: container.rulesStore, groupId: group.id)
+        }
+        .sheet(isPresented: resourcesCreateSheetBinding) {
+            CreateResourceView(store: container.resourcesStore, groupId: group.id)
+        }
+    }
+
+    // MARK: - Foundation-tap sheet bindings
+
+    private var purposeSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.purposeStore.isEditPresented },
+            set: { container.purposeStore.isEditPresented = $0 }
+        )
+    }
+
+    private var rulesCreateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.rulesStore.isCreatePresented },
+            set: { container.rulesStore.isCreatePresented = $0 }
+        )
+    }
+
+    private var resourcesCreateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.resourcesStore.isCreatePresented },
+            set: { container.resourcesStore.isCreatePresented = $0 }
+        )
     }
 
     // MARK: - Foundation status
