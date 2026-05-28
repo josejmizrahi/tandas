@@ -59,14 +59,29 @@ public struct GroupTabsHost: View {
         .sheet(isPresented: $isShowingPersonalProfile) {
             PersonalProfileSheet(container: container)
         }
-        // V2-A1 — wire realtime listeners to the active group. The
-        // `.task(id:)` lifecycle cancels-and-replaces on group switch,
-        // and stores debounce same-group calls internally.
+        // V3-A1 — wire realtime listeners to the active group. The
+        // `.task(id:)` lifecycle cancels-and-replaces on group switch
+        // AND on sign-out (shell tears down `GroupTabsHost` when the
+        // session drops). The trailing sleep keeps the task alive so
+        // cancellation has a place to land — once cancelled, the loop
+        // exits and the stores tear their subscriptions down.
         .task(id: group.id) {
             let realtime = container.realtime
-            await container.eventsStore.startListening(groupId: group.id, realtime: realtime)
-            await container.disputesStore.startListening(groupId: group.id, realtime: realtime)
-            await container.decisionsStore.startListening(groupId: group.id, realtime: realtime)
+            let events = container.eventsStore
+            let disputes = container.disputesStore
+            let decisions = container.decisionsStore
+
+            await events.startListening(groupId: group.id, realtime: realtime)
+            await disputes.startListening(groupId: group.id, realtime: realtime)
+            await decisions.startListening(groupId: group.id, realtime: realtime)
+
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+            }
+
+            await events.stopListening()
+            await disputes.stopListening()
+            await decisions.stopListening()
         }
     }
 
