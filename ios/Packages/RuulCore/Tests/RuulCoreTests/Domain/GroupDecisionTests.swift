@@ -100,8 +100,8 @@ struct GroupDecisionTests {
           "method":                 "majority",
           "legitimacy_source":      "majority",
           "status":                 "passed",
-          "threshold_pct":          null,
-          "quorum_pct":             null,
+          "threshold_pct":          50,
+          "quorum_pct":             33.5,
           "reference_kind":         null,
           "reference_id":           null,
           "opens_at":               null,
@@ -145,6 +145,31 @@ struct GroupDecisionTests {
         #expect(d.myVote?.reason == "smoke")
         #expect(d.result?.outcome == "passed")
         #expect(d.status == .passed)
+        // V2-G1 sub-slice 3 surfaces threshold + quorum on the detail.
+        #expect(d.thresholdPct == 50)
+        #expect(d.quorumPct == Decimal(string: "33.5"))
+    }
+
+    @Test("VoteValue.label(for:) returns method-specific copy for consent / veto / consensus")
+    func voteValueLabelByMethod() {
+        // Consent: yes = Consiento, block = Bloqueo
+        #expect(String(localized: VoteValue.yes.label(for: .consent))
+                == String(localized: L10n.Decisions.voteConsent))
+        #expect(String(localized: VoteValue.block.label(for: .consent))
+                == String(localized: L10n.Decisions.voteBlockConsent))
+        // Veto: yes = Sin objeción, block = Veto
+        #expect(String(localized: VoteValue.yes.label(for: .veto))
+                == String(localized: L10n.Decisions.voteNoObjection))
+        #expect(String(localized: VoteValue.block.label(for: .veto))
+                == String(localized: L10n.Decisions.voteCastVeto))
+        // Consensus: no = Objeto, abstain = Me retiro
+        #expect(String(localized: VoteValue.no.label(for: .consensus))
+                == String(localized: L10n.Decisions.voteObject))
+        #expect(String(localized: VoteValue.abstain.label(for: .consensus))
+                == String(localized: L10n.Decisions.voteWithdraw))
+        // Majority: falls back to generic
+        #expect(String(localized: VoteValue.yes.label(for: .majority))
+                == String(localized: L10n.Decisions.voteYes))
     }
 
     @Test("Detail with missing my_vote stays nil")

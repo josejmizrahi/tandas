@@ -30,6 +30,7 @@ public struct DecisionDetailView: View {
             heroSection
             if let detail = store.detail, detail.id == decisionId {
                 bodySection(detail: detail)
+                methodNarrativeSection(detail: detail)
                 if !detail.options.isEmpty {
                     optionsSection(detail: detail)
                 }
@@ -140,24 +141,168 @@ public struct DecisionDetailView: View {
         }
     }
 
+    /// V2-G1 sub-slice 3 — top-of-detail narrative card explaining
+    /// "cómo se decide esto" in human terms before any tally numbers.
+    /// Threshold and quorum hints surface here too, when set, so the
+    /// reader sees them before opening the result section.
+    @ViewBuilder
+    private func methodNarrativeSection(detail: GroupDecisionDetail) -> some View {
+        Section(L10n.Decisions.methodNarrativeSection) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: detail.method.systemImageName)
+                    .foregroundStyle(.tint)
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(detail.method.label)
+                        .font(.body.weight(.semibold))
+                    Text(narrativeHint(for: detail.method))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 2)
+
+            if let threshold = detail.thresholdPct {
+                LabeledContent {
+                    Text(percent(threshold))
+                        .monospacedDigit()
+                } label: {
+                    Text(L10n.Decisions.tallyThresholdLabel)
+                }
+            }
+            if let quorum = detail.quorumPct {
+                LabeledContent {
+                    Text(percent(quorum))
+                        .monospacedDigit()
+                } label: {
+                    Text(L10n.Decisions.tallyQuorumLabel)
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private func tallySection(detail: GroupDecisionDetail) -> some View {
         Section(L10n.Decisions.tallySection) {
-            if detail.tally.voteCount == 0 {
+            if detail.method == .admin {
+                Text(L10n.Decisions.tallyAdminNoBallots)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else if detail.tally.voteCount == 0 {
                 Text(L10n.Decisions.tallyNoVotes)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
-                tallyRow(label: VoteValue.yes.label, image: VoteValue.yes.systemImageName, count: detail.tally.yesCount, tint: .green)
-                tallyRow(label: VoteValue.no.label, image: VoteValue.no.systemImageName, count: detail.tally.noCount, tint: .red)
-                if detail.tally.abstainCount > 0 {
-                    tallyRow(label: VoteValue.abstain.label, image: VoteValue.abstain.systemImageName, count: detail.tally.abstainCount, tint: .gray)
+                methodTallyRows(detail: detail)
+
+                LabeledContent {
+                    Text("\(detail.tally.voteCount)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Text(L10n.Decisions.tallyVotesCounted)
                 }
-                if detail.tally.blockCount > 0 {
-                    tallyRow(label: VoteValue.block.label, image: VoteValue.block.systemImageName, count: detail.tally.blockCount, tint: .orange)
+
+                if shouldHighlightBlock(method: detail.method),
+                   detail.tally.blockCount > 0 {
+                    Text(detail.method == .veto
+                         ? L10n.Decisions.tallyVetoHighlight
+                         : L10n.Decisions.tallyBlockHighlight)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                 }
             }
         }
+    }
+
+    /// V2-G1 sub-slice 3 — per-method tally rows. We render only the
+    /// buckets that are semantically meaningful for the method, with
+    /// the canonical labels (`A favor / Objeto / Me retiro` for
+    /// consensus; `Consiento / Bloqueo` for consent; etc.). Other
+    /// methods fall back to the broad yes/no/abstain/block shape that
+    /// pre-V2-G1 surfaced.
+    @ViewBuilder
+    private func methodTallyRows(detail: GroupDecisionDetail) -> some View {
+        let tally = detail.tally
+        let method = detail.method
+        switch method {
+        case .consensus:
+            tallyRow(label: VoteValue.yes.label(for: method),
+                     image: VoteValue.yes.systemImageName,
+                     count: tally.yesCount, tint: .green)
+            tallyRow(label: VoteValue.no.label(for: method),
+                     image: VoteValue.no.systemImageName,
+                     count: tally.noCount, tint: .red)
+            if tally.abstainCount > 0 {
+                tallyRow(label: VoteValue.abstain.label(for: method),
+                         image: VoteValue.abstain.systemImageName,
+                         count: tally.abstainCount, tint: .gray)
+            }
+        case .consent:
+            tallyRow(label: VoteValue.yes.label(for: method),
+                     image: VoteValue.yes.systemImageName,
+                     count: tally.yesCount, tint: .green)
+            tallyRow(label: VoteValue.block.label(for: method),
+                     image: VoteValue.block.systemImageName,
+                     count: tally.blockCount, tint: .orange)
+        case .veto:
+            tallyRow(label: VoteValue.yes.label(for: method),
+                     image: VoteValue.yes.systemImageName,
+                     count: tally.yesCount, tint: .green)
+            tallyRow(label: VoteValue.block.label(for: method),
+                     image: VoteValue.block.systemImageName,
+                     count: tally.blockCount, tint: .orange)
+        case .admin:
+            // Render nothing — caller short-circuited with the admin
+            // notice above.
+            EmptyView()
+        case .majority, .supermajority,
+             .rankedChoice, .weighted, .other:
+            tallyRow(label: VoteValue.yes.label,
+                     image: VoteValue.yes.systemImageName,
+                     count: tally.yesCount, tint: .green)
+            tallyRow(label: VoteValue.no.label,
+                     image: VoteValue.no.systemImageName,
+                     count: tally.noCount, tint: .red)
+            if tally.abstainCount > 0 {
+                tallyRow(label: VoteValue.abstain.label,
+                         image: VoteValue.abstain.systemImageName,
+                         count: tally.abstainCount, tint: .gray)
+            }
+            if tally.blockCount > 0 {
+                tallyRow(label: VoteValue.block.label,
+                         image: VoteValue.block.systemImageName,
+                         count: tally.blockCount, tint: .orange)
+            }
+        }
+    }
+
+    private func narrativeHint(for method: DecisionMethod) -> LocalizedStringResource {
+        switch method {
+        case .admin:         return L10n.Decisions.tallyAdminNoBallots
+        case .majority:      return L10n.Decisions.tallyMajorityHint
+        case .supermajority: return L10n.Decisions.tallySupermajorityHint
+        case .consensus:     return L10n.Decisions.tallyConsensusHint
+        case .consent:       return L10n.Decisions.tallyConsentHint
+        case .veto:          return L10n.Decisions.tallyVetoHint
+        case .rankedChoice:  return L10n.Decisions.tallyRankedHint
+        case .weighted:      return L10n.Decisions.tallyWeightedHint
+        case .other:         return L10n.Decisions.methodOtherSubtitle
+        }
+    }
+
+    private func shouldHighlightBlock(method: DecisionMethod) -> Bool {
+        method == .consent || method == .veto
+    }
+
+    private func percent(_ value: Decimal) -> String {
+        // The backend stores 0…100 — render 1 decimal place when
+        // non-integer, otherwise plain.
+        let asDouble = NSDecimalNumber(decimal: value).doubleValue
+        if asDouble.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(asDouble))%"
+        }
+        return String(format: "%.1f%%", asDouble)
     }
 
     @ViewBuilder
