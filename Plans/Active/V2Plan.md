@@ -358,12 +358,12 @@ desconectadas de dinero, reglas decorativas, votos triviales).
 ## 7. Tracking
 
 ### V1 close (~4-5 sesiones)
-- [ ] V1.1 Apelación de sanción (Primitiva 11)
-- [ ] V1.2 Verify contribución (Primitiva 9)
-- [ ] V1.3 Transferir propiedad (Primitiva 18)
-- [ ] V1.4 Estados de membresía (Primitiva 2)
-- [ ] V1.5 Proponer norma cultural (Primitiva 20)
-- [ ] **V1 release tag** `v1.0.0-rc`
+- [x] V1.1 Apelación de sanción (Primitiva 11) — `d147f9f2`
+- [x] V1.2 Verify contribución (Primitiva 9) — `26658ae0`
+- [x] V1.3 Transferir propiedad (Primitiva 18) — `6b9c07a2`
+- [x] V1.4 Estados de membresía (Primitiva 2) — `9548c89c`
+- [x] V1.5 Proponer norma cultural (Primitiva 20) — `7290f797`
+- [x] **V1 release tag** `v1.0.0-rc` — 2026-05-27
 
 ### V2 Depth/Engine/Integrations (~22-30 sesiones)
 - [ ] V2-G1 Voting methods completos (8 methods + legitimacy_source + adaptive VoteSheet)
@@ -378,8 +378,8 @@ desconectadas de dinero, reglas decorativas, votos triviales).
 - [ ] **V2 release tag** `v2.0.0-rc`
 
 ### V3 Quality/Launch (~18-22 sesiones)
-- [ ] V3-A1 Real-time subscriptions
-- [ ] V3-A2 APNs registration + handlers
+- [x] V3-A1 Real-time subscriptions — `3a596f3c`
+- [x] V3-A2 APNs registration + handlers — `e67f87ae`
 - [ ] V3-A3 Notification preferences
 - [ ] V3-A4 Notification handlers críticos
 - [ ] V3-B1 Templates de grupo

@@ -86,6 +86,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case finalizeDissolution(input: FinalizeDissolutionInput)
         case myNotificationPreferences(groupId: UUID)
         case setNotificationPreference(input: SetNotificationPreferenceInput)
+        case registerMyNotificationToken(input: RegisterMyNotificationTokenInput)
         case groupVisibility(groupId: UUID)
         case setGroupVisibility(input: SetGroupVisibilityInput)
     }
@@ -206,6 +207,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var finalizeDissolutionStub: Result<Void, RuulError> = .success(())
     private var myNotificationPreferencesStub: Result<[NotificationPreferenceRow], RuulError> = .success([])
     private var setNotificationPreferenceStub: Result<Void, RuulError> = .success(())
+    private var registerMyNotificationTokenStub: Result<UUID, RuulError> = .success(UUID())
     private var groupVisibilityStub: Result<String, RuulError> = .success("private")
     private var setGroupVisibilityStub: Result<String, RuulError> = .success("private")
 
@@ -289,6 +291,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setFinalizeDissolutionStub(_ stub: Result<Void, RuulError>) { finalizeDissolutionStub = stub }
     func setMyNotificationPreferencesStub(_ stub: Result<[NotificationPreferenceRow], RuulError>) { myNotificationPreferencesStub = stub }
     func setSetNotificationPreferenceStub(_ stub: Result<Void, RuulError>) { setNotificationPreferenceStub = stub }
+    func setRegisterMyNotificationTokenStub(_ stub: Result<UUID, RuulError>) { registerMyNotificationTokenStub = stub }
     func setGroupVisibilityStub(_ stub: Result<String, RuulError>) { groupVisibilityStub = stub }
     func setSetGroupVisibilityStub(_ stub: Result<String, RuulError>) { setGroupVisibilityStub = stub }
 
@@ -683,6 +686,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws {
         recorded.append(.setNotificationPreference(input: input))
         try setNotificationPreferenceStub.get()
+    }
+
+    func registerMyNotificationToken(_ input: RegisterMyNotificationTokenInput) async throws -> UUID {
+        recorded.append(.registerMyNotificationToken(input: input))
+        return try registerMyNotificationTokenStub.get()
     }
 
     func groupVisibility(groupId: UUID) async throws -> String {
