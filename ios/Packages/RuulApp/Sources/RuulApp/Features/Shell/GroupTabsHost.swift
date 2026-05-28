@@ -20,7 +20,11 @@ public struct GroupTabsHost: View {
     let group: GroupListItem
     let onSelectGroup: (GroupListItem) -> Void
 
-    @State private var selectedTab: GroupTab = .home
+    /// Hoisted to the shell so deep-link arrivals (V3-A4) can request
+    /// focus on a specific tab (`.money`, `.members`, `.group`) before
+    /// the user even touches the bar.
+    @Binding var selectedTab: GroupTab
+
     @State private var isShowingSwitcher: Bool = false
     @State private var isShowingPersonalProfile: Bool = false
     /// Drives the `MemberDetailView` push from the Personas tab.
@@ -29,10 +33,12 @@ public struct GroupTabsHost: View {
     public init(
         container: DependencyContainer,
         group: GroupListItem,
+        selectedTab: Binding<GroupTab>,
         onSelectGroup: @escaping (GroupListItem) -> Void
     ) {
         self.container = container
         self.group = group
+        self._selectedTab = selectedTab
         self.onSelectGroup = onSelectGroup
     }
 
@@ -164,7 +170,11 @@ public struct GroupTabsHost: View {
         }
     }
 
-    private enum GroupTab: Hashable {
-        case home, money, members, group
-    }
+}
+
+/// Four canonical tabs in `GroupTabsHost`. `public` so the shell can
+/// hoist `selectedTab` as a `Binding` and drive focus from deep-link
+/// arrivals (V3-A4).
+public enum GroupTab: Hashable, Sendable {
+    case home, money, members, group
 }

@@ -24,6 +24,12 @@ public struct RuulAppShell: View {
     /// app is cold-launched into them.
     @State private var pendingDecision: PendingDecision?
 
+    /// V3-A4 — focused tab inside `GroupTabsHost`. Hoisted here so a
+    /// deep-link arrival (`ruul://group/X/money`, etc.) can land the
+    /// user on the matching tab before the detail surface refactor
+    /// catches up.
+    @State private var selectedTab: GroupTab = .home
+
     public init(container: DependencyContainer = DependencyContainer()) {
         _container = State(initialValue: container)
     }
@@ -154,16 +160,16 @@ public struct RuulAppShell: View {
             break
         case .decision(let groupId, let decisionId):
             pendingDecision = PendingDecision(groupId: groupId, decisionId: decisionId)
-        case .sanction, .dispute, .member, .mandate, .money:
-            // V3-A4 — the parser accepts these shapes so notification
-            // taps from `dispatch-notifications` land in the right
-            // group, but per-entity sheet routing is deferred: the
-            // matching detail views still take a fully-decoded domain
-            // object (GroupSanction / GroupDispute / MembershipBoundaryItem)
-            // in their init. Refactor each to support an id-only
-            // hydration pattern (DecisionDetailView's `initial:` was
-            // the trial) before re-enabling the per-entity shell sheet.
-            break
+        case .money:
+            selectedTab = .money
+        case .member:
+            selectedTab = .members
+        case .sanction, .dispute, .mandate:
+            // These primitives live under the "El grupo" tab. Per-
+            // entity sheet routing is still deferred (detail views
+            // require fully-decoded domain objects in init); the
+            // tab focus is the best A4-scoped landing.
+            selectedTab = .group
         }
         container.deepLinkRouter.consume()
     }
@@ -184,6 +190,7 @@ public struct RuulAppShell: View {
         GroupTabsHost(
             container: container,
             group: group,
+            selectedTab: $selectedTab,
             onSelectGroup: { picked in
                 currentGroupId = picked.id
                 Task { await container.currentGroupStore.setGroup(picked) }
