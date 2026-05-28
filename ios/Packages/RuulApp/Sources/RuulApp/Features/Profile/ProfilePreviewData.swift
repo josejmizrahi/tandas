@@ -190,4 +190,10 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func listGroupResourceSeries(groupId: UUID, ritualsOnly: Bool, includePast: Bool) async throws -> [GroupResourceSeries] { [] }
     func createResourceSeries(_ input: CreateResourceSeriesInput) async throws -> UUID { UUID() }
     func updateResourceSeries(_ input: UpdateResourceSeriesInput) async throws {}
+    func groupBoundaryPolicy(groupId: UUID) async throws -> GroupBoundaryPolicy {
+        GroupBoundaryPolicy(groupId: groupId)
+    }
+    func setGroupBoundaryPolicy(_ input: SetGroupBoundaryPolicyInput) async throws -> GroupBoundaryPolicy {
+        GroupBoundaryPolicy(groupId: input.pGroupId, isDefault: false)
+    }
 }

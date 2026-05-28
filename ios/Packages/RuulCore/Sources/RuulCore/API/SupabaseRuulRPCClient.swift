@@ -540,6 +540,31 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Boundary policy (Primitiva 2, B2)
+
+    public func groupBoundaryPolicy(groupId: UUID) async throws -> GroupBoundaryPolicy {
+        let params = GroupBoundaryPolicyParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_boundary_policy", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func setGroupBoundaryPolicy(_ input: SetGroupBoundaryPolicyInput) async throws -> GroupBoundaryPolicy {
+        do {
+            return try await client
+                .rpc("set_group_boundary_policy", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Rituals (Primitiva 21, B6)
 
     public func listGroupResourceSeries(

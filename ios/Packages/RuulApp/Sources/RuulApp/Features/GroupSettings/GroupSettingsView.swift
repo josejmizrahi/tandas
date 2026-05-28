@@ -60,6 +60,10 @@ public struct GroupSettingsView: View {
                     membersStore: container.membersStore,
                     groupId: group.id
                 )
+            case .boundaryPolicy:
+                BoundaryPolicyView(store: container.boundaryPolicyStore, groupId: group.id)
+            case .rituals:
+                RitualsListView(store: container.ritualsStore, groupId: group.id)
             }
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -153,7 +157,9 @@ public struct GroupSettingsView: View {
     @ViewBuilder
     private var belongingSection: some View {
         Section(L10n.GroupSettings.belongingSection) {
-            comingSoonRow(.boundaryPolicy, label: L10n.GroupSettings.boundaryPolicyRow, systemImage: "door.left.hand.closed")
+            NavigationLink(value: GroupSettingsDestination.boundaryPolicy) {
+                Label(L10n.GroupSettings.boundaryPolicyRow, systemImage: "door.left.hand.closed")
+            }
             comingSoonRow(.membershipTypes, label: L10n.GroupSettings.membershipTypesRow, systemImage: "person.crop.rectangle.stack")
             comingSoonRow(.roles, label: L10n.GroupSettings.rolesRow, systemImage: "person.crop.rectangle.badge.checkmark")
             NavigationLink(value: GroupSettingsDestination.mandates) {
@@ -181,7 +187,9 @@ public struct GroupSettingsView: View {
             NavigationLink(value: GroupSettingsDestination.culture) {
                 Label(L10n.GroupSettings.cultureRow, systemImage: "heart")
             }
-            comingSoonRow(.rituals, label: L10n.GroupSettings.ritualsRow, systemImage: "sparkles")
+            NavigationLink(value: GroupSettingsDestination.rituals) {
+                Label(L10n.GroupSettings.ritualsRow, systemImage: "sparkles")
+            }
         }
     }
 
@@ -293,13 +301,13 @@ public struct GroupSettingsView: View {
         case sanctionsPolicy
         case culture
         case mandates
+        case boundaryPolicy
+        case rituals
     }
 
     private enum ComingSoonRow: Hashable {
-        case boundaryPolicy
         case membershipTypes
         case roles
-        case rituals
         case currency
         case fundsPolicy
         case notifications

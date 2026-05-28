@@ -763,6 +763,48 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum BoundaryPolicy {
+        public static let title              = LocalizedStringResource("boundary_policy.title",            defaultValue: "Política de entrada")
+        public static let headline           = LocalizedStringResource("boundary_policy.headline",         defaultValue: "Cómo se entra (y se sale)")
+        public static let isDefaultHint      = LocalizedStringResource("boundary_policy.default.hint",     defaultValue: "Por defecto — todavía no han definido la política.")
+        public static let editButton         = LocalizedStringResource("boundary_policy.edit",             defaultValue: "Cambiar")
+        public static let errorTitle         = LocalizedStringResource("boundary_policy.error.title",      defaultValue: "No pudimos cargar la política")
+        public static let retry              = LocalizedStringResource("boundary_policy.retry",            defaultValue: "Reintentar")
+        public static let editTitle          = LocalizedStringResource("boundary_policy.edit.title",       defaultValue: "Política de entrada")
+        public static let save               = LocalizedStringResource("boundary_policy.save",             defaultValue: "Guardar")
+        public static let cancel             = LocalizedStringResource("boundary_policy.cancel",           defaultValue: "Cancelar")
+
+        // Sections
+        public static let entrySection       = LocalizedStringResource("boundary_policy.section.entry",    defaultValue: "Cómo se entra")
+        public static let inviterSection     = LocalizedStringResource("boundary_policy.section.inviter",  defaultValue: "Quién puede invitar")
+        public static let approvalSection    = LocalizedStringResource("boundary_policy.section.approval", defaultValue: "Aprobación")
+        public static let approvalLabel      = LocalizedStringResource("boundary_policy.approval.label",   defaultValue: "Requiere aprobación al entrar")
+        public static let approvalHint       = LocalizedStringResource("boundary_policy.approval.hint",    defaultValue: "Si está activo, un admin confirma la entrada antes de que la persona pase a miembro activo.")
+        public static let exitSection        = LocalizedStringResource("boundary_policy.section.exit",     defaultValue: "Cómo se sale")
+        public static let notesSection       = LocalizedStringResource("boundary_policy.section.notes",    defaultValue: "Notas")
+        public static let notesPlaceholder   = LocalizedStringResource("boundary_policy.notes.placeholder", defaultValue: "Acuerdos sobre la frontera del grupo (opcional)")
+
+        // Entry modes
+        public static let entryOpen                = LocalizedStringResource("boundary_policy.entry.open",                defaultValue: "Abierta")
+        public static let entryOpenSubtitle        = LocalizedStringResource("boundary_policy.entry.open.subtitle",       defaultValue: "Cualquiera puede unirse sin invitación.")
+        public static let entryInviteOnly          = LocalizedStringResource("boundary_policy.entry.invite_only",         defaultValue: "Solo por invitación")
+        public static let entryInviteOnlySubtitle  = LocalizedStringResource("boundary_policy.entry.invite_only.subtitle", defaultValue: "Hay que recibir una invitación de alguien dentro.")
+        public static let entryClosed              = LocalizedStringResource("boundary_policy.entry.closed",              defaultValue: "Cerrada")
+        public static let entryClosedSubtitle      = LocalizedStringResource("boundary_policy.entry.closed.subtitle",     defaultValue: "Por ahora no aceptamos a nadie nuevo.")
+
+        // Inviter scope
+        public static let inviterAnyMember          = LocalizedStringResource("boundary_policy.inviter.any_member",           defaultValue: "Cualquier miembro")
+        public static let inviterAnyMemberSubtitle  = LocalizedStringResource("boundary_policy.inviter.any_member.subtitle",  defaultValue: "Todos pueden invitar a alguien nuevo.")
+        public static let inviterAdminsOnly         = LocalizedStringResource("boundary_policy.inviter.admins_only",          defaultValue: "Solo admins")
+        public static let inviterAdminsOnlySubtitle = LocalizedStringResource("boundary_policy.inviter.admins_only.subtitle", defaultValue: "Solo quienes tienen permiso de admin invitan.")
+
+        // Exit mode
+        public static let exitFree                  = LocalizedStringResource("boundary_policy.exit.free",                   defaultValue: "Libre")
+        public static let exitFreeSubtitle          = LocalizedStringResource("boundary_policy.exit.free.subtitle",          defaultValue: "Cualquiera puede salir cuando quiera.")
+        public static let exitRequiresNotice        = LocalizedStringResource("boundary_policy.exit.requires_notice",        defaultValue: "Con aviso")
+        public static let exitRequiresNoticeSubtitle = LocalizedStringResource("boundary_policy.exit.requires_notice.subtitle", defaultValue: "Acordamos avisar al grupo antes de salir.")
+    }
+
     public enum Rituals {
         public static let title              = LocalizedStringResource("rituals.title",              defaultValue: "Rituales")
         public static let menuLink           = LocalizedStringResource("rituals.menu",               defaultValue: "Rituales")

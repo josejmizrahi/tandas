@@ -565,7 +565,11 @@ Marcar cada slice cerrado:
 - [x] A5 GroupHistoryView (commit `943667dc`)
 - [x] A6 PersonalProfileSheet + PersonalSettingsView
 - [x] B1 GroupSettingsView root
-- [ ] B2 BoundaryPolicyView
+- [x] B2 BoundaryPolicyView
+      (mig `20260527190000` agregó group_boundary_policy +
+      set_group_boundary_policy persistido bajo
+      groups.settings.boundary_policy. iOS surface wired desde
+      GroupSettingsView → BoundaryPolicyView con edit sheet inline)
 - [ ] B3 RolesAndPermissionsListView + RoleEditorView (Primitiva 17)
 - [x] B4 MandatesView (Primitiva 23)
 - [x] B5 CulturalNormsListView + EditCulturalNormView (Primitiva 20)

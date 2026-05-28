@@ -804,6 +804,61 @@ public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Boundary policy (Primitiva 2, B2)
+
+public struct GroupBoundaryPolicyParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct SetGroupBoundaryPolicyInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pEntryMode: String
+    public let pWhoCanInvite: String
+    public let pRequiresApproval: Bool
+    public let pExitMode: String
+    public let pNotes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId          = "p_group_id"
+        case pEntryMode        = "p_entry_mode"
+        case pWhoCanInvite     = "p_who_can_invite"
+        case pRequiresApproval = "p_requires_approval"
+        case pExitMode         = "p_exit_mode"
+        case pNotes            = "p_notes"
+    }
+
+    public init(
+        groupId: UUID,
+        entryMode: String,
+        whoCanInvite: String,
+        requiresApproval: Bool,
+        exitMode: String,
+        notes: String? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pEntryMode = entryMode
+        self.pWhoCanInvite = whoCanInvite
+        self.pRequiresApproval = requiresApproval
+        self.pExitMode = exitMode
+        self.pNotes = notes
+    }
+
+    /// Same rationale as the other foundation params: emit every key
+    /// explicitly with JSON null for nil so PostgREST overload
+    /// resolution stays deterministic.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pEntryMode, forKey: .pEntryMode)
+        try c.encode(pWhoCanInvite, forKey: .pWhoCanInvite)
+        try c.encode(pRequiresApproval, forKey: .pRequiresApproval)
+        try c.encode(pExitMode, forKey: .pExitMode)
+        try c.encodeOrNil(pNotes, forKey: .pNotes)
+    }
+}
+
 // MARK: - Rituals (Primitiva 21, B6)
 
 public struct ListGroupResourceSeriesParams: Encodable, Sendable {

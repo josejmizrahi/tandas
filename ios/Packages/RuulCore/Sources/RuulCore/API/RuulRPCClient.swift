@@ -244,6 +244,20 @@ public protocol RuulRPCClient: Sendable {
     /// `group_decisions` row. Returns the new decision id.
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID
 
+    // MARK: - Boundary policy (Primitiva 2, B2)
+
+    /// `group_boundary_policy(p_group_id)` — returns the active
+    /// boundary policy (entry/inviter/approval/exit). Defaults baked
+    /// in when groups.settings.boundary_policy is empty. Active-member
+    /// gate.
+    func groupBoundaryPolicy(groupId: UUID) async throws -> GroupBoundaryPolicy
+
+    /// `set_group_boundary_policy(p_group_id, p_entry_mode,
+    /// p_who_can_invite, p_requires_approval, p_exit_mode, p_notes)`
+    /// — upsert in-place on `groups.settings.boundary_policy`.
+    /// Requires `group.update` permission.
+    func setGroupBoundaryPolicy(_ input: SetGroupBoundaryPolicyInput) async throws -> GroupBoundaryPolicy
+
     // MARK: - Rituals (Primitiva 21, B6)
 
     /// `list_group_resource_series(p_group_id, p_rituals_only, p_include_past)`

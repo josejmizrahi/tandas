@@ -70,6 +70,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case listGroupResourceSeries(groupId: UUID, ritualsOnly: Bool, includePast: Bool)
         case createResourceSeries(input: CreateResourceSeriesInput)
         case updateResourceSeries(input: UpdateResourceSeriesInput)
+        case groupBoundaryPolicy(groupId: UUID)
+        case setGroupBoundaryPolicy(input: SetGroupBoundaryPolicyInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -168,6 +170,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var listGroupResourceSeriesStub: Result<[GroupResourceSeries], RuulError> = .success([])
     private var createResourceSeriesStub: Result<UUID, RuulError> = .success(UUID())
     private var updateResourceSeriesStub: Result<Void, RuulError> = .success(())
+    private var groupBoundaryPolicyStub: Result<GroupBoundaryPolicy, RuulError> = .success(
+        GroupBoundaryPolicy(groupId: UUID())
+    )
+    private var setGroupBoundaryPolicyStub: Result<GroupBoundaryPolicy, RuulError> = .success(
+        GroupBoundaryPolicy(groupId: UUID(), isDefault: false)
+    )
 
     init() {}
 
@@ -233,6 +241,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setListGroupResourceSeriesStub(_ stub: Result<[GroupResourceSeries], RuulError>) { listGroupResourceSeriesStub = stub }
     func setCreateResourceSeriesStub(_ stub: Result<UUID, RuulError>) { createResourceSeriesStub = stub }
     func setUpdateResourceSeriesStub(_ stub: Result<Void, RuulError>) { updateResourceSeriesStub = stub }
+    func setGroupBoundaryPolicyStub(_ stub: Result<GroupBoundaryPolicy, RuulError>) { groupBoundaryPolicyStub = stub }
+    func setSetGroupBoundaryPolicyStub(_ stub: Result<GroupBoundaryPolicy, RuulError>) { setGroupBoundaryPolicyStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -545,5 +555,15 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func updateResourceSeries(_ input: UpdateResourceSeriesInput) async throws {
         recorded.append(.updateResourceSeries(input: input))
         try updateResourceSeriesStub.get()
+    }
+
+    func groupBoundaryPolicy(groupId: UUID) async throws -> GroupBoundaryPolicy {
+        recorded.append(.groupBoundaryPolicy(groupId: groupId))
+        return try groupBoundaryPolicyStub.get()
+    }
+
+    func setGroupBoundaryPolicy(_ input: SetGroupBoundaryPolicyInput) async throws -> GroupBoundaryPolicy {
+        recorded.append(.setGroupBoundaryPolicy(input: input))
+        return try setGroupBoundaryPolicyStub.get()
     }
 }

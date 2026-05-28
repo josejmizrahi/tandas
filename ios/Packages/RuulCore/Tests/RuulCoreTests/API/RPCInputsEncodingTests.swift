@@ -666,6 +666,35 @@ struct RPCInputsEncodingTests {
         #expect(history["p_limit"] as? Int == 25)
     }
 
+    // MARK: - Boundary policy (Primitiva 2, B2)
+
+    @Test("set_group_boundary_policy emits every key + null notes when omitted")
+    func setBoundaryPolicyEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(SetGroupBoundaryPolicyInput(
+            groupId: gid,
+            entryMode: "invite_only",
+            whoCanInvite: "any_member",
+            requiresApproval: true,
+            exitMode: "free",
+            notes: nil
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_entry_mode"] as? String == "invite_only")
+        #expect(dict["p_who_can_invite"] as? String == "any_member")
+        #expect(dict["p_requires_approval"] as? Bool == true)
+        #expect(dict["p_exit_mode"] as? String == "free")
+        #expect(dict["p_notes"] is NSNull)
+    }
+
+    @Test("group_boundary_policy read params encode group id only")
+    func groupBoundaryPolicyEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(GroupBoundaryPolicyParams(groupId: gid))
+        #expect(dict.keys.sorted() == ["p_group_id"])
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+    }
+
     // MARK: - Rituals (Primitiva 21, B6)
 
     @Test("list_group_resource_series encodes both filter flags + group id")
