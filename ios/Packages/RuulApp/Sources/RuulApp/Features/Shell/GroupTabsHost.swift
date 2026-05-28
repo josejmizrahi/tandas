@@ -59,9 +59,6 @@ public struct GroupTabsHost: View {
     private var homeTab: some View {
         NavigationStack {
             GroupHomeView(container: container, group: group)
-                // Switcher button already shows the group name; drop
-                // the redundant inline title from GroupHomeView.
-                .navigationTitle("")
                 .toolbar { shellToolbar }
         }
         .tabItem {
