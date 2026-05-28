@@ -30,7 +30,8 @@ public struct SanctionsListView: View {
     }
 
     public var body: some View {
-        List {
+        @Bindable var disputesStore = container.disputesStore
+        return List {
             content
         }
         .navigationTitle(L10n.Sanctions.title)
@@ -53,6 +54,9 @@ public struct SanctionsListView: View {
                 membersStore: membersStore,
                 groupId: groupId
             )
+        }
+        .sheet(isPresented: $disputesStore.isDisputeSanctionPresented) {
+            DisputeSanctionSheet(store: disputesStore, groupId: groupId)
         }
         .navigationDestination(for: GroupSanction.self) { sanction in
             SanctionDetailView(

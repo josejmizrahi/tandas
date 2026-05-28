@@ -2,10 +2,11 @@ import SwiftUI
 import RuulCore
 
 /// Detail surface for a single `GroupSanction` (Primitiva 11). Read +
-/// act surface: shows full info + the three actions the caller might
-/// take depending on context — Pagar (monetaria, dirigida a mí, con
-/// obligation abierto), Disputar (abre `DisputeSanctionSheet`), Apelar
-/// (placeholder — Primitiva 16 escalation aterriza con C1).
+/// act surface: shows full info + two context-aware actions — Pagar
+/// (monetaria, dirigida a mí, obligation abierta) y, según quien mire,
+/// **Apelar** (yo soy el sancionado) o **Disputar** (soy tercero).
+/// Ambas abren `DisputeSanctionSheet`; el path de escalada a voto
+/// vive dentro de la disputa resultante (`EscalateDisputeSheet`).
 ///
 /// Closed sanctions (completed/reversed/cancelled) muestran un hint
 /// neutro y ocultan las acciones — la fila sigue navegable para que el
@@ -17,7 +18,6 @@ public struct SanctionDetailView: View {
     let sanction: GroupSanction
 
     @State private var pendingPaySanction: GroupSanction?
-    @State private var isShowingAppeal: Bool = false
 
     public init(
         container: DependencyContainer,
@@ -32,7 +32,8 @@ public struct SanctionDetailView: View {
     }
 
     public var body: some View {
-        List {
+        @Bindable var disputesStore = container.disputesStore
+        return List {
             heroSection
             infoSection
             actionsSection
@@ -53,10 +54,8 @@ public struct SanctionDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $isShowingAppeal) {
-            NavigationStack {
-                AppealSanctionView(sanction: sanction)
-            }
+        .sheet(isPresented: $disputesStore.isDisputeSanctionPresented) {
+            DisputeSanctionSheet(store: disputesStore, groupId: groupId)
         }
     }
 
@@ -174,13 +173,12 @@ public struct SanctionDetailView: View {
                     Button {
                         container.disputesStore.beginDisputingSanction(sanction.id)
                     } label: {
-                        Label(L10n.SanctionDetail.disputeAction, systemImage: "scale.3d")
+                        if isTarget {
+                            Label(L10n.SanctionDetail.appealAction, systemImage: "checkmark.seal")
+                        } else {
+                            Label(L10n.SanctionDetail.disputeAction, systemImage: "scale.3d")
+                        }
                     }
-                }
-                Button {
-                    isShowingAppeal = true
-                } label: {
-                    Label(L10n.SanctionDetail.appealAction, systemImage: "checkmark.seal")
                 }
             } else {
                 Text(L10n.SanctionDetail.closedHint)
@@ -188,6 +186,10 @@ public struct SanctionDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var isTarget: Bool {
+        sanction.targetMembershipId == myMembershipId
     }
 
     /// Pay shows only when the sanction is monetary, targets me, AND
