@@ -78,7 +78,7 @@ struct GroupListView: View {
         .navigationTitle("Mis grupos")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: GroupListItem.self) { group in
-            GroupHomeView(container: container, group: group)
+            GroupTabsHost(container: container, group: group)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

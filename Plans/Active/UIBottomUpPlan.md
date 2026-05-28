@@ -604,7 +604,12 @@ Marcar cada slice cerrado:
 - [x] C3 Contributions (Primitiva 9)
 - [x] C4 Reputation UI admin (Primitiva 12) — read listo
 - [ ] D1 GroupSwitcherSheet
-- [ ] D2 GroupTabsHost
+- [x] D2 GroupTabsHost
+      (TabView interna del grupo con 5 tabs: Inicio/Dinero/Recursos/
+      Miembros/Ajustes. Cada tab es su propio NavigationStack. La
+      Inicio tab reusa GroupHomeView por ahora; el feed situacional
+      `GroupHomeFeedView` queda para slice posterior. GroupListView
+      ahora empuja a GroupTabsHost.)
 - [ ] D3 AppShell (replace RuulAppShell)
 - [ ] D4 DeepLinkRouter
 - [ ] E1 WidgetsExtension

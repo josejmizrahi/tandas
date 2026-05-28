@@ -763,6 +763,15 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum GroupTabs {
+        public static let home      = LocalizedStringResource("group_tabs.home",      defaultValue: "Inicio")
+        public static let money     = LocalizedStringResource("group_tabs.money",     defaultValue: "Dinero")
+        public static let resources = LocalizedStringResource("group_tabs.resources", defaultValue: "Recursos")
+        public static let members   = LocalizedStringResource("group_tabs.members",   defaultValue: "Miembros")
+        public static let settings  = LocalizedStringResource("group_tabs.settings",  defaultValue: "Ajustes")
+        public static let backToGroups = LocalizedStringResource("group_tabs.back",   defaultValue: "Mis grupos")
+    }
+
     public enum NotificationSettings {
         public static let title              = LocalizedStringResource("notification_settings.title",            defaultValue: "Avisos del grupo")
         public static let headline           = LocalizedStringResource("notification_settings.headline",         defaultValue: "Cómo te avisa este grupo")
