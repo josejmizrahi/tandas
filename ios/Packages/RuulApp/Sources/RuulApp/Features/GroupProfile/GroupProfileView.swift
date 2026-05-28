@@ -219,23 +219,39 @@ public struct GroupProfileView: View {
     private var decisionRulesSection: some View {
         Section {
             if let dr = container.decisionRulesStore.rules {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: dr.defaultStyle.systemImageName)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.tint)
-                        .frame(width: 24)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(dr.defaultStyle.label)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(dr.defaultStyle.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if let q = dr.quorumMin {
-                            Text("Quórum mínimo: \(q)")
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: dr.defaultMethod.systemImageName)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.tint)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(dr.defaultMethod.label)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(dr.defaultMethod.subtitle)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                    }
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: dr.defaultLegitimacySource.systemImageName)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(dr.defaultLegitimacySource.label)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(dr.defaultLegitimacySource.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let q = dr.quorumMin {
+                        Text("Quórum mínimo: \(q)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 2)

@@ -249,15 +249,23 @@ public final class DecisionsStore {
 
     // MARK: - Propose
 
-    public func beginProposing() {
+    /// V2-G2 sub-slice 8 — accepts the group's `GroupDecisionRules` so
+    /// the propose sheet inherits `default_method` + `default_legitimacy_source`
+    /// instead of always defaulting to majority/majority. Pass nil from
+    /// surfaces that don't have the store loaded; legitimacy auto-sync
+    /// stays on so a method change still re-syncs the source unless the
+    /// proposer touches it.
+    public func beginProposing(defaults: GroupDecisionRules? = nil) {
         draftTitle = ""
         draftBody = ""
         // Initialize draftMethod + draftLegitimacySource *before* we
         // flip auto-sync on. The didSet observers on both properties
         // turn auto-sync off on every assignment, so we set the values
         // first and enable tracking last.
-        draftMethod = .majority
-        draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
+        let method = defaults?.defaultMethod ?? .majority
+        let legitimacy = defaults?.defaultLegitimacySource ?? LegitimacySource.defaultFor(method: method)
+        draftMethod = method
+        draftLegitimacySource = legitimacy
         draftLegitimacyAutoSync = true
         draftType = .proposal
         draftReferenceId = nil

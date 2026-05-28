@@ -15,7 +15,29 @@ public final class DecisionRulesStore {
     /// Drives a single `EditDecisionRulesView` sheet. Flipped by
     /// `beginEditing()` / `saveDraft(...)`.
     public var isEditPresented: Bool = false
-    public var draftStyle: DecisionStyle = .majority
+    /// V2-G2 sub-slice 8 — canonical pair (`DecisionMethod`,
+    /// `LegitimacySource`). Legitimacy auto-syncs to the method's
+    /// canonical default until the founder touches the legitimacy
+    /// picker explicitly; mirrors `DecisionsStore`'s propose-draft
+    /// behavior so the surface feels consistent.
+    public var draftMethod: DecisionMethod = .majority {
+        didSet {
+            if draftLegitimacyAutoSync {
+                isInternallySettingLegitimacy = true
+                draftLegitimacySource = LegitimacySource.defaultFor(method: draftMethod)
+                isInternallySettingLegitimacy = false
+            }
+        }
+    }
+    public var draftLegitimacySource: LegitimacySource = .majority {
+        didSet {
+            if !isInternallySettingLegitimacy {
+                draftLegitimacyAutoSync = false
+            }
+        }
+    }
+    private var draftLegitimacyAutoSync: Bool = true
+    private var isInternallySettingLegitimacy: Bool = false
     public var draftQuorum: Int? = nil
     public var draftNotes: String = ""
 
@@ -33,13 +55,18 @@ public final class DecisionRulesStore {
         return !rules.isDefault
     }
 
-    /// Useful for tighter UI copy ("Sin definir" vs el estilo elegido).
+    /// V2-G2 sub-slice 8 — surface label uses the canonical method.
+    public var resolvedMethod: DecisionMethod {
+        rules?.defaultMethod ?? .majority
+    }
+
+    /// Useful for legacy displays that still render by `DecisionStyle`.
     public var resolvedStyle: DecisionStyle {
         rules?.defaultStyle ?? .majority
     }
 
     public var canSaveDraft: Bool {
-        // Style is always valid (enum-typed); only quorum has a floor.
+        // Method + legitimacy are always valid (enum-typed); only quorum has a floor.
         guard let q = draftQuorum else { return true }
         return q >= 1
     }
@@ -72,15 +99,22 @@ public final class DecisionRulesStore {
     }
 
     public func beginEditing() {
+        // Initialize the pair *before* flipping auto-sync on. The didSet
+        // observers on both properties turn auto-sync off on every
+        // assignment, so we set the values first and re-enable tracking
+        // last (mirrors `DecisionsStore.beginProposing`).
         if let rules {
-            draftStyle = rules.defaultStyle
+            draftMethod = rules.defaultMethod
+            draftLegitimacySource = rules.defaultLegitimacySource
             draftQuorum = rules.quorumMin
             draftNotes = rules.trimmedNotes ?? ""
         } else {
-            draftStyle = .majority
+            draftMethod = .majority
+            draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
             draftQuorum = nil
             draftNotes = ""
         }
+        draftLegitimacyAutoSync = true
         errorMessage = nil
         isEditPresented = true
     }
@@ -94,7 +128,8 @@ public final class DecisionRulesStore {
         do {
             let saved = try await repository.setDecisionRules(
                 groupId: groupId,
-                defaultStyle: draftStyle,
+                defaultMethod: draftMethod,
+                defaultLegitimacySource: draftLegitimacySource,
                 quorumMin: draftQuorum,
                 notes: draftNotes
             )
@@ -111,7 +146,9 @@ public final class DecisionRulesStore {
     }
 
     public func clearDraft() {
-        draftStyle = .majority
+        draftMethod = .majority
+        draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
+        draftLegitimacyAutoSync = true
         draftQuorum = nil
         draftNotes = ""
         errorMessage = nil

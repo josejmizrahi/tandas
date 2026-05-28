@@ -26,10 +26,13 @@ struct DecisionRulesStoreTests {
     @Test("refresh loads rules and lands on .loaded")
     func refreshHappyPath() async {
         let (store, mock) = await makeStore(initial: GroupDecisionRules(
-            groupId: groupId, defaultStyle: .unanimity, quorumMin: 4, notes: nil, isDefault: false
+            groupId: groupId, defaultStyle: .unanimity,
+            defaultMethod: .consensus, defaultLegitimacySource: .unanimity,
+            quorumMin: 4, notes: nil, isDefault: false
         ))
         await store.refresh(groupId: groupId)
-        #expect(store.rules?.defaultStyle == .unanimity)
+        #expect(store.rules?.defaultMethod == .consensus)
+        #expect(store.rules?.defaultLegitimacySource == .unanimity)
         #expect(store.rules?.quorumMin == 4)
         #expect(store.phase == .loaded)
         let recorded = await mock.recorded
@@ -63,13 +66,13 @@ struct DecisionRulesStoreTests {
         #expect(explicitStore.hasExplicitRules)
     }
 
-    @Test("resolvedStyle falls back to .majority when nothing is loaded yet")
-    func resolvedStyleFallback() async {
+    @Test("resolvedMethod falls back to .majority when nothing is loaded yet")
+    func resolvedMethodFallback() async {
         let mock = MockRuulRPCClient()
         let store = DecisionRulesStore(
             repository: CanonicalDecisionRulesRepository(rpc: mock)
         )
-        #expect(store.resolvedStyle == .majority)
+        #expect(store.resolvedMethod == .majority)
     }
 
     // MARK: - Editing
@@ -77,28 +80,48 @@ struct DecisionRulesStoreTests {
     @Test("beginEditing prefills draft from current rules")
     func beginEditingPrefills() async {
         let (store, _) = await makeStore(initial: GroupDecisionRules(
-            groupId: groupId, defaultStyle: .consensus, quorumMin: 2,
-            notes: "Lo platicamos sin votar", isDefault: false
+            groupId: groupId, defaultStyle: .consensus,
+            defaultMethod: .consent, defaultLegitimacySource: .committee,
+            quorumMin: 2, notes: "Lo platicamos sin votar", isDefault: false
         ))
         await store.refresh(groupId: groupId)
 
         store.beginEditing()
-        #expect(store.draftStyle == .consensus)
+        #expect(store.draftMethod == .consent)
+        #expect(store.draftLegitimacySource == .committee)
         #expect(store.draftQuorum == 2)
         #expect(store.draftNotes == "Lo platicamos sin votar")
         #expect(store.isEditPresented)
     }
 
-    @Test("beginEditing without prior rules starts at .majority + no quorum")
+    @Test("beginEditing without prior rules starts at majority/majority + no quorum")
     func beginEditingFromScratch() async {
         let mock = MockRuulRPCClient()
         let store = DecisionRulesStore(
             repository: CanonicalDecisionRulesRepository(rpc: mock)
         )
         store.beginEditing()
-        #expect(store.draftStyle == .majority)
+        #expect(store.draftMethod == .majority)
+        #expect(store.draftLegitimacySource == .majority)
         #expect(store.draftQuorum == nil)
         #expect(store.draftNotes.isEmpty)
+    }
+
+    @Test("changing draftMethod auto-syncs draftLegitimacySource until user overrides")
+    func methodAutoSyncsLegitimacy() async {
+        let (store, _) = await makeStore()
+        store.beginEditing()
+
+        store.draftMethod = .consensus
+        #expect(store.draftLegitimacySource == .unanimity)
+
+        store.draftMethod = .weighted
+        #expect(store.draftLegitimacySource == .expert)
+
+        // Explicit override: from now on the method should NOT re-sync.
+        store.draftLegitimacySource = .tradition
+        store.draftMethod = .admin
+        #expect(store.draftLegitimacySource == .tradition)
     }
 
     @Test("canSaveDraft rejects quorum < 1")
@@ -116,19 +139,20 @@ struct DecisionRulesStoreTests {
     func saveSuccess() async {
         let (store, mock) = await makeStore()
         let returned = GroupDecisionRules(
-            groupId: groupId, defaultStyle: .unanimity, quorumMin: 5,
-            notes: "Todo a favor", isDefault: false
+            groupId: groupId, defaultStyle: .unanimity,
+            defaultMethod: .consensus, defaultLegitimacySource: .unanimity,
+            quorumMin: 5, notes: "Todo a favor", isDefault: false
         )
         await mock.setSetDecisionRulesStub(.success(returned))
 
         store.beginEditing()
-        store.draftStyle = .unanimity
+        store.draftMethod = .consensus
         store.draftQuorum = 5
         store.draftNotes = "Todo a favor"
         let ok = await store.saveDraft(groupId: groupId)
 
         #expect(ok)
-        #expect(store.rules?.defaultStyle == .unanimity)
+        #expect(store.rules?.defaultMethod == .consensus)
         #expect(store.rules?.quorumMin == 5)
         #expect(store.isEditPresented == false)
     }
@@ -139,7 +163,7 @@ struct DecisionRulesStoreTests {
         await mock.setSetDecisionRulesStub(.failure(.backend(.lacksPermission(permission: "group.update", groupId: groupId))))
 
         store.beginEditing()
-        store.draftStyle = .supermajority
+        store.draftMethod = .supermajority
         let ok = await store.saveDraft(groupId: groupId)
 
         #expect(ok == false)
@@ -147,23 +171,30 @@ struct DecisionRulesStoreTests {
         #expect(store.isEditPresented)
     }
 
-    @Test("saveDraft trims notes via the repository (no leading/trailing whitespace on the wire)")
-    func saveDraftTrimsNotes() async {
+    @Test("saveDraft sends method + legitimacy + legacy style on the wire")
+    func saveDraftWiresCanonicalPair() async {
         let (store, mock) = await makeStore()
         await mock.setSetDecisionRulesStub(.success(
-            GroupDecisionRules(groupId: groupId, defaultStyle: .majority,
-                               notes: "Limpio", isDefault: false)
+            GroupDecisionRules(
+                groupId: groupId, defaultStyle: .consensus,
+                defaultMethod: .consent, defaultLegitimacySource: .committee,
+                notes: "Limpio", isDefault: false
+            )
         ))
 
         store.beginEditing()
-        store.draftStyle = .majority
+        store.draftMethod = .consent
+        store.draftLegitimacySource = .committee
         store.draftNotes = "   Limpio  "
         _ = await store.saveDraft(groupId: groupId)
 
         let recorded = await mock.recorded
         let saw = recorded.contains { call in
             if case .setDecisionRules(let input) = call {
-                return input.pNotes == "Limpio"
+                return input.pDefaultMethod == "consent"
+                    && input.pDefaultLegitimacySource == "committee"
+                    && input.pDefaultStyle == "consensus"
+                    && input.pNotes == "Limpio"
             }
             return false
         }

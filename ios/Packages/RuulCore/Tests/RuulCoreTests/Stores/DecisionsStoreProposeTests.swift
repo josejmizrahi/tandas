@@ -111,6 +111,33 @@ struct DecisionsStoreProposeTests {
         #expect(store.draftLegitimacySource == .committee)
     }
 
+    @Test("beginProposing(defaults:) prefills draft from the group's decision rules (V2-G2 sub-slice 8)")
+    func beginProposingInheritsGroupDefaults() async {
+        let (store, _) = await DecisionsStoreFixture.makeStore()
+        let defaults = GroupDecisionRules(
+            groupId: groupId,
+            defaultStyle: .consensus,
+            defaultMethod: .consent,
+            defaultLegitimacySource: .committee,
+            isDefault: false
+        )
+        store.beginProposing(defaults: defaults)
+        #expect(store.draftMethod == .consent)
+        #expect(store.draftLegitimacySource == .committee)
+
+        // Auto-sync still works: changing the method re-derives legitimacy.
+        store.draftMethod = .weighted
+        #expect(store.draftLegitimacySource == .expert)
+    }
+
+    @Test("beginProposing(defaults: nil) falls back to majority/majority")
+    func beginProposingFallsBackWhenNoDefaults() async {
+        let (store, _) = await DecisionsStoreFixture.makeStore()
+        store.beginProposing(defaults: nil)
+        #expect(store.draftMethod == .majority)
+        #expect(store.draftLegitimacySource == .majority)
+    }
+
     @Test("saveDraftDecision forwards draftLegitimacySource to start_vote (V2-G1)")
     func saveDraftDecisionForwardsLegitimacy() async {
         let (store, mock) = await DecisionsStoreFixture.makeStore()

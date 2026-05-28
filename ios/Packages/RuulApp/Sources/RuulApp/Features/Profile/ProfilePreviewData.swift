@@ -146,11 +146,17 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         GroupDecisionRules(groupId: groupId, defaultStyle: .majority, isDefault: true)
     }
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules {
-        GroupDecisionRules(groupId: input.pGroupId,
-                           defaultStyle: DecisionStyle(rawValue: input.pDefaultStyle) ?? .majority,
-                           quorumMin: input.pQuorumMin,
-                           notes: input.pNotes,
-                           isDefault: false)
+        let method = input.pDefaultMethod.flatMap { DecisionMethod(rawValue: $0) }
+            ?? DecisionMethod.forStyle(DecisionStyle(rawValue: input.pDefaultStyle) ?? .majority)
+        let legitimacy = input.pDefaultLegitimacySource.flatMap { LegitimacySource(rawValue: $0) }
+            ?? LegitimacySource.defaultFor(method: method)
+        return GroupDecisionRules(groupId: input.pGroupId,
+                                  defaultStyle: DecisionStyle(rawValue: input.pDefaultStyle) ?? method.legacyStyle,
+                                  defaultMethod: method,
+                                  defaultLegitimacySource: legitimacy,
+                                  quorumMin: input.pQuorumMin,
+                                  notes: input.pNotes,
+                                  isDefault: false)
     }
     func memberReputationEvents(groupId: UUID, subjectMembershipId: UUID, limit: Int) async throws -> [GroupReputationEvent] { [] }
     func groupSanctionsActive(groupId: UUID, limit: Int) async throws -> [GroupSanction] { [] }

@@ -1556,19 +1556,34 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
     public let pDefaultStyle: String
     public let pQuorumMin: Int?
     public let pNotes: String?
+    /// V2-G2 sub-slice 8 — canonical method (`DecisionMethod`, 8 values).
+    public let pDefaultMethod: String?
+    /// V2-G2 sub-slice 8 — canonical legitimacy (`LegitimacySource`, 10 values).
+    public let pDefaultLegitimacySource: String?
 
     enum CodingKeys: String, CodingKey {
-        case pGroupId      = "p_group_id"
-        case pDefaultStyle = "p_default_style"
-        case pQuorumMin    = "p_quorum_min"
-        case pNotes        = "p_notes"
+        case pGroupId                 = "p_group_id"
+        case pDefaultStyle            = "p_default_style"
+        case pQuorumMin               = "p_quorum_min"
+        case pNotes                   = "p_notes"
+        case pDefaultMethod           = "p_default_method"
+        case pDefaultLegitimacySource = "p_default_legitimacy_source"
     }
 
-    public init(pGroupId: UUID, pDefaultStyle: String, pQuorumMin: Int? = nil, pNotes: String? = nil) {
+    public init(
+        pGroupId: UUID,
+        pDefaultStyle: String,
+        pQuorumMin: Int? = nil,
+        pNotes: String? = nil,
+        pDefaultMethod: String? = nil,
+        pDefaultLegitimacySource: String? = nil
+    ) {
         self.pGroupId = pGroupId
         self.pDefaultStyle = pDefaultStyle
         self.pQuorumMin = pQuorumMin
         self.pNotes = pNotes
+        self.pDefaultMethod = pDefaultMethod
+        self.pDefaultLegitimacySource = pDefaultLegitimacySource
     }
 
     /// Same rationale as `RecordExpenseParams.encode(to:)` — emit
@@ -1580,6 +1595,8 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
         try c.encode(pDefaultStyle, forKey: .pDefaultStyle)
         try c.encodeOrNil(pQuorumMin, forKey: .pQuorumMin)
         try c.encodeOrNil(pNotes, forKey: .pNotes)
+        try c.encodeOrNil(pDefaultMethod, forKey: .pDefaultMethod)
+        try c.encodeOrNil(pDefaultLegitimacySource, forKey: .pDefaultLegitimacySource)
     }
 }
 

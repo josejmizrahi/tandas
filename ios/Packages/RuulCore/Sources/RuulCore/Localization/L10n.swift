@@ -322,6 +322,11 @@ public enum L10n {
         public static let editButton         = LocalizedStringResource("decision_rules.edit",             defaultValue: "Cambiar")
         public static let editTitle          = LocalizedStringResource("decision_rules.edit.title",       defaultValue: "Cómo decidimos")
         public static let styleSection       = LocalizedStringResource("decision_rules.style.section",    defaultValue: "Estilo de decisión")
+        /// V2-G2 sub-slice 8 — canonical pickers replacing the legacy style row.
+        public static let methodSection      = LocalizedStringResource("decision_rules.method.section",   defaultValue: "Cómo decidimos")
+        public static let methodFooter       = LocalizedStringResource("decision_rules.method.footer",    defaultValue: "Se usa como default al proponer una decisión nueva.")
+        public static let legitimacySection  = LocalizedStringResource("decision_rules.legitimacy.section", defaultValue: "De dónde viene la autoridad")
+        public static let legitimacyFooter   = LocalizedStringResource("decision_rules.legitimacy.footer",  defaultValue: "Qué le da peso a esta decisión más allá del método de conteo.")
         public static let quorumSection      = LocalizedStringResource("decision_rules.quorum.section",   defaultValue: "Quórum mínimo")
         public static let quorumLabel        = LocalizedStringResource("decision_rules.quorum.label",     defaultValue: "Miembros mínimos para decidir")
         public static let quorumNone         = LocalizedStringResource("decision_rules.quorum.none",      defaultValue: "Sin quórum mínimo")

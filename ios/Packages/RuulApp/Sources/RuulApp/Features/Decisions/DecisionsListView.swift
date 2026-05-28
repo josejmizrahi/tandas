@@ -19,6 +19,10 @@ public struct DecisionsListView: View {
     let mandatesStore: MandatesStore?
     let membersStore: MembersStore?
     let rulesStore: RulesStore?
+    /// V2-G2 sub-slice 8 — when present, the propose sheet inherits the
+    /// group's `default_method` + `default_legitimacy_source` instead of
+    /// hardcoded majority/majority.
+    let decisionRulesStore: DecisionRulesStore?
 
     @State private var filter: DecisionFilter = .open
 
@@ -29,7 +33,8 @@ public struct DecisionsListView: View {
         sanctionsStore: SanctionsStore? = nil,
         mandatesStore: MandatesStore? = nil,
         membersStore: MembersStore? = nil,
-        rulesStore: RulesStore? = nil
+        rulesStore: RulesStore? = nil,
+        decisionRulesStore: DecisionRulesStore? = nil
     ) {
         self.store = store
         self.groupId = groupId
@@ -38,6 +43,7 @@ public struct DecisionsListView: View {
         self.mandatesStore = mandatesStore
         self.membersStore = membersStore
         self.rulesStore = rulesStore
+        self.decisionRulesStore = decisionRulesStore
     }
 
     public var body: some View {
@@ -53,7 +59,7 @@ public struct DecisionsListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    store.beginProposing()
+                    store.beginProposing(defaults: decisionRulesStore?.rules)
                 } label: {
                     Label(L10n.Decisions.addButton, systemImage: "plus")
                 }
@@ -82,7 +88,9 @@ public struct DecisionsListView: View {
             )
         }
         .task {
-            await store.refreshIfNeeded(groupId: groupId)
+            async let decisions: Void = store.refreshIfNeeded(groupId: groupId)
+            async let rules: Void = decisionRulesStore?.refreshIfNeeded(groupId: groupId) ?? ()
+            _ = await (decisions, rules)
         }
     }
 
@@ -132,7 +140,7 @@ public struct DecisionsListView: View {
                 Text(L10n.Decisions.emptyDescription)
             } actions: {
                 Button {
-                    store.beginProposing()
+                    store.beginProposing(defaults: decisionRulesStore?.rules)
                 } label: {
                     Text(L10n.Decisions.addButton)
                 }

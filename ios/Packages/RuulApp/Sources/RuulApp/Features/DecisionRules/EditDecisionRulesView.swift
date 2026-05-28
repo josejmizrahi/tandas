@@ -15,10 +15,27 @@ struct EditDecisionRulesView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(L10n.DecisionRules.styleSection) {
-                    ForEach(DecisionStyle.displayOrder, id: \.self) { style in
-                        styleRow(style)
+                // V2-G2 sub-slice 8 — canonical method + legitimacy live
+                // here (group-level config). Per-decision sheets pick
+                // these as defaults when proposing.
+                Section {
+                    ForEach(DecisionMethod.selectable) { method in
+                        methodRow(method)
                     }
+                } header: {
+                    Text(L10n.DecisionRules.methodSection)
+                } footer: {
+                    Text(L10n.DecisionRules.methodFooter)
+                }
+
+                Section {
+                    ForEach(LegitimacySource.selectable) { source in
+                        legitimacyRow(source)
+                    }
+                } header: {
+                    Text(L10n.DecisionRules.legitimacySection)
+                } footer: {
+                    Text(L10n.DecisionRules.legitimacyFooter)
                 }
 
                 Section(L10n.DecisionRules.quorumSection) {
@@ -94,32 +111,62 @@ struct EditDecisionRulesView: View {
     }
 
     @ViewBuilder
-    private func styleRow(_ style: DecisionStyle) -> some View {
+    private func methodRow(_ method: DecisionMethod) -> some View {
         Button {
-            store.draftStyle = style
+            store.draftMethod = method
         } label: {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: style.systemImageName)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(store.draftStyle == style ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                    .frame(width: 24)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(style.label)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text(style.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 8)
-                if store.draftStyle == style {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-            }
-            .contentShape(Rectangle())
+            optionRowContent(
+                systemImage: method.systemImageName,
+                label: method.label,
+                subtitle: method.subtitle,
+                isSelected: store.draftMethod == method
+            )
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func legitimacyRow(_ source: LegitimacySource) -> some View {
+        Button {
+            store.draftLegitimacySource = source
+        } label: {
+            optionRowContent(
+                systemImage: source.systemImageName,
+                label: source.label,
+                subtitle: source.subtitle,
+                isSelected: store.draftLegitimacySource == source
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func optionRowContent(
+        systemImage: String,
+        label: LocalizedStringResource,
+        subtitle: LocalizedStringResource,
+        isSelected: Bool
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.medium))
+                .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            }
+        }
+        .contentShape(Rectangle())
     }
 
     private func save() async {

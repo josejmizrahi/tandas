@@ -17,9 +17,14 @@ public struct CanonicalDecisionRulesRepository: Sendable {
 
     /// Trims notes before sending so the wire payload is canonical;
     /// the backend re-trims and stores null when empty.
+    ///
+    /// V2-G2 sub-slice 8 — canonical surface is `(method, legitimacy)`.
+    /// `defaultStyle` is still sent for the legacy column but the
+    /// backend derives it from `method` if absent.
     public func setDecisionRules(
         groupId: UUID,
-        defaultStyle: DecisionStyle,
+        defaultMethod: DecisionMethod,
+        defaultLegitimacySource: LegitimacySource,
         quorumMin: Int? = nil,
         notes: String? = nil
     ) async throws -> GroupDecisionRules {
@@ -30,9 +35,11 @@ public struct CanonicalDecisionRulesRepository: Sendable {
         }()
         let input = SetDecisionRulesInput(
             pGroupId: groupId,
-            pDefaultStyle: defaultStyle.rawValue,
+            pDefaultStyle: defaultMethod.legacyStyle.rawValue,
             pQuorumMin: quorumMin,
-            pNotes: cleanedNotes
+            pNotes: cleanedNotes,
+            pDefaultMethod: defaultMethod.rawValue,
+            pDefaultLegitimacySource: defaultLegitimacySource.rawValue
         )
         return try await rpc.setDecisionRules(input)
     }
