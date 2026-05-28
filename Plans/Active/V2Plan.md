@@ -370,7 +370,7 @@ desconectadas de dinero, reglas decorativas, votos triviales).
 - [ ] V2-G2 Decision types con outcome handlers (rule_change / membership / mandate_grant / mandate_revoke / sanction_appeal / dissolution / budget)
 - [ ] V2-G3 Rule engine activation (sync eval + shapes + recursion guards + audit)
 - [ ] V2-G4 Sanction ↔ Money deep (pago parcial / plan de pago / auto-pay from fund / convert to service)
-- [~] V2-G5 Mandate ↔ Action sheets — sub-slice money (RecordExpense + RecordSettlement) cerrado; falta PaySanction / PoolCharge / VoteSheet / IssueSanction + MoneyMovementDetailView lectura
+- [x] V2-G5 Mandate ↔ Action sheets — write: RecordExpense / RecordSettlement / PaySanction (mig 20260528020000 + read en MoneyMovementDetailView). VoteSheet + IssueSanction quedan fuera (backend `cast_vote` / `issue_sanction` no aceptan `p_mandate_id` aún; pertenecen a V2-G9 vote-weights / sanction-on-behalf con migration aparte)
 - [x] V2-G6 Norm → Rule promotion — mig 20260528010000 + PromoteNormToRuleSheet
 - [x] V2-G7 Cross-primitive search & filters — chip strip + searchable + tap→DeepLinkRouter (client-side, sin RPC nueva)
 - [ ] V2-G8 Engine-driven UX (consequences visible)

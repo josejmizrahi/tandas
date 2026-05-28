@@ -98,6 +98,9 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
     public let description: String?
     public let occurredAt: Date?
     public let createdAt: Date?
+    /// V2-G5 — mandate this movement was recorded under, when the
+    /// actor was acting on someone's behalf. nil = self-acting.
+    public let mandateId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case id                       = "transaction_id"
@@ -124,6 +127,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         case description
         case occurredAt               = "occurred_at"
         case createdAt                = "created_at"
+        case mandateId                = "mandate_id"
     }
 
     public init(
@@ -150,7 +154,8 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         splitMode: String? = nil,
         description: String? = nil,
         occurredAt: Date? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        mandateId: UUID? = nil
     ) {
         self.id = id
         self.seq = seq
@@ -176,6 +181,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         self.description = description
         self.occurredAt = occurredAt
         self.createdAt = createdAt
+        self.mandateId = mandateId
     }
 
     /// Tolerant decode: unknown `transaction_type` strings drop into
@@ -216,6 +222,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         self.description = try c.decodeIfPresent(String.self, forKey: .description)
         self.occurredAt = try c.decodeIfPresent(Date.self, forKey: .occurredAt)
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        self.mandateId = try c.decodeIfPresent(UUID.self, forKey: .mandateId)
     }
 }
 

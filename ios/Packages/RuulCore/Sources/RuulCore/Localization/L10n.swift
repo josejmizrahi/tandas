@@ -463,6 +463,13 @@ public enum L10n {
         public static let recordedAtLabel    = LocalizedStringResource("money_movement_detail.recorded_at",        defaultValue: "Registrado")
         public static let inKindLabel        = LocalizedStringResource("money_movement_detail.in_kind",            defaultValue: "En especie")
         public static let reversalNotice     = LocalizedStringResource("money_movement_detail.reversal_notice",    defaultValue: "Este movimiento es una reversión de uno anterior.")
+
+        public static let mandateSection        = LocalizedStringResource("money_movement_detail.section.mandate",     defaultValue: "Actuó por mandato")
+        public static let mandateRowLabel       = LocalizedStringResource("money_movement_detail.mandate",             defaultValue: "Mandato")
+        public static let mandateOnBehalfOf     = LocalizedStringResource("money_movement_detail.mandate.behalf",      defaultValue: "En nombre de")
+        public static let mandateType           = LocalizedStringResource("money_movement_detail.mandate.type",        defaultValue: "Tipo de mandato")
+        public static let mandateEndsAt         = LocalizedStringResource("money_movement_detail.mandate.ends_at",     defaultValue: "Vence")
+        public static let mandateInactiveHint   = LocalizedStringResource("money_movement_detail.mandate.inactive",    defaultValue: "El mandato ya no está activo. Se conserva en el registro.")
     }
 
     public enum ReputationFeed {

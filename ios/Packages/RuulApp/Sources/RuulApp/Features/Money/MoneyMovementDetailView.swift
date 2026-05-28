@@ -8,15 +8,51 @@ import RuulCore
 struct MoneyMovementDetailView: View {
     let movement: MoneyMovement
     let myMembershipId: UUID
+    /// V2-G5 — when provided, the view can cross-reference
+    /// `movement.mandateId` against active mandates to surface the
+    /// "actuó por mandato de…" context. Optional so previews and
+    /// non-money callers can pass nil.
+    let mandatesStore: MandatesStore?
+
+    init(
+        movement: MoneyMovement,
+        myMembershipId: UUID,
+        mandatesStore: MandatesStore? = nil
+    ) {
+        self.movement = movement
+        self.myMembershipId = myMembershipId
+        self.mandatesStore = mandatesStore
+    }
 
     var body: some View {
         List {
             heroSection
             partiesSection
+            mandateSection
             metaSection
         }
         .navigationTitle(L10n.MoneyMovementDetail.title)
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            // Lazy-refresh so the cross-reference works even if the
+            // caller didn't pre-load mandates (e.g. opening detail
+            // straight from a deep link before the surface has run
+            // its own refresh).
+            if let mandatesStore {
+                await mandatesStore.refreshIfNeeded(groupId: movement.groupId)
+            }
+        }
+    }
+
+    /// Resolved mandate row if MandatesStore has it cached. Nil when
+    /// `movement.mandateId` is nil, when the store wasn't provided,
+    /// or when the mandate has already been revoked / expired (the
+    /// `group_mandates_active` RPC excludes those rows).
+    private var resolvedMandate: GroupMandate? {
+        guard let mandatesStore, let mandateId = movement.mandateId else {
+            return nil
+        }
+        return mandatesStore.mandates.first(where: { $0.id == mandateId })
     }
 
     @ViewBuilder
@@ -99,6 +135,53 @@ struct MoneyMovementDetailView: View {
         } label: {
             Text(label)
         }
+    }
+
+    @ViewBuilder
+    private var mandateSection: some View {
+        if movement.mandateId != nil {
+            Section(L10n.MoneyMovementDetail.mandateSection) {
+                if let mandate = resolvedMandate {
+                    LabeledContent {
+                        Text(mandate.type.label)
+                    } label: {
+                        Text(L10n.MoneyMovementDetail.mandateType)
+                    }
+                    if let principal = principalDescription(for: mandate) {
+                        LabeledContent {
+                            Text(principal)
+                        } label: {
+                            Text(L10n.MoneyMovementDetail.mandateOnBehalfOf)
+                        }
+                    }
+                    if let endsAt = mandate.endsAt {
+                        LabeledContent {
+                            Text(endsAt, format: .dateTime.day().month().year())
+                        } label: {
+                            Text(L10n.MoneyMovementDetail.mandateEndsAt)
+                        }
+                    }
+                } else if let mandateId = movement.mandateId {
+                    LabeledContent {
+                        Text(mandateId.uuidString.prefix(8) + "…")
+                            .monospaced()
+                            .font(.subheadline)
+                    } label: {
+                        Text(L10n.MoneyMovementDetail.mandateRowLabel)
+                    }
+                    Text(L10n.MoneyMovementDetail.mandateInactiveHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// Renders "Por el grupo" / "Por un comité" / "Por <miembro>".
+    /// `principal_id` resolution against group members is a future
+    /// slice — Foundation MandatesStore doesn't pre-join the name yet.
+    private func principalDescription(for mandate: GroupMandate) -> String? {
+        String(localized: mandate.principalType.label)
     }
 
     @ViewBuilder

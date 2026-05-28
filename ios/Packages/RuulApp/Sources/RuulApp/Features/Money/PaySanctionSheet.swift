@@ -24,6 +24,8 @@ struct PaySanctionSheet: View {
     @State private var isSubmitting: Bool = false
     @State private var error: UserFacingError?
     @State private var clientId: String?
+    /// V2-G5 — see RecordExpenseSheet.selectedMandateId.
+    @State private var selectedMandateId: UUID?
 
     init(
         container: DependencyContainer,
@@ -73,9 +75,17 @@ struct PaySanctionSheet: View {
                     )
                     .lineLimit(1...4)
                 }
+
+                MandateBehalfPickerSection(
+                    selection: $selectedMandateId,
+                    availableMandates: availableMandates
+                )
             }
             .navigationTitle(L10n.PaySanction.title)
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await container.mandatesStore.refreshIfNeeded(groupId: groupId)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: L10n.PaySanction.cancelButton)) {
@@ -109,6 +119,13 @@ struct PaySanctionSheet: View {
         }
     }
 
+    private var availableMandates: [GroupMandate] {
+        container.mandatesStore.availableMandates(
+            representativeMembershipId: myMembershipId,
+            scope: .money
+        )
+    }
+
     private var parsedAmount: Decimal? {
         let normalized = amountText
             .replacingOccurrences(of: ",", with: ".")
@@ -130,7 +147,8 @@ struct PaySanctionSheet: View {
             paidByMembershipId: myMembershipId,
             target: .pool,
             amount: amount,
-            notes: notesClean.isEmpty ? nil : notesClean
+            notes: notesClean.isEmpty ? nil : notesClean,
+            mandateId: selectedMandateId
         )
         do {
             _ = try await container.moneyRepository.recordOwnSettlement(draft, clientId: clientId)

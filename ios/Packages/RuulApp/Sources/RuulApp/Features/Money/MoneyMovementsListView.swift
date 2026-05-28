@@ -25,7 +25,8 @@ struct MoneyMovementsListView: View {
         .navigationDestination(item: $pendingDetail) { movement in
             MoneyMovementDetailView(
                 movement: movement,
-                myMembershipId: myMembershipId
+                myMembershipId: myMembershipId,
+                mandatesStore: container.mandatesStore
             )
         }
         .task {

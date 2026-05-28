@@ -87,6 +87,42 @@ struct MoneyMovementTests {
         #expect(m.type == .settlementPayment)
     }
 
+    @Test("mandate_id decodes from group_money_movements row (V2-G5)")
+    func mandateIdDecode() throws {
+        let mandateId = UUID()
+        let json = """
+        {
+          "transaction_id":   "\(UUID().uuidString)",
+          "seq":              9,
+          "group_id":         "\(UUID().uuidString)",
+          "transaction_type": "expense",
+          "amount":           "100",
+          "unit":             "MXN",
+          "in_kind":          false,
+          "mandate_id":       "\(mandateId.uuidString)"
+        }
+        """.data(using: .utf8)!
+        let m = try JSONDecoder().decode(MoneyMovement.self, from: json)
+        #expect(m.mandateId == mandateId)
+    }
+
+    @Test("mandate_id is nil when absent in the row")
+    func mandateIdAbsent() throws {
+        let json = """
+        {
+          "transaction_id":   "\(UUID().uuidString)",
+          "seq":              10,
+          "group_id":         "\(UUID().uuidString)",
+          "transaction_type": "settlement_payment",
+          "amount":           "50",
+          "unit":             "MXN",
+          "in_kind":          false
+        }
+        """.data(using: .utf8)!
+        let m = try JSONDecoder().decode(MoneyMovement.self, from: json)
+        #expect(m.mandateId == nil)
+    }
+
     @Test("reversed_entry_id flips isReversal")
     func reversalHint() throws {
         let json = """
