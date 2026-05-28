@@ -18,6 +18,12 @@ public struct RuulAppShell: View {
     /// `nil`. Synced into `CurrentGroupStore` whenever it changes.
     @State private var currentGroupId: UUID?
 
+    /// D4 — pending entity-scoped destination opened from a deep link.
+    /// Drives a sheet at the shell level so detail surfaces don't have
+    /// to live inside the normal tab-NavigationStack hierarchy when the
+    /// app is cold-launched into them.
+    @State private var pendingDecision: PendingDecision?
+
     public init(container: DependencyContainer = DependencyContainer()) {
         _container = State(initialValue: container)
     }
@@ -26,6 +32,9 @@ public struct RuulAppShell: View {
         content
             .task {
                 container.bootstrap()
+            }
+            .onOpenURL { url in
+                container.deepLinkRouter.handle(url)
             }
     }
 
@@ -78,6 +87,71 @@ public struct RuulAppShell: View {
             await container.groupsStore.refresh()
             await container.profileStore.refreshIfNeeded()
         }
+        // D4 — try to apply a pending deep link whenever it changes
+        // OR whenever the groups list resolves (a cold-launched link
+        // arrives before the groups query completes).
+        .onChange(of: container.deepLinkRouter.pending) { _, _ in
+            applyPendingDeepLink()
+        }
+        .onChange(of: container.groupsStore.groups) { _, _ in
+            applyPendingDeepLink()
+        }
+        .sheet(item: $pendingDecision) { pending in
+            NavigationStack {
+                DecisionDetailView(
+                    store: container.decisionsStore,
+                    groupId: pending.groupId,
+                    decisionId: pending.decisionId,
+                    initial: GroupDecisionSummary(
+                        id: pending.decisionId,
+                        groupId: pending.groupId,
+                        title: String(localized: L10n.Decisions.title)
+                    )
+                )
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cerrar") { pendingDecision = nil }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Resolves the current `DeepLinkRouter.pending` link against the
+    /// loaded groups list and applies it: switches the focused group,
+    /// then triggers any entity-specific destination (e.g. the
+    /// decision sheet). Silently no-ops if the target group isn't in
+    /// the caller's list — we'd rather drop unreachable links than
+    /// flash an error.
+    private func applyPendingDeepLink() {
+        guard let link = container.deepLinkRouter.pending else { return }
+        let groups = container.groupsStore.groups
+        guard let target = groups.first(where: { $0.id == link.groupId }) else {
+            // Groups still loading — leave `pending` set so the next
+            // `onChange(of: groups)` can retry. If the user really
+            // isn't a member, the link will never resolve and stays
+            // buffered until the next launch.
+            return
+        }
+        if currentGroupId != target.id {
+            currentGroupId = target.id
+            Task { await container.currentGroupStore.setGroup(target) }
+        }
+        switch link {
+        case .group:
+            break
+        case .decision(let groupId, let decisionId):
+            pendingDecision = PendingDecision(groupId: groupId, decisionId: decisionId)
+        }
+        container.deepLinkRouter.consume()
+    }
+
+    /// `Identifiable` wrapper around the IDs so `.sheet(item:)` can key
+    /// off the destination directly instead of needing a separate bool.
+    private struct PendingDecision: Identifiable, Equatable {
+        let groupId: UUID
+        let decisionId: UUID
+        var id: UUID { decisionId }
     }
 
     @ViewBuilder

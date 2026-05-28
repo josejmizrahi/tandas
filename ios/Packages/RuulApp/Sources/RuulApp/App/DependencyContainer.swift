@@ -85,6 +85,12 @@ public final class DependencyContainer {
     public let notificationSettingsStore: NotificationSettingsStore
     public let privacyStore: PrivacyStore
 
+    // MARK: - Routing
+
+    /// D4 — buffers deep links (`ruul://group/X/decision/Y`) so the
+    /// shell can route them on the next render pass.
+    public let deepLinkRouter: DeepLinkRouter
+
     public init() {
         let client = SupabaseEnvironment.shared
         self.supabaseClient = client
@@ -150,6 +156,7 @@ public final class DependencyContainer {
         self.dissolutionStore = DissolutionStore(repository: dissolutionRepository)
         self.notificationSettingsStore = NotificationSettingsStore(repository: notificationsRepository)
         self.privacyStore = PrivacyStore(repository: privacyRepository)
+        self.deepLinkRouter = DeepLinkRouter()
     }
 
     /// Kicks off the session subscription so the shell can observe state

@@ -52,6 +52,8 @@ struct GroupHomeView: View {
                 sanctionsStore: container.sanctionsStore,
                 reputationStore: container.reputationStore,
                 moneyStore: container.moneyStore,
+                rolesStore: container.rolesStore,
+                membersStore: container.membersStore,
                 groupId: group.id,
                 memberItem: item
             )

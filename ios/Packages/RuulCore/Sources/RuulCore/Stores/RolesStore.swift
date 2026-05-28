@@ -187,4 +187,19 @@ public final class RolesStore {
         errorMessage = nil
         draftErrorMessage = nil
     }
+
+    // MARK: - Membership assignment (Primitiva 17, B3)
+
+    /// Assigns the role to the given membership. Backend gates by
+    /// `roles.manage` and raises a `RuulError` when denied; caller is
+    /// expected to surface the error in the UI.
+    public func assignRole(membershipId: UUID, roleId: UUID) async throws {
+        try await repository.assignRole(membershipId: membershipId, roleId: roleId)
+    }
+
+    /// Revokes the role from the given membership. Backend gates by
+    /// `roles.manage` and blocks removing the member's last role.
+    public func revokeRole(membershipId: UUID, roleId: UUID) async throws {
+        try await repository.revokeRole(membershipId: membershipId, roleId: roleId)
+    }
 }

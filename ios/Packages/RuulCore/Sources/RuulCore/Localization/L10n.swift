@@ -380,6 +380,12 @@ public enum L10n {
         public static let memberTypeLabel       = LocalizedStringResource("member_detail.member_type",            defaultValue: "Tipo")
         public static let joinedAtLabel         = LocalizedStringResource("member_detail.joined_at",              defaultValue: "Se unió")
         public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
+
+        public static let manageRolesButton     = LocalizedStringResource("member_detail.roles.manage",           defaultValue: "Editar roles")
+        public static let manageRolesTitle      = LocalizedStringResource("member_detail.roles.manage.title",     defaultValue: "Roles del miembro")
+        public static let manageRolesEmpty      = LocalizedStringResource("member_detail.roles.manage.empty",     defaultValue: "Aún no hay roles para asignar.")
+        public static let manageRolesDone       = LocalizedStringResource("member_detail.roles.manage.done",      defaultValue: "Listo")
+        public static let manageRolesErrorTitle = LocalizedStringResource("member_detail.roles.manage.error",     defaultValue: "No pudimos actualizar los roles")
     }
 
     public enum MoneyMovements {
