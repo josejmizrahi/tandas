@@ -33,20 +33,10 @@ struct GroupHomeView: View {
             sanctionsSection
             disputesSection
             moneySection
-            membersSection
             actionsSection
         }
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: MembersDestination.self) { _ in
-            MembersListView(
-                store: container.membersStore,
-                groupId: group.id,
-                onSelectMember: { item in
-                    pendingMemberSelection = item
-                }
-            )
-        }
         .navigationDestination(item: $pendingMemberSelection) { item in
             MemberDetailView(
                 sanctionsStore: container.sanctionsStore,
@@ -92,9 +82,6 @@ struct GroupHomeView: View {
                 myMembershipId: group.membershipId
             )
         }
-        .navigationDestination(for: GroupSettingsDestination.self) { _ in
-            GroupSettingsView(container: container, group: group)
-        }
         .navigationDestination(for: ContributionsDestination.self) { _ in
             ContributionsListView(store: container.contributionsStore, groupId: group.id)
         }
@@ -131,9 +118,6 @@ struct GroupHomeView: View {
                     }
                     NavigationLink(value: ReputationFeedDestination()) {
                         Label(L10n.ReputationFeed.title, systemImage: "star.bubble")
-                    }
-                    NavigationLink(value: GroupSettingsDestination()) {
-                        Label(L10n.GroupSettings.title, systemImage: "gearshape")
                     }
                     Divider()
                     Button(role: .destructive) {
@@ -392,20 +376,6 @@ struct GroupHomeView: View {
     }
 
     @ViewBuilder
-    private var membersSection: some View {
-        Section {
-            NavigationLink(value: MembersDestination()) {
-                Label {
-                    let count = container.currentGroupStore.summary?.memberCount
-                    Text(count.map { "\($0) miembros" } ?? "Miembros")
-                } icon: {
-                    Image(systemName: "person.2")
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
     private var actionsSection: some View {
         Section {
             Button {
@@ -437,12 +407,9 @@ struct GroupHomeView: View {
         await container.foundationStatusStore.refresh(groupId: group.id)
     }
 
-    /// `Hashable` token for the Members destination so the existing
+    /// `Hashable` token for the Rules destination so the existing
     /// `NavigationStack` (declared on `RuulAppShell`) can push the
     /// list view via `NavigationLink(value:)`.
-    private struct MembersDestination: Hashable {}
-
-    /// Same pattern for the Rules destination.
     private struct RulesDestination: Hashable {}
 
     /// And Resources.
@@ -461,9 +428,6 @@ struct GroupHomeView: View {
 
     /// And Money (A2.a — replaces inline MoneyBlock).
     private struct MoneyDashboardDestination: Hashable {}
-
-    /// And Group Settings (B1 — Settings.app root).
-    private struct GroupSettingsDestination: Hashable {}
 
     /// And Contributions (Primitiva 9 — C3).
     private struct ContributionsDestination: Hashable {}
