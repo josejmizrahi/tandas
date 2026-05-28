@@ -666,6 +666,31 @@ struct RPCInputsEncodingTests {
         #expect(history["p_limit"] as? Int == 25)
     }
 
+    // MARK: - Notifications + Privacy (B7)
+
+    @Test("set_notification_preference emits all four keys with snake_case values")
+    func setNotificationPreferenceEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(SetNotificationPreferenceInput(
+            groupId: gid,
+            category: "decisions",
+            channel: "in_app",
+            enabled: false
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_category"] as? String == "decisions")
+        #expect(dict["p_channel"] as? String == "in_app")
+        #expect(dict["p_enabled"] as? Bool == false)
+    }
+
+    @Test("set_group_visibility encodes group + visibility tuple")
+    func setGroupVisibilityEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(SetGroupVisibilityInput(groupId: gid, visibility: "unlisted"))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_visibility"] as? String == "unlisted")
+    }
+
     // MARK: - Dissolution (Primitiva 25, B8)
 
     @Test("propose_dissolution encodes group + reason only (plan jsonb stays backend-default)")

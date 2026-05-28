@@ -68,6 +68,10 @@ public struct GroupSettingsView: View {
                 RolesListView(store: container.rolesStore, groupId: group.id)
             case .dissolution:
                 DissolutionStatusView(store: container.dissolutionStore, groupId: group.id)
+            case .notifications:
+                NotificationSettingsView(store: container.notificationSettingsStore, groupId: group.id)
+            case .privacy:
+                GroupPrivacyView(store: container.privacyStore, groupId: group.id)
             }
         }
         .sheet(isPresented: purposeSheetBinding) {
@@ -166,7 +170,11 @@ public struct GroupSettingsView: View {
             }
             comingSoonRow(.membershipTypes, label: L10n.GroupSettings.membershipTypesRow, systemImage: "person.crop.rectangle.stack")
             NavigationLink(value: GroupSettingsDestination.roles) {
-                Label(L10n.GroupSettings.rolesRow, systemImage: "person.crop.rectangle.badge.checkmark")
+                Label {
+                    Text(L10n.GroupSettings.rolesRow)
+                } icon: {
+                    Image(systemName: "person.crop.rectangle.badge.checkmark")
+                }
             }
             NavigationLink(value: GroupSettingsDestination.mandates) {
                 Label(L10n.GroupSettings.mandatesRow, systemImage: "signature")
@@ -213,14 +221,26 @@ public struct GroupSettingsView: View {
     @ViewBuilder
     private var notificationsSection: some View {
         Section(L10n.GroupSettings.notificationsSection) {
-            comingSoonRow(.notifications, label: L10n.GroupSettings.notificationsRow, systemImage: "bell")
+            NavigationLink(value: GroupSettingsDestination.notifications) {
+                Label {
+                    Text(L10n.GroupSettings.notificationsRow)
+                } icon: {
+                    Image(systemName: "bell")
+                }
+            }
         }
     }
 
     @ViewBuilder
     private var privacySection: some View {
         Section(L10n.GroupSettings.privacySection) {
-            comingSoonRow(.privacy, label: L10n.GroupSettings.privacyRow, systemImage: "lock")
+            NavigationLink(value: GroupSettingsDestination.privacy) {
+                Label {
+                    Text(L10n.GroupSettings.privacyRow)
+                } icon: {
+                    Image(systemName: "lock")
+                }
+            }
         }
     }
 
@@ -314,13 +334,13 @@ public struct GroupSettingsView: View {
         case rituals
         case roles
         case dissolution
+        case notifications
+        case privacy
     }
 
     private enum ComingSoonRow: Hashable {
         case membershipTypes
         case currency
         case fundsPolicy
-        case notifications
-        case privacy
     }
 }

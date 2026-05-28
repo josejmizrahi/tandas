@@ -763,6 +763,47 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum NotificationSettings {
+        public static let title              = LocalizedStringResource("notification_settings.title",            defaultValue: "Avisos del grupo")
+        public static let headline           = LocalizedStringResource("notification_settings.headline",         defaultValue: "Cómo te avisa este grupo")
+        public static let hint               = LocalizedStringResource("notification_settings.hint",             defaultValue: "Por defecto todos los avisos están activos. Apaga los que no quieras recibir.")
+        public static let errorTitle         = LocalizedStringResource("notification_settings.error.title",      defaultValue: "No pudimos cargar los avisos")
+        public static let retry              = LocalizedStringResource("notification_settings.retry",            defaultValue: "Reintentar")
+
+        // Channels
+        public static let channelPush        = LocalizedStringResource("notification_settings.channel.push",     defaultValue: "Notificación")
+        public static let channelEmail       = LocalizedStringResource("notification_settings.channel.email",    defaultValue: "Correo")
+        public static let channelSMS         = LocalizedStringResource("notification_settings.channel.sms",      defaultValue: "SMS")
+        public static let channelInApp       = LocalizedStringResource("notification_settings.channel.in_app",   defaultValue: "En la app")
+
+        // Categories
+        public static let categoryDecisions          = LocalizedStringResource("notification_settings.category.decisions",          defaultValue: "Decisiones")
+        public static let categoryDecisionsSubtitle  = LocalizedStringResource("notification_settings.category.decisions.subtitle", defaultValue: "Nuevas propuestas, votos y resultados.")
+        public static let categorySanctions          = LocalizedStringResource("notification_settings.category.sanctions",          defaultValue: "Sanciones")
+        public static let categorySanctionsSubtitle  = LocalizedStringResource("notification_settings.category.sanctions.subtitle", defaultValue: "Cuando se emite o paga una sanción.")
+        public static let categoryDisputes           = LocalizedStringResource("notification_settings.category.disputes",           defaultValue: "Disputas")
+        public static let categoryDisputesSubtitle   = LocalizedStringResource("notification_settings.category.disputes.subtitle",  defaultValue: "Nuevas disputas y movimientos en el hilo.")
+        public static let categoryMoney              = LocalizedStringResource("notification_settings.category.money",              defaultValue: "Dinero")
+        public static let categoryMoneySubtitle      = LocalizedStringResource("notification_settings.category.money.subtitle",     defaultValue: "Gastos, liquidaciones y deudas.")
+        public static let categoryMembers            = LocalizedStringResource("notification_settings.category.members",            defaultValue: "Miembros")
+        public static let categoryMembersSubtitle    = LocalizedStringResource("notification_settings.category.members.subtitle",   defaultValue: "Quién entra, quién sale, cambios de rol.")
+    }
+
+    public enum Privacy {
+        public static let title              = LocalizedStringResource("privacy.title",              defaultValue: "Privacidad")
+        public static let headline           = LocalizedStringResource("privacy.headline",           defaultValue: "Quién puede ver este grupo")
+        public static let visibilitySection  = LocalizedStringResource("privacy.section.visibility", defaultValue: "Visibilidad")
+        public static let errorTitle         = LocalizedStringResource("privacy.error.title",        defaultValue: "No pudimos cargar la privacidad")
+        public static let retry              = LocalizedStringResource("privacy.retry",              defaultValue: "Reintentar")
+
+        public static let visibilityPrivate          = LocalizedStringResource("privacy.visibility.private",           defaultValue: "Privado")
+        public static let visibilityPrivateSubtitle  = LocalizedStringResource("privacy.visibility.private.subtitle",  defaultValue: "Solo los miembros pueden saber que este grupo existe.")
+        public static let visibilityUnlisted         = LocalizedStringResource("privacy.visibility.unlisted",          defaultValue: "No listado")
+        public static let visibilityUnlistedSubtitle = LocalizedStringResource("privacy.visibility.unlisted.subtitle", defaultValue: "Si te comparten el enlace o el código, puedes pedir entrar — pero no aparece en búsquedas.")
+        public static let visibilityPublic           = LocalizedStringResource("privacy.visibility.public",            defaultValue: "Público")
+        public static let visibilityPublicSubtitle   = LocalizedStringResource("privacy.visibility.public.subtitle",   defaultValue: "Cualquiera puede encontrar este grupo. El contenido sigue dependiendo de la política de entrada.")
+    }
+
     public enum Dissolution {
         public static let title              = LocalizedStringResource("dissolution.title",              defaultValue: "Cerrar grupo")
         public static let menuLink           = LocalizedStringResource("dissolution.menu",               defaultValue: "Cerrar grupo")

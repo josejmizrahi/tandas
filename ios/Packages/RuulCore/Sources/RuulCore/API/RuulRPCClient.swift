@@ -244,6 +244,27 @@ public protocol RuulRPCClient: Sendable {
     /// `group_decisions` row. Returns the new decision id.
     func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID
 
+    // MARK: - Notifications + Privacy (B7)
+
+    /// `my_notification_preferences(p_group_id)` — caller's stored
+    /// preference rows for a group. Missing rows = enabled by default
+    /// (iOS merges with curated category × channel grid).
+    /// Active-member gate.
+    func myNotificationPreferences(groupId: UUID) async throws -> [NotificationPreferenceRow]
+
+    /// `set_notification_preference(...)` — upserts a single
+    /// `(group, category, channel)` row. Returns void.
+    func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws
+
+    /// `group_visibility(p_group_id)` — returns the current
+    /// `groups.visibility` text. Active-member gate.
+    func groupVisibility(groupId: UUID) async throws -> String
+
+    /// `set_group_visibility(p_group_id, p_visibility)` — updates
+    /// `groups.visibility` to one of `private` / `unlisted` /
+    /// `public`. Requires `group.update`. Returns the new value.
+    func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String
+
     // MARK: - Dissolution (Primitiva 25, B8)
 
     /// `group_dissolution_active(p_group_id)` — returns the active

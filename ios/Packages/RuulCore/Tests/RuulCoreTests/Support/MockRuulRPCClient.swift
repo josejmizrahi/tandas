@@ -81,6 +81,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupDissolutionActive(groupId: UUID)
         case proposeDissolution(input: ProposeDissolutionInput)
         case finalizeDissolution(input: FinalizeDissolutionInput)
+        case myNotificationPreferences(groupId: UUID)
+        case setNotificationPreference(input: SetNotificationPreferenceInput)
+        case groupVisibility(groupId: UUID)
+        case setGroupVisibility(input: SetGroupVisibilityInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -194,6 +198,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var groupDissolutionActiveStub: Result<GroupDissolution?, RuulError> = .success(nil)
     private var proposeDissolutionStub: Result<UUID, RuulError> = .success(UUID())
     private var finalizeDissolutionStub: Result<Void, RuulError> = .success(())
+    private var myNotificationPreferencesStub: Result<[NotificationPreferenceRow], RuulError> = .success([])
+    private var setNotificationPreferenceStub: Result<Void, RuulError> = .success(())
+    private var groupVisibilityStub: Result<String, RuulError> = .success("private")
+    private var setGroupVisibilityStub: Result<String, RuulError> = .success("private")
 
     init() {}
 
@@ -270,6 +278,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupDissolutionActiveStub(_ stub: Result<GroupDissolution?, RuulError>) { groupDissolutionActiveStub = stub }
     func setProposeDissolutionStub(_ stub: Result<UUID, RuulError>) { proposeDissolutionStub = stub }
     func setFinalizeDissolutionStub(_ stub: Result<Void, RuulError>) { finalizeDissolutionStub = stub }
+    func setMyNotificationPreferencesStub(_ stub: Result<[NotificationPreferenceRow], RuulError>) { myNotificationPreferencesStub = stub }
+    func setSetNotificationPreferenceStub(_ stub: Result<Void, RuulError>) { setNotificationPreferenceStub = stub }
+    func setGroupVisibilityStub(_ stub: Result<String, RuulError>) { groupVisibilityStub = stub }
+    func setSetGroupVisibilityStub(_ stub: Result<String, RuulError>) { setGroupVisibilityStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -637,5 +649,25 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws {
         recorded.append(.finalizeDissolution(input: input))
         try finalizeDissolutionStub.get()
+    }
+
+    func myNotificationPreferences(groupId: UUID) async throws -> [NotificationPreferenceRow] {
+        recorded.append(.myNotificationPreferences(groupId: groupId))
+        return try myNotificationPreferencesStub.get()
+    }
+
+    func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws {
+        recorded.append(.setNotificationPreference(input: input))
+        try setNotificationPreferenceStub.get()
+    }
+
+    func groupVisibility(groupId: UUID) async throws -> String {
+        recorded.append(.groupVisibility(groupId: groupId))
+        return try groupVisibilityStub.get()
+    }
+
+    func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String {
+        recorded.append(.setGroupVisibility(input: input))
+        return try setGroupVisibilityStub.get()
     }
 }

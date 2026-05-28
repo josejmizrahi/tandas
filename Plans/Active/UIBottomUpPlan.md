@@ -582,7 +582,12 @@ Marcar cada slice cerrado:
       (mig `20260527180000` agregó list_group_resource_series filtrable
       por rituals_only/include_past; write side
       create_resource_series / update_resource_series ya canónico)
-- [ ] B7 NotificationsSettingsView + GroupPrivacyView
+- [x] B7 NotificationsSettingsView + GroupPrivacyView
+      (mig `20260527220000` agregó my_notification_preferences /
+      set_notification_preference / group_visibility /
+      set_group_visibility. iOS: NotificationSettingsView 5 categorías ×
+      2 canales con toggles optimistas + GroupPrivacyView con picker
+      private/unlisted/public)
 - [x] B8 Dissolution (Primitiva 25)
       (mig `20260527210000` agregó group_dissolution_active read RPC;
       write side propose_dissolution / approve_dissolution /

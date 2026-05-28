@@ -195,4 +195,8 @@ private struct RulesStubClient: RuulRPCClient, @unchecked Sendable {
     func groupDissolutionActive(groupId: UUID) async throws -> GroupDissolution? { nil }
     func proposeDissolution(_ input: ProposeDissolutionInput) async throws -> UUID { UUID() }
     func finalizeDissolution(_ input: FinalizeDissolutionInput) async throws {}
+    func myNotificationPreferences(groupId: UUID) async throws -> [NotificationPreferenceRow] { [] }
+    func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws {}
+    func groupVisibility(groupId: UUID) async throws -> String { "private" }
+    func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String { input.pVisibility }
 }

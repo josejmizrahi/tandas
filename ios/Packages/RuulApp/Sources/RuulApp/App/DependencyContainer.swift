@@ -52,6 +52,8 @@ public final class DependencyContainer {
     public let boundaryRepository: CanonicalBoundaryRepository
     public let rolesRepository: CanonicalRolesRepository
     public let dissolutionRepository: CanonicalDissolutionRepository
+    public let notificationsRepository: CanonicalNotificationsRepository
+    public let privacyRepository: CanonicalPrivacyRepository
 
     // MARK: - Stores
 
@@ -80,6 +82,8 @@ public final class DependencyContainer {
     public let boundaryPolicyStore: BoundaryPolicyStore
     public let rolesStore: RolesStore
     public let dissolutionStore: DissolutionStore
+    public let notificationSettingsStore: NotificationSettingsStore
+    public let privacyStore: PrivacyStore
 
     public init() {
         let client = SupabaseEnvironment.shared
@@ -116,6 +120,8 @@ public final class DependencyContainer {
         self.boundaryRepository = CanonicalBoundaryRepository(rpc: rpc)
         self.rolesRepository = CanonicalRolesRepository(rpc: rpc)
         self.dissolutionRepository = CanonicalDissolutionRepository(rpc: rpc)
+        self.notificationsRepository = CanonicalNotificationsRepository(rpc: rpc)
+        self.privacyRepository = CanonicalPrivacyRepository(rpc: rpc)
 
         self.sessionStore = SessionStore(authService: auth)
         self.groupsStore = GroupsStore(repository: groupRepository)
@@ -142,6 +148,8 @@ public final class DependencyContainer {
         self.boundaryPolicyStore = BoundaryPolicyStore(repository: boundaryRepository)
         self.rolesStore = RolesStore(repository: rolesRepository)
         self.dissolutionStore = DissolutionStore(repository: dissolutionRepository)
+        self.notificationSettingsStore = NotificationSettingsStore(repository: notificationsRepository)
+        self.privacyStore = PrivacyStore(repository: privacyRepository)
     }
 
     /// Kicks off the session subscription so the shell can observe state

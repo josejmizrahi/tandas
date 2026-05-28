@@ -804,6 +804,54 @@ public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Notifications + Privacy (B7)
+
+public struct MyNotificationPreferencesParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct SetNotificationPreferenceInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pCategory: String
+    public let pChannel: String
+    public let pEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId  = "p_group_id"
+        case pCategory = "p_category"
+        case pChannel  = "p_channel"
+        case pEnabled  = "p_enabled"
+    }
+
+    public init(groupId: UUID, category: String, channel: String, enabled: Bool) {
+        self.pGroupId = groupId
+        self.pCategory = category
+        self.pChannel = channel
+        self.pEnabled = enabled
+    }
+}
+
+public struct GroupVisibilityParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct SetGroupVisibilityInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pVisibility: String
+    enum CodingKeys: String, CodingKey {
+        case pGroupId    = "p_group_id"
+        case pVisibility = "p_visibility"
+    }
+    public init(groupId: UUID, visibility: String) {
+        self.pGroupId = groupId
+        self.pVisibility = visibility
+    }
+}
+
 // MARK: - Dissolution (Primitiva 25, B8)
 
 public struct GroupDissolutionActiveParams: Encodable, Sendable {

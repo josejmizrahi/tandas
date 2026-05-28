@@ -540,6 +540,45 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Notifications + Privacy (B7)
+
+    public func myNotificationPreferences(groupId: UUID) async throws -> [NotificationPreferenceRow] {
+        let params = MyNotificationPreferencesParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("my_notification_preferences", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func setNotificationPreference(_ input: SetNotificationPreferenceInput) async throws {
+        do {
+            _ = try await client.rpc("set_notification_preference", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func groupVisibility(groupId: UUID) async throws -> String {
+        let params = GroupVisibilityParams(groupId: groupId)
+        do {
+            return try await client.rpc("group_visibility", params: params).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String {
+        do {
+            return try await client.rpc("set_group_visibility", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Dissolution (Primitiva 25, B8)
 
     public func groupDissolutionActive(groupId: UUID) async throws -> GroupDissolution? {
